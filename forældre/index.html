@@ -903,12 +903,23 @@
               <div class="login-card">
                 <form id="parent-login-form" class="login-form">
                   <!-- Klub/SFO -->
-                  <label for="institution-select" class="section-subtitle">
-                    Vælg klub/SFO
-                  </label>
-                  <select id="institution-select" required>
-                    <option value="">Vælg klub/SFO…</option>
-                  </select>
+                  <div class="form-group" id="institution-row">
+                    <label for="institution-select" class="section-subtitle" id="institution-label">
+                      Vælg klub/SFO
+                    </label>
+                    <select id="institution-select" required>
+                      <option value="">Vælg klub/SFO…</option>
+                    </select>
+                  </div>
+
+                  <p
+                    id="institution-info"
+                    class="section-subtitle"
+                    style="display: none; margin-bottom: 10px;"
+                  >
+                    Institutioner i nærheden af dig:
+                    <strong id="institution-name-label"></strong>
+                  </p>
 
                   <!-- Barnets navn -->
                   <input
@@ -1047,6 +1058,11 @@
       const loginError = document.getElementById("login-error");
       const logoutBtn = document.getElementById("logout-btn");
       const institutionSelect = document.getElementById("institution-select");
+      const institutionLabel = document.getElementById("institution-label");
+
+      const institutionRow = document.getElementById("institution-row");
+      const institutionInfo = document.getElementById("institution-info");
+      const institutionNameLabel = document.getElementById("institution-name-label");
 
       const parentEmailInput = document.getElementById("parent-email-input");
       const notifyZeroCheckbox = document.getElementById("notify-zero-checkbox");
@@ -1066,31 +1082,64 @@
             .from("institutions")
             .select("id, name")
             .order("name", { ascending: true });
-
+      
           if (error) {
             console.error("Fejl ved hentning af institutioner", error);
             return;
           }
+      
+          // Ingen institutioner
+          if (!data || data.length === 0) {
+            institutionSelect.innerHTML =
+              '<option value="">Ingen institutioner tilgængelige</option>';
+            if (institutionRow) institutionRow.style.display = "block";
+            if (institutionInfo) {
+              institutionInfo.style.display = "none";
+              if (institutionNameLabel) institutionNameLabel.textContent = "";
+            }
+            return;
+          }
+      
+          // KUN én institution (fx Stampen) → auto-vælg + skjul dropdown
+          if (data.length === 1) {
+            const inst = data[0];
+      
+            // Sæt select til kun denne institution
+            institutionSelect.innerHTML = `<option value="${inst.id}">${inst.name}</option>`;
+            institutionSelect.value = inst.id;
+            institutionSelect.disabled = false; // Sørg for at dropdownen er aktiv
 
+            // Vis dropdown-rækken og skift label-teksten til det, du ønsker
+            if (institutionRow) institutionRow.style.display = "block";
+            if (institutionLabel) institutionLabel.textContent = "Institutioner i nærheden af dig:";
+
+            // Skjul den alternative info-tekst
+            if (institutionInfo) institutionInfo.style.display = "none";
+
+            return;
+          }
+      
+          // FLERE institutioner → almindelig dropdown
           const options =
             '<option value="">Vælg klub/SFO…</option>' +
-            (data || [])
+            data
               .map(
                 (inst) =>
                   `<option value="${inst.id}">${inst.name}</option>`
               )
               .join("");
-
+      
           institutionSelect.innerHTML = options;
-
-          if (data && data.length === 1) {
-            institutionSelect.value = data[0].id;
-          }
+          institutionSelect.disabled = false; // Sørg for at den er aktiv
+      
+          // Sørg for at dropdown vises, og info-teksten skjules
+          if (institutionRow) institutionRow.style.display = "block";
+          if (institutionLabel) institutionLabel.textContent = "Vælg klub/SFO";
+          if (institutionInfo) institutionInfo.style.display = "none";
         } catch (e) {
           console.error("Uventet fejl ved hentning af institutioner", e);
         }
       }
-
       loginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         loginError.style.display = "none";
