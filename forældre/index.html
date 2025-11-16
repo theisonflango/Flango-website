@@ -1021,6 +1021,45 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Skift kode-kort -->
+              <section class="card" style="margin-top: 12px; background: rgba(255, 255, 255, 0.98); border-radius: 16px; padding: 10px 12px 11px; border: 1px solid rgba(220, 220, 220, 0.95); box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);">
+                <h2 class="section-title" style="font-size: 13px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 7px;">
+                  <div class="icon" style="width: 24px; height: 24px; border-radius: 999px; background: rgba(255, 122, 60, 0.12); display: flex; align-items: center; justify-content: center; font-size: 14px;">🔑</div>
+                  Skift kode til forældre-login
+                </h2>
+                <p class="section-subtitle" style="font-size: 11px; color: #6b7280; margin-bottom: 8px;">
+                  Her kan du ændre den kode, du bruger til Flango Forældre-portal.
+                </p>
+
+                <form id="change-pin-form" class="login-form" style="gap: 6px;">
+                  <div class="form-group">
+                    <input
+                      type="password"
+                      id="new-pin"
+                      maxlength="20"
+                      autocomplete="off"
+                      placeholder="Ny kode (mindst 4 tegn)"
+                      required
+                      style="padding: 7px 12px; font-size: 12px;"
+                    />
+                  </div>
+
+                  <div class="form-group">
+                    <input
+                      type="password"
+                      id="confirm-new-pin"
+                      maxlength="20"
+                      autocomplete="off"
+                      placeholder="Gentag ny kode"
+                      required
+                      style="padding: 7px 12px; font-size: 12px;"
+                    />
+                  </div>
+                  <button type="submit" class="primary-btn" style="padding: 6px 11px; font-size: 11px; font-weight: 600; background: linear-gradient(135deg, #ff7a3c, #ffb100); box-shadow: 0 10px 22px rgba(248, 113, 22, 0.4);">Gem ny kode</button>
+                  <p id="change-pin-message" style="margin-top: 6px; font-size: 11px; display: none;"></p>
+                </form>
+              </section>
             </div>
           </div>
         </section>
@@ -1059,6 +1098,15 @@
       const logoutBtn = document.getElementById("logout-btn");
       const institutionSelect = document.getElementById("institution-select");
       const institutionLabel = document.getElementById("institution-label");
+
+      // Referencer til "Skift kode"
+      const changePinForm = document.getElementById("change-pin-form");
+      const newPinInput = document.getElementById("new-pin");
+      const confirmNewPinInput = document.getElementById("confirm-new-pin");
+      const changePinMessage = document.getElementById("change-pin-message");
+
+      const UPDATE_PIN_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/update-parent-pin";
 
       const institutionRow = document.getElementById("institution-row");
       const institutionInfo = document.getElementById("institution-info");
@@ -1222,6 +1270,83 @@
         notifyZeroCheckbox.checked = false;
         notifyTenCheckbox.checked = false;
       });
+
+      if (changePinForm) {
+        changePinForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          if (!changePinMessage) return;
+
+          changePinMessage.style.display = "none";
+          changePinMessage.textContent = "";
+          changePinMessage.style.color = "";
+
+          const newPin = newPinInput.value.trim();
+          const confirmPin = confirmNewPinInput.value.trim();
+
+          if (!currentChildId) {
+            changePinMessage.textContent =
+              "Der opstod en fejl. Prøv at logge ind igen og forsøg derefter at skifte kode.";
+            changePinMessage.style.color = "var(--danger-color)";
+            changePinMessage.style.display = "block";
+            return;
+          }
+
+          if (!newPin || !confirmPin) {
+            changePinMessage.textContent = "Udfyld begge felter.";
+            changePinMessage.style.color = "var(--danger-color)";
+            changePinMessage.style.display = "block";
+            return;
+          }
+
+          if (newPin !== confirmPin) {
+            changePinMessage.textContent =
+              "De to nye koder er ikke ens. Prøv igen.";
+            changePinMessage.style.color = "var(--danger-color)";
+            changePinMessage.style.display = "block";
+            return;
+          }
+
+          if (newPin.length < 4) {
+            changePinMessage.textContent =
+              "Koden skal mindst være på 4 tegn.";
+            changePinMessage.style.color = "var(--danger-color)";
+            changePinMessage.style.display = "block";
+            return;
+          }
+
+          try {
+            const res = await fetch(UPDATE_PIN_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: SUPABASE_ANON_KEY,
+              },
+              body: JSON.stringify({
+                child_id: currentChildId,
+                new_pin: newPin,
+              }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+              console.error("Fejl ved skift af kode:", data);
+              throw new Error(data.error || "Der opstod en fejl under skift af kode. Prøv igen.");
+            }
+
+            changePinMessage.textContent = "Din kode er nu opdateret.";
+            changePinMessage.style.color = "var(--success-color)";
+            changePinMessage.style.display = "block";
+            newPinInput.value = "";
+            confirmNewPinInput.value = "";
+          } catch (e) {
+            console.error("Uventet fejl ved skift af kode:", e);
+            changePinMessage.textContent = "Uventet fejl. Prøv igen lidt senere.";
+            changePinMessage.style.color = "var(--danger-color)";
+            changePinMessage.style.display = "block";
+          }
+        });
+      }
 
       saveNotifyBtn.addEventListener("click", async () => {
         if (!currentChildId) {
