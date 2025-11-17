@@ -1324,6 +1324,7 @@
               body: JSON.stringify({
                 child_id: currentChildId,
                 new_pin: newPin,
+                source: 'parent', // Mark this change as coming from a parent
               }),
             });
 
@@ -1370,18 +1371,20 @@
 
         try {
           const res = await fetch(SAVE_NOTIFY_URL, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({
-              child_id: currentChildId,
-              email: email,
-              notify_at_zero: notifyAtZero,
-              notify_at_ten: notifyAtTen,
-            }),
-          });
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    apikey: SUPABASE_ANON_KEY,
+    // VIGTIGT: til Edge Functions med Verify JWT
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  },
+  body: JSON.stringify({
+    child_id: currentChildId,
+    email: email,
+    notify_at_zero: notifyAtZero,
+    notify_at_ten: notifyAtTen,
+  }),
+});
 
           const data = await res.json().catch(() => ({}));
 
