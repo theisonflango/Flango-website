@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Børne-Café Kasseapparat (v25.0 - Stabil)</title>
+    <link rel="icon" type="image/png" href="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/assets/FlangoFruitLogo.png">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&family=Nunito:wght@400;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .settings-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9998;
+        }
+        .settings-modal {
+            background: #ffffff;
+            padding: 16px 20px;
+            border-radius: 12px;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        .settings-modal-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .settings-item-btn {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <!-- Præ-login: Klub login -->
+    <div id="screen-club-login" class="login-container" style="display: none;">
+        <img class="login-logo" src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/assets/flango-logo%20(1).png" alt="Flango Logo">
+        <div class="lock-icon">🏡</div>
+        <h1>Klub login</h1>
+        <label for="club-institution-select">Vælg institution</label>
+        <select id="club-institution-select"></select>
+        <label for="club-code-input">Klubbens login-kode</label>
+        <input type="password" id="club-code-input" placeholder="••••" maxlength="8" inputmode="numeric">
+        <button id="club-login-btn">Fortsæt</button>
+        <p id="club-login-error" class="login-error"></p>
+    </div>
+
+    <!-- Tilstand 1: Caféen er låst -->
+    <div id="screen-locked" class="login-container">
+        <img class="login-logo" src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/assets/flango-logo%20(1).png" alt="Flango Logo">
+        <div class="lock-icon">🔒</div>
+        <h1>Caféen er låst</h1>
+        <p id="active-club-label" class="login-subtitle"></p>
+        <label for="admin-user-select">Vælg administrator</label>
+        <select id="admin-user-select">
+            <option value="">— Vælg administrator —</option>
+        </select>
+        <input type="email" id="admin-email-input" placeholder="Admin e-mail" autocomplete="email">
+        <input type="password" id="admin-password-input" placeholder="Adgangskode" autocomplete="current-password">
+        <button id="admin-login-btn">Lås op & Log ind</button>
+        <button id="developer-login-btn" class="secondary-action">Developer Login</button>
+        <button id="switch-club-btn" class="switch-club-btn" style="display: none;">Skift klub</button>
+        <p id="locked-screen-error" class="login-error"></p>
+    </div>
+
+    <!-- Tilstand 2: Admin er logget ind (Kontrolrum) -->
+    <div id="screen-admin-login" class="login-container" style="display: none;">
+        <img class="login-logo" src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/assets/flango-logo%20(1).png" alt="Flango Logo">
+        <div class="lock-icon">🔓</div>
+        <h1 id="admin-welcome-text"></h1>
+        <div class="login-options">
+            <button id="select-clerk-btn">Log ind som Barn/Ekspedient</button>
+            <button id="continue-as-admin-btn">Fortsæt som Admin</button>
+            <button id="lock-cafe-btn" class="secondary-action">Log ud & Lås Café</button>
+        </div>
+    </div>
+
+    <!-- Tilstand 3: Café-UI (eksisterende app) -->
+    <div id="main-app" style="display: none;">
+        <div id="products"></div> <!-- Vare-knapperne vises her -->
+        <div id="sidebar">
+            <div class="sidebar-main-header">
+                <div class="user-info-cluster">
+                    <span id="logged-in-user-avatar-container"></span>
+                    <div id="logged-in-user"></div>
+                </div>
+                <div class="header-actions">
+                    <button id="toolbar-gear-btn" class="header-action-btn" title="Indstillinger"><img src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Function/Gear2.png" alt="Indstillinger"></button>
+                    <button id="logout-btn" class="header-action-btn" title="Log ud"><img src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Function/Logout.png" alt="Log ud"></button>
+                    <img id="flango-logo-button" src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/assets/FlangoFruitLogo.png" alt="Flango Logo">
+                </div>
+            </div>
+            <div id="toolbar-gear-menu" class="toolbar-gear-menu" style="display:none;"></div>
+            <div class="sidebar-header">
+                <h2>Indkøbskurv</h2>
+                <img src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Function/Kurv.png" alt="Indkøbskurv" class="sidebar-header-icon">
+            </div>
+            <div id="current-order">
+                <ul id="order-list"></ul>
+            </div>
+            <div id="checkout-stack">
+                <div id="total-price">Total: 0,00 DKK</div>
+                <div id="user-selection-area">
+                    <div id="selected-user-info" style="display: none;"></div>
+                    <div id="user-selection-actions">
+                        <button id="select-customer-main-btn">Vælg Kunde</button>
+                        <button id="complete-purchase" class="action-button cafe-btn">
+                            <span>Gennemfør Køb</span>
+                        </button>
+                    </div>
+                    <button id="cafe-mode-btn" class="action-button" style="background-color: var(--success-color); display: none;">Start Café-tilstand ☕</button>
+                </div>
+                <div id="bottom-buttons">
+                    <div class="flango-cafe-grid">
+                        <div id="admin-panel" style="display: none;">
+                            <button id="edit-menu-original-btn" class="action-button admin-btn cafe-btn" style="display: none;">
+                                <span>Rediger Menu ✏️</span>
+                            </button>
+                        </div>
+                        <button id="sales-history-btn" class="action-button admin-btn cafe-btn" style="display: none;">
+                            <span>Historik 📜</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="login-modal" class="modal"></div>
+    <div id="user-modal" class="modal"></div>
+    <div id="admin-user-manager-modal" class="modal"></div>
+    <div id="avatar-picker-modal" class="modal"></div>
+    <div id="add-edit-product-modal" class="modal"></div>
+    <div id="quick-login-modal" class="modal"></div>
+    <div id="add-edit-user-modal" class="modal"></div>
+    <div id="balance-modal" class="modal"></div>
+    <div id="edit-user-detail-modal" class="modal"></div>
+    <div id="assign-badge-modal" class="modal"></div>
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Rediger Menu</h2><span class="close-btn">&times;</span></div><div id="modal-product-list" class="modal-product-list"></div><button id="add-btn-modal" class="add-product-btn">➕ Tilføj Nyt Produkt</button></div>
+    </div>
+    <div id="sales-history-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Transaktionshistorik</h2><span class="close-btn">&times;</span></div>
+            <div class="report-buttons">
+                <button id="filter-deposits-btn" class="action-button" style="background-color: var(--secondary-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Vis Kun Indbetalinger</button>
+                <button id="print-negative-balance-btn" class="action-button" style="background-color: var(--warning-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem Negativ Saldo</button>
+                <button id="print-report-btn" class="action-button" style="background-color: var(--success-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem Rapport</button>
+                <button id="print-all-balances-btn" class="action-button btn-all-balances" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem liste med alle saldoer</button>
+            </div>
+            <div class="date-filter">
+                <input type="date" id="history-start-date">
+                <span>til</span>
+                <input type="date" id="history-end-date">
+            </div>
+            <div class="modal-controls" style="padding-top: 15px;">
+                <input type="text" id="search-history-input" placeholder="Søg efter kunde...">
+            </div>
+            <div class="history-scroll-container">
+                <div id="sales-summary"></div>
+                <div id="sales-history-list" class="modal-user-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="assortment-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Dagens Sortiment</h2><span class="close-btn">&times;</span></div>
+            <div class="modal-user-list">
+                <div id="assortment-settings" class="settings-section">
+                    <h3>Træk for at sortere</h3>
+                    <div id="assortment-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sound-settings-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Lydindstillinger</h2><span class="close-btn">&times;</span></div>
+            <div class="modal-user-list">
+                <div id="sound-settings" class="settings-section">
+                    <h3>Vælg lyde</h3>
+                    <div id="sound-options-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="custom-alert-modal" class="modal">
+        <div id="custom-alert-content">
+            <h2 id="custom-alert-title">Bekræft Køb</h2>
+            <p id="custom-alert-body"></p>
+            <div id="custom-alert-buttons">
+                <button id="custom-alert-ok">OK</button>
+                <button id="custom-alert-cancel">Annuller</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pin-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px; height: auto;">
+            <div class="modal-header">
+                <h2 id="pin-modal-title">Indtast PIN</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div id="pin-display"></div>
+            <div id="pin-keypad">
+                <button class="keypad-btn" data-key="1">1</button>
+                <button class="keypad-btn" data-key="2">2</button>
+                <button class="keypad-btn" data-key="3">3</button>
+                <button class="keypad-btn" data-key="4">4</button>
+                <button class="keypad-btn" data-key="5">5</button>
+                <button class="keypad-btn" data-key="6">6</button>
+                <button class="keypad-btn" data-key="7">7</button>
+                <button class="keypad-btn" data-key="8">8</button>
+                <button class="keypad-btn" data-key="9">9</button>
+                <button class="keypad-btn keypad-action" data-key="clear">C</button>
+                <button class="keypad-btn" data-key="0">0</button>
+                <button class="keypad-btn keypad-action" data-key="backspace">⌫</button>
+            </div>
+        </div>
+    </div>
+
+    <template id="login-modal-template"><div class="modal-content"><div class="modal-header"><h2>Login</h2><span class="close-btn">&times;</span></div><div class="modal-controls" style="flex-direction: column; gap: 10px;"><input type="email" id="login-email-input" placeholder="E-mail" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;"><input type="password" id="login-password-input" placeholder="Adgangskode" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;"><button id="perform-login-btn" class="action-button" style="background-color: var(--success-color); margin-top: 10px; margin-bottom: 0;">Log ind</button><button id="developer-login-btn" class="action-button" style="background-color: var(--warning-color); margin-top: 10px; margin-bottom: 0;">Developer Login</button><p id="login-error-msg" style="color: var(--danger-color); text-align: center; display: none; margin-top: 10px;"></p></div></div></template>
+    <template id="user-modal-template"><div class="modal-content"><div class="modal-header"><h2 id="user-modal-title">Vælg en kunde</h2><span class="close-btn">&times;</span></div><div id="admin-controls-modal"></div><div class="modal-controls"><input type="text" id="search-user-input" placeholder="Søg efter navn eller nummer..."></div><div class="user-list-header"><div id="sort-by-name-btn" class="sort-header active">Navn</div><div id="sort-by-number-btn" class="sort-header">Nummer</div><div id="sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handling</div></div><div id="modal-user-list" class="modal-user-list"></div></div></template>
+    <template id="admin-user-manager-modal-template"><div class="modal-content"><div class="modal-header"><h2>Rediger Brugere</h2><span class="close-btn">&times;</span></div><div id="admin-controls-modal"><button id="add-user-btn-modal" class="action-button admin-btn" style="margin-bottom: 10px;">➕ Tilføj Ny Bruger</button></div><div class="modal-controls"><input type="text" id="admin-search-user-input" placeholder="Søg efter navn eller nummer..."></div><div class="user-list-header"><div id="admin-sort-by-name-btn" class="sort-header active">Navn</div><div id="admin-sort-by-number-btn" class="sort-header">Nummer</div><div id="admin-sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handlinger</div></div><div id="admin-modal-user-list" class="modal-user-list"></div></div></template>
+    <template id="avatar-picker-modal-template"><div class="modal-content"><div class="modal-header"><h2>Min Flango Status</h2><span class="close-btn">&times;</span></div><div id="avatar-picker-scroll-wrapper">
+        <div id="avatar-picker-summary"></div>
+        <hr style="margin: 15px 0; border-color: #eee;">
+        <div id="avatar-carousel-container" class="avatar-carousel-container"></div>
+    </div></div></template>
+    <template id="add-edit-product-modal-template"><div class="modal-content" style="height: auto; max-height: 90%;"><div class="modal-header"><h2 id="product-form-title">Tilføj Produkt</h2><span class="close-btn">&times;</span></div><div id="product-form-fields"></div><button id="save-product-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0;">Gem Produkt</button></div></template>
+    <template id="quick-login-modal-template"><div class="modal-content"><div class="modal-header"><h2>Hvem er du?</h2><span class="close-btn">&times;</span></div><div id="quick-login-user-list" class="modal-user-list"></div><p id="quick-login-error-msg" style="color: var(--danger-color); text-align: center; display: none; margin-top: 10px;"></p></div></template>
+    <template id="add-edit-user-modal-template"><div class="modal-content" style="height: auto; max-height: 90%;"><div class="modal-header"><h2 id="user-form-title">Tilføj Ny Bruger</h2><span class="close-btn">&times;</span></div><div id="user-form-fields"></div><button id="save-user-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0;">Gem Bruger</button></div></template><template id="balance-modal-template"><div class="modal-content" style="height: auto; max-width: 400px;"><div class="modal-header"><h2 id="balance-form-title">Rediger Saldo</h2><span class="close-btn">&times;</span></div><div id="balance-form-fields"></div><button id="save-balance-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0;">Gem</button></div></template>
+    <template id="edit-user-detail-modal-template"><div class="modal-content edit-user-modal"><div class="modal-header"><h2 id="edit-user-detail-title">Rediger Bruger</h2><span class="close-btn">&times;</span></div><div class="edit-user-form"><p id="edit-user-balance-display" class="balance-display"></p><div class="form-group"><label for="edit-user-name-input">Brugernavn</label><input type="text" id="edit-user-name-input" placeholder="Fx. Sofie Hansen"></div><div class="form-group"><label for="edit-user-number-input">Brugernummer</label><input type="text" id="edit-user-number-input" placeholder="Fx. 1234"></div><div class="form-group"><label for="edit-user-deposit-input">Indbetal Penge</label><div class="inline-input-row"><input type="number" id="edit-user-deposit-input" placeholder="Beløb" step="0.01"><div class="preset-buttons"><button type="button" class="preset-btn" data-amount="50">+50</button><button type="button" class="preset-btn" data-amount="100">+100</button><button type="button" class="preset-btn" data-amount="150">+150</button><button type="button" class="preset-btn" data-amount="200">+200</button></div></div></div><div class="form-row"><div class="form-group half"><label for="edit-user-balance-input">Sæt Ny Saldo</label><input type="number" id="edit-user-balance-input" placeholder="Fx. 250" step="0.01"></div><div class="form-group half"><label for="edit-user-pin-input">Ny PIN (4 cifre)</label><input type="text" id="edit-user-pin-input" placeholder="1234" maxlength="4"></div></div><div class="form-group"><label>Badge</label><div class="badge-row"><span id="current-badge-label">Ingen badge</span><button type="button" id="assign-badge-btn" class="action-button secondary-action">Tildel Badge</button></div><p id="assign-badge-note" class="assign-badge-note" style="display:none;"></p><div id="edit-user-badge-display" class="simple-badge-row compact"></div></div></div><div class="modal-actions"><button id="save-edit-user-btn" class="action-button" style="width:100%;">Gem</button></div></div></template>
+    <template id="assign-badge-modal-template"><div class="modal-content assign-badge-modal"><div class="modal-header"><h2 id="assign-badge-title">Tildel Badge</h2><span class="close-btn">&times;</span></div><div class="badge-category-list">
+        <details class="badge-section" open>
+            <summary>Faglige &amp; praktiske kompetencer 🧠</summary>
+            <div class="badge-grid">
+                <button class="badge-option" data-badge="SANS FOR DETALJER">SANS FOR DETALJER</button>
+                <button class="badge-option" data-badge="Orden & Overblik">Orden & Overblik</button>
+                <button class="badge-option" data-badge="Køkken-Kaptajn">Køkken-Kaptajn</button>
+                <button class="badge-option" data-badge="Hygiejne-Helten">Hygiejne-Helten</button>
+                <button class="badge-option" data-badge="Service-Specialist">Service-Specialist</button>
+                <button class="badge-option" data-badge="Flango Fejlfinder">Flango Fejlfinder</button>
+            </div>
+        </details>
+        <details class="badge-section">
+            <summary>Sociale kompetencer & relationsarbejde🤝</summary>
+            <div class="badge-grid">
+                <button class="badge-option" data-badge="En God Kammerat">En God Kammerat</button>
+                <button class="badge-option" data-badge="Tryghedsskaber">Tryghedsskaber</button>
+                <button class="badge-option" data-badge="Team-Spiller">Team-Spiller</button>
+                <button class="badge-option" data-badge="Empati-Ekspedient">Empati-Ekspedient</button>
+                <button class="badge-option" data-badge="Rolig Under Pres">Rolig Under Pres</button>
+                <button class="badge-option" data-badge="God Til At Lytte">God Til At Lytte</button>
+                <button class="badge-option" data-badge="SKABER GOD STEMNING">SKABER GOD STEMNING</button>
+                <button class="badge-option" data-badge="Rolig & Rar">Rolig & Rar</button>
+            </div>
+        </details>
+        <details class="badge-section">
+            <summary>Indsats, flid og vedholdenhed💪</summary>
+            <div class="badge-grid">
+                <button class="badge-option" data-badge="SUPER FLITTIG">SUPER FLITTIG</button>
+                <button class="badge-option" data-badge="Stædig Som En Stjerne">Stædig Som En Stjerne</button>
+                <button class="badge-option" data-badge="Vedholdende">Vedholdende</button>
+                <button class="badge-option" data-badge="Altid klar!">Altid klar!</button>
+                <button class="badge-option" data-badge="Topengageret Flango Fighter">Topengageret Flango Fighter</button>
+                <button class="badge-option image-badge" data-badge="Hårdtarbejdende"><img src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Badge/Haardtarbejdende.png" alt="Hårdtarbejdende badge"></button>
+                <button class="badge-option" data-badge="Månedens Ekspedient">Månedens Ekspedient</button>
+                <button class="badge-option" data-badge="Top Sælger">Top Sælger</button>
+            </div>
+        </details>
+        <details class="badge-section">
+            <summary>Modning, ansvar og selvstændighed🌱</summary>
+            <div class="badge-grid">
+                <button class="badge-option" data-badge="Ansvar Med Omhu">Ansvar Med Omhu</button>
+                <button class="badge-option" data-badge="Omsorgsfuld Ekspedient">Omsorgsfuld Ekspedient</button>
+                <button class="badge-option" data-badge="Selvstændig Stjerne">Selvstændig Stjerne</button>
+                <button class="badge-option" data-badge="Problemknuser">Problemknuser</button>
+                <button class="badge-option" data-badge="Tryg & Trofast">Tryg & Trofast</button>
+                <button class="badge-option" data-badge="Skrap Til Sikkerhed">Skrap Til Sikkerhed</button>
+            </div>
+        </details>
+        <details class="badge-section">
+            <summary>Kreativitet & initiativ🎨</summary>
+            <div class="badge-grid">
+                <button class="badge-option" data-badge="Initiativtager">Initiativtager</button>
+                <button class="badge-option" data-badge="Idé-Maskinen">Idé-Maskinen</button>
+                <button class="badge-option" data-badge="Kreativ Kok">Kreativ Kok</button>
+                <button class="badge-option" data-badge="Opfinder">Opfinder</button>
+            </div>
+        </details>
+        <details class="badge-section">
+            <summary>Køkkenrelaterede og sjove badge🧁</summary>
+            <div class="badge-grid">
+                <button class="badge-option" data-badge="Byens Børne-Kok">Byens Børne-Kok</button>
+                <button class="badge-option image-badge" data-badge="Pandekage Mester"><img src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Badge/pandekagemester.png" alt="Pandekage Mester badge"></button>
+                <button class="badge-option" data-badge="Toast-Fabrik">Toast-Fabrik</button>
+                <button class="badge-option" data-badge="Vaffel-Vokter">Vaffel-Vokter</button>
+            </div>
+        </details>
+        <details class="badge-section">
+            <summary>Adfærd & attitude-badges⭐</summary>
+            <div class="badge-grid">
+                <button class="badge-option" data-badge="SUPER HØFLIG">SUPER HØFLIG</button>
+                <button class="badge-option" data-badge="Hjælpsom">Hjælpsom</button>
+                <button class="badge-option image-badge" data-badge="God Stil"><img src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Badge/God%20Stil.png" alt="God Stil badge"></button>
+                <button class="badge-option" data-badge="Ekstra Ansvarlig">Ekstra Ansvarlig</button>
+                <button class="badge-option" data-badge="Dagens Stjerne">Dagens Stjerne</button>
+            </div>
+        </details>
+    </div></div></template>
+
+    <button id="open-theme-picker" style="display:none;"></button>
+    <!-- Tema-vælger overlay (modal) -->
+    <div id="theme-picker-backdrop" class="theme-picker-backdrop" style="display:none;">
+        <div class="theme-picker-modal">
+            <h2>Vælg tema</h2>
+
+            <div class="theme-option">
+                <input type="radio" name="flango-theme" id="theme-default" value="default">
+                <label for="theme-default">
+                    <strong>Default</strong><br>
+                    Standard Flango-udseende
+                </label>
+            </div>
+
+            <div class="theme-option">
+                <input type="radio" name="flango-theme" id="theme-pastel-pop" value="pastel-pop">
+                <label for="theme-pastel-pop">
+                    <strong>Pastel Pop</strong><br>
+                    Farverig 3D-stil (eksperimentel)
+                </label>
+            </div>
+
+            <div class="theme-picker-actions">
+                <button id="theme-picker-close" class="settings-button">Luk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indstillinger modal -->
+    <div id="settings-modal-backdrop" class="settings-modal-backdrop" style="display:none;">
+        <div class="settings-modal">
+            <h2 id="settings-modal-title">Indstillinger</h2>
+
+            <div id="settings-modal-content" class="settings-modal-content">
+                <!-- Dynamisk indhold -->
+            </div>
+
+            <div class="settings-modal-actions">
+                <button id="settings-modal-close" class="settings-button">Luk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skjult knap til gear-menu (fortryd sidste køb) -->
+    <button id="undo-last-sale-btn" style="display:none;">Fortryd sidste køb ↩️</button>
+    
+    <audio id="audio-purchase" preload="auto"></audio>
+    <audio id="audio-add-item" preload="auto"></audio>
+    <audio id="audio-remove-item" preload="auto"></audio>
+    <audio id="audio-error" preload="auto"></audio>
+    <audio id="audio-login" src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/sounds/Login/Login1.mp3" preload="auto"></audio>    
+    <audio id="audio-balance-update" src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/sounds/Accept/accepter-3.mp3" preload="auto"></audio>
+    <audio id="audio-product-create" src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/sounds/Accept/accepter-1.mp3" preload="auto"></audio>
+    <audio id="audio-logout" src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/sounds/Accept/accepter-7.mp3" preload="auto"></audio>
+    <audio id="audio-preview" preload="auto"></audio>
+
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

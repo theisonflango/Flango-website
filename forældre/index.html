@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flango Forældre-portal</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&family=Nunito:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    :root {
+      --primary-color: #ff7a3c;
+      --primary-color-soft: rgba(255, 122, 60, 0.12);
+      --secondary-color: #3c7dff;
+      --secondary-soft: rgba(60, 125, 255, 0.12);
+      --accent-color: #ffc857;
+      --background-gradient: radial-gradient(circle at top left, #ffe1c7 0, #f5f7ff 40%, #dfe8ff 100%);
+      --card-bg: rgba(255, 255, 255, 0.88);
+      --border-soft: rgba(255, 255, 255, 0.6);
+      --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.18);
+      --success-color: #28a745;
+      --danger-color: #dc3545;
+      --warning-color: #ffb100;
+      --font-body: "Nunito", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-heading: "Baloo 2", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--background-gradient);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      color: #111827;
+    }
+
+    .page-wrapper {
+      max-width: 960px;
+      width: 100%;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-heading);
+      font-size: 24px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .logo-badge {
+      width: 34px;
+      height: 34px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #ff9d5a, #ff7a3c);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 18px;
+      box-shadow: 0 12px 25px rgba(249, 115, 22, 0.35);
+    }
+
+    .logo-text-main {
+      display: flex;
+      flex-direction: column;
+      line-height: 1;
+    }
+
+    .logo-name {
+      font-size: 20px;
+      letter-spacing: 0.02em;
+    }
+
+    .logo-tagline {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 3px;
+    }
+
+    .top-tag {
+      font-size: 12px;
+      color: #6b7280;
+      background: rgba(255, 255, 255, 0.5);
+      padding: 6px 10px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow: 0 10px 25px rgba(148, 163, 184, 0.18);
+    }
+
+    .top-tag .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.22);
+    }
+
+    .container {
+      background: var(--card-bg);
+      border-radius: 26px;
+      padding: 28px 22px 24px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid var(--border-soft);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .container::before,
+    .container::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(0);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .container::before {
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(60, 125, 255, 0.16), transparent 60%);
+      top: -90px;
+      right: -100px;
+    }
+
+    .container::after {
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(255, 122, 60, 0.16), transparent 60%);
+      bottom: -70px;
+      left: -80px;
+    }
+
+    .container-inner {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.1fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .intro-section {
+      padding-right: 4px;
+    }
+
+    .title-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 8px 10px;
+      margin-bottom: 6px;
+    }
+
+    h1 {
+      font-family: var(--font-heading);
+      font-size: clamp(24px, 3vw, 28px);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h1 span.highlight {
+      background: linear-gradient(120deg, #ff7a3c, #ffb100);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #4b5563;
+      margin-bottom: 18px;
+      max-width: 400px;
+    }
+
+    .pill-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 6px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      font-size: 12px;
+      color: #4b5563;
+      box-shadow: 0 10px 25px rgba(148, 163, 184, 0.22);
+    }
+
+    .pill-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #3c7dff, #22c55e);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.22);
+    }
+
+    .info-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .info-card {
+      background: linear-gradient(135deg, rgba(60, 125, 255, 0.08), rgba(255, 255, 255, 0.95));
+      border-radius: 16px;
+      padding: 11px 12px 10px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 12px 25px rgba(148, 163, 184, 0.22);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .info-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: rgba(59, 130, 246, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .info-content {
+      font-size: 12px;
+      color: #374151;
+    }
+
+    .info-content strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 2px;
+      color: #111827;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+
+    .help-text strong {
+      color: #111827;
+    }
+
+    .login-section {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 18px 18px 16px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-section::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, rgba(60, 125, 255, 0.08), transparent 55%);
+      pointer-events: none;
+    }
+
+    .login-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #111827;
+    }
+
+    .section-title .icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: rgba(255, 122, 60, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .section-subtitle {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 10px;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .login-form label.section-subtitle {
+      margin-bottom: 4px;
+    }
+
+    .login-form input,
+    .login-form select {
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      padding: 9px 14px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+      background: rgba(249, 250, 251, 0.95);
+      width: 100%;
+    }
+
+    .login-form input:focus,
+    .login-form select:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+      background: #ffffff;
+    }
+
+    .login-form input::placeholder {
+      color: #9ca3af;
+      font-size: 13px;
+    }
+
+    .login-form select {
+      font-size: 13px;
+    }
+
+    .login-form button {
+      margin-top: 4px;
+      border-radius: 999px;
+      border: none;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      background: linear-gradient(135deg, #ff7a3c, #ffb100);
+      color: white;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+      box-shadow: 0 14px 25px rgba(248, 113, 22, 0.4);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .login-form button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 32px rgba(248, 113, 22, 0.5);
+      filter: brightness(1.03);
+    }
+
+    .login-form button:active {
+      transform: translateY(0);
+      box-shadow: 0 10px 20px rgba(248, 113, 22, 0.35);
+      filter: brightness(0.98);
+    }
+
+    .login-form button:disabled {
+      opacity: 0.7;
+      cursor: default;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .error-message {
+      color: var(--danger-color);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .login-help {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.45;
+    }
+
+    .login-help strong {
+      color: #111827;
+    }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+
+    .child-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .child-name {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .balance-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 7px 14px;
+      background: rgba(249, 250, 251, 0.96);
+      border: 1px solid rgba(226, 232, 240, 0.85);
+      font-size: 13px;
+      color: #111827;
+    }
+
+    .balance-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.22);
+    }
+
+    .balance-dot.low {
+      background: var(--warning-color);
+      box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.25);
+    }
+
+    .balance-dot.negative {
+      background: var(--danger-color);
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25);
+    }
+
+    .balance-label {
+      font-size: 12px;
+      color: #4b5563;
+    }
+
+    .balance-amount {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .logout-button {
+      border-radius: 999px;
+      padding: 6px 11px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      background: rgba(248, 250, 252, 0.96);
+      font-size: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #4b5563;
+      transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+      box-shadow: 0 10px 20px rgba(148, 163, 184, 0.18);
+    }
+
+    .logout-button:hover {
+      background: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(148, 163, 184, 0.24);
+    }
+
+    .logout-button span {
+      font-size: 14px;
+    }
+
+    .history-card {
+      margin-top: 4px;
+      background: rgba(249, 250, 251, 0.98);
+      border-radius: 16px;
+      padding: 10px 12px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 12px 24px rgba(148, 163, 184, 0.18);
+      max-height: 260px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .history-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #111827;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .history-title .badge {
+      font-size: 10px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: rgba(59, 130, 246, 0.08);
+      color: #2563eb;
+      border: 1px solid rgba(191, 219, 254, 0.9);
+    }
+
+    .history-summary {
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    .history-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      max-height: 200px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.7) transparent;
+    }
+
+    .history-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .history-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .history-list::-webkit-scrollbar-thumb {
+      background-color: rgba(148, 163, 184, 0.85);
+      border-radius: 999px;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 6px 4px;
+      border-bottom: 1px dashed rgba(209, 213, 219, 0.9);
+      font-size: 12px;
+      gap: 6px;
+    }
+
+    .history-item:last-child {
+      border-bottom: none;
+    }
+
+    .history-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .history-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .history-date {
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    .history-type {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(209, 213, 219, 0.9);
+      background: rgba(249, 250, 251, 0.95);
+      color: #4b5563;
+    }
+
+    .history-desc {
+      font-size: 12px;
+      color: #111827;
+    }
+
+    .history-meta {
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    .history-amount {
+      font-weight: 700;
+      font-size: 13px;
+      text-align: right;
+      min-width: 68px;
+    }
+
+    .history-amount.sale {
+      color: #dc2626;
+    }
+
+    .history-amount.deposit {
+      color: #15803d;
+    }
+
+    .notify-card {
+      margin-top: 12px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.06), rgba(255, 255, 255, 0.98));
+      border-radius: 16px;
+      padding: 10px 12px 11px;
+      border: 1px solid rgba(191, 219, 254, 0.95);
+      box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);
+    }
+
+    .notify-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+
+    .notify-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .notify-title .icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .notify-badge {
+      font-size: 10px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: rgba(22, 163, 74, 0.1);
+      color: #15803d;
+      border: 1px solid rgba(187, 247, 208, 0.9);
+    }
+
+    .notify-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.1fr);
+      gap: 6px;
+      align-items: flex-end;
+    }
+
+    .notify-body .field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 11px;
+      color: #4b5563;
+    }
+
+    .notify-body label {
+      font-size: 11px;
+      color: #4b5563;
+    }
+
+    .notify-body input[type="email"] {
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      padding: 7px 12px;
+      font-size: 12px;
+      outline: none;
+      background: rgba(249, 250, 251, 0.98);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .notify-body input[type="email"]:focus {
+      border-color: #22c55e;
+      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.28);
+      background: #ffffff;
+    }
+
+    .notify-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      margin-bottom: 4px;
+      font-size: 11px;
+      color: #4b5563;
+    }
+
+    .notify-option {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(226, 232, 240, 0.95);
+    }
+
+    .notify-option input[type="checkbox"] {
+      accent-color: #22c55e;
+      width: 13px;
+      height: 13px;
+    }
+
+    .notify-save-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      margin-top: 4px;
+    }
+
+    .notify-save-row button {
+      border-radius: 999px;
+      padding: 6px 11px;
+      border: none;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 10px 22px rgba(22, 163, 74, 0.4);
+      transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
+    }
+
+    .notify-save-row button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 26px rgba(22, 163, 74, 0.48);
+      filter: brightness(1.03);
+    }
+
+    .notify-save-row button:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 16px rgba(22, 163, 74, 0.35);
+      filter: brightness(0.97);
+    }
+
+    .notify-save-row button:disabled {
+      opacity: 0.7;
+      box-shadow: none;
+      cursor: default;
+    }
+
+    .notify-feedback {
+      font-size: 11px;
+      color: #16a34a;
+    }
+
+    .footer-note {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #9ca3af;
+      text-align: center;
+    }
+
+    .footer-note a {
+      color: #3b82f6;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .footer-note a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 780px) {
+      .container-inner {
+        grid-template-columns: 1fr;
+      }
+
+      .intro-section {
+        order: 2;
+      }
+
+      .login-section {
+        order: 1;
+      }
+
+      .info-cards {
+        grid-template-columns: 1fr;
+      }
+
+      .notify-body {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <div class="logo-row">
+      <div class="logo">
+        <div class="logo-badge">F</div>
+        <div class="logo-text-main">
+          <div class="logo-name">Flango</div>
+          <div class="logo-tagline">Børnenes café-system</div>
+        </div>
+      </div>
+      <div class="top-tag">
+        <span class="dot"></span>
+        <span>Forældre-portal – sikker visning af saldo & historik</span>
+      </div>
+    </div>
+
+    <main class="container">
+      <div class="container-inner">
+        <section class="intro-section">
+          <div class="title-row">
+            <h1>
+              <span>Flango</span>
+              <span class="highlight">Forældre-portal</span>
+            </h1>
+          </div>
+
+          <p class="subtitle">
+            Her kan du som forælder få et hurtigt overblik over
+            <strong>dit barns saldo</strong> i caféen og se en
+            <strong>tydelig historik</strong> over køb og optankninger.
+          </p>
+
+          <div class="info-cards">
+            <div class="info-card">
+              <div class="info-icon">💳</div>
+              <div class="info-content">
+                <strong>Tryghed & gennemsigtighed</strong>
+                Du kan altid se, hvad der er købt, og hvornår saldoen er blevet
+                tanket op.
+              </div>
+            </div>
+            <div class="info-card">
+              <div class="info-icon">🔔</div>
+              <div class="info-content">
+                <strong>E-mail når saldoen er lav</strong>
+                Vælg at få en besked, når der er fx 0 kr. eller 10 kr. tilbage på kontoen.
+              </div>
+            </div>
+          </div>
+
+          <p class="help-text">
+            <strong>Sådan gør du:</strong><br />
+            1) Vælg klubbens/SFO’ens navn<br />
+            2) Skriv dit barns fulde navn (som aftalt med klubben)<br />
+            3) Indtast den kode, I har fået fra personalet
+          </p>
+        </section>
+
+        <section class="login-section">
+          <div class="login-inner">
+            <div class="section-title">
+              <span class="icon">👨‍👩‍👧</span>
+              Log ind som forælder
+            </div>
+            <p class="section-subtitle">
+              Brug den kode, I har fået fra klubben/SFO’en. Er du i tvivl, så spørg personalet – de hjælper gerne.
+            </p>
+
+            <!-- Login View -->
+            <div id="login-view">
+              <div class="login-card">
+                <form id="parent-login-form" class="login-form">
+                  <!-- Klub/SFO -->
+                  <div class="form-group" id="institution-row">
+                    <label for="institution-select" class="section-subtitle" id="institution-label">
+                      Vælg klub/SFO
+                    </label>
+                    <select id="institution-select" required>
+                      <option value="">Vælg klub/SFO…</option>
+                    </select>
+                  </div>
+
+                  <p
+                    id="institution-info"
+                    class="section-subtitle"
+                    style="display: none; margin-bottom: 10px;"
+                  >
+                    Institutioner i nærheden af dig:
+                    <strong id="institution-name-label"></strong>
+                  </p>
+
+                  <!-- Barnets navn -->
+                  <input
+                    type="text"
+                    id="child-name-input"
+                    placeholder="Barnets fulde navn (fx Oliver Jensen)"
+                    required
+                  />
+
+                  <!-- Forældre-kode -->
+                  <input
+                    type="password"
+                    id="parent-pin-input"
+                    placeholder="Forældre-kode (fx 6 cifre eller kodeord)"
+                    inputmode="text"
+                    maxlength="32"
+                    required
+                  />
+
+                  <button type="submit" id="login-btn">Se saldo og historik</button>
+                  <p id="login-error" class="error-message" style="display: none;"></p>
+                </form>
+
+                <p class="login-help">
+                  <strong>Har du ikke fået en kode?</strong><br />
+                  Kontakt klubben/SFO’en – de kan oplyse eller nulstille jeres forældre-login.
+                </p>
+              </div>
+            </div>
+
+            <!-- Results View -->
+            <div id="results-view" style="display: none;">
+              <div class="results-header">
+                <div class="child-info">
+                  <div class="child-name" id="child-name-display">Barnets navn</div>
+                  <div class="balance-chip">
+                    <span class="balance-dot" id="balance-dot"></span>
+                    <div>
+                      <div class="balance-label" id="balance-status-label">Saldo-status</div>
+                      <div class="balance-amount" id="balance-display">0,00 kr</div>
+                    </div>
+                  </div>
+                </div>
+                <button id="logout-btn" class="logout-button">
+                  <span>Log ud</span> ⏏
+                </button>
+              </div>
+
+              <div class="history-card">
+                <div class="history-header">
+                  <div class="history-title">
+                    Historik
+                    <span class="badge">Sidste 30 dage</span>
+                  </div>
+                  <div class="history-summary" id="history-summary">
+                    Viser køb og optankninger på kontoen.
+                  </div>
+                </div>
+                <ul id="history-list" class="history-list"></ul>
+              </div>
+
+              <div class="notify-card">
+                <div class="notify-header">
+                  <div class="notify-title">
+                    <div class="icon">📧</div>
+                    E-mail, når saldoen er lav
+                  </div>
+                  <span class="notify-badge">Valgfrit</span>
+                </div>
+                <div class="notify-body">
+                  <div class="field">
+                    <label for="parent-email-input">E-mailadresse til besked</label>
+                    <input
+                      type="email"
+                      id="parent-email-input"
+                      placeholder="fx mor@eksempel.dk"
+                    />
+                    <div class="notify-options">
+                      <label class="notify-option">
+                        <input type="checkbox" id="notify-zero-checkbox" />
+                        <span>Når saldoen er 0 kr.</span>
+                      </label>
+                      <label class="notify-option">
+                        <input type="checkbox" id="notify-ten-checkbox" />
+                        <span>Når saldoen er 10 kr. eller derunder</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <div class="notify-save-row">
+                      <button id="save-notify-btn" type="button">
+                        Gem e-mail-beskeder
+                      </button>
+                      <div id="notify-feedback" class="notify-feedback"></div>
+                    </div>
+                    <p style="font-size: 11px; color: #6b7280; margin-top: 4px;">
+                      Du kan altid ændre eller slå beskeder fra igen.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Skift kode-kort -->
+              <section class="card" style="margin-top: 12px; background: rgba(255, 255, 255, 0.98); border-radius: 16px; padding: 10px 12px 11px; border: 1px solid rgba(220, 220, 220, 0.95); box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);">
+                <h2 class="section-title" style="font-size: 13px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 7px;">
+                  <div class="icon" style="width: 24px; height: 24px; border-radius: 999px; background: rgba(255, 122, 60, 0.12); display: flex; align-items: center; justify-content: center; font-size: 14px;">🔑</div>
+                  Skift kode til forældre-login
+                </h2>
+                <p class="section-subtitle" style="font-size: 11px; color: #6b7280; margin-bottom: 8px;">
+                  Her kan du ændre den kode, du bruger til Flango Forældre-portal.
+                </p>
+
+                <form id="change-pin-form" class="login-form" style="gap: 6px;">
+                  <div class="form-group">
+                    <input
+                      type="password"
+                      id="new-pin"
+                      maxlength="20"
+                      autocomplete="off"
+                      placeholder="Ny kode (mindst 4 tegn)"
+                      required
+                      style="padding: 7px 12px; font-size: 12px;"
+                    />
+                  </div>
+
+                  <div class="form-group">
+                    <input
+                      type="password"
+                      id="confirm-new-pin"
+                      maxlength="20"
+                      autocomplete="off"
+                      placeholder="Gentag ny kode"
+                      required
+                      style="padding: 7px 12px; font-size: 12px;"
+                    />
+                  </div>
+                  <button type="submit" class="primary-btn" style="padding: 6px 11px; font-size: 11px; font-weight: 600; background: linear-gradient(135deg, #ff7a3c, #ffb100); box-shadow: 0 10px 22px rgba(248, 113, 22, 0.4);">Gem ny kode</button>
+                  <p id="change-pin-message" style="margin-top: 6px; font-size: 11px; display: none;"></p>
+                </form>
+              </section>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <p class="footer-note">
+        Flango er udviklet til SFO’er og fritidsklubber, så børn kan øve ansvar på en tryg måde.
+      </p>
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const FUNCTION_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-parent-view";
+      const SAVE_NOTIFY_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/save-parent-notification";
+
+      const SUPABASE_URL = "https://jbknjgbpghrbrstqwoxj.supabase.co";
+      const SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impia25qZ2JwZ2hyYnJzdHF3b3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MjIwNjMsImV4cCI6MjA3ODE5ODA2M30.ZMlxQyzmXuy43EcKIN6-eO8pJZs2F6kfDw_cfaks9qQ";
+
+      const supabase = window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+      );
+
+      let institutions = [];
+      let currentChildId = null;
+
+      const loginView = document.getElementById("login-view");
+      const resultsView = document.getElementById("results-view");
+      const loginForm = document.getElementById("parent-login-form");
+      const loginBtn = document.getElementById("login-btn");
+      const loginError = document.getElementById("login-error");
+      const logoutBtn = document.getElementById("logout-btn");
+      const institutionSelect = document.getElementById("institution-select");
+      const institutionLabel = document.getElementById("institution-label");
+
+      // Referencer til "Skift kode"
+      const changePinForm = document.getElementById("change-pin-form");
+      const newPinInput = document.getElementById("new-pin");
+      const confirmNewPinInput = document.getElementById("confirm-new-pin");
+      const changePinMessage = document.getElementById("change-pin-message");
+
+      const UPDATE_PIN_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/update-parent-pin";
+
+      const institutionRow = document.getElementById("institution-row");
+      const institutionInfo = document.getElementById("institution-info");
+      const institutionNameLabel = document.getElementById("institution-name-label");
+
+      const parentEmailInput = document.getElementById("parent-email-input");
+      const notifyZeroCheckbox = document.getElementById("notify-zero-checkbox");
+      const notifyTenCheckbox = document.getElementById("notify-ten-checkbox");
+      const saveNotifyBtn = document.getElementById("save-notify-btn");
+      const notifyFeedback = document.getElementById("notify-feedback");
+
+      const balanceDot = document.getElementById("balance-dot");
+      const balanceStatusLabel = document.getElementById("balance-status-label");
+      const balanceDisplay = document.getElementById("balance-display");
+
+      loadInstitutions();
+
+      async function loadInstitutions() {
+        try {
+          const { data, error } = await supabase
+            .from("institutions")
+            .select("id, name")
+            .order("name", { ascending: true });
+      
+          if (error) {
+            console.error("Fejl ved hentning af institutioner", error);
+            return;
+          }
+      
+          // Ingen institutioner
+          if (!data || data.length === 0) {
+            institutionSelect.innerHTML =
+              '<option value="">Ingen institutioner tilgængelige</option>';
+            if (institutionRow) institutionRow.style.display = "block";
+            if (institutionInfo) {
+              institutionInfo.style.display = "none";
+              if (institutionNameLabel) institutionNameLabel.textContent = "";
+            }
+            return;
+          }
+      
+          // KUN én institution (fx Stampen) → auto-vælg + skjul dropdown
+          if (data.length === 1) {
+            const inst = data[0];
+      
+            // Sæt select til kun denne institution
+            institutionSelect.innerHTML = `<option value="${inst.id}">${inst.name}</option>`;
+            institutionSelect.value = inst.id;
+            institutionSelect.disabled = false; // Sørg for at dropdownen er aktiv
+
+            // Vis dropdown-rækken og skift label-teksten til det, du ønsker
+            if (institutionRow) institutionRow.style.display = "block";
+            if (institutionLabel) institutionLabel.textContent = "Institutioner i nærheden af dig:";
+
+            // Skjul den alternative info-tekst
+            if (institutionInfo) institutionInfo.style.display = "none";
+
+            return;
+          }
+      
+          // FLERE institutioner → almindelig dropdown
+          const options =
+            '<option value="">Vælg klub/SFO…</option>' +
+            data
+              .map(
+                (inst) =>
+                  `<option value="${inst.id}">${inst.name}</option>`
+              )
+              .join("");
+      
+          institutionSelect.innerHTML = options;
+          institutionSelect.disabled = false; // Sørg for at den er aktiv
+      
+          // Sørg for at dropdown vises, og info-teksten skjules
+          if (institutionRow) institutionRow.style.display = "block";
+          if (institutionLabel) institutionLabel.textContent = "Vælg klub/SFO";
+          if (institutionInfo) institutionInfo.style.display = "none";
+        } catch (e) {
+          console.error("Uventet fejl ved hentning af institutioner", e);
+        }
+      }
+      loginForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        loginError.style.display = "none";
+
+        const institutionId = institutionSelect.value;
+        const nameInput = document
+          .getElementById("child-name-input")
+          .value.trim();
+        const parentPin = document
+          .getElementById("parent-pin-input")
+          .value.trim();
+
+        if (!institutionId) {
+          loginError.textContent = "Vælg først klub/SFO.";
+          loginError.style.display = "block";
+          return;
+        }
+
+        if (!nameInput || !parentPin) {
+          loginError.textContent = "Udfyld navn og kode.";
+          loginError.style.display = "block";
+          return;
+        }
+
+        loginBtn.disabled = true;
+        loginBtn.textContent = "Logger ind...";
+
+        try {
+          const res = await fetch(FUNCTION_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({
+              institution_id: institutionId,
+              name_input: nameInput,
+              parent_pin: parentPin,
+            }),
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok) {
+            console.log("Fejl fra server:", data);
+
+            if (data.error_code === "MULTIPLE_MATCHES") {
+              loginError.textContent =
+                "Der er flere børn med dette navn. Skriv barnets fulde navn.";
+            } else if (data.error) {
+              loginError.textContent = data.error;
+            } else {
+              loginError.textContent =
+                "Forkert navn eller kode. Tjek navn + kode og prøv igen.";
+            }
+
+            loginError.style.display = "block";
+            return;
+          }
+
+          displayResults(data);
+        } catch (err) {
+          console.error("Fetch-fejl:", err);
+          loginError.textContent =
+            "Der opstod en netværksfejl. Prøv igen eller kontakt SFO’en.";
+          loginError.style.display = "block";
+        } finally {
+          loginBtn.disabled = false;
+          loginBtn.textContent = "Se saldo og historik";
+        }
+      });
+
+      logoutBtn.addEventListener("click", () => {
+        loginView.style.display = "block";
+        resultsView.style.display = "none";
+        loginForm.reset();
+        loginError.style.display = "none";
+        notifyFeedback.textContent = "";
+        parentEmailInput.value = "";
+        notifyZeroCheckbox.checked = false;
+        notifyTenCheckbox.checked = false;
+      });
+
+      if (changePinForm) {
+        changePinForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          if (!changePinMessage) return;
+
+          changePinMessage.style.display = "none";
+          changePinMessage.textContent = "";
+          changePinMessage.style.color = "";
+
+          const newPin = newPinInput.value.trim();
+          const confirmPin = confirmNewPinInput.value.trim();
+
+          if (!currentChildId) {
+            changePinMessage.textContent =
+              "Der opstod en fejl. Prøv at logge ind igen og forsøg derefter at skifte kode.";
+            changePinMessage.style.color = "var(--danger-color)";
+            changePinMessage.style.display = "block";
+            return;
+          }
+
+          if (!newPin || !confirmPin) {
+            changePinMessage.textContent = "Udfyld begge felter.";
+            changePinMessage.style.color = "var(--danger-color)";
+            changePinMessage.style.display = "block";
+            return;
+          }
+
+          if (newPin !== confirmPin) {
+            changePinMessage.textContent =
+              "De to nye koder er ikke ens. Prøv igen.";
+            changePinMessage.style.color = "var(--danger-color)";
+            changePinMessage.style.display = "block";
+            return;
+          }
+
+          if (newPin.length < 4) {
+            changePinMessage.textContent =
+              "Koden skal mindst være på 4 tegn.";
+            changePinMessage.style.color = "var(--danger-color)";
+            changePinMessage.style.display = "block";
+            return;
+          }
+
+          try {
+            const res = await fetch(UPDATE_PIN_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: SUPABASE_ANON_KEY,
+              },
+              body: JSON.stringify({
+                child_id: currentChildId,
+                new_pin: newPin,
+                source: 'parent', // Mark this change as coming from a parent
+              }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+              console.error("Fejl ved skift af kode:", data);
+              throw new Error(data.error || "Der opstod en fejl under skift af kode. Prøv igen.");
+            }
+
+            changePinMessage.textContent = "Din kode er nu opdateret.";
+            changePinMessage.style.color = "var(--success-color)";
+            changePinMessage.style.display = "block";
+            newPinInput.value = "";
+            confirmNewPinInput.value = "";
+          } catch (e) {
+            console.error("Uventet fejl ved skift af kode:", e);
+            changePinMessage.textContent = "Uventet fejl. Prøv igen lidt senere.";
+            changePinMessage.style.color = "var(--danger-color)";
+            changePinMessage.style.display = "block";
+          }
+        });
+      }
+
+      saveNotifyBtn.addEventListener("click", async () => {
+        if (!currentChildId) {
+          notifyFeedback.textContent = "Fejl: Ingen barnedata indlæst.";
+          notifyFeedback.style.color = "#dc3545";
+          return;
+        }
+
+        const email = parentEmailInput.value.trim();
+        const notifyAtZero = notifyZeroCheckbox.checked;
+        const notifyAtTen = notifyTenCheckbox.checked;
+
+        if (!email) {
+          notifyFeedback.textContent = "Indtast venligst en e-mailadresse.";
+          notifyFeedback.style.color = "#dc3545";
+          return;
+        }
+
+        saveNotifyBtn.disabled = true;
+        saveNotifyBtn.textContent = "Gemmer...";
+
+        try {
+          const res = await fetch(SAVE_NOTIFY_URL, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    apikey: SUPABASE_ANON_KEY,
+    // VIGTIGT: til Edge Functions med Verify JWT
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  },
+  body: JSON.stringify({
+    child_id: currentChildId,
+    email: email,
+    notify_at_zero: notifyAtZero,
+    notify_at_ten: notifyAtTen,
+  }),
+});
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok || data.success === false) {
+            notifyFeedback.textContent = data.error || "Fejl: Kunne ikke gemme.";
+            notifyFeedback.style.color = "#dc3545";
+            return;
+          }
+
+          notifyFeedback.textContent = "Dine indstillinger er gemt!";
+          notifyFeedback.style.color = "#28a745";
+        } catch (err) {
+          console.error("Fejl ved gemning af notifikationer:", err);
+          notifyFeedback.textContent = "Fejl: Kunne ikke gemme. Prøv igen.";
+          notifyFeedback.style.color = "#dc3545";
+        } finally {
+          saveNotifyBtn.disabled = false;
+          saveNotifyBtn.textContent = "Gem e-mail-beskeder";
+        }
+      });
+
+      function updateBalanceStatus(balance) {
+        const b = Number(balance) || 0;
+
+        balanceDot.classList.remove("low", "negative");
+        if (b <= 0) {
+          balanceDot.classList.add("negative");
+          balanceStatusLabel.textContent = "Saldo under 0 kr.";
+        } else if (b <= 10) {
+          balanceDot.classList.add("low");
+          balanceStatusLabel.textContent = "Lav saldo";
+        } else {
+          balanceStatusLabel.textContent = "OK saldo";
+        }
+      }
+
+      function displayResults(data) {
+        currentChildId = data.child_id || null;
+
+        document.getElementById("child-name-display").textContent =
+          data.child_name || "";
+        const balance =
+          typeof data.balance === "number"
+            ? data.balance
+            : Number(data.balance || 0);
+        balanceDisplay.textContent = balance.toFixed(2) + " kr";
+        updateBalanceStatus(balance);
+
+        const historyList = document.getElementById("history-list");
+        historyList.innerHTML = "";
+
+        if (!data.history || data.history.length === 0) {
+          const li = document.createElement("li");
+          li.textContent = "Ingen historik fundet.";
+          li.style.fontSize = "14px";
+          li.style.color = "#6b7280";
+          li.style.padding = "6px 2px";
+          historyList.appendChild(li);
+        } else {
+          data.history.forEach((item) => {
+            const li = document.createElement("li");
+            li.className = "history-item";
+
+            const date = new Date(item.date).toLocaleDateString("da-DK", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+
+            const main = document.createElement("div");
+            main.className = "history-main";
+
+            const descRow = document.createElement("div");
+            descRow.className = "history-row";
+
+            const dateEl = document.createElement("div");
+            dateEl.className = "history-date";
+            dateEl.textContent = date;
+
+            const typeEl = document.createElement("div");
+            typeEl.className = "history-type";
+            typeEl.textContent = item.type === "SALE" ? "Køb" : "Optankning";
+
+            descRow.appendChild(dateEl);
+            descRow.appendChild(typeEl);
+
+            const desc = document.createElement("div");
+            desc.className = "history-desc";
+            desc.textContent = item.description || "";
+
+            const meta = document.createElement("div");
+            meta.className = "history-meta";
+            meta.textContent = item.meta || "";
+
+            main.appendChild(descRow);
+            main.appendChild(desc);
+            if (item.meta) main.appendChild(meta);
+
+            const amountEl = document.createElement("div");
+            amountEl.className = "history-amount";
+
+            if (typeof item.amount === "number") {
+              const amount = item.amount.toFixed(2) + " kr";
+              amountEl.textContent = amount;
+
+              if (item.type === "SALE") {
+                amountEl.classList.add("sale");
+              } else if (item.type === "DEPOSIT") {
+                amountEl.classList.add("deposit");
+              }
+            } else {
+              amountEl.textContent = "";
+            }
+
+            li.appendChild(main);
+            li.appendChild(amountEl);
+            historyList.appendChild(li);
+          });
+        }
+
+        notifyFeedback.textContent = "";
+        if (data.notification_settings) {
+          const ns = data.notification_settings;
+          parentEmailInput.value = ns.email || "";
+          notifyZeroCheckbox.checked = !!ns.notify_at_zero;
+          notifyTenCheckbox.checked = !!ns.notify_at_ten;
+          if (ns.email) {
+            notifyFeedback.textContent = "Tidligere indstillinger er indlæst.";
+            notifyFeedback.style.color = "#28a745";
+          }
+        } else {
+          parentEmailInput.value = "";
+          notifyZeroCheckbox.checked = false;
+          notifyTenCheckbox.checked = false;
+        }
+
+        loginView.style.display = "none";
+        resultsView.style.display = "block";
+      }
+    });
+  </script>
+</body>
+</html>
