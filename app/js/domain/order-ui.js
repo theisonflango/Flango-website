@@ -1,7 +1,9 @@
 // js/domain/order-ui.js
 import { getOrderTotal, setOrder } from './order-store.js';
 import { getProductIconInfo, addProductToOrder, removeProductFromOrder } from './products-and-cart.js';
+import { canChildPurchase } from './purchase-limits.js';
 import { playSound } from '../ui/sound-and-alerts.js';
+import { getCurrentCustomer } from './cafe-session-store.js';
 
 export function updateTotalPrice(totalPriceEl) {
     const total = getOrderTotal();
@@ -19,7 +21,7 @@ export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelec
         listItem.innerHTML = `
             <span class="cart-product-line">${visualMarkup}<span>${item.name} - ${item.price.toFixed(2)} DKK</span></span>
             <span class="remove-item-btn" data-index="${index}" title="Fjern vare">
-                <img src="Icons/Function/Papirkurv.png" alt="Fjern" class="cart-remove-icon">
+                <img src="Icons/webp/Function/Papirkurv.webp" alt="Fjern" class="cart-remove-icon">
             </span>`;
         orderListEl.appendChild(listItem);
     });
@@ -50,24 +52,80 @@ export function handleOrderListClick(event, currentOrder, rerender) {
     }
 }
 
-export function addToOrder(product, currentOrder, orderListEl, totalPriceEl, updateSelectedUserInfo) {
-    const result = addProductToOrder(currentOrder, product);
-    if (!result.success) {
-        if (result.reason === 'limit') {
-            // Begrænsning på antal varer i kurven
-            window.__flangoShowAlert?.('Du kan højst have 10 varer i kurven ad gangen.');
+export async function addToOrder(product, currentOrder, orderListEl, totalPriceEl, updateSelectedUserInfo, options = {}) {
+    const productsContainer = document.getElementById('products');
+
+    // 1) Hvis produktet allerede er låst visuelt, skal klik kun give feedback
+    if (productsContainer && product && product.id != null) {
+        const pid = String(product.id);
+        const btn = productsContainer.querySelector(`.product-btn[data-product-id="${pid}"]`);
+        if (btn && btn.classList.contains('product-limit-reached')) {
+            const overlay = btn.querySelector('.avatar-lock-overlay, .product-lock-overlay');
+            if (overlay) {
+                overlay.classList.add('shake');
+                overlay.addEventListener('animationend', () => overlay.classList.remove('shake'), { once: true });
+            }
+            try { playSound('error'); } catch {}
+            return { success: false, reason: 'product-limit' };
         }
-        return;
     }
 
-    try {
-        setOrder(currentOrder);
-    } catch (err) {
-        console.warn('[order-store] sync failed after currentOrder mutation:', err);
+    // 2) Tjek med backend om barnet overhovedet må købe denne vare i dag
+    const customer = typeof getCurrentCustomer === 'function' ? getCurrentCustomer() : null;
+    const childId = customer?.id || null;
+    const productId = product?.id ?? null;
+
+    if (childId && productId != null) {
+        try {
+            // VIGTIGT: Send `currentOrder` med, så tjekket inkluderer varer i kurven.
+            const result = await canChildPurchase(productId, childId, { orderItems: currentOrder });
+            if (result && result.allowed === false) {
+                // Barnet har allerede ramt grænsen for denne vare i dag – lås knappen og giv feedback
+                if (productsContainer) {
+                    const pid = String(productId);
+                    const btn = productsContainer.querySelector(`.product-btn[data-product-id="${pid}"]`);
+                    if (btn) {
+                        btn.classList.add('product-limit-reached');
+                        const overlay = btn.querySelector('.avatar-lock-overlay, .product-lock-overlay');
+                        if (overlay) {
+                            overlay.classList.add('shake');
+                            overlay.addEventListener('animationend', () => overlay.classList.remove('shake'), { once: true });
+                        }
+                    }
+                }
+                try { playSound('error'); } catch {}
+                return { success: false, reason: 'product-limit-backend' };
+            }
+        } catch (err) {
+            console.warn('[addToOrder] canChildPurchase fejl – bruger lokal logik som fallback:', err);
+        }
     }
 
-    playSound('addItem');
-    renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo);
+    // Hvis vi ikke har et gyldigt barn eller produkt-id, bruger vi bare normal logik
+    return await proceedAdd();
+
+    async function proceedAdd() {
+        const result = await addProductToOrder(currentOrder, product);
+        if (!result.success) {
+            if (result.reason === 'limit') {
+                // Begrænsning på antal varer i kurven
+                window.__flangoShowAlert?.('Du kan højst have 10 varer i kurven ad gangen.');
+            } else if (result.reason === 'product-limit') {
+                try { playSound('error'); } catch {}
+            }
+            return result;
+        }
+
+        try {
+            setOrder(currentOrder);
+        } catch (err) {
+            console.warn('[order-store] sync failed after currentOrder mutation:', err);
+        }
+
+        playSound('addItem');
+        renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo);
+        return result;
+    }
 }
 
 export function removeLastItemFromOrder(currentOrder, orderListEl, totalPriceEl, updateSelectedUserInfo) {

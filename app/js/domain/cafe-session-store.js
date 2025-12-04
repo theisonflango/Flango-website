@@ -1,5 +1,6 @@
 // Enkel session-store for café-køb: holder styr på nuværende kunde og seneste evaluering.
 // Ingen sideeffekter på Supabase eller UI; bruges kun som central kilde til balance/overtræk-data.
+import { invalidateChildLimitSnapshot } from './products-and-cart.js';
 
 let currentCustomer = null;
 let lastEvaluation = null;
@@ -23,6 +24,9 @@ export function getCurrentBalance() {
  */
 export function setCurrentCustomer(customer) {
     currentCustomer = customer || null;
+    if (customer) {
+        invalidateChildLimitSnapshot();
+    }
 }
 
 /**

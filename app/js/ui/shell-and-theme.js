@@ -1,8 +1,13 @@
 // Tema og shell-funktioner
 import { getCurrentClerk } from '../domain/session-store.js';
+import { getProductIconInfo } from '../domain/products-and-cart.js';
 import { setupHelpModule, openHelpManually } from './help.js';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
+const sugarPolicyState = {
+    enabled: false,
+    limitedProductIds: new Set(),
+};
 
 function setFlangoTheme(themeName) {
     if (themeName !== 'default' && themeName !== 'pastel-pop') {
@@ -132,6 +137,145 @@ export function closeTopMostOverlay() {
     return true;
 }
 
+function getAllProductsForSugarPolicy() {
+    const getter = typeof window.__flangoGetAllProducts === 'function'
+        ? window.__flangoGetAllProducts
+        : null;
+    const products = getter ? getter() : [];
+    return Array.isArray(products) ? products : [];
+}
+
+function syncSugarPolicyEnabledLabel() {
+    const label = document.getElementById('sugar-policy-enabled-label');
+    if (!label) return;
+    label.textContent = sugarPolicyState.enabled ? 'Sukkerpolitik er slået TIL' : 'Sukkerpolitik er slået FRA';
+}
+
+function renderSugarPolicyProductList() {
+    const listEl = document.getElementById('sugar-policy-product-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    const products = getAllProductsForSugarPolicy();
+    if (!products || products.length === 0) {
+        const empty = document.createElement('p');
+        empty.textContent = 'Ingen produkter fundet. Tilføj eller indlæs produkter under “Rediger Menu”.';
+        listEl.appendChild(empty);
+        return;
+    }
+
+    const sortedProducts = [...products].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+    sortedProducts.forEach((product) => {
+        const row = document.createElement('div');
+        row.className = 'modal-entry';
+        row.dataset.productId = product.id;
+
+        const info = document.createElement('div');
+        info.className = 'modal-entry-info';
+
+        const iconInfo = getProductIconInfo(product);
+        if (iconInfo?.path) {
+            const icon = document.createElement('img');
+            icon.src = iconInfo.path;
+            icon.alt = iconInfo.alt || product.name || 'Produkt';
+            icon.className = `product-icon-small${iconInfo.className || ''}`;
+            info.appendChild(icon);
+        } else {
+            const fallback = document.createElement('span');
+            fallback.textContent = product.emoji || '🛒';
+            fallback.className = 'product-icon-small';
+            info.appendChild(fallback);
+        }
+
+        const text = document.createElement('div');
+        text.innerHTML = `<strong>${product.name || 'Produkt'}</strong>${product.price ? ` – ${product.price} kr.` : ''}`;
+        info.appendChild(text);
+
+        const toggle = document.createElement('input');
+        toggle.type = 'checkbox';
+        toggle.className = 'sugar-product-toggle';
+        toggle.dataset.productId = product.id;
+        toggle.checked = sugarPolicyState.limitedProductIds.has(String(product.id));
+
+        row.appendChild(info);
+        row.appendChild(toggle);
+        listEl.appendChild(row);
+    });
+
+    if (!listEl.dataset.bindings) {
+        listEl.addEventListener('change', (evt) => {
+            if (evt.target.matches('.sugar-product-toggle')) {
+                const productId = evt.target.dataset.productId;
+                if (!productId) return;
+                if (evt.target.checked) {
+                    sugarPolicyState.limitedProductIds.add(String(productId));
+                } else {
+                    sugarPolicyState.limitedProductIds.delete(String(productId));
+                }
+                // Fremtidig persistens til Supabase/institution-settings kan placeres her.
+            }
+        });
+        listEl.dataset.bindings = 'true';
+    }
+}
+
+function ensureSugarPolicyModal() {
+    const modal = document.getElementById('sugar-policy-modal');
+    if (!modal || modal.dataset.bindings) return;
+
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+    modal.dataset.bindings = 'true';
+}
+
+function openSugarPolicyModal() {
+    const modal = document.getElementById('sugar-policy-modal');
+    if (!modal) return;
+    ensureSugarPolicyModal();
+
+    const toggle = document.getElementById('sugar-policy-enabled-toggle');
+    if (toggle && !toggle.dataset.bound) {
+        toggle.addEventListener('change', () => {
+            sugarPolicyState.enabled = toggle.checked;
+            syncSugarPolicyEnabledLabel();
+            // Fremtidig persistens til Supabase/institution-settings kan placeres her.
+        });
+        toggle.dataset.bound = 'true';
+    }
+    if (toggle) {
+        toggle.checked = sugarPolicyState.enabled;
+    }
+    syncSugarPolicyEnabledLabel();
+    renderSugarPolicyProductList();
+    modal.style.display = 'flex';
+}
+
+function openInstitutionPreferences() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    titleEl.textContent = 'Indstillinger – Institutionens Præferencer';
+    contentEl.innerHTML = '';
+
+    const sugarPolicyBtn = document.createElement('button');
+    sugarPolicyBtn.className = 'settings-item-btn';
+    sugarPolicyBtn.innerHTML = `<strong>Sukkerpolitik</strong><div style="font-size: 12px; margin-top: 2px;">Begræns søde produkter til maks 1 pr. barn pr. dag.</div>`;
+    sugarPolicyBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openSugarPolicyModal();
+    });
+
+    contentEl.appendChild(sugarPolicyBtn);
+    backdrop.style.display = 'flex';
+}
+
 const settingsReturnObservers = new WeakMap();
 
 function monitorModalForSettingsReturn(modal) {
@@ -176,13 +320,13 @@ export function openSettingsModal() {
     titleEl.textContent = isAdmin ? 'Indstillinger (Admin)' : 'Indstillinger';
     contentEl.innerHTML = '';
 
-    function addItem(label, onClick, id = '') {
+    function addItem(label, onClick, id = '', keepOpen = false) {
         const btn = document.createElement('button');
         btn.textContent = label;
         btn.className = 'settings-item-btn';
         if (id) btn.id = id;
         btn.addEventListener('click', () => {
-            backdrop.style.display = 'none';
+            backdrop.style.display = keepOpen ? 'flex' : 'none';
             onClick();
         });
         contentEl.appendChild(btn);
@@ -202,6 +346,7 @@ export function openSettingsModal() {
         addItem('Rediger Menu', () => openViaSettings('product-modal', () => callButtonById('edit-menu-original-btn')));
         addItem('Rediger Brugere', () => openViaSettings('admin-user-manager-modal', () => window.__flangoOpenAdminUserManager?.('customers')));
         addItem("Rediger Admin (Voksen konto'er)", () => openViaSettings('admin-user-manager-modal', () => window.__flangoOpenAdminUserManager?.('admins')));
+        addItem('Institutionens Præferencer', () => openInstitutionPreferences(), '', true);
     }
 
     addItem('Dagens Sortiment', () => {

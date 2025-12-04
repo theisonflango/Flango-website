@@ -8,28 +8,28 @@ import {
 } from '../domain/stats-and-badges.js';
 
 const AVATAR_URLS = [
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-dreng-1star.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-dreng-2star.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-dreng-3star.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-dreng-basic1.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-dreng-basic2.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-default2.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-pige-1star.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-pige-2star.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-pige-3star.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-pige-3star-red.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-pige-basic1.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-pige-basic2.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-pige-basic3.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-dreng-legende1.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-dreng-legende2.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-pige-legende1.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-legende1.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-legende2.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-legende3.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-legende4.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-legende5.png',
-    'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-legende6.png',
+    'Icons/webp/Avatar/Ekspedient-dreng-1star.webp',
+    'Icons/webp/Avatar/Ekspedient-dreng-2star.webp',
+    'Icons/webp/Avatar/Ekspedient-dreng-3star.webp',
+    'Icons/webp/Avatar/Ekspedient-dreng-basic1.webp',
+    'Icons/webp/Avatar/Ekspedient-dreng-basic2.webp',
+    'Icons/webp/Avatar/Ekspedient-default2.webp',
+    'Icons/webp/Avatar/Ekspedient-pige-1star.webp',
+    'Icons/webp/Avatar/Ekspedient-pige-2star.webp',
+    'Icons/webp/Avatar/Ekspedient-pige-3star.webp',
+    'Icons/webp/Avatar/Ekspedient-pige-3star-red.webp',
+    'Icons/webp/Avatar/Ekspedient-pige-basic1.webp',
+    'Icons/webp/Avatar/Ekspedient-pige-basic2.webp',
+    'Icons/webp/Avatar/Ekspedient-pige-basic3.webp',
+    'Icons/webp/Avatar/Ekspedient-dreng-legende1.webp',
+    'Icons/webp/Avatar/Ekspedient-dreng-legende2.webp',
+    'Icons/webp/Avatar/Ekspedient-pige-legende1.webp',
+    'Icons/webp/Avatar/Ekspedient-legende1.webp',
+    'Icons/webp/Avatar/Ekspedient-legende2.webp',
+    'Icons/webp/Avatar/Ekspedient-legende3.webp',
+    'Icons/webp/Avatar/Ekspedient-legende4.webp',
+    'Icons/webp/Avatar/Ekspedient-legende5.webp',
+    'Icons/webp/Avatar/Ekspedient-legende6.webp',
 ];
 
 export async function setupAvatarPicker(options) {
@@ -98,7 +98,7 @@ export async function setupAvatarPicker(options) {
     let avatarOptions = [];
 
     const AVATAR_STORAGE_PREFIX = 'flango-avatar-';
-    const DEFAULT_AVATAR_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-default2.png';
+    const DEFAULT_AVATAR_URL = 'Icons/webp/Avatar/Ekspedient-default2.webp';
 
     const categories = [
         {
@@ -204,7 +204,7 @@ export async function setupAvatarPicker(options) {
             option.innerHTML = `
                         <img src="${url}" alt="Avatar">
                         <div class="avatar-lock-overlay">
-                            <img src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Function/Lock.png" alt="Låst">
+                            <img src="Icons/webp/Function/Lock.webp" alt="Låst">
                         </div>
                         <button type="button" class="avatar-preview-btn" title="Se avatar">🔍</button>`;
 

@@ -36,6 +36,7 @@ export function renderProductsGrid(allProducts, productsContainer, onProductClic
 
     visibleProducts.forEach((product, index) => {
         const productBtn = document.createElement('button');
+        productBtn.dataset.productId = String(product.id);
         const productNameLower = product.name ? product.name.trim().toLowerCase() : '';
 
         let visualMarkup;
@@ -51,15 +52,20 @@ export function renderProductsGrid(allProducts, productsContainer, onProductClic
 
         productBtn.className = `product-btn${customClass}`;
         productBtn.innerHTML = `
-            ${visualMarkup}
-            <div class="product-info-box">
-                <span class="product-name">${product.name}</span>
-                <span class="product-price">${product.price.toFixed(2)} DKK</span>
+            <div class="product-btn-inner">
+                ${visualMarkup}
+                <div class="product-info-box">
+                    <span class="product-name">${product.name}</span>
+                    <span class="product-price">${product.price.toFixed(2)} DKK</span>
+                </div>
+                ${index < 10 ? `<div class="product-shortcut">${index === 9 ? 0 : index + 1}</div>` : ''}
             </div>
-            ${index < 10 ? `<div class="product-shortcut">${index === 9 ? 0 : index + 1}</div>` : ''}`;
+            <div class="avatar-lock-overlay">
+                <img src="Icons/webp/Function/Lock.webp" alt="locked">
+            </div>`;
 
         if (typeof onProductClick === 'function') {
-            productBtn.addEventListener('click', () => onProductClick(product));
+            productBtn.addEventListener('click', (evt) => onProductClick(product, evt));
         }
 
         productsContainer.appendChild(productBtn);
@@ -150,15 +156,15 @@ export function createProductManagementUI(options = {}) {
         });
         const customIconGrid = document.getElementById('custom-icon-grid');
         const customIconOptions = [
-            { label: 'Toast', path: 'Icons/Food/Toast.png' },
-            { label: 'Saft', path: 'Icons/Food/Saft.png' },
-            { label: 'Sushi', path: 'Icons/Food/Sushi.png' },
-            { label: 'Nøddemix', path: 'Icons/Food/Nøddemix.png' },
-            { label: 'Frugt', path: 'Icons/Food/Frugt.png' },
-            { label: 'Frugter', path: 'Icons/Food/Frugter.png' },
-            { label: 'Suppe', path: 'Icons/Food/Suppe.png' },
-            { label: 'Pizza', path: 'Icons/Food/Pizza.png' },
-            { label: 'Dagens ret', path: 'Icons/Food/Dagensret.png' }
+            { label: 'Toast', path: 'Icons/webp/Food/Toast.webp' },
+            { label: 'Saft', path: 'Icons/webp/Food/Saft.webp' },
+            { label: 'Sushi', path: 'Icons/webp/Food/Sushi.webp' },
+            { label: 'Nøddemix', path: 'Icons/webp/Food/Nøddemix.webp' },
+            { label: 'Frugt', path: 'Icons/webp/Food/Frugt.webp' },
+            { label: 'Frugter', path: 'Icons/webp/Food/Frugter.webp' },
+            { label: 'Suppe', path: 'Icons/webp/Food/Suppe.webp' },
+            { label: 'Pizza', path: 'Icons/webp/Food/Pizza.webp' },
+            { label: 'Dagens ret', path: 'Icons/webp/Food/Dagensret.webp' }
         ];
         const emojiInput = document.getElementById('product-emoji-input');
         let selectedCustomIcon = existingCustomIcon;

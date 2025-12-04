@@ -8,12 +8,12 @@ import { getProductIconInfo } from './products-and-cart.js';
 
 // 1) Konstanter og basis-helpers
 export const BADGE_ICON_MAP = {
-    'God Stil': 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Badge/God%20Stil.png',
-    'Hårdtarbejdende': 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Badge/Haardtarbejdende.png',
-    'Pandekage Mester': 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Badge/pandekagemester.png'
+    'God Stil': 'Icons/webp/Badge/GodStil.webp',
+    'Hårdtarbejdende': 'Icons/webp/Badge/Haardtarbejdende.webp',
+    'Pandekage Mester': 'Icons/webp/Badge/pandekagemester.webp'
 };
 
-const DEFAULT_LEVEL_IMAGE = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-mand-Flango1.png';
+const DEFAULT_LEVEL_IMAGE = 'Icons/webp/Avatar/Ekspedient-mand-Flango1.webp';
 
 export const parseBadgeList = (value) => {
     if (!value) return [];

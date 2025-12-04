@@ -91,12 +91,12 @@ export function setupCustomerPickerFlow({
         setupCustomerSearchKeyboardNavigation(userModal, searchInput);
     };
 
-    const handleUserModalClick = (event) => {
+    const handleUserModalClick = async (event) => {
         const clickedActionIcon = event.target.closest('.action-icon');
         if (clickedActionIcon) return;
         const clickedUserInfo = event.target.closest('.modal-entry-info');
         if (clickedUserInfo) {
-            selectUser(clickedUserInfo.dataset.userId);
+            await selectUser(clickedUserInfo.dataset.userId);
             userModal.style.display = 'none';
         }
     };

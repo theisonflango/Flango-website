@@ -13,6 +13,33 @@ Systemet er designet til at være børnevenligt, overskueligt og pædagogisk –
 så børn kan være ekspedienter og tage ansvar, mens de voksne har det fulde overblik.
         `
     },
+    // Hjælp: Tastatur genveje
+    {
+        id: 'keyboard-shortcuts',
+        title: 'Tastatur genveje',
+        body: `
+I Flango kan du bruge tastaturet til at arbejde hurtigere:
+• Vælg bruger
+– Tryk TAB eller + for at åbne brugervælgeren.
+– Brug piletasterne til at gå op og ned i brugerlisten.
+– Tryk ENTER for at vælge den markerede bruger.
+• Luk vinduer
+– Tryk ESC for at lukke alle åbne vinduer / modaler.
+• Dialogbokse
+– I dialogbokse kan du bruge ENTER som “OK / Accepter”, når fokus er på dialogen.
+• Gennemfør køb
+– I indkøbskurven kan du bruge SPACE (MELLEMRUM) som genvej til “Gennemfør Køb” eller “OK”.
+– Bemærk: SPACE som genvej virker kun, når fokus er i indkøbskurven (ikke inde i tekstfelter).
+• Fjerne produkter fra kurven
+– Du kan fjerne produkter fra kurven med BACKSPACE, - (minus) eller 0.
+• Admin-genveje
+– Som Admin kan du åbne “Rediger Brugere” med genvejene:
+– R (for Rediger)
+– I (for Indbetaling – åbner samme liste).
+• Historik
+– Tryk H for at åbne historikken.
+        `
+    },
     {
         id: 'history',
         title: 'Historik',

@@ -97,7 +97,7 @@ export function calculateCurrentStats({ clerkProfile, sessionStartTime, sessionS
             stars: '👑',
             description: 'Du har nået det højeste Level i Flango! Det kræver styrke og vedholdenhed – og ikke mindst en lyst til at hjælpe.'
                 + ' Det er en fantastisk evne. Måske kunne dit næste mål være at hjælpe nogen med at nå hertil?',
-            image: 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-dreng-legende1.png'
+            image: 'Icons/webp/Avatar/Ekspedient-dreng-legende1.webp'
         }
     ];
 

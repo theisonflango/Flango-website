@@ -111,12 +111,28 @@ h2 {
 #main-app {
     display: grid;
     grid-template-columns: 3fr 2fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+        "products sidebar-header"
+        "products sidebar";
     gap: 20px;
     width: 100%;
     height: 100%;
     padding: 20px;
     box-sizing: border-box;
     position: relative
+}
+
+#products {
+    grid-area: products;
+}
+
+.sidebar-main-header {
+    grid-area: sidebar-header;
+}
+
+#sidebar {
+    grid-area: sidebar;
 }
 
 #products {
@@ -131,25 +147,66 @@ h2 {
 }
 
 .product-btn {
-    background-color: var(--product-bg);
-    border: 2px solid var(--product-border);
-    border-radius: 15px;
-    padding: 15px;
-    font-size: 18px;
-    cursor: pointer;
-    text-align: center;
-    transition: transform .2s, box-shadow .2s, filter .2s;
+    position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative
+    justify-content: space-between;
+    padding: 16px;
+    border-radius: 14px;
+    border: 2px solid #f1d7a7;
+    background: #fddfa9;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    overflow: hidden;
 }
 
 .product-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 8px 15px rgba(0, 0, 0, .1);
-    filter: brightness(95%)
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+    border-color: #f6c97a;
+}
+
+.product-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+}
+
+/* Indhold inde i knappen – bruges til at graye ud ved limit */
+.product-btn .product-btn-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Standard: ingen lock-overlay på produkter */
+.product-btn .avatar-lock-overlay {
+    display: none;
+}
+
+/* Når produktet har ramt daglig grænse */
+.product-btn.product-limit-reached {
+    cursor: not-allowed;
+}
+
+.product-btn.product-limit-reached .product-btn-inner {
+    filter: grayscale(90%) brightness(0.85);
+}
+
+/* Vis avatar-låse-overlayet ovenpå produktkortet når det er låst */
+.product-btn.product-limit-reached .avatar-lock-overlay {
+    display: flex;
+}
+
+/* Låsen må gerne være lidt større på produktkort */
+.product-btn.product-limit-reached .avatar-lock-overlay img {
+    width: 64px;
+    height: 64px;
+}
+
+/* Når man klikker på et låst produkt, skal låsen ryste */
+.product-btn.product-limit-reached:active .avatar-lock-overlay {
+    animation: shake-animation 0.4s ease-in-out;
 }
 
 .product-emoji {
@@ -568,16 +625,20 @@ body[data-theme="pastel-pop"] .toolbar-gear-menu {
     cursor: pointer;
 }
 
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #f8f8f8;
+}
+
 body[data-theme="pastel-pop"] .settings-modal {
     background: #fff8ff;
     border: 1px solid #ffd6ea;
     box-shadow: 0 14px 35px rgba(200, 160, 220, 0.4);
-}
-
-.product-btn:active {
-    transform: scale(0.98);
-    filter: brightness(90%);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, .1);
 }
 
 .product-shortcut {

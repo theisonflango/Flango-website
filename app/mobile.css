@@ -1,0 +1,207 @@
+/* ============================================================
+   Flango – Mobile layout overrides
+   Gælder kun på mindre skærme via <link media="(max-width: 1024px)">
+   Struktur:
+   [TOPBAR]     – sticky øverst
+   [CONTENT]    – produkter, der kan scrolles
+   [CART DRAWER]– fast i bunden
+   ============================================================ */
+
+/* Tablet + små laptops (alt under 1024px) */
+@media (max-width: 1024px) {
+  :root {
+    --flango-mobile-max-width: 480px;
+  }
+
+  /* Væk med flex-centre fra tidligere – vi vil starte fra toppen */
+  body {
+    margin: 0;
+    padding: 0;
+    background: #0f172a; /* samme vibe som desktop */
+    display: block;      /* normal flow */
+  }
+
+  /* Hele appen ligger midteret horisontalt, men starter fra top */
+  #main-app {
+    width: 100%;
+    max-width: var(--flango-mobile-max-width);
+    margin: 0 auto;
+    box-sizing: border-box;
+
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+    gap: 8px;
+    padding: 8px;
+    height: auto;
+  }
+
+  /* Topbar/header – sticky øverst, “rigtig app-nav” */
+  #top-bar,
+  .screen-header {
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9990;
+
+    background: #0f172a;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .screen-title {
+    font-size: 1.2rem;
+  }
+
+  /* Produkter som grid – 2 kolonner på tablet */
+  #products {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .product-card {
+    padding: 10px;
+  }
+
+  .product-card button,
+  .product-card .btn {
+    width: 100%;
+  }
+
+  /* Generelle knapper – større touch targets */
+  button,
+  .btn {
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    min-height: 40px;
+  }
+
+  .btn-primary {
+    font-weight: 600;
+  }
+
+  /* Sidebar må ikke være kæmpe høj desktopboks på mobile */
+  #sidebar {
+    height: auto;
+    min-height: 0;
+  }
+
+  /* Sidebar-header bruges som topbar på tablet */
+  .sidebar-main-header {
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: var(--flango-mobile-max-width);
+    margin: 0 auto 8px;
+    padding: 10px 12px;
+    background: #0b1120;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0 0 14px 14px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+    z-index: 9995;
+  }
+}
+
+/* Lille mobil (ca. under 600px) */
+@media (max-width: 600px) {
+  /* Produkter i én kolonne – store knapper */
+  #products {
+    grid-template-columns: 1fr;
+  }
+
+  .product-card {
+    padding: 12px;
+  }
+
+  /* Fast bund-skuffe til kurven */
+  #sidebar {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 0;
+    width: 100%;
+    max-width: var(--flango-mobile-max-width);
+
+    background: #0b1120;
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.4);
+    padding: 12px;
+    box-sizing: border-box;
+    z-index: 9999;
+  }
+
+  /* Plads nederst så indholdet ikke gemmes bag kurven */
+  body {
+    padding-bottom: 180px; /* justér efter hvor høj kurven er */
+  }
+
+  #sidebar h2,
+  #sidebar .section-title {
+    font-size: 1rem;
+    margin-bottom: 6px;
+  }
+
+  #sidebar .btn,
+  #sidebar button {
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  /* Modaler mere app-agtige på mobil */
+  .modal,
+  .dialog,
+  .flango-modal {
+    width: 100%;
+    max-width: var(--flango-mobile-max-width);
+    margin: 0 auto;
+    border-radius: 12px;
+    padding: 14px;
+  }
+
+  /* Gør sidebar-headeren til en global topbar */
+  .sidebar-main-header {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: var(--flango-mobile-max-width);
+    margin: 0;
+    padding: 12px 14px;
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    z-index: 10000;
+  }
+
+  /* Giv plads under topbaren til produkterne */
+  #main-app {
+    margin-top: 120px;
+  }
+}
+
+/* Ultra smalle mobiler */
+@media (max-width: 400px) {
+  .screen-title {
+    font-size: 1.05rem;
+  }
+
+  button,
+  .btn {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+  }
+
+  #products {
+    gap: 6px;
+  }
+}

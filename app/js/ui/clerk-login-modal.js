@@ -159,7 +159,7 @@ export function setupClerkLoginButton({
             const welcomeTitle = `Velkommen, ${clerk.name}!`;
             const welcomeBody = `
               <div style="display: flex; align-items: center; gap: 20px;">
-                <img src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-mand-Flango1.png" alt="Hr. Flango" style="width: 120px; height: auto; flex-shrink: 0;">
+                <img src="Icons/webp/Avatar/Ekspedient-mand-Flango1.webp" alt="Hr. Flango" style="width: 120px; height: auto; flex-shrink: 0;">
                 <div style="text-align:left;line-height:1.5;">
                   Sejt, at du tager ansvaret for at betjene Flango i dag.<br><br>
                   Dit job er at sørge for, at kunderne betaler det rigtige – hverken mere eller mindre.<br><br>

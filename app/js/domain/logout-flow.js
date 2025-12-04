@@ -161,7 +161,7 @@ export function setupLogoutFlow({ clerkProfile, sessionStartTime, getSessionSale
                         <div class="logout-accordion-item card-a">
                             <div class="logout-accordion-header">
                                 <span class="accordion-toggle-icon"></span>
-                                <img src="https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-mand-Flango1.png" class="accordion-icon">
+                                <img src="Icons/webp/Avatar/Ekspedient-mand-Flango1.webp" class="accordion-icon">
                                 Se din status her
                             </div>
                             <div class="logout-accordion-body">${statsSections.status}</div>

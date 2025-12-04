@@ -10,6 +10,8 @@ import { supabaseClient } from '../core/config-and-supabase.js';
 import {
     CUSTOM_ICON_PREFIX,
     getCustomIconPath,
+    preloadChildProductLimitSnapshot,
+    applyProductLimitsToButtons,
 } from './products-and-cart.js';
 import { showPinModal } from '../ui/user-modals.js';
 import { setupAvatarPicker } from '../ui/avatar-picker.js';
@@ -45,10 +47,11 @@ export async function startApp() {
     if (!adminProfile || !clerkProfile) return;
     // 1) Basis state for session og app
     const AVATAR_STORAGE_PREFIX = 'flango-avatar-';
-    const DEFAULT_AVATAR_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/Avatar/Ekspedient-default2.png';
+    const DEFAULT_AVATAR_URL = 'Icons/webp/Avatar/Ekspedient-default2.webp';
     let allUsers = [];
     configureHistoryModule({ getAllUsers: () => allUsers });
     let allProducts = [];
+    window.__flangoGetAllProducts = () => allProducts;
     let currentOrder = [];
     let currentSortKey = 'name';
     let balanceSortOrder = 'desc';
@@ -68,16 +71,16 @@ export async function startApp() {
 
     // Sæt standardlyde, hvis de ikke allerede er sat (robust tjek)
     const addEl = document.getElementById('audio-add-item');
-    if (addEl && !addEl.src) addEl.src = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/sounds/Add%20Item/Add1.mp3';
+    if (addEl && !addEl.src) addEl.src = 'sounds/Add%20Item/Add1.mp3';
 
     const remEl = document.getElementById('audio-remove-item');
-    if (remEl && !remEl.src) remEl.src = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/sounds/Delete%20Item/Slet.mp3';
+    if (remEl && !remEl.src) remEl.src = 'sounds/Delete%20Item/Slet.mp3';
 
     const purEl = document.getElementById('audio-purchase');
-    if (purEl && !purEl.src) purEl.src = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/sounds/Accept/accepter-1.mp3';
+    if (purEl && !purEl.src) purEl.src = 'sounds/Accept/accepter-1.mp3';
 
     const errEl = document.getElementById('audio-error');
-    if (errEl && !errEl.src) errEl.src = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/sounds/Error/Fejl1.mp3';
+    if (errEl && !errEl.src) errEl.src = 'sounds/Error/Fejl1.mp3';
 
     // 3) DOM-elementer der er tilgængelige efter login
     const selectUserBtn = document.getElementById('select-customer-main-btn');
@@ -212,7 +215,17 @@ export async function startApp() {
             getCustomIconPath,
             renderProductsInModal,
             renderProductsGrid,
-            fetchAndRenderProducts: () => productAssortment.fetchAndRenderProducts(),
+            fetchAndRenderProducts: async () => {
+                await productAssortment.fetchAndRenderProducts();
+                // Sørg for at alle knapper har et låse-overlay, så CSS kan virke
+                productsContainer.querySelectorAll('.product-btn').forEach(btn => {
+                    if (!btn.querySelector('.product-lock-overlay')) {
+                        const overlay = document.createElement('div');
+                        overlay.className = 'product-lock-overlay';
+                        btn.appendChild(overlay);
+                    }
+                });
+            },
         });
 
         undoLastSaleBtn.addEventListener('click', () => handleUndoLastSale());
@@ -334,12 +347,25 @@ export async function startApp() {
     // 12) Første produkt-load
     await productAssortment.fetchAndRenderProducts();
 
-    function selectUser(userId) {
+    async function selectUser(userId) {
+        // Ryd den gamle ordre FØR vi sætter en ny bruger.
+        // Dette sikrer, at `applyProductLimitsToButtons` ikke bruger en forældet kurv.
+        currentOrder = [];
+        renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
+
         const selectedUser = allUsers.find(u => u.id === userId);
         if (!selectedUser) return;
 
         setCurrentCustomer(selectedUser);
-        updateSelectedUserInfo();
+
+        // Preload dagens købs-snapshot og VENT på, at låsene er anvendt.
+        await preloadChildProductLimitSnapshot(selectedUser.id);
+        const productsContainer = document.getElementById('products');
+        // Tving brug af en tom kurv, da vi lige har valgt en ny bruger.
+        await applyProductLimitsToButtons(allProducts, productsContainer, [], selectedUser.id);
+ 
+        // Kør først UI-opdatering EFTER alle asynkrone kald er færdige.
+        updateSelectedUserInfo(); 
         userModal.style.display = 'none';
     }
 

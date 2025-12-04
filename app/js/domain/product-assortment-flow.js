@@ -1,3 +1,6 @@
+import { getCurrentCustomer } from './cafe-session-store.js';
+import { applyProductLimitsToButtons, getProductIconInfo } from './products-and-cart.js';
+
 export function setupProductAssortmentFlow({
     adminProfile,
     supabaseClient,
@@ -28,11 +31,28 @@ export function setupProductAssortmentFlow({
         }
         setAllProducts(data);
         const allProducts = getAllProducts();
+        const childId = getCurrentCustomer()?.id || null;
         renderProductsGrid(
             allProducts,
             productsContainer,
-            (product) => addToOrder(product, getCurrentOrder(), orderList, totalPriceEl, updateSelectedUserInfo)
+            async (product, evt) => {
+                const result = await addToOrder(product, getCurrentOrder(), orderList, totalPriceEl, updateSelectedUserInfo, { sourceEvent: evt });
+                // VIGTIGT: Brug altid den opdaterede kurv her, og hent childId på ny.
+                const currentChildId = getCurrentCustomer()?.id || null;
+                await applyProductLimitsToButtons(allProducts, productsContainer, getCurrentOrder(), currentChildId);
+                return result;
+            }
         );
+        // Sørg for at alle knapper har et låse-overlay, så CSS kan virke
+        productsContainer.querySelectorAll('.product-btn').forEach(btn => {
+            if (!btn.querySelector('.product-lock-overlay')) {
+                const overlay = document.createElement('div');
+                // Brug BEGGE klasser for at matche både avatar- og produkt-specifikke regler
+                overlay.className = 'avatar-lock-overlay product-lock-overlay';
+                btn.appendChild(overlay);
+            }
+        });
+        await applyProductLimitsToButtons(allProducts, productsContainer, getCurrentOrder(), childId);
         renderProductsInModal(allProducts, modalProductList);
     }
 
@@ -45,7 +65,11 @@ export function setupProductAssortmentFlow({
             const itemDiv = document.createElement('div');
             itemDiv.className = 'item';
             itemDiv.dataset.productId = product.id;
-            itemDiv.innerHTML = `<label for="assortment-${product.id}">${product.emoji} ${product.name}</label><input type="checkbox" id="assortment-${product.id}" data-product-id="${product.id}" ${product.is_visible !== false ? 'checked' : ''}>`;
+            const iconInfo = getProductIconInfo(product);
+            const visualMarkup = iconInfo
+                ? `<img src="${iconInfo.path}" alt="${product.name || 'Produkt'}" class="product-icon-small">`
+                : `<span class="assortment-emoji">${product.emoji || '❓'}</span>`;
+            itemDiv.innerHTML = `<label for="assortment-${product.id}">${visualMarkup} ${product.name}</label><input type="checkbox" id="assortment-${product.id}" data-product-id="${product.id}" ${product.is_visible !== false ? 'checked' : ''}>`;
             assortmentList.appendChild(itemDiv);
         });
 

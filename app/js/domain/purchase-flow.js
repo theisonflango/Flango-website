@@ -10,6 +10,7 @@ import {
 } from './cafe-session-store.js';
 import { renderOrder } from './order-ui.js';
 import { getProductIconInfo } from './products-and-cart.js';
+import { canChildPurchase } from './purchase-limits.js';
 import { getCurrentSessionAdmin } from './session-store.js';
 
 export async function enforceSugarPolicy({ customer, currentOrder, allProducts }) {
@@ -82,6 +83,23 @@ export async function handleCompletePurchase({
 
     const sugarOk = await enforceSugarPolicy({ customer, currentOrder, allProducts });
     if (!sugarOk) return;
+
+    try {
+        const childId = customer.id;
+        for (const line of currentOrder) {
+            const productId = line.product_id || line.productId || line.id;
+            if (!productId) continue;
+
+            const result = await canChildPurchase(productId, childId, currentOrder);
+            if (result && result.allowed === false) {
+                const message = result.message || 'Det her køb er ikke tilladt lige nu. Tal med en voksen i caféen.';
+                await showCustomAlert('Køb ikke tilladt', message);
+                return;
+            }
+        }
+    } catch (err) {
+        console.warn('[canChildPurchase] Uventet fejl, tillader køb som fallback:', err);
+    }
 
     const legacyTotal = getOrderTotal();
     if (evaluation && typeof evaluation.total === 'number') {

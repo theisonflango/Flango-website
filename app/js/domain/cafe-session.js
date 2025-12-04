@@ -2,6 +2,8 @@
 // UI-håndtering og Supabase-adgang ligger i andre moduler.
 
 // Shadow-evaluering: bruges kun til logging/diagnostik; styrer ikke købsflowet endnu.
+import { canChildPurchase } from './purchase-limits.js';
+// canChildPurchase er klar til at blive brugt i evaluatePurchase
 
 const safeNumber = (value, fallback = 0) => {
     const num = Number(value);
