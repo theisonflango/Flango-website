@@ -153,6 +153,48 @@
     <div id="balance-modal" class="modal"></div>
     <div id="edit-user-detail-modal" class="modal"></div>
     <div id="assign-badge-modal" class="modal"></div>
+    <div id="auto-import-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">
+                <h2>Opret / opdater brugere automatisk</h2>
+                <span class="close-btn" id="auto-import-close-btn">&times;</span>
+            </div>
+            <p>
+                Upload en CSV- eller Excel-fil med brugere.<br>
+                Flango hjælper dig senere med at matche felter til kontonummer, navn og saldo.
+            </p>
+            <div id="auto-import-step-1">
+                <label for="auto-import-file-input" class="flango-label">Upload dokument</label>
+                <input id="auto-import-file-input" type="file" accept=".csv,.xlsx,.xls">
+                <div id="auto-import-error" class="assign-badge-note" style="display:none; color: var(--danger-color); margin-top:6px;"></div>
+            </div>
+            <div id="auto-import-step-2" style="display:none;">
+                <p>Filen er modtaget. Næste skridt bliver at matche kolonner til kontonummer, navn og saldo.</p>
+                <p id="auto-import-selected-file-name"></p>
+                <div id="auto-import-summary" class="auto-import-summary"></div>
+                <div id="auto-import-mapping">
+                    <p>Vælg hvilke kolonner der svarer til kontonummer, navn og saldo:</p>
+                    <div class="auto-import-mapping-row">
+                        <label for="auto-import-field-number">Kontonummer / brugernummer</label>
+                        <select id="auto-import-field-number"></select>
+                    </div>
+                    <div class="auto-import-mapping-row">
+                        <label for="auto-import-field-name">Navn</label>
+                        <select id="auto-import-field-name"></select>
+                    </div>
+                    <div class="auto-import-mapping-row">
+                        <label for="auto-import-field-balance">Saldo</label>
+                        <select id="auto-import-field-balance"></select>
+                    </div>
+                    <div id="auto-import-preview" class="auto-import-preview"></div>
+                </div>
+            </div>
+            <div class="modal-actions" style="margin-top: 12px;">
+                <button id="auto-import-cancel-btn" class="action-button admin-btn secondary-action">Annuller</button>
+                <button id="auto-import-continue-btn" class="action-button admin-btn">Fortsæt</button>
+            </div>
+        </div>
+    </div>
     <div id="product-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h2>Rediger Menu</h2><span class="close-btn">&times;</span></div><div id="modal-product-list" class="modal-product-list"></div><button id="add-btn-modal" class="add-product-btn">➕ Tilføj Nyt Produkt</button></div>
@@ -264,7 +306,7 @@
 
     <template id="login-modal-template"><div class="modal-content"><div class="modal-header"><h2>Login</h2><span class="close-btn">&times;</span></div><div class="modal-controls" style="flex-direction: column; gap: 10px;"><input type="email" id="login-email-input" placeholder="E-mail" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;"><input type="password" id="login-password-input" placeholder="Adgangskode" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;"><button id="perform-login-btn" class="action-button" style="background-color: var(--success-color); margin-top: 10px; margin-bottom: 0;">Log ind</button><button id="developer-login-btn" class="action-button" style="background-color: var(--warning-color); margin-top: 10px; margin-bottom: 0;">Developer Login</button><p id="login-error-msg" style="color: var(--danger-color); text-align: center; display: none; margin-top: 10px;"></p></div></div></template>
     <template id="user-modal-template"><div class="modal-content"><div class="modal-header"><h2 id="user-modal-title">Vælg en kunde</h2><span class="close-btn">&times;</span></div><div id="admin-controls-modal"></div><div class="modal-controls"><input type="text" id="search-user-input" placeholder="Søg efter navn eller nummer..."></div><div class="user-list-header"><div id="sort-by-name-btn" class="sort-header active">Navn</div><div id="sort-by-number-btn" class="sort-header">Nummer</div><div id="sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handling</div></div><div id="modal-user-list" class="modal-user-list"></div></div></template>
-    <template id="admin-user-manager-modal-template"><div class="modal-content"><div class="modal-header"><h2>Rediger Brugere</h2><span class="close-btn">&times;</span></div><div id="admin-controls-modal"><button id="add-user-btn-modal" class="action-button admin-btn" style="margin-bottom: 10px;">➕ Tilføj Ny Bruger</button></div><div class="modal-controls"><input type="text" id="admin-search-user-input" placeholder="Søg efter navn eller nummer..."></div><div class="user-list-header"><div id="admin-sort-by-name-btn" class="sort-header active">Navn</div><div id="admin-sort-by-number-btn" class="sort-header">Nummer</div><div id="admin-sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handlinger</div></div><div id="admin-modal-user-list" class="modal-user-list"></div></div></template>
+    <template id="admin-user-manager-modal-template"><div class="modal-content"><div class="modal-header"><h2>Rediger Brugere</h2><span class="close-btn">&times;</span></div><div id="admin-controls-modal"><button id="add-user-btn-modal" class="action-button admin-btn" style="margin-bottom: 10px;">➕ Tilføj Ny Bruger</button><button id="auto-import-open-btn" class="action-button admin-btn" style="margin-bottom: 10px;">Opret/Opdater automatisk</button></div><div class="modal-controls"><input type="text" id="admin-search-user-input" placeholder="Søg efter navn eller nummer..."></div><div class="user-list-header"><div id="admin-sort-by-name-btn" class="sort-header active">Navn</div><div id="admin-sort-by-number-btn" class="sort-header">Nummer</div><div id="admin-sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handlinger</div></div><div id="admin-modal-user-list" class="modal-user-list"></div></div></template>
     <template id="avatar-picker-modal-template"><div class="modal-content"><div class="modal-header"><h2>Min Flango Status</h2><span class="close-btn">&times;</span></div><div id="avatar-picker-scroll-wrapper">
         <div id="avatar-picker-summary"></div>
         <hr style="margin: 15px 0; border-color: #eee;">
@@ -410,6 +452,8 @@
     <audio id="audio-preview" preload="auto"></audio>
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script type="module" src="js/admin/auto-import-users.js"></script>
     <script type="module" src="js/app.js"></script>
 </body>
 </html>

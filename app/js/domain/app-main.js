@@ -428,6 +428,7 @@ export async function startApp() {
 export async function setupAdminLoginScreen(adminProfile) {
     setCurrentAdmin(adminProfile);
     setInstitutionId(adminProfile.institution_id);
+    window.__flangoCurrentAdminProfile = adminProfile;
     showScreen('screen-admin-login');
     const adminWelcomeText = document.getElementById('admin-welcome-text');
     const continueBtn = document.getElementById('continue-as-admin-btn');

@@ -69,6 +69,7 @@ export async function showSalesHistory() {
     const searchInput = salesHistoryModal.querySelector('#search-history-input');
     const historyStartDate = salesHistoryModal.querySelector('#history-start-date');
     const historyEndDate = salesHistoryModal.querySelector('#history-end-date');
+    const printAllBalancesBtn = salesHistoryModal.querySelector('#print-all-balances-btn');
 
     if (!filterDepositsBtn || !printReportBtn || !printNegativeBtn || !searchInput || !historyStartDate || !historyEndDate) {
         return;
@@ -91,6 +92,9 @@ export async function showSalesHistory() {
         renderSalesHistory(fullSalesHistory, null, isActive ? 'DEPOSIT' : null);
     };
     printNegativeBtn.onclick = handlePrintNegativeBalance;
+    if (printAllBalancesBtn) {
+        printAllBalancesBtn.onclick = handlePrintAllBalances;
+    }
     salesHistoryModal.style.display = 'flex';
 
     const now = new Date();
