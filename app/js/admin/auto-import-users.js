@@ -217,6 +217,7 @@ import { getInstitutionId } from '../domain/session-store.js';
             }
 
             console.log('Auto-import gennemført, opdaterede/indsatte rækker:', data);
+            alert(`✓ Saldoer opdateret for ${mappedRows.length} brugere.`);
             // Her kan vi evt. trigge et refresh af brugerlisten senere
             closeAutoImportModal();
         } catch (e) {
