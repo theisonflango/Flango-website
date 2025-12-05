@@ -34,6 +34,90 @@ import { getInstitutionId } from '../domain/session-store.js';
         }
     };
 
+    const showAutoImportSuccessDialog = (count) => {
+        const existing = document.getElementById('auto-import-success-dialog-backdrop');
+        if (existing) existing.remove();
+
+        const backdrop = document.createElement('div');
+        backdrop.id = 'auto-import-success-dialog-backdrop';
+        backdrop.style.position = 'fixed';
+        backdrop.style.inset = '0';
+        backdrop.style.background = 'rgba(0,0,0,0.45)';
+        backdrop.style.display = 'flex';
+        backdrop.style.alignItems = 'center';
+        backdrop.style.justifyContent = 'center';
+        backdrop.style.zIndex = '100000';
+
+        const dialog = document.createElement('div');
+        dialog.style.background = '#ffffff';
+        dialog.style.borderRadius = '18px';
+        dialog.style.boxShadow = '0 12px 40px rgba(15,23,42,0.35)';
+        dialog.style.maxWidth = '520px';
+        dialog.style.width = '90%';
+        dialog.style.padding = '28px 32px 24px 32px';
+        dialog.style.position = 'relative';
+
+        const headerBar = document.createElement('div');
+        headerBar.style.position = 'absolute';
+        headerBar.style.top = '0';
+        headerBar.style.left = '0';
+        headerBar.style.right = '0';
+        headerBar.style.height = '6px';
+        headerBar.style.borderTopLeftRadius = '18px';
+        headerBar.style.borderTopRightRadius = '18px';
+        headerBar.style.background = '#f97316';
+        dialog.appendChild(headerBar);
+
+        const title = document.createElement('h2');
+        title.textContent = 'Success!';
+        title.style.margin = '12px 0 12px 0';
+        title.style.fontSize = '24px';
+        title.style.fontWeight = '700';
+        title.style.color = '#f97316';
+        dialog.appendChild(title);
+
+        const message = document.createElement('p');
+        message.textContent = `Saldoer opdateret for ${count} brugere.`;
+        message.style.margin = '0 0 24px 0';
+        message.style.fontSize = '18px';
+        message.style.color = '#111827';
+        dialog.appendChild(message);
+
+        const buttonRow = document.createElement('div');
+        buttonRow.style.display = 'flex';
+        buttonRow.style.justifyContent = 'center';
+        dialog.appendChild(buttonRow);
+
+        const okBtn = document.createElement('button');
+        okBtn.textContent = 'OK';
+        okBtn.style.minWidth = '120px';
+        okBtn.style.padding = '10px 24px';
+        okBtn.style.border = 'none';
+        okBtn.style.borderRadius = '999px';
+        okBtn.style.fontSize = '16px';
+        okBtn.style.fontWeight = '600';
+        okBtn.style.cursor = 'pointer';
+        okBtn.style.background = '#16a34a';
+        okBtn.style.color = '#ffffff';
+        okBtn.onmouseenter = () => { okBtn.style.background = '#15803d'; };
+        okBtn.onmouseleave = () => { okBtn.style.background = '#16a34a'; };
+        buttonRow.appendChild(okBtn);
+
+        const closeDialog = () => {
+            backdrop.remove();
+        };
+
+        okBtn.addEventListener('click', closeDialog);
+        backdrop.addEventListener('click', (evt) => {
+            if (evt.target === backdrop) {
+                closeDialog();
+            }
+        });
+
+        backdrop.appendChild(dialog);
+        document.body.appendChild(backdrop);
+    };
+
     const openAutoImportModal = () => {
         modal.style.display = 'flex';
         selectedFile = null;
@@ -217,8 +301,19 @@ import { getInstitutionId } from '../domain/session-store.js';
             }
 
             console.log('Auto-import gennemført, opdaterede/indsatte rækker:', data);
-            alert(`✓ Saldoer opdateret for ${mappedRows.length} brugere.`);
-            // Her kan vi evt. trigge et refresh af brugerlisten senere
+            // --- Success popup (klassisk Flango-style) ---
+            showAutoImportSuccessDialog(mappedRows.length);
+            // --- Log to historik (dispatch event) ---
+            document.dispatchEvent(new CustomEvent('flango-auto-import-completed', {
+                detail: {
+                    count: mappedRows.length,
+                    timestamp: Date.now()
+                }
+            }));
+
+            // --- Trigger user-list refresh (if listener exists elsewhere) ---
+            document.dispatchEvent(new Event('flango-refresh-users'));
+
             closeAutoImportModal();
         } catch (e) {
             console.error('Auto-import: uventet fejl:', e);
