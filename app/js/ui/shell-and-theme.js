@@ -342,13 +342,6 @@ export function openSettingsModal() {
         action?.();
     };
 
-    if (isAdmin) {
-        addItem('Rediger Menu', () => openViaSettings('product-modal', () => callButtonById('edit-menu-original-btn')));
-        addItem('Rediger Brugere', () => openViaSettings('admin-user-manager-modal', () => window.__flangoOpenAdminUserManager?.('customers')));
-        addItem("Rediger Admin (Voksen konto'er)", () => openViaSettings('admin-user-manager-modal', () => window.__flangoOpenAdminUserManager?.('admins')));
-        addItem('Institutionens Præferencer', () => openInstitutionPreferences(), '', true);
-    }
-
     addItem('Dagens Sortiment', () => {
         if (window.__flangoOpenAssortmentModal) {
             openViaSettings('assortment-modal', () => window.__flangoOpenAssortmentModal());
@@ -356,6 +349,31 @@ export function openSettingsModal() {
             notifyToolbarUser('Indstillinger for sortiment er ikke klar. Prøv at genindlæse.');
         }
     });
+
+    if (isAdmin) {
+        addItem('Rediger Produkter', () => openViaSettings('product-modal', () => callButtonById('edit-menu-original-btn')));
+    }
+
+    addItem('Historik', () => {
+        window.__flangoOpenSalesHistory?.() || notifyToolbarUser('Historik-funktionen er ikke klar.');
+    }, 'settings-history-btn');
+
+    if (isAdmin) {
+        addItem('Rediger Brugere', () => openViaSettings('admin-user-manager-modal', () => window.__flangoOpenAdminUserManager?.('customers')));
+    }
+
+    addItem('Lydindstillinger', () => {
+        if (window.__flangoOpenSoundSettingsModal) {
+            openViaSettings('sound-settings-modal', () => window.__flangoOpenSoundSettingsModal());
+        } else {
+            notifyToolbarUser('Lydindstillinger kan ikke åbnes lige nu.');
+        }
+    });
+
+    if (isAdmin) {
+        addItem('Institutionens Præferencer', () => openInstitutionPreferences(), '', true);
+        addItem("Rediger Admin (Voksen konto'er)", () => openViaSettings('admin-user-manager-modal', () => window.__flangoOpenAdminUserManager?.('admins')));
+    }
 
     if (isAdmin) {
         addItem('Forældre Portal Koder', () => {
@@ -370,28 +388,8 @@ export function openSettingsModal() {
         });
     }
 
-    addItem('Lydindstillinger', () => {
-        if (window.__flangoOpenSoundSettingsModal) {
-            openViaSettings('sound-settings-modal', () => window.__flangoOpenSoundSettingsModal());
-        } else {
-            notifyToolbarUser('Lydindstillinger kan ikke åbnes lige nu.');
-        }
-    });
     addItem('Udseende', () => openViaSettings('theme-picker-backdrop', () => callButtonById('open-theme-picker')));
 
-    addItem('Historik', () => {
-        window.__flangoOpenSalesHistory?.() || notifyToolbarUser('Historik-funktionen er ikke klar.');
-    }, 'settings-history-btn');
-    addItem('Fortryd sidste salg', () => {
-        window.__flangoUndoLastSale?.() || notifyToolbarUser('Fortryd-funktionen er ikke klar.');
-    }, 'settings-undo-last-sale-btn');
-    addItem('Fortryd tidligere salg', () => {
-        if (typeof window.__flangoUndoPreviousSale === 'function') {
-            window.__flangoUndoPreviousSale();
-        } else {
-            notifyToolbarUser('Avanceret fortrydelse er på vej.');
-        }
-    }, 'settings-undo-previous-sale-btn');
     addItem('Min Flango', () => {
         window.__flangoOpenAvatarPicker?.() || notifyToolbarUser('Status-visningen er ikke klar.');
     }, 'settings-min-flango-status-btn');
@@ -433,6 +431,19 @@ export function setupToolbarGearMenu() {
             settingsBtn.click();
         } else {
             openSettingsModal();
+        }
+    };
+}
+
+export function setupToolbarHistoryButton() {
+    const historyBtn = document.getElementById('toolbar-history-btn');
+    if (!historyBtn) return;
+    historyBtn.onclick = (event) => {
+        event.preventDefault();
+        if (typeof window.__flangoOpenSalesHistory === 'function') {
+            window.__flangoOpenSalesHistory();
+        } else {
+            notifyToolbarUser('Historik-funktionen er ikke klar.');
         }
     };
 }

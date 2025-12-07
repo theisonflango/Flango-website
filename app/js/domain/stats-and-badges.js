@@ -228,6 +228,7 @@ export function getStatsSummaryHTML(statsData, options = {}, clerkProfile) {
         sessionSalesCount = 0,
         sessionMinutes = 0,
         totalMinutes = 0,
+        totalHours = 0,
         todayMinutes: todayMinutesFromStats = 0, // Omdøb for klarhed
         totalSales = 0,
         currentLevel,

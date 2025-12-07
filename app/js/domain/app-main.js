@@ -97,8 +97,6 @@ export async function startApp() {
     const undoLastSaleBtn = document.getElementById('undo-last-sale-btn');
     const salesHistoryBtn = document.getElementById('sales-history-btn');
     const settingsHistoryBtn = document.getElementById('settings-history-btn');
-    const settingsUndoLastSaleBtn = document.getElementById('settings-undo-last-sale-btn');
-    const settingsUndoPreviousSaleBtn = document.getElementById('settings-undo-previous-sale-btn');
     const settingsMinFlangoStatusBtn = document.getElementById('settings-min-flango-status-btn');
     const settingsLogoutBtn = document.getElementById('settings-logout-btn');
     const assortmentModal = document.getElementById('assortment-modal');
@@ -122,6 +120,14 @@ export async function startApp() {
     const addProductBtn = document.getElementById('add-btn-modal');
     const editUserDetailModal = document.getElementById('edit-user-detail-modal');
     const assignBadgeModal = document.getElementById('assign-badge-modal');
+    const refreshProductLocks = async () => {
+        const productsEl = document.getElementById('products');
+        const selectedUser = getCurrentCustomer();
+        const childId = selectedUser?.id || null;
+        await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, childId);
+    };
+    const addToOrderWithLocks = (product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, optionsArg = {}) =>
+        addToOrder(product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, { ...optionsArg, onOrderChanged: refreshProductLocks });
 
     const resetUserModalView = () => {
         delete userModal.dataset.mode;
@@ -178,7 +184,8 @@ export async function startApp() {
         handleOrderListClick(
             event,
             currentOrder,
-            () => renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo)
+            () => renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo),
+            refreshProductLocks
         );
     });
     // Købshåndtering
@@ -194,6 +201,7 @@ export async function startApp() {
         adminProfile,
         incrementSessionSalesCount: () => { sessionSalesCount++; },
         completePurchaseBtn,
+        refreshProductLocks,
     }));
 
     // 5) Produktstyring
@@ -229,12 +237,6 @@ export async function startApp() {
         });
 
         undoLastSaleBtn.addEventListener('click', () => handleUndoLastSale());
-        if (settingsUndoLastSaleBtn) {
-            settingsUndoLastSaleBtn.addEventListener('click', () => handleUndoLastSale());
-        }
-    if (settingsUndoPreviousSaleBtn) {
-        settingsUndoPreviousSaleBtn.addEventListener('click', () => handleUndoPreviousSale());
-    }
 
     // 6) UI-input flows
     setupKeyboardShortcuts({
@@ -246,9 +248,10 @@ export async function startApp() {
         updateSelectedUserInfo,
         selectUserButton: selectUserBtn,
         completePurchaseButton: completePurchaseBtn,
-        addToOrder,
+        addToOrder: addToOrderWithLocks,
         removeLastItemFromOrder,
         closeTopMostOverlay,
+        onOrderChanged: refreshProductLocks,
     });
 
     const getAllUsers = () => allUsers;
@@ -313,7 +316,7 @@ export async function startApp() {
         modalProductList,
         assortmentModal,
         parentPortalAdminUI: adminFlow?.parentPortalAdminUI,
-        addToOrder,
+        addToOrder: addToOrderWithLocks,
     });
 
     // 10) UI-events og helpers

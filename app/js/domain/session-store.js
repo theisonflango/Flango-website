@@ -17,11 +17,27 @@ export function getCurrentSessionAdmin() {
 }
 
 export function setCurrentClerk(clerkProfile) {
-    currentClerk = clerkProfile || null;
+    let profile = clerkProfile || null;
+
+    // Hvis vi har en tidligere fuld profil med id liggende globalt, så brug dens id som fallback.
+    if (profile && !profile.id && typeof window !== 'undefined' && window.__flangoCurrentClerkProfile?.id) {
+        profile = { ...profile, id: window.__flangoCurrentClerkProfile.id };
+    }
+
+    currentClerk = profile;
+
+    if (typeof window !== 'undefined') {
+        window.__flangoCurrentClerkProfile = profile;
+        window.__flangoCurrentClerkRole = profile?.role || null;
+    }
 }
 
 export function getCurrentClerk() {
-    return currentClerk;
+    if (currentClerk) return currentClerk;
+    if (typeof window !== 'undefined' && window.__flangoCurrentClerkProfile) {
+        return window.__flangoCurrentClerkProfile;
+    }
+    return null;
 }
 
 export function isCurrentUserAdmin() {

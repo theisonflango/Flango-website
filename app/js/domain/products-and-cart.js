@@ -47,9 +47,10 @@ export async function addProductToOrder(order, product, maxItems = 10) {
     if (order.length >= maxItems) return { success: false, reason: 'limit' };
     const customer = typeof getCurrentCustomer === 'function' ? getCurrentCustomer() : null;
     const childId = customer?.id || null;
+    const institutionId = customer?.institution_id || null;
     const pid = product?.id;
     if (childId && pid) {
-        await ensureChildLimitSnapshot(childId);
+        await ensureChildLimitSnapshot(childId, institutionId);
         const snapshot = currentChildLimitSnapshot?.byProductId || {};
         const limitInfo = snapshot[String(pid)] || { effectiveMaxPerDay: null, todaysQty: 0 };
         const effectiveMaxPerDay = limitInfo.effectiveMaxPerDay;
@@ -96,7 +97,7 @@ export function calculateOrderTotal(order) {
 let currentChildLimitSnapshot = null;
 let currentChildLimitSnapshotChildId = null;
 
-async function ensureChildLimitSnapshot(childId) {
+async function ensureChildLimitSnapshot(childId, institutionId = null) {
     if (!childId) {
         currentChildLimitSnapshot = null;
         currentChildLimitSnapshotChildId = null;
@@ -106,7 +107,7 @@ async function ensureChildLimitSnapshot(childId) {
         return currentChildLimitSnapshot;
     }
     try {
-        const snapshot = await getChildProductLimitSnapshot(childId);
+        const snapshot = await getChildProductLimitSnapshot(childId, institutionId);
         currentChildLimitSnapshot = snapshot || { byProductId: {} };
         currentChildLimitSnapshotChildId = childId;
         return currentChildLimitSnapshot;
@@ -135,6 +136,7 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
     const requestId = ++latestApplyRequestId;
     const customer = typeof getCurrentCustomer === 'function' ? getCurrentCustomer() : null;
     const childId = childIdOverride || customer?.id || null;
+    const institutionId = customer?.institution_id || null;
     
     if (!childId) {
         // Hvis ingen kunde er valgt, skal alle låse fjernes.
@@ -143,7 +145,7 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
     }
     // VIGTIGT: Tving genhentning af et helt friskt snapshot for den specifikke bruger for at undgå race conditions.
     // Dette sikrer, at vi ikke bruger en forældet cache fra et tidligere brugervalg.
-    const snapshot = await getChildProductLimitSnapshot(childId);
+    const snapshot = await getChildProductLimitSnapshot(childId, institutionId);
     // En nyere apply-start betyder, at denne respons er forældet og ikke må overskrive UI.
     if (requestId !== latestApplyRequestId) return;
     const byProductId = snapshot?.byProductId || {};
@@ -187,7 +189,7 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
         if (!isAtLimit && childId && productMap.has(pid)) {
             try {
                 const product = productMap.get(pid);
-                const backendCheck = await canChildPurchase(product.id, childId, { orderItems: currentOrder });
+                const backendCheck = await canChildPurchase(product.id, childId, currentOrder, institutionId, product.name);
                 if (backendCheck && backendCheck.allowed === false) {
                     isAtLimit = true;
                 }

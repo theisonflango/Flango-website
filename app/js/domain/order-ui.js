@@ -31,7 +31,7 @@ export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelec
     }
 }
 
-export function handleOrderListClick(event, currentOrder, rerender) {
+export function handleOrderListClick(event, currentOrder, rerender, onOrderChanged) {
     const removeBtn = event.target.closest('.remove-item-btn');
     if (!removeBtn) return;
 
@@ -50,10 +50,14 @@ export function handleOrderListClick(event, currentOrder, rerender) {
     if (typeof rerender === 'function') {
         rerender();
     }
+    if (typeof onOrderChanged === 'function') {
+        onOrderChanged();
+    }
 }
 
 export async function addToOrder(product, currentOrder, orderListEl, totalPriceEl, updateSelectedUserInfo, options = {}) {
     const productsContainer = document.getElementById('products');
+    const onOrderChanged = options.onOrderChanged;
 
     // 1) Hvis produktet allerede er låst visuelt, skal klik kun give feedback
     if (productsContainer && product && product.id != null) {
@@ -73,12 +77,13 @@ export async function addToOrder(product, currentOrder, orderListEl, totalPriceE
     // 2) Tjek med backend om barnet overhovedet må købe denne vare i dag
     const customer = typeof getCurrentCustomer === 'function' ? getCurrentCustomer() : null;
     const childId = customer?.id || null;
+    const institutionId = customer?.institution_id || null;
     const productId = product?.id ?? null;
 
     if (childId && productId != null) {
         try {
             // VIGTIGT: Send `currentOrder` med, så tjekket inkluderer varer i kurven.
-            const result = await canChildPurchase(productId, childId, { orderItems: currentOrder });
+            const result = await canChildPurchase(productId, childId, currentOrder, institutionId, product?.name);
             if (result && result.allowed === false) {
                 // Barnet har allerede ramt grænsen for denne vare i dag – lås knappen og giv feedback
                 if (productsContainer) {
@@ -124,11 +129,14 @@ export async function addToOrder(product, currentOrder, orderListEl, totalPriceE
 
         playSound('addItem');
         renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo);
+        if (typeof onOrderChanged === 'function') {
+            onOrderChanged();
+        }
         return result;
     }
 }
 
-export function removeLastItemFromOrder(currentOrder, orderListEl, totalPriceEl, updateSelectedUserInfo) {
+export function removeLastItemFromOrder(currentOrder, orderListEl, totalPriceEl, updateSelectedUserInfo, onOrderChanged) {
     const removed = removeProductFromOrder(currentOrder);
     if (!removed) return;
 
@@ -140,4 +148,7 @@ export function removeLastItemFromOrder(currentOrder, orderListEl, totalPriceEl,
 
     playSound('removeItem');
     renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo);
+    if (typeof onOrderChanged === 'function') {
+        onOrderChanged();
+    }
 }

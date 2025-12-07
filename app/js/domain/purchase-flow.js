@@ -11,7 +11,120 @@ import {
 import { renderOrder } from './order-ui.js';
 import { getProductIconInfo } from './products-and-cart.js';
 import { canChildPurchase } from './purchase-limits.js';
-import { getCurrentSessionAdmin } from './session-store.js';
+import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
+
+function evaluateCartAllergy(cartItems, allergyPolicyByKey) {
+    if (!Array.isArray(cartItems) || cartItems.length === 0) {
+        return { level: 'none', reasons: [] };
+    }
+    const reasons = [];
+    cartItems.forEach(item => {
+        const product = item || {};
+        const productName = product.name || 'Ukendt vare';
+        const productAllergens = Array.isArray(product.allergens) ? product.allergens : [];
+        productAllergens.forEach(allergenKey => {
+            const policy = allergyPolicyByKey[allergenKey];
+            if (!policy || policy === 'allow') return;
+            reasons.push({ allergen: allergenKey, policy, productName });
+        });
+    });
+    if (reasons.some(r => r.policy === 'block')) return { level: 'block', reasons };
+    if (reasons.some(r => r.policy === 'warn')) return { level: 'warn', reasons };
+    return { level: 'none', reasons };
+}
+
+function prettyAllergenName(key) {
+    switch (key) {
+        case 'peanuts': return 'jordnødder';
+        case 'tree_nuts': return 'trænødder';
+        case 'milk': return 'mælk';
+        case 'egg': return 'æg';
+        case 'gluten': return 'gluten';
+        case 'fish': return 'fisk';
+        case 'shellfish': return 'skaldyr';
+        case 'sesame': return 'sesam';
+        case 'soy': return 'soja';
+        default: return key;
+    }
+}
+
+
+function groupAllergyReasons(reasons) {
+    const map = new Map();
+    reasons.forEach(r => {
+        const name = prettyAllergenName(r.allergen);
+        if (!map.has(name)) map.set(name, new Set());
+        map.get(name).add(r.productName);
+    });
+    return Array.from(map.entries()).map(([allergen, products]) =>
+        `• ${allergen}: ${Array.from(products).join(', ')}`
+    ).join('<br>');
+}
+
+// Hent allergipolitik fra Supabase for et barn
+async function fetchAllergyPolicyForChild(childId, institutionId) {
+    if (!childId) {
+        console.warn('[allergies] fetchAllergyPolicyForChild called without childId');
+        return {};
+    }
+
+    console.log('[allergies] fetchAllergyPolicyForChild → start', { childId, institutionId });
+
+    try {
+        let query = supabaseClient
+            .from('child_allergen_settings')
+            .select('allergen, policy')
+            .eq('child_id', childId);
+
+        if (institutionId) {
+            query = query.eq('institution_id', institutionId);
+        }
+
+        const { data, error } = await query;
+
+        console.log('[allergies] fetchAllergyPolicyForChild → raw result', { data, error });
+
+        if (error) {
+            console.warn('[allergies] failed to load allergy policy from Supabase', error);
+            return {};
+        }
+
+        const policy = {};
+        (data || []).forEach(row => {
+            if (!row || !row.allergen) return;
+            const key = row.allergen;
+            const value = row.policy || 'allow';
+            policy[key] = value;
+        });
+
+        console.log('[allergies] loaded policy for child', childId, policy);
+        return policy;
+    } catch (err) {
+        console.warn('[allergies] unexpected error while loading allergy policy', err);
+        return {};
+    }
+}
+
+async function fetchProductAllergensMap(productIds) {
+    if (!Array.isArray(productIds) || productIds.length === 0) return {};
+    const uniqueIds = Array.from(new Set(productIds.filter(Boolean)));
+    if (uniqueIds.length === 0) return {};
+    const { data, error } = await supabaseClient
+        .from('product_allergens')
+        .select('product_id, allergen')
+        .in('product_id', uniqueIds);
+    if (error) {
+        console.warn('[allergies] failed to load product allergens', error);
+        return {};
+    }
+    const map = {};
+    (data || []).forEach(row => {
+        if (!row.product_id || !row.allergen) return;
+        if (!map[row.product_id]) map[row.product_id] = [];
+        map[row.product_id].push(row.allergen);
+    });
+    return map;
+}
 
 export async function enforceSugarPolicy({ customer, currentOrder, allProducts }) {
     const unhealthyItemsInCart = currentOrder.filter(item => {
@@ -55,9 +168,79 @@ export async function handleCompletePurchase({
     adminProfile,
     incrementSessionSalesCount,
     completePurchaseBtn,
+    refreshProductLocks,
 }) {
     if (!customer) return showAlert("Fejl: Vælg venligst en kunde!");
     if (currentOrder.length === 0) return showAlert("Fejl: Indkøbskurven er tom!");
+    // === ALLERGI-CHECK ===
+    let allergyPolicy = customer?.allergyPolicy;
+
+    // Hvis der ikke er nogen politik endnu, eller det bare er et tomt objekt, henter vi fra Supabase
+    const isEmptyPolicy =
+        !allergyPolicy ||
+        (typeof allergyPolicy === 'object' && Object.keys(allergyPolicy).length === 0);
+
+    if (isEmptyPolicy) {
+        allergyPolicy = await fetchAllergyPolicyForChild(customer.id, customer.institution_id);
+        customer.allergyPolicy = allergyPolicy;
+    }
+
+    console.log('[allergies] effective allergyPolicy for', customer.name, allergyPolicy);
+
+    // Hent allergener for produkterne i kurven (fra DB hvis ikke allerede på produktet)
+    const productIdsInOrder = currentOrder.map(item => item.product_id || item.productId || item.id).filter(Boolean);
+    const productAllergenMap = await fetchProductAllergensMap(productIdsInOrder);
+
+    // Berig ordrelinjer med allergener ud fra allProducts / product_allergens
+    const orderWithAllergens = currentOrder.map(item => {
+        const productId = item.product_id || item.productId || item.id;
+        const product = allProducts.find(p => p.id === productId);
+
+        let srcAllergens = product ? product.allergens : null;
+        let allergens = [];
+
+        if (Array.isArray(srcAllergens)) {
+            allergens = srcAllergens;
+        } else if (typeof srcAllergens === 'string' && srcAllergens.trim().length > 0) {
+            // understøt evt. kommasepareret streng eller enkelt nøgle
+            allergens = srcAllergens.split(',').map(a => a.trim()).filter(Boolean);
+        } else if (srcAllergens && typeof srcAllergens === 'object') {
+            // understøt evt. objektmap ala { peanuts: true, fish: false, ... }
+            allergens = Object.keys(srcAllergens).filter(key => !!srcAllergens[key]);
+        } else if (productAllergenMap[productId]) {
+            allergens = productAllergenMap[productId];
+        }
+
+        return { ...item, allergens };
+    });
+
+    console.log('[allergies] policy for', customer.name, allergyPolicy);
+    console.log('[allergies] orderWithAllergens', orderWithAllergens);
+
+    const allergyResult = evaluateCartAllergy(orderWithAllergens, allergyPolicy);
+    console.log('[allergies] evaluation result', allergyResult);
+
+    if (allergyResult.level === 'block') {
+        const details = groupAllergyReasons(allergyResult.reasons);
+        await showCustomAlert(
+            'Køb Blokeret (Allergi)',
+            `Hov, ${customer.name} må ikke købe disse varer pga. registrerede allergier:<br><br>${details}<br><br>Ret venligst kurven eller vælg andre varer.`
+        );
+        return;
+    }
+
+    if (allergyResult.level === 'warn') {
+        const details = groupAllergyReasons(allergyResult.reasons);
+        const confirmedAllergy = await showCustomAlert(
+            'Allergi-advarsel',
+            `OBS: Der er registreret allergier/advarsler for ${customer.name}:<br><br>${details}<br><br>Vil du gennemføre købet alligevel?`,
+            'confirm'
+        );
+        if (!confirmedAllergy) {
+            return;
+        }
+    }
+    // === SLUT ALLERGI-CHECK ===
     let evaluation = null;
     try {
         setOrder(currentOrder);
@@ -88,9 +271,17 @@ export async function handleCompletePurchase({
         const childId = customer.id;
         for (const line of currentOrder) {
             const productId = line.product_id || line.productId || line.id;
+            const product = allProducts.find(p => p.id === productId);
             if (!productId) continue;
 
-            const result = await canChildPurchase(productId, childId, currentOrder);
+            const result = await canChildPurchase(
+                productId,
+                childId,
+                currentOrder,
+                customer.institution_id,
+                product?.name,
+                true // final checkout: undgå dobbelt-tælling af kurven
+            );
             if (result && result.allowed === false) {
                 const message = result.message || 'Det her køb er ikke tilladt lige nu. Tal med en voksen i caféen.';
                 await showCustomAlert('Køb ikke tilladt', message);
@@ -176,21 +367,22 @@ export async function handleCompletePurchase({
         completePurchaseBtn.textContent = 'Behandler...';
     }
     const cartItemsForDB = Object.values(itemCounts).map(item => ({ product_id: item.id, quantity: item.count, price: item.price }));
-    const operatorProfileId =
-        (window.__flangoCurrentClerkProfile && window.__flangoCurrentClerkProfile.id) ||
-        (window.__flangoCurrentAdminProfile && window.__flangoCurrentAdminProfile.id) ||
-        clerkProfile?.id ||
-        adminProfile?.id ||
-        null;
     const sessionAdmin = getCurrentSessionAdmin?.() || null;
+    const adminProfileResolved = sessionAdmin || (typeof getCurrentAdmin === 'function' ? getCurrentAdmin() : null) || adminProfile || null;
+    const adminProfileId = adminProfileResolved?.id || adminProfileResolved?.user_id || adminProfileResolved?.uuid || adminProfileResolved?.institution_user_id || null;
+    const clerk = typeof getCurrentClerk === 'function' ? getCurrentClerk() : null;
+    const clerkId = clerk?.id || clerk?.user_id || clerk?.uuid || clerk?.institution_user_id || null;
     const salePayload = {
         p_customer_id: customer.id,
         p_cart_items: cartItemsForDB,
         p_session_admin_id: sessionAdmin?.id || null,
         p_session_admin_name: sessionAdmin?.name || null,
     };
-    if (operatorProfileId) {
-        salePayload.p_admin_profile_id = operatorProfileId;
+    if (adminProfileId) {
+        salePayload.p_admin_profile_id = adminProfileId;
+    }
+    if (clerkId) {
+        salePayload.p_clerk_id = clerkId;
     }
     const { error } = await supabaseClient.rpc('process_sale', salePayload);
     if (error) {
@@ -218,6 +410,9 @@ export async function handleCompletePurchase({
         }
         clearCurrentCustomer();
         renderOrder(orderList, nextOrder, totalPriceEl, updateSelectedUserInfo);
+        if (typeof refreshProductLocks === 'function') {
+            refreshProductLocks();
+        }
         const selectedUserInfo = document.getElementById('selected-user-info');
         if (selectedUserInfo) selectedUserInfo.style.display = 'none';
         if (completePurchaseBtn) {

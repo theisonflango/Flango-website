@@ -3,6 +3,7 @@ import {
     initFlangoTheme,
     setupThemePickerUI,
     setupToolbarGearMenu,
+    setupToolbarHistoryButton,
     setupSettingsModal,
     setupHelpButton,
 } from './ui/shell-and-theme.js';
@@ -52,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     window.__flangoShowAlert = showAlert;
     setupToolbarGearMenu();
+    setupToolbarHistoryButton();
     setupSettingsModal();
     setupHelpButton();
 

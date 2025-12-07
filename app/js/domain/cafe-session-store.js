@@ -1,9 +1,36 @@
 // Enkel session-store for café-køb: holder styr på nuværende kunde og seneste evaluering.
 // Ingen sideeffekter på Supabase eller UI; bruges kun som central kilde til balance/overtræk-data.
 import { invalidateChildLimitSnapshot } from './products-and-cart.js';
+import { supabaseClient } from '../core/config-and-supabase.js';
 
 let currentCustomer = null;
 let lastEvaluation = null;
+
+async function loadChildAllergyPolicy(childId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('child_allergen_settings')
+            .select('allergen, policy')
+            .eq('child_id', childId);
+
+        if (error) {
+            console.warn('[allergies] fetch error:', error.message);
+            currentCustomer.allergyPolicy = {};
+            return;
+        }
+
+        const map = {};
+        (data || []).forEach(row => {
+            map[row.allergen] = row.policy;
+        });
+        currentCustomer.allergyPolicy = map;
+    } catch (err) {
+        console.error('[allergies] unexpected error:', err);
+        if (currentCustomer) {
+            currentCustomer.allergyPolicy = {};
+        }
+    }
+}
 
 const safeNumber = (value, fallback = null) => {
     const num = Number(value);
@@ -24,6 +51,9 @@ export function getCurrentBalance() {
  */
 export function setCurrentCustomer(customer) {
     currentCustomer = customer || null;
+    if (customer?.id) {
+        loadChildAllergyPolicy(customer.id);
+    }
     if (customer) {
         invalidateChildLimitSnapshot();
     }

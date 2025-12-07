@@ -7,6 +7,8 @@ import { getProductIconInfo } from './products-and-cart.js';
 import { initHistoryStore, loadSalesHistory } from './history-store.js';
 import { formatKr, buildAdjustmentTexts, showConfirmModal } from '../ui/confirm-modals.js';
 
+const HISTORY_DEBUG = false;
+
 let fullSalesHistory = [];
 let getAllUsersAccessor = () => [];
 
@@ -70,6 +72,12 @@ export async function showSalesHistory() {
     const historyStartDate = salesHistoryModal.querySelector('#history-start-date');
     const historyEndDate = salesHistoryModal.querySelector('#history-end-date');
     const printAllBalancesBtn = salesHistoryModal.querySelector('#print-all-balances-btn');
+    const undoLastSaleBtn = salesHistoryModal.querySelector('#history-undo-last-sale-btn');
+    const filterBtn = salesHistoryModal.querySelector('#history-filter-btn');
+    const filterPanel = salesHistoryModal.querySelector('#history-filter-panel');
+    const filterSelectAll = salesHistoryModal.querySelector('#history-filter-select-all');
+    const filterDeselectAll = salesHistoryModal.querySelector('#history-filter-deselect-all');
+    const filterCheckboxes = Array.from(salesHistoryModal.querySelectorAll('.history-filter-checkbox'));
 
     if (!filterDepositsBtn || !printReportBtn || !printNegativeBtn || !searchInput || !historyStartDate || !historyEndDate) {
         return;
@@ -94,6 +102,32 @@ export async function showSalesHistory() {
     printNegativeBtn.onclick = handlePrintNegativeBalance;
     if (printAllBalancesBtn) {
         printAllBalancesBtn.onclick = handlePrintAllBalances;
+    }
+    if (undoLastSaleBtn) {
+        undoLastSaleBtn.onclick = () => {
+            const handler = window.__flangoUndoLastSale;
+            if (typeof handler === 'function') {
+                handler();
+            } else {
+                showAlert('Fortryd-funktionen er ikke klar.');
+            }
+        };
+    }
+    if (filterBtn && filterPanel) {
+        filterBtn.onclick = () => {
+            const isVisible = filterPanel.style.display === 'block';
+            filterPanel.style.display = isVisible ? 'none' : 'block';
+            filterBtn.classList.toggle('active', !isVisible);
+        };
+    }
+    if (filterSelectAll && filterCheckboxes.length) {
+        filterSelectAll.onclick = () => filterCheckboxes.forEach(cb => { cb.checked = true; });
+    }
+    if (filterDeselectAll && filterCheckboxes.length) {
+        filterDeselectAll.onclick = () => filterCheckboxes.forEach(cb => { cb.checked = false; });
+    }
+    if (filterCheckboxes.length) {
+        filterCheckboxes.forEach(cb => { cb.checked = true; });
     }
     salesHistoryModal.style.display = 'flex';
 
@@ -131,16 +165,16 @@ async function fetchHistory() {
         return;
     }
     fullSalesHistory = rows;
-console.log(
-    'DEBUG history names:',
-    fullSalesHistory.slice(0, 10).map(e => ({
-        type: e.event_type,
-        target: e.target_user_name,
-        admin_name: e.admin_name,
-        clerk_name: e.clerk_name,
-        session_admin_name: e.session_admin_name,
-    })),
-);
+    if (HISTORY_DEBUG) console.log(
+        'DEBUG history names:',
+        fullSalesHistory.slice(0, 10).map(e => ({
+            type: e.event_type,
+            target: e.target_user_name,
+            admin_name: e.admin_name,
+            clerk_name: e.clerk_name,
+            session_admin_name: e.session_admin_name,
+        })),
+    );
     const filterDepositsBtn = salesHistoryModal.querySelector('#filter-deposits-btn');
     const isActive = filterDepositsBtn?.classList.contains('active');
     renderSalesHistory(fullSalesHistory, null, isActive ? 'DEPOSIT' : null);

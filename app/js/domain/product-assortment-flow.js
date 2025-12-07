@@ -60,7 +60,9 @@ export function setupProductAssortmentFlow({
         const assortmentSettings = document.getElementById('assortment-settings');
         const assortmentList = document.getElementById('assortment-list');
         assortmentList.innerHTML = '';
-        const sortedProducts = [...getAllProducts()].sort((a, b) => a.sort_order - b.sort_order);
+        const sortedProducts = [...getAllProducts()]
+            .filter(p => p.is_enabled !== false)
+            .sort((a, b) => a.sort_order - b.sort_order);
         sortedProducts.forEach(product => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'item';

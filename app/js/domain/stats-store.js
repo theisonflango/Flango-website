@@ -11,6 +11,7 @@ const safeNumber = (value) => {
 const aggregateSalesForClerk = (rows, clerkProfile) => {
     const clerkId = clerkProfile?.id || null;
     const clerkName = clerkProfile?.name || null;
+
     let totalAmount = 0;
     let customers = 0;
     let items = 0;
@@ -18,11 +19,28 @@ const aggregateSalesForClerk = (rows, clerkProfile) => {
 
     rows.forEach((event) => {
         if (event.event_type !== 'SALE') return;
-        if (clerkId && event.admin_profile_id && event.admin_profile_id !== clerkId) return;
-        if (!event.admin_profile_id && clerkName && event.admin_name && event.admin_name !== clerkName) return;
+
+        // Nye events: har clerk_name (og evt. clerk_user_id)
+        // Gamle events: ingen clerk_name, men admin_name = den der solgte
+        const eventClerkId = event.clerk_user_id || null;
+        const eventClerkName = event.clerk_name || event.admin_name || null;
+
+        let isMySale = true;
+
+        if (clerkId && eventClerkId) {
+            // Match på id, hvis vi har begge
+            isMySale = eventClerkId === clerkId;
+        } else if (clerkName && eventClerkName) {
+            // Ellers match på navn (både nye clerk_name og gamle admin_name)
+            isMySale = eventClerkName === clerkName;
+        }
+
+        if (!isMySale) return;
 
         const details = event.details || {};
         let amount = safeNumber(details.amount);
+
+        // I dine events ligger beløbet typisk i items/price_at_purchase, ikke i details.amount
         if (!amount && Array.isArray(event.items)) {
             amount = event.items.reduce((sum, item) => {
                 const qty = safeNumber(item.quantity);
@@ -30,6 +48,7 @@ const aggregateSalesForClerk = (rows, clerkProfile) => {
                 return sum + qty * price;
             }, 0);
         }
+
         totalAmount += amount;
         customers += 1;
 
@@ -37,7 +56,15 @@ const aggregateSalesForClerk = (rows, clerkProfile) => {
         itemsList.forEach((item) => {
             const qty = safeNumber(item.quantity);
             items += qty;
-            const key = item.product_id || item.product_name || item.name || item.title || item.emoji || Math.random().toString(36);
+
+            const key =
+                item.product_id ||
+                item.product_name ||
+                item.name ||
+                item.title ||
+                item.emoji ||
+                Math.random().toString(36);
+
             const existing = productMap.get(key) || {
                 productId: item.product_id || null,
                 name: item.product_name || item.name || item.title || 'Ukendt vare',
@@ -45,6 +72,7 @@ const aggregateSalesForClerk = (rows, clerkProfile) => {
                 quantity: 0,
                 totalAmountForProduct: 0,
             };
+
             existing.quantity += qty;
             existing.totalAmountForProduct += qty * safeNumber(item.price_at_purchase);
             productMap.set(key, existing);
