@@ -806,6 +806,204 @@
       text-decoration: underline;
     }
 
+    .allergy-card {
+      margin-top: 12px;
+      background: linear-gradient(135deg, rgba(252, 211, 77, 0.06), rgba(255, 255, 255, 0.98));
+      border-radius: 16px;
+      padding: 10px 12px 11px;
+      border: 1px solid rgba(253, 230, 138, 0.9);
+      box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);
+    }
+
+    .allergy-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .allergy-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .allergy-title .icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: rgba(250, 204, 21, 0.16);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .allergy-badge {
+      font-size: 10px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: rgba(251, 191, 36, 0.1);
+      color: #92400e;
+      border: 1px solid rgba(252, 211, 77, 0.9);
+      white-space: nowrap;
+    }
+
+    .allergy-description {
+      font-size: 11px;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .allergy-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 10px;
+    }
+
+    .allergy-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 11px;
+      color: #4b5563;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 12px;
+      padding: 6px 8px;
+      border: 1px solid rgba(229, 231, 235, 0.9);
+    }
+
+    .allergy-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: #111827;
+      font-size: 11px;
+    }
+
+    .allergy-label span.emoji {
+      font-size: 14px;
+    }
+
+    .allergy-toggle-group {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      background: rgba(248, 250, 252, 0.96);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      overflow: hidden;
+    }
+
+    .allergy-toggle-button {
+      border: none;
+      background: transparent;
+      padding: 5px 10px;
+      font-size: 10px;
+      cursor: pointer;
+      color: #6b7280;
+      min-width: 0;
+      flex: 1;
+      white-space: nowrap;
+      position: relative;
+      transition:
+        background 0.12s ease,
+        color 0.12s ease,
+        box-shadow 0.12s ease,
+        transform 0.12s ease;
+    }
+
+    .allergy-toggle-button:first-child {
+      border-top-left-radius: 999px;
+      border-bottom-left-radius: 999px;
+    }
+
+    .allergy-toggle-button:last-child {
+      border-top-right-radius: 999px;
+      border-bottom-right-radius: 999px;
+    }
+
+    .allergy-toggle-button + .allergy-toggle-button {
+      border-left: 1px solid rgba(226, 232, 240, 0.9);
+    }
+
+    .allergy-toggle-button.is-active-allow {
+      background: rgba(34, 197, 94, 0.14);
+      color: #15803d;
+      font-weight: 700;
+      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.7) inset;
+      transform: translateY(-0.5px);
+    }
+
+    .allergy-toggle-button.is-active-warn {
+      background: rgba(245, 158, 11, 0.18);
+      color: #92400e;
+      font-weight: 700;
+      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.75) inset;
+      transform: translateY(-0.5px);
+    }
+
+    .allergy-toggle-button.is-active-block {
+      background: rgba(239, 68, 68, 0.2);
+      color: #b91c1c;
+      font-weight: 700;
+      box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.85) inset;
+      transform: translateY(-0.5px);
+    }
+
+    .allergy-save-row {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-start;
+      font-size: 11px;
+    }
+
+    .allergy-save-row button {
+      border-radius: 999px;
+      padding: 6px 11px;
+      border: none;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 10px 22px rgba(22, 163, 74, 0.4);
+      transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
+    }
+
+    .allergy-save-row button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 26px rgba(22, 163, 74, 0.48);
+      filter: brightness(1.03);
+    }
+
+    .allergy-save-row button:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 16px rgba(22, 163, 74, 0.35);
+      filter: brightness(0.97);
+    }
+
+    .allergy-save-row button:disabled {
+      opacity: 0.7;
+      box-shadow: none;
+      cursor: default;
+    }
+
+    .allergy-feedback {
+      min-height: 14px;
+      font-size: 11px;
+      color: #16a34a;
+    }
+
     @media (max-width: 780px) {
       .container-inner {
         grid-template-columns: 1fr;
@@ -824,6 +1022,9 @@
       }
 
       .notify-body {
+        grid-template-columns: 1fr;
+      }
+      .allergy-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -1022,6 +1223,133 @@
                 </div>
               </div>
 
+              <section class="allergy-card">
+                <div class="allergy-header">
+                  <div class="allergy-title">
+                    <div class="icon">🥜</div>
+                    Allergier & madbegrænsninger
+                  </div>
+                  <span class="allergy-badge">Valgfrit</span>
+                </div>
+                <p class="allergy-description">
+                  Her kan du som forælder hjælpe med at markere, hvad dit barn <strong>ikke</strong> bør købe.
+                  Personalet kan altid hjælpe, hvis der er tale om læge-diagnosticerede allergier.
+                </p>
+                <div class="allergy-grid" id="allergy-grid">
+                  <div class="allergy-item" data-allergen-row="peanuts">
+                    <div class="allergy-label">
+                      <span class="emoji">🥜</span>
+                      <span>Jordnødder (peanuts)</span>
+                    </div>
+                    <div class="allergy-toggle-group">
+                      <button type="button" class="allergy-toggle-button" data-allergen="peanuts" data-policy="allow">Tillad</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="peanuts" data-policy="warn">Advar</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="peanuts" data-policy="block">Blokér</button>
+                    </div>
+                  </div>
+
+                  <div class="allergy-item" data-allergen-row="tree_nuts">
+                    <div class="allergy-label">
+                      <span class="emoji">🌰</span>
+                      <span>Trænødder (mandel, cashew, mm.)</span>
+                    </div>
+                    <div class="allergy-toggle-group">
+                      <button type="button" class="allergy-toggle-button" data-allergen="tree_nuts" data-policy="allow">Tillad</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="tree_nuts" data-policy="warn">Advar</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="tree_nuts" data-policy="block">Blokér</button>
+                    </div>
+                  </div>
+
+                  <div class="allergy-item" data-allergen-row="milk">
+                    <div class="allergy-label">
+                      <span class="emoji">🥛</span>
+                      <span>Mælk / mælkeprodukter</span>
+                    </div>
+                    <div class="allergy-toggle-group">
+                      <button type="button" class="allergy-toggle-button" data-allergen="milk" data-policy="allow">Tillad</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="milk" data-policy="warn">Advar</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="milk" data-policy="block">Blokér</button>
+                    </div>
+                  </div>
+
+                  <div class="allergy-item" data-allergen-row="egg">
+                    <div class="allergy-label">
+                      <span class="emoji">🥚</span>
+                      <span>Æg</span>
+                    </div>
+                    <div class="allergy-toggle-group">
+                      <button type="button" class="allergy-toggle-button" data-allergen="egg" data-policy="allow">Tillad</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="egg" data-policy="warn">Advar</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="egg" data-policy="block">Blokér</button>
+                    </div>
+                  </div>
+
+                  <div class="allergy-item" data-allergen-row="gluten">
+                    <div class="allergy-label">
+                      <span class="emoji">🌾</span>
+                      <span>Gluten / hvede</span>
+                    </div>
+                    <div class="allergy-toggle-group">
+                      <button type="button" class="allergy-toggle-button" data-allergen="gluten" data-policy="allow">Tillad</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="gluten" data-policy="warn">Advar</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="gluten" data-policy="block">Blokér</button>
+                    </div>
+                  </div>
+
+                  <div class="allergy-item" data-allergen-row="fish">
+                    <div class="allergy-label">
+                      <span class="emoji">🐟</span>
+                      <span>Fisk</span>
+                    </div>
+                    <div class="allergy-toggle-group">
+                      <button type="button" class="allergy-toggle-button" data-allergen="fish" data-policy="allow">Tillad</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="fish" data-policy="warn">Advar</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="fish" data-policy="block">Blokér</button>
+                    </div>
+                  </div>
+
+                  <div class="allergy-item" data-allergen-row="shellfish">
+                    <div class="allergy-label">
+                      <span class="emoji">🦐</span>
+                      <span>Skaldyr</span>
+                    </div>
+                    <div class="allergy-toggle-group">
+                      <button type="button" class="allergy-toggle-button" data-allergen="shellfish" data-policy="allow">Tillad</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="shellfish" data-policy="warn">Advar</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="shellfish" data-policy="block">Blokér</button>
+                    </div>
+                  </div>
+
+                  <div class="allergy-item" data-allergen-row="sesame">
+                    <div class="allergy-label">
+                      <span class="emoji">🧆</span>
+                      <span>Sesam</span>
+                    </div>
+                    <div class="allergy-toggle-group">
+                      <button type="button" class="allergy-toggle-button" data-allergen="sesame" data-policy="allow">Tillad</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="sesame" data-policy="warn">Advar</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="sesame" data-policy="block">Blokér</button>
+                    </div>
+                  </div>
+
+                <div class="allergy-item" data-allergen-row="soy">
+                    <div class="allergy-label">
+                      <span class="emoji">🫘</span>
+                      <span>Soja</span>
+                    </div>
+                    <div class="allergy-toggle-group">
+                      <button type="button" class="allergy-toggle-button" data-allergen="soy" data-policy="allow">Tillad</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="soy" data-policy="warn">Advar</button>
+                      <button type="button" class="allergy-toggle-button" data-allergen="soy" data-policy="block">Blokér</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="allergy-save-row">
+                  <button type="button" id="save-allergy-btn">Gem allergi-indstillinger</button>
+                  <div id="allergy-feedback" class="allergy-feedback"></div>
+                </div>
+              </section>
+
               <!-- Skift kode-kort -->
               <section class="card" style="margin-top: 12px; background: rgba(255, 255, 255, 0.98); border-radius: 16px; padding: 10px 12px 11px; border: 1px solid rgba(220, 220, 220, 0.95); box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);">
                 <h2 class="section-title" style="font-size: 13px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 7px;">
@@ -1077,6 +1405,8 @@
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-parent-view";
       const SAVE_NOTIFY_URL =
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/save-parent-notification";
+      const GET_ALLERGY_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-allergy-settings";
 
       const SUPABASE_URL = "https://jbknjgbpghrbrstqwoxj.supabase.co";
       const SUPABASE_ANON_KEY =
@@ -1119,8 +1449,186 @@
       const notifyFeedback = document.getElementById("notify-feedback");
 
       const balanceDot = document.getElementById("balance-dot");
+
+      const SAVE_ALLERGY_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/save-allergy-settings";
+
+      const allergyButtons = document.querySelectorAll(
+        ".allergy-toggle-button[data-allergen][data-policy]"
+      );
+      const saveAllergyBtn = document.getElementById("save-allergy-btn");
+      const allergyFeedback = document.getElementById("allergy-feedback");
+
       const balanceStatusLabel = document.getElementById("balance-status-label");
       const balanceDisplay = document.getElementById("balance-display");
+
+      function collectAllergySettingsFromUI() {
+        const map = new Map(); // allergen -> policy
+
+        allergyButtons.forEach((btn) => {
+          const allergen = btn.dataset.allergen;
+          if (!allergen) return;
+
+          if (btn.classList.contains("is-active-allow")) {
+            map.set(allergen, "allow");
+          } else if (btn.classList.contains("is-active-warn")) {
+            map.set(allergen, "warn");
+          } else if (btn.classList.contains("is-active-block")) {
+            map.set(allergen, "block");
+          }
+        });
+
+        return Array.from(map.entries()).map(([allergen, policy]) => ({
+          allergen,
+          policy,
+        }));
+      }
+
+      function setAllergyPolicyInUI(allergenKey, policy) {
+        // Først: fjern aktive klasser for alle tre knapper i denne allergi-gruppe
+        allergyButtons.forEach((btn) => {
+          if (btn.dataset.allergen !== allergenKey) return;
+          btn.classList.remove("is-active-allow", "is-active-warn", "is-active-block");
+        });
+
+        // Derefter: find den knap der matcher policy og giv den en tydelig aktiv tilstand
+        allergyButtons.forEach((btn) => {
+          if (btn.dataset.allergen !== allergenKey) return;
+          if (btn.dataset.policy !== policy) return;
+
+          if (policy === "allow") {
+            btn.classList.add("is-active-allow");
+          } else if (policy === "warn") {
+            btn.classList.add("is-active-warn");
+          } else if (policy === "block") {
+            btn.classList.add("is-active-block");
+          }
+        });
+      }
+
+      function applyAllergySettingsFromData(allergySettings) {
+        if (!allergySettings || !Array.isArray(allergySettings)) {
+          // Default: mark all as "Tillad" i UI
+          const uniqueAllergens = new Set();
+          allergyButtons.forEach((btn) => {
+            uniqueAllergens.add(btn.dataset.allergen);
+          });
+          uniqueAllergens.forEach((key) => {
+            setAllergyPolicyInUI(key, "allow");
+          });
+          return;
+        }
+
+        // allergySettings forventes at være en liste af { allergen: string, policy: 'allow'|'warn'|'block' }
+        const seen = new Set();
+        allergySettings.forEach((entry) => {
+          if (!entry || !entry.allergen || !entry.policy) return;
+          seen.add(entry.allergen);
+          setAllergyPolicyInUI(entry.allergen, entry.policy);
+        });
+
+        // Alt hvad vi ikke har data for → "allow" i UI
+        allergyButtons.forEach((btn) => {
+          const key = btn.dataset.allergen;
+          if (!seen.has(key)) {
+            setAllergyPolicyInUI(key, "allow");
+          }
+        });
+      }
+
+     async function loadAllergySettingsForChild(childId) {
+  if (!childId) return;
+  try {
+    const res = await fetch(
+      `${GET_ALLERGY_URL}?child_id=${encodeURIComponent(childId)}`,
+      {
+        method: "GET",
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+
+    if (!res.ok) {
+      console.warn("Kunne ikke hente allergi-indstillinger (HTTP):", res.status);
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    if (!data || data.success === false) {
+      console.warn("Kunne ikke hente allergi-indstillinger:", data && data.error);
+      return;
+    }
+
+    if (data.settings && Array.isArray(data.settings)) {
+      applyAllergySettingsFromData(data.settings);
+    }
+  } catch (err) {
+    console.error("Netværksfejl ved hentning af allergier:", err);
+  }
+}
+
+      allergyButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const allergenKey = btn.dataset.allergen;
+          const policy = btn.dataset.policy;
+          setAllergyPolicyInUI(allergenKey, policy);
+          // Her kan du senere tilføje kald til Supabase Edge Function for at gemme valget.
+        });
+      });
+
+      if (saveAllergyBtn) {
+        saveAllergyBtn.addEventListener("click", async () => {
+          if (!currentChildId) {
+            allergyFeedback.textContent = "Fejl: Log ind først.";
+            allergyFeedback.style.color = "#dc3545";
+            return;
+          }
+
+          const settings = collectAllergySettingsFromUI();
+
+          saveAllergyBtn.disabled = true;
+          const originalText = saveAllergyBtn.textContent;
+          saveAllergyBtn.textContent = "Gemmer...";
+          allergyFeedback.textContent = "";
+
+          try {
+            const res = await fetch(SAVE_ALLERGY_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({
+                child_id: currentChildId,
+                allergy_settings: settings,
+              }),
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok || data.success === false) {
+              allergyFeedback.textContent =
+                data.error || "Fejl: Kunne ikke gemme allergier.";
+              allergyFeedback.style.color = "#dc3545";
+              return;
+            }
+
+            allergyFeedback.textContent = "Allergi-indstillinger er gemt.";
+            allergyFeedback.style.color = "#16a34a";
+          } catch (err) {
+            console.error("Fejl ved gemning af allergier:", err);
+            allergyFeedback.textContent =
+              "Fejl: Kunne ikke gemme. Prøv igen.";
+            allergyFeedback.style.color = "#dc3545";
+          } finally {
+            saveAllergyBtn.disabled = false;
+            saveAllergyBtn.textContent = originalText;
+          }
+        });
+      }
 
       loadInstitutions();
 
@@ -1424,6 +1932,10 @@
       function displayResults(data) {
         currentChildId = data.child_id || null;
 
+        if (currentChildId && typeof loadAllergySettingsForChild === "function") {
+          loadAllergySettingsForChild(currentChildId);
+        }
+
         document.getElementById("child-name-display").textContent =
           data.child_name || "";
         const balance =
@@ -1519,6 +2031,11 @@
           parentEmailInput.value = "";
           notifyZeroCheckbox.checked = false;
           notifyTenCheckbox.checked = false;
+        }
+
+        // Allergi-indstillinger (valgfrit felt fra backend)
+        if (typeof applyAllergySettingsFromData === "function") {
+          applyAllergySettingsFromData(data.allergy_settings || null);
         }
 
         loginView.style.display = "none";
