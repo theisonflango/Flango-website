@@ -1,6 +1,6 @@
 import { supabaseClient } from '../core/config-and-supabase.js';
 
-const LIMITS_DEBUG = false;
+const LIMITS_DEBUG = true;
 
 const safeNumber = (value, fallback = 0) => {
     const num = Number(value);
@@ -46,7 +46,7 @@ async function getParentLimit(childId, productId) {
 async function getChildProfile(childId) {
     const { data, error } = await supabaseClient
         .from('users')
-        .select('id, parent_daily_budget, institution_id')
+        .select('id, daily_spend_limit, institution_id')
         .eq('id', childId)
         .single();
     if (error) {
@@ -65,7 +65,7 @@ async function getTodaysSalesForChild(childId, institutionIdOverride = null) {
     }
     let query = supabaseClient
         .from('events_view')
-        .select('event_type, created_at, items, target_user_id, institution_id')
+        .select('event_type, created_at, items, details, target_user_id, institution_id')
         .eq('event_type', 'SALE')
         .eq('target_user_id', childId)
         .gte('created_at', startIso)
@@ -180,11 +180,32 @@ async function getTodaysTotalSpend(childId, institutionId = null) {
     if (error) return 0;
     let total = 0;
     rows.forEach((row) => {
-        const items = normalizeItems(row?.items ?? row?.details);
-        items.forEach((item) => {
-            total += extractPrice(item) * extractQuantity(item);
-        });
+        const details = row?.details ?? {};
+        let rowTotal = 0;
+
+        // Primært: brug total_amount fra details, hvis det findes
+        if (typeof details.total_amount === 'number') {
+            rowTotal = details.total_amount;
+        } else {
+            // Fallback: summér pris * antal fra items
+            const items = normalizeItems(row?.items ?? row?.details);
+            items.forEach((item) => {
+                rowTotal += extractPrice(item) * extractQuantity(item);
+            });
+        }
+
+        total += rowTotal;
     });
+
+    if (LIMITS_DEBUG) {
+        console.log('[limits] getTodaysTotalSpend', {
+            childId,
+            institutionId,
+            rows: rows.length,
+            total,
+        });
+    }
+
     return total;
 }
 
@@ -276,12 +297,21 @@ export async function canChildPurchase(productId, childId, orderItems = [], inst
         }
     }
 
-    // 6) Dagligt beløb (parent_daily_budget)
+    // 6) Dagligt beløb (daily_spend_limit)
     const { child } = await getChildProfile(childId);
-    const dailyBudget = child?.parent_daily_budget ?? null;
+    const dailyBudget = child?.daily_spend_limit ?? null;
     if (dailyBudget !== null && dailyBudget !== undefined) {
         const todaysTotalSpend = await getTodaysTotalSpend(childId, institutionId);
         const price = safeNumber(product.price, 0);
+        if (LIMITS_DEBUG) {
+            console.log('[limits] daily budget check', {
+                childId,
+                dailyBudget,
+                todaysTotalSpend,
+                price,
+                combined: todaysTotalSpend + price,
+            });
+        }
         // Dagligt beløb tjek
         if (todaysTotalSpend + price > safeNumber(dailyBudget, 0)) {
             return { allowed: false, message: 'Du har nået dit daglige max-beløb i caféen. Tal med en voksen, hvis der er noget, du er i tvivl om.' };

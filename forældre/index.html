@@ -1004,6 +1004,114 @@
       color: #16a34a;
     }
 
+    .spend-limit-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .spend-limit-chip {
+      border-radius: 999px;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      background: rgba(255, 255, 255, 0.96);
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      box-shadow: 0 8px 18px rgba(148, 163, 184, 0.18);
+      transition:
+        background 0.12s ease,
+        box-shadow 0.12s ease,
+        transform 0.12s ease;
+    }
+
+    .spend-limit-chip:hover {
+      background: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(148, 163, 184, 0.22);
+    }
+
+    .spend-limit-chip.is-active {
+      background: rgba(59, 130, 246, 0.12);
+      border-color: rgba(59, 130, 246, 0.6);
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+
+    .spend-limit-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-top: 2px;
+    }
+
+    .spend-limit-row input[type="number"] {
+      flex: 1;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      padding: 7px 12px;
+      font-size: 12px;
+      background: rgba(249, 250, 251, 0.98);
+      outline: none;
+      transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        background-color 0.15s ease;
+    }
+
+    .spend-limit-row input[type="number"]:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+      background: #ffffff;
+    }
+
+    .spend-limit-row button {
+      border-radius: 999px;
+      border: none;
+      padding: 7px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      color: white;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 10px 22px rgba(59, 130, 246, 0.4);
+      transition:
+        transform 0.1s ease,
+        box-shadow 0.1s ease,
+        filter 0.1s ease;
+      white-space: nowrap;
+    }
+
+    .spend-limit-row button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 26px rgba(59, 130, 246, 0.48);
+      filter: brightness(1.03);
+    }
+
+    .spend-limit-row button:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 16px rgba(59, 130, 246, 0.35);
+      filter: brightness(0.97);
+    }
+
+    .spend-limit-row button:disabled {
+      opacity: 0.7;
+      box-shadow: none;
+      cursor: default;
+    }
+
+    .spend-limit-feedback {
+      margin-top: 4px;
+      font-size: 11px;
+      min-height: 14px;
+      color: #16a34a;
+    }
+
     @media (max-width: 780px) {
       .container-inner {
         grid-template-columns: 1fr;
@@ -1183,6 +1291,34 @@
               </div>
 
               <div class="notify-card">
+              <section class="card" style="margin-top: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(255, 255, 255, 0.98)); border-radius: 16px; padding: 10px 12px 11px; border: 1px solid rgba(199, 210, 254, 0.9); box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);">
+                <h2 class="section-title" style="font-size: 13px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 7px;">
+                  <div class="icon" style="width: 24px; height: 24px; border-radius: 999px; background: rgba(59, 130, 246, 0.12); display: flex; align-items: center; justify-content: center; font-size: 14px;">💰</div>
+                  Daglig beløbsgrænse
+                </h2>
+                <p class="section-subtitle" style="font-size: 11px; color: #6b7280; margin-bottom: 6px;">
+                  Sæt en maksimal grænse for, hvor meget der må bruges i caféen pr. dag. Du kan vælge et forslag eller skrive et andet beløb.
+                </p>
+
+                <div class="spend-limit-chips">
+                  <button type="button" class="spend-limit-chip daily-limit-chip" data-amount="20">20 kr.</button>
+                  <button type="button" class="spend-limit-chip daily-limit-chip" data-amount="30">30 kr.</button>
+                  <button type="button" class="spend-limit-chip daily-limit-chip" data-amount="40">40 kr.</button>
+                  <button type="button" class="spend-limit-chip daily-limit-chip" data-amount="50">50 kr.</button>
+                </div>
+
+                <div class="spend-limit-row">
+                  <input
+                    type="number"
+                    id="daily-limit-input"
+                    min="0"
+                    step="1"
+                    placeholder="Beløbsgrænse i kr. pr. dag (fx 20)"
+                  />
+                  <button type="button" id="save-daily-limit-btn">Gem beløbsgrænse</button>
+                </div>
+                <p id="daily-limit-feedback" class="spend-limit-feedback"></p>
+              </section>
                 <div class="notify-header">
                   <div class="notify-title">
                     <div class="icon">📧</div>
@@ -1457,12 +1593,20 @@
 
       const SAVE_ALLERGY_URL =
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/save-allergy-settings";
+      const SAVE_DAILY_LIMIT_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/save-daily-limit";
 
       const allergyButtons = document.querySelectorAll(
         ".allergy-toggle-button[data-allergen][data-policy]"
       );
       const saveAllergyBtn = document.getElementById("save-allergy-btn");
       const allergyFeedback = document.getElementById("allergy-feedback");
+
+      // Daglig beløbsgrænse (forældre)
+      const dailyLimitInput = document.getElementById("daily-limit-input");
+      const dailyLimitChips = document.querySelectorAll(".daily-limit-chip");
+      const saveDailyLimitBtn = document.getElementById("save-daily-limit-btn");
+      const dailyLimitFeedback = document.getElementById("daily-limit-feedback");
 
       const balanceStatusLabel = document.getElementById("balance-status-label");
       const balanceDisplay = document.getElementById("balance-display");
@@ -1583,6 +1727,26 @@
         });
       });
 
+      // Quick-valg til daglig beløbsgrænse (20, 30, 40, 50 kr.)
+      if (dailyLimitChips && dailyLimitChips.length) {
+        dailyLimitChips.forEach((chip) => {
+          chip.addEventListener("click", () => {
+            const amount = chip.dataset.amount;
+            if (dailyLimitInput) {
+              dailyLimitInput.value = amount || "";
+              dailyLimitInput.focus();
+            }
+
+            dailyLimitChips.forEach((c) => c.classList.remove("is-active"));
+            chip.classList.add("is-active");
+
+            if (dailyLimitFeedback) {
+              dailyLimitFeedback.textContent = "";
+            }
+          });
+        });
+      }
+
       if (saveAllergyBtn) {
         saveAllergyBtn.addEventListener("click", async () => {
           if (!currentChildId) {
@@ -1631,6 +1795,86 @@
           } finally {
             saveAllergyBtn.disabled = false;
             saveAllergyBtn.textContent = originalText;
+          }
+        });
+      }
+
+      if (saveDailyLimitBtn) {
+        saveDailyLimitBtn.addEventListener("click", async () => {
+          if (!currentChildId) {
+            if (dailyLimitFeedback) {
+              dailyLimitFeedback.textContent = "Fejl: Log ind først.";
+              dailyLimitFeedback.style.color = "#dc3545";
+            }
+            return;
+          }
+
+          if (!dailyLimitInput) return;
+
+          const raw = (dailyLimitInput.value || "").trim();
+          if (!raw) {
+            if (dailyLimitFeedback) {
+              dailyLimitFeedback.textContent = "Skriv et beløb i kroner.";
+              dailyLimitFeedback.style.color = "#dc3545";
+            }
+            return;
+          }
+
+          const parsed = Number(raw.replace(",", "."));
+          if (!Number.isFinite(parsed) || parsed < 0) {
+            if (dailyLimitFeedback) {
+              dailyLimitFeedback.textContent = "Beløbet skal være et tal på mindst 0 kr.";
+              dailyLimitFeedback.style.color = "#dc3545";
+            }
+            return;
+          }
+
+          const limit = Math.round(parsed);
+
+          saveDailyLimitBtn.disabled = true;
+          const originalText = saveDailyLimitBtn.textContent;
+          saveDailyLimitBtn.textContent = "Gemmer...";
+          if (dailyLimitFeedback) dailyLimitFeedback.textContent = "";
+
+          try {
+            const res = await fetch(SAVE_DAILY_LIMIT_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({
+                child_id: currentChildId,
+                daily_spend_limit: limit, // forventes at være i kroner pr. dag
+              }),
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok || data.success === false) {
+              if (dailyLimitFeedback) {
+                dailyLimitFeedback.textContent =
+                  data.error || "Fejl: Kunne ikke gemme beløbsgrænsen.";
+                dailyLimitFeedback.style.color = "#dc3545";
+              }
+              return;
+            }
+
+            if (dailyLimitFeedback) {
+              dailyLimitFeedback.textContent = "Beløbsgrænsen er gemt.";
+              dailyLimitFeedback.style.color = "#16a34a";
+            }
+          } catch (err) {
+            console.error("Fejl ved gemning af daglig beløbsgrænse:", err);
+            if (dailyLimitFeedback) {
+              dailyLimitFeedback.textContent =
+                "Fejl: Kunne ikke gemme beløbsgrænsen. Prøv igen.";
+              dailyLimitFeedback.style.color = "#dc3545";
+            }
+          } finally {
+            saveDailyLimitBtn.disabled = false;
+            saveDailyLimitBtn.textContent = originalText;
           }
         });
       }
@@ -1734,6 +1978,7 @@
             headers: {
               "Content-Type": "application/json",
               apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
             },
             body: JSON.stringify({
               institution_id: institutionId,
@@ -1778,10 +2023,21 @@
         resultsView.style.display = "none";
         loginForm.reset();
         loginError.style.display = "none";
+
         notifyFeedback.textContent = "";
         parentEmailInput.value = "";
         notifyZeroCheckbox.checked = false;
         notifyTenCheckbox.checked = false;
+
+        // Nulstil allergi/limits UI
+        if (allergyFeedback) allergyFeedback.textContent = "";
+        if (dailyLimitFeedback) dailyLimitFeedback.textContent = "";
+        if (dailyLimitInput) dailyLimitInput.value = "";
+        if (dailyLimitChips && dailyLimitChips.length) {
+          dailyLimitChips.forEach((chip) => chip.classList.remove("is-active"));
+        }
+
+        currentChildId = null;
       });
 
       if (changePinForm) {
@@ -2036,6 +2292,36 @@
           parentEmailInput.value = "";
           notifyZeroCheckbox.checked = false;
           notifyTenCheckbox.checked = false;
+        }
+
+        // Daglig beløbsgrænse (valgfri) – forventer at backend evt. sender `daily_spend_limit` i kroner
+        if (dailyLimitInput) {
+          const limitRaw = data.daily_spend_limit;
+          if (limitRaw !== undefined && limitRaw !== null && !isNaN(Number(limitRaw))) {
+            const limit = Number(limitRaw);
+            dailyLimitInput.value = limit.toString();
+
+            if (dailyLimitChips && dailyLimitChips.length) {
+              dailyLimitChips.forEach((chip) => {
+                chip.classList.remove("is-active");
+                if (Number(chip.dataset.amount) === limit) {
+                  chip.classList.add("is-active");
+                }
+              });
+            }
+
+            if (dailyLimitFeedback) {
+              dailyLimitFeedback.textContent = "";
+            }
+          } else {
+            dailyLimitInput.value = "";
+            if (dailyLimitChips && dailyLimitChips.length) {
+              dailyLimitChips.forEach((chip) => chip.classList.remove("is-active"));
+            }
+            if (dailyLimitFeedback) {
+              dailyLimitFeedback.textContent = "";
+            }
+          }
         }
 
         // Allergi-indstillinger (valgfrit felt fra backend)
