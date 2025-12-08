@@ -6,7 +6,7 @@ export function initHistoryStore({ supabaseClient, getInstitutionId }) {
     _getInstitutionId = getInstitutionId || null;
 }
 
-export async function loadSalesHistory({ from, to } = {}) {
+export async function loadSalesHistory({ from, to, includeTestUsers = false } = {}) {
     if (!_supabaseClient) {
         throw new Error('History store not initialized.');
     }
@@ -30,6 +30,11 @@ export async function loadSalesHistory({ from, to } = {}) {
     }
     if (endIso) {
         query = query.lte('created_at', endIso);
+    }
+
+    // Filter out test users unless explicitly included
+    if (!includeTestUsers) {
+        query = query.or('target_is_test_user.is.null,target_is_test_user.eq.false');
     }
 
     const { data, error } = await query;

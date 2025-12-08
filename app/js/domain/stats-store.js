@@ -9,7 +9,6 @@ const safeNumber = (value) => {
 };
 
 const aggregateSalesForClerk = (rows, clerkProfile) => {
-    const clerkId = clerkProfile?.id || null;
     const clerkName = clerkProfile?.name || null;
 
     let totalAmount = 0;
@@ -20,20 +19,12 @@ const aggregateSalesForClerk = (rows, clerkProfile) => {
     rows.forEach((event) => {
         if (event.event_type !== 'SALE') return;
 
-        // Nye events: har clerk_name (og evt. clerk_user_id)
-        // Gamle events: ingen clerk_name, men admin_name = den der solgte
-        const eventClerkId = event.clerk_user_id || null;
-        const eventClerkName = event.clerk_name || event.admin_name || null;
+        // Use clerk_name directly from events_view (with COALESCE fallback built-in)
+        // The view returns clerk_name from clerk_user_id, or falls back to admin_name for old records
+        const eventClerkName = event.clerk_name || null;
 
-        let isMySale = true;
-
-        if (clerkId && eventClerkId) {
-            // Match på id, hvis vi har begge
-            isMySale = eventClerkId === clerkId;
-        } else if (clerkName && eventClerkName) {
-            // Ellers match på navn (både nye clerk_name og gamle admin_name)
-            isMySale = eventClerkName === clerkName;
-        }
+        // Match by name (works for both old and new records thanks to COALESCE in view)
+        const isMySale = eventClerkName && clerkName && (eventClerkName === clerkName);
 
         if (!isMySale) return;
 

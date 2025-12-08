@@ -129,6 +129,34 @@ export async function showSalesHistory() {
     if (filterCheckboxes.length) {
         filterCheckboxes.forEach(cb => { cb.checked = true; });
     }
+
+    // Find or create the test users checkbox
+    let showTestUsersCheckbox = salesHistoryModal.querySelector('#show-test-users-checkbox');
+    if (!showTestUsersCheckbox) {
+        if (filterPanel) {
+            // Create checkbox container
+            const checkboxContainer = document.createElement('div');
+            checkboxContainer.style.marginTop = '16px';
+            checkboxContainer.style.paddingTop = '16px';
+            checkboxContainer.style.borderTop = '1px solid var(--border-color, #e0e0e0)';
+            checkboxContainer.innerHTML = `
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                    <input type="checkbox" id="show-test-users-checkbox" style="cursor: pointer;">
+                    <span>Vis testbrugere (Snoop Dog, Test Aladin)</span>
+                </label>
+            `;
+            filterPanel.appendChild(checkboxContainer);
+
+            // Get reference after creation
+            showTestUsersCheckbox = document.getElementById('show-test-users-checkbox');
+        }
+    }
+
+    // Wire up event listener to refetch history when toggled
+    if (showTestUsersCheckbox) {
+        showTestUsersCheckbox.onchange = fetchHistory;
+    }
+
     salesHistoryModal.style.display = 'flex';
 
     const now = new Date();
@@ -152,12 +180,19 @@ async function fetchHistory() {
     const searchInput = salesHistoryModal.querySelector('#search-history-input');
     const historyStartDate = salesHistoryModal.querySelector('#history-start-date');
     const historyEndDate = salesHistoryModal.querySelector('#history-end-date');
+    const testUsersCheckbox = document.getElementById('show-test-users-checkbox');
     if (!searchInput || !historyStartDate || !historyEndDate) return;
 
     searchInput.value = '';
     const startDateStr = historyStartDate.value;
     const endDateStr = historyEndDate.value;
-    const { rows, error } = await loadSalesHistory({ from: startDateStr, to: endDateStr });
+    const includeTestUsers = testUsersCheckbox ? testUsersCheckbox.checked : false;  // Default false
+
+    const { rows, error } = await loadSalesHistory({
+        from: startDateStr,
+        to: endDateStr,
+        includeTestUsers
+    });
 
     if (error) {
         fullSalesHistory = [];
