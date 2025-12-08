@@ -1,6 +1,6 @@
 import { supabaseClient } from '../core/config-and-supabase.js';
 
-const LIMITS_DEBUG = true;
+const LIMITS_DEBUG = false;
 
 const safeNumber = (value, fallback = 0) => {
     const num = Number(value);
