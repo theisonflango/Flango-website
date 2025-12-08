@@ -184,6 +184,10 @@ h2 {
     gap: 8px;
 }
 
+/* ========================================
+   PRODUCT LOCK OVERLAY - FORBEDRET VERSION
+   ======================================== */
+
 /* Standard: ingen lock-overlay på produkter */
 .product-btn .avatar-lock-overlay {
     display: none;
@@ -194,24 +198,52 @@ h2 {
     cursor: not-allowed;
 }
 
+/* Produktindhold får absolute positioning for at IKKE deltage i flex layout */
 .product-btn.product-limit-reached .product-btn-inner {
-    filter: grayscale(90%) brightness(0.85);
-}
-
-/* Vis avatar-låse-overlayet ovenpå produktkortet når det er låst */
-.product-btn.product-limit-reached .avatar-lock-overlay {
+    position: absolute;  /* Tager den ud af flex layout! */
+    inset: 0;            /* Fylder hele kortet */
+    z-index: 1;
+    /* INGEN filter - produktet er fuldt synligt, kun blur fra overlay */
     display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-/* Låsen må gerne være lidt større på produktkort */
+/* Sørg for at produktikonet er synligt under overlay */
+.product-btn.product-limit-reached .product-icon {
+    z-index: 2;
+}
+
+/* Vis avatar-låse-overlay ovenpå produktkortet når det er låst */
+.product-btn.product-limit-reached .avatar-lock-overlay {
+    display: flex;                           /* ALTID vist når låst */
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.00);   /* 15% hvid overlay - subtil dæmpning */
+    backdrop-filter: blur(0.5px);              /* Lidt blur - dæmper produktet subtilt */
+    -webkit-backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 14px;
+}
+
+/* Gør låse-ikonet 100% synligt og stort - INGEN baggrund */
 .product-btn.product-limit-reached .avatar-lock-overlay img {
-    width: 64px;
-    height: 64px;
+    width: 100%;                             /* Fylder hele kortet proportionelt */
+    height: 100%;
+    max-width: 180px;                        /* Men max 180px */
+    max-height: 180px;
+    object-fit: contain;                     /* Bevar proportioner */
+    opacity: 1.0;                            /* 100% synlig */
+    filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8));  /* MEGET kraftig skygge */
 }
 
-/* Når man klikker på et låst produkt, skal låsen ryste */
-.product-btn.product-limit-reached:active .avatar-lock-overlay {
-    animation: shake-animation 0.4s ease-in-out;
+/* Fjern hover effekt på låste produkter */
+.product-btn.product-limit-reached:hover {
+    transform: none;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+    border-color: #f1d7a7;
 }
 
 .product-emoji {
@@ -2199,6 +2231,20 @@ h3 {
     0%, 100% { transform: translateX(0); }
     20%, 60% { transform: translateX(-4px); }
     40%, 80% { transform: translateX(4px); }
+}
+
+/* Fade-in animation når produkt bliver låst */
+@keyframes lockFadeIn {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0px);
+        -webkit-backdrop-filter: blur(0px);
+    }
+    to {
+        opacity: 1;
+        backdrop-filter: blur(0px);
+        -webkit-backdrop-filter: blur(0px);
+    }
 }
 
 .avatar-lock-overlay.shake {
