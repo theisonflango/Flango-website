@@ -1,5 +1,6 @@
 import { showAlert, showCustomAlert, playSound } from '../ui/sound-and-alerts.js';
 import { supabaseClient } from '../core/config-and-supabase.js';
+import { OVERDRAFT_LIMIT } from '../core/constants.js';
 import { setOrder, getOrder, clearOrder, getOrderTotal } from './order-store.js';
 import { evaluatePurchase } from './cafe-session.js';
 import {
@@ -10,8 +11,133 @@ import {
 } from './cafe-session-store.js';
 import { renderOrder } from './order-ui.js';
 import { getProductIconInfo } from './products-and-cart.js';
-import { canChildPurchase } from './purchase-limits.js';
+import { canChildPurchase, invalidateTodaysSalesCache } from './purchase-limits.js';
 import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
+
+// ============================================================================
+// HELPER FUNKTIONER FOR handleCompletePurchase (OPT-6)
+// ============================================================================
+
+/**
+ * Beriger ordrelinjer med allergeninformation
+ * @param {Array} order - Ordre linjer
+ * @param {Array} allProducts - Alle produkter
+ * @param {Object} productAllergenMap - Map af produkt ID til allergener
+ * @returns {Array} Ordre med allergen info
+ */
+function enrichOrderWithAllergens(order, allProducts, productAllergenMap) {
+    return order.map(item => {
+        const productId = item.product_id || item.productId || item.id;
+        const product = allProducts.find(p => p.id === productId);
+
+        let srcAllergens = product ? product.allergens : null;
+        let allergens = [];
+
+        if (Array.isArray(srcAllergens)) {
+            allergens = srcAllergens;
+        } else if (typeof srcAllergens === 'string' && srcAllergens.trim().length > 0) {
+            allergens = srcAllergens.split(',').map(a => a.trim()).filter(Boolean);
+        } else if (srcAllergens && typeof srcAllergens === 'object') {
+            allergens = Object.keys(srcAllergens).filter(key => !!srcAllergens[key]);
+        } else if (productAllergenMap[productId]) {
+            allergens = productAllergenMap[productId];
+        }
+
+        return { ...item, allergens };
+    });
+}
+
+/**
+ * Grupperer ordre items efter produkt ID og tæller antal
+ * @param {Array} order - Ordre linjer
+ * @returns {Object} Map af produkt ID til item med count
+ */
+function groupOrderItems(order) {
+    return order.reduce((acc, item) => {
+        acc[item.id] = acc[item.id] || { ...item, count: 0 };
+        acc[item.id].count++;
+        return acc;
+    }, {});
+}
+
+/**
+ * Bygger bekræftelsesdialog UI
+ * @param {Object} customer - Kunde
+ * @param {Array} currentOrder - Ordre
+ * @param {number} finalTotal - Totalt beløb
+ * @param {number} newBalance - Ny balance
+ * @returns {string} HTML string til bekræftelsesdialog
+ */
+function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance) {
+    // Grupper items efter produkt ID
+    const itemCounts = groupOrderItems(currentOrder);
+
+    // Byg produkt liste
+    const itemsSummary = Object.values(itemCounts).map(item => {
+        const iconInfo = getProductIconInfo(item);
+        const visual = iconInfo
+            ? `<img src="${iconInfo.path}" alt="${item.name}" class="confirm-product-icon">`
+            : `<span class="confirm-product-emoji">${item.emoji || '❓'}</span>`;
+        return `<div class="confirm-product-line">${visual}<span>${item.count} x ${item.name}</span></div>`;
+    }).join('');
+
+    // Byg negativ balance advarsel hvis relevant
+    let negativeBalanceWarning = '';
+    if (newBalance < 0) {
+        if (customer.balance < 0) {
+            negativeBalanceWarning = `<p style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #f5c6cb;"><strong>Advarsel:</strong> Er du helt sikker på, at du vil gå endnu mere i minus?</p>`;
+        } else {
+            negativeBalanceWarning = `<p style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #f5c6cb;"><strong>Advarsel:</strong> Er du helt sikker på, du vil gå i minus?</p>`;
+        }
+    }
+
+    return `<strong>${customer.name}</strong> køber:<br>${itemsSummary}<br>for <strong>${finalTotal.toFixed(2)} kr.</strong><hr style="margin: 15px 0; border: 1px solid #eee;">${customer.name} har <strong>${newBalance.toFixed(2)} kr.</strong> tilbage.${negativeBalanceWarning}`;
+}
+
+/**
+ * Sætter knap state (loading eller normal)
+ * @param {HTMLElement} btn - Button element
+ * @param {string} state - 'loading' eller 'normal'
+ */
+function setButtonLoadingState(btn, state) {
+    if (!btn) return;
+    if (state === 'loading') {
+        btn.disabled = true;
+        btn.textContent = 'Behandler...';
+    } else {
+        btn.disabled = false;
+        btn.textContent = 'Gennemfør Køb';
+    }
+}
+
+/**
+ * Resolver admin og clerk IDs til database payload
+ * @param {Object} options - { sessionAdmin, adminProfile, clerkProfile }
+ * @returns {Object} - { adminProfileId, clerkId, sessionAdmin }
+ */
+function resolveAdminAndClerkIds({ sessionAdmin, adminProfile, clerkProfile }) {
+    const adminProfileResolved = sessionAdmin
+        || (typeof getCurrentAdmin === 'function' ? getCurrentAdmin() : null)
+        || adminProfile
+        || null;
+
+    const adminProfileId = adminProfileResolved?.id
+        || adminProfileResolved?.user_id
+        || adminProfileResolved?.uuid
+        || adminProfileResolved?.institution_user_id
+        || null;
+
+    const clerk = typeof getCurrentClerk === 'function' ? getCurrentClerk() : clerkProfile;
+    const clerkId = clerk?.id
+        || clerk?.user_id
+        || clerk?.uuid
+        || clerk?.institution_user_id
+        || null;
+
+    return { adminProfileId, clerkId, sessionAdmin };
+}
+
+// ============================================================================
 
 function evaluateCartAllergy(cartItems, allergyPolicyByKey) {
     if (!Array.isArray(cartItems) || cartItems.length === 0) {
@@ -180,39 +306,23 @@ export async function handleCompletePurchase({
         !allergyPolicy ||
         (typeof allergyPolicy === 'object' && Object.keys(allergyPolicy).length === 0);
 
+    // OPTIMERING: Parallelize allergi-checks for 100-200ms speedup
+    const productIdsInOrder = currentOrder.map(item => item.product_id || item.productId || item.id).filter(Boolean);
+
+    const [fetchedAllergyPolicy, productAllergenMap] = await Promise.all([
+        isEmptyPolicy ? fetchAllergyPolicyForChild(customer.id, customer.institution_id) : Promise.resolve(allergyPolicy),
+        fetchProductAllergensMap(productIdsInOrder)
+    ]);
+
     if (isEmptyPolicy) {
-        allergyPolicy = await fetchAllergyPolicyForChild(customer.id, customer.institution_id);
+        allergyPolicy = fetchedAllergyPolicy;
         customer.allergyPolicy = allergyPolicy;
     }
 
     console.log('[allergies] effective allergyPolicy for', customer.name, allergyPolicy);
 
-    // Hent allergener for produkterne i kurven (fra DB hvis ikke allerede på produktet)
-    const productIdsInOrder = currentOrder.map(item => item.product_id || item.productId || item.id).filter(Boolean);
-    const productAllergenMap = await fetchProductAllergensMap(productIdsInOrder);
-
-    // Berig ordrelinjer med allergener ud fra allProducts / product_allergens
-    const orderWithAllergens = currentOrder.map(item => {
-        const productId = item.product_id || item.productId || item.id;
-        const product = allProducts.find(p => p.id === productId);
-
-        let srcAllergens = product ? product.allergens : null;
-        let allergens = [];
-
-        if (Array.isArray(srcAllergens)) {
-            allergens = srcAllergens;
-        } else if (typeof srcAllergens === 'string' && srcAllergens.trim().length > 0) {
-            // understøt evt. kommasepareret streng eller enkelt nøgle
-            allergens = srcAllergens.split(',').map(a => a.trim()).filter(Boolean);
-        } else if (srcAllergens && typeof srcAllergens === 'object') {
-            // understøt evt. objektmap ala { peanuts: true, fish: false, ... }
-            allergens = Object.keys(srcAllergens).filter(key => !!srcAllergens[key]);
-        } else if (productAllergenMap[productId]) {
-            allergens = productAllergenMap[productId];
-        }
-
-        return { ...item, allergens };
-    });
+    // OPTIMERING: Brug helper funktion til at berige ordrelinjer med allergener
+    const orderWithAllergens = enrichOrderWithAllergens(currentOrder, allProducts, productAllergenMap);
 
     console.log('[allergies] policy for', customer.name, allergyPolicy);
     console.log('[allergies] orderWithAllergens', orderWithAllergens);
@@ -258,7 +368,7 @@ export async function handleCompletePurchase({
             currentBalance: customer?.balance ?? null,
             orderItems: currentOrder,
             products: allProducts,
-            maxOverdraft: -10,
+            maxOverdraft: OVERDRAFT_LIMIT,
         };
         evaluation = evaluatePurchase(purchaseInput);
         console.log('[cafe-session] evaluatePurchase result:', evaluation);
@@ -269,12 +379,14 @@ export async function handleCompletePurchase({
 
     try {
         const childId = customer.id;
-        for (const line of currentOrder) {
+
+        // Parallel validation checks for all items (much faster than sequential)
+        const checkPromises = currentOrder.map(async (line) => {
             const productId = line.product_id || line.productId || line.id;
             const product = allProducts.find(p => p.id === productId);
-            if (!productId) continue;
+            if (!productId) return { allowed: true };
 
-            const result = await canChildPurchase(
+            return await canChildPurchase(
                 productId,
                 childId,
                 currentOrder,
@@ -282,11 +394,16 @@ export async function handleCompletePurchase({
                 product?.name,
                 true // final checkout: undgå dobbelt-tælling af kurven
             );
-            if (result && result.allowed === false) {
-                const message = result.message || 'Det her køb er ikke tilladt lige nu. Tal med en voksen i caféen.';
-                await showCustomAlert('Køb ikke tilladt', message);
-                return;
-            }
+        });
+
+        const results = await Promise.all(checkPromises);
+
+        // Check if any validation failed
+        const failedCheck = results.find(result => result && result.allowed === false);
+        if (failedCheck) {
+            const message = failedCheck.message || 'Det her køb er ikke tilladt lige nu. Tal med en voksen i caféen.';
+            await showCustomAlert('Køb ikke tilladt', message);
+            return;
         }
     } catch (err) {
         console.warn('[canChildPurchase] Uventet fejl, tillader køb som fallback:', err);
@@ -327,51 +444,56 @@ export async function handleCompletePurchase({
         console.warn('[cafe-session] finalTotal selection failed, using legacy total:', err);
     }
 
+    // Tjek om dette er et gratis admin-køb (SKAL ske før finansiel evaluering)
+    const isAdminCustomer = customer?.role === 'admin';
+    const adminsPurchaseFree = window.__flangoInstitutionSettings?.adminsPurchaseFree || false;
+    const shouldBeFreePurchase = isAdminCustomer && adminsPurchaseFree;
+
+    // Hvis admin skal købe gratis, sæt finalTotal til 0
+    if (shouldBeFreePurchase) {
+        finalTotal = 0;
+        console.log('[purchase-flow] Admin gratis-køb aktiveret - finalTotal sat til 0');
+    }
+
     applyEvaluation(evaluation);
     const finance = getFinancialState(finalTotal);
     const newBalance = Number.isFinite(finance.newBalance) ? finance.newBalance : customer.balance - finalTotal;
     const overdraftBreached = !!finance.overdraftBreached;
     const availableUntilLimit = Number.isFinite(finance.availableUntilLimit)
         ? finance.availableUntilLimit
-        : customer.balance + 10;
+        : customer.balance - OVERDRAFT_LIMIT;
 
     if (overdraftBreached) {
-        const errorMessage = `Der er ikke penge nok på kontoen til dette køb!<br>Du har <strong>${availableUntilLimit.toFixed(2)} kr.</strong> tilbage, før du rammer -10 kr. grænsen.<br><br>Husk at bede dine forældre pænt om at overføre.`;
+        const errorMessage = `Der er ikke penge nok på kontoen til dette køb!<br>Du har <strong>${availableUntilLimit.toFixed(2)} kr.</strong> tilbage, før du rammer ${OVERDRAFT_LIMIT} kr. grænsen.<br><br>Husk at bede dine forældre pænt om at overføre.`;
         return showCustomAlert('Køb Afvist', errorMessage);
     }
-    let negativeBalanceWarning = '';
-    if (newBalance < 0) {
-        if (customer.balance < 0) {
-            negativeBalanceWarning = `<p style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #f5c6cb;"><strong>Advarsel:</strong> Er du helt sikker på, at du vil gå endnu mere i minus?</p>`;
-        } else {
-            negativeBalanceWarning = `<p style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #f5c6cb;"><strong>Advarsel:</strong> Er du helt sikker på, du vil gå i minus?</p>`;
-        }
-    }
-    const itemCounts = currentOrder.reduce((acc, item) => {
-        acc[item.id] = acc[item.id] || { ...item, count: 0 };
-        acc[item.id].count++;
-        return acc;
-    }, {});
-    const itemsSummary = Object.values(itemCounts).map(item => {
-        const iconInfo = getProductIconInfo(item);
-        const visual = iconInfo
-            ? `<img src="${iconInfo.path}" alt="${item.name}" class="confirm-product-icon">`
-            : `<span class="confirm-product-emoji">${item.emoji || '❓'}</span>`;
-        return `<div class="confirm-product-line">${visual}<span>${item.count} x ${item.name}</span></div>`;
-    }).join('');
-    const confirmationBody = `<strong>${customer.name}</strong> køber:<br>${itemsSummary}<br>for <strong>${finalTotal.toFixed(2)} kr.</strong><hr style="margin: 15px 0; border: 1px solid #eee;">${customer.name} har <strong>${newBalance.toFixed(2)} kr.</strong> tilbage.${negativeBalanceWarning}`;
+
+    // OPTIMERING: Brug helper funktion til at bygge bekræftelsesdialog
+    const confirmationBody = buildConfirmationUI(customer, currentOrder, finalTotal, newBalance);
     const confirmed = await showCustomAlert('Bekræft Køb', confirmationBody, 'confirm');
     if (!confirmed) return;
-    if (completePurchaseBtn) {
-        completePurchaseBtn.disabled = true;
-        completePurchaseBtn.textContent = 'Behandler...';
-    }
-    const cartItemsForDB = Object.values(itemCounts).map(item => ({ product_id: item.id, quantity: item.count, price: item.price }));
+
+    // OPTIMERING: Brug helper funktion til at sætte knap state
+    setButtonLoadingState(completePurchaseBtn, 'loading');
+
+    // Grupper items til database payload (bruger shouldBeFreePurchase fra tidligere)
+    const itemCounts = groupOrderItems(currentOrder);
+    const cartItemsForDB = Object.values(itemCounts).map(item => ({
+        product_id: item.id,
+        quantity: item.count,
+        // Hvis admin skal købe gratis, sæt pris til 0. Ellers brug effektiv pris eller normal pris.
+        price: shouldBeFreePurchase ? 0 : (item._effectivePrice ?? item.price),
+        is_refill: item._isRefill || false, // Marker hvis det er et refill-køb
+        product_name: item._effectiveName || item.name // Gem effektivt navn (fx "Saft Refill")
+    }));
+
+    // OPTIMERING: Brug helper funktion til at resolve admin og clerk IDs
     const sessionAdmin = getCurrentSessionAdmin?.() || null;
-    const adminProfileResolved = sessionAdmin || (typeof getCurrentAdmin === 'function' ? getCurrentAdmin() : null) || adminProfile || null;
-    const adminProfileId = adminProfileResolved?.id || adminProfileResolved?.user_id || adminProfileResolved?.uuid || adminProfileResolved?.institution_user_id || null;
-    const clerk = typeof getCurrentClerk === 'function' ? getCurrentClerk() : null;
-    const clerkId = clerk?.id || clerk?.user_id || clerk?.uuid || clerk?.institution_user_id || null;
+    const { adminProfileId, clerkId } = resolveAdminAndClerkIds({
+        sessionAdmin,
+        adminProfile,
+        clerkProfile
+    });
     const salePayload = {
         p_customer_id: customer.id,
         p_cart_items: cartItemsForDB,
@@ -387,11 +509,11 @@ export async function handleCompletePurchase({
     const { error } = await supabaseClient.rpc('process_sale', salePayload);
     if (error) {
         showAlert('Database Fejl: ' + error.message);
-        if (completePurchaseBtn) {
-            completePurchaseBtn.disabled = false;
-            completePurchaseBtn.textContent = 'Gennemfør Køb';
-        }
+        setButtonLoadingState(completePurchaseBtn, 'normal');
     } else {
+        // Purchase successful - invalidate cache to ensure fresh data
+        invalidateTodaysSalesCache();
+
         if (typeof incrementSessionSalesCount === 'function') {
             incrementSessionSalesCount();
         }
@@ -415,10 +537,7 @@ export async function handleCompletePurchase({
         }
         const selectedUserInfo = document.getElementById('selected-user-info');
         if (selectedUserInfo) selectedUserInfo.style.display = 'none';
-        if (completePurchaseBtn) {
-            completePurchaseBtn.disabled = false;
-            completePurchaseBtn.textContent = 'Gennemfør Køb';
-        }
+        setButtonLoadingState(completePurchaseBtn, 'normal');
     }
 }
 

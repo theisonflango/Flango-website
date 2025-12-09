@@ -21,12 +21,59 @@ export async function loadUsersAndNotifications({
 
     const institutionId = adminProfile.institution_id;
 
+    // Tjek om admins skal vises i bruger-listen (med fejlhåndtering)
+    let showAdminsInList = true; // Default: vis ALLE brugere (backward compatible)
+    let adminsPurchaseFree = false;
+
+    try {
+        const { data: institutionData, error: institutionError } = await supabaseClient
+            .from('institutions')
+            .select('show_admins_in_user_list, admins_purchase_free')
+            .eq('id', institutionId)
+            .single();
+
+        if (!institutionError && institutionData) {
+            // Kun hvis kolonnen eksisterer og har en værdi, brug den
+            if (typeof institutionData.show_admins_in_user_list === 'boolean') {
+                showAdminsInList = institutionData.show_admins_in_user_list;
+            }
+            if (typeof institutionData.admins_purchase_free === 'boolean') {
+                adminsPurchaseFree = institutionData.admins_purchase_free;
+            }
+        } else {
+            console.warn('[admin-flow] Kunne ikke hente institution settings (måske migration ikke kørt endnu):', institutionError);
+        }
+    } catch (err) {
+        console.warn('[admin-flow] Fejl ved hentning af institution settings, bruger defaults:', err);
+    }
+
+    console.log('[admin-flow] Institution settings:', { showAdminsInList, adminsPurchaseFree });
+
+    // Gem settings globalt så de kan bruges i purchase flow
+    window.__flangoInstitutionSettings = {
+        showAdminsInUserList: showAdminsInList,
+        adminsPurchaseFree: adminsPurchaseFree
+    };
+
+    // Byg bruger-query baseret på settings
+    let usersQuery = supabaseClient
+        .from('users')
+        .select('*, last_parent_login_at, parent_pin_is_custom')
+        .eq('institution_id', institutionId);
+
+    // Hvis admins IKKE skal vises, filtrer kun til børn/kunder
+    // VIGTIGT: Kun filtrer hvis settings eksplicit er sat til false
+    if (showAdminsInList === false) {
+        usersQuery = usersQuery.eq('role', 'kunde');
+        console.log('[admin-flow] Filtrerer bruger-liste til kun kunder (role = kunde)');
+    } else {
+        console.log('[admin-flow] Viser alle brugere i bruger-liste');
+    }
+
+    usersQuery = usersQuery.order('name');
+
     const [usersResponse, notificationsResponse] = await Promise.all([
-        supabaseClient
-            .from('users')
-            .select('*, last_parent_login_at, parent_pin_is_custom')
-            .eq('institution_id', institutionId)
-            .order('name'),
+        usersQuery,
         supabaseClient
             .from('parent_notifications')
             .select('user_id, notify_at_zero, notify_at_ten')

@@ -2,6 +2,7 @@
 // Ingen sideeffekter på Supabase eller UI; bruges kun som central kilde til balance/overtræk-data.
 import { invalidateChildLimitSnapshot } from './products-and-cart.js';
 import { supabaseClient } from '../core/config-and-supabase.js';
+import { OVERDRAFT_LIMIT } from '../core/constants.js';
 
 let currentCustomer = null;
 let lastEvaluation = null;
@@ -136,8 +137,8 @@ export function getFinancialState(orderTotal) {
     const evalOverdraftLimit = safeNumber(evalMsgs.overdraftLimit, null);
     const evalAvailableUntilLimit = safeNumber(evalMsgs.availableUntilLimit, null);
 
-    // Overtræksgrænse med fallback (legacy -10 eller hvad du bruger)
-    const overdraftLimit = evalOverdraftLimit !== null ? evalOverdraftLimit : -10;
+    // Overtræksgrænse med fallback
+    const overdraftLimit = evalOverdraftLimit !== null ? evalOverdraftLimit : OVERDRAFT_LIMIT;
 
     // Primær kilde: evaluation.newBalance, ellers fallback: balance - total
     let newBalance = evalNewBalance !== null ? evalNewBalance : fallbackBalance - total;

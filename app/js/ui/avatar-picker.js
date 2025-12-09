@@ -38,6 +38,7 @@ export async function setupAvatarPicker(options) {
         sessionStartTime,
         getSessionSalesCount,
         updateLoggedInUserDisplay,
+        updateAvatarStorage,
     } = options || {};
 
     const modal = document.getElementById('avatar-picker-modal');
@@ -57,7 +58,7 @@ export async function setupAvatarPicker(options) {
 
     const stopLiveDurationTracker = () => {
         if (liveDurationIntervalId) {
-            clearInterval(liveDurationIntervalId);
+            clearTimeout(liveDurationIntervalId);
             liveDurationIntervalId = null;
         }
     };
@@ -69,13 +70,33 @@ export async function setupAvatarPicker(options) {
 
         const baseTodaySeconds = Math.max(0, (baseTodayMinutes || 0) * 60);
 
-        const updateTimerValues = (container, totalSeconds) => {
+        // OPTIMERING: Cache DOM elementer i stedet for querySelector hver gang
+        const cachedElements = {
+            hours: todayContainer.querySelector('[data-unit="h"]'),
+            minutes: todayContainer.querySelector('[data-unit="m"]'),
+            seconds: todayContainer.querySelector('[data-unit="s"]')
+        };
+
+        let lastValues = { hours: '', minutes: '', seconds: '' };
+
+        const updateTimerValues = (totalSeconds) => {
             const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
             const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
             const seconds = String(totalSeconds % 60).padStart(2, '0');
-            container.querySelector('[data-unit="h"]').textContent = hours;
-            container.querySelector('[data-unit="m"]').textContent = minutes;
-            container.querySelector('[data-unit="s"]').textContent = seconds;
+
+            // OPTIMERING: Kun opdater DOM hvis værdien har ændret sig
+            if (cachedElements.hours && hours !== lastValues.hours) {
+                cachedElements.hours.textContent = hours;
+                lastValues.hours = hours;
+            }
+            if (cachedElements.minutes && minutes !== lastValues.minutes) {
+                cachedElements.minutes.textContent = minutes;
+                lastValues.minutes = minutes;
+            }
+            if (cachedElements.seconds && seconds !== lastValues.seconds) {
+                cachedElements.seconds.textContent = seconds;
+                lastValues.seconds = seconds;
+            }
         };
 
         const computeTodaySeconds = () => {
@@ -84,11 +105,15 @@ export async function setupAvatarPicker(options) {
             return baseTodaySeconds + sessionElapsedSeconds;
         };
 
-        updateTimerValues(todayContainer, computeTodaySeconds());
+        // Initial update
+        updateTimerValues(computeTodaySeconds());
 
-        liveDurationIntervalId = setInterval(() => {
-            updateTimerValues(todayContainer, computeTodaySeconds());
-        }, 1000);
+        // OPTIMERING: Brug setTimeout i stedet for setInterval for bedre kontrol
+        const updateLoop = () => {
+            updateTimerValues(computeTodaySeconds());
+            liveDurationIntervalId = setTimeout(updateLoop, 1000);
+        };
+        liveDurationIntervalId = setTimeout(updateLoop, 1000);
     };
 
     closeBtn.onclick = () => {
@@ -584,14 +609,23 @@ export async function setupAvatarPicker(options) {
     function selectAvatar(option, modalEl) {
         const img = option.querySelector('img');
         if (!img) return;
-        localStorage.setItem(`${AVATAR_STORAGE_PREFIX}${clerkProfile.id}`, img.src);
+        // Brug den relative URL fra dataset i stedet for img.src (som er absolut)
+        // Dette sikrer at URL'en matcher i updateSelectedAvatarUI()
+        const avatarUrl = option.dataset.avatarUrl || img.src;
+        // OPTIMERING: Brug updateAvatarStorage til at opdatere både localStorage og cache
+        if (updateAvatarStorage) {
+            updateAvatarStorage(clerkProfile.id, avatarUrl);
+        } else {
+            // Fallback hvis updateAvatarStorage ikke er tilgængelig
+            localStorage.setItem(`${AVATAR_STORAGE_PREFIX}${clerkProfile.id}`, avatarUrl);
+        }
         updateLoggedInUserDisplay();
         updateSelectedAvatarUI();
 
         // Opdater også avataren i "Min Flango"-vinduets header med det samme.
         const modalHeaderAvatar = modal.querySelector('.header-avatar');
         if (modalHeaderAvatar) {
-            modalHeaderAvatar.src = img.src;
+            modalHeaderAvatar.src = avatarUrl;
         }
     }
 

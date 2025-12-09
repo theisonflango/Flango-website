@@ -91,6 +91,7 @@ export function setupAdminUserManagerFromModule(config = {}) {
     const editUserBadgeDisplay = detailModal?.querySelector('#edit-user-badge-display');
     const assignBadgeNote = detailModal?.querySelector('#assign-badge-note');
     const saveEditUserBtn = detailModal?.querySelector('#save-edit-user-btn');
+    const deleteEditUserBtn = detailModal?.querySelector('#delete-edit-user-btn');
     const badgeModal = document.getElementById('assign-badge-modal');
     const badgeTitle = badgeModal?.querySelector('#assign-badge-title');
     const badgeCloseBtn = badgeModal?.querySelector('.close-btn');
@@ -187,7 +188,34 @@ export function setupAdminUserManagerFromModule(config = {}) {
             moveAdminUserSelection(-1);
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            openAdminUserDetail(adminUserFilteredList[adminUserSelectionIndex]);
+            // ENTER trigger deposit action
+            const selectedUser = adminUserFilteredList[adminUserSelectionIndex];
+            if (selectedUser && typeof onUserListClick === 'function') {
+                const syntheticTarget = document.createElement('button');
+                syntheticTarget.dataset.userAction = 'deposit';
+                syntheticTarget.dataset.id = selectedUser.id;
+                syntheticTarget.classList.add('admin-action-btn');
+
+                // Override closest method on the DOM element itself
+                syntheticTarget.closest = function(selector) {
+                    if (selector === '.action-icon, .admin-action-btn' ||
+                        selector === '.admin-action-btn' ||
+                        selector === '.action-icon') {
+                        return syntheticTarget;
+                    }
+                    return null;
+                };
+
+                // Create synthetic event
+                const syntheticEvent = {
+                    target: syntheticTarget,
+                    currentTarget: syntheticTarget,
+                    preventDefault: () => {},
+                    stopPropagation: () => {}
+                };
+
+                onUserListClick(syntheticEvent);
+            }
         }
     };
     searchInput.addEventListener('keydown', handleAdminKeydown);
@@ -226,9 +254,29 @@ export function setupAdminUserManagerFromModule(config = {}) {
     detailCloseBtn.onclick = () => {
         detailModal.style.display = 'none';
         currentAdminUserDetail = null;
+        // Fokuser søgefeltet når detail modal lukkes
+        setTimeout(() => searchInput.focus(), 100);
     };
 
     saveEditUserBtn.onclick = () => handleSaveAdminUserDetail();
+
+    if (deleteEditUserBtn) {
+        deleteEditUserBtn.onclick = () => {
+            if (!currentAdminUserDetail) return;
+            // Luk detail modal først
+            detailModal.style.display = 'none';
+            // Trigger delete handling via onUserListClick med synthetic event
+            const syntheticTarget = document.createElement('button');
+            syntheticTarget.dataset.userAction = 'delete';
+            syntheticTarget.dataset.id = currentAdminUserDetail.id;
+            syntheticTarget.classList.add('admin-action-btn');
+            const syntheticEvent = { target: syntheticTarget, closest: (sel) => syntheticTarget };
+            if (typeof onUserListClick === 'function') {
+                onUserListClick(syntheticEvent);
+            }
+            currentAdminUserDetail = null;
+        };
+    }
 
     function moveAdminUserSelection(delta) {
         if (adminUserFilteredList.length === 0) return;
@@ -334,6 +382,8 @@ export function setupAdminUserManagerFromModule(config = {}) {
         currentAdminUserDetail = null;
         renderAdminUserListFromModule();
         showCustomAlert('Bruger opdateret', `${user.name} er opdateret.`);
+        // Fokuser søgefeltet efter opdatering
+        setTimeout(() => searchInput.focus(), 100);
     }
 
     async function handleAssignBadge(badge) {
@@ -439,4 +489,31 @@ export function setupAdminUserManagerFromModule(config = {}) {
 }
 
 window.__flangoRenderAdminUserList = () => renderAdminUserListFromModule();
+
+window.__flangoFocusAdminSearchInput = () => {
+    if (searchInput) {
+        setTimeout(() => {
+            try {
+                searchInput.focus();
+            } catch (e) {
+                // Ignorer hvis elementet ikke kan fokuseres
+            }
+        }, 100);
+    }
+};
+
+window.__flangoClearAndFocusAdminSearchInput = () => {
+    if (searchInput) {
+        searchInput.value = '';
+        adminUserSelectionIndex = 0;
+        renderAdminUserListFromModule();
+        setTimeout(() => {
+            try {
+                searchInput.focus();
+            } catch (e) {
+                // Ignorer hvis elementet ikke kan fokuseres
+            }
+        }, 100);
+    }
+};
 }

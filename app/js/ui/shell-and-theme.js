@@ -2,6 +2,8 @@
 import { getCurrentClerk } from '../domain/session-store.js';
 import { getProductIconInfo } from '../domain/products-and-cart.js';
 import { setupHelpModule, openHelpManually } from './help.js';
+import { supabaseClient } from '../core/config-and-supabase.js';
+import { getInstitutionId } from '../domain/session-store.js';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 const sugarPolicyState = {
@@ -255,7 +257,7 @@ function openSugarPolicyModal() {
     modal.style.display = 'flex';
 }
 
-function openInstitutionPreferences() {
+async function openInstitutionPreferences() {
     const backdrop = document.getElementById('settings-modal-backdrop');
     const titleEl = document.getElementById('settings-modal-title');
     const contentEl = document.getElementById('settings-modal-content');
@@ -264,6 +266,25 @@ function openInstitutionPreferences() {
     titleEl.textContent = 'Indstillinger – Institutionens Præferencer';
     contentEl.innerHTML = '';
 
+    // Hent nuværende institutionsindstillinger
+    const institutionId = getInstitutionId();
+    let showAdminsInList = false;
+    let adminsPurchaseFree = false;
+
+    if (institutionId) {
+        const { data, error } = await supabaseClient
+            .from('institutions')
+            .select('show_admins_in_user_list, admins_purchase_free')
+            .eq('id', institutionId)
+            .single();
+
+        if (!error && data) {
+            showAdminsInList = data.show_admins_in_user_list || false;
+            adminsPurchaseFree = data.admins_purchase_free || false;
+        }
+    }
+
+    // Sukkerpolitik knap
     const sugarPolicyBtn = document.createElement('button');
     sugarPolicyBtn.className = 'settings-item-btn';
     sugarPolicyBtn.innerHTML = `<strong>Sukkerpolitik</strong><div style="font-size: 12px; margin-top: 2px;">Begræns søde produkter til maks 1 pr. barn pr. dag.</div>`;
@@ -272,7 +293,61 @@ function openInstitutionPreferences() {
         openSugarPolicyModal();
     });
 
+    // Checkbox: Vis admins i bruger-liste
+    const showAdminsCheckbox = document.createElement('label');
+    showAdminsCheckbox.className = 'settings-checkbox-label';
+    showAdminsCheckbox.style.cssText = 'display: flex; align-items: center; padding: 15px; cursor: pointer; border-bottom: 1px solid #eee;';
+    showAdminsCheckbox.innerHTML = `
+        <input type="checkbox" id="show-admins-checkbox" ${showAdminsInList ? 'checked' : ''} style="margin-right: 12px; cursor: pointer;">
+        <div>
+            <strong>Vis Admins i 'Vælg Bruger' listen</strong>
+            <div style="font-size: 12px; margin-top: 2px; color: #666;">Voksne kan vælges som kunder i caféen</div>
+        </div>
+    `;
+
+    const showAdminsInput = showAdminsCheckbox.querySelector('input');
+    showAdminsInput.addEventListener('change', async (e) => {
+        if (!institutionId) return;
+        const { error } = await supabaseClient
+            .from('institutions')
+            .update({ show_admins_in_user_list: e.target.checked })
+            .eq('id', institutionId);
+
+        if (error) {
+            console.error('[settings] Fejl ved opdatering af show_admins_in_user_list:', error);
+            e.target.checked = !e.target.checked; // Revert
+        }
+    });
+
+    // Checkbox: Admins skal ikke betale
+    const adminsFreeCheckbox = document.createElement('label');
+    adminsFreeCheckbox.className = 'settings-checkbox-label';
+    adminsFreeCheckbox.style.cssText = 'display: flex; align-items: center; padding: 15px; cursor: pointer;';
+    adminsFreeCheckbox.innerHTML = `
+        <input type="checkbox" id="admins-free-checkbox" ${adminsPurchaseFree ? 'checked' : ''} style="margin-right: 12px; cursor: pointer;">
+        <div>
+            <strong>Admins skal ikke betale</strong>
+            <div style="font-size: 12px; margin-top: 2px; color: #666;">Voksne køber for 0 kr (registreres stadig i historik)</div>
+        </div>
+    `;
+
+    const adminsFreeInput = adminsFreeCheckbox.querySelector('input');
+    adminsFreeInput.addEventListener('change', async (e) => {
+        if (!institutionId) return;
+        const { error } = await supabaseClient
+            .from('institutions')
+            .update({ admins_purchase_free: e.target.checked })
+            .eq('id', institutionId);
+
+        if (error) {
+            console.error('[settings] Fejl ved opdatering af admins_purchase_free:', error);
+            e.target.checked = !e.target.checked; // Revert
+        }
+    });
+
     contentEl.appendChild(sugarPolicyBtn);
+    contentEl.appendChild(showAdminsCheckbox);
+    contentEl.appendChild(adminsFreeCheckbox);
     backdrop.style.display = 'flex';
 }
 

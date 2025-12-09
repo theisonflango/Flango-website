@@ -4,6 +4,7 @@ import { getProductIconInfo, addProductToOrder, removeProductFromOrder } from '.
 import { canChildPurchase } from './purchase-limits.js';
 import { playSound } from '../ui/sound-and-alerts.js';
 import { getCurrentCustomer } from './cafe-session-store.js';
+import { MAX_ITEMS_PER_ORDER } from '../core/constants.js';
 
 export function updateTotalPrice(totalPriceEl) {
     const total = getOrderTotal();
@@ -11,7 +12,18 @@ export function updateTotalPrice(totalPriceEl) {
 }
 
 export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo) {
-    orderListEl.innerHTML = '';
+    if (currentOrder.length === 0) {
+        // OPTIMERING: replaceChildren() i stedet for innerHTML = '' (atomic operation)
+        orderListEl.replaceChildren();
+        updateTotalPrice(totalPriceEl);
+        if (typeof updateSelectedUserInfo === 'function') {
+            updateSelectedUserInfo();
+        }
+        return;
+    }
+
+    // Use DocumentFragment for batched DOM insertion (reduces reflows)
+    const fragment = document.createDocumentFragment();
     currentOrder.forEach((item, index) => {
         const iconInfo = getProductIconInfo(item);
         const visualMarkup = iconInfo
@@ -23,8 +35,11 @@ export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelec
             <span class="remove-item-btn" data-index="${index}" title="Fjern vare">
                 <img src="Icons/webp/Function/Papirkurv.webp" alt="Fjern" class="cart-remove-icon">
             </span>`;
-        orderListEl.appendChild(listItem);
+        fragment.appendChild(listItem);
     });
+    // OPTIMERING: replaceChildren(fragment) i stedet for innerHTML = '' + appendChild
+    orderListEl.replaceChildren(fragment);
+
     updateTotalPrice(totalPriceEl);
     if (typeof updateSelectedUserInfo === 'function') {
         updateSelectedUserInfo();
@@ -51,7 +66,8 @@ export function handleOrderListClick(event, currentOrder, rerender, onOrderChang
         rerender();
     }
     if (typeof onOrderChanged === 'function') {
-        onOrderChanged();
+        // Skip snapshot refresh on remove - it only unlocks products, doesn't lock them
+        onOrderChanged({ skipSnapshotRefresh: true });
     }
 }
 
@@ -114,7 +130,7 @@ export async function addToOrder(product, currentOrder, orderListEl, totalPriceE
         if (!result.success) {
             if (result.reason === 'limit') {
                 // Begrænsning på antal varer i kurven
-                window.__flangoShowAlert?.('Du kan højst have 10 varer i kurven ad gangen.');
+                window.__flangoShowAlert?.(`Du kan højst have ${MAX_ITEMS_PER_ORDER} varer i kurven ad gangen.`);
             } else if (result.reason === 'product-limit') {
                 try { playSound('error'); } catch {}
             }
@@ -149,6 +165,7 @@ export function removeLastItemFromOrder(currentOrder, orderListEl, totalPriceEl,
     playSound('removeItem');
     renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo);
     if (typeof onOrderChanged === 'function') {
-        onOrderChanged();
+        // Skip snapshot refresh on remove - it only unlocks products, doesn't lock them
+        onOrderChanged({ skipSnapshotRefresh: true });
     }
 }

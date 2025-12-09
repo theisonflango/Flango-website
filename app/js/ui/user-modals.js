@@ -152,7 +152,10 @@ export function showBalanceModal(user, mode) {
             <input type="number" id="balance-amount-input" placeholder="${isDeposit ? 'Indbetalingsbeløb' : 'Ny saldo'}" step="0.01" required>
         `;
     modal.style.display = 'flex';
-    setTimeout(() => document.getElementById('balance-amount-input').focus(), 50);
+    setTimeout(() => {
+        const input = document.getElementById('balance-amount-input');
+        if (input) input.focus();
+    }, 50);
 
     return new Promise((resolve) => {
         const close = (value) => {
@@ -190,6 +193,9 @@ export function showBalanceModal(user, mode) {
         };
 
         closeBtn.onclick = () => close(null);
-        document.addEventListener('keydown', handleKeyDown);
+        // Add keydown listener after a short delay to avoid capturing the ENTER key that opened the modal
+        setTimeout(() => {
+            document.addEventListener('keydown', handleKeyDown);
+        }, 100);
     });
 }

@@ -32,6 +32,9 @@ export function setupKeyboardShortcuts({
             }
         } else if (event.key === 'Enter') {
             event.preventDefault();
+            if (document.body.classList.contains('reorder-mode')) {
+                return;
+            }
             if (completePurchaseButton && !completePurchaseButton.disabled) {
                 completePurchaseButton.click();
             }
@@ -55,6 +58,54 @@ export function setupKeyboardShortcuts({
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
             closeTopMostOverlay();
+        }
+    });
+
+    // Admin-only keyboard shortcuts
+    document.addEventListener('keydown', (event) => {
+        // Skip if typing in input or modal is open
+        if (event.target.tagName === 'INPUT' ||
+            event.target.tagName === 'TEXTAREA' ||
+            document.querySelector('.modal[style*="display: flex"]')) {
+            return;
+        }
+
+        // Check if admin is logged in
+        const isAdmin = window.currentUserIsAdmin === true;
+        if (!isAdmin) return;
+
+        const key = event.key.toLowerCase();
+
+        // R eller I: Åbn "Rediger Brugere" / Indbetaling
+        if (key === 'r' || key === 'i') {
+            event.preventDefault();
+            if (typeof window.__flangoOpenAdminUserManager === 'function') {
+                window.__flangoOpenAdminUserManager('customers');
+            }
+        }
+        // H: Åbn historik
+        else if (key === 'h') {
+            event.preventDefault();
+            const historyBtn = document.getElementById('toolbar-history-btn');
+            if (historyBtn) {
+                historyBtn.click();
+            }
+        }
+        // S: Åbn indstillinger
+        else if (key === 's') {
+            event.preventDefault();
+            const settingsBtn = document.getElementById('toolbar-gear-btn');
+            if (settingsBtn) {
+                settingsBtn.click();
+            }
+        }
+        // M: Åbn Min Flango
+        else if (key === 'm') {
+            event.preventDefault();
+            const myFlangoBtn = document.getElementById('logged-in-user-avatar-container');
+            if (myFlangoBtn) {
+                myFlangoBtn.click();
+            }
         }
     });
 }

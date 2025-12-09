@@ -255,6 +255,13 @@ export function setupLogoutFlow({ clerkProfile, sessionStartTime, getSessionSale
         } finally {
             if (shouldFinalizeLogout) {
                 clearCurrentCustomer();
+
+                // Skjul valgt bruger UI
+                const userInfoEl = document.getElementById('selected-user-info');
+                if (userInfoEl) {
+                    userInfoEl.style.display = 'none';
+                }
+
                 window.__flangoAppStarted = false; // Nulstil guard
                 window.__flangoCurrentClerkRole = null;
                 window.__flangoCurrentClerkProfile = null;

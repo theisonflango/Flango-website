@@ -124,8 +124,12 @@ h2 {
     position: relative
 }
 
-#products {
+#products-area {
     grid-area: products;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    height: 100%;
 }
 
 .sidebar-main-header {
@@ -148,7 +152,51 @@ h2 {
     padding: 20px;
     border-radius: 15px;
     box-shadow: 0 0 15px rgba(0, 0, 0, .1);
-    overflow-y: auto
+    overflow-y: auto;
+    height: 100%;
+    align-content: stretch;
+    grid-auto-rows: 1fr;
+    flex: 1;
+    min-height: 0;
+}
+
+.product-reorder-hint {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 6px;
+    text-align: left;
+    display: none;
+}
+
+body.reorder-mode .product-reorder-hint {
+    display: block;
+}
+
+/* ===== Dynamisk produkt-grid (2–5 produkter) ===== */
+
+/* 2 produkter → 1x2 grid */
+#products:has(> .product-btn:nth-child(2):last-child) {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* 3 produkter → 1x3 grid (standard) */
+#products:has(> .product-btn:nth-child(3):last-child) {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* 4 produkter → 2x2 grid */
+#products:has(> .product-btn:nth-child(4):last-child) {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* 5 produkter → 3 kolonner + hero-kort */
+#products:has(> .product-btn:nth-child(5):last-child) {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* Hero-kort: første produkt er bredere (span 2 kolonner) når der er præcis 5 produkter */
+#products:has(> .product-btn:nth-child(5):last-child) > .product-btn:first-child {
+    grid-column: span 2;
 }
 
 .product-btn {
@@ -162,8 +210,27 @@ h2 {
     background: #fddfa9;
     box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.2s ease;
     overflow: hidden;
+    height: 100%;
+}
+
+/* Refill produkter - distinkt grøn styling for at indikere rabat */
+.product-btn.product-refill {
+    border-color: #10b981;
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    box-shadow: 0 6px 14px rgba(16, 185, 129, 0.15);
+}
+
+.product-btn.product-refill:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(16, 185, 129, 0.25);
+    border-color: #059669;
+}
+
+.product-btn.product-refill:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.12);
 }
 
 .product-btn:hover {
@@ -175,6 +242,36 @@ h2 {
 .product-btn:active {
     transform: translateY(0);
     box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+}
+
+/* Refill pris styling - fremhæv med grøn farve */
+.product-price.refill-price {
+    color: #059669;
+    font-weight: 700;
+}
+
+/* Refill countdown timer - placeret øverst på produkt-kortet */
+.refill-timer {
+    font-size: 16px;
+    color: #059669;
+    font-weight: 700;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: center;
+    border: 1.5px solid #10b981;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15);
+}
+
+.refill-timer .timer-value {
+    font-family: 'Courier New', monospace;
+    font-weight: 800;
+    letter-spacing: 1px;
+    font-size: 17px;
 }
 
 /* Indhold inde i knappen – bruges til at graye ud ved limit */
@@ -1030,14 +1127,52 @@ h3 {
     justify-content: space-between;
     align-items: center;
     border-bottom: 2px solid #eee;
-    padding-bottom: 15px
+    padding-bottom: 15px;
+    gap: 15px;
+}
+
+.user-filter-buttons {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.filter-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 2px solid var(--primary-color);
+    background-color: white;
+    color: var(--primary-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.filter-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.filter-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.filter-btn.active {
+    background-color: var(--primary-color);
+    color: white;
 }
 
 .close-btn {
     color: #aaa;
     font-size: 38px;
     font-weight: 700;
-    cursor: pointer
+    cursor: pointer;
+    flex-shrink: 0;
 }
 
 .modal-controls {
@@ -1568,6 +1703,64 @@ h3 {
     width: 16px;
     height: 16px;
     cursor: pointer;
+}
+
+.refill-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 6px 0 12px;
+    flex-wrap: wrap;
+}
+
+.refill-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #334155;
+}
+
+.refill-option input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+.refill-price-input {
+    min-width: 160px;
+    flex: 0 0 auto;
+}
+
+.refill-fields {
+    display: grid;
+    gap: 10px;
+    margin: 0 0 12px;
+}
+
+.refill-fields.hidden {
+    display: none;
+}
+
+.refill-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.refill-field label {
+    font-size: 14px;
+    color: #1f2937;
+}
+
+.refill-field input[type="number"] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.refill-help {
+    font-size: 12px;
+    color: #64748b;
+    min-height: 16px;
 }
 
 .custom-icon-option:hover {
@@ -2229,8 +2422,33 @@ h3 {
 
 @keyframes shake-animation {
     0%, 100% { transform: translateX(0); }
-    20%, 60% { transform: translateX(-4px); }
-    40%, 80% { transform: translateX(4px); }
+    20%, 60% { transform: translateX(calc(var(--shake-distance, 4px) * -1)); }
+    40%, 80% { transform: translateX(var(--shake-distance, 4px)); }
+}
+
+.reorder-mode #products .product-btn {
+    --shake-distance: 1px;
+    animation: shake-animation 0.55s ease-in-out infinite;
+    cursor: grab;
+}
+
+.reorder-mode #products .product-btn:nth-child(3n) {
+    animation-duration: 0.6s;
+    animation-delay: -0.05s;
+}
+
+.reorder-mode #products .product-btn:nth-child(3n+1) {
+    animation-duration: 0.56s;
+    animation-delay: -0.12s;
+}
+
+.reorder-mode #products .product-btn:nth-child(3n+2) {
+    animation-duration: 0.62s;
+    animation-delay: -0.18s;
+}
+
+.reorder-mode #products .product-btn:active {
+    cursor: grabbing;
 }
 
 /* Fade-in animation når produkt bliver låst */
@@ -2641,4 +2859,155 @@ h3 {
     color: #ef4444;
     margin: 6px 0 0;
     text-align: left;
+}
+
+/* ============================================
+   SOUND SETTINGS - VOLUME CONTROLS
+   ============================================ */
+
+.sound-global-controls {
+    width: 100%;
+}
+
+.sound-control-section {
+    background: #f9fafb;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.sound-control-section h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.sound-control-row {
+    margin-bottom: 12px;
+}
+
+.sound-control-row:last-child {
+    margin-bottom: 0;
+}
+
+.sound-control-row label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.sound-control-row input[type="checkbox"] {
+    margin-right: 8px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.sound-control-row input[type="range"] {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #d1d5db;
+    outline: none;
+    cursor: pointer;
+}
+
+.sound-control-row input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+}
+
+.sound-control-row input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: none;
+}
+
+#master-volume-display {
+    font-weight: 600;
+    color: #3b82f6;
+}
+
+/* Per-sound items with volume control */
+.sound-item-extended {
+    border: 1px solid #e5e7eb;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: #fff;
+}
+
+.sound-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.sound-item-header label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0;
+}
+
+.sound-item-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.sound-volume-control {
+    margin-top: 8px;
+}
+
+.sound-volume-control label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.sound-volume-display {
+    font-weight: 600;
+    color: #3b82f6;
+}
+
+.sound-volume-slider {
+    width: 100%;
+    height: 5px;
+    border-radius: 2.5px;
+    background: #d1d5db;
+    outline: none;
+    cursor: pointer;
+}
+
+.sound-volume-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #10b981;
+    cursor: pointer;
+}
+
+.sound-volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #10b981;
+    cursor: pointer;
+    border: none;
 }

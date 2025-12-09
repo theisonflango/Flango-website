@@ -1,4 +1,5 @@
 import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '../ui/sound-and-alerts.js';
+import { initializeSoundSettings } from '../core/sound-manager.js';
 import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen } from '../ui/shell-and-theme.js';
 import { configureHistoryModule, showSalesHistory } from './history-and-reports.js';
 import { setupLogoutFlow } from './logout-flow.js';
@@ -48,6 +49,10 @@ export async function startApp() {
     // 1) Basis state for session og app
     const AVATAR_STORAGE_PREFIX = 'flango-avatar-';
     const DEFAULT_AVATAR_URL = 'Icons/webp/Avatar/Ekspedient-default2.webp';
+
+    // OPTIMERING: In-memory cache for localStorage avatar access (20-40ms per UI update)
+    const avatarCache = new Map();
+
     let allUsers = [];
     configureHistoryModule({ getAllUsers: () => allUsers });
     let allProducts = [];
@@ -66,7 +71,10 @@ export async function startApp() {
 
     console.log('Starter applikationen...');
 
-    // 2) Vis café-UI
+    // 2) Initialiser lydindstillinger fra localStorage (før lyde afspilles)
+    initializeSoundSettings();
+
+    // 3) Vis café-UI
     document.getElementById('main-app').style.display = 'grid';
 
     // Sæt standardlyde, hvis de ikke allerede er sat (robust tjek)
@@ -120,10 +128,21 @@ export async function startApp() {
     const addProductBtn = document.getElementById('add-btn-modal');
     const editUserDetailModal = document.getElementById('edit-user-detail-modal');
     const assignBadgeModal = document.getElementById('assign-badge-modal');
-    const refreshProductLocks = async () => {
+    const refreshProductLocks = async (options = {}) => {
         const productsEl = document.getElementById('products');
         const selectedUser = getCurrentCustomer();
         const childId = selectedUser?.id || null;
+
+        if (options.skipSnapshotRefresh) {
+            // Skip full snapshot refresh (used for remove operations)
+            // Just update UI classes without refetching snapshot
+            if (selectedUser) {
+                await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, childId);
+            }
+            return;
+        }
+
+        // Full refresh path (for add operations)
         await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, childId);
     };
     const addToOrderWithLocks = (product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, optionsArg = {}) =>
@@ -152,12 +171,22 @@ export async function startApp() {
         const clerkName = clerkProfile?.name || adultName;
         userDisplay.textContent = `Ekspedient: ${clerkName}   •   Voksen ansvarlig: ${adultName}`;
 
-        const storageKey = `${AVATAR_STORAGE_PREFIX}${clerkProfile.id}`;
-        let savedAvatar = localStorage.getItem(storageKey);
-        if (!savedAvatar) {
-            savedAvatar = DEFAULT_AVATAR_URL;
-            localStorage.setItem(storageKey, savedAvatar);
+        const userId = clerkProfile.id;
+        const storageKey = `${AVATAR_STORAGE_PREFIX}${userId}`;
+
+        // OPTIMERING: Brug in-memory cache i stedet for synkron localStorage
+        let savedAvatar;
+        if (avatarCache.has(userId)) {
+            savedAvatar = avatarCache.get(userId);
+        } else {
+            savedAvatar = localStorage.getItem(storageKey);
+            if (!savedAvatar) {
+                savedAvatar = DEFAULT_AVATAR_URL;
+                localStorage.setItem(storageKey, savedAvatar);
+            }
+            avatarCache.set(userId, savedAvatar);
         }
+
         avatarContainer.innerHTML = `<img src="${savedAvatar}" alt="Valgt avatar" id="logged-in-user-avatar">`;
 
         const avatarImg = avatarContainer.querySelector('#logged-in-user-avatar');
@@ -338,6 +367,13 @@ export async function startApp() {
         showAlert,
     });
 
+    // Helper til at opdatere avatar (både localStorage og cache)
+    function updateAvatarStorage(userId, avatarUrl) {
+        const storageKey = `${AVATAR_STORAGE_PREFIX}${userId}`;
+        localStorage.setItem(storageKey, avatarUrl);
+        avatarCache.set(userId, avatarUrl);
+    }
+
     // 11) Opsæt avatar-vælgeren for alle brugere
     await setupAvatarPicker({
         clerkProfile,
@@ -345,12 +381,21 @@ export async function startApp() {
         getSessionSalesCount: () => sessionSalesCount,
         AVATAR_STORAGE_PREFIX,
         updateLoggedInUserDisplay,
+        updateAvatarStorage,
     });
 
     // 12) Første produkt-load
     await productAssortment.fetchAndRenderProducts();
 
     async function selectUser(userId) {
+        // Tjek om samme bruger allerede er valgt
+        const currentCustomer = getCurrentCustomer();
+        if (currentCustomer && currentCustomer.id === userId) {
+            // Samme bruger - luk bare modalen uden at gøre noget
+            userModal.style.display = 'none';
+            return;
+        }
+
         // Ryd den gamle ordre FØR vi sætter en ny bruger.
         // Dette sikrer, at `applyProductLimitsToButtons` ikke bruger en forældet kurv.
         currentOrder = [];
@@ -364,11 +409,34 @@ export async function startApp() {
         // Preload dagens købs-snapshot og VENT på, at låsene er anvendt.
         await preloadChildProductLimitSnapshot(selectedUser.id);
         const productsContainer = document.getElementById('products');
+
+        // KRITISK: Genrender produktgitter med refill-beregning for valgt barn
+        await renderProductsGrid(
+            allProducts,
+            productsContainer,
+            async (product, evt) => {
+                const result = await addToOrder(product, currentOrder, orderList, totalPriceEl, updateSelectedUserInfo, { sourceEvent: evt });
+                // Opdater låse efter tilføjelse til kurv
+                await applyProductLimitsToButtons(allProducts, productsContainer, currentOrder, selectedUser.id);
+                return result;
+            },
+            selectedUser // Send currentCustomer så refill kan beregnes
+        );
+
+        // Sørg for at alle knapper har et låse-overlay
+        productsContainer.querySelectorAll('.product-btn').forEach(btn => {
+            if (!btn.querySelector('.product-lock-overlay')) {
+                const overlay = document.createElement('div');
+                overlay.className = 'avatar-lock-overlay product-lock-overlay';
+                btn.appendChild(overlay);
+            }
+        });
+
         // Tving brug af en tom kurv, da vi lige har valgt en ny bruger.
         await applyProductLimitsToButtons(allProducts, productsContainer, [], selectedUser.id);
- 
+
         // Kør først UI-opdatering EFTER alle asynkrone kald er færdige.
-        updateSelectedUserInfo(); 
+        updateSelectedUserInfo();
         userModal.style.display = 'none';
     }
 
@@ -459,6 +527,8 @@ export async function setupAdminLoginScreen(adminProfile) {
             setCurrentClerk(adminProfile);
             markAppStarted();
             setSessionStartTime(Date.now());
+            // Set admin flag for keyboard shortcuts
+            window.currentUserIsAdmin = adminProfile?.role === 'admin';
             showScreen('main-app');
             startApp(); // Admin er også ekspedient
         };
@@ -475,6 +545,8 @@ export async function setupAdminLoginScreen(adminProfile) {
             setCurrentClerk(clerk);
             markAppStarted();
             setSessionStartTime(Date.now());
+            // Set admin flag for keyboard shortcuts
+            window.currentUserIsAdmin = clerk?.role === 'admin';
             showScreen('main-app');
             startApp();
         },

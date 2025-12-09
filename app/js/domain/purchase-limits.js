@@ -1,6 +1,21 @@
 import { supabaseClient } from '../core/config-and-supabase.js';
+import { CACHE_TTL_MS } from '../core/constants.js';
 
 const LIMITS_DEBUG = false;
+
+// Cache for getTodaysSalesForChild to avoid duplicate queries
+const todaysSalesCache = new Map();
+let cacheTimestamp = 0;
+
+function getCacheKey(childId, institutionId) {
+    return `${childId}:${institutionId || 'null'}`;
+}
+
+export function invalidateTodaysSalesCache() {
+    todaysSalesCache.clear();
+    cacheTimestamp = Date.now();
+    if (LIMITS_DEBUG) console.log('[limits] Cache invalidated');
+}
 
 const safeNumber = (value, fallback = 0) => {
     const num = Number(value);
@@ -57,30 +72,92 @@ async function getChildProfile(childId) {
 }
 
 async function getTodaysSalesForChild(childId, institutionIdOverride = null) {
-    const { startIso, endIso } = buildTodayRangeLocal();
+    // Check cache expiration and invalidate if needed
+    const now = Date.now();
+    if (now - cacheTimestamp > CACHE_TTL_MS) {
+        invalidateTodaysSalesCache();
+    }
+
+    // Resolve institutionId
     let institutionId = institutionIdOverride;
     if (!institutionId) {
         const { child } = await getChildProfile(childId);
         institutionId = child?.institution_id || null;
     }
+
+    // Check cache
+    const cacheKey = getCacheKey(childId, institutionId);
+    if (todaysSalesCache.has(cacheKey)) {
+        if (LIMITS_DEBUG) console.log('[limits] CACHE HIT for getTodaysSalesForChild', { childId, institutionId });
+        return todaysSalesCache.get(cacheKey);
+    }
+
+    // Cache miss - fetch from database
+    if (LIMITS_DEBUG) console.log('[limits] CACHE MISS - fetching getTodaysSalesForChild', { childId, institutionId });
+
+    const { startIso, endIso } = buildTodayRangeLocal();
+
+    // KRITISK: Hent fra sales + sale_items for at få is_refill data
     let query = supabaseClient
-        .from('events_view')
-        .select('event_type, created_at, items, details, target_user_id, institution_id')
-        .eq('event_type', 'SALE')
-        .eq('target_user_id', childId)
+        .from('sales')
+        .select(`
+            id,
+            created_at,
+            customer_id,
+            institution_id,
+            sale_items (
+                product_id,
+                quantity,
+                price_at_purchase,
+                is_refill,
+                product_name_at_purchase
+            )
+        `)
+        .eq('customer_id', childId)
         .gte('created_at', startIso)
         .lt('created_at', endIso);
+
     if (institutionId) {
         query = query.eq('institution_id', institutionId);
     }
+
     const { data, error } = await query;
     if (error) {
         if (LIMITS_DEBUG) console.warn('[canChildPurchase] Fejl ved hentning af dagens køb:', error?.message);
         return { rows: [], error };
     }
-    const rows = Array.isArray(data) ? data : [];
-    if (LIMITS_DEBUG) console.log('[limits] getTodaysSalesForChild result', { childId, institutionId, rowCount: rows.length });
-    return { rows, error: null };
+
+    // Transform data til samme format som events_view for bagud-kompatibilitet
+    const rows = Array.isArray(data) ? data.map(sale => ({
+        event_type: 'SALE',
+        created_at: sale.created_at,
+        target_user_id: sale.customer_id,
+        institution_id: sale.institution_id,
+        // Map sale_items til items format med is_refill
+        items: (sale.sale_items || []).map(item => ({
+            product_id: item.product_id,
+            quantity: item.quantity,
+            price: item.price_at_purchase,
+            is_refill: item.is_refill || false,
+            product_name: item.product_name_at_purchase
+        })),
+        details: {
+            items: (sale.sale_items || []).map(item => ({
+                product_id: item.product_id,
+                quantity: item.quantity,
+                price: item.price_at_purchase,
+                is_refill: item.is_refill || false,
+                product_name: item.product_name_at_purchase
+            }))
+        }
+    })) : [];
+
+    // Store in cache
+    const result = { rows, error: null };
+    todaysSalesCache.set(cacheKey, result);
+    if (LIMITS_DEBUG) console.log('[limits] Stored in cache - getTodaysSalesForChild result', { childId, institutionId, rowCount: rows.length });
+
+    return result;
 }
 
 function extractProductId(item) {
@@ -124,31 +201,32 @@ function normalizeItems(raw) {
 async function getTodaysQuantityForProduct(childId, productId, institutionId = null, productName = null) {
     const { rows, error } = await getTodaysSalesForChild(childId, institutionId);
     if (error) return 0;
+
+    // OPTIMERING: Flatten nested loops med flatMap for bedre performance
+    const allItems = rows.flatMap(row => normalizeItems(row?.items ?? row?.details));
+
     let total = 0;
-    rows.forEach((row) => {
-        const items = normalizeItems(row?.items ?? row?.details);
-        items.forEach((item) => {
-            const rawId = extractProductId(item);
-            const pid = rawId != null ? String(rawId) : null;
-            const name = extractProductName(item);
+    allItems.forEach((item) => {
+        const rawId = extractProductId(item);
+        const pid = rawId != null ? String(rawId) : null;
+        const name = extractProductName(item);
 
-            const matchesById =
-                pid &&
-                pid !== 'null' &&
-                pid !== 'undefined' &&
-                String(productId) &&
-                pid === String(productId);
+        const matchesById =
+            pid &&
+            pid !== 'null' &&
+            pid !== 'undefined' &&
+            String(productId) &&
+            pid === String(productId);
 
-            const matchesByName =
-                !matchesById &&
-                productName &&
-                name &&
-                name === productName;
+        const matchesByName =
+            !matchesById &&
+            productName &&
+            name &&
+            name === productName;
 
-            if (matchesById || matchesByName) {
-                total += extractQuantity(item);
-            }
-        });
+        if (matchesById || matchesByName) {
+            total += extractQuantity(item);
+        }
     });
     if (LIMITS_DEBUG) console.log('[limits] getTodaysQuantityForProduct', { childId, productId, productName, todaysQty: total });
     return total;
@@ -178,24 +256,24 @@ export async function getUnhealthyPurchasesSnapshot(childId) {
 async function getTodaysTotalSpend(childId, institutionId = null) {
     const { rows, error } = await getTodaysSalesForChild(childId, institutionId);
     if (error) return 0;
-    let total = 0;
-    rows.forEach((row) => {
+
+    // OPTIMERING: Brug reduce i stedet for forEach + accumulator
+    const total = rows.reduce((sum, row) => {
         const details = row?.details ?? {};
-        let rowTotal = 0;
 
         // Primært: brug total_amount fra details, hvis det findes
         if (typeof details.total_amount === 'number') {
-            rowTotal = details.total_amount;
-        } else {
-            // Fallback: summér pris * antal fra items
-            const items = normalizeItems(row?.items ?? row?.details);
-            items.forEach((item) => {
-                rowTotal += extractPrice(item) * extractQuantity(item);
-            });
+            return sum + details.total_amount;
         }
 
-        total += rowTotal;
-    });
+        // Fallback: summér pris * antal fra items
+        const items = normalizeItems(row?.items ?? row?.details);
+        const rowTotal = items.reduce((itemSum, item) => {
+            return itemSum + (extractPrice(item) * extractQuantity(item));
+        }, 0);
+
+        return sum + rowTotal;
+    }, 0);
 
     if (LIMITS_DEBUG) {
         console.log('[limits] getTodaysTotalSpend', {
@@ -324,6 +402,130 @@ export async function canChildPurchase(productId, childId, orderItems = [], inst
 
 // canChildPurchase er klar til at blive brugt i evaluatePurchase
 
+/**
+ * Tjek om et barn er berettiget til refill-pris for et produkt
+ * @param {string} childId
+ * @param {string} productId
+ * @param {object} product - Produktdata med refill-felter
+ * @param {string} institutionId
+ * @returns {Promise<{ eligible: boolean, purchaseCount: number, refillsUsed: number }>}
+ */
+export async function getRefillEligibility(childId, productId, product, institutionId = null) {
+    // Hvis refill ikke er aktiveret for produktet, return false
+    if (!product?.refill_enabled) {
+        return { eligible: false, purchaseCount: 0, refillsUsed: 0 };
+    }
+
+    const timeLimitMinutes = safeNumber(product.refill_time_limit_minutes, 0);
+    const maxRefills = safeNumber(product.refill_max_refills, 0);
+
+    console.log('[getRefillEligibility] Produkt refill config:', {
+        productName: product.name,
+        refill_enabled: product.refill_enabled,
+        refill_price: product.refill_price,
+        refill_time_limit_minutes: product.refill_time_limit_minutes,
+        timeLimitMinutes, // efter safeNumber
+        refill_max_refills: product.refill_max_refills,
+        maxRefills // efter safeNumber
+    });
+
+    // Hent barnets køb for dette produkt
+    const { rows, error } = await getTodaysSalesForChild(childId, institutionId);
+    if (error) {
+        console.warn('[getRefillEligibility] Kunne ikke hente dagens køb:', error?.message);
+        return { eligible: false, purchaseCount: 0, refillsUsed: 0 };
+    }
+
+    console.log('[getRefillEligibility] Dagens salg rows:', rows.length, 'rows');
+    if (rows.length > 0) {
+        console.log('[getRefillEligibility] Første salg:', {
+            created_at: rows[0].created_at,
+            items: rows[0].items,
+            details: rows[0].details
+        });
+    }
+
+    const now = new Date();
+    let cutoffTime;
+
+    if (timeLimitMinutes === 0) {
+        // 0 = resten af dagen (samme som dagens køb)
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        cutoffTime = start;
+    } else {
+        // Specifik tidsvindue i minutter
+        cutoffTime = new Date(now.getTime() - timeLimitMinutes * 60 * 1000);
+    }
+
+    // Tæl køb af produktet inden for tidsvinduet
+    let totalPurchases = 0;
+    let refillPurchases = 0;
+    let mostRecentPurchaseTime = null;
+
+    rows.forEach(row => {
+        const created = row?.created_at ? new Date(row.created_at) : null;
+        if (!created || created < cutoffTime) return;
+
+        const items = normalizeItems(row?.items ?? row?.details);
+        items.forEach(item => {
+            const pid = String(extractProductId(item));
+            if (pid === String(productId)) {
+                const qty = extractQuantity(item);
+                totalPurchases += qty;
+
+                // Track most recent purchase time
+                if (!mostRecentPurchaseTime || created > mostRecentPurchaseTime) {
+                    mostRecentPurchaseTime = created;
+                }
+
+                // Tæl refill-køb (hvis sale_items har is_refill flag)
+                if (item?.is_refill === true) {
+                    refillPurchases += qty;
+                }
+            }
+        });
+    });
+
+    if (LIMITS_DEBUG) {
+        console.log('[getRefillEligibility]', {
+            childId,
+            productId,
+            productName: product?.name,
+            timeLimitMinutes,
+            maxRefills,
+            totalPurchases,
+            refillPurchases,
+            cutoffTime: cutoffTime.toISOString()
+        });
+    }
+
+    // Logik:
+    // - Hvis barnet har mindst 1 køb i perioden, er de berettiget til refill
+    // - Men hvis maxRefills > 0, må de kun have maxRefills refills
+    const hasInitialPurchase = totalPurchases > 0;
+    const withinRefillLimit = maxRefills === 0 || refillPurchases < maxRefills;
+
+    const eligible = hasInitialPurchase && withinRefillLimit;
+
+    console.log('[getRefillEligibility] Resultat:', {
+        productName: product.name,
+        totalPurchases,
+        refillPurchases,
+        hasInitialPurchase,
+        withinRefillLimit,
+        maxRefills,
+        eligible,
+        cutoffTime: cutoffTime.toISOString()
+    });
+
+    return {
+        eligible,
+        purchaseCount: totalPurchases,
+        refillsUsed: refillPurchases,
+        lastPurchaseTime: mostRecentPurchaseTime
+    };
+}
+
 export async function getChildProductLimitSnapshot(childId, institutionId = null) {
     if (!childId) {
         return { byProductId: {} };
@@ -353,7 +555,7 @@ export async function getChildProductLimitSnapshot(childId, institutionId = null
 
         const { data: products, error: productsError } = await supabaseClient
             .from('products')
-            .select('id, is_enabled');
+            .select('id, is_enabled, refill_enabled, refill_price, refill_time_limit_minutes, refill_max_refills');
         if (productsError) {
             if (LIMITS_DEBUG) console.warn('[getChildProductLimitSnapshot] Fejl ved hentning af produkter:', productsError?.message);
             return { byProductId: {} };
@@ -407,6 +609,11 @@ export async function getChildProductLimitSnapshot(childId, institutionId = null
             byProductId[pid] = {
                 effectiveMaxPerDay: effectiveMaxPerDay != null ? effectiveMaxPerDay : null,
                 todaysQty,
+                // Include refill info for UI
+                refillEnabled: product.refill_enabled || false,
+                refillPrice: product.refill_price,
+                refillTimeLimitMinutes: product.refill_time_limit_minutes || 0,
+                refillMaxRefills: product.refill_max_refills || 0,
             };
         });
 

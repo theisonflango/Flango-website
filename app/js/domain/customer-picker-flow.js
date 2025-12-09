@@ -3,39 +3,13 @@ import {
     setupCustomerSearchKeyboardNavigation,
     openCustomerSelectionModalUI,
     setupCustomerPickerControls,
+    setupUserFilterButtons,
+    resetUserFilters,
+    getNameSortOrder,
+    setNameSortOrder,
+    getNumberSortOrder,
+    setNumberSortOrder,
 } from '../ui/customer-picker.js';
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { getCurrentInstitutionId } from './users-and-admin.js';
-
-let latestCustomerPickerUsers = null;
-
-async function refreshCustomerPickerUsersFromDatabase() {
-    try {
-        const adminProfile = window.__flangoCurrentAdminProfile || null;
-        const clerkProfile = window.__flangoCurrentClerkProfile || null;
-        const institutionId = getCurrentInstitutionId(adminProfile, clerkProfile);
-
-        let query = supabaseClient
-            .from('users')
-            .select('id, name, number, balance, role')
-            .order('name', { ascending: true });
-
-        if (institutionId) {
-            query = query.eq('institution_id', institutionId);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-            console.error('refreshCustomerPickerUsersFromDatabase: Supabase fejl', error);
-            return;
-        }
-
-        latestCustomerPickerUsers = data || null;
-    } catch (err) {
-        console.error('refreshCustomerPickerUsersFromDatabase: uventet fejl', err);
-    }
-}
 
 export function setupCustomerPickerFlow({
     getAllUsers,
@@ -52,13 +26,17 @@ export function setupCustomerPickerFlow({
     resetUserModalView,
 }) {
     const renderCustomerList = () => {
-        const allUsers = latestCustomerPickerUsers || getAllUsers();
+        const allUsers = getAllUsers(); // Use in-memory data directly
         const currentSortKey = getCurrentSortKey();
+        const nameSortOrder = getNameSortOrder();
+        const numberSortOrder = getNumberSortOrder();
         const balanceSortOrder = getBalanceSortOrder();
         renderCustomerListUI({
             allUsers,
             searchInput,
             currentSortKey,
+            nameSortOrder,
+            numberSortOrder,
             balanceSortOrder,
             sortByNameBtn,
             sortByNumberBtn,
@@ -73,15 +51,20 @@ export function setupCustomerPickerFlow({
         sortByBalanceBtn,
         getCurrentSortKey,
         setCurrentSortKey,
+        getNameSortOrder,
+        setNameSortOrder,
+        getNumberSortOrder,
+        setNumberSortOrder,
         getBalanceSortOrder,
         setBalanceSortOrder,
         renderList: () => renderCustomerList(),
     });
 
-    const openCustomerSelectionModal = async () => {
-        // Hent friske saldoer fra databasen, så listen altid er ajour
-        await refreshCustomerPickerUsersFromDatabase();
+    const openCustomerSelectionModal = () => {
+        // Reset filters til default når modal åbnes
+        resetUserFilters();
 
+        // Use in-memory data - no database fetch needed
         openCustomerSelectionModalUI({
             userModal,
             searchInput,
@@ -89,6 +72,9 @@ export function setupCustomerPickerFlow({
             resetView: resetUserModalView,
         });
         setupCustomerSearchKeyboardNavigation(userModal, searchInput);
+
+        // Setup filter buttons
+        setupUserFilterButtons(() => renderCustomerList());
     };
 
     const handleUserModalClick = async (event) => {

@@ -52,8 +52,6 @@ export function buildUserAdminTableRows(users, selectedIndex = 0) {
                     <span class="user-list-balance ${balanceClass}">${safeBalance(user.balance)} kr.</span>
                     <div class="admin-action-column">
                         <button type="button" class="admin-action-btn" data-user-action="deposit" data-id="${user.id}">Opdater Saldo</button>
-                        <button type="button" class="admin-action-btn" data-user-action="edit" data-id="${user.id}">Rediger Saldo</button>
-                        <button type="button" class="admin-action-btn" data-user-action="delete" data-id="${user.id}">Slet Bruger</button>
                     </div>
                 </div>
             </div>`;

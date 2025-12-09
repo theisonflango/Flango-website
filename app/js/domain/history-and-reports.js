@@ -121,13 +121,28 @@ export async function showSalesHistory() {
         };
     }
     if (filterSelectAll && filterCheckboxes.length) {
-        filterSelectAll.onclick = () => filterCheckboxes.forEach(cb => { cb.checked = true; });
+        filterSelectAll.onclick = () => {
+            filterCheckboxes.forEach(cb => { cb.checked = true; });
+            const isActive = filterDepositsBtn.classList.contains('active');
+            renderSalesHistory(fullSalesHistory, null, isActive ? 'DEPOSIT' : null);
+        };
     }
     if (filterDeselectAll && filterCheckboxes.length) {
-        filterDeselectAll.onclick = () => filterCheckboxes.forEach(cb => { cb.checked = false; });
+        filterDeselectAll.onclick = () => {
+            filterCheckboxes.forEach(cb => { cb.checked = false; });
+            const isActive = filterDepositsBtn.classList.contains('active');
+            renderSalesHistory(fullSalesHistory, null, isActive ? 'DEPOSIT' : null);
+        };
     }
     if (filterCheckboxes.length) {
-        filterCheckboxes.forEach(cb => { cb.checked = true; });
+        filterCheckboxes.forEach(cb => {
+            cb.checked = true;
+            // Tilføj event listener for at re-render når filter ændres
+            cb.onchange = () => {
+                const isActive = filterDepositsBtn.classList.contains('active');
+                renderSalesHistory(fullSalesHistory, null, isActive ? 'DEPOSIT' : null);
+            };
+        });
     }
 
     // Find or create the test users checkbox
@@ -252,7 +267,7 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
     const searchTerm = searchInput.value.toLowerCase();
     if (errorMessage) {
         salesList.innerHTML = `<p style="color:var(--danger-color); text-align:center; padding: 20px;">${errorMessage}</p>`;
-        salesSummaryEl.innerHTML = '';
+        salesSummaryEl.replaceChildren();
         return;
     }
 
@@ -261,6 +276,29 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
         preFilteredData = salesData.filter(e => e.event_type === 'DEPOSIT' || e.event_type === 'BALANCE_EDIT');
     } else if (eventTypeFilter) {
         preFilteredData = salesData.filter(e => e.event_type === eventTypeFilter);
+    } else {
+        // Anvend checkbox-filteret hvis der ikke er et specifikt eventTypeFilter
+        const filterCheckboxes = Array.from(salesHistoryModal.querySelectorAll('.history-filter-checkbox'));
+        if (filterCheckboxes.length > 0) {
+            const checkedEventTypes = filterCheckboxes
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+
+            // Filtrer baseret på valgte event types
+            if (checkedEventTypes.length === 0) {
+                // Hvis ingen er valgt, vis ingenting
+                preFilteredData = [];
+            } else if (checkedEventTypes.length < filterCheckboxes.length) {
+                // Kun filtrer hvis ikke alle er valgt (for performance)
+                preFilteredData = salesData.filter(e => {
+                    const eventType = e.event_type;
+                    // Map event types til checkbox values
+                    if (eventType === 'BALANCE_EDIT') return checkedEventTypes.includes('BALANCE_ADJUSTMENT');
+                    if (eventType === 'SALE_ADJUSTMENT') return checkedEventTypes.includes('SALE_EDIT');
+                    return checkedEventTypes.includes(eventType);
+                });
+            }
+        }
     }
 
     const filteredEvents = preFilteredData.filter(sale => {
@@ -272,7 +310,7 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
     if (filteredEvents.length === 0) {
         const message = searchTerm ? 'Ingen salg matcher din søgning.' : 'Der er ingen salg i den valgte periode.';
         salesList.innerHTML = `<p style="text-align:center; padding: 20px;">${message}</p>`;
-        salesSummaryEl.innerHTML = '';
+        salesSummaryEl.replaceChildren();
         return;
     }
 
@@ -325,7 +363,7 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
         // Initialiser chart-karussellen efter at have sat HTML'en.
         initHistoryChartCarousel(salesSummaryEl);
 
-        salesList.innerHTML = '';
+        salesList.replaceChildren();
         const adjustmentsBySaleId = new Map();
         filteredEvents.forEach(ev => {
             if (ev.event_type === 'SALE_ADJUSTMENT' && ev.details?.adjusted_sale_id) {
@@ -354,7 +392,7 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
             }
         });
     } else {
-        salesSummaryEl.innerHTML = ''; // Ryd oversigten, hvis der ingen resultater er
+        salesSummaryEl.replaceChildren(); // Ryd oversigten, hvis der ingen resultater er
         const message = searchTerm ? 'Ingen salg matcher din søgning.' : 'Der er ingen salg i den valgte periode.';
         salesList.innerHTML = `<p style="text-align:center; padding: 20px;">${message}</p>`;
     }
@@ -805,8 +843,7 @@ function openEditSaleModal(historyEvent) {
         return entry;
     });
 
-    itemsSection.innerHTML = '';
-    itemsSection.appendChild(table);
+    itemsSection.replaceChildren(table);
 
     adjustmentSection.innerHTML = `
         <div style="margin-bottom:8px;">
