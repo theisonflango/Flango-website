@@ -61,6 +61,71 @@ export function setupKeyboardShortcuts({
         }
     });
 
+    // Generelle keyboard shortcuts (for alle brugere)
+    document.addEventListener('keydown', (event) => {
+        // Skip if typing in input or textarea
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
+        const key = event.key.toLowerCase();
+
+        // H: Åbn/luk historik
+        if (key === 'h') {
+            event.preventDefault();
+            const historyModal = document.getElementById('sales-history-modal');
+            if (historyModal && historyModal.style.display === 'flex') {
+                // Luk historik hvis den er åben
+                historyModal.style.display = 'none';
+            } else {
+                // Åbn historik (kun hvis ingen anden modal er åben)
+                const anyModalOpen = document.querySelector('.modal[style*="display: flex"]');
+                if (!anyModalOpen) {
+                    const historyBtn = document.getElementById('toolbar-history-btn');
+                    if (historyBtn) {
+                        historyBtn.click();
+                    }
+                }
+            }
+        }
+        // S: Åbn/luk indstillinger
+        else if (key === 's') {
+            event.preventDefault();
+            const settingsModal = document.getElementById('settings-modal-backdrop');
+            if (settingsModal && settingsModal.style.display !== 'none' && settingsModal.style.display !== '') {
+                // Luk indstillinger hvis den er åben
+                settingsModal.style.display = 'none';
+            } else {
+                // Åbn indstillinger (kun hvis ingen anden modal er åben)
+                const anyModalOpen = document.querySelector('.modal[style*="display: flex"], .settings-modal-backdrop[style*="display: flex"]');
+                if (!anyModalOpen) {
+                    const settingsBtn = document.getElementById('toolbar-gear-btn');
+                    if (settingsBtn) {
+                        settingsBtn.click();
+                    }
+                }
+            }
+        }
+        // M: Åbn/luk Min Flango
+        else if (key === 'm') {
+            event.preventDefault();
+            const myFlangoModal = document.getElementById('avatar-picker-modal');
+            if (myFlangoModal && myFlangoModal.style.display === 'flex') {
+                // Luk Min Flango hvis den er åben
+                myFlangoModal.style.display = 'none';
+            } else {
+                // Åbn Min Flango (kun hvis ingen anden modal er åben)
+                const anyModalOpen = document.querySelector('.modal[style*="display: flex"], .settings-modal-backdrop[style*="display: flex"]');
+                if (!anyModalOpen) {
+                    const myFlangoBtn = document.getElementById('logged-in-user-avatar-container');
+                    if (myFlangoBtn) {
+                        myFlangoBtn.click();
+                    }
+                }
+            }
+        }
+    });
+
     // Admin-only keyboard shortcuts
     document.addEventListener('keydown', (event) => {
         // Skip if typing in input or modal is open
@@ -76,35 +141,11 @@ export function setupKeyboardShortcuts({
 
         const key = event.key.toLowerCase();
 
-        // R eller I: Åbn "Rediger Brugere" / Indbetaling
+        // R eller I: Åbn "Rediger Brugere" / Indbetaling (kun admin)
         if (key === 'r' || key === 'i') {
             event.preventDefault();
             if (typeof window.__flangoOpenAdminUserManager === 'function') {
                 window.__flangoOpenAdminUserManager('customers');
-            }
-        }
-        // H: Åbn historik
-        else if (key === 'h') {
-            event.preventDefault();
-            const historyBtn = document.getElementById('toolbar-history-btn');
-            if (historyBtn) {
-                historyBtn.click();
-            }
-        }
-        // S: Åbn indstillinger
-        else if (key === 's') {
-            event.preventDefault();
-            const settingsBtn = document.getElementById('toolbar-gear-btn');
-            if (settingsBtn) {
-                settingsBtn.click();
-            }
-        }
-        // M: Åbn Min Flango
-        else if (key === 'm') {
-            event.preventDefault();
-            const myFlangoBtn = document.getElementById('logged-in-user-avatar-container');
-            if (myFlangoBtn) {
-                myFlangoBtn.click();
             }
         }
     });
