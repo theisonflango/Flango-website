@@ -63,64 +63,81 @@ export function setupKeyboardShortcuts({
 
     // Generelle keyboard shortcuts (for alle brugere)
     document.addEventListener('keydown', (event) => {
-        // Skip if typing in input or textarea
-        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-            return;
-        }
-
         const key = event.key.toLowerCase();
+        const isTyping = event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA';
 
         // H: Åbn/luk historik
         if (key === 'h') {
-            event.preventDefault();
             const historyModal = document.getElementById('sales-history-modal');
-            if (historyModal && historyModal.style.display === 'flex') {
-                // Luk historik hvis den er åben
+            const isHistoryOpen = historyModal && historyModal.style.display === 'flex';
+
+            // Hvis historik er åben, luk den (selv hvis man skriver i et felt)
+            if (isHistoryOpen) {
+                event.preventDefault();
                 historyModal.style.display = 'none';
-            } else {
-                // Åbn historik (kun hvis ingen anden modal er åben)
-                const anyModalOpen = document.querySelector('.modal[style*="display: flex"]');
-                if (!anyModalOpen) {
-                    const historyBtn = document.getElementById('toolbar-history-btn');
-                    if (historyBtn) {
-                        historyBtn.click();
-                    }
+                return;
+            }
+
+            // Hvis man prøver at åbne, check om vi skriver i et felt
+            if (isTyping) return;
+
+            // Åbn historik (kun hvis ingen anden modal er åben)
+            event.preventDefault();
+            const anyModalOpen = document.querySelector('.modal[style*="display: flex"]');
+            if (!anyModalOpen) {
+                const historyBtn = document.getElementById('toolbar-history-btn');
+                if (historyBtn) {
+                    historyBtn.click();
                 }
             }
         }
         // S: Åbn/luk indstillinger
         else if (key === 's') {
-            event.preventDefault();
             const settingsModal = document.getElementById('settings-modal-backdrop');
-            if (settingsModal && settingsModal.style.display !== 'none' && settingsModal.style.display !== '') {
-                // Luk indstillinger hvis den er åben
+            const isSettingsOpen = settingsModal && settingsModal.style.display !== 'none' && settingsModal.style.display !== '';
+
+            // Hvis indstillinger er åben, luk den (selv hvis man skriver i et felt)
+            if (isSettingsOpen) {
+                event.preventDefault();
                 settingsModal.style.display = 'none';
-            } else {
-                // Åbn indstillinger (kun hvis ingen anden modal er åben)
-                const anyModalOpen = document.querySelector('.modal[style*="display: flex"], .settings-modal-backdrop[style*="display: flex"]');
-                if (!anyModalOpen) {
-                    const settingsBtn = document.getElementById('toolbar-gear-btn');
-                    if (settingsBtn) {
-                        settingsBtn.click();
-                    }
+                return;
+            }
+
+            // Hvis man prøver at åbne, check om vi skriver i et felt
+            if (isTyping) return;
+
+            // Åbn indstillinger (kun hvis ingen anden modal er åben)
+            event.preventDefault();
+            const anyModalOpen = document.querySelector('.modal[style*="display: flex"], .settings-modal-backdrop[style*="display: flex"]');
+            if (!anyModalOpen) {
+                const settingsBtn = document.getElementById('toolbar-gear-btn');
+                if (settingsBtn) {
+                    settingsBtn.click();
                 }
             }
         }
         // M: Åbn/luk Min Flango
         else if (key === 'm') {
-            event.preventDefault();
             const myFlangoModal = document.getElementById('avatar-picker-modal');
-            if (myFlangoModal && myFlangoModal.style.display === 'flex') {
-                // Luk Min Flango hvis den er åben
+            const isMinFlangoOpen = myFlangoModal && myFlangoModal.style.display === 'flex';
+
+            // Hvis Min Flango er åben, luk den (selv hvis man skriver i et felt)
+            if (isMinFlangoOpen) {
+                event.preventDefault();
                 myFlangoModal.style.display = 'none';
-            } else {
-                // Åbn Min Flango (kun hvis ingen anden modal er åben)
-                const anyModalOpen = document.querySelector('.modal[style*="display: flex"], .settings-modal-backdrop[style*="display: flex"]');
-                if (!anyModalOpen) {
-                    const myFlangoBtn = document.getElementById('logged-in-user-avatar-container');
-                    if (myFlangoBtn) {
-                        myFlangoBtn.click();
-                    }
+                return;
+            }
+
+            // Hvis man prøver at åbne, check om vi skriver i et felt
+            if (isTyping) return;
+
+            // Åbn Min Flango (kun hvis ingen anden modal er åben)
+            event.preventDefault();
+            const anyModalOpen = document.querySelector('.modal[style*="display: flex"], .settings-modal-backdrop[style*="display: flex"]');
+            if (!anyModalOpen) {
+                const myFlangoBtn = document.getElementById('logged-in-user-avatar-container');
+                if (myFlangoBtn) {
+                    myFlangoBtn.click();
                 }
             }
         }
