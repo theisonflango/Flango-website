@@ -289,15 +289,186 @@
                         <span id="sugar-policy-enabled-label">Sukkerpolitik er slået FRA</span>
                         <input type="checkbox" id="sugar-policy-enabled-toggle">
                     </div>
+                    <div id="sugar-policy-settings" style="margin-top: 15px;">
+                        <!-- Først: Maks antal af hver slags -->
+                        <label style="display: block; margin-bottom: 20px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                <input type="checkbox" id="sugar-policy-max-per-product-enabled" style="margin-right: 8px; cursor: pointer;">
+                                <strong style="cursor: pointer;">Maks antal af hver slags usundt produkt per dag</strong>
+                            </div>
+                            <input type="number" id="sugar-policy-max-per-product" min="0" step="1" placeholder="1" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <div style="font-size: 12px; color: #666; margin-top: 3px;">Maksimum antal af hver specifik usund vare per dag</div>
+                        </label>
+
+                        <!-- Derefter: Maks antal usunde produkter totalt -->
+                        <label style="display: block;">
+                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                <input type="checkbox" id="sugar-policy-max-unhealthy-enabled" style="margin-right: 8px; cursor: pointer;">
+                                <strong style="cursor: pointer;">Maks antal usunde produkter per dag</strong>
+                            </div>
+                            <input type="number" id="sugar-policy-max-unhealthy" min="0" step="1" placeholder="2" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <div style="font-size: 12px; color: #666; margin-top: 3px;">Maksimum antal usunde produkter en bruger kan købe per dag (total)</div>
+                        </label>
+                    </div>
                 </div>
                 <div class="settings-section">
-                    <h3>Produkter med sukker-begrænsning</h3>
+                    <h3>Vælg usunde produkter (Aktiver sukkerpolitik for følgende produkter)</h3>
                     <div id="sugar-policy-product-list"></div>
                 </div>
             </div>
         </div>
     </div>
-    
+
+    <div id="spending-limit-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Beløbsgrænse</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-user-list">
+                <!-- Spending Limit Section -->
+                <div class="settings-section">
+                    <h3>Daglig Forbrugsgrænse</h3>
+                    <div class="toggle-row">
+                        <span id="spending-limit-enabled-label">Forbrugsgrænse er slået FRA</span>
+                        <input type="checkbox" id="spending-limit-enabled-toggle">
+                    </div>
+                    <div id="spending-limit-settings" style="margin-top: 15px; display: none;">
+                        <label style="display: block; margin-bottom: 10px;">
+                            <strong>Maksimalt forbrug per dag:</strong>
+                            <input type="number" id="spending-limit-amount" min="0" step="1" placeholder="40" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                            <div style="font-size: 12px; color: #666; margin-top: 3px;">Beløb i kr. (fx 40)</div>
+                        </label>
+                        <div style="margin-top: 15px;">
+                            <strong>Gælder for:</strong>
+                            <label style="display: block; margin-top: 8px; cursor: pointer;">
+                                <input type="checkbox" id="spending-limit-regular-users" checked style="margin-right: 8px;">
+                                Almindelige brugere
+                            </label>
+                            <label style="display: block; margin-top: 8px; cursor: pointer;">
+                                <input type="checkbox" id="spending-limit-admins" style="margin-right: 8px;">
+                                Admins
+                            </label>
+                            <label style="display: block; margin-top: 8px; cursor: pointer;">
+                                <input type="checkbox" id="spending-limit-test-users" style="margin-right: 8px;">
+                                Testbrugere
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Balance Limit Section -->
+                <div class="settings-section" style="margin-top: 20px;">
+                    <h3>Saldogrænse</h3>
+                    <div class="toggle-row">
+                        <span id="balance-limit-enabled-label">Saldogrænse er slået TIL</span>
+                        <input type="checkbox" id="balance-limit-enabled-toggle" checked>
+                    </div>
+                    <div id="balance-limit-settings" style="margin-top: 15px;">
+                        <label style="display: block; margin-bottom: 10px;">
+                            <strong>Saldogrænse:</strong>
+                            <input type="number" id="balance-limit-amount" step="1" placeholder="-10" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                            <div style="font-size: 12px; color: #666; margin-top: 3px;">Saldoer kan ikke komme under det valgte beløb. Køb som overstiger saldogrænsen blokeres.</div>
+                        </label>
+                        <div style="margin-top: 15px;">
+                            <strong>Undtagelser:</strong>
+                            <label style="display: block; margin-top: 8px; cursor: pointer;">
+                                <input type="checkbox" id="balance-limit-exempt-admins" style="margin-right: 8px;">
+                                Ingen saldogrænse for admins
+                            </label>
+                            <label style="display: block; margin-top: 8px; cursor: pointer;">
+                                <input type="checkbox" id="balance-limit-exempt-test-users" style="margin-right: 8px;">
+                                Ingen saldogrænse for test-brugere
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="parent-portal-settings-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Forældreportalen</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-user-list">
+                <div class="settings-section">
+                    <h3>Aktive funktioner på forældreportalen</h3>
+                    <div style="padding: 15px;">
+                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
+                            <input type="checkbox" id="parent-portal-email-notifications" style="margin-right: 12px; cursor: pointer;">
+                            <div>
+                                <strong>Få saldo notifikationer på e-mail</strong>
+                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre modtager e-mail når saldo er lav</div>
+                            </div>
+                        </label>
+
+                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
+                            <input type="checkbox" id="parent-portal-spending-limit" style="margin-right: 12px; cursor: pointer;">
+                            <div>
+                                <strong>Daglig Beløbsgrænse</strong>
+                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan sætte daglig forbrugsgrænse for deres barn</div>
+                            </div>
+                        </label>
+
+                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
+                            <input type="checkbox" id="parent-portal-product-limit" style="margin-right: 12px; cursor: pointer;">
+                            <div>
+                                <strong>Købsgrænse pr produkt</strong>
+                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan begrænse antal af specifikke produkter</div>
+                            </div>
+                        </label>
+
+                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
+                            <input type="checkbox" id="parent-portal-allergens" style="margin-right: 12px; cursor: pointer;">
+                            <div>
+                                <strong>Allergener</strong>
+                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan vælge allergener for deres barn (skjuler funktionen i Rediger Produkt hvis deaktiveret)</div>
+                            </div>
+                        </label>
+
+                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
+                            <input type="checkbox" id="parent-portal-vegetarian-only" style="margin-right: 12px; cursor: pointer;">
+                            <div>
+                                <strong>Kun Vegetarisk</strong>
+                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan markere at deres barn kun må købe vegetariske produkter (skjuler funktionen i Rediger Produkt hvis deaktiveret)</div>
+                            </div>
+                        </label>
+
+                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
+                            <input type="checkbox" id="parent-portal-no-pork" style="margin-right: 12px; cursor: pointer;">
+                            <div>
+                                <strong>Må ikke få svinekød</strong>
+                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan markere at deres barn ikke må få svinekød (skjuler funktionen i Rediger Produkt hvis deaktiveret)</div>
+                            </div>
+                        </label>
+
+                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
+                            <input type="checkbox" id="parent-portal-no-unhealthy" style="margin-right: 12px; cursor: pointer;">
+                            <div>
+                                <strong>Må ikke købe noget usundt</strong>
+                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan blokere alle usunde produkter for deres barn</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-section" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+                    <button id="parent-portal-codes-btn-inside" class="settings-item-btn" style="margin-bottom: 15px;">
+                        <strong>Forældre Portal Koder</strong>
+                        <div style="font-size: 12px; margin-top: 2px;">Administrer adgangskoder til forældreportalen</div>
+                    </button>
+                </div>
+
+                <div style="padding: 20px; text-align: center;">
+                    <button id="save-parent-portal-settings-btn" class="btn-primary" style="padding: 12px 40px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">GEM</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="custom-alert-modal" class="modal">
         <div id="custom-alert-content">
             <h2 id="custom-alert-title">Bekræft Køb</h2>

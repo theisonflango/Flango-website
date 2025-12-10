@@ -368,6 +368,19 @@ export function createProductManagementUI(options = {}) {
         const existingRefillMaxRefills = isEditing && Number.isFinite(product?.refill_max_refills)
             ? product.refill_max_refills
             : 0;
+        const existingUnhealthy = isEditing && product?.unhealthy === true;
+
+        // Load parent portal settings to determine which fields to show
+        const { data: portalSettings } = await supabaseClient
+            .from('institutions')
+            .select('parent_portal_allergens, parent_portal_vegetarian_only, parent_portal_no_pork')
+            .eq('id', institutionId)
+            .single();
+
+        const showAllergens = portalSettings?.parent_portal_allergens !== false;
+        const showVegetarian = portalSettings?.parent_portal_vegetarian_only !== false;
+        const showPork = portalSettings?.parent_portal_no_pork !== false;
+
         const allergenOptions = [
             { value: 'peanuts', label: '🥜 Jordnødder (peanuts)' },
             { value: 'tree_nuts', label: '🥜 Trænødder: cashew, mandel, valnød, hasselnød, pistacie eller andre.' },
@@ -386,16 +399,34 @@ export function createProductManagementUI(options = {}) {
                 <input type="text" id="product-name-input" placeholder="Produktnavn" value="${isEditing ? product.name : ''}">
                 <input type="number" id="product-price-input" placeholder="Pris (kr)" step="1" value="${isEditing ? product.price.toFixed(2) : ''}">
                 <input type="number" id="product-max-per-day-input" placeholder="Købsgrænse (Ubegrænset)" step="1" value="${maxPerDayValue}">
-                <h4>Allergener</h4>
+                ${showAllergens ? `<h4>Allergener</h4>
                 <div class="allergen-grid">
                     ${allergensHTML}
-                </div>
+                </div>` : ''}
                 <div class="refill-row">
                     <label class="refill-option">
                         <input type="checkbox" id="product-refill-enabled" ${existingRefillEnabled ? 'checked' : ''}>
                         Aktiver rabat ved Refill/Genopfyldning
                     </label>
                 </div>
+                <div class="refill-row">
+                    <label class="refill-option">
+                        <input type="checkbox" id="product-unhealthy-enabled" ${existingUnhealthy ? 'checked' : ''}>
+                        Usund Vare
+                    </label>
+                </div>
+                ${showPork ? `<div class="refill-row">
+                    <label class="refill-option">
+                        <input type="checkbox" id="product-contains-pork" ${product?.contains_pork === true ? 'checked' : ''}>
+                        Indeholder svinekød
+                    </label>
+                </div>` : ''}
+                ${showVegetarian ? `<div class="refill-row">
+                    <label class="refill-option">
+                        <input type="checkbox" id="product-is-vegetarian" ${product?.is_vegetarian === true ? 'checked' : ''}>
+                        Vegetarisk
+                    </label>
+                </div>` : ''}
                 <div id="refill-fields" class="refill-fields ${existingRefillEnabled ? '' : 'hidden'}">
                     <div class="refill-field">
                         <label for="product-refill-price-input" class="refill-label" data-label-base="Pris for genopfyldning">Pris for genopfyldning (kr)</label>
@@ -514,6 +545,9 @@ export function createProductManagementUI(options = {}) {
         };
         updateCustomIconSelection();
         const refillEnabledCheckbox = document.getElementById('product-refill-enabled');
+        const unhealthyCheckbox = document.getElementById('product-unhealthy-enabled');
+        const containsPorkCheckbox = document.getElementById('product-contains-pork');
+        const isVegetarianCheckbox = document.getElementById('product-is-vegetarian');
         const refillFields = document.getElementById('refill-fields');
         const refillPriceInput = document.getElementById('product-refill-price-input');
         const refillTimeLimitInput = document.getElementById('product-refill-time-limit-input');
@@ -595,6 +629,9 @@ export function createProductManagementUI(options = {}) {
                 return showCustomAlert('Fejl', 'Købsgrænse skal være et ikke-negativt tal eller tom for ubegrænset.');
             }
             const refillEnabled = !!(refillEnabledCheckbox?.checked);
+            const unhealthy = !!(unhealthyCheckbox?.checked);
+            const containsPork = !!(containsPorkCheckbox?.checked);
+            const isVegetarian = !!(isVegetarianCheckbox?.checked);
             const parseNumber = (el, fallback = 0) => {
                 if (!el) return fallback;
                 const num = Number(el.value);
@@ -611,6 +648,9 @@ export function createProductManagementUI(options = {}) {
                     maxPerDay,
                     allergens: allergenSelections,
                     institutionId,
+                    unhealthy,
+                    containsPork,
+                    isVegetarian,
                     refillEnabled,
                     refillPrice,
                     refillTimeLimitMinutes,
@@ -624,6 +664,9 @@ export function createProductManagementUI(options = {}) {
                     maxPerDay,
                     allergens: allergenSelections,
                     institutionId,
+                    unhealthy,
+                    containsPork,
+                    isVegetarian,
                     refillEnabled,
                     refillPrice,
                     refillTimeLimitMinutes,
@@ -671,6 +714,9 @@ export function createProductManagementUI(options = {}) {
             maxPerDay,
             allergens = [],
             institutionId = null,
+            unhealthy = false,
+            containsPork = false,
+            isVegetarian = false,
             refillEnabled = false,
             refillPrice = null,
             refillTimeLimitMinutes = null,
@@ -685,10 +731,13 @@ export function createProductManagementUI(options = {}) {
             price,
             emoji,
             max_per_day: maxPerDay,
+            unhealthy,
+            contains_pork: containsPork,
+            is_vegetarian: isVegetarian,
             refill_enabled: refillEnabledValue,
             refill_price: refillEnabledValue ? refillPrice : null,
-            refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : null,
-            refill_max_refills: refillEnabledValue ? refillMaxRefills : null,
+            refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
+            refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
             institution_id: adminProfile.institution_id,
             sort_order: products.length
         }]).select().single();
@@ -712,6 +761,9 @@ export function createProductManagementUI(options = {}) {
             maxPerDay,
             allergens = [],
             institutionId = null,
+            unhealthy = false,
+            containsPork = false,
+            isVegetarian = false,
             refillEnabled = false,
             refillPrice = null,
             refillTimeLimitMinutes = null,
@@ -728,10 +780,13 @@ export function createProductManagementUI(options = {}) {
             price,
             emoji,
             max_per_day: maxPerDay,
+            unhealthy,
+            contains_pork: containsPork,
+            is_vegetarian: isVegetarian,
             refill_enabled: refillEnabledValue,
             refill_price: refillEnabledValue ? refillPrice : null,
-            refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : null,
-            refill_max_refills: refillEnabledValue ? refillMaxRefills : null,
+            refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
+            refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
         }).eq("id", productId);
         if (error) return showAlert(`Fejl: ${error.message}`);
         Object.assign(product, {
@@ -739,10 +794,11 @@ export function createProductManagementUI(options = {}) {
             price,
             emoji,
             max_per_day: maxPerDay,
+            unhealthy,
             refill_enabled: refillEnabledValue,
             refill_price: refillEnabledValue ? refillPrice : null,
-            refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : null,
-            refill_max_refills: refillEnabledValue ? refillMaxRefills : null,
+            refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
+            refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
         });
         await saveProductAllergens(productId, allergens);
         if (institutionId) {

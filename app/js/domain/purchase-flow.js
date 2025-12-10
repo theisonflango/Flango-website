@@ -253,33 +253,93 @@ async function fetchProductAllergensMap(productIds) {
 }
 
 export async function enforceSugarPolicy({ customer, currentOrder, allProducts }) {
+    // Load institution sugar policy settings
+    const { data: institution } = await supabaseClient
+        .from('institutions')
+        .select('sugar_policy_enabled, sugar_policy_max_unhealthy_per_day, sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled, sugar_policy_max_per_product_enabled')
+        .eq('id', customer.institution_id)
+        .single();
+
+    if (!institution?.sugar_policy_enabled) {
+        return true; // Policy not enabled, allow purchase
+    }
+
+    // Get unhealthy items in current cart
     const unhealthyItemsInCart = currentOrder.filter(item => {
         const product = allProducts.find(p => p.id === item.id);
         return product && product.unhealthy === true;
     });
 
-    if (unhealthyItemsInCart.length > 0) {
-        const { data: policyCheck, error: policyError } = await supabaseClient.functions.invoke('check-sugar-policy', {
-            body: { user_id: customer.id },
-        });
+    if (unhealthyItemsInCart.length === 0) {
+        return true; // No unhealthy items, allow purchase
+    }
 
-        if (policyError) {
-            showAlert(`Fejl ved tjek af sukkerpolitik: ${policyError.message}`);
-            return false;
-        }
+    const maxUnhealthyEnabled = institution.sugar_policy_max_unhealthy_enabled || false;
+    const maxPerProductEnabled = institution.sugar_policy_max_per_product_enabled !== false; // default true
 
-        const boughtIds = new Set(policyCheck.boughtUnhealthyProductIds || []);
-        const firstViolation = unhealthyItemsInCart.find(item => boughtIds.has(item.id));
+    // Hvis ingen af begrænsningerne er aktiveret, tillad køb
+    if (!maxUnhealthyEnabled && !maxPerProductEnabled) {
+        return true;
+    }
 
-        if (firstViolation) {
+    // Query today's purchases for this customer
+    const today = new Date().toISOString().split('T')[0];
+    const { data: todaySales } = await supabaseClient
+        .from('sales_items')
+        .select(`
+            product_id,
+            quantity,
+            sales!inner(customer_id, created_at)
+        `)
+        .eq('sales.customer_id', customer.id)
+        .gte('sales.created_at', `${today}T00:00:00`)
+        .lte('sales.created_at', `${today}T23:59:59`);
+
+    // Filter to only unhealthy products
+    const unhealthyProductIds = new Set(allProducts.filter(p => p.unhealthy).map(p => p.id));
+    const boughtUnhealthy = (todaySales || []).filter(item => unhealthyProductIds.has(item.product_id));
+
+    // Check total unhealthy limit (kun hvis enabled)
+    if (maxUnhealthyEnabled) {
+        const totalUnhealthyToday = boughtUnhealthy.reduce((sum, item) => sum + (item.quantity || 1), 0);
+        const totalUnhealthyInCart = unhealthyItemsInCart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+        const maxUnhealthy = institution.sugar_policy_max_unhealthy_per_day || 2;
+
+        if (totalUnhealthyToday + totalUnhealthyInCart > maxUnhealthy) {
             await showCustomAlert(
                 'Køb Blokeret',
-                `Hov, ${customer.name} har allerede købt <strong>${firstViolation.name}</strong> i dag.<br><br>Du kan kun købe én af hver slags usund vare pr. dag.`
+                `Hov, ${customer.name} har allerede købt <strong>${totalUnhealthyToday}</strong> usunde varer i dag.<br><br>Maks antal usunde produkter per dag: <strong>${maxUnhealthy}</strong>`
             );
             return false;
         }
     }
-    return true;
+
+    // Check per-product limit (kun hvis enabled)
+    if (maxPerProductEnabled) {
+        const maxPerProduct = institution.sugar_policy_max_per_product_per_day || 1;
+        const boughtByProductId = {};
+        boughtUnhealthy.forEach(item => {
+            const id = item.product_id;
+            boughtByProductId[id] = (boughtByProductId[id] || 0) + (item.quantity || 1);
+        });
+
+        for (const cartItem of unhealthyItemsInCart) {
+            const productId = cartItem.id;
+            const boughtCount = boughtByProductId[productId] || 0;
+            const cartCount = cartItem.quantity || 1;
+
+            if (boughtCount + cartCount > maxPerProduct) {
+                const product = allProducts.find(p => p.id === productId);
+                await showCustomAlert(
+                    'Køb Blokeret',
+                    `Hov, ${customer.name} har allerede købt <strong>${product?.name || 'denne vare'}</strong> ${boughtCount} gang(e) i dag.<br><br>Maks antal af hver usund vare per dag: <strong>${maxPerProduct}</strong>`
+                );
+                return false;
+            }
+        }
+    }
+
+    return true; // All checks passed
 }
 
 export async function handleCompletePurchase({
@@ -458,14 +518,70 @@ export async function handleCompletePurchase({
     applyEvaluation(evaluation);
     const finance = getFinancialState(finalTotal);
     const newBalance = Number.isFinite(finance.newBalance) ? finance.newBalance : customer.balance - finalTotal;
-    const overdraftBreached = !!finance.overdraftBreached;
-    const availableUntilLimit = Number.isFinite(finance.availableUntilLimit)
-        ? finance.availableUntilLimit
-        : customer.balance - OVERDRAFT_LIMIT;
 
-    if (overdraftBreached) {
-        const errorMessage = `Der er ikke penge nok på kontoen til dette køb!<br>Du har <strong>${availableUntilLimit.toFixed(2)} kr.</strong> tilbage, før du rammer ${OVERDRAFT_LIMIT} kr. grænsen.<br><br>Husk at bede dine forældre pænt om at overføre.`;
-        return showCustomAlert('Køb Afvist', errorMessage);
+    // Load institution policy settings
+    const { data: institutionSettings } = await supabaseClient
+        .from('institutions')
+        .select(`
+            balance_limit_enabled,
+            balance_limit_amount,
+            balance_limit_exempt_admins,
+            balance_limit_exempt_test_users,
+            spending_limit_enabled,
+            spending_limit_amount,
+            spending_limit_applies_to_regular_users,
+            spending_limit_applies_to_admins,
+            spending_limit_applies_to_test_users
+        `)
+        .eq('id', customer.institution_id)
+        .single();
+
+    // === SPENDING LIMIT CHECK ===
+    if (institutionSettings?.spending_limit_enabled) {
+        const isAdmin = customer.role === 'admin' || customer.is_admin === true;
+        const isTestUser = customer.is_test_user === true;
+        const isRegularUser = !isAdmin && !isTestUser;
+
+        const appliesToUser = (isRegularUser && institutionSettings.spending_limit_applies_to_regular_users) ||
+                              (isAdmin && institutionSettings.spending_limit_applies_to_admins) ||
+                              (isTestUser && institutionSettings.spending_limit_applies_to_test_users);
+
+        if (appliesToUser) {
+            const today = new Date().toISOString().split('T')[0];
+            const { data: todayPurchases } = await supabaseClient
+                .from('sales')
+                .select('total_price')
+                .eq('customer_id', customer.id)
+                .gte('created_at', `${today}T00:00:00`)
+                .lte('created_at', `${today}T23:59:59`);
+
+            const spentToday = (todayPurchases || []).reduce((sum, sale) => sum + (sale.total_price || 0), 0);
+            const spendingLimit = institutionSettings.spending_limit_amount || 40;
+            const wouldSpend = spentToday + finalTotal;
+
+            if (wouldSpend > spendingLimit) {
+                const remaining = Math.max(0, spendingLimit - spentToday);
+                const errorMessage = `Du har nået din daglige forbrugsgrænse!<br>Grænse: <strong>${spendingLimit.toFixed(2)} kr.</strong><br>Brugt i dag: <strong>${spentToday.toFixed(2)} kr.</strong><br>Tilbage: <strong>${remaining.toFixed(2)} kr.</strong><br><br>Prøv igen i morgen!`;
+                return showCustomAlert('Køb Afvist', errorMessage);
+            }
+        }
+    }
+
+    // === BALANCE LIMIT CHECK ===
+    if (institutionSettings?.balance_limit_enabled !== false) {
+        const isAdmin = customer.role === 'admin' || customer.is_admin === true;
+        const isTestUser = customer.is_test_user === true;
+        const isExempt = (isAdmin && institutionSettings?.balance_limit_exempt_admins) ||
+                         (isTestUser && institutionSettings?.balance_limit_exempt_test_users);
+
+        if (!isExempt) {
+            const balanceLimit = institutionSettings?.balance_limit_amount ?? OVERDRAFT_LIMIT;
+            if (newBalance < balanceLimit) {
+                const available = customer.balance - balanceLimit;
+                const errorMessage = `Der er ikke penge nok på kontoen til dette køb!<br>Du har <strong>${available.toFixed(2)} kr.</strong> tilbage, før du rammer ${balanceLimit} kr. grænsen.<br><br>Husk at bede dine forældre pænt om at overføre.`;
+                return showCustomAlert('Køb Afvist', errorMessage);
+            }
+        }
     }
 
     // OPTIMERING: Brug helper funktion til at bygge bekræftelsesdialog

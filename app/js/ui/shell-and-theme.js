@@ -235,25 +235,324 @@ function ensureSugarPolicyModal() {
     modal.dataset.bindings = 'true';
 }
 
-function openSugarPolicyModal() {
+async function openSugarPolicyModal() {
     const modal = document.getElementById('sugar-policy-modal');
     if (!modal) return;
     ensureSugarPolicyModal();
 
+    const institutionId = getInstitutionId();
+    if (!institutionId) {
+        console.error('[sugar-policy] No institution ID found');
+        return;
+    }
+
+    // Load current settings from database
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('sugar_policy_enabled, sugar_policy_max_unhealthy_per_day, sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled, sugar_policy_max_per_product_enabled')
+        .eq('id', institutionId)
+        .single();
+
+    if (error) {
+        console.error('[sugar-policy] Error loading settings:', error);
+    }
+
     const toggle = document.getElementById('sugar-policy-enabled-toggle');
-    if (toggle && !toggle.dataset.bound) {
-        toggle.addEventListener('change', () => {
-            sugarPolicyState.enabled = toggle.checked;
-            syncSugarPolicyEnabledLabel();
-            // Fremtidig persistens til Supabase/institution-settings kan placeres her.
-        });
-        toggle.dataset.bound = 'true';
+    const label = document.getElementById('sugar-policy-enabled-label');
+    const settings = document.getElementById('sugar-policy-settings');
+    const maxUnhealthyInput = document.getElementById('sugar-policy-max-unhealthy');
+    const maxPerProductInput = document.getElementById('sugar-policy-max-per-product');
+    const maxUnhealthyEnabledCheckbox = document.getElementById('sugar-policy-max-unhealthy-enabled');
+    const maxPerProductEnabledCheckbox = document.getElementById('sugar-policy-max-per-product-enabled');
+
+    // Set values from database
+    if (data) {
+        const enabled = data.sugar_policy_enabled || false;
+        sugarPolicyState.enabled = enabled;
+        toggle.checked = enabled;
+        maxUnhealthyInput.value = data.sugar_policy_max_unhealthy_per_day || 2;
+        maxPerProductInput.value = data.sugar_policy_max_per_product_per_day || 1;
+        maxUnhealthyEnabledCheckbox.checked = data.sugar_policy_max_unhealthy_enabled || false;
+        maxPerProductEnabledCheckbox.checked = data.sugar_policy_max_per_product_enabled !== false; // default true
     }
-    if (toggle) {
-        toggle.checked = sugarPolicyState.enabled;
-    }
-    syncSugarPolicyEnabledLabel();
+
+    // Update UI - gråe ud inactive felter
+    const updateFieldStates = () => {
+        // Query elements fresh from DOM (after cloneNode operations)
+        const currentToggle = document.getElementById('sugar-policy-enabled-toggle');
+        const currentMaxUnhealthyInput = document.getElementById('sugar-policy-max-unhealthy');
+        const currentMaxPerProductInput = document.getElementById('sugar-policy-max-per-product');
+        const currentMaxUnhealthyEnabledCheckbox = document.getElementById('sugar-policy-max-unhealthy-enabled');
+        const currentMaxPerProductEnabledCheckbox = document.getElementById('sugar-policy-max-per-product-enabled');
+        const currentLabel = document.getElementById('sugar-policy-enabled-label');
+
+        if (!currentToggle || !currentMaxUnhealthyInput || !currentMaxPerProductInput || !currentMaxUnhealthyEnabledCheckbox || !currentMaxPerProductEnabledCheckbox) return;
+
+        const mainEnabled = currentToggle.checked;
+        const maxUnhealthyEnabled = currentMaxUnhealthyEnabledCheckbox.checked;
+        const maxPerProductEnabled = currentMaxPerProductEnabledCheckbox.checked;
+
+        // Main toggle label
+        if (currentLabel) currentLabel.textContent = mainEnabled ? 'Sukkerpolitik er slået TIL' : 'Sukkerpolitik er slået FRA';
+
+        // Hvis main toggle er slået fra, gråe begge felter ud
+        if (!mainEnabled) {
+            currentMaxUnhealthyInput.disabled = true;
+            currentMaxPerProductInput.disabled = true;
+            currentMaxUnhealthyInput.style.opacity = '0.5';
+            currentMaxPerProductInput.style.opacity = '0.5';
+            currentMaxUnhealthyEnabledCheckbox.disabled = true;
+            currentMaxPerProductEnabledCheckbox.disabled = true;
+        } else {
+            // Main toggle er aktiv, tjek individuelle checkboxes
+            currentMaxUnhealthyEnabledCheckbox.disabled = false;
+            currentMaxPerProductEnabledCheckbox.disabled = false;
+
+            // Maks total usunde
+            currentMaxUnhealthyInput.disabled = !maxUnhealthyEnabled;
+            currentMaxUnhealthyInput.style.opacity = maxUnhealthyEnabled ? '1' : '0.5';
+
+            // Maks per produkt
+            currentMaxPerProductInput.disabled = !maxPerProductEnabled;
+            currentMaxPerProductInput.style.opacity = maxPerProductEnabled ? '1' : '0.5';
+        }
+    };
+
+    updateFieldStates();
+
+    // Save function
+    const saveSettings = async (updates) => {
+        const { error } = await supabaseClient
+            .from('institutions')
+            .update(updates)
+            .eq('id', institutionId);
+
+        if (error) {
+            console.error('[sugar-policy] Error saving settings:', error);
+        }
+    };
+
+    // Event listeners (remove old ones first to avoid duplicates)
+    const newToggle = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(newToggle, toggle);
+
+    newToggle.addEventListener('change', () => {
+        sugarPolicyState.enabled = newToggle.checked;
+        updateFieldStates();
+        saveSettings({ sugar_policy_enabled: newToggle.checked });
+    });
+
+    // Maks total usunde checkbox
+    const newMaxUnhealthyEnabledCheckbox = maxUnhealthyEnabledCheckbox.cloneNode(true);
+    maxUnhealthyEnabledCheckbox.parentNode.replaceChild(newMaxUnhealthyEnabledCheckbox, maxUnhealthyEnabledCheckbox);
+
+    newMaxUnhealthyEnabledCheckbox.addEventListener('change', () => {
+        const isEnabled = newMaxUnhealthyEnabledCheckbox.checked;
+
+        // Hvis denne aktiveres, deaktiver per-product
+        if (isEnabled) {
+            const perProductCheckbox = document.getElementById('sugar-policy-max-per-product-enabled');
+            if (perProductCheckbox) {
+                perProductCheckbox.checked = false;
+                saveSettings({
+                    sugar_policy_max_unhealthy_enabled: true,
+                    sugar_policy_max_per_product_enabled: false
+                });
+            }
+        } else {
+            saveSettings({ sugar_policy_max_unhealthy_enabled: false });
+        }
+
+        updateFieldStates();
+    });
+
+    // Maks per produkt checkbox
+    const newMaxPerProductEnabledCheckbox = maxPerProductEnabledCheckbox.cloneNode(true);
+    maxPerProductEnabledCheckbox.parentNode.replaceChild(newMaxPerProductEnabledCheckbox, maxPerProductEnabledCheckbox);
+
+    newMaxPerProductEnabledCheckbox.addEventListener('change', () => {
+        const isEnabled = newMaxPerProductEnabledCheckbox.checked;
+
+        // Hvis denne aktiveres, deaktiver total unhealthy
+        if (isEnabled) {
+            const unhealthyCheckbox = document.getElementById('sugar-policy-max-unhealthy-enabled');
+            if (unhealthyCheckbox) {
+                unhealthyCheckbox.checked = false;
+                saveSettings({
+                    sugar_policy_max_per_product_enabled: true,
+                    sugar_policy_max_unhealthy_enabled: false
+                });
+            }
+        } else {
+            saveSettings({ sugar_policy_max_per_product_enabled: false });
+        }
+
+        updateFieldStates();
+    });
+
+    maxUnhealthyInput.addEventListener('change', () => {
+        const value = parseInt(maxUnhealthyInput.value, 10);
+        if (!isNaN(value) && value >= 0) {
+            saveSettings({ sugar_policy_max_unhealthy_per_day: value });
+        }
+    });
+
+    maxPerProductInput.addEventListener('change', () => {
+        const value = parseInt(maxPerProductInput.value, 10);
+        if (!isNaN(value) && value >= 0) {
+            saveSettings({ sugar_policy_max_per_product_per_day: value });
+        }
+    });
+
     renderSugarPolicyProductList();
+    modal.style.display = 'flex';
+}
+
+async function openSpendingLimitModal() {
+    const modal = document.getElementById('spending-limit-modal');
+    if (!modal) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) {
+        console.error('[spending-limit] No institution ID found');
+        return;
+    }
+
+    // Load current settings from database
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select(`
+            spending_limit_enabled,
+            spending_limit_amount,
+            spending_limit_applies_to_regular_users,
+            spending_limit_applies_to_admins,
+            spending_limit_applies_to_test_users,
+            balance_limit_enabled,
+            balance_limit_amount,
+            balance_limit_exempt_admins,
+            balance_limit_exempt_test_users
+        `)
+        .eq('id', institutionId)
+        .single();
+
+    if (error) {
+        console.error('[spending-limit] Error loading settings:', error);
+        return;
+    }
+
+    // Spending Limit Elements
+    const spendingToggle = document.getElementById('spending-limit-enabled-toggle');
+    const spendingLabel = document.getElementById('spending-limit-enabled-label');
+    const spendingSettings = document.getElementById('spending-limit-settings');
+    const spendingAmount = document.getElementById('spending-limit-amount');
+    const spendingRegularUsers = document.getElementById('spending-limit-regular-users');
+    const spendingAdmins = document.getElementById('spending-limit-admins');
+    const spendingTestUsers = document.getElementById('spending-limit-test-users');
+
+    // Balance Limit Elements
+    const balanceToggle = document.getElementById('balance-limit-enabled-toggle');
+    const balanceLabel = document.getElementById('balance-limit-enabled-label');
+    const balanceSettings = document.getElementById('balance-limit-settings');
+    const balanceAmount = document.getElementById('balance-limit-amount');
+    const balanceExemptAdmins = document.getElementById('balance-limit-exempt-admins');
+    const balanceExemptTestUsers = document.getElementById('balance-limit-exempt-test-users');
+
+    // Set values from database
+    if (data) {
+        spendingToggle.checked = data.spending_limit_enabled || false;
+        spendingAmount.value = data.spending_limit_amount || 40;
+        spendingRegularUsers.checked = data.spending_limit_applies_to_regular_users !== false;
+        spendingAdmins.checked = data.spending_limit_applies_to_admins || false;
+        spendingTestUsers.checked = data.spending_limit_applies_to_test_users || false;
+
+        balanceToggle.checked = data.balance_limit_enabled !== false;
+        balanceAmount.value = data.balance_limit_amount || -10;
+        balanceExemptAdmins.checked = data.balance_limit_exempt_admins || false;
+        balanceExemptTestUsers.checked = data.balance_limit_exempt_test_users || false;
+    }
+
+    // Update labels and visibility
+    const updateSpendingUI = () => {
+        const enabled = spendingToggle.checked;
+        spendingLabel.textContent = enabled ? 'Forbrugsgrænse er slået TIL' : 'Forbrugsgrænse er slået FRA';
+        spendingSettings.style.display = enabled ? 'block' : 'none';
+    };
+
+    const updateBalanceUI = () => {
+        const enabled = balanceToggle.checked;
+        balanceLabel.textContent = enabled ? 'Saldogrænse er slået TIL' : 'Saldogrænse er slået FRA';
+        balanceSettings.style.display = enabled ? 'block' : 'none';
+    };
+
+    updateSpendingUI();
+    updateBalanceUI();
+
+    // Save function
+    const saveSettings = async (updates) => {
+        const { error } = await supabaseClient
+            .from('institutions')
+            .update(updates)
+            .eq('id', institutionId);
+
+        if (error) {
+            console.error('[spending-limit] Error saving settings:', error);
+        }
+    };
+
+    // Event listeners
+    spendingToggle.addEventListener('change', () => {
+        updateSpendingUI();
+        saveSettings({ spending_limit_enabled: spendingToggle.checked });
+    });
+
+    spendingAmount.addEventListener('change', () => {
+        const value = parseFloat(spendingAmount.value);
+        if (!isNaN(value) && value >= 0) {
+            saveSettings({ spending_limit_amount: value });
+        }
+    });
+
+    spendingRegularUsers.addEventListener('change', () => {
+        saveSettings({ spending_limit_applies_to_regular_users: spendingRegularUsers.checked });
+    });
+
+    spendingAdmins.addEventListener('change', () => {
+        saveSettings({ spending_limit_applies_to_admins: spendingAdmins.checked });
+    });
+
+    spendingTestUsers.addEventListener('change', () => {
+        saveSettings({ spending_limit_applies_to_test_users: spendingTestUsers.checked });
+    });
+
+    balanceToggle.addEventListener('change', () => {
+        updateBalanceUI();
+        saveSettings({ balance_limit_enabled: balanceToggle.checked });
+    });
+
+    balanceAmount.addEventListener('change', () => {
+        const value = parseFloat(balanceAmount.value);
+        if (!isNaN(value)) {
+            saveSettings({ balance_limit_amount: value });
+        }
+    });
+
+    balanceExemptAdmins.addEventListener('change', () => {
+        saveSettings({ balance_limit_exempt_admins: balanceExemptAdmins.checked });
+    });
+
+    balanceExemptTestUsers.addEventListener('change', () => {
+        saveSettings({ balance_limit_exempt_test_users: balanceExemptTestUsers.checked });
+    });
+
+    // Close button
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+    }
+
+    // Show modal
     modal.style.display = 'flex';
 }
 
@@ -291,6 +590,24 @@ async function openInstitutionPreferences() {
     sugarPolicyBtn.addEventListener('click', () => {
         backdrop.style.display = 'none';
         openSugarPolicyModal();
+    });
+
+    // Beløbsgrænse knap
+    const spendingLimitBtn = document.createElement('button');
+    spendingLimitBtn.className = 'settings-item-btn';
+    spendingLimitBtn.innerHTML = `<strong>Beløbsgrænse</strong><div style="font-size: 12px; margin-top: 2px;">Konfigurer daglig forbrugsgrænse og saldogrænse.</div>`;
+    spendingLimitBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openSpendingLimitModal();
+    });
+
+    // Forældreportalen knap
+    const parentPortalBtn = document.createElement('button');
+    parentPortalBtn.className = 'settings-item-btn';
+    parentPortalBtn.innerHTML = `<strong>Forældreportalen</strong><div style="font-size: 12px; margin-top: 2px;">Konfigurer funktioner tilgængelige i forældreportalen.</div>`;
+    parentPortalBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openParentPortalSettingsModal();
     });
 
     // Checkbox: Vis admins i bruger-liste
@@ -346,9 +663,118 @@ async function openInstitutionPreferences() {
     });
 
     contentEl.appendChild(sugarPolicyBtn);
+    contentEl.appendChild(spendingLimitBtn);
+    contentEl.appendChild(parentPortalBtn);
     contentEl.appendChild(showAdminsCheckbox);
     contentEl.appendChild(adminsFreeCheckbox);
     backdrop.style.display = 'flex';
+}
+
+async function openParentPortalSettingsModal() {
+    const modal = document.getElementById('parent-portal-settings-modal');
+    if (!modal) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) {
+        console.error('[parent-portal] No institution ID found');
+        return;
+    }
+
+    // Load current settings from database
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select(`
+            parent_portal_email_notifications,
+            parent_portal_spending_limit,
+            parent_portal_product_limit,
+            parent_portal_allergens,
+            parent_portal_vegetarian_only,
+            parent_portal_no_pork,
+            parent_portal_no_unhealthy
+        `)
+        .eq('id', institutionId)
+        .single();
+
+    if (error) {
+        console.error('[parent-portal] Error loading settings:', error);
+    }
+
+    // Get all checkboxes
+    const emailNotifications = document.getElementById('parent-portal-email-notifications');
+    const spendingLimit = document.getElementById('parent-portal-spending-limit');
+    const productLimit = document.getElementById('parent-portal-product-limit');
+    const allergens = document.getElementById('parent-portal-allergens');
+    const vegetarianOnly = document.getElementById('parent-portal-vegetarian-only');
+    const noPork = document.getElementById('parent-portal-no-pork');
+    const noUnhealthy = document.getElementById('parent-portal-no-unhealthy');
+    const saveBtn = document.getElementById('save-parent-portal-settings-btn');
+    const codesBtn = document.getElementById('parent-portal-codes-btn-inside');
+
+    // Set values from database (default all to true)
+    if (data) {
+        emailNotifications.checked = data.parent_portal_email_notifications !== false;
+        spendingLimit.checked = data.parent_portal_spending_limit !== false;
+        productLimit.checked = data.parent_portal_product_limit !== false;
+        allergens.checked = data.parent_portal_allergens !== false;
+        vegetarianOnly.checked = data.parent_portal_vegetarian_only !== false;
+        noPork.checked = data.parent_portal_no_pork !== false;
+        noUnhealthy.checked = data.parent_portal_no_unhealthy !== false;
+    }
+
+    // Save button handler
+    const newSaveBtn = saveBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+    newSaveBtn.addEventListener('click', async () => {
+        const updates = {
+            parent_portal_email_notifications: emailNotifications.checked,
+            parent_portal_spending_limit: spendingLimit.checked,
+            parent_portal_product_limit: productLimit.checked,
+            parent_portal_allergens: allergens.checked,
+            parent_portal_vegetarian_only: vegetarianOnly.checked,
+            parent_portal_no_pork: noPork.checked,
+            parent_portal_no_unhealthy: noUnhealthy.checked
+        };
+
+        const { error: saveError } = await supabaseClient
+            .from('institutions')
+            .update(updates)
+            .eq('id', institutionId);
+
+        if (saveError) {
+            console.error('[parent-portal] Error saving settings:', saveError);
+            alert('Fejl ved gemning af indstillinger');
+        } else {
+            modal.style.display = 'none';
+            // Reload products if allergens/vegetarian/pork settings changed
+            if (typeof window.__flangoFetchAndRenderProducts === 'function') {
+                window.__flangoFetchAndRenderProducts();
+            }
+        }
+    });
+
+    // Parent portal codes button handler
+    const newCodesBtn = codesBtn.cloneNode(true);
+    codesBtn.parentNode.replaceChild(newCodesBtn, codesBtn);
+
+    newCodesBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+        // Call existing parent portal codes function
+        if (typeof window.__flangoOpenParentPortalAdmin === 'function') {
+            window.__flangoOpenParentPortalAdmin();
+        }
+    });
+
+    // Close button
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+    }
+
+    // Show modal
+    modal.style.display = 'flex';
 }
 
 const settingsReturnObservers = new WeakMap();
