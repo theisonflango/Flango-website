@@ -3,7 +3,7 @@ import { getOrderTotal, setOrder } from './order-store.js';
 import { getProductIconInfo, addProductToOrder, removeProductFromOrder } from './products-and-cart.js';
 import { canChildPurchase } from './purchase-limits.js';
 import { playSound } from '../ui/sound-and-alerts.js';
-import { getCurrentCustomer } from './cafe-session-store.js';
+import { getCurrentCustomer, clearEvaluation } from './cafe-session-store.js';
 import { MAX_ITEMS_PER_ORDER } from '../core/constants.js';
 
 export function updateTotalPrice(totalPriceEl) {
@@ -143,6 +143,9 @@ export async function addToOrder(product, currentOrder, orderListEl, totalPriceE
             console.warn('[order-store] sync failed after currentOrder mutation:', err);
         }
 
+        // Clear stale evaluation when cart changes
+        clearEvaluation();
+
         playSound('addItem');
         renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo);
         if (typeof onOrderChanged === 'function') {
@@ -161,6 +164,9 @@ export function removeLastItemFromOrder(currentOrder, orderListEl, totalPriceEl,
     } catch (err) {
         console.warn('[order-store] sync failed after currentOrder mutation:', err);
     }
+
+    // Clear stale evaluation when cart changes
+    clearEvaluation();
 
     playSound('removeItem');
     renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo);

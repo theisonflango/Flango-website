@@ -6,6 +6,7 @@ import { getInstitutionId, getCurrentClerk } from './session-store.js';
 import { getProductIconInfo } from './products-and-cart.js';
 import { initHistoryStore, loadSalesHistory } from './history-store.js';
 import { formatKr, buildAdjustmentTexts, showConfirmModal } from '../ui/confirm-modals.js';
+import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
 
 const HISTORY_DEBUG = false;
 
@@ -968,16 +969,9 @@ function updateCustomerBalanceLocally(customerId, delta) {
 
         const oldBalance = safeNumber(user.balance);
         const newBalance = oldBalance + (Number(delta) || 0);
-        user.balance = newBalance;
 
-        // Forsøg at informere resten af app'en om ændringen, hvis der findes en global handler
-        try {
-            if (typeof window.__flangoOnBalanceChanged === 'function') {
-                window.__flangoOnBalanceChanged({ userId: customerId, newBalance, delta });
-            }
-        } catch (innerErr) {
-            console.warn('updateCustomerBalanceLocally: kunne ikke kalde __flangoOnBalanceChanged', innerErr);
-        }
+        // Use unified balance manager instead of orphaned hook
+        updateCustomerBalanceGlobally(customerId, newBalance, delta, 'history-adjustment');
     } catch (err) {
         console.warn('updateCustomerBalanceLocally: fejl ved lokal saldo-opdatering', err);
     }

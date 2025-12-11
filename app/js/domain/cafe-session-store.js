@@ -91,6 +91,13 @@ export function setCustomerBalance(newBalance) {
 }
 
 /**
+ * Nulstil seneste evaluering (fx når kurven ændres).
+ */
+export function clearEvaluation() {
+    lastEvaluation = null;
+}
+
+/**
  * Gem seneste evaluering af et køb (uden at mutere saldo).
  * @param {Object|null} evaluation
  */

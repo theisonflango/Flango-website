@@ -2,9 +2,10 @@ import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '.
 import { initializeSoundSettings } from '../core/sound-manager.js';
 import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen } from '../ui/shell-and-theme.js';
 import { configureHistoryModule, showSalesHistory } from './history-and-reports.js';
+import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js';
 import { setupLogoutFlow } from './logout-flow.js';
-import { getFinancialState, setCurrentCustomer, getCurrentCustomer } from './cafe-session-store.js';
-import { getOrderTotal } from './order-store.js';
+import { getFinancialState, setCurrentCustomer, getCurrentCustomer, clearEvaluation } from './cafe-session-store.js';
+import { getOrderTotal, setOrder } from './order-store.js';
 import { updateTotalPrice, renderOrder, handleOrderListClick, addToOrder, removeLastItemFromOrder } from './order-ui.js';
 import { renderProductsInModal, renderProductsGrid, createProductManagementUI } from '../ui/product-management.js';
 import { supabaseClient } from '../core/config-and-supabase.js';
@@ -24,6 +25,7 @@ import {
     handleUndoLastSale,
     handleUndoPreviousSale,
 } from './purchase-flow.js';
+import { onBalanceChange } from '../core/balance-manager.js';
 import { setupCustomerPickerFlow } from './customer-picker-flow.js';
 import { setupAdminFlow, loadUsersAndNotifications } from './admin-flow.js';
 import { setupProductAssortmentFlow } from './product-assortment-flow.js';
@@ -54,6 +56,7 @@ export async function startApp() {
     const avatarCache = new Map();
 
     let allUsers = [];
+    window.__flangoAllUsers = allUsers; // Expose for balance-manager
     configureHistoryModule({ getAllUsers: () => allUsers });
     let allProducts = [];
     window.__flangoGetAllProducts = () => allProducts;
@@ -286,6 +289,8 @@ export async function startApp() {
     const getAllUsers = () => allUsers;
     const setAllUsers = (next) => {
         allUsers = next;
+        window.__flangoAllUsers = next; // Keep window property in sync
+        console.log(`[app-main] setAllUsers called: ${next.length} users, window.__flangoAllUsers.length=${window.__flangoAllUsers.length}`);
     };
 
     // 7) Kundevælger
@@ -308,7 +313,7 @@ export async function startApp() {
     await loadUsersAndNotifications({
         adminProfile,
         supabaseClient,
-        setAllUsers: (next) => { allUsers = next; },
+        setAllUsers,
         selectUserBtn,
         openCustomerSelectionModal: () => customerPicker.openCustomerSelectionModal(),
         userModal,
@@ -321,7 +326,7 @@ export async function startApp() {
         clerkProfile,
         supabaseClient,
         getAllUsers,
-        setAllUsers: (next) => { allUsers = next; },
+        setAllUsers,
         renderSelectedUserInfo: updateSelectedUserInfo,
         getCurrentSortKey: () => currentSortKey,
         setCurrentSortKey: (value) => { currentSortKey = value; },
@@ -367,6 +372,36 @@ export async function startApp() {
         showAlert,
     });
 
+    // Setup summary/opsummering modal
+    const institutionId = getInstitutionId();
+    setupSummaryModal(institutionId);
+
+    // Setup close button for summary modal
+    const summaryModal = document.getElementById('summary-modal');
+    if (summaryModal) {
+        const summaryCloseBtn = summaryModal.querySelector('.close-btn');
+        if (summaryCloseBtn) {
+            summaryCloseBtn.addEventListener('click', closeSummaryModal);
+        }
+        // Close on outside click
+        summaryModal.addEventListener('click', (event) => {
+            if (event.target === summaryModal) {
+                closeSummaryModal();
+            }
+        });
+
+        // Setup export button
+        const exportCSVBtn = document.getElementById('summary-export-csv');
+        if (exportCSVBtn) {
+            exportCSVBtn.addEventListener('click', exportToCSV);
+        }
+    }
+
+    // Global function to open summary modal
+    window.__flangoOpenSummary = () => {
+        openSummaryModal(institutionId);
+    };
+
     // Helper til at opdatere avatar (både localStorage og cache)
     function updateAvatarStorage(userId, avatarUrl) {
         const storageKey = `${AVATAR_STORAGE_PREFIX}${userId}`;
@@ -399,6 +434,8 @@ export async function startApp() {
         // Ryd den gamle ordre FØR vi sætter en ny bruger.
         // Dette sikrer, at `applyProductLimitsToButtons` ikke bruger en forældet kurv.
         currentOrder = [];
+        setOrder([]); // KRITISK: Sync order-store module state så getOrderTotal() returnerer 0
+        clearEvaluation(); // Ryd evaluation cache så "Ny Saldo" vises korrekt
         renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
 
         const selectedUser = allUsers.find(u => u.id === userId);
@@ -456,6 +493,16 @@ export async function startApp() {
         // Brug cafe-session-store til den finansielle tilstand
         const finance = getFinancialState(total);
 
+        // DEBUG: Log what we're reading
+        console.log(`[app-main] updateSelectedUserInfo DEBUG:`, {
+            userName: selectedUser.name,
+            selectedUserBalance: selectedUser.balance,
+            financeBalance: finance.balance,
+            financeNewBalance: finance.newBalance,
+            currentCustomerId: getCurrentCustomer()?.id,
+            selectedUserId: selectedUser.id
+        });
+
         // Robust udregning af nuværende saldo og ny saldo
         const currentBalance = Number.isFinite(finance.balance)
             ? finance.balance
@@ -464,6 +511,12 @@ export async function startApp() {
         const newBalance = Number.isFinite(finance.newBalance)
             ? finance.newBalance
             : currentBalance - total;
+
+        console.log(`[app-main] updateSelectedUserInfo DISPLAY:`, {
+            currentBalance,
+            newBalance,
+            total
+        });
 
         userInfoEl.innerHTML = `
             <div class="info-box">
@@ -481,6 +534,18 @@ export async function startApp() {
         `;
         userInfoEl.style.display = 'grid';
     }
+
+    // Register listener for balance changes to update UI
+    onBalanceChange('main-ui-updater', (event) => {
+        const { userId, newBalance, delta, source } = event;
+
+        // If this is the currently selected customer, update UI
+        const currentCustomer = getCurrentCustomer();
+        if (currentCustomer && currentCustomer.id === userId) {
+            console.log(`[app-main] Balance changed for selected customer: ${newBalance} kr (${source})`);
+            updateSelectedUserInfo();
+        }
+    });
 
     // Admin-handlinger i brugerlisten
     userModal.addEventListener('click', (event) => {

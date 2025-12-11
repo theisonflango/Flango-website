@@ -3011,3 +3011,305 @@ h3 {
     cursor: pointer;
     border: none;
 }
+
+/* ============================================================================
+   Summary / Opsummering Feature Styles
+   ========================================================================= */
+
+/* View Mode Selector */
+.summary-view-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    flex-wrap: wrap;
+}
+
+.summary-view-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: white;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.summary-view-btn:hover {
+    background: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.summary-view-btn.active {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+/* Date Filters */
+.summary-filters {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.date-input {
+    padding: 10px;
+    font-size: 16px;
+    border: 2px solid #ced4da;
+    border-radius: 6px;
+    transition: border-color 0.2s ease;
+}
+
+.date-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Table Container */
+.summary-table-container {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: white;
+    max-height: calc(90vh - 400px);
+}
+
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+}
+
+.summary-table thead {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+    color: white;
+    z-index: 10;
+}
+
+.summary-table th {
+    padding: 15px 12px;
+    text-align: left;
+    font-weight: 700;
+    border-bottom: 3px solid var(--primary-color);
+    white-space: nowrap;
+}
+
+.summary-table tbody tr {
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.summary-table tbody tr:hover {
+    background-color: #f8f9fa;
+    cursor: pointer;
+}
+
+.summary-table td {
+    padding: 12px;
+    vertical-align: top;
+}
+
+/* Period color coding */
+.period-day:nth-child(odd) {
+    background-color: #fff3e0;
+}
+
+.period-day:nth-child(even) {
+    background-color: #ffe0b2;
+}
+
+.period-week:nth-child(odd) {
+    background-color: #e3f2fd;
+}
+
+.period-week:nth-child(even) {
+    background-color: #bbdefb;
+}
+
+.period-month:nth-child(odd) {
+    background-color: #e8f5e9;
+}
+
+.period-month:nth-child(even) {
+    background-color: #c8e6c9;
+}
+
+.period-year:nth-child(odd) {
+    background-color: #f3e5f5;
+}
+
+.period-year:nth-child(even) {
+    background-color: #e1bee7;
+}
+
+/* Week separator in day view */
+.week-separator {
+    border-top: 3px solid var(--primary-color) !important;
+}
+
+/* Table Footer */
+.summary-table tfoot {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+    color: white;
+    font-weight: 700;
+    z-index: 10;
+}
+
+.summary-table tfoot td {
+    padding: 15px 12px;
+    border-top: 3px solid var(--success-color);
+}
+
+/* Loading & Error States */
+.summary-loading,
+.summary-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.summary-loading .spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.summary-loading p {
+    font-size: 18px;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.summary-error {
+    color: var(--danger-color);
+}
+
+.summary-error p:first-child {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.summary-error p:last-child {
+    font-size: 16px;
+    color: #6c757d;
+}
+
+/* Export Actions */
+.summary-actions {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-top: 2px solid #dee2e6;
+    border-radius: 0 0 8px 8px;
+    flex-wrap: wrap;
+}
+
+.summary-actions .action-button {
+    flex: 1;
+    min-width: 150px;
+}
+
+/* Secondary action styling */
+.secondary-action {
+    background: #6c757d !important;
+}
+
+.secondary-action:hover {
+    background: #5a6268 !important;
+}
+
+/* Empty State */
+.summary-empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: #6c757d;
+}
+
+.summary-empty p {
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.summary-empty p:first-child {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .summary-view-selector {
+        flex-direction: column;
+    }
+
+    .summary-view-btn {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .summary-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .summary-table {
+        font-size: 13px;
+    }
+
+    .summary-table th,
+    .summary-table td {
+        padding: 8px;
+    }
+
+    .summary-actions {
+        flex-direction: column;
+    }
+}

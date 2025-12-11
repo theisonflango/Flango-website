@@ -437,8 +437,11 @@ async function openSpendingLimitModal() {
 
     if (error) {
         console.error('[spending-limit] Error loading settings:', error);
+        alert('Fejl ved indlæsning af indstillinger: ' + error.message);
         return;
     }
+
+    console.log('[spending-limit] Loadede indstillinger fra database:', data);
 
     // Spending Limit Elements
     const spendingToggle = document.getElementById('spending-limit-enabled-toggle');
@@ -457,97 +460,136 @@ async function openSpendingLimitModal() {
     const balanceExemptAdmins = document.getElementById('balance-limit-exempt-admins');
     const balanceExemptTestUsers = document.getElementById('balance-limit-exempt-test-users');
 
-    // Set values from database
-    if (data) {
-        spendingToggle.checked = data.spending_limit_enabled || false;
-        spendingAmount.value = data.spending_limit_amount || 40;
-        spendingRegularUsers.checked = data.spending_limit_applies_to_regular_users !== false;
-        spendingAdmins.checked = data.spending_limit_applies_to_admins || false;
-        spendingTestUsers.checked = data.spending_limit_applies_to_test_users || false;
-
-        balanceToggle.checked = data.balance_limit_enabled !== false;
-        balanceAmount.value = data.balance_limit_amount || -10;
-        balanceExemptAdmins.checked = data.balance_limit_exempt_admins || false;
-        balanceExemptTestUsers.checked = data.balance_limit_exempt_test_users || false;
-    }
+    // Store database values for later use
+    const dbValues = data ? {
+        spendingEnabled: data.spending_limit_enabled || false,
+        spendingAmount: data.spending_limit_amount || 40,
+        spendingRegularUsers: data.spending_limit_applies_to_regular_users !== false,
+        spendingAdmins: data.spending_limit_applies_to_admins || false,
+        spendingTestUsers: data.spending_limit_applies_to_test_users || false,
+        balanceEnabled: data.balance_limit_enabled !== false,
+        balanceAmount: data.balance_limit_amount || -10,
+        balanceExemptAdmins: data.balance_limit_exempt_admins || false,
+        balanceExemptTestUsers: data.balance_limit_exempt_test_users || false
+    } : null;
 
     // Update labels and visibility
     const updateSpendingUI = () => {
-        const enabled = spendingToggle.checked;
-        spendingLabel.textContent = enabled ? 'Forbrugsgrænse er slået TIL' : 'Forbrugsgrænse er slået FRA';
-        spendingSettings.style.display = enabled ? 'block' : 'none';
+        const currentToggle = document.getElementById('spending-limit-enabled-toggle');
+        const currentLabel = document.getElementById('spending-limit-enabled-label');
+        const currentSettings = document.getElementById('spending-limit-settings');
+        if (!currentToggle || !currentLabel || !currentSettings) return;
+
+        const enabled = currentToggle.checked;
+        currentLabel.textContent = enabled ? 'Forbrugsgrænse er slået TIL' : 'Forbrugsgrænse er slået FRA';
+        currentSettings.style.display = enabled ? 'block' : 'none';
     };
 
     const updateBalanceUI = () => {
-        const enabled = balanceToggle.checked;
-        balanceLabel.textContent = enabled ? 'Saldogrænse er slået TIL' : 'Saldogrænse er slået FRA';
-        balanceSettings.style.display = enabled ? 'block' : 'none';
+        const currentToggle = document.getElementById('balance-limit-enabled-toggle');
+        const currentLabel = document.getElementById('balance-limit-enabled-label');
+        const currentSettings = document.getElementById('balance-limit-settings');
+        if (!currentToggle || !currentLabel || !currentSettings) return;
+
+        const enabled = currentToggle.checked;
+        currentLabel.textContent = enabled ? 'Saldogrænse er slået TIL' : 'Saldogrænse er slået FRA';
+        currentSettings.style.display = enabled ? 'block' : 'none';
     };
+
+    // UI toggle listeners (only for showing/hiding sections)
+    const newSpendingToggle = spendingToggle.cloneNode(true);
+    spendingToggle.parentNode.replaceChild(newSpendingToggle, spendingToggle);
+
+    const newBalanceToggle = balanceToggle.cloneNode(true);
+    balanceToggle.parentNode.replaceChild(newBalanceToggle, balanceToggle);
+
+    // Set values from database AFTER cloning
+    if (dbValues) {
+        console.log('[spending-limit] Sætter værdier fra database:', dbValues);
+
+        newSpendingToggle.checked = dbValues.spendingEnabled;
+        document.getElementById('spending-limit-amount').value = dbValues.spendingAmount;
+        document.getElementById('spending-limit-regular-users').checked = dbValues.spendingRegularUsers;
+        document.getElementById('spending-limit-admins').checked = dbValues.spendingAdmins;
+        document.getElementById('spending-limit-test-users').checked = dbValues.spendingTestUsers;
+
+        newBalanceToggle.checked = dbValues.balanceEnabled;
+        document.getElementById('balance-limit-amount').value = dbValues.balanceAmount;
+        document.getElementById('balance-limit-exempt-admins').checked = dbValues.balanceExemptAdmins;
+        document.getElementById('balance-limit-exempt-test-users').checked = dbValues.balanceExemptTestUsers;
+
+        console.log('[spending-limit] Værdier sat - spending toggle checked:', newSpendingToggle.checked);
+        console.log('[spending-limit] Værdier sat - balance amount:', document.getElementById('balance-limit-amount').value);
+    }
 
     updateSpendingUI();
     updateBalanceUI();
 
-    // Save function
-    const saveSettings = async (updates) => {
-        const { error } = await supabaseClient
+    newSpendingToggle.addEventListener('change', () => {
+        updateSpendingUI();
+    });
+
+    newBalanceToggle.addEventListener('change', () => {
+        updateBalanceUI();
+    });
+
+    // Save button handler
+    const saveBtn = document.getElementById('save-spending-limit-btn');
+    const newSaveBtn = saveBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+    newSaveBtn.addEventListener('click', async () => {
+        console.log('[spending-limit] Gem knap klikket');
+
+        // Query fresh elements from DOM (after cloneNode operations)
+        const currentSpendingToggle = document.getElementById('spending-limit-enabled-toggle');
+        const currentSpendingAmount = document.getElementById('spending-limit-amount');
+        const currentSpendingRegularUsers = document.getElementById('spending-limit-regular-users');
+        const currentSpendingAdmins = document.getElementById('spending-limit-admins');
+        const currentSpendingTestUsers = document.getElementById('spending-limit-test-users');
+        const currentBalanceToggle = document.getElementById('balance-limit-enabled-toggle');
+        const currentBalanceAmount = document.getElementById('balance-limit-amount');
+        const currentBalanceExemptAdmins = document.getElementById('balance-limit-exempt-admins');
+        const currentBalanceExemptTestUsers = document.getElementById('balance-limit-exempt-test-users');
+
+        const updates = {
+            spending_limit_enabled: currentSpendingToggle.checked,
+            spending_limit_amount: parseFloat(currentSpendingAmount.value) || 40,
+            spending_limit_applies_to_regular_users: currentSpendingRegularUsers.checked,
+            spending_limit_applies_to_admins: currentSpendingAdmins.checked,
+            spending_limit_applies_to_test_users: currentSpendingTestUsers.checked,
+            balance_limit_enabled: currentBalanceToggle.checked,
+            balance_limit_amount: parseFloat(currentBalanceAmount.value) || -10,
+            balance_limit_exempt_admins: currentBalanceExemptAdmins.checked,
+            balance_limit_exempt_test_users: currentBalanceExemptTestUsers.checked
+        };
+
+        console.log('[spending-limit] Gemmer indstillinger:', updates);
+        console.log('[spending-limit] Institution ID:', institutionId);
+
+        const { data, error, count, status, statusText } = await supabaseClient
             .from('institutions')
             .update(updates)
             .eq('id', institutionId);
 
+        console.log('[spending-limit] Update response:', { data, error, count, status, statusText });
+
         if (error) {
             console.error('[spending-limit] Error saving settings:', error);
+            alert('Fejl ved gemning af indstillinger: ' + error.message);
+        } else {
+            console.log('[spending-limit] Gemt succesfuldt!');
+            alert('Indstillinger gemt!');
+            modal.style.display = 'none';
         }
-    };
-
-    // Event listeners
-    spendingToggle.addEventListener('change', () => {
-        updateSpendingUI();
-        saveSettings({ spending_limit_enabled: spendingToggle.checked });
-    });
-
-    spendingAmount.addEventListener('change', () => {
-        const value = parseFloat(spendingAmount.value);
-        if (!isNaN(value) && value >= 0) {
-            saveSettings({ spending_limit_amount: value });
-        }
-    });
-
-    spendingRegularUsers.addEventListener('change', () => {
-        saveSettings({ spending_limit_applies_to_regular_users: spendingRegularUsers.checked });
-    });
-
-    spendingAdmins.addEventListener('change', () => {
-        saveSettings({ spending_limit_applies_to_admins: spendingAdmins.checked });
-    });
-
-    spendingTestUsers.addEventListener('change', () => {
-        saveSettings({ spending_limit_applies_to_test_users: spendingTestUsers.checked });
-    });
-
-    balanceToggle.addEventListener('change', () => {
-        updateBalanceUI();
-        saveSettings({ balance_limit_enabled: balanceToggle.checked });
-    });
-
-    balanceAmount.addEventListener('change', () => {
-        const value = parseFloat(balanceAmount.value);
-        if (!isNaN(value)) {
-            saveSettings({ balance_limit_amount: value });
-        }
-    });
-
-    balanceExemptAdmins.addEventListener('change', () => {
-        saveSettings({ balance_limit_exempt_admins: balanceExemptAdmins.checked });
-    });
-
-    balanceExemptTestUsers.addEventListener('change', () => {
-        saveSettings({ balance_limit_exempt_test_users: balanceExemptTestUsers.checked });
     });
 
     // Close button
     const closeBtn = modal.querySelector('.close-btn');
     if (closeBtn) {
-        closeBtn.onclick = () => {
+        const newCloseBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        newCloseBtn.onclick = () => {
             modal.style.display = 'none';
         };
     }
@@ -945,6 +987,19 @@ export function setupToolbarHistoryButton() {
             window.__flangoOpenSalesHistory();
         } else {
             notifyToolbarUser('Historik-funktionen er ikke klar.');
+        }
+    };
+}
+
+export function setupToolbarSummaryButton() {
+    const summaryBtn = document.getElementById('toolbar-summary-btn');
+    if (!summaryBtn) return;
+    summaryBtn.onclick = (event) => {
+        event.preventDefault();
+        if (typeof window.__flangoOpenSummary === 'function') {
+            window.__flangoOpenSummary();
+        } else {
+            notifyToolbarUser('Opsummering-funktionen er ikke klar.');
         }
     };
 }

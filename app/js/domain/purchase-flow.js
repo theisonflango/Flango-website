@@ -6,13 +6,13 @@ import { evaluatePurchase } from './cafe-session.js';
 import {
     applyEvaluation,
     getFinancialState,
-    setCustomerBalance,
     clearCurrentCustomer,
 } from './cafe-session-store.js';
 import { renderOrder } from './order-ui.js';
 import { getProductIconInfo } from './products-and-cart.js';
 import { canChildPurchase, invalidateTodaysSalesCache } from './purchase-limits.js';
 import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
+import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
 
 // ============================================================================
 // HELPER FUNKTIONER FOR handleCompletePurchase (OPT-6)
@@ -635,8 +635,7 @@ export async function handleCompletePurchase({
         }
         playSound('purchase');
         const appliedBalance = Number.isFinite(newBalance) ? newBalance : customer.balance - finalTotal;
-        customer.balance = appliedBalance;
-        setCustomerBalance(appliedBalance);
+        updateCustomerBalanceGlobally(customer.id, appliedBalance, -finalTotal, 'purchase');
         let nextOrder = clearOrder();
         try {
             setOrder(nextOrder);
@@ -666,7 +665,21 @@ export async function handleUndoLastSale() {
     } else {
         const result = data[0];
         await showCustomAlert('Success!', `Salget for ${result.customer_name} på ${result.refunded_amount.toFixed(2)} kr. er blevet fortrudt.`);
-        location.reload();
+
+        // Refresh balance from DB instead of full reload
+        await refreshCustomerBalanceFromDB(result.customer_id);
+
+        // Invalidate today's sales cache and refresh order UI
+        invalidateTodaysSalesCache();
+        if (typeof setCurrentOrder === 'function') {
+            setCurrentOrder([]);
+        }
+        const orderList = document.querySelector('.order-list');
+        const totalPriceEl = document.getElementById('total-price');
+        const updateSelectedUserInfo = window.updateSelectedUserInfo;
+        if (orderList && totalPriceEl) {
+            renderOrder(orderList, [], totalPriceEl, updateSelectedUserInfo);
+        }
     }
 }
 

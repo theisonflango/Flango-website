@@ -1,3 +1,5 @@
+import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
+
 export function createAdminUserActions(options = {}) {
     const {
         getAllUsers,
@@ -44,7 +46,7 @@ export function createAdminUserActions(options = {}) {
         const { error } = await supabaseClient.rpc('make_deposit', { p_target_user_id: userId, p_amount: amount });
         if (error) return showAlert(`Fejl: ${error.message}`);
 
-        user.balance += amount;
+        updateCustomerBalanceGlobally(userId, user.balance + amount, amount, 'admin-deposit');
         renderAdminUserList();
         updateSelectedUserInfo(); // Opdater hvis brugeren er valgt
         playSound('balanceUpdate');
@@ -81,7 +83,8 @@ export function createAdminUserActions(options = {}) {
         const { error } = await supabaseClient.rpc('edit_balance', { p_target_user_id: userId, p_new_balance: newBalance });
         if (error) return showAlert(`Fejl ved opdatering af saldo: ${error.message}`);
 
-        user.balance = newBalance;
+        const delta = newBalance - user.balance;
+        updateCustomerBalanceGlobally(userId, newBalance, delta, 'admin-balance-edit');
         renderAdminUserList();
         updateSelectedUserInfo(); // Opdater hvis brugeren er valgt
         playSound('balanceUpdate');

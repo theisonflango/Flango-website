@@ -98,6 +98,7 @@
             <div class="header-actions">
                 <button id="logged-in-user-avatar-container" class="header-action-btn" title="Min Flango"></button>
                 <button id="toolbar-history-btn" class="header-action-btn" title="Historik"><img src="Icons/webp/Function/historik.webp" alt="Historik"></button>
+                <button id="toolbar-summary-btn" class="header-action-btn" title="Opsummering">📊</button>
                 <button id="toolbar-gear-btn" class="header-action-btn" title="Indstillinger"><img src="Icons/webp/Function/Gear2.webp" alt="Indstillinger"></button>
                 <button id="logout-btn" class="header-action-btn" title="Log ud"><img src="Icons/webp/Function/Logout.webp" alt="Log ud"></button>
                 <button id="flango-logo-button" class="header-action-btn" title="Hjælp"><img src="Icons/webp/Assets/FlangoFruitLogo.webp" alt="Flango Logo"></button>
@@ -384,6 +385,9 @@
                     </div>
                 </div>
             </div>
+            <div class="modal-footer" style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="save-spending-limit-btn" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Gem</button>
+            </div>
         </div>
     </div>
 
@@ -500,6 +504,60 @@
                 <button class="keypad-btn keypad-action" data-key="clear">C</button>
                 <button class="keypad-btn" data-key="0">0</button>
                 <button class="keypad-btn keypad-action" data-key="backspace">⌫</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary/Opsummering Modal -->
+    <div id="summary-modal" class="modal">
+        <div class="modal-content" style="max-width: 1200px; height: 90%;">
+            <div class="modal-header">
+                <h2>📊 Opsummering</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+
+            <!-- View Mode Selector -->
+            <div class="summary-view-selector">
+                <button class="summary-view-btn active" data-view="day">📅 Dag</button>
+                <button class="summary-view-btn" data-view="week">📆 Uge</button>
+                <button class="summary-view-btn" data-view="month">🗓️ Måned</button>
+                <button class="summary-view-btn" data-view="year">📊 År</button>
+                <button class="summary-view-btn" data-view="employee">👥 Personale</button>
+            </div>
+
+            <!-- Date Range Filter -->
+            <div class="summary-filters">
+                <div class="filter-group">
+                    <label for="summary-from-date">Fra dato:</label>
+                    <input type="date" id="summary-from-date" class="date-input">
+                </div>
+                <div class="filter-group">
+                    <label for="summary-to-date">Til dato:</label>
+                    <input type="date" id="summary-to-date" class="date-input">
+                </div>
+                <button id="summary-apply-filter" class="action-button">Anvend Filter</button>
+                <button id="summary-reset-filter" class="action-button secondary-action">Nulstil</button>
+            </div>
+
+            <!-- Table Container -->
+            <div id="summary-table-container" class="summary-table-container">
+                <!-- Table will be dynamically rendered here -->
+            </div>
+
+            <!-- Loading & Error States -->
+            <div id="summary-loading" class="summary-loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Indlæser data...</p>
+            </div>
+            <div id="summary-error" class="summary-error" style="display: none;">
+                <p>⚠️ Fejl ved indlæsning af data</p>
+                <p id="summary-error-message"></p>
+            </div>
+
+            <!-- Export Buttons -->
+            <div class="summary-actions">
+                <button id="summary-export-csv" class="action-button">📄 Eksporter til CSV</button>
+                <button id="summary-export-pdf" class="action-button secondary-action" style="display: none;">📑 Eksporter til PDF</button>
             </div>
         </div>
     </div>

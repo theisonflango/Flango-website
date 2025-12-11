@@ -8,6 +8,7 @@ import {
 } from '../domain/users-and-admin.js';
 import { parseBadgeList, formatBadgeList, renderSimpleBadgeDisplay } from '../domain/stats-and-badges.js';
 import { showAlert, showCustomAlert } from './sound-and-alerts.js';
+import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
 
 export function setupAdminUserManagerFromModule(config = {}) {
     const {
@@ -354,7 +355,7 @@ export function setupAdminUserManagerFromModule(config = {}) {
         if (!isNaN(depositVal) && depositVal > 0) {
             const { error } = await depositToUser(user.id, depositVal);
             if (error) return showAlert(`Fejl ved indbetaling: ${error.message}`);
-            user.balance += depositVal;
+            updateCustomerBalanceGlobally(user.id, user.balance + depositVal, depositVal, 'admin-manager-deposit');
         }
 
         if (newBalanceVal) {
@@ -364,7 +365,8 @@ export function setupAdminUserManagerFromModule(config = {}) {
             }
             const { error } = await setUserBalanceDirectly(user.id, parsedBalance);
             if (error) return showAlert(`Fejl ved opdatering af saldo: ${error.message}`);
-            user.balance = parsedBalance;
+            const delta = parsedBalance - user.balance;
+            updateCustomerBalanceGlobally(user.id, parsedBalance, delta, 'admin-manager-set-balance');
         }
 
         if (pinVal) {
