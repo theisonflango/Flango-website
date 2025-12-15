@@ -6,7 +6,9 @@ import {
     setSummaryDateRange,
     getDefaultDateRange,
     getSummaryState,
-    initSummaryState
+    initSummaryState,
+    setIncludeTestUsers,
+    setEmployeeRole
 } from './summary-store.js';
 
 let institutionId = null;
@@ -19,11 +21,14 @@ export function setupSummaryModal(currentInstitutionId) {
     institutionId = currentInstitutionId;
 
     const viewButtons = document.querySelectorAll('.summary-view-btn');
+    const roleButtons = document.querySelectorAll('.summary-role-btn');
+    const roleSelector = document.getElementById('employee-role-selector');
     const applyFilterBtn = document.getElementById('summary-apply-filter');
     const resetFilterBtn = document.getElementById('summary-reset-filter');
     const fromDateInput = document.getElementById('summary-from-date');
     const toDateInput = document.getElementById('summary-to-date');
     const tableContainer = document.getElementById('summary-table-container');
+    const testUsersCheckbox = document.getElementById('summary-show-test-users-checkbox');
 
     // View mode switcher
     viewButtons.forEach(btn => {
@@ -35,6 +40,47 @@ export function setupSummaryModal(currentInstitutionId) {
             // Update state and fetch
             const viewMode = btn.dataset.view;
             setSummaryViewMode(viewMode);
+
+            // Show/hide role selector based on view mode
+            if (roleSelector) {
+                roleSelector.style.display = viewMode === 'employee' ? 'flex' : 'none';
+            }
+
+            // Switch between transactions view and summary table views
+            const transactionsContainer = document.getElementById('transactions-view-container');
+            const summaryTableContainer = document.getElementById('summary-table-view-container');
+
+            if (viewMode === 'transactions') {
+                // Show transactions view, hide summary table
+                if (transactionsContainer) transactionsContainer.style.display = 'block';
+                if (summaryTableContainer) summaryTableContainer.style.display = 'none';
+
+                // Load transaction history
+                if (typeof window.__flangoLoadTransactionsInSummary === 'function') {
+                    window.__flangoLoadTransactionsInSummary();
+                }
+            } else {
+                // Show summary table, hide transactions view
+                if (transactionsContainer) transactionsContainer.style.display = 'none';
+                if (summaryTableContainer) summaryTableContainer.style.display = 'block';
+
+                // Load summary data
+                await fetchSummaryData(institutionId);
+                renderSummaryTable(tableContainer);
+            }
+        });
+    });
+
+    // Employee role switcher
+    roleButtons.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            // Update active state
+            roleButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Update state and fetch
+            const role = btn.dataset.role;
+            setEmployeeRole(role);
             await fetchSummaryData(institutionId);
             renderSummaryTable(tableContainer);
         });
@@ -70,14 +116,24 @@ export function setupSummaryModal(currentInstitutionId) {
         renderSummaryTable(tableContainer);
     });
 
+    // Test users toggle
+    if (testUsersCheckbox) {
+        testUsersCheckbox.addEventListener('change', async () => {
+            setIncludeTestUsers(testUsersCheckbox.checked);
+            await fetchSummaryData(institutionId);
+            renderSummaryTable(tableContainer);
+        });
+    }
+
     console.log('[summary-controller] Setup complete');
 }
 
 /**
  * Open summary modal
  * @param {string} currentInstitutionId - Current institution UUID
+ * @param {string} initialView - Initial view to show ('transactions', 'day', 'week', etc.) - defaults to 'transactions'
  */
-export async function openSummaryModal(currentInstitutionId) {
+export async function openSummaryModal(currentInstitutionId, initialView = 'transactions') {
     institutionId = currentInstitutionId;
 
     if (!institutionId) {
@@ -90,6 +146,9 @@ export async function openSummaryModal(currentInstitutionId) {
     const fromDateInput = document.getElementById('summary-from-date');
     const toDateInput = document.getElementById('summary-to-date');
     const tableContainer = document.getElementById('summary-table-container');
+    const testUsersCheckbox = document.getElementById('summary-show-test-users-checkbox');
+    const transactionsContainer = document.getElementById('transactions-view-container');
+    const summaryTableContainer = document.getElementById('summary-table-view-container');
 
     if (!modal) {
         console.error('[summary-controller] Summary modal not found in DOM');
@@ -105,10 +164,16 @@ export async function openSummaryModal(currentInstitutionId) {
     toDateInput.value = defaultRange.to;
     setSummaryDateRange(defaultRange.from, defaultRange.to);
 
+    // Set initial checkbox state (unchecked by default)
+    if (testUsersCheckbox) {
+        testUsersCheckbox.checked = false;
+        setIncludeTestUsers(false);
+    }
+
     // Set default view mode button as active
     document.querySelectorAll('.summary-view-btn').forEach(btn => {
         btn.classList.remove('active');
-        if (btn.dataset.view === 'day') {
+        if (btn.dataset.view === initialView) {
             btn.classList.add('active');
         }
     });
@@ -116,11 +181,30 @@ export async function openSummaryModal(currentInstitutionId) {
     // Show modal
     modal.style.display = 'block';
 
-    // Fetch initial data (day view, last 30 days)
-    await fetchSummaryData(institutionId);
-    renderSummaryTable(tableContainer);
+    // Show correct view container based on initialView
+    if (initialView === 'transactions') {
+        // Show transactions view
+        if (transactionsContainer) transactionsContainer.style.display = 'block';
+        if (summaryTableContainer) summaryTableContainer.style.display = 'none';
 
-    console.log('[summary-controller] Modal opened');
+        // Load transaction history
+        if (typeof window.__flangoLoadTransactionsInSummary === 'function') {
+            window.__flangoLoadTransactionsInSummary();
+        }
+    } else {
+        // Show summary table view
+        if (transactionsContainer) transactionsContainer.style.display = 'none';
+        if (summaryTableContainer) summaryTableContainer.style.display = 'block';
+
+        // Set view mode in state
+        setSummaryViewMode(initialView);
+
+        // Fetch initial data
+        await fetchSummaryData(institutionId);
+        renderSummaryTable(tableContainer);
+    }
+
+    console.log(`[summary-controller] Modal opened with ${initialView} view`);
 }
 
 /**

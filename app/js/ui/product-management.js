@@ -1,11 +1,15 @@
 // js/ui/product-management.js
 import { getProductIconInfo, PRODUCT_ICON_CLASS_MAP } from '../domain/products-and-cart.js';
+import { getOrder } from '../domain/order-store.js';
+
+console.log('🔥🔥🔥 product-management.js LOADED - Version with debug logs - CACHE CLEARED 🔥🔥🔥');
 
 export function renderProductsInModal(allProducts, modalProductList) {
     if (!modalProductList) return;
 
     modalProductList.innerHTML = '';
-    allProducts.forEach((product) => {
+    const sortedProducts = [...allProducts].sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+    sortedProducts.forEach((product) => {
         const productDiv = document.createElement('div');
         productDiv.className = 'modal-entry';
         const isActive = product.is_enabled !== false;
@@ -34,7 +38,9 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
     if (!productsContainer) return;
 
     productsContainer.innerHTML = '';
-    const visibleProducts = allProducts.filter(p => p.is_visible !== false && p.is_enabled !== false);
+    const visibleProducts = allProducts
+        .filter(p => p.is_visible !== false && p.is_enabled !== false)
+        .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999)); // Eksplicit sortering efter sort_order
 
     // Pre-beregn refill-berettigelse hvis der er en kunde
     const effectiveProducts = new Map();
@@ -77,6 +83,7 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
     visibleProducts.forEach((product, index) => {
         const productBtn = document.createElement('button');
         productBtn.dataset.productId = String(product.id);
+        console.log(`[renderProductsGrid] Created button for product ${product.name} (id: ${product.id}), dataset.productId = "${productBtn.dataset.productId}"`);
         const productNameLower = product.name ? product.name.trim().toLowerCase() : '';
 
         // Hent effektive værdier (med refill hvis berettiget)
@@ -108,6 +115,28 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
             timerMarkup = `<div class="refill-timer" data-product-id="${product.id}">⏱ <span class="timer-value">--:--</span></div>`;
         }
 
+        // Beregn antal i kurv for dette produkt
+        const currentOrder = getOrder();
+        const qtyInCart = currentOrder.filter(item => item.id === product.id).length;
+
+        // Sæt data-quantity attribute for CSS styling
+        productBtn.dataset.quantity = qtyInCart;
+
+        // Badge: På mobil vis kurv-antal, på desktop vis keyboard shortcut
+        const isMobile = window.innerWidth <= 767;
+        let badgeMarkup = '';
+        if (isMobile) {
+            // Mobil: Vis kun badge hvis der er produkter i kurven
+            if (qtyInCart > 0) {
+                badgeMarkup = `<div class="product-badge">${qtyInCart}</div>`;
+            }
+        } else {
+            // Desktop: Vis keyboard shortcut (1-9, 0)
+            if (index < 10) {
+                badgeMarkup = `<div class="product-shortcut">${index === 9 ? 0 : index + 1}</div>`;
+            }
+        }
+
         productBtn.innerHTML = `
             <div class="product-btn-inner">
                 ${timerMarkup}
@@ -116,8 +145,9 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
                     <span class="product-name">${displayName}</span>
                     <span class="product-price${isRefill ? ' refill-price' : ''}">${displayPrice.toFixed(2)} DKK</span>
                 </div>
-                ${index < 10 ? `<div class="product-shortcut">${index === 9 ? 0 : index + 1}</div>` : ''}
+                ${badgeMarkup}
             </div>
+            <div class="product-quantity-badge">${qtyInCart}</div>
             <div class="avatar-lock-overlay">
                 <img src="Icons/webp/Function/Lock.webp" alt="locked">
             </div>`;
@@ -140,10 +170,133 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
 
     // Start refill timer updater hvis der er produkter med timere
     startRefillTimerUpdater(productsContainer);
+
+    // Build mobile product pages (wrap 6 products per page for swipe paging)
+    buildMobileProductPages(productsContainer);
+
+    // Initialize page dots for mobile paging (only on mobile)
+    initializeProductPageDots(productsContainer, visibleProducts.length);
+}
+
+/**
+ * Opdater quantity badges på alle produkt-knapper baseret på nuværende kurv
+ * Kaldes når kurven ændres for at holde badge-tallene synkroniseret
+ */
+export function updateProductQuantityBadges() {
+    const currentOrder = getOrder();
+    const productButtons = document.querySelectorAll('.product-btn');
+
+    console.log('[updateProductQuantityBadges] Opdaterer badges, antal knapper:', productButtons.length, 'kurv items:', currentOrder.length);
+
+    productButtons.forEach((btn, idx) => {
+        const productId = btn.dataset.productId; // UUID as string - don't parseInt!
+        if (!productId) {
+            console.log(`[updateProductQuantityBadges] Button ${idx}: Skipping (no productId)`);
+            return;
+        }
+
+        // Beregn antal af dette produkt i kurven (compare UUIDs as strings)
+        const qtyInCart = currentOrder.filter(item => item.id === productId).length;
+
+        // Opdater data-quantity attribute
+        btn.dataset.quantity = qtyInCart;
+
+        // Opdater badge tekst og visibility med CSS class
+        const badge = btn.querySelector('.product-quantity-badge');
+        if (badge) {
+            badge.textContent = qtyInCart;
+            // Vis badge hvis quantity > 0 ved at tilføje 'visible' class
+            if (qtyInCart > 0) {
+                console.log(`[updateProductQuantityBadges] Product ${productId}: Viser badge med quantity ${qtyInCart}`);
+                badge.classList.add('visible');
+            } else {
+                badge.classList.remove('visible');
+            }
+        } else {
+            console.warn(`[updateProductQuantityBadges] Product ${productId}: Badge element ikke fundet!`);
+        }
+    });
 }
 
 // Global timer interval reference
 let refillTimerInterval = null;
+
+/**
+ * Build mobile product pages - wraps every 6 products in a .product-page div for swipe paging
+ * @param {HTMLElement} productsContainer - The #products container
+ */
+function buildMobileProductPages(productsContainer) {
+    if (!productsContainer) return;
+
+    const isMobile = window.innerWidth <= 767;
+    if (!isMobile) {
+        // On desktop, unwrap any existing pages back to flat structure
+        const existingPages = productsContainer.querySelectorAll('.product-page');
+        if (existingPages.length > 0) {
+            const allButtons = Array.from(productsContainer.querySelectorAll('.product-btn'));
+            productsContainer.innerHTML = '';
+            allButtons.forEach(btn => productsContainer.appendChild(btn));
+        }
+        return;
+    }
+
+    // Get all product buttons (they're direct children at this point)
+    const allButtons = Array.from(productsContainer.querySelectorAll('.product-btn'));
+
+    // If already wrapped in pages, skip
+    if (productsContainer.querySelector('.product-page')) {
+        return;
+    }
+
+    if (allButtons.length === 0) return;
+
+    // Clear container
+    productsContainer.innerHTML = '';
+
+    // Group into pages of 6 (3×2 grid)
+    const productsPerPage = 6;
+    const pageCount = Math.ceil(allButtons.length / productsPerPage);
+
+    for (let i = 0; i < pageCount; i++) {
+        const page = document.createElement('div');
+        page.className = 'product-page';
+
+        // Get 6 products for this page
+        const startIdx = i * productsPerPage;
+        const endIdx = Math.min(startIdx + productsPerPage, allButtons.length);
+        const pageButtons = allButtons.slice(startIdx, endIdx);
+
+        // Add buttons to page
+        pageButtons.forEach(btn => page.appendChild(btn));
+
+        productsContainer.appendChild(page);
+    }
+
+    console.log(`[buildMobileProductPages] Created ${pageCount} pages with ${allButtons.length} products`);
+}
+
+// Handle window resize to rebuild pages
+let pagingResizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(pagingResizeTimeout);
+    pagingResizeTimeout = setTimeout(() => {
+        const productsContainer = document.getElementById('products');
+        if (productsContainer) {
+            // Get all buttons from pages or flat structure
+            const allButtons = Array.from(productsContainer.querySelectorAll('.product-btn'));
+
+            // Clear and rebuild
+            productsContainer.innerHTML = '';
+            allButtons.forEach(btn => productsContainer.appendChild(btn));
+
+            // Rebuild paging structure
+            buildMobileProductPages(productsContainer);
+
+            // Rebuild dots
+            initializeProductPageDots(productsContainer, allButtons.length);
+        }
+    }, 250);
+});
 
 /**
  * Start eller genstart refill timer opdatering
@@ -198,6 +351,126 @@ function startRefillTimerUpdater(productsContainer) {
 
     // Start interval (hver sekund)
     refillTimerInterval = setInterval(updateTimers, 1000);
+}
+
+/**
+ * Initialize and manage page indicator dots for mobile product grid paging
+ * @param {HTMLElement} productsContainer - The #products container
+ * @param {number} productCount - Total number of visible products
+ */
+function initializeProductPageDots(productsContainer, productCount) {
+    if (!productsContainer) return;
+
+    const isMobile = window.innerWidth <= 767;
+    if (!isMobile) {
+        // Remove dots container if exists on desktop
+        const existingDots = document.getElementById('products-page-dots');
+        if (existingDots) {
+            existingDots.remove();
+        }
+        return;
+    }
+
+    const productsPerPage = 6; // 2 rows × 3 columns
+    const totalPages = Math.ceil(productCount / productsPerPage);
+
+    // Only show dots if more than 1 page
+    if (totalPages <= 1) {
+        const existingDots = document.getElementById('products-page-dots');
+        if (existingDots) {
+            existingDots.remove();
+        }
+        return;
+    }
+
+    // Find or create dots container
+    let dotsContainer = document.getElementById('products-page-dots');
+    if (!dotsContainer) {
+        dotsContainer = document.createElement('div');
+        dotsContainer.id = 'products-page-dots';
+
+        // Insert after #products (before footer in products-area)
+        const productsArea = productsContainer.parentElement;
+        if (productsArea) {
+            productsArea.insertBefore(dotsContainer, productsContainer.nextSibling);
+        }
+    }
+
+    // Clear and rebuild dots
+    dotsContainer.innerHTML = '';
+    for (let i = 0; i < totalPages; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'page-dot';
+        dot.dataset.page = i;
+
+        // Click handler to scroll to page
+        dot.addEventListener('click', () => {
+            const pageWidth = productsContainer.clientWidth;
+            productsContainer.scrollTo({
+                left: i * pageWidth,
+                behavior: 'smooth'
+            });
+        });
+
+        dotsContainer.appendChild(dot);
+    }
+
+    // Update active dot based on scroll position
+    const updateActiveDot = () => {
+        const pageWidth = productsContainer.clientWidth;
+        const scrollLeft = productsContainer.scrollLeft;
+        const activePage = Math.round(scrollLeft / pageWidth);
+
+        const dots = dotsContainer.querySelectorAll('.page-dot');
+        dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index === activePage);
+        });
+    };
+
+    // Initial update
+    updateActiveDot();
+
+    // Remove old scroll listener if exists (prevent duplicate listeners)
+    if (productsContainer._dotScrollListener) {
+        productsContainer.removeEventListener('scroll', productsContainer._dotScrollListener);
+    }
+
+    // Listen to scroll events with debouncing for performance
+    let scrollTimeout;
+    const scrollHandler = () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(updateActiveDot, 50);
+    };
+    productsContainer._dotScrollListener = scrollHandler;
+    productsContainer.addEventListener('scroll', scrollHandler, { passive: true });
+
+    // Handle resize/rotation (cleanup old listeners first)
+    if (window._dotResizeListener) {
+        window.removeEventListener('resize', window._dotResizeListener);
+        window.removeEventListener('orientationchange', window._dotResizeListener);
+    }
+
+    let resizeTimeout;
+    const resizeHandler = () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            const newIsMobile = window.innerWidth <= 767;
+            if (newIsMobile) {
+                // Recalculate and rebuild
+                const newProductCount = productsContainer.querySelectorAll('.product-btn').length;
+                initializeProductPageDots(productsContainer, newProductCount);
+            } else {
+                // Remove dots on desktop
+                const dots = document.getElementById('products-page-dots');
+                if (dots) {
+                    dots.remove();
+                }
+            }
+        }, 250);
+    };
+    window._dotResizeListener = resizeHandler;
+    window.addEventListener('resize', resizeHandler);
+    window.addEventListener('orientationchange', resizeHandler);
 }
 
 export function createProductManagementUI(options = {}) {
@@ -399,9 +672,16 @@ export function createProductManagementUI(options = {}) {
                 <input type="text" id="product-name-input" placeholder="Produktnavn" value="${isEditing ? product.name : ''}">
                 <input type="number" id="product-price-input" placeholder="Pris (kr)" step="1" value="${isEditing ? product.price.toFixed(2) : ''}">
                 <input type="number" id="product-max-per-day-input" placeholder="Købsgrænse (Ubegrænset)" step="1" value="${maxPerDayValue}">
-                ${showAllergens ? `<h4>Allergener</h4>
-                <div class="allergen-grid">
-                    ${allergensHTML}
+                ${showAllergens ? `
+                <div class="collapsible-section">
+                    <h4 class="collapsible-header" data-target="allergen-content" style="cursor: pointer; user-select: none; padding: 10px; background: var(--secondary-bg, #f5f5f5); border-radius: 8px; margin: 10px 0;">
+                        <span class="collapse-arrow" style="display: inline-block; transition: transform 0.2s; margin-right: 8px;">▶</span> Allergener
+                    </h4>
+                    <div id="allergen-content" class="collapsible-content" style="display: none; padding: 10px 0; max-height: 300px; overflow-y: auto;">
+                        <div class="allergen-grid">
+                            ${allergensHTML}
+                        </div>
+                    </div>
                 </div>` : ''}
                 <div class="refill-row">
                     <label class="refill-option">
@@ -441,11 +721,35 @@ export function createProductManagementUI(options = {}) {
                         <input type="number" id="product-refill-max-input" data-placeholder-base="Antal" placeholder="Antal (0 = ubegrænset)" min="0" step="1" value="${existingRefillMaxRefills}">
                     </div>
                 </div>
-                <h4>Vælg eller indtast Emoji</h4>
-                <input type="text" id="product-emoji-input" placeholder="Indtast emoji her..." value="${isEditing && product.emoji ? product.emoji : ''}">
-                <div id="product-emoji-grid" class="emoji-grid" style="padding-top: 10px;"></div>
-                <h4>Vælg Custom Icon</h4>
-                <div id="custom-icon-grid" class="custom-icon-grid"></div>`;
+                <div class="collapsible-section">
+                    <h4 class="collapsible-header" data-target="emoji-icon-content" style="cursor: pointer; user-select: none; padding: 10px; background: var(--secondary-bg, #f5f5f5); border-radius: 8px; margin: 10px 0;">
+                        <span class="collapse-arrow" style="display: inline-block; transition: transform 0.2s; margin-right: 8px;">▶</span> Emojis + Custom Icons
+                    </h4>
+                    <div id="emoji-icon-content" class="collapsible-content" style="display: none; padding: 10px 0; max-height: 400px; overflow-y: auto;">
+                        <label style="margin-top: 10px; display: block; font-weight: 500;">Vælg eller indtast Emoji</label>
+                        <input type="text" id="product-emoji-input" placeholder="Indtast emoji her..." value="${isEditing && product.emoji ? product.emoji : ''}">
+                        <div id="product-emoji-grid" class="emoji-grid" style="padding-top: 10px;"></div>
+                        <label style="margin-top: 15px; display: block; font-weight: 500;">Vælg Custom Icon</label>
+                        <div id="custom-icon-grid" class="custom-icon-grid"></div>
+                    </div>
+                </div>`;
+        // Setup collapsible sections
+        document.querySelectorAll('.collapsible-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const targetId = header.dataset.target;
+                const content = document.getElementById(targetId);
+                const arrow = header.querySelector('.collapse-arrow');
+
+                if (content.style.display === 'none') {
+                    content.style.display = 'block';
+                    arrow.style.transform = 'rotate(90deg)';
+                } else {
+                    content.style.display = 'none';
+                    arrow.style.transform = 'rotate(0deg)';
+                }
+            });
+        });
+
         // Prefill allergener ved redigering
         if (isEditing) {
             const existingAllergens = await fetchProductAllergens(product.id);

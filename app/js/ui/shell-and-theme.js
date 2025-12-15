@@ -404,6 +404,17 @@ async function openSugarPolicyModal() {
         }
     });
 
+    // Back button
+    const backBtn = document.getElementById('back-to-preferences-sugar-policy-btn');
+    if (backBtn) {
+        const newBackBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+        newBackBtn.onclick = () => {
+            modal.style.display = 'none';
+            openInstitutionPreferences();
+        };
+    }
+
     renderSugarPolicyProductList();
     modal.style.display = 'flex';
 }
@@ -584,6 +595,17 @@ async function openSpendingLimitModal() {
         }
     });
 
+    // Back button
+    const backBtn = document.getElementById('back-to-preferences-spending-limit-btn');
+    if (backBtn) {
+        const newBackBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+        newBackBtn.onclick = () => {
+            modal.style.display = 'none';
+            openInstitutionPreferences();
+        };
+    }
+
     // Close button
     const closeBtn = modal.querySelector('.close-btn');
     if (closeBtn) {
@@ -606,24 +628,6 @@ async function openInstitutionPreferences() {
 
     titleEl.textContent = 'Indstillinger – Institutionens Præferencer';
     contentEl.innerHTML = '';
-
-    // Hent nuværende institutionsindstillinger
-    const institutionId = getInstitutionId();
-    let showAdminsInList = false;
-    let adminsPurchaseFree = false;
-
-    if (institutionId) {
-        const { data, error } = await supabaseClient
-            .from('institutions')
-            .select('show_admins_in_user_list, admins_purchase_free')
-            .eq('id', institutionId)
-            .single();
-
-        if (!error && data) {
-            showAdminsInList = data.show_admins_in_user_list || false;
-            adminsPurchaseFree = data.admins_purchase_free || false;
-        }
-    }
 
     // Sukkerpolitik knap
     const sugarPolicyBtn = document.createElement('button');
@@ -652,63 +656,19 @@ async function openInstitutionPreferences() {
         openParentPortalSettingsModal();
     });
 
-    // Checkbox: Vis admins i bruger-liste
-    const showAdminsCheckbox = document.createElement('label');
-    showAdminsCheckbox.className = 'settings-checkbox-label';
-    showAdminsCheckbox.style.cssText = 'display: flex; align-items: center; padding: 15px; cursor: pointer; border-bottom: 1px solid #eee;';
-    showAdminsCheckbox.innerHTML = `
-        <input type="checkbox" id="show-admins-checkbox" ${showAdminsInList ? 'checked' : ''} style="margin-right: 12px; cursor: pointer;">
-        <div>
-            <strong>Vis Admins i 'Vælg Bruger' listen</strong>
-            <div style="font-size: 12px; margin-top: 2px; color: #666;">Voksne kan vælges som kunder i caféen</div>
-        </div>
-    `;
-
-    const showAdminsInput = showAdminsCheckbox.querySelector('input');
-    showAdminsInput.addEventListener('change', async (e) => {
-        if (!institutionId) return;
-        const { error } = await supabaseClient
-            .from('institutions')
-            .update({ show_admins_in_user_list: e.target.checked })
-            .eq('id', institutionId);
-
-        if (error) {
-            console.error('[settings] Fejl ved opdatering af show_admins_in_user_list:', error);
-            e.target.checked = !e.target.checked; // Revert
-        }
-    });
-
-    // Checkbox: Admins skal ikke betale
-    const adminsFreeCheckbox = document.createElement('label');
-    adminsFreeCheckbox.className = 'settings-checkbox-label';
-    adminsFreeCheckbox.style.cssText = 'display: flex; align-items: center; padding: 15px; cursor: pointer;';
-    adminsFreeCheckbox.innerHTML = `
-        <input type="checkbox" id="admins-free-checkbox" ${adminsPurchaseFree ? 'checked' : ''} style="margin-right: 12px; cursor: pointer;">
-        <div>
-            <strong>Admins skal ikke betale</strong>
-            <div style="font-size: 12px; margin-top: 2px; color: #666;">Voksne køber for 0 kr (registreres stadig i historik)</div>
-        </div>
-    `;
-
-    const adminsFreeInput = adminsFreeCheckbox.querySelector('input');
-    adminsFreeInput.addEventListener('change', async (e) => {
-        if (!institutionId) return;
-        const { error } = await supabaseClient
-            .from('institutions')
-            .update({ admins_purchase_free: e.target.checked })
-            .eq('id', institutionId);
-
-        if (error) {
-            console.error('[settings] Fejl ved opdatering af admins_purchase_free:', error);
-            e.target.checked = !e.target.checked; // Revert
-        }
+    // Admin regler knap
+    const adminRulesBtn = document.createElement('button');
+    adminRulesBtn.className = 'settings-item-btn';
+    adminRulesBtn.innerHTML = `<strong>Admin Regler</strong><div style="font-size: 12px; margin-top: 2px;">Konfigurer administrator indstillinger for caféen.</div>`;
+    adminRulesBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openAdminRulesModal();
     });
 
     contentEl.appendChild(sugarPolicyBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(parentPortalBtn);
-    contentEl.appendChild(showAdminsCheckbox);
-    contentEl.appendChild(adminsFreeCheckbox);
+    contentEl.appendChild(adminRulesBtn);
     backdrop.style.display = 'flex';
 }
 
@@ -806,6 +766,95 @@ async function openParentPortalSettingsModal() {
             window.__flangoOpenParentPortalAdmin();
         }
     });
+
+    // Back button
+    const backBtn = document.getElementById('back-to-preferences-parent-portal-btn');
+    if (backBtn) {
+        const newBackBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+        newBackBtn.onclick = () => {
+            modal.style.display = 'none';
+            openInstitutionPreferences();
+        };
+    }
+
+    // Close button
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+    }
+
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+async function openAdminRulesModal() {
+    const modal = document.getElementById('admin-rules-modal');
+    if (!modal) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) {
+        console.error('[admin-rules] No institution ID found');
+        return;
+    }
+
+    // Load current settings from database
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('show_admins_in_user_list, admins_purchase_free')
+        .eq('id', institutionId)
+        .single();
+
+    if (error) {
+        console.error('[admin-rules] Error loading settings:', error);
+    }
+
+    // Get checkboxes
+    const showAdminsCheckbox = document.getElementById('admin-rules-show-admins-checkbox');
+    const adminsFreeCheckbox = document.getElementById('admin-rules-admins-free-checkbox');
+    const saveBtn = document.getElementById('save-admin-rules-btn');
+
+    // Set values from database (default to false)
+    if (data) {
+        showAdminsCheckbox.checked = data.show_admins_in_user_list || false;
+        adminsFreeCheckbox.checked = data.admins_purchase_free || false;
+    }
+
+    // Save button handler - clone to remove old listeners
+    const newSaveBtn = saveBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+    newSaveBtn.addEventListener('click', async () => {
+        const updates = {
+            show_admins_in_user_list: showAdminsCheckbox.checked,
+            admins_purchase_free: adminsFreeCheckbox.checked
+        };
+
+        const { error: saveError } = await supabaseClient
+            .from('institutions')
+            .update(updates)
+            .eq('id', institutionId);
+
+        if (saveError) {
+            console.error('[admin-rules] Error saving settings:', saveError);
+            alert('Fejl ved gemning af indstillinger');
+        } else {
+            modal.style.display = 'none';
+        }
+    });
+
+    // Back button
+    const backBtn = document.getElementById('back-to-preferences-admin-rules-btn');
+    if (backBtn) {
+        const newBackBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+        newBackBtn.onclick = () => {
+            modal.style.display = 'none';
+            openInstitutionPreferences();
+        };
+    }
 
     // Close button
     const closeBtn = modal.querySelector('.close-btn');
@@ -987,19 +1036,6 @@ export function setupToolbarHistoryButton() {
             window.__flangoOpenSalesHistory();
         } else {
             notifyToolbarUser('Historik-funktionen er ikke klar.');
-        }
-    };
-}
-
-export function setupToolbarSummaryButton() {
-    const summaryBtn = document.getElementById('toolbar-summary-btn');
-    if (!summaryBtn) return;
-    summaryBtn.onclick = (event) => {
-        event.preventDefault();
-        if (typeof window.__flangoOpenSummary === 'function') {
-            window.__flangoOpenSummary();
-        } else {
-            notifyToolbarUser('Opsummering-funktionen er ikke klar.');
         }
     };
 }

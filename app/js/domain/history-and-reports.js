@@ -1383,3 +1383,318 @@ function handlePrintNegativeBalance() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
+
+/**
+ * Load transaction history in summary modal (Transaktioner view)
+ * This function initializes and displays the transaction history within the summary modal
+ */
+export async function showTransactionsInSummary() {
+    // Get all elements with -summary suffix
+    const filterDepositsBtn = document.getElementById('filter-deposits-btn-summary');
+    const printReportBtn = document.getElementById('print-report-btn-summary');
+    const printNegativeBtn = document.getElementById('print-negative-balance-btn-summary');
+    const searchInput = document.getElementById('search-history-input-summary');
+    const historyStartDate = document.getElementById('history-start-date-summary');
+    const historyEndDate = document.getElementById('history-end-date-summary');
+    const printAllBalancesBtn = document.getElementById('print-all-balances-btn-summary');
+    const undoLastSaleBtn = document.getElementById('history-undo-last-sale-btn-summary');
+    const filterBtn = document.getElementById('history-filter-btn-summary');
+    const filterPanel = document.getElementById('history-filter-panel-summary');
+    const filterSelectAll = document.getElementById('history-filter-select-all-summary');
+    const filterDeselectAll = document.getElementById('history-filter-deselect-all-summary');
+    const filterCheckboxes = Array.from(document.querySelectorAll('.history-filter-checkbox-summary'));
+
+    if (!filterDepositsBtn || !printReportBtn || !printNegativeBtn || !searchInput || !historyStartDate || !historyEndDate) {
+        console.error('[history-and-reports] Missing required elements in summary modal');
+        return;
+    }
+
+    // Setup filter deposits button
+    filterDepositsBtn.onclick = () => {
+        const isActive = filterDepositsBtn.classList.toggle('active');
+        if (isActive) {
+            filterDepositsBtn.textContent = 'Vis Alle Hændelser';
+            renderSalesHistoryInSummary(fullSalesHistory, null, 'DEPOSIT');
+        } else {
+            filterDepositsBtn.textContent = 'Vis Kun Indbetalinger';
+            renderSalesHistoryInSummary(fullSalesHistory);
+        }
+    };
+
+    // Setup other buttons
+    printReportBtn.onclick = handlePrintReport;
+    printNegativeBtn.onclick = handlePrintNegativeBalance;
+    if (printAllBalancesBtn) printAllBalancesBtn.onclick = handlePrintAllBalances;
+    if (undoLastSaleBtn) {
+        undoLastSaleBtn.onclick = () => {
+            const handler = window.__flangoUndoLastSale;
+            if (typeof handler === 'function') {
+                handler();
+            } else {
+                showAlert('Fortryd funktion er ikke tilgængelig');
+            }
+        };
+    }
+
+    // Setup filter button
+    if (filterBtn && filterPanel) {
+        filterBtn.onclick = () => {
+            const isVisible = filterPanel.style.display === 'block';
+            filterPanel.style.display = isVisible ? 'none' : 'block';
+        };
+    }
+
+    // Setup filter select/deselect all
+    if (filterSelectAll) {
+        filterSelectAll.onclick = () => {
+            filterCheckboxes.forEach(cb => cb.checked = true);
+            fetchHistoryInSummary();
+        };
+    }
+
+    if (filterDeselectAll) {
+        filterDeselectAll.onclick = () => {
+            filterCheckboxes.forEach(cb => cb.checked = false);
+            fetchHistoryInSummary();
+        };
+    }
+
+    // Setup filter checkboxes
+    filterCheckboxes.forEach(cb => {
+        cb.onchange = () => fetchHistoryInSummary();
+    });
+
+    // Setup search input
+    searchInput.oninput = () => {
+        const isActive = filterDepositsBtn.classList.contains('active');
+        if (isActive) {
+            renderSalesHistoryInSummary(fullSalesHistory, searchInput.value, 'DEPOSIT');
+        } else {
+            renderSalesHistoryInSummary(fullSalesHistory, searchInput.value);
+        }
+    };
+
+    // Find or create the test users checkbox
+    let showTestUsersCheckbox = document.getElementById('show-test-users-checkbox-summary');
+    if (!showTestUsersCheckbox) {
+        if (filterPanel) {
+            // Create checkbox container
+            const checkboxContainer = document.createElement('div');
+            checkboxContainer.style.marginTop = '16px';
+            checkboxContainer.style.paddingTop = '16px';
+            checkboxContainer.style.borderTop = '1px solid var(--border-color, #e0e0e0)';
+            checkboxContainer.innerHTML = `
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                    <input type="checkbox" id="show-test-users-checkbox-summary" style="cursor: pointer;">
+                    <span>Vis testbrugere (Snoop Dog, Test Aladin)</span>
+                </label>
+            `;
+            filterPanel.appendChild(checkboxContainer);
+
+            // Get reference after creation
+            showTestUsersCheckbox = document.getElementById('show-test-users-checkbox-summary');
+        }
+    }
+
+    // Wire up event listener to refetch history when toggled
+    if (showTestUsersCheckbox) {
+        showTestUsersCheckbox.onchange = fetchHistoryInSummary;
+    }
+
+    // Setup date inputs
+    const today = new Date().toISOString().split('T')[0];
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    historyStartDate.value = thirtyDaysAgo;
+    historyEndDate.value = today;
+    historyStartDate.onchange = fetchHistoryInSummary;
+    historyEndDate.onchange = fetchHistoryInSummary;
+
+    // Load initial data
+    await fetchHistoryInSummary();
+    filterDepositsBtn.classList.remove('active');
+    filterDepositsBtn.textContent = 'Vis Kun Indbetalinger';
+}
+
+/**
+ * Fetch history data for summary modal transactions view
+ */
+async function fetchHistoryInSummary() {
+    const searchInput = document.getElementById('search-history-input-summary');
+    const historyStartDate = document.getElementById('history-start-date-summary');
+    const historyEndDate = document.getElementById('history-end-date-summary');
+    const testUsersCheckbox = document.getElementById('show-test-users-checkbox-summary');
+    const filterCheckboxes = Array.from(document.querySelectorAll('.history-filter-checkbox-summary'));
+
+    if (!searchInput || !historyStartDate || !historyEndDate) return;
+
+    searchInput.value = '';
+    const startDateStr = historyStartDate.value;
+    const endDateStr = historyEndDate.value;
+    const includeTestUsers = testUsersCheckbox ? testUsersCheckbox.checked : false;  // Default false
+    const selectedEventTypes = filterCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+
+    // Load history from database
+    const { rows, error } = await loadSalesHistory({
+        from: startDateStr,
+        to: endDateStr,
+        includeTestUsers
+    });
+
+    if (error) {
+        console.error('[history-and-reports] Error fetching history in summary:', error);
+        fullSalesHistory = [];
+        renderSalesHistoryInSummary(fullSalesHistory);
+        showAlert('Fejl ved hentning af historik');
+        return;
+    }
+
+    // Filter by event types client-side
+    fullSalesHistory = rows.filter(event => selectedEventTypes.includes(event.event_type));
+
+    renderSalesHistoryInSummary(fullSalesHistory);
+}
+
+/**
+ * Render sales history in summary modal
+ */
+function renderSalesHistoryInSummary(history, searchQuery = null, eventTypeFilter = null) {
+    const salesHistoryList = document.getElementById('sales-history-list-summary');
+    const salesSummary = document.getElementById('sales-summary-summary');
+    const searchInput = document.getElementById('search-history-input-summary');
+
+    if (!salesHistoryList || !salesSummary) {
+        console.error('[history-and-reports] Missing required summary elements');
+        return;
+    }
+
+    const searchTerm = searchQuery || (searchInput ? searchInput.value.toLowerCase() : '');
+
+    // Apply pre-filter for event types
+    let preFilteredData = history;
+    if (eventTypeFilter === 'DEPOSIT') {
+        preFilteredData = history.filter(e => e.event_type === 'DEPOSIT' || e.event_type === 'BALANCE_EDIT');
+    } else if (eventTypeFilter) {
+        preFilteredData = history.filter(e => e.event_type === eventTypeFilter);
+    } else {
+        // Apply checkbox-based filter
+        const filterCheckboxes = Array.from(document.querySelectorAll('.history-filter-checkbox-summary'));
+        if (filterCheckboxes.length > 0) {
+            const checkedEventTypes = filterCheckboxes
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+
+            if (checkedEventTypes.length === 0) {
+                preFilteredData = [];
+            } else if (checkedEventTypes.length < filterCheckboxes.length) {
+                preFilteredData = history.filter(e => {
+                    const eventType = e.event_type;
+                    if (eventType === 'BALANCE_EDIT') return checkedEventTypes.includes('BALANCE_ADJUSTMENT');
+                    if (eventType === 'SALE_ADJUSTMENT') return checkedEventTypes.includes('SALE_EDIT');
+                    return checkedEventTypes.includes(eventType);
+                });
+            }
+        }
+    }
+
+    // Apply search filter
+    const filteredEvents = preFilteredData.filter(sale => {
+        const targetName = (sale.target_user_name || '').toLowerCase();
+        const adminName = (sale.admin_name || '').toLowerCase();
+        const detailsString = JSON.stringify(sale.details).toLowerCase();
+        return targetName.includes(searchTerm) || adminName.includes(searchTerm) || detailsString.includes(searchTerm);
+    });
+
+    if (filteredEvents.length === 0) {
+        const message = searchTerm ? 'Ingen salg matcher din søgning.' : 'Der er ingen salg i den valgte periode.';
+        salesHistoryList.innerHTML = `<p style="text-align:center; padding: 20px;">${message}</p>`;
+        salesSummary.replaceChildren();
+        return;
+    }
+
+    // Inject CSS for history row layout (same as original)
+    if (!document.getElementById('history-row-styles')) {
+        const style = document.createElement('style');
+        style.id = 'history-row-styles';
+        style.textContent = `
+            .history-row {
+                display: grid;
+                grid-template-columns: 1.4fr 1.4fr 0.8fr 1fr 1.1fr 1.1fr 0.6fr;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 12px;
+                border-bottom: 1px solid #eee;
+                transition: background-color 0.15s ease-out;
+            }
+            .history-row:hover {
+                background-color: #fafafa;
+            }
+            .history-row > div { font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
+            .history-primary {
+                font-weight: 500;
+                margin-bottom: 2px;
+            }
+            .history-secondary {
+                font-size: 12px;
+                color: #666;
+            }
+            .history-edit-btn {
+                padding: 6px 10px;
+                border-radius: 6px;
+                background-color: #efefef;
+                border: 1px solid #ccc;
+                cursor: pointer;
+                font-size: 13px;
+                white-space: nowrap;
+                transition: background-color 0.2s;
+            }
+            .history-edit-btn:hover { background-color: #e4e4e4; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    if (filteredEvents.length > 0) {
+        // Build summary HTML with charts (same as original)
+        const summaryHTML = buildSalesHistorySummaryHTML(preFilteredData, filteredEvents);
+        salesSummary.innerHTML = summaryHTML;
+
+        // Initialize chart carousel after setting HTML
+        initHistoryChartCarousel(salesSummary);
+
+        // Render transaction list
+        salesHistoryList.replaceChildren();
+
+        // Group adjustments by sale ID
+        const adjustmentsBySaleId = new Map();
+        filteredEvents.forEach(ev => {
+            if (ev.event_type === 'SALE_ADJUSTMENT' && ev.details?.adjusted_sale_id) {
+                const saleId = ev.details.adjusted_sale_id;
+                const list = adjustmentsBySaleId.get(saleId) || [];
+                list.push(ev);
+                adjustmentsBySaleId.set(saleId, list);
+            }
+        });
+
+        // Render each event with full detail columns
+        filteredEvents.forEach(event => {
+            const adjustedSaleId = event.details?.adjusted_sale_id;
+            const isChildAdjustment = event.event_type === 'SALE_ADJUSTMENT' && adjustedSaleId;
+            if (isChildAdjustment) return;
+
+            const entryEl = buildSalesHistoryEntryElement(event);
+            salesHistoryList.appendChild(entryEl);
+
+            const eventId = event.id || event.event_id || null;
+            if (event.event_type === 'SALE' && eventId) {
+                const children = adjustmentsBySaleId.get(eventId) || [];
+                children.forEach(adjEvent => {
+                    const childEl = buildSalesHistoryEntryElement(adjEvent, { isAdjustmentChild: true });
+                    salesHistoryList.appendChild(childEl);
+                });
+            }
+        });
+    } else {
+        salesSummary.replaceChildren();
+        const message = searchTerm ? 'Ingen salg matcher din søgning.' : 'Der er ingen salg i den valgte periode.';
+        salesHistoryList.innerHTML = `<p style="text-align:center; padding: 20px;">${message}</p>`;
+    }
+}

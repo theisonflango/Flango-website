@@ -2,10 +2,12 @@
 
 let currentSummaryState = {
     viewMode: 'day', // 'day' | 'week' | 'month' | 'year' | 'employee'
+    employeeRole: 'admin', // 'admin' | 'kunde' - for employee view only
     dateRange: {
         from: null, // Will be set to default on init
         to: null    // Will be set to default on init
     },
+    includeTestUsers: false, // Whether to include test users in summary
     data: null,
     loading: false,
     error: null
@@ -33,12 +35,34 @@ export function setSummaryViewMode(mode) {
 }
 
 /**
+ * Set employee role filter (for employee view)
+ * @param {'admin'|'kunde'} role
+ */
+export function setEmployeeRole(role) {
+    const validRoles = ['admin', 'kunde'];
+    if (!validRoles.includes(role)) {
+        console.warn(`[summary-store] Invalid employee role: ${role}, defaulting to 'admin'`);
+        currentSummaryState.employeeRole = 'admin';
+        return;
+    }
+    currentSummaryState.employeeRole = role;
+}
+
+/**
  * Set summary date range
  * @param {string} from - ISO date string (YYYY-MM-DD)
  * @param {string} to - ISO date string (YYYY-MM-DD)
  */
 export function setSummaryDateRange(from, to) {
     currentSummaryState.dateRange = { from, to };
+}
+
+/**
+ * Set whether to include test users
+ * @param {boolean} include
+ */
+export function setIncludeTestUsers(include) {
+    currentSummaryState.includeTestUsers = !!include;
 }
 
 /**

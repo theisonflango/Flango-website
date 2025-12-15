@@ -1,14 +1,57 @@
 // js/domain/order-ui.js
-import { getOrderTotal, setOrder } from './order-store.js';
+import { getOrderTotal, setOrder, getOrder } from './order-store.js';
 import { getProductIconInfo, addProductToOrder, removeProductFromOrder } from './products-and-cart.js';
 import { canChildPurchase } from './purchase-limits.js';
 import { playSound } from '../ui/sound-and-alerts.js';
 import { getCurrentCustomer, clearEvaluation } from './cafe-session-store.js';
 import { MAX_ITEMS_PER_ORDER } from '../core/constants.js';
 
+/**
+ * Genererer mini-kvittering med chips til mobil
+ */
+function generateMiniReceipt(total) {
+    const currentOrder = getOrder();
+
+    // Group by product name and count quantities
+    const grouped = {};
+    currentOrder.forEach(item => {
+        if (!grouped[item.name]) {
+            grouped[item.name] = 0;
+        }
+        grouped[item.name]++;
+    });
+
+    const entries = Object.entries(grouped);
+    const maxChips = 5;
+    const visibleEntries = entries.slice(0, maxChips);
+    const overflow = entries.length - maxChips;
+
+    let chipsHTML = visibleEntries.map(([name, qty]) => {
+        return `<span class="order-chip" data-product-name="${name}">
+            <span class="order-chip-qty">${qty}×</span> ${name}
+            <span class="order-chip-remove">×</span>
+        </span>`;
+    }).join('');
+
+    if (overflow > 0) {
+        chipsHTML += `<span class="order-chip order-chip-overflow">+${overflow} flere</span>`;
+    }
+
+    return `
+        <div id="mini-receipt-chips">${chipsHTML || '<span style="opacity: 0.6;">Tom kurv</span>'}</div>
+        <div id="total-price-value">Total: ${total.toFixed(2)} DKK</div>
+    `;
+}
+
 export function updateTotalPrice(totalPriceEl) {
     const total = getOrderTotal();
-    totalPriceEl.textContent = `Total: ${total.toFixed(2)} DKK`;
+    const isMobile = window.innerWidth <= 767;
+
+    if (isMobile) {
+        totalPriceEl.innerHTML = generateMiniReceipt(total);
+    } else {
+        totalPriceEl.textContent = `Total: ${total.toFixed(2)} DKK`;
+    }
 }
 
 export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo) {
@@ -174,4 +217,39 @@ export function removeLastItemFromOrder(currentOrder, orderListEl, totalPriceEl,
         // Skip snapshot refresh on remove - it only unlocks products, doesn't lock them
         onOrderChanged({ skipSnapshotRefresh: true });
     }
+}
+
+/**
+ * Fjerner én vare fra kurven baseret på produktnavn (til mini-kurv chips)
+ * VIGTIGT: Modtager currentOrder som parameter for at opdatere den lokale variabel i app-main.js
+ */
+export function removeOneItemByName(productName, currentOrder, orderListEl, totalPriceEl, updateSelectedUserInfo, onOrderChanged) {
+    // Find sidste forekomst af produktet med dette navn
+    const indexToRemove = currentOrder.map(item => item.name).lastIndexOf(productName);
+
+    if (indexToRemove === -1) {
+        console.warn('[removeOneItemByName] Produkt ikke fundet:', productName);
+        return false;
+    }
+
+    // Fjern varen (muterer currentOrder direkte - opdaterer den lokale variabel i app-main.js)
+    currentOrder.splice(indexToRemove, 1);
+
+    try {
+        setOrder(currentOrder);
+    } catch (err) {
+        console.warn('[order-store] sync failed after currentOrder mutation:', err);
+    }
+
+    // Clear stale evaluation when cart changes
+    clearEvaluation();
+
+    playSound('removeItem');
+    renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo);
+    if (typeof onOrderChanged === 'function') {
+        // Skip snapshot refresh on remove - it only unlocks products, doesn't lock them
+        onOrderChanged({ skipSnapshotRefresh: true });
+    }
+
+    return true;
 }

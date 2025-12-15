@@ -4,7 +4,6 @@ import {
     setupThemePickerUI,
     setupToolbarGearMenu,
     setupToolbarHistoryButton,
-    setupToolbarSummaryButton,
     setupSettingsModal,
     setupHelpButton,
 } from './ui/shell-and-theme.js';
@@ -55,7 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.__flangoShowAlert = showAlert;
     setupToolbarGearMenu();
     setupToolbarHistoryButton();
-    setupToolbarSummaryButton();
     setupSettingsModal();
     setupHelpButton();
 

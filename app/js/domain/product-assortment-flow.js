@@ -177,6 +177,33 @@ export function setupProductAssortmentFlow({
             container.insertBefore(flangoDraggedCard, target);
         }
         await saveProductOrder();
+
+        // KRITISK: Opdater produkt-numre efter drag-and-drop
+        updateProductShortcutNumbers(container);
+    }
+
+    function updateProductShortcutNumbers(container) {
+        if (!container) return;
+        const cards = Array.from(container.querySelectorAll('.product-btn'));
+        cards.forEach((card, index) => {
+            const shortcut = card.querySelector('.product-shortcut');
+            if (shortcut && index < 10) {
+                // Opdater nummeret til den nye position
+                shortcut.textContent = index === 9 ? 0 : index + 1;
+            } else if (shortcut && index >= 10) {
+                // Fjern numre for produkter efter position 10
+                shortcut.remove();
+            } else if (!shortcut && index < 10) {
+                // Tilføj nummer hvis produktet nu er i top 10
+                const inner = card.querySelector('.product-btn-inner');
+                if (inner) {
+                    const newShortcut = document.createElement('div');
+                    newShortcut.className = 'product-shortcut';
+                    newShortcut.textContent = index === 9 ? 0 : index + 1;
+                    inner.appendChild(newShortcut);
+                }
+            }
+        });
     }
 
     function handleDragEnd() {
@@ -279,9 +306,23 @@ export function setupProductAssortmentFlow({
             ghostClass: 'sortable-ghost',
             onEnd: async (evt) => {
                 const reorderedIds = Array.from(evt.target.children).map(item => item.dataset.productId);
-                const updates = reorderedIds.map((id, index) => supabaseClient.from('products').update({ sort_order: index }).eq('id', id));
-                await Promise.all(updates);
-                await fetchAndRenderProducts();
+                const updates = reorderedIds.map((id, index) =>
+                    supabaseClient.from('products').update({ sort_order: index }).eq('id', id)
+                );
+
+                try {
+                    const results = await Promise.all(updates);
+                    const firstError = results.find(res => res?.error)?.error;
+                    if (firstError) {
+                        console.error('[assortment] Fejl ved opdatering af produkt rækkefølge:', firstError);
+                        showAlert(`Kunne ikke opdatere rækkefølge: ${firstError.message}`);
+                        return;
+                    }
+                    await fetchAndRenderProducts();
+                } catch (err) {
+                    console.error('[assortment] Uventet fejl ved opdatering af rækkefølge:', err);
+                    showAlert('Der opstod en fejl ved opdatering af rækkefølgen');
+                }
             }
         });
 
@@ -289,7 +330,22 @@ export function setupProductAssortmentFlow({
             if (e.target.matches('input[type="checkbox"]')) {
                 const productId = e.target.dataset.productId;
                 const isVisible = e.target.checked;
-                await supabaseClient.from('products').update({ is_visible: isVisible }).eq('id', productId);
+
+                // Opdater database og tjek for fejl
+                const { error } = await supabaseClient
+                    .from('products')
+                    .update({ is_visible: isVisible })
+                    .eq('id', productId);
+
+                if (error) {
+                    console.error('[assortment] Fejl ved opdatering af produkt synlighed:', error);
+                    showAlert(`Kunne ikke opdatere produkt: ${error.message}`);
+                    // Revert checkbox til den gamle værdi
+                    e.target.checked = !isVisible;
+                    return;
+                }
+
+                // Kun hvis opdateringen lykkedes, hent produkterne igen
                 await fetchAndRenderProducts();
             }
         };
@@ -310,5 +366,6 @@ export function setupProductAssortmentFlow({
 
     return {
         fetchAndRenderProducts,
+        initProductReorder, // Eksporter så den kan kaldes efter user selection
     };
 }

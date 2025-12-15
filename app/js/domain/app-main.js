@@ -1,13 +1,13 @@
 import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '../ui/sound-and-alerts.js';
 import { initializeSoundSettings } from '../core/sound-manager.js';
 import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen } from '../ui/shell-and-theme.js';
-import { configureHistoryModule, showSalesHistory } from './history-and-reports.js';
+import { configureHistoryModule, showTransactionsInSummary } from './history-and-reports.js';
 import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js';
 import { setupLogoutFlow } from './logout-flow.js';
 import { getFinancialState, setCurrentCustomer, getCurrentCustomer, clearEvaluation } from './cafe-session-store.js';
 import { getOrderTotal, setOrder } from './order-store.js';
-import { updateTotalPrice, renderOrder, handleOrderListClick, addToOrder, removeLastItemFromOrder } from './order-ui.js';
-import { renderProductsInModal, renderProductsGrid, createProductManagementUI } from '../ui/product-management.js';
+import { updateTotalPrice, renderOrder, handleOrderListClick, addToOrder, removeLastItemFromOrder, removeOneItemByName } from './order-ui.js';
+import { renderProductsInModal, renderProductsGrid, createProductManagementUI, updateProductQuantityBadges } from '../ui/product-management.js';
 import { supabaseClient } from '../core/config-and-supabase.js';
 import {
     CUSTOM_ICON_PREFIX,
@@ -136,6 +136,9 @@ export async function startApp() {
         const selectedUser = getCurrentCustomer();
         const childId = selectedUser?.id || null;
 
+        // VIGTIGT: Opdater quantity badges først så tallene er korrekte
+        updateProductQuantityBadges();
+
         if (options.skipSnapshotRefresh) {
             // Skip full snapshot refresh (used for remove operations)
             // Just update UI classes without refetching snapshot
@@ -172,7 +175,7 @@ export async function startApp() {
         const sessionAdmin = getCurrentSessionAdmin();
         const adultName = sessionAdmin?.name || '(ukendt)';
         const clerkName = clerkProfile?.name || adultName;
-        userDisplay.textContent = `Ekspedient: ${clerkName}   •   Voksen ansvarlig: ${adultName}`;
+        userDisplay.textContent = `👤 ${clerkName}  |  🔐 ${adultName}`;
 
         const userId = clerkProfile.id;
         const storageKey = `${AVATAR_STORAGE_PREFIX}${userId}`;
@@ -220,6 +223,34 @@ export async function startApp() {
             refreshProductLocks
         );
     });
+
+    // Mini-receipt chip remove buttons (mobile)
+    totalPriceEl.addEventListener('click', (event) => {
+        const removeBtn = event.target.closest('.order-chip-remove');
+        if (!removeBtn) return;
+
+        // Get product name from parent chip
+        const chip = removeBtn.closest('.order-chip');
+        if (!chip) return;
+
+        const productName = chip.dataset.productName;
+        if (!productName) {
+            console.warn('[app-main] No product name found on chip');
+            return;
+        }
+
+        // Remove one item with this name from cart
+        // VIGTIGT: Send currentOrder med så den lokale variabel bliver opdateret
+        removeOneItemByName(
+            productName,
+            currentOrder,
+            orderList,
+            totalPriceEl,
+            updateSelectedUserInfo,
+            refreshProductLocks
+        );
+    });
+
     // Købshåndtering
     completePurchaseBtn.addEventListener('click', () => handleCompletePurchase({
         customer: getCurrentCustomer(),
@@ -320,6 +351,14 @@ export async function startApp() {
         searchUserInput,
     });
 
+    // Make selected-user-info box clickable to open customer selection
+    const selectedUserInfoBox = document.getElementById('selected-user-info');
+    if (selectedUserInfoBox) {
+        selectedUserInfoBox.addEventListener('click', () => {
+            customerPicker.openCustomerSelectionModal();
+        });
+    }
+
     // 9) Admin- og sortimentflows
     const adminFlow = setupAdminFlow({
         adminProfile,
@@ -367,7 +406,7 @@ export async function startApp() {
         getAllProducts: () => allProducts,
         renderProductsInModal,
         openSoundSettingsModal,
-        showSalesHistory,
+        showSalesHistory: () => openSummaryModal(getInstitutionId(), 'transactions'),
         settingsMinFlangoStatusBtn,
         showAlert,
     });
@@ -375,6 +414,11 @@ export async function startApp() {
     // Setup summary/opsummering modal
     const institutionId = getInstitutionId();
     setupSummaryModal(institutionId);
+
+    // Setup global function for loading transactions in summary modal
+    window.__flangoLoadTransactionsInSummary = () => {
+        showTransactionsInSummary();
+    };
 
     // Setup close button for summary modal
     const summaryModal = document.getElementById('summary-modal');
@@ -401,6 +445,14 @@ export async function startApp() {
     window.__flangoOpenSummary = () => {
         openSummaryModal(institutionId);
     };
+
+    // Setup summary button in history modal
+    const summaryBtnInHistory = document.getElementById('toolbar-summary-btn');
+    if (summaryBtnInHistory) {
+        summaryBtnInHistory.addEventListener('click', () => {
+            openSummaryModal(institutionId);
+        });
+    }
 
     // Helper til at opdatere avatar (både localStorage og cache)
     function updateAvatarStorage(userId, avatarUrl) {
@@ -469,6 +521,14 @@ export async function startApp() {
             }
         });
 
+        // Opdater quantity badges efter produkterne er genrenderet
+        updateProductQuantityBadges();
+
+        // KRITISK: Re-initialiser drag-and-drop efter produkterne er genrenderet
+        if (productAssortment?.initProductReorder) {
+            productAssortment.initProductReorder();
+        }
+
         // Tving brug af en tom kurv, da vi lige har valgt en ny bruger.
         await applyProductLimitsToButtons(allProducts, productsContainer, [], selectedUser.id);
 
@@ -478,61 +538,73 @@ export async function startApp() {
     }
 
     function updateSelectedUserInfo() {
-        const userInfoEl = document.getElementById('selected-user-info');
-        const selectedUser = getCurrentCustomer();
-        if (!userInfoEl) return;
+        try {
+            const userInfoEl = document.getElementById('selected-user-info');
+            console.log('[app-main] updateSelectedUserInfo START - element:', userInfoEl);
 
-        if (!selectedUser) {
-            userInfoEl.style.display = 'none';
-            return;
+            if (!userInfoEl) {
+                console.error('[app-main] CRITICAL: #selected-user-info element not found!');
+                return;
+            }
+
+            const selectedUser = getCurrentCustomer();
+            console.log('[app-main] selectedUser:', selectedUser);
+
+            if (!selectedUser) {
+                console.log('[app-main] No user selected - showing empty state');
+                // Vis boks med "Ingen kunde valgt" i stedet for at skjule
+                userInfoEl.innerHTML = `
+                    <div class="info-box" style="grid-column: 1 / -1;">
+                        <span class="info-box-label">Status</span>
+                        <span class="info-box-value">Ingen kunde valgt</span>
+                    </div>
+                `;
+                userInfoEl.style.display = 'grid';
+                console.log('[app-main] Empty state HTML set, children count:', userInfoEl.children.length);
+                return;
+            }
+
+            // Brug den centrale order-store til totalen
+            const total = getOrderTotal();
+            console.log('[app-main] Order total:', total);
+
+            // Brug cafe-session-store til den finansielle tilstand
+            const finance = getFinancialState(total);
+            console.log('[app-main] Financial state:', finance);
+
+            // Robust udregning af nuværende saldo og ny saldo
+            const currentBalance = Number.isFinite(finance.balance)
+                ? finance.balance
+                : (Number.isFinite(selectedUser.balance) ? selectedUser.balance : 0);
+
+            const newBalance = Number.isFinite(finance.newBalance)
+                ? finance.newBalance
+                : currentBalance - total;
+
+            console.log(`[app-main] ABOUT TO SET HTML - currentBalance: ${currentBalance}, newBalance: ${newBalance}`);
+
+            userInfoEl.innerHTML = `
+                <div class="info-box">
+                    <span class="info-box-label">Valgt:</span>
+                    <span class="info-box-value">${selectedUser.name}</span>
+                </div>
+                <div class="info-box">
+                    <span class="info-box-label">Nuværende Saldo:</span>
+                    <span class="info-box-value">${currentBalance.toFixed(2)} kr.</span>
+                </div>
+                <div class="info-box">
+                    <span class="info-box-label">Ny Saldo:</span>
+                    <span class="info-box-value ${newBalance < 0 ? 'negative' : ''}">${newBalance.toFixed(2)} kr.</span>
+                </div>
+            `;
+            userInfoEl.style.display = 'grid';
+
+            console.log('[app-main] HTML SET! Children count:', userInfoEl.children.length);
+            console.log('[app-main] HTML content:', userInfoEl.innerHTML.substring(0, 100) + '...');
+        } catch (error) {
+            console.error('[app-main] ERROR in updateSelectedUserInfo:', error);
+            console.error('[app-main] Error stack:', error.stack);
         }
-
-        // Brug den centrale order-store til totalen
-        const total = getOrderTotal();
-
-        // Brug cafe-session-store til den finansielle tilstand
-        const finance = getFinancialState(total);
-
-        // DEBUG: Log what we're reading
-        console.log(`[app-main] updateSelectedUserInfo DEBUG:`, {
-            userName: selectedUser.name,
-            selectedUserBalance: selectedUser.balance,
-            financeBalance: finance.balance,
-            financeNewBalance: finance.newBalance,
-            currentCustomerId: getCurrentCustomer()?.id,
-            selectedUserId: selectedUser.id
-        });
-
-        // Robust udregning af nuværende saldo og ny saldo
-        const currentBalance = Number.isFinite(finance.balance)
-            ? finance.balance
-            : (Number.isFinite(selectedUser.balance) ? selectedUser.balance : 0);
-
-        const newBalance = Number.isFinite(finance.newBalance)
-            ? finance.newBalance
-            : currentBalance - total;
-
-        console.log(`[app-main] updateSelectedUserInfo DISPLAY:`, {
-            currentBalance,
-            newBalance,
-            total
-        });
-
-        userInfoEl.innerHTML = `
-            <div class="info-box">
-                <span class="info-box-label">Valgt:</span>
-                <span class="info-box-value">${selectedUser.name}</span>
-            </div>
-            <div class="info-box">
-                <span class="info-box-label">Nuværende Saldo:</span>
-                <span class="info-box-value">${currentBalance.toFixed(2)} kr.</span>
-            </div>
-            <div class="info-box">
-                <span class="info-box-label">Ny Saldo:</span>
-                <span class="info-box-value ${newBalance < 0 ? 'negative' : ''}">${newBalance.toFixed(2)} kr.</span>
-            </div>
-        `;
-        userInfoEl.style.display = 'grid';
     }
 
     // Register listener for balance changes to update UI
@@ -557,6 +629,10 @@ export async function startApp() {
 
     window.__flangoUndoLastSale = () => handleUndoLastSale();
     window.__flangoUndoPreviousSale = () => handleUndoPreviousSale();
+
+    // KRITISK: Initialiser selected-user-info boksen ved app start
+    console.log('[app-main] startApp complete - initializing selected-user-info box');
+    updateSelectedUserInfo();
 }
 
 

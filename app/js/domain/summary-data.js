@@ -14,7 +14,7 @@ import {
  */
 export async function fetchSummaryData(institutionId) {
     const state = getSummaryState();
-    const { viewMode, dateRange } = state;
+    const { viewMode, dateRange, includeTestUsers, employeeRole } = state;
 
     if (!institutionId) {
         console.error('[summary-data] No institution ID provided');
@@ -54,13 +54,21 @@ export async function fetchSummaryData(institutionId) {
                 throw new Error(`Unknown view mode: ${viewMode}`);
         }
 
-        console.log(`[summary-data] Fetching ${viewMode} data from ${dateRange.from} to ${dateRange.to}`);
+        console.log(`[summary-data] Fetching ${viewMode} data from ${dateRange.from} to ${dateRange.to} (includeTestUsers: ${includeTestUsers}${viewMode === 'employee' ? `, employeeRole: ${employeeRole}` : ''})`);
 
-        const { data, error } = await supabaseClient.rpc(rpcFunction, {
+        const rpcParams = {
             p_institution_id: institutionId,
             p_from_date: dateRange.from,
-            p_to_date: dateRange.to
-        });
+            p_to_date: dateRange.to,
+            p_include_test_users: includeTestUsers
+        };
+
+        // Add employee role parameter for employee view
+        if (viewMode === 'employee') {
+            rpcParams.p_employee_role = employeeRole;
+        }
+
+        const { data, error } = await supabaseClient.rpc(rpcFunction, rpcParams);
 
         if (error) throw error;
 

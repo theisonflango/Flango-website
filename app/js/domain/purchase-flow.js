@@ -650,8 +650,7 @@ export async function handleCompletePurchase({
         if (typeof refreshProductLocks === 'function') {
             refreshProductLocks();
         }
-        const selectedUserInfo = document.getElementById('selected-user-info');
-        if (selectedUserInfo) selectedUserInfo.style.display = 'none';
+        // NOTE: Don't hide selected-user-info here - updateSelectedUserInfo() handles display state
         setButtonLoadingState(completePurchaseBtn, 'normal');
     }
 }
