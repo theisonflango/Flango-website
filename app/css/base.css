@@ -1,0 +1,204 @@
+/* ============================================================
+   BASE STYLES - Flango Café
+   Fonts, CSS Variables, Body Reset, Typography, Login Screens
+   ============================================================ */
+
+/* ============================================================
+   FONT IMPORTS
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap');
+
+/* ============================================================
+   CSS VARIABLES (Color Palette & Fonts)
+   ============================================================ */
+
+:root {
+    --primary-color: #ff6347;
+    --secondary-color: #4682b4;
+    --admin-color: #8a2be2;
+    --background-light: #f0f8ff;
+    --white: #fff;
+    --product-bg: #ffdead;
+    --product-border: #f4a460;
+    --success-color: #28a745;
+    --reset-color: #6c757d;
+    --warning-color: #f0ad4e;
+    --danger-color: #dc3545;
+    --font-body: 'Nunito', sans-serif;
+    --font-heading: 'Baloo 2', cursive
+}
+
+/* ============================================================
+   BODY RESET
+   ============================================================ */
+
+body {
+    font-family: var(--font-body);
+    background-color: var(--background-light);
+    color: #333;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden
+}
+
+/* ============================================================
+   TYPOGRAPHY (Headings)
+   ============================================================ */
+
+h1,
+h2 {
+    font-family: var(--font-heading)
+}
+
+h2 {
+    color: var(--primary-color);
+    text-align: left;
+    font-size: clamp(22px, 2.6vw, 32px);
+    margin: 0;
+}
+
+h3 {
+    font-family: var(--font-heading);
+    color: var(--secondary-color);
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+    margin-top: 20px
+}
+
+/* ============================================================
+   LOGIN CONTAINER
+   ============================================================ */
+
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background-color: var(--white);
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, .1);
+    width: 90%;
+    max-width: 450px;
+}
+
+.login-logo {
+    max-width: 250px;
+    height: auto;
+    margin-bottom: 20px;
+}
+
+.lock-icon {
+    font-size: 50px;
+    margin-bottom: 10px;
+}
+
+.login-container h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.login-container select,
+.login-container input,
+.login-container button {
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+    border-radius: 10px;
+    margin-top: 15px;
+    box-sizing: border-box;
+    font-family: var(--font-body);
+}
+
+.login-container select,
+.login-container input {
+    border: 1px solid #ccc;
+}
+
+.login-container button {
+    background-color: var(--success-color);
+    color: var(--white);
+    border: none;
+    cursor: pointer;
+}
+
+.login-container label {
+    font-weight: 600;
+    align-self: flex-start;
+    margin: 6px 0 2px;
+}
+
+/* ============================================================
+   LOGIN SCREEN
+   ============================================================ */
+
+#login-screen {
+    text-align: center;
+    background-color: var(--white);
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, .1)
+}
+
+.login-options {
+    width: 100%;
+}
+
+#quick-login-btn {
+    background-color: var(--success-color)
+}
+
+#start-login-btn {
+    background-color: var(--secondary-color)
+}
+
+/* ============================================================
+   LOGIN VARIANTS & COMPONENTS
+   ============================================================ */
+
+#pin-modal-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.secondary-action {
+    background-color: var(--reset-color) !important;
+}
+
+.login-error {
+    color: var(--danger-color);
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+.login-subtitle {
+    margin: -6px 0 14px;
+    color: #5f6473;
+    font-size: 16px;
+}
+
+#admin-user-select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+.switch-club-btn {
+    background: none;
+    border: none;
+    color: var(--secondary-color);
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 6px;
+}

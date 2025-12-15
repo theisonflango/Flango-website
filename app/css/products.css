@@ -1,0 +1,365 @@
+/* ============================================================
+   PRODUCTS STYLES - Flango Café
+   Product Grid, Cards, Buttons, Refills, Locks, Icons
+   ============================================================ */
+
+/* Product Grid Container */
+#products {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    background-color: var(--white);
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, .1);
+    overflow-y: auto;
+    height: 100%;
+    align-content: stretch;
+    grid-auto-rows: 1fr;
+    flex: 1;
+    min-height: 0;
+}
+
+.product-reorder-hint {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 6px;
+    text-align: left;
+    display: none;
+}
+
+body.reorder-mode .product-reorder-hint {
+    display: block;
+}
+
+/* ===== Dynamisk produkt-grid (2–5 produkter) ===== */
+
+/* 2 produkter → 1x2 grid */
+#products:has(> .product-btn:nth-child(2):last-child) {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* 3 produkter → 1x3 grid (standard) */
+#products:has(> .product-btn:nth-child(3):last-child) {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* 4 produkter → 2x2 grid */
+#products:has(> .product-btn:nth-child(4):last-child) {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* 5 produkter → 3 kolonner + hero-kort */
+#products:has(> .product-btn:nth-child(5):last-child) {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* Hero-kort: første produkt er bredere (span 2 kolonner) når der er præcis 5 produkter */
+#products:has(> .product-btn:nth-child(5):last-child) > .product-btn:first-child {
+    grid-column: span 2;
+}
+
+/* ============================================================
+   PRODUCT BUTTONS
+   ============================================================ */
+
+.product-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 16px;
+    border-radius: 14px;
+    border: 2px solid #f1d7a7;
+    background: #fddfa9;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.2s ease;
+    overflow: hidden;
+    height: 100%;
+}
+
+/* Refill produkter - distinkt grøn styling for at indikere rabat */
+.product-btn.product-refill {
+    border-color: #10b981;
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    box-shadow: 0 6px 14px rgba(16, 185, 129, 0.15);
+}
+
+.product-btn.product-refill:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(16, 185, 129, 0.25);
+    border-color: #059669;
+}
+
+.product-btn.product-refill:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.12);
+}
+
+.product-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+    border-color: #f6c97a;
+}
+
+.product-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+}
+
+.product-btn.toast-product {
+    position: relative;
+    justify-content: flex-end;
+    padding: 5px;
+}
+
+/* Indhold inde i knappen */
+.product-btn .product-btn-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ============================================================
+   PRODUCT LOCK OVERLAY
+   ============================================================ */
+
+/* Standard: ingen lock-overlay på produkter */
+.product-btn .avatar-lock-overlay {
+    display: none;
+}
+
+/* Når produktet har ramt daglig grænse */
+.product-btn.product-limit-reached {
+    cursor: not-allowed;
+}
+
+/* Produktindhold får absolute positioning */
+.product-btn.product-limit-reached .product-btn-inner {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Sørg for at produktikonet er synligt under overlay */
+.product-btn.product-limit-reached .product-icon {
+    z-index: 2;
+}
+
+/* Vis avatar-låse-overlay ovenpå produktkortet når det er låst */
+.product-btn.product-limit-reached .avatar-lock-overlay {
+    display: flex;
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.00);
+    backdrop-filter: blur(0.5px);
+    -webkit-backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 14px;
+}
+
+/* Gør låse-ikonet 100% synligt og stort */
+.product-btn.product-limit-reached .avatar-lock-overlay img {
+    width: 100%;
+    height: 100%;
+    max-width: 180px;
+    max-height: 180px;
+    object-fit: contain;
+    opacity: 1.0;
+    filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8));
+}
+
+/* Fjern hover effekt på låste produkter */
+.product-btn.product-limit-reached:hover {
+    transform: none;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+    border-color: #f1d7a7;
+}
+
+/* ============================================================
+   PRODUCT CONTENT - Icons, Emojis, Names, Prices
+   ============================================================ */
+
+.product-emoji {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10vw;
+    z-index: 0;
+}
+
+.product-icon {
+    width: 40px;
+    height: 40px;
+    display: block;
+    object-fit: contain;
+    margin: 0 auto 6px;
+}
+
+.product-btn .product-icon {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 13px;
+    opacity: 1;
+    z-index: 0;
+}
+
+.product-icon-small {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.product-name {
+    margin-top: 8px;
+    font-weight: 700
+}
+
+.product-price {
+    font-size: 14px;
+    color: #555
+}
+
+/* Refill pris styling - fremhæv med grøn farve */
+.product-price.refill-price {
+    color: #059669;
+    font-weight: 700;
+}
+
+.product-shortcut {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    background-color: var(--secondary-color);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 700
+}
+
+/* ============================================================
+   PRODUCT INFO BOX
+   ============================================================ */
+
+.product-info-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-radius: 8px;
+    z-index: 1;
+    position: absolute;
+    background-color: #e8b979;
+    color: #5c411a;
+    font-weight: 700;
+    font-family: 'Poppins', sans-serif;
+    line-height: 1;
+    font-size: clamp(12px, 1.5vw, 18px);
+    padding: clamp(1px, 0.3vw, 4px) clamp(8px, 1.2vw, 12px);
+    bottom: clamp(4px, 1vw, 8px);
+    left: clamp(4px, 1vw, 8px);
+    right: clamp(4px, 1vw, 8px);
+}
+
+.product-info-box .product-price {
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+}
+
+.product-info-box .product-name,
+.product-info-box .product-price {
+    position: relative;
+    top: -0.2em;
+}
+
+.product-info-box .product-name {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ============================================================
+   REFILL TIMER
+   ============================================================ */
+
+.refill-timer {
+    font-size: 16px;
+    color: #059669;
+    font-weight: 700;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: center;
+    border: 1.5px solid #10b981;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15);
+}
+
+.refill-timer .timer-value {
+    font-family: 'Courier New', monospace;
+    font-weight: 800;
+    letter-spacing: 1px;
+    font-size: 17px;
+}
+
+/* ============================================================
+   CART & CONFIRMATION PRODUCT DISPLAY
+   ============================================================ */
+
+.cart-product-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cart-product-icon {
+    width: clamp(32px, 6vw, 48px);
+    height: clamp(32px, 6vw, 48px);
+    object-fit: contain;
+}
+
+.cart-product-emoji {
+    font-size: clamp(24px, 5vw, 40px);
+}
+
+.cart-remove-icon {
+    width: 24px;
+    height: 24px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.confirm-product-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 6px 0;
+}
+
+.confirm-product-icon {
+    width: 176px;
+    height: 176px;
+    object-fit: contain;
+}
+
+.confirm-product-emoji {
+    font-size: 112px;
+}

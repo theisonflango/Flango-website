@@ -4,6 +4,19 @@
    ============================================================ */
 
 /* ============================================================
+   DESKTOP - over 767px
+   ============================================================ */
+@media (min-width: 768px) {
+    /* Skjul selected-user-info når vi er på login-skærme */
+    body:has(#screen-club-login:not([style*="display: none"])) #selected-user-info,
+    body:has(#screen-admin-login:not([style*="display: none"])) #selected-user-info,
+    #main-app[style*="display: none"] #selected-user-info,
+    #main-app[style*="display:none"] #selected-user-info {
+        display: none !important;
+    }
+}
+
+/* ============================================================
    TABLET (iPAD) - 768px til 1024px
    ============================================================ */
 @media (max-width: 1024px) and (min-width: 768px) {
