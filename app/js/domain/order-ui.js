@@ -46,12 +46,36 @@ function generateMiniReceipt(total) {
 export function updateTotalPrice(totalPriceEl) {
     const total = getOrderTotal();
     const isMobile = window.innerWidth <= 767;
+    const currentOrder = getOrder();
 
     if (isMobile) {
         totalPriceEl.innerHTML = generateMiniReceipt(total);
     } else {
-        totalPriceEl.textContent = `Total: ${total.toFixed(2)} DKK`;
+        // Generate product icon summary for Unstoppable theme
+        const productSummaryHTML = generateProductIconSummary(currentOrder);
+        totalPriceEl.innerHTML = `${productSummaryHTML}<span class="total-text">Total: ${total.toFixed(2)} DKK</span>`;
     }
+}
+
+/**
+ * Generates product icon summary showing Icon + Icon = total
+ */
+function generateProductIconSummary(currentOrder) {
+    if (!currentOrder || currentOrder.length === 0) {
+        return '';
+    }
+
+    const icons = currentOrder.map(item => {
+        const iconInfo = getProductIconInfo(item);
+        if (iconInfo) {
+            return `<img src="${iconInfo.path}" alt="${item.name}">`;
+        }
+        return `<span style="font-size: 20px;">${item.emoji || '❓'}</span>`;
+    });
+
+    // Join with plus signs and add equals sign at the end
+    const iconElements = icons.join('<span class="plus-sign">+</span>');
+    return `<div class="total-product-summary">${iconElements}<span class="equals-sign">=</span></div>`;
 }
 
 export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo) {

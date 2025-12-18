@@ -34,22 +34,44 @@ export function getProductIconInfo(product) {
     if (!product) return null;
 
     // OPTIMERING: Cache icon info på produktobjektet for 30-50ms cumulativ besparelse
-    if (product._iconInfo !== undefined) {
+    // Invalidér cache hvis icon_url er ændret
+    const cacheKey = `${product.icon_url || ''}_${product.icon_updated_at || ''}_${product.emoji || ''}`;
+    if (product._iconInfo !== undefined && product._iconInfoCacheKey === cacheKey) {
         return product._iconInfo;
     }
 
+    // PRIORITY 1: Custom uploaded icon (icon_url)
+    if (product.icon_url) {
+        const timestamp = product.icon_updated_at
+            ? new Date(product.icon_updated_at).getTime()
+            : Date.now();
+        product._iconInfo = {
+            path: `${product.icon_url}?v=${timestamp}`,
+            alt: product.name || 'Produkt',
+            isCustomUploaded: true
+        };
+        product._iconInfoCacheKey = cacheKey;
+        return product._iconInfo;
+    }
+
+    // PRIORITY 2: Standard icon via CUSTOM_ICON_PREFIX in emoji field
     const customIcon = getCustomIconPath(product.emoji);
     if (customIcon) {
         product._iconInfo = { path: customIcon, alt: product.name || 'Produkt' };
+        product._iconInfoCacheKey = cacheKey;
         return product._iconInfo;
     }
+
+    // PRIORITY 3: Auto-match by product name
     const nameLower = (product.name || '').trim().toLowerCase();
     if (PRODUCT_ICON_MAP[nameLower]) {
         product._iconInfo = { path: PRODUCT_ICON_MAP[nameLower], alt: product.name || 'Produkt', className: PRODUCT_ICON_CLASS_MAP[nameLower] || '' };
+        product._iconInfoCacheKey = cacheKey;
         return product._iconInfo;
     }
 
     product._iconInfo = null;
+    product._iconInfoCacheKey = cacheKey;
     return null;
 }
 

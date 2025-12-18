@@ -1,6 +1,7 @@
 /* ============================================================
-   PRODUCTS STYLES - Flango Café
+   FLANGO UNSTOPPABLE THEME - PRODUCTS STYLES
    Product Grid, Cards, Buttons, Refills, Locks, Icons
+   Candy-tech colorful gradients for each card
    ============================================================ */
 
 /* Product Grid Container */
@@ -8,10 +9,13 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 15px;
-    background-color: var(--white);
+    background: linear-gradient(145deg, rgba(255, 251, 247, 0.8) 0%, rgba(255, 245, 235, 0.8) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, .1);
+    border-radius: var(--unstoppable-radius-lg);
+    border: 2px solid rgba(168, 85, 247, 0.1);
+    box-shadow: var(--unstoppable-shadow);
     overflow-y: auto;
     height: 100%;
     align-content: stretch;
@@ -22,7 +26,7 @@
 
 .product-reorder-hint {
     font-size: 13px;
-    color: #64748b;
+    color: #6b7280;
     margin-bottom: 6px;
     text-align: left;
     display: none;
@@ -65,51 +69,19 @@ body.reorder-mode .product-reorder-hint {
 }
 
 /* ===== 7 produkter → Diagonal Balance Layout ===== */
-/*
- * Visuelt layout:
- * ┌────────────┬────────────┬────────────┐
- * │   HERO     │   HERO     │  Prod 2    │
- * │  (span 2)  │  (span 2)  │            │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 3    │  Prod 4    │  Prod 5    │
- * ├────────────┼────────────┴────────────┤
- * │  Prod 6    │     Prod 7 (span 2)     │
- * └────────────┴─────────────────────────┘
- *
- * Designrationale:
- * - Hero (første produkt) forankrer top-venstre
- * - Sidste produkt forankrer bund-højre
- * - Skaber diagonal balance og visuel spænding
- * - Ingen tomme celler: 5×1 + 2×2 = 9 celler
- */
 #products:has(> .product-btn:nth-child(7):last-child) {
     grid-template-columns: repeat(3, 1fr);
 }
 
-/* Hero: Første produkt spænder 2 kolonner */
 #products:has(> .product-btn:nth-child(7):last-child) > .product-btn:first-child {
     grid-column: span 2;
 }
 
-/* Anchor: Sidste produkt spænder 2 kolonner (diagonal balance) */
 #products:has(> .product-btn:nth-child(7):last-child) > .product-btn:last-child {
     grid-column: span 2;
 }
 
 /* ===== 8 produkter → Hero + 7 normale ===== */
-/*
- * Visuelt layout:
- * ┌────────────┬────────────┬────────────┐
- * │   HERO     │   HERO     │  Prod 2    │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 3    │  Prod 4    │  Prod 5    │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 6    │  Prod 7    │  Prod 8    │
- * └────────────┴────────────┴────────────┘
- *
- * Hero forankrer øverst, resten fylder symmetrisk.
- * 1×2 + 7×1 = 9 celler (3×3 grid)
- */
 #products:has(> .product-btn:nth-child(8):last-child) {
     grid-template-columns: repeat(3, 1fr);
 }
@@ -118,41 +90,12 @@ body.reorder-mode .product-reorder-hint {
     grid-column: span 2;
 }
 
-/* ===== 9 produkter → Perfekt 3×3 grid (ingen hero) ===== */
-/*
- * Visuelt layout:
- * ┌────────────┬────────────┬────────────┐
- * │  Prod 1    │  Prod 2    │  Prod 3    │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 4    │  Prod 5    │  Prod 6    │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 7    │  Prod 8    │  Prod 9    │
- * └────────────┴────────────┴────────────┘
- *
- * 9 er et perfekt kvadrattal - ingen hero nødvendig.
- * Symmetrisk og balanceret som det er.
- */
+/* ===== 9 produkter → Perfekt 3×3 grid ===== */
 #products:has(> .product-btn:nth-child(9):last-child) {
     grid-template-columns: repeat(3, 1fr);
 }
 
-/* ===== 10 produkter → Diagonal Balance (som 7) ===== */
-/*
- * Visuelt layout:
- * ┌────────────┬────────────┬────────────┐
- * │   HERO     │   HERO     │  Prod 2    │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 3    │  Prod 4    │  Prod 5    │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 6    │  Prod 7    │  Prod 8    │
- * ├────────────┼────────────┴────────────┤
- * │  Prod 9    │    Prod 10 (span 2)     │
- * └────────────┴─────────────────────────┘
- *
- * Samme diagonal balance mønster som 7 produkter.
- * Hero top-left + anchor bottom-right.
- * 2×2 + 8×1 = 12 celler (3×4 grid)
- */
+/* ===== 10 produkter → Diagonal Balance ===== */
 #products:has(> .product-btn:nth-child(10):last-child) {
     grid-template-columns: repeat(3, 1fr);
 }
@@ -165,16 +108,8 @@ body.reorder-mode .product-reorder-hint {
     grid-column: span 2;
 }
 
-/* ===== 11+ produkter → Standard 3-kolonne grid ===== */
-/*
- * For 11+ produkter bruger vi standard 3-kolonne flow.
- * CSS :has() selectors ovenfor håndterer specifikt 2-10 produkter.
- * Alt over 10 falder tilbage til default grid-template-columns: repeat(3, 1fr)
- * som er defineret i #products base styles.
- */
-
 /* ============================================================
-   PRODUCT BUTTONS
+   PRODUCT BUTTONS - CANDY-TECH GRADIENT CARDS
    ============================================================ */
 
 .product-btn {
@@ -183,43 +118,131 @@ body.reorder-mode .product-reorder-hint {
     flex-direction: column;
     justify-content: space-between;
     padding: 16px;
-    border-radius: 14px;
-    border: 2px solid #f1d7a7;
-    background: #fddfa9;
-    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+    border-radius: var(--unstoppable-radius);
+    border: 2px solid rgba(168, 85, 247, 0.2);
+    background: linear-gradient(145deg, #ffecd2 0%, #fcb69f 100%);
+    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.15);
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
     height: 100%;
 }
 
-/* Refill produkter - distinkt grøn styling for at indikere rabat */
-.product-btn.product-refill {
-    border-color: #10b981;
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    box-shadow: 0 6px 14px rgba(16, 185, 129, 0.15);
+/* Different gradient colors for each product position */
+.product-btn:nth-child(10n+1) {
+    background: linear-gradient(145deg, #fef3c7 0%, #fde68a 100%);
+    border-color: rgba(251, 191, 36, 0.4);
+}
+.product-btn:nth-child(10n+1):hover {
+    border-color: rgba(251, 191, 36, 0.7);
+    box-shadow: 0 10px 30px rgba(251, 191, 36, 0.35);
 }
 
-.product-btn.product-refill:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 22px rgba(16, 185, 129, 0.25);
-    border-color: #059669;
+.product-btn:nth-child(10n+2) {
+    background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+.product-btn:nth-child(10n+2):hover {
+    border-color: rgba(16, 185, 129, 0.7);
+    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.35);
 }
 
-.product-btn.product-refill:active {
-    transform: translateY(0);
-    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.12);
+.product-btn:nth-child(10n+3) {
+    background: linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+.product-btn:nth-child(10n+3):hover {
+    border-color: rgba(59, 130, 246, 0.7);
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.35);
 }
 
+.product-btn:nth-child(10n+4) {
+    background: linear-gradient(145deg, #fce7f3 0%, #fbcfe8 100%);
+    border-color: rgba(236, 72, 153, 0.4);
+}
+.product-btn:nth-child(10n+4):hover {
+    border-color: rgba(236, 72, 153, 0.7);
+    box-shadow: 0 10px 30px rgba(236, 72, 153, 0.35);
+}
+
+.product-btn:nth-child(10n+5) {
+    background: linear-gradient(145deg, #e0e7ff 0%, #c7d2fe 100%);
+    border-color: rgba(99, 102, 241, 0.4);
+}
+.product-btn:nth-child(10n+5):hover {
+    border-color: rgba(99, 102, 241, 0.7);
+    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.35);
+}
+
+.product-btn:nth-child(10n+6) {
+    background: linear-gradient(145deg, #ffedd5 0%, #fed7aa 100%);
+    border-color: rgba(249, 115, 22, 0.4);
+}
+.product-btn:nth-child(10n+6):hover {
+    border-color: rgba(249, 115, 22, 0.7);
+    box-shadow: 0 10px 30px rgba(249, 115, 22, 0.35);
+}
+
+.product-btn:nth-child(10n+7) {
+    background: linear-gradient(145deg, #cffafe 0%, #a5f3fc 100%);
+    border-color: rgba(6, 182, 212, 0.4);
+}
+.product-btn:nth-child(10n+7):hover {
+    border-color: rgba(6, 182, 212, 0.7);
+    box-shadow: 0 10px 30px rgba(6, 182, 212, 0.35);
+}
+
+.product-btn:nth-child(10n+8) {
+    background: linear-gradient(145deg, #ede9fe 0%, #ddd6fe 100%);
+    border-color: rgba(139, 92, 246, 0.4);
+}
+.product-btn:nth-child(10n+8):hover {
+    border-color: rgba(139, 92, 246, 0.7);
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.35);
+}
+
+.product-btn:nth-child(10n+9) {
+    background: linear-gradient(145deg, #fef9c3 0%, #fef08a 100%);
+    border-color: rgba(234, 179, 8, 0.4);
+}
+.product-btn:nth-child(10n+9):hover {
+    border-color: rgba(234, 179, 8, 0.7);
+    box-shadow: 0 10px 30px rgba(234, 179, 8, 0.35);
+}
+
+.product-btn:nth-child(10n+10) {
+    background: linear-gradient(145deg, #dcfce7 0%, #bbf7d0 100%);
+    border-color: rgba(34, 197, 94, 0.4);
+}
+.product-btn:nth-child(10n+10):hover {
+    border-color: rgba(34, 197, 94, 0.7);
+    box-shadow: 0 10px 30px rgba(34, 197, 94, 0.35);
+}
+
+/* Hover and active states */
 .product-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
-    border-color: #f6c97a;
+    transform: translateY(-4px) scale(1.02);
 }
 
 .product-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+    transform: translateY(-2px) scale(1.01);
+}
+
+/* Refill produkter - special green styling */
+.product-btn.product-refill {
+    border-color: rgba(16, 185, 129, 0.5);
+    background: linear-gradient(145deg, #d1fae5 0%, #6ee7b7 100%);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25);
+}
+
+.product-btn.product-refill:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 12px 30px rgba(16, 185, 129, 0.35);
+    border-color: rgba(16, 185, 129, 0.8);
+}
+
+.product-btn.product-refill:active {
+    transform: translateY(-2px) scale(1.01);
 }
 
 .product-btn.toast-product {
@@ -239,17 +262,15 @@ body.reorder-mode .product-reorder-hint {
    PRODUCT LOCK OVERLAY
    ============================================================ */
 
-/* Standard: ingen lock-overlay på produkter */
 .product-btn .avatar-lock-overlay {
     display: none;
 }
 
-/* Når produktet har ramt daglig grænse */
 .product-btn.product-limit-reached {
     cursor: not-allowed;
+    filter: saturate(0.6);
 }
 
-/* Produktindhold får absolute positioning */
 .product-btn.product-limit-reached .product-btn-inner {
     position: absolute;
     inset: 0;
@@ -259,26 +280,23 @@ body.reorder-mode .product-reorder-hint {
     gap: 8px;
 }
 
-/* Sørg for at produktikonet er synligt under overlay */
 .product-btn.product-limit-reached .product-icon {
     z-index: 2;
 }
 
-/* Vis avatar-låse-overlay ovenpå produktkortet når det er låst */
 .product-btn.product-limit-reached .avatar-lock-overlay {
     display: flex;
     position: absolute;
     inset: 0;
-    background: rgba(255, 255, 255, 0.00);
-    backdrop-filter: blur(0.5px);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(200, 200, 200, 0.4) 100%);
+    backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
     align-items: center;
     justify-content: center;
     z-index: 10;
-    border-radius: 14px;
+    border-radius: var(--unstoppable-radius);
 }
 
-/* Gør låse-ikonet 100% synligt og stort */
 .product-btn.product-limit-reached .avatar-lock-overlay img {
     width: 100%;
     height: 100%;
@@ -286,14 +304,11 @@ body.reorder-mode .product-reorder-hint {
     max-height: 180px;
     object-fit: contain;
     opacity: 1.0;
-    filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8));
+    filter: drop-shadow(0 6px 12px rgba(0,0,0,0.6));
 }
 
-/* Fjern hover effekt på låste produkter */
 .product-btn.product-limit-reached:hover {
     transform: none;
-    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
-    border-color: #f1d7a7;
 }
 
 /* ============================================================
@@ -324,7 +339,7 @@ body.reorder-mode .product-reorder-hint {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    border-radius: 13px;
+    border-radius: calc(var(--unstoppable-radius) - 2px);
     opacity: 1;
     z-index: 0;
 }
@@ -337,15 +352,17 @@ body.reorder-mode .product-reorder-hint {
 
 .product-name {
     margin-top: 8px;
-    font-weight: 700
+    font-weight: 700;
+    color: #374151;
 }
 
 .product-price {
     font-size: 14px;
-    color: #555
+    color: #6b7280;
+    font-weight: 600;
 }
 
-/* Refill pris styling - fremhæv med grøn farve */
+/* Refill pris styling */
 .product-price.refill-price {
     color: #059669;
     font-weight: 700;
@@ -354,40 +371,70 @@ body.reorder-mode .product-reorder-hint {
 .product-shortcut {
     position: absolute;
     top: 8px;
-    right: 8px;
+    left: 8px;
     width: 24px;
     height: 24px;
-    background-color: var(--secondary-color);
-    color: var(--white);
+    background: var(--gradient-secondary);
+    color: #fff;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
     font-size: 14px;
-    font-weight: 700
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(6, 182, 212, 0.4);
+}
+
+/* iPhone-style quantity badge when product is in cart (desktop) */
+.product-quantity-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #fff;
+    border-radius: 11px;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.5);
+    z-index: 15;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    border: 2px solid white;
+}
+
+.product-quantity-badge.visible {
+    display: flex;
 }
 
 /* ============================================================
-   PRODUCT INFO BOX
+   PRODUCT INFO BOX - PREMIUM PILL
    ============================================================ */
 
 .product-info-box {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    border-radius: 8px;
+    border-radius: var(--unstoppable-radius-sm);
     z-index: 1;
     position: absolute;
-    background-color: #e8b979;
-    color: #5c411a;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(124, 58, 237, 0.9) 100%);
+    color: #fff;
     font-weight: 700;
     font-family: 'Poppins', sans-serif;
     line-height: 1;
     font-size: clamp(12px, 1.5vw, 18px);
-    padding: clamp(1px, 0.3vw, 4px) clamp(8px, 1.2vw, 12px);
-    bottom: clamp(4px, 1vw, 8px);
-    left: clamp(4px, 1vw, 8px);
-    right: clamp(4px, 1vw, 8px);
+    padding: clamp(4px, 0.5vw, 8px) clamp(10px, 1.4vw, 14px);
+    bottom: clamp(6px, 1.2vw, 10px);
+    left: clamp(6px, 1.2vw, 10px);
+    right: clamp(6px, 1.2vw, 10px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 .product-info-box .product-price {
@@ -416,15 +463,15 @@ body.reorder-mode .product-reorder-hint {
     color: #059669;
     font-weight: 700;
     margin-bottom: 8px;
-    padding: 6px 10px;
+    padding: 8px 12px;
     background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    border-radius: 8px;
+    border-radius: var(--unstoppable-radius-sm);
     display: flex;
     align-items: center;
     gap: 5px;
     justify-content: center;
-    border: 1.5px solid #10b981;
-    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15);
+    border: 2px solid rgba(16, 185, 129, 0.4);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
 
 .refill-timer .timer-value {

@@ -60,6 +60,10 @@ export async function startApp() {
     configureHistoryModule({ getAllUsers: () => allUsers });
     let allProducts = [];
     window.__flangoGetAllProducts = () => allProducts;
+    window.__flangoSetAllProducts = (next) => {
+        allProducts = next;
+        console.log(`[app-main] setAllProducts called: ${next.length} products`);
+    };
     let currentOrder = [];
     let currentSortKey = 'name';
     let balanceSortOrder = 'desc';
@@ -170,12 +174,38 @@ export async function startApp() {
     function updateLoggedInUserDisplay() {
         const userDisplay = document.getElementById('logged-in-user');
         const avatarContainer = document.getElementById('logged-in-user-avatar-container');
+        const sessionBanner = document.getElementById('user-session-banner');
         if (!userDisplay || !avatarContainer) return;
 
         const sessionAdmin = getCurrentSessionAdmin();
         const adultName = sessionAdmin?.name || '(ukendt)';
         const clerkName = clerkProfile?.name || adultName;
         userDisplay.textContent = `👤 ${clerkName}  |  🔐 ${adultName}`;
+
+        // Create sticky notes for Unstoppable theme
+        if (sessionBanner) {
+            // Remove existing sticky notes if any
+            sessionBanner.querySelectorAll('.session-sticky-note').forEach(el => el.remove());
+
+            // Create clerk sticky note
+            const clerkNote = document.createElement('div');
+            clerkNote.className = 'session-sticky-note clerk-note';
+            clerkNote.innerHTML = `
+                <div class="sticky-label">Ekspedient:</div>
+                <div class="sticky-name">${clerkName}</div>
+            `;
+
+            // Create adult sticky note
+            const adultNote = document.createElement('div');
+            adultNote.className = 'session-sticky-note adult-note';
+            adultNote.innerHTML = `
+                <div class="sticky-label">🔐 Voksen:</div>
+                <div class="sticky-name">${adultName}</div>
+            `;
+
+            sessionBanner.appendChild(clerkNote);
+            sessionBanner.appendChild(adultNote);
+        }
 
         const userId = clerkProfile.id;
         const storageKey = `${AVATAR_STORAGE_PREFIX}${userId}`;
@@ -323,6 +353,9 @@ export async function startApp() {
         window.__flangoAllUsers = next; // Keep window property in sync
         console.log(`[app-main] setAllUsers called: ${next.length} users, window.__flangoAllUsers.length=${window.__flangoAllUsers.length}`);
     };
+    // Expose setter globally for data-refetch module
+    window.__flangoSetAllUsers = setAllUsers;
+    window.__flangoGetAllUsers = getAllUsers;
 
     // 7) Kundevælger
     const customerPicker = setupCustomerPickerFlow({
@@ -497,42 +530,11 @@ export async function startApp() {
 
         // Preload dagens købs-snapshot og VENT på, at låsene er anvendt.
         await preloadChildProductLimitSnapshot(selectedUser.id);
-        const productsContainer = document.getElementById('products');
-
-        // KRITISK: Genrender produktgitter med refill-beregning for valgt barn
-        await renderProductsGrid(
-            allProducts,
-            productsContainer,
-            async (product, evt) => {
-                const result = await addToOrder(product, currentOrder, orderList, totalPriceEl, updateSelectedUserInfo, { sourceEvent: evt });
-                // Opdater låse efter tilføjelse til kurv
-                await applyProductLimitsToButtons(allProducts, productsContainer, currentOrder, selectedUser.id);
-                return result;
-            },
-            selectedUser // Send currentCustomer så refill kan beregnes
-        );
-
-        // Sørg for at alle knapper har et låse-overlay
-        productsContainer.querySelectorAll('.product-btn').forEach(btn => {
-            if (!btn.querySelector('.product-lock-overlay')) {
-                const overlay = document.createElement('div');
-                overlay.className = 'avatar-lock-overlay product-lock-overlay';
-                btn.appendChild(overlay);
-            }
-        });
 
         // Opdater quantity badges efter produkterne er genrenderet
         updateProductQuantityBadges();
 
-        // KRITISK: Re-initialiser drag-and-drop efter produkterne er genrenderet
-        if (productAssortment?.initProductReorder) {
-            productAssortment.initProductReorder();
-        }
-
-        // Tving brug af en tom kurv, da vi lige har valgt en ny bruger.
-        await applyProductLimitsToButtons(allProducts, productsContainer, [], selectedUser.id);
-
-        // Kør først UI-opdatering EFTER alle asynkrone kald er færdige.
+        // Kør UI-opdatering EFTER alle asynkrone kald er færdige.
         updateSelectedUserInfo();
         userModal.style.display = 'none';
     }

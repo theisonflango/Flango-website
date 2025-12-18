@@ -1,8 +1,15 @@
 // js/ui/product-management.js
 import { getProductIconInfo, PRODUCT_ICON_CLASS_MAP } from '../domain/products-and-cart.js';
 import { getOrder } from '../domain/order-store.js';
+import { refetchAllProducts } from '../core/data-refetch.js';
+import {
+    STANDARD_ICONS,
+    uploadProductIcon,
+    removeProductIcon,
+    formatIconUpdateTime
+} from '../core/product-icon-utils.js';
 
-console.log('🔥🔥🔥 product-management.js LOADED - Version with debug logs - CACHE CLEARED 🔥🔥🔥');
+console.log('🔥🔥🔥 product-management.js LOADED - Version with REFETCH + Custom Icon Upload 🔥🔥🔥');
 
 export function renderProductsInModal(allProducts, modalProductList) {
     if (!modalProductList) return;
@@ -722,15 +729,75 @@ export function createProductManagementUI(options = {}) {
                     </div>
                 </div>
                 <div class="collapsible-section">
-                    <h4 class="collapsible-header" data-target="emoji-icon-content" style="cursor: pointer; user-select: none; padding: 10px; background: var(--secondary-bg, #f5f5f5); border-radius: 8px; margin: 10px 0;">
-                        <span class="collapse-arrow" style="display: inline-block; transition: transform 0.2s; margin-right: 8px;">▶</span> Emojis + Custom Icons
+                    <h4 class="collapsible-header" data-target="icon-section-content" style="cursor: pointer; user-select: none; padding: 10px; background: var(--secondary-bg, #f5f5f5); border-radius: 8px; margin: 10px 0;">
+                        <span class="collapse-arrow" style="display: inline-block; transition: transform 0.2s; margin-right: 8px;">▶</span> Produktikon
                     </h4>
-                    <div id="emoji-icon-content" class="collapsible-content" style="display: none; padding: 10px 0; max-height: 400px; overflow-y: auto;">
-                        <label style="margin-top: 10px; display: block; font-weight: 500;">Vælg eller indtast Emoji</label>
-                        <input type="text" id="product-emoji-input" placeholder="Indtast emoji her..." value="${isEditing && product.emoji ? product.emoji : ''}">
-                        <div id="product-emoji-grid" class="emoji-grid" style="padding-top: 10px;"></div>
-                        <label style="margin-top: 15px; display: block; font-weight: 500;">Vælg Custom Icon</label>
-                        <div id="custom-icon-grid" class="custom-icon-grid"></div>
+                    <div id="icon-section-content" class="collapsible-content" style="display: none; padding: 10px 0;">
+
+                        <!-- Icon Preview -->
+                        <div id="icon-preview-container" style="text-align: center; margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 12px;">
+                            <div id="icon-preview" style="width: 80px; height: 80px; margin: 0 auto 10px; border-radius: 10px; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center; border: 2px solid #e0e0e0;">
+                                <span style="font-size: 40px;">❓</span>
+                            </div>
+                            <div id="icon-status" style="font-size: 12px; color: #666;"></div>
+                        </div>
+
+                        <!-- Icon Type Selection -->
+                        <div id="icon-type-selector" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                            <label class="icon-type-card" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                <input type="radio" name="icon-type" value="standard" style="display: none;">
+                                <div style="font-size: 24px; margin-bottom: 5px;">📁</div>
+                                <div style="font-weight: 600; font-size: 13px;">Standard ikon</div>
+                            </label>
+                            <label class="icon-type-card" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                <input type="radio" name="icon-type" value="custom" style="display: none;">
+                                <div style="font-size: 24px; margin-bottom: 5px;">📤</div>
+                                <div style="font-weight: 600; font-size: 13px;">Upload eget</div>
+                            </label>
+                        </div>
+
+                        <!-- Standard Icon Section -->
+                        <div id="standard-icon-section" style="display: none;">
+                            <label style="display: block; font-weight: 500; margin-bottom: 8px;">Vælg standard ikon</label>
+                            <div id="standard-icon-grid" class="custom-icon-grid"></div>
+
+                            <label style="margin-top: 15px; display: block; font-weight: 500;">Eller vælg emoji</label>
+                            <input type="text" id="product-emoji-input" placeholder="Indtast emoji her..." value="${isEditing && product.emoji ? product.emoji : ''}" style="margin-top: 5px;">
+                            <div id="product-emoji-grid" class="emoji-grid" style="padding-top: 10px;"></div>
+                        </div>
+
+                        <!-- Custom Upload Section -->
+                        <div id="custom-upload-section" style="display: none;">
+                            <div id="upload-dropzone" style="border: 2px dashed #ccc; border-radius: 12px; padding: 30px 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa;">
+                                <div style="font-size: 40px; margin-bottom: 10px;">🖼️</div>
+                                <div style="font-weight: 600; margin-bottom: 5px;">Træk billede hertil</div>
+                                <div style="font-size: 12px; color: #666; margin-bottom: 10px;">eller klik for at vælge fil</div>
+                                <div style="font-size: 11px; color: #999;">WebP, PNG, JPEG • Konverteres automatisk til 256×256 WebP</div>
+                                <input type="file" id="icon-file-input" accept=".webp,.png,.jpg,.jpeg,image/webp,image/png,image/jpeg" style="display: none;">
+                            </div>
+
+                            <!-- Background Removal Option -->
+                            <label id="remove-bg-option" style="display: flex; align-items: flex-start; gap: 10px; margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; cursor: pointer; user-select: none;">
+                                <input type="checkbox" id="remove-bg-checkbox" style="margin-top: 2px; width: 18px; height: 18px; cursor: pointer;">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 14px; color: #333;">Forsøg at fjerne baggrund</div>
+                                    <div style="font-size: 12px; color: #666; margin-top: 3px;">Virker bedst på billeder med ensfarvet baggrund (fx hvid). Resultatet kan variere.</div>
+                                </div>
+                            </label>
+
+                            <div id="upload-progress" style="display: none; margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 14px; color: #1976d2;">Uploader...</div>
+                            </div>
+
+                            <div id="upload-error" style="display: none; margin-top: 15px; padding: 15px; background: #ffebee; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 14px; color: #c62828;"></div>
+                            </div>
+
+                            <button type="button" id="remove-custom-icon-btn" style="display: none; margin-top: 15px; width: 100%; padding: 10px; background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                                🗑️ Fjern custom ikon
+                            </button>
+                        </div>
+
                     </div>
                 </div>`;
         // Setup collapsible sections
@@ -793,61 +860,258 @@ export function createProductManagementUI(options = {}) {
                 }
             });
         }
+        // ===== ICON SECTION SETUP =====
         const emojiGrid = document.getElementById('product-emoji-grid');
+        const emojiInput = document.getElementById('product-emoji-input');
+        const standardIconGrid = document.getElementById('standard-icon-grid');
+        const iconPreview = document.getElementById('icon-preview');
+        const iconStatus = document.getElementById('icon-status');
+        const standardIconSection = document.getElementById('standard-icon-section');
+        const customUploadSection = document.getElementById('custom-upload-section');
+        const uploadDropzone = document.getElementById('upload-dropzone');
+        const iconFileInput = document.getElementById('icon-file-input');
+        const uploadProgress = document.getElementById('upload-progress');
+        const uploadError = document.getElementById('upload-error');
+        const removeCustomIconBtn = document.getElementById('remove-custom-icon-btn');
+        const iconTypeCards = document.querySelectorAll('.icon-type-card');
+
+        // Track current state
+        let selectedStandardIcon = existingCustomIcon;
+        let currentIconUrl = isEditing ? product?.icon_url : null;
+        let currentIconUpdatedAt = isEditing ? product?.icon_updated_at : null;
+        let isUploading = false;
+
+        // Update icon preview
+        const updateIconPreview = () => {
+            let iconSrc = null;
+            let statusText = '';
+
+            if (currentIconUrl) {
+                // Custom uploaded icon
+                const timestamp = currentIconUpdatedAt ? new Date(currentIconUpdatedAt).getTime() : Date.now();
+                iconSrc = `${currentIconUrl}?v=${timestamp}`;
+                statusText = `✅ Custom ikon (uploadet ${formatIconUpdateTime(currentIconUpdatedAt)})`;
+            } else if (selectedStandardIcon) {
+                // Standard icon from emoji field
+                iconSrc = selectedStandardIcon;
+                statusText = '📁 Bruger standard ikon';
+            } else if (emojiInput?.value && !emojiInput.value.startsWith(CUSTOM_ICON_PREFIX)) {
+                // Emoji
+                iconPreview.innerHTML = `<span style="font-size: 40px;">${emojiInput.value}</span>`;
+                iconStatus.textContent = '😀 Bruger emoji';
+                return;
+            }
+
+            if (iconSrc) {
+                iconPreview.innerHTML = `<img src="${iconSrc}" alt="Produkt ikon" style="width: 100%; height: 100%; object-fit: contain;">`;
+            } else {
+                iconPreview.innerHTML = `<span style="font-size: 40px;">❓</span>`;
+                statusText = 'Intet ikon valgt';
+            }
+            iconStatus.textContent = statusText;
+        };
+
+        // Switch between standard and custom icon sections
+        const switchIconType = (type) => {
+            iconTypeCards.forEach(card => {
+                const radio = card.querySelector('input[type="radio"]');
+                const isSelected = radio.value === type;
+                radio.checked = isSelected;
+                card.style.borderColor = isSelected ? '#4682b4' : '#e0e0e0';
+                card.style.background = isSelected ? '#e3f2fd' : '#fff';
+            });
+
+            standardIconSection.style.display = type === 'standard' ? 'block' : 'none';
+            customUploadSection.style.display = type === 'custom' ? 'block' : 'none';
+
+            // Show/hide remove button
+            removeCustomIconBtn.style.display = (type === 'custom' && currentIconUrl) ? 'block' : 'none';
+        };
+
+        // Initialize icon type based on current state
+        const initIconType = currentIconUrl ? 'custom' : 'standard';
+        switchIconType(initIconType);
+
+        // Icon type card click handlers
+        iconTypeCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const radio = card.querySelector('input[type="radio"]');
+                switchIconType(radio.value);
+            });
+        });
+
+        // ===== STANDARD ICON GRID =====
         const suggestions = ['🍫', '🍽️', '🍷', '🍎', '🥜', '🥪', '🍕', '🥤', '🍚', '🍣', '🥢', '🍞', '🥝', '🍇', '🍐', '🍉', '🍙', '🍲', '🥘', '🫘', '🍔', '🌶️', '🧄', '🍳', '🔥', '😋', '🍰', '♨️', '🍪'];
         suggestions.forEach(emoji => {
             const emojiSpan = document.createElement('span');
             emojiSpan.textContent = emoji;
-            const emojiInput = document.getElementById('product-emoji-input');
             emojiSpan.onclick = () => {
-                emojiInput.value += emoji;
-                emojiInput.focus();
+                emojiInput.value = emoji;
+                selectedStandardIcon = null;
+                updateStandardIconSelection();
+                updateIconPreview();
             };
             emojiGrid.appendChild(emojiSpan);
         });
-        const customIconGrid = document.getElementById('custom-icon-grid');
-        const customIconOptions = [
-            { label: 'Toast', path: 'Icons/webp/Food/Toast.webp' },
-            { label: 'Saft', path: 'Icons/webp/Food/Saft.webp' },
-            { label: 'Sushi', path: 'Icons/webp/Food/Sushi.webp' },
-            { label: 'Nøddemix', path: 'Icons/webp/Food/Nøddemix.webp' },
-            { label: 'Frugt', path: 'Icons/webp/Food/Frugt.webp' },
-            { label: 'Frugter', path: 'Icons/webp/Food/Frugter.webp' },
-            { label: 'Suppe', path: 'Icons/webp/Food/Suppe.webp' },
-            { label: 'Pizza', path: 'Icons/webp/Food/Pizza.webp' },
-            { label: 'Dagens ret', path: 'Icons/webp/Food/Dagensret.webp' },
-            { label: 'Stegt flæsk', path: 'Icons/webp/Food/stegt_flaesk.webp' }
-        ];
-        const emojiInput = document.getElementById('product-emoji-input');
-        let selectedCustomIcon = existingCustomIcon;
 
-        // OPTIMERING: Opret elementer uden individuelle event listeners
-        customIconOptions.forEach(icon => {
+        // Standard icons from STANDARD_ICONS constant
+        STANDARD_ICONS.forEach(icon => {
             const option = document.createElement('div');
             option.className = 'custom-icon-option';
             option.innerHTML = `<img src="${icon.path}" alt="${icon.label}"><span>${icon.label}</span>`;
             option.dataset.path = icon.path;
-            customIconGrid.appendChild(option);
+            standardIconGrid.appendChild(option);
         });
 
-        // OPTIMERING: Event delegation i stedet for individuelle listeners (forhindrer memory leaks)
-        const handleCustomIconClick = (e) => {
+        // Standard icon grid click handler (event delegation)
+        const handleStandardIconClick = (e) => {
             const option = e.target.closest('.custom-icon-option');
             if (!option) return;
 
-            selectedCustomIcon = option.dataset.path;
-            emojiInput.value = `${CUSTOM_ICON_PREFIX}${selectedCustomIcon}`;
-            updateCustomIconSelection();
-            emojiInput.focus();
+            selectedStandardIcon = option.dataset.path;
+            emojiInput.value = `${CUSTOM_ICON_PREFIX}${selectedStandardIcon}`;
+            updateStandardIconSelection();
+            updateIconPreview();
         };
-        customIconGrid.addEventListener('click', handleCustomIconClick);
+        standardIconGrid.addEventListener('click', handleStandardIconClick);
 
-        const updateCustomIconSelection = () => {
-            document.querySelectorAll('.custom-icon-option').forEach(opt => {
-                opt.classList.toggle('selected', !!selectedCustomIcon && opt.dataset.path === selectedCustomIcon);
+        const updateStandardIconSelection = () => {
+            standardIconGrid.querySelectorAll('.custom-icon-option').forEach(opt => {
+                opt.classList.toggle('selected', !!selectedStandardIcon && opt.dataset.path === selectedStandardIcon);
             });
         };
-        updateCustomIconSelection();
+        updateStandardIconSelection();
+
+        // Emoji input change handler
+        emojiInput?.addEventListener('input', () => {
+            if (!emojiInput.value.startsWith(CUSTOM_ICON_PREFIX)) {
+                selectedStandardIcon = null;
+                updateStandardIconSelection();
+            }
+            updateIconPreview();
+        });
+
+        // ===== CUSTOM UPLOAD HANDLERS =====
+        const removeBgCheckbox = document.getElementById('remove-bg-checkbox');
+
+        const handleFileUpload = async (file) => {
+            if (!file || !isEditing) return;
+
+            // Validate file type
+            const validTypes = ['image/webp', 'image/png', 'image/jpeg'];
+            if (!validTypes.includes(file.type)) {
+                uploadError.style.display = 'block';
+                uploadError.querySelector('div').textContent = 'Ugyldig filtype. Brug WebP, PNG eller JPEG.';
+                return;
+            }
+
+            // Hide error, show progress
+            uploadError.style.display = 'none';
+            uploadProgress.style.display = 'block';
+            uploadDropzone.style.opacity = '0.5';
+            uploadDropzone.style.pointerEvents = 'none';
+            isUploading = true;
+
+            try {
+                // Get admin user ID
+                const adminUserId = adminProfile?.user_id;
+                if (!adminUserId) {
+                    throw new Error('Admin bruger ID ikke fundet');
+                }
+
+                // Determine background removal mode from checkbox
+                const removeBackgroundMode = removeBgCheckbox?.checked ? 'simple' : 'none';
+
+                const result = await uploadProductIcon(file, institutionId, product.id, adminUserId, {
+                    removeBackgroundMode
+                });
+
+                if (result.success) {
+                    currentIconUrl = result.icon_url;
+                    currentIconUpdatedAt = result.icon_updated_at;
+                    updateIconPreview();
+                    removeCustomIconBtn.style.display = 'block';
+                    playSound?.('success');
+                } else {
+                    throw new Error(result.error || 'Upload fejlede');
+                }
+
+            } catch (err) {
+                console.error('[handleFileUpload] Error:', err);
+                uploadError.style.display = 'block';
+                uploadError.querySelector('div').textContent = err.message || 'Upload fejlede';
+                playSound?.('error');
+            } finally {
+                uploadProgress.style.display = 'none';
+                uploadDropzone.style.opacity = '1';
+                uploadDropzone.style.pointerEvents = 'auto';
+                isUploading = false;
+            }
+        };
+
+        // Dropzone click → trigger file input
+        uploadDropzone?.addEventListener('click', () => {
+            if (!isUploading) iconFileInput?.click();
+        });
+
+        // File input change
+        iconFileInput?.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFileUpload(file);
+            e.target.value = ''; // Reset for same file selection
+        });
+
+        // Drag & drop handlers
+        uploadDropzone?.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadDropzone.style.borderColor = '#4682b4';
+            uploadDropzone.style.background = '#e3f2fd';
+        });
+
+        uploadDropzone?.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadDropzone.style.borderColor = '#ccc';
+            uploadDropzone.style.background = '#fafafa';
+        });
+
+        uploadDropzone?.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadDropzone.style.borderColor = '#ccc';
+            uploadDropzone.style.background = '#fafafa';
+
+            const file = e.dataTransfer?.files?.[0];
+            if (file) handleFileUpload(file);
+        });
+
+        // Remove custom icon button
+        removeCustomIconBtn?.addEventListener('click', async () => {
+            if (!isEditing || !currentIconUrl) return;
+
+            removeCustomIconBtn.disabled = true;
+            removeCustomIconBtn.textContent = 'Fjerner...';
+
+            try {
+                const result = await removeProductIcon(product.id);
+                if (result.success) {
+                    currentIconUrl = null;
+                    currentIconUpdatedAt = null;
+                    updateIconPreview();
+                    removeCustomIconBtn.style.display = 'none';
+                    playSound?.('success');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (err) {
+                console.error('[removeCustomIcon] Error:', err);
+                showAlert?.('Kunne ikke fjerne ikon: ' + err.message);
+            } finally {
+                removeCustomIconBtn.disabled = false;
+                removeCustomIconBtn.textContent = '🗑️ Fjern custom ikon';
+            }
+        });
+
+        // Initial preview update
+        updateIconPreview();
         const refillEnabledCheckbox = document.getElementById('product-refill-enabled');
         const unhealthyCheckbox = document.getElementById('product-unhealthy-enabled');
         const containsPorkCheckbox = document.getElementById('product-contains-pork');
@@ -910,11 +1174,6 @@ export function createProductManagementUI(options = {}) {
                     : 'Ubegrænset';
             updateLabelText(el, zeroText);
             el.addEventListener('input', () => updateLabelText(el, zeroText));
-        });
-        emojiInput.addEventListener('input', () => {
-            const path = getCustomIconPath(emojiInput.value);
-            selectedCustomIcon = path;
-            updateCustomIconSelection();
         });
         modal.style.display = 'flex';
         saveBtn.onclick = async () => {
@@ -1050,11 +1309,15 @@ export function createProductManagementUI(options = {}) {
         if (institutionId) {
             await saveProductLimit(institutionId, data.id, (maxPerDay === null ? null : Math.floor(maxPerDay)));
         }
-        const nextProducts = [...products, data];
-        setProducts(nextProducts);
+
+        // REFETCH PATTERN: Hent fresh data fra database for at sikre UI er synkroniseret
+        console.log('[handleAddProduct] Refetching products from database...');
+        await refetchAllProducts();
+
         playSound?.('productCreate');
         await fetchAndRenderProducts?.();
         renderProductsInModalFn?.(getProducts(), modalProductList);
+        console.log('[handleAddProduct] Product added and UI refreshed');
     }
 
     async function handleEditProduct(productId, productData) {
@@ -1108,9 +1371,14 @@ export function createProductManagementUI(options = {}) {
         if (institutionId) {
             await saveProductLimit(institutionId, productId, (maxPerDay === null ? null : Math.floor(maxPerDay)));
         }
-        setProducts([...products]);
+
+        // REFETCH PATTERN: Hent fresh data fra database for at sikre UI er synkroniseret
+        console.log('[handleEditProduct] Refetching products from database...');
+        await refetchAllProducts();
+
         await fetchAndRenderProducts?.();
         renderProductsInModalFn?.(getProducts(), modalProductList);
+        console.log('[handleEditProduct] Product edited and UI refreshed');
     }
 
     async function handleToggleProductStatus(productId) {
@@ -1124,10 +1392,14 @@ export function createProductManagementUI(options = {}) {
             .update({ is_enabled: nextEnabled })
             .eq("id", productId);
         if (error) return showAlert(`Fejl: ${error.message}`);
-        Object.assign(product, { is_enabled: nextEnabled });
-        setProducts([...products]);
+
+        // REFETCH PATTERN: Hent fresh data fra database for at sikre UI er synkroniseret
+        console.log('[handleToggleProductStatus] Refetching products from database...');
+        await refetchAllProducts();
+
         await fetchAndRenderProducts?.();
         renderProductsInModalFn?.(getProducts(), modalProductList);
+        console.log('[handleToggleProductStatus] Product status toggled and UI refreshed');
     }
 
     async function handleDeleteProduct(productId) {
@@ -1138,9 +1410,13 @@ export function createProductManagementUI(options = {}) {
         if (!confirmed) return;
         const { error } = await supabaseClient.from("products").delete().eq("id", productId);
         if (error) return showAlert(`Fejl: ${error.message}`);
-        const nextProducts = products.filter(p => p.id !== productId);
-        setProducts(nextProducts);
+
+        // REFETCH PATTERN: Hent fresh data fra database for at sikre UI er synkroniseret
+        console.log('[handleDeleteProduct] Refetching products from database...');
+        await refetchAllProducts();
+
         await fetchAndRenderProducts?.();
         renderProductsInModalFn?.(getProducts(), modalProductList);
+        console.log('[handleDeleteProduct] Product deleted and UI refreshed');
     }
 }

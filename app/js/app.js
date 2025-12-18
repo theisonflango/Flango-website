@@ -12,6 +12,7 @@ import { getCurrentUserProfile } from './domain/auth-and-session.js';
 import { ensureActiveInstitution, fetchInstitutions } from './domain/institution-store.js';
 import { setupClubLoginScreen, setupLockedScreen } from './domain/club-login.js';
 import { startApp, setupAdminLoginScreen } from './domain/app-main.js';
+import { initUpdateChip, startVersionChecking } from './core/version-check.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // INIT tema første gang siden indlæses
@@ -56,6 +57,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setupToolbarHistoryButton();
     setupSettingsModal();
     setupHelpButton();
+
+    // Version check og opdaterings-chip
+    initUpdateChip();
+    startVersionChecking();
 
     // =================================================================
     // APP-OPSTART

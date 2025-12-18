@@ -4,6 +4,13 @@ import { getProductIconInfo } from '../domain/products-and-cart.js';
 import { setupHelpModule, openHelpManually } from './help.js';
 import { supabaseClient } from '../core/config-and-supabase.js';
 import { getInstitutionId } from '../domain/session-store.js';
+import {
+    initThemeLoader,
+    switchTheme as themePackSwitchTheme,
+    getCurrentTheme,
+    isThemePackTheme,
+    ALL_VALID_THEMES
+} from './theme-loader.js';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 const sugarPolicyState = {
@@ -11,37 +18,52 @@ const sugarPolicyState = {
     limitedProductIds: new Set(),
 };
 
+const VALID_THEMES = ALL_VALID_THEMES;
+
 function setFlangoTheme(themeName) {
-    if (themeName !== 'default' && themeName !== 'pastel-pop') {
+    if (!VALID_THEMES.includes(themeName)) {
         themeName = 'default';
     }
 
+    // For theme-pack themes (like flango-unstoppable), use the theme loader
+    // which will reload the page to swap CSS files
+    const currentTheme = getCurrentTheme();
+    if (isThemePackTheme(themeName) || isThemePackTheme(currentTheme)) {
+        themePackSwitchTheme(themeName);
+        return; // Page will reload for theme-pack themes
+    }
+
+    // For non-theme-pack themes (default, pastel-pop, pos-pro)
     document.body.dataset.theme = themeName;
     localStorage.setItem(THEME_STORAGE_KEY, themeName);
 
-    const defaultRadio = document.getElementById('theme-default');
-    const pastelRadio = document.getElementById('theme-pastel-pop');
-    if (defaultRadio && pastelRadio) {
-        defaultRadio.checked = themeName === 'default';
-        pastelRadio.checked = themeName === 'pastel-pop';
-    }
+    // Update all theme radio buttons
+    VALID_THEMES.forEach(theme => {
+        const radio = document.getElementById(`theme-${theme}`);
+        if (radio) {
+            radio.checked = themeName === theme;
+        }
+    });
 }
 
 export function initFlangoTheme() {
-    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-    if (savedTheme === 'default' || savedTheme === 'pastel-pop') {
-        setFlangoTheme(savedTheme);
-    } else {
-        setFlangoTheme('default');
-    }
+    // Use the theme loader which handles both regular themes and theme-packs
+    initThemeLoader();
+
+    // Update radio buttons to match current theme
+    const currentTheme = getCurrentTheme();
+    VALID_THEMES.forEach(theme => {
+        const radio = document.getElementById(`theme-${theme}`);
+        if (radio) {
+            radio.checked = currentTheme === theme;
+        }
+    });
 }
 
 export function setupThemePickerUI() {
     const openThemePickerBtn = document.getElementById('open-theme-picker');
     const themePickerBackdrop = document.getElementById('theme-picker-backdrop');
     const themePickerCloseBtn = document.getElementById('theme-picker-close');
-    const themeDefaultRadio = document.getElementById('theme-default');
-    const themePastelRadio = document.getElementById('theme-pastel-pop');
 
     if (!openThemePickerBtn || !themePickerBackdrop || !themePickerCloseBtn) {
         console.warn('Tema-picker elementer ikke fundet i DOM');
@@ -49,11 +71,14 @@ export function setupThemePickerUI() {
     }
 
     openThemePickerBtn.addEventListener('click', () => {
-        const currentTheme = document.body.dataset.theme || 'default';
-        if (themeDefaultRadio && themePastelRadio) {
-            themeDefaultRadio.checked = currentTheme === 'default';
-            themePastelRadio.checked = currentTheme === 'pastel-pop';
-        }
+        const currentThemeValue = getCurrentTheme();
+        // Update all theme radios
+        VALID_THEMES.forEach(theme => {
+            const radio = document.getElementById(`theme-${theme}`);
+            if (radio) {
+                radio.checked = currentThemeValue === theme;
+            }
+        });
 
         themePickerBackdrop.style.display = 'flex';
     });
@@ -68,21 +93,17 @@ export function setupThemePickerUI() {
         }
     });
 
-    if (themeDefaultRadio) {
-        themeDefaultRadio.addEventListener('change', () => {
-            if (themeDefaultRadio.checked) {
-                setFlangoTheme('default');
-            }
-        });
-    }
-
-    if (themePastelRadio) {
-        themePastelRadio.addEventListener('change', () => {
-            if (themePastelRadio.checked) {
-                setFlangoTheme('pastel-pop');
-            }
-        });
-    }
+    // Set up listeners for all theme radios
+    VALID_THEMES.forEach(theme => {
+        const radio = document.getElementById(`theme-${theme}`);
+        if (radio) {
+            radio.addEventListener('change', () => {
+                if (radio.checked) {
+                    setFlangoTheme(theme);
+                }
+            });
+        }
+    });
 }
 
 function isCurrentUserAdmin() {
@@ -665,10 +686,30 @@ async function openInstitutionPreferences() {
         openAdminRulesModal();
     });
 
+    // Opdateringer knap
+    const updatesBtn = document.createElement('button');
+    updatesBtn.className = 'settings-item-btn';
+    updatesBtn.innerHTML = `<strong>Opdateringer</strong><div style="font-size: 12px; margin-top: 2px;">Tjek for opdateringer og genindlæs appen.</div>`;
+    updatesBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openUpdatesModal();
+    });
+
+    // Rediger Admin (Voksen konto'er) knap
+    const editAdminsBtn = document.createElement('button');
+    editAdminsBtn.className = 'settings-item-btn';
+    editAdminsBtn.innerHTML = `<strong>Rediger Admin (Voksen konto'er)</strong><div style="font-size: 12px; margin-top: 2px;">Administrer voksne/admin-brugere for caféen.</div>`;
+    editAdminsBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        window.__flangoOpenAdminUserManager?.('admins');
+    });
+
     contentEl.appendChild(sugarPolicyBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(parentPortalBtn);
     contentEl.appendChild(adminRulesBtn);
+    contentEl.appendChild(editAdminsBtn);
+    contentEl.appendChild(updatesBtn);
     backdrop.style.display = 'flex';
 }
 
@@ -868,6 +909,45 @@ async function openAdminRulesModal() {
     modal.style.display = 'flex';
 }
 
+function openUpdatesModal() {
+    // Brug settings modal backdrop til at vise version info
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    titleEl.textContent = 'Opdateringer';
+    contentEl.innerHTML = '';
+
+    // Brug version-check module til at hente info
+    const versionCheck = window.__flangoVersionCheck;
+    if (versionCheck && typeof versionCheck.createVersionInfoPanel === 'function') {
+        const versionPanel = versionCheck.createVersionInfoPanel();
+        contentEl.appendChild(versionPanel);
+    } else {
+        // Fallback hvis version-check ikke er loaded
+        const fallbackInfo = document.createElement('div');
+        fallbackInfo.innerHTML = `
+            <p style="margin-bottom: 12px;">Version check er ikke tilgængelig.</p>
+            <button class="version-refresh-btn" onclick="window.location.reload(true)">Genindlæs app</button>
+        `;
+        contentEl.appendChild(fallbackInfo);
+    }
+
+    // Tilføj tilbage-knap
+    const backBtn = document.createElement('button');
+    backBtn.className = 'settings-item-btn';
+    backBtn.style.marginTop = '16px';
+    backBtn.innerHTML = '← Tilbage til Institutionens Præferencer';
+    backBtn.addEventListener('click', () => {
+        openInstitutionPreferences();
+    });
+    contentEl.appendChild(backBtn);
+
+    backdrop.style.display = 'flex';
+}
+
 const settingsReturnObservers = new WeakMap();
 
 function monitorModalForSettingsReturn(modal) {
@@ -964,20 +1044,6 @@ export function openSettingsModal() {
 
     if (isAdmin) {
         addItem('Institutionens Præferencer', () => openInstitutionPreferences(), '', true);
-        addItem("Rediger Admin (Voksen konto'er)", () => openViaSettings('admin-user-manager-modal', () => window.__flangoOpenAdminUserManager?.('admins')));
-    }
-
-    if (isAdmin) {
-        addItem('Forældre Portal Koder', () => {
-            const reauthModal = typeof ensureParentPortalReauthModal === 'function'
-                ? ensureParentPortalReauthModal()
-                : document.getElementById('parent-portal-reauth-modal');
-            const adminModal = typeof ensureParentPortalAdminModal === 'function'
-                ? ensureParentPortalAdminModal()
-                : document.getElementById('parent-portal-admin-modal');
-            [reauthModal, adminModal].forEach(modal => modal && monitorModalForSettingsReturn(modal));
-            window.__flangoOpenParentPortalAdmin?.();
-        });
     }
 
     addItem('Udseende', () => openViaSettings('theme-picker-backdrop', () => callButtonById('open-theme-picker')));

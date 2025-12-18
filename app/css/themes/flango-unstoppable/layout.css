@@ -1,0 +1,68 @@
+/* ============================================================
+   FLANGO UNSTOPPABLE THEME - LAYOUT STYLES
+   Main Grid, Sidebar, Products Area, Containers
+   ============================================================ */
+
+/* Main App Grid Layout */
+#main-app {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+        "products sidebar-header"
+        "products user-banner"
+        "products sidebar";
+    gap: 20px;
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    position: relative;
+    background: transparent;
+}
+
+/* Products Area */
+#products-area {
+    grid-area: products;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    height: 100%;
+}
+
+/* Sidebar Regions */
+.sidebar-main-header {
+    grid-area: sidebar-header;
+}
+
+#sidebar {
+    grid-area: sidebar;
+}
+
+.user-session-banner {
+    grid-area: user-banner;
+    width: 100%;
+}
+
+/* ============================================================
+   MEDIA QUERIES
+   ============================================================ */
+
+@media (max-width:800px) {
+    body {
+        overflow: auto;
+        height: auto;
+    }
+
+    #main-app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+        height: auto;
+        padding: 10px;
+        gap: 10px;
+    }
+
+    #sidebar {
+        min-height: 400px;
+    }
+}

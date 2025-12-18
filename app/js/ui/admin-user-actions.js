@@ -1,4 +1,5 @@
 import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
+import { refetchUserBalance } from '../core/data-refetch.js';
 
 export function createAdminUserActions(options = {}) {
     const {
@@ -46,10 +47,21 @@ export function createAdminUserActions(options = {}) {
         const { error } = await supabaseClient.rpc('make_deposit', { p_target_user_id: userId, p_amount: amount });
         if (error) return showAlert(`Fejl: ${error.message}`);
 
-        updateCustomerBalanceGlobally(userId, user.balance + amount, amount, 'admin-deposit');
+        // REFETCH PATTERN: Hent faktisk balance fra database for garanteret nøjagtighed
+        console.log('[handleDeposit] Refetching balance from database...');
+        const newBalance = await refetchUserBalance(userId);
+        if (newBalance !== null) {
+            // Broadcast balance change event for UI listeners
+            updateCustomerBalanceGlobally(userId, newBalance, amount, 'admin-deposit');
+        } else {
+            // Fallback til beregnet værdi hvis refetch fejler
+            updateCustomerBalanceGlobally(userId, user.balance + amount, amount, 'admin-deposit');
+        }
+
         renderAdminUserList();
         updateSelectedUserInfo(); // Opdater hvis brugeren er valgt
         playSound('balanceUpdate');
+        console.log('[handleDeposit] Deposit completed, UI refreshed');
 
         // Luk balance modal eksplicit (skulle allerede være lukket, men for at være sikker)
         const balanceModal = document.getElementById('balance-modal');
@@ -83,12 +95,18 @@ export function createAdminUserActions(options = {}) {
         const { error } = await supabaseClient.rpc('edit_balance', { p_target_user_id: userId, p_new_balance: newBalance });
         if (error) return showAlert(`Fejl ved opdatering af saldo: ${error.message}`);
 
-        const delta = newBalance - user.balance;
-        updateCustomerBalanceGlobally(userId, newBalance, delta, 'admin-balance-edit');
+        // REFETCH PATTERN: Hent faktisk balance fra database for garanteret nøjagtighed
+        console.log('[handleEditBalance] Refetching balance from database...');
+        const confirmedBalance = await refetchUserBalance(userId);
+        const actualBalance = confirmedBalance !== null ? confirmedBalance : newBalance;
+        const delta = actualBalance - user.balance;
+
+        updateCustomerBalanceGlobally(userId, actualBalance, delta, 'admin-balance-edit');
         renderAdminUserList();
         updateSelectedUserInfo(); // Opdater hvis brugeren er valgt
         playSound('balanceUpdate');
-        await showCustomAlert('Success!', `${user.name}'s saldo er blevet sat til ${newBalance.toFixed(2)} kr.`);
+        console.log('[handleEditBalance] Balance edit completed, UI refreshed');
+        await showCustomAlert('Success!', `${user.name}'s saldo er blevet sat til ${actualBalance.toFixed(2)} kr.`);
 
         // Fokuser søgefeltet efter succesfuld opdatering
         if (typeof window.__flangoFocusAdminSearchInput === 'function') {
