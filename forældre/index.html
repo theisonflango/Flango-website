@@ -1655,6 +1655,37 @@
       .allergy-grid {
         grid-template-columns: 1fr;
       }
+
+      /* Produktgrænser - mobile forbedringer */
+      .product-limit-list {
+        max-height: 400px;
+      }
+
+      .product-limit-item {
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .product-limit-controls {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .product-limit-search {
+        min-width: 100px;
+        width: 100%;
+      }
+
+      .product-limit-stepper button {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+      }
+
+      .product-limit-stepper-value {
+        min-width: 70px;
+        font-size: 11px;
+      }
     }
   </style>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
