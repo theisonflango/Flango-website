@@ -51,7 +51,7 @@ export function updateTotalPrice(totalPriceEl) {
     if (isMobile) {
         totalPriceEl.innerHTML = generateMiniReceipt(total);
     } else {
-        // Generate product icon summary for Unstoppable theme
+        // Generate product icon summary for all themes
         const productSummaryHTML = generateProductIconSummary(currentOrder);
         totalPriceEl.innerHTML = `${productSummaryHTML}<span class="total-text">Total: ${total.toFixed(2)} DKK</span>`;
     }

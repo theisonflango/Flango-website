@@ -237,9 +237,9 @@ body[data-theme="pos-pro"] .product-btn .product-price {
     font-size: 17px;
 }
 
-/* Keep emojis large */
+/* Keep emojis large - same as base */
 body[data-theme="pos-pro"] .product-btn .product-emoji {
-    font-size: inherit;
+    font-size: 10vw;
 }
 
 /* Hero product card - special golden treatment */

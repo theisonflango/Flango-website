@@ -634,6 +634,231 @@
       color: #15803d;
     }
 
+    .payment-card {
+      margin-top: 12px;
+      background: rgba(255, 255, 255, 0.96);
+      border-radius: 16px;
+      padding: 10px 12px 11px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 12px 24px rgba(148, 163, 184, 0.18);
+    }
+
+    .payment-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .payment-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .payment-title .icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: rgba(255, 122, 60, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .payment-subtitle {
+      font-size: 11px;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .payment-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .payment-option {
+      border-radius: 14px;
+      padding: 10px 10px 9px;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      background: rgba(255, 255, 255, 0.98);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 10px 20px rgba(148, 163, 184, 0.14);
+    }
+
+    .payment-option.recommended {
+      border-color: rgba(34, 197, 94, 0.35);
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(255, 255, 255, 0.98));
+    }
+
+    .payment-option.secondary {
+      border-color: rgba(245, 158, 11, 0.35);
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.10), rgba(255, 255, 255, 0.98));
+    }
+
+    .payment-option-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .payment-option-title .left {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .payment-option-title .emoji {
+      font-size: 16px;
+    }
+
+    .payment-badge {
+      font-size: 10px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      background: rgba(249, 250, 251, 0.95);
+      color: #4b5563;
+      white-space: nowrap;
+    }
+
+    .payment-badge.good {
+      border-color: rgba(187, 247, 208, 0.9);
+      background: rgba(22, 163, 74, 0.10);
+      color: #15803d;
+    }
+
+    .payment-badge.warn {
+      border-color: rgba(252, 211, 77, 0.9);
+      background: rgba(245, 158, 11, 0.12);
+      color: #92400e;
+    }
+
+    .payment-body {
+      font-size: 11px;
+      color: #6b7280;
+      line-height: 1.35;
+    }
+
+    .payment-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 2px;
+      align-items: center;
+    }
+
+    .payment-amount {
+      border-radius: 999px;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      background: rgba(255, 255, 255, 0.96);
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(148, 163, 184, 0.16);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+
+    .payment-amount:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(148, 163, 184, 0.2);
+      background: #ffffff;
+    }
+
+    .payment-amount.is-active {
+      background: rgba(34, 197, 94, 0.12);
+      border-color: rgba(34, 197, 94, 0.45);
+      color: #15803d;
+      font-weight: 700;
+    }
+
+    .payment-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-top: 2px;
+    }
+
+    .payment-row input[type="number"] {
+      flex: 1;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      padding: 7px 12px;
+      font-size: 12px;
+      background: rgba(249, 250, 251, 0.98);
+      outline: none;
+    }
+
+    .payment-row button {
+      border-radius: 999px;
+      border: none;
+      padding: 7px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 10px 22px rgba(22, 163, 74, 0.35);
+      white-space: nowrap;
+    }
+
+    .payment-row button:disabled {
+      opacity: 0.7;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .payment-feedback {
+      min-height: 14px;
+      font-size: 11px;
+      margin-top: 6px;
+      color: #16a34a;
+    }
+
+    .payment-qr {
+      width: 100%;
+      max-width: 220px;
+      border-radius: 14px;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      background: rgba(249, 250, 251, 0.98);
+      box-shadow: 0 12px 24px rgba(148, 163, 184, 0.16);
+      padding: 10px;
+      display: none;
+    }
+
+    .payment-qr img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 10px;
+    }
+
+    .payment-qr-note {
+      font-size: 10px;
+      color: #6b7280;
+      margin-top: 6px;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 780px) {
+      .payment-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .notify-card {
       margin-top: 12px;
       background: linear-gradient(135deg, rgba(56, 189, 248, 0.06), rgba(255, 255, 255, 0.98));
@@ -1004,6 +1229,301 @@
       color: #16a34a;
     }
 
+    /* Product Limit Section Styles */
+    .product-limit-card {
+      margin-top: 12px;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.06), rgba(255, 255, 255, 0.98));
+      border-radius: 16px;
+      padding: 10px 12px 11px;
+      border: 1px solid rgba(196, 181, 253, 0.9);
+      box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);
+    }
+
+    .product-limit-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .product-limit-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .product-limit-title .icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: rgba(139, 92, 246, 0.16);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .product-limit-badge {
+      font-size: 10px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: rgba(139, 92, 246, 0.1);
+      color: #6d28d9;
+      border: 1px solid rgba(196, 181, 253, 0.9);
+    }
+
+    .product-limit-description {
+      font-size: 11px;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .product-limit-info {
+      font-size: 10px;
+      color: #7c3aed;
+      background: rgba(139, 92, 246, 0.08);
+      padding: 6px 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .product-limit-controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .product-limit-search {
+      flex: 1;
+      min-width: 150px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      font-size: 11px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .product-limit-search:focus {
+      border-color: #8b5cf6;
+      box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+    }
+
+    .product-limit-filter-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      background: rgba(255, 255, 255, 0.96);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .product-limit-filter-toggle:hover {
+      background: #fff;
+    }
+
+    .product-limit-filter-toggle.is-active {
+      background: rgba(139, 92, 246, 0.12);
+      border-color: rgba(139, 92, 246, 0.6);
+      color: #6d28d9;
+    }
+
+    .product-limit-list {
+      max-height: 280px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.7) transparent;
+    }
+
+    .product-limit-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .product-limit-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .product-limit-list::-webkit-scrollbar-thumb {
+      background-color: rgba(148, 163, 184, 0.85);
+      border-radius: 999px;
+    }
+
+    .product-limit-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 6px;
+      border-bottom: 1px solid rgba(229, 231, 235, 0.8);
+      gap: 10px;
+    }
+
+    .product-limit-item:last-child {
+      border-bottom: none;
+    }
+
+    .product-limit-item.is-modified {
+      background: rgba(139, 92, 246, 0.06);
+    }
+
+    .product-limit-item-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .product-limit-item-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      object-fit: contain;
+      background: rgba(249, 250, 251, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .product-limit-item-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .product-limit-item-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #111827;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .product-limit-item-price {
+      font-size: 10px;
+      color: #6b7280;
+    }
+
+    .product-limit-stepper {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: rgba(249, 250, 251, 0.96);
+      border-radius: 999px;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      padding: 2px;
+    }
+
+    .product-limit-stepper button {
+      width: 26px;
+      height: 26px;
+      border: none;
+      background: transparent;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: #6b7280;
+      transition: all 0.12s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .product-limit-stepper button:hover {
+      background: rgba(139, 92, 246, 0.15);
+      color: #6d28d9;
+    }
+
+    .product-limit-stepper button:active {
+      transform: scale(0.95);
+    }
+
+    .product-limit-stepper-value {
+      min-width: 50px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .product-limit-stepper-value.is-zero {
+      color: #dc2626;
+    }
+
+    .product-limit-stepper-value.is-unlimited {
+      color: #6b7280;
+      font-style: italic;
+    }
+
+    .product-limit-save-row {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-start;
+    }
+
+    .product-limit-save-row button {
+      border-radius: 999px;
+      padding: 6px 11px;
+      border: none;
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 10px 22px rgba(109, 40, 217, 0.4);
+      transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
+    }
+
+    .product-limit-save-row button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 26px rgba(109, 40, 217, 0.48);
+      filter: brightness(1.03);
+    }
+
+    .product-limit-save-row button:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 16px rgba(109, 40, 217, 0.35);
+      filter: brightness(0.97);
+    }
+
+    .product-limit-save-row button:disabled {
+      opacity: 0.7;
+      box-shadow: none;
+      cursor: default;
+    }
+
+    .product-limit-feedback {
+      min-height: 14px;
+      font-size: 11px;
+      color: #6d28d9;
+    }
+
+    .product-limit-empty {
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+
     .spend-limit-chips {
       display: flex;
       flex-wrap: wrap;
@@ -1290,8 +1810,31 @@
                 <ul id="history-list" class="history-list"></ul>
               </div>
 
-              <div class="notify-card">
-              <section class="card" style="margin-top: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(255, 255, 255, 0.98)); border-radius: 16px; padding: 10px 12px 11px; border: 1px solid rgba(199, 210, 254, 0.9); box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);">
+              <section class="payment-card" id="payment-card" style="display: none;">
+                <div class="payment-header">
+                  <div class="payment-title">
+                    <div class="icon">💳</div>
+                    Optank saldo
+                  </div>
+                  <span class="payment-badge" id="payment-status-badge">Institutionen bestemmer</span>
+                </div>
+                <p class="payment-subtitle" id="payment-subtitle">
+                  Portalen viser kun de betalingsmuligheder, som din klub/SFO har slået til.
+                </p>
+
+                <div class="payment-grid" id="payment-grid"></div>
+
+                <div class="payment-qr" id="payment-qr">
+                  <img id="payment-qr-img" alt="MobilePay QR" />
+                  <div class="payment-qr-note" id="payment-qr-note">
+                    Betal via MobilePay QR. Saldoen opdateres efter godkendelse af personalet.
+                  </div>
+                </div>
+
+                <div class="payment-feedback" id="payment-feedback"></div>
+              </section>
+
+              <section id="spending-limit-section" class="card" style="margin-top: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(255, 255, 255, 0.98)); border-radius: 16px; padding: 10px 12px 11px; border: 1px solid rgba(199, 210, 254, 0.9); box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);">
                 <h2 class="section-title" style="font-size: 13px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 7px;">
                   <div class="icon" style="width: 24px; height: 24px; border-radius: 999px; background: rgba(59, 130, 246, 0.12); display: flex; align-items: center; justify-content: center; font-size: 14px;">💰</div>
                   Daglig beløbsgrænse
@@ -1319,6 +1862,7 @@
                 </div>
                 <p id="daily-limit-feedback" class="spend-limit-feedback"></p>
               </section>
+              <div id="email-notification-section" class="notify-card">
                 <div class="notify-header">
                   <div class="notify-title">
                     <div class="icon">📧</div>
@@ -1359,7 +1903,7 @@
                 </div>
               </div>
 
-              <section class="allergy-card">
+              <section id="allergens-section" class="allergy-card">
                 <div class="allergy-header">
                   <div class="allergy-title">
                     <div class="icon">🥜</div>
@@ -1491,6 +2035,42 @@
                 </div>
               </section>
 
+              <!-- Købsgrænser pr. produkt -->
+              <section id="product-limit-section" class="product-limit-card" style="display: none;">
+                <div class="product-limit-header">
+                  <div class="product-limit-title">
+                    <div class="icon">🛒</div>
+                    Købsgrænser pr. produkt
+                  </div>
+                  <span class="product-limit-badge">Valgfrit</span>
+                </div>
+                <p class="product-limit-description">
+                  Sæt en grænse for, hvor mange stk. af hvert produkt dit barn må købe per dag.
+                  Efterlad som "Ubegrænset" hvis du ikke ønsker en grænse.
+                </p>
+                <div class="product-limit-info">
+                  <span>💡</span>
+                  <span>Hvis klubben har sat en grænse, gælder den strengeste. Dit barns køb må aldrig overstige hverken din eller klubbens grænse.</span>
+                </div>
+
+                <div class="product-limit-controls">
+                  <input type="text" class="product-limit-search" id="product-limit-search" placeholder="Søg efter produkt..." />
+                  <label class="product-limit-filter-toggle" id="product-limit-filter-toggle">
+                    <input type="checkbox" id="product-limit-show-modified" style="display: none;" />
+                    <span>Vis kun ændrede</span>
+                  </label>
+                </div>
+
+                <div class="product-limit-list" id="product-limit-list">
+                  <div class="product-limit-empty">Indlæser produkter...</div>
+                </div>
+
+                <div class="product-limit-save-row">
+                  <button type="button" id="save-product-limits-btn">Gem produktgrænser</button>
+                  <div id="product-limit-feedback" class="product-limit-feedback"></div>
+                </div>
+              </section>
+
               <!-- Skift kode-kort -->
               <section class="card" style="margin-top: 12px; background: rgba(255, 255, 255, 0.98); border-radius: 16px; padding: 10px 12px 11px; border: 1px solid rgba(220, 220, 220, 0.95); box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);">
                 <h2 class="section-title" style="font-size: 13px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 7px;">
@@ -1560,6 +2140,7 @@
 
       let institutions = [];
       let currentChildId = null;
+      let currentParentPin = null;
 
       const loginView = document.getElementById("login-view");
       const resultsView = document.getElementById("results-view");
@@ -1607,6 +2188,549 @@
       const dailyLimitChips = document.querySelectorAll(".daily-limit-chip");
       const saveDailyLimitBtn = document.getElementById("save-daily-limit-btn");
       const dailyLimitFeedback = document.getElementById("daily-limit-feedback");
+
+      // Betalingssektion (kontant / QR / portal)
+      const paymentCard = document.getElementById("payment-card");
+      const paymentGrid = document.getElementById("payment-grid");
+      const paymentFeedback = document.getElementById("payment-feedback");
+      const paymentStatusBadge = document.getElementById("payment-status-badge");
+      const paymentQrWrap = document.getElementById("payment-qr");
+      const paymentQrImg = document.getElementById("payment-qr-img");
+      const paymentQrNote = document.getElementById("payment-qr-note");
+      let currentInstitutionId = null;
+      let currentInstitutionPrefs = null;
+      let selectedTopupAmount = null;
+
+      function safeBool(v) {
+        return v === true || v === "true" || v === 1 || v === "1";
+      }
+
+      function renderPaymentSection(prefs) {
+        if (!paymentCard || !paymentGrid) return;
+
+        // Standard: intet
+        paymentGrid.innerHTML = "";
+        if (paymentFeedback) paymentFeedback.textContent = "";
+        if (paymentQrWrap) paymentQrWrap.style.display = "none";
+
+        const cashEnabled = safeBool(prefs && prefs.topup_cash_enabled);
+        const qrEnabled = safeBool(prefs && prefs.topup_qr_enabled);
+        const portalEnabled = safeBool(prefs && prefs.topup_portal_enabled);
+
+        const anyEnabled = cashEnabled || qrEnabled || portalEnabled;
+
+        if (!anyEnabled) {
+          paymentCard.style.display = "block";
+          if (paymentStatusBadge) {
+            paymentStatusBadge.textContent = "Ingen online optankning";
+          }
+          paymentGrid.innerHTML = `
+            <div class="payment-option">
+              <div class="payment-option-title">
+                <div class="left"><span class="emoji">🏫</span><span>Kontakt personalet</span></div>
+                <span class="payment-badge">Info</span>
+              </div>
+              <div class="payment-body">
+                Denne institution modtager ikke online optankning i Flango lige nu.
+                Kontakt personalet for hjælp til optankning.
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        paymentCard.style.display = "block";
+
+        // Badge
+        if (paymentStatusBadge) {
+          if (portalEnabled && qrEnabled) {
+            paymentStatusBadge.textContent = "Flere muligheder";
+          } else if (portalEnabled) {
+            paymentStatusBadge.textContent = "Automatisk optankning";
+          } else if (qrEnabled) {
+            paymentStatusBadge.textContent = "MobilePay QR";
+          } else {
+            paymentStatusBadge.textContent = "Kontant";
+          }
+        }
+
+        // Kontant
+        if (cashEnabled) {
+          const cashText =
+            (prefs && (prefs.topup_cash_message || prefs.cash_topup_message)) ||
+            "Forældre afleverer kontanter til personalet. Saldoen opdateres manuelt.";
+          paymentGrid.insertAdjacentHTML(
+            "beforeend",
+            `
+            <div class="payment-option">
+              <div class="payment-option-title">
+                <div class="left"><span class="emoji">💵</span><span>Kontant indbetaling</span></div>
+                <span class="payment-badge">Manuel</span>
+              </div>
+              <div class="payment-body">${cashText}</div>
+            </div>
+            `
+          );
+        }
+
+        // Portal optankning (kaldes "Tank op i portalen (automatisk)" – ikke "API")
+        if (portalEnabled) {
+          const portalText =
+            (prefs && (prefs.topup_portal_message || prefs.portal_topup_message)) ||
+            "Tank op direkte i portalen. Saldoen opdateres med det samme.";
+          const recommendedClass = qrEnabled ? "recommended" : "";
+          const recommendedBadge = qrEnabled ? `<span class="payment-badge good">Anbefalet</span>` : `<span class="payment-badge good">Aktiv</span>`;
+
+          paymentGrid.insertAdjacentHTML(
+            "beforeend",
+            `
+            <div class="payment-option ${recommendedClass}" id="portal-topup-option">
+              <div class="payment-option-title">
+                <div class="left"><span class="emoji">🟢</span><span>Tank op i portalen (automatisk)</span></div>
+                ${recommendedBadge}
+              </div>
+              <div class="payment-body">${portalText}</div>
+
+              <div class="payment-actions" id="topup-amounts">
+                <button type="button" class="payment-amount" data-amount="50">50 kr.</button>
+                <button type="button" class="payment-amount" data-amount="100">100 kr.</button>
+                <button type="button" class="payment-amount" data-amount="150">150 kr.</button>
+              </div>
+
+              <div class="payment-row">
+                <input type="number" id="topup-amount-input" min="0" step="1" placeholder="Andet beløb i kr." />
+                <button type="button" id="topup-now-btn">Tank op</button>
+              </div>
+              <div class="payment-qr-note" style="margin-top: 6px;">
+                Optankning kræver at institutionen har slået online-betaling til. Hvis knappen ikke virker, kontakt personalet.
+              </div>
+            </div>
+            `
+          );
+        }
+
+        // QR
+        if (qrEnabled) {
+          const qrText =
+            (prefs && (prefs.topup_qr_message || prefs.qr_topup_message)) ||
+            "Betal via MobilePay QR. Saldoen opdateres efter godkendelse af personalet.";
+          const secondaryClass = portalEnabled ? "secondary" : "";
+          const badge = portalEnabled ? `<span class="payment-badge warn">Kræver godkendelse</span>` : `<span class="payment-badge warn">Aktiv</span>`;
+
+          paymentGrid.insertAdjacentHTML(
+            "beforeend",
+            `
+            <div class="payment-option ${secondaryClass}" id="qr-topup-option">
+              <div class="payment-option-title">
+                <div class="left"><span class="emoji">🟡</span><span>MobilePay QR</span></div>
+                ${badge}
+              </div>
+              <div class="payment-body">${qrText}</div>
+              <div class="payment-actions">
+                <button type="button" class="payment-amount" id="show-qr-btn">Vis QR</button>
+              </div>
+            </div>
+            `
+          );
+
+          // QR-asset
+          const qrUrl = prefs && (prefs.topup_qr_image_url || prefs.qr_image_url || prefs.mobilepay_qr_url);
+          if (paymentQrImg && qrUrl) {
+            paymentQrImg.src = qrUrl;
+          } else if (paymentQrImg) {
+            paymentQrImg.removeAttribute("src");
+          }
+
+          if (paymentQrNote) paymentQrNote.textContent = qrText;
+        }
+
+        // Wire events (amount chips + show QR + portal topup)
+        wirePaymentEvents();
+      }
+
+      function wirePaymentEvents() {
+        if (!paymentCard) return;
+
+        const amountButtons = paymentCard.querySelectorAll(".payment-amount[data-amount]");
+        const amountInput = document.getElementById("topup-amount-input");
+        const topupNowBtn = document.getElementById("topup-now-btn");
+        const showQrBtn = document.getElementById("show-qr-btn");
+
+        // Amount buttons
+        if (amountButtons && amountButtons.length) {
+          amountButtons.forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const amt = Number(btn.dataset.amount);
+              if (!Number.isFinite(amt)) return;
+
+              selectedTopupAmount = amt;
+              amountButtons.forEach((b) => b.classList.remove("is-active"));
+              btn.classList.add("is-active");
+
+              if (amountInput) {
+                amountInput.value = String(amt);
+                amountInput.focus();
+              }
+              if (paymentFeedback) paymentFeedback.textContent = "";
+            });
+          });
+        }
+
+        // Show QR
+        if (showQrBtn) {
+          showQrBtn.addEventListener("click", () => {
+            if (!paymentQrWrap) return;
+            const hasSrc = paymentQrImg && paymentQrImg.getAttribute("src");
+            paymentQrWrap.style.display = "block";
+            if (!hasSrc && paymentFeedback) {
+              paymentFeedback.textContent =
+                "QR er slået til, men der er ikke uploadet et QR-billede endnu. Kontakt personalet.";
+              paymentFeedback.style.color = "#92400e";
+            }
+          });
+        }
+
+        // Portal topup button (UI-klar; backend kan kobles på senere)
+        if (topupNowBtn) {
+          topupNowBtn.addEventListener("click", () => {
+            if (paymentFeedback) {
+              paymentFeedback.textContent =
+                "Optankning i portalen er endnu ikke koblet til betaling her i demoen. Kontakt personalet, eller brug institutionens valgte metode.";
+              paymentFeedback.style.color = "#92400e";
+            }
+          });
+        }
+      }
+
+      // Vis/skjul funktionssektioner baseret på institutionens indstillinger
+      function renderFeatureSections(prefs) {
+        const emailSection = document.getElementById("email-notification-section");
+        const spendingSection = document.getElementById("spending-limit-section");
+        const allergensSection = document.getElementById("allergens-section");
+        const productLimitSection = document.getElementById("product-limit-section");
+
+        // E-mail notifikationer (default true hvis ikke sat)
+        const emailEnabled = prefs && prefs.parent_portal_email_notifications !== false;
+        if (emailSection) {
+          emailSection.style.display = emailEnabled ? "block" : "none";
+        }
+
+        // Daglig beløbsgrænse (default true hvis ikke sat)
+        const spendingEnabled = prefs && prefs.parent_portal_spending_limit !== false;
+        if (spendingSection) {
+          spendingSection.style.display = spendingEnabled ? "block" : "none";
+        }
+
+        // Allergener (default true hvis ikke sat)
+        const allergensEnabled = prefs && prefs.parent_portal_allergens !== false;
+        if (allergensSection) {
+          allergensSection.style.display = allergensEnabled ? "block" : "none";
+        }
+
+        // Købsgrænser pr. produkt (default false - institution må aktivere)
+        const productLimitEnabled = prefs && prefs.parent_portal_product_limit === true;
+        if (productLimitSection) {
+          productLimitSection.style.display = productLimitEnabled ? "block" : "none";
+          if (productLimitEnabled && currentChildId && currentInstitutionId) {
+            loadProductLimits(currentInstitutionId, currentChildId);
+          }
+        }
+      }
+
+      // ===== PRODUKTGRÆNSER FUNKTIONER =====
+      let productLimitProducts = [];
+      let productLimitSettings = new Map(); // productId -> max_per_day (null = ubegrænset)
+      let institutionProductLimits = new Map(); // productId -> max_per_day fra institutionen
+
+      async function loadProductLimits(institutionId, childId) {
+        const listEl = document.getElementById("product-limit-list");
+        if (!listEl) return;
+
+        listEl.innerHTML = '<div class="product-limit-empty">Indlæser produkter...</div>';
+
+        try {
+          // Hent aktive produkter fra institutionen
+          const { data: products, error: productsError } = await supabase
+            .from("products")
+            .select("id, name, price, emoji, icon_url")
+            .eq("institution_id", institutionId)
+            .eq("is_enabled", true)
+            .order("sort_order", { ascending: true });
+
+          if (productsError) {
+            console.error("Fejl ved hentning af produkter:", productsError);
+            listEl.innerHTML = '<div class="product-limit-empty">Kunne ikke indlæse produkter.</div>';
+            return;
+          }
+
+          productLimitProducts = products || [];
+
+          if (productLimitProducts.length === 0) {
+            listEl.innerHTML = '<div class="product-limit-empty">Ingen aktive produkter fundet.</div>';
+            return;
+          }
+
+          // Hent institutionens produktgrænser (product_limits tabel)
+          const { data: instLimits, error: instLimitsError } = await supabase
+            .from("product_limits")
+            .select("product_id, max_per_day")
+            .eq("institution_id", institutionId);
+
+          institutionProductLimits.clear();
+          if (!instLimitsError && instLimits) {
+            instLimits.forEach(row => {
+              if (row.max_per_day != null && row.max_per_day > 0) {
+                institutionProductLimits.set(row.product_id, row.max_per_day);
+              }
+            });
+          }
+
+          // Hent barnets eksisterende produktgrænser (fra parent_limits tabel)
+          const { data: childLimits, error: childLimitsError } = await supabase
+            .from("parent_limits")
+            .select("product_id, max_per_day")
+            .eq("child_id", childId);
+
+          productLimitSettings.clear();
+          if (!childLimitsError && childLimits) {
+            childLimits.forEach(row => {
+              productLimitSettings.set(row.product_id, row.max_per_day);
+            });
+          }
+
+          renderProductLimitList();
+          wireProductLimitEvents();
+
+        } catch (err) {
+          console.error("Uventet fejl ved indlæsning af produktgrænser:", err);
+          listEl.innerHTML = '<div class="product-limit-empty">Uventet fejl opstod.</div>';
+        }
+      }
+
+      function renderProductLimitList() {
+        const listEl = document.getElementById("product-limit-list");
+        const searchInput = document.getElementById("product-limit-search");
+        const showModifiedCheckbox = document.getElementById("product-limit-show-modified");
+
+        if (!listEl) return;
+
+        const searchTerm = (searchInput?.value || "").toLowerCase().trim();
+        const showOnlyModified = showModifiedCheckbox?.checked || false;
+
+        let filteredProducts = productLimitProducts;
+
+        // Filtrering
+        if (searchTerm) {
+          filteredProducts = filteredProducts.filter(p =>
+            (p.name || "").toLowerCase().includes(searchTerm)
+          );
+        }
+
+        if (showOnlyModified) {
+          // Vis kun produkter med en grænse sat (ikke -1 = ubegrænset)
+          filteredProducts = filteredProducts.filter(p =>
+            productLimitSettings.has(p.id) && productLimitSettings.get(p.id) !== -1
+          );
+        }
+
+        if (filteredProducts.length === 0) {
+          listEl.innerHTML = '<div class="product-limit-empty">Ingen produkter matcher din søgning.</div>';
+          return;
+        }
+
+        listEl.innerHTML = filteredProducts.map(product => {
+          const childLimit = productLimitSettings.has(product.id) ? productLimitSettings.get(product.id) : -1;
+          const instLimit = institutionProductLimits.get(product.id);
+          const isModified = productLimitSettings.has(product.id) && productLimitSettings.get(product.id) !== -1;
+          // -1 = Ubegrænset, 0 = Blokeret, 1-99 = Grænse
+          const displayValue = childLimit === -1 ? "Ubegrænset" : (childLimit === 0 ? "Blokeret" : `${childLimit}/dag`);
+          const valueClass = childLimit === 0 ? "is-zero" : (childLimit === -1 ? "is-unlimited" : "");
+
+          // Vis institutionsgrænse hvis den findes
+          let instLimitNote = "";
+          if (instLimit != null) {
+            instLimitNote = `<span style="font-size: 9px; color: #9ca3af;">(Klub: maks ${instLimit})</span>`;
+          }
+
+          // Produktikon
+          let iconHtml = "";
+          if (product.icon_url) {
+            iconHtml = `<img src="${product.icon_url}" alt="${product.name}" class="product-limit-item-icon" style="object-fit: contain;" />`;
+          } else {
+            iconHtml = `<div class="product-limit-item-icon">${product.emoji || "🛒"}</div>`;
+          }
+
+          return `
+            <div class="product-limit-item ${isModified ? 'is-modified' : ''}" data-product-id="${product.id}">
+              <div class="product-limit-item-info">
+                ${iconHtml}
+                <div class="product-limit-item-details">
+                  <div class="product-limit-item-name">${product.name || "Ukendt"}</div>
+                  <div class="product-limit-item-price">${product.price ? product.price.toFixed(2) + " kr." : ""} ${instLimitNote}</div>
+                </div>
+              </div>
+              <div class="product-limit-stepper" data-product-id="${product.id}">
+                <button type="button" class="stepper-dec" title="Mindre">−</button>
+                <span class="product-limit-stepper-value ${valueClass}">${displayValue}</span>
+                <button type="button" class="stepper-inc" title="Mere">+</button>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      let productLimitEventsWired = false;
+      function wireProductLimitEvents() {
+        if (productLimitEventsWired) return; // Undgå dobbelt-binding
+        productLimitEventsWired = true;
+
+        const listEl = document.getElementById("product-limit-list");
+        const searchInput = document.getElementById("product-limit-search");
+        const filterToggle = document.getElementById("product-limit-filter-toggle");
+        const showModifiedCheckbox = document.getElementById("product-limit-show-modified");
+        const saveBtn = document.getElementById("save-product-limits-btn");
+        const feedback = document.getElementById("product-limit-feedback");
+
+        // Søgning
+        if (searchInput) {
+          searchInput.addEventListener("input", () => {
+            renderProductLimitList();
+          });
+        }
+
+        // Filter toggle
+        if (filterToggle && showModifiedCheckbox) {
+          filterToggle.addEventListener("click", () => {
+            showModifiedCheckbox.checked = !showModifiedCheckbox.checked;
+            filterToggle.classList.toggle("is-active", showModifiedCheckbox.checked);
+            renderProductLimitList();
+          });
+        }
+
+        // Stepper controls (event delegation)
+        if (listEl) {
+          listEl.addEventListener("click", (e) => {
+            const btn = e.target.closest(".stepper-dec, .stepper-inc");
+            if (!btn) return;
+
+            const stepper = btn.closest(".product-limit-stepper");
+            const productId = stepper?.dataset.productId;
+            if (!productId) return;
+
+            const currentValue = productLimitSettings.has(productId) ? productLimitSettings.get(productId) : -1;
+            const isInc = btn.classList.contains("stepper-inc");
+
+            // Logik (loop begge veje):
+            // dec: -1 → 5 → 4 → 3 → 2 → 1 → 0 → -1
+            // inc: -1 → 0 → 1 → 2 → 3 → 4 → 5 → -1
+            let newValue;
+            if (currentValue === -1) {
+              // Ubegrænset: dec → 5, inc → 0
+              newValue = isInc ? 0 : 5;
+            } else if (currentValue === 0) {
+              // Blokeret: dec → -1 (Ubegrænset), inc → 1
+              newValue = isInc ? 1 : -1;
+            } else if (currentValue === 5) {
+              // Maks: dec → 4, inc → -1 (Ubegrænset)
+              newValue = isInc ? -1 : 4;
+            } else {
+              // Normal værdi 1-4: +/- 1
+              newValue = isInc ? currentValue + 1 : currentValue - 1;
+            }
+
+            productLimitSettings.set(productId, newValue);
+
+            renderProductLimitList();
+            if (feedback) feedback.textContent = "";
+          });
+        }
+
+        // Gem knap
+        if (saveBtn) {
+          saveBtn.addEventListener("click", async () => {
+            await saveProductLimits();
+          });
+        }
+      }
+
+      async function saveProductLimits() {
+        const saveBtn = document.getElementById("save-product-limits-btn");
+        const feedback = document.getElementById("product-limit-feedback");
+
+        if (!currentChildId || !currentInstitutionId) {
+          if (feedback) feedback.textContent = "Fejl: Mangler barn eller institution.";
+          return;
+        }
+
+        if (saveBtn) saveBtn.disabled = true;
+        if (feedback) feedback.textContent = "Gemmer...";
+
+        try {
+          // Byg limits array fra Map (filtrer -1 ud, da det betyder "ubegrænset/ingen grænse")
+          const limits = [];
+          productLimitSettings.forEach((maxPerDay, productId) => {
+            if (maxPerDay !== -1) {
+              limits.push({ product_id: productId, max_per_day: maxPerDay });
+            }
+          });
+
+          // Kald Edge Function (bypasser RLS sikkert med PIN-verifikation)
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/save-parent-limits`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": SUPABASE_ANON_KEY,
+              "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ child_id: currentChildId, parent_pin: currentParentPin, limits }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || !result.success) {
+            throw new Error(result.error || "Kunne ikke gemme grænser.");
+          }
+
+          if (feedback) {
+            feedback.textContent = "Gemt ✅";
+            feedback.style.color = "#16a34a";
+          }
+
+          // Clear feedback efter 3 sekunder
+          setTimeout(() => {
+            if (feedback) feedback.textContent = "";
+          }, 3000);
+
+        } catch (err) {
+          console.error("Fejl ved gemning af produktgrænser:", err);
+          if (feedback) {
+            feedback.textContent = "Fejl ved gemning. Prøv igen.";
+            feedback.style.color = "#dc2626";
+          }
+        } finally {
+          if (saveBtn) saveBtn.disabled = false;
+        }
+      }
+
+      async function loadInstitutionPreferences(institutionId) {
+        if (!institutionId) return null;
+        try {
+          const { data, error } = await supabase
+            .from("institutions")
+            .select("*")
+            .eq("id", institutionId)
+            .single();
+
+          if (error) {
+            console.warn("Kunne ikke hente institutions-præferencer:", error);
+            return null;
+          }
+          return data || null;
+        } catch (e) {
+          console.warn("Uventet fejl ved hentning af institutions-præferencer:", e);
+          return null;
+        }
+      }
 
       const balanceStatusLabel = document.getElementById("balance-status-label");
       const balanceDisplay = document.getElementById("balance-display");
@@ -1950,6 +3074,7 @@
         loginError.style.display = "none";
 
         const institutionId = institutionSelect.value;
+        currentInstitutionId = institutionId;
         const nameInput = document
           .getElementById("child-name-input")
           .value.trim();
@@ -2007,6 +3132,11 @@
           }
 
           displayResults(data);
+          currentParentPin = parentPin; // Gem PIN til senere brug (produktgrænser)
+          // Hent institutions-præferencer og render betalingsmuligheder + funktioner
+          currentInstitutionPrefs = await loadInstitutionPreferences(institutionId);
+          renderPaymentSection(currentInstitutionPrefs || {});
+          renderFeatureSections(currentInstitutionPrefs || {});
         } catch (err) {
           console.error("Fetch-fejl:", err);
           loginError.textContent =
@@ -2037,7 +3167,15 @@
           dailyLimitChips.forEach((chip) => chip.classList.remove("is-active"));
         }
 
+        currentInstitutionId = null;
+        currentInstitutionPrefs = null;
+        selectedTopupAmount = null;
+        if (paymentFeedback) paymentFeedback.textContent = "";
+        if (paymentQrWrap) paymentQrWrap.style.display = "none";
+        if (paymentGrid) paymentGrid.innerHTML = "";
+        if (paymentCard) paymentCard.style.display = "none";
         currentChildId = null;
+        currentParentPin = null;
       });
 
       if (changePinForm) {
@@ -2089,6 +3227,7 @@
               headers: {
                 "Content-Type": "application/json",
                 apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
               },
               body: JSON.stringify({
                 child_id: currentChildId,
@@ -2192,6 +3331,17 @@
 
       function displayResults(data) {
         currentChildId = data.child_id || null;
+        // Hvis vi allerede har institutionspræferencer, så render betalingsmuligheder + funktioner
+        if (currentInstitutionPrefs) {
+          renderPaymentSection(currentInstitutionPrefs || {});
+          renderFeatureSections(currentInstitutionPrefs || {});
+        } else if (currentInstitutionId) {
+          loadInstitutionPreferences(currentInstitutionId).then((prefs) => {
+            currentInstitutionPrefs = prefs || {};
+            renderPaymentSection(currentInstitutionPrefs || {});
+            renderFeatureSections(currentInstitutionPrefs || {});
+          });
+        }
 
         if (currentChildId && typeof loadAllergySettingsForChild === "function") {
           loadAllergySettingsForChild(currentChildId);

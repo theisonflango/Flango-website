@@ -5,20 +5,21 @@
 import { supabaseClient, SUPABASE_URL } from './config-and-supabase.js';
 import { CUSTOM_ICON_PREFIX, getCustomIconPath } from '../domain/products-and-cart.js';
 
-// Standard icons available locally
+// Standard icons available from Supabase Storage
+const SUPABASE_STORAGE_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/standard';
+
 export const STANDARD_ICONS = [
-    { key: 'Toast.webp', label: 'Toast', path: 'Icons/webp/Food/Toast.webp' },
-    { key: 'Saft.webp', label: 'Saft', path: 'Icons/webp/Food/Saft.webp' },
-    { key: 'Sushi.webp', label: 'Sushi', path: 'Icons/webp/Food/Sushi.webp' },
-    { key: 'Nøddemix.webp', label: 'Nøddemix', path: 'Icons/webp/Food/Nøddemix.webp' },
-    { key: 'Frugt.webp', label: 'Frugt', path: 'Icons/webp/Food/Frugt.webp' },
-    { key: 'Frugter.webp', label: 'Frugter', path: 'Icons/webp/Food/Frugter.webp' },
-    { key: 'Suppe.webp', label: 'Suppe', path: 'Icons/webp/Food/Suppe.webp' },
-    { key: 'Pizza.webp', label: 'Pizza', path: 'Icons/webp/Food/Pizza.webp' },
-    { key: 'Dagensret.webp', label: 'Dagens ret', path: 'Icons/webp/Food/Dagensret.webp' },
-    { key: 'stegt_flaesk.webp', label: 'Stegt flæsk', path: 'Icons/webp/Food/stegt_flaesk.webp' },
-    { key: 'smorrebrod_256.webp', label: 'Smørrebrød', path: 'Icons/webp/Food/smorrebrod_256.webp' },
-    { key: 'pizzatoast5.webp', label: 'Pizza Toast', path: 'Icons/webp/Food/pizzatoast5.webp' },
+    { key: 'Toast.webp', label: 'Toast', path: `${SUPABASE_STORAGE_URL}/Toast.webp` },
+    { key: 'Saft.webp', label: 'Saft', path: `${SUPABASE_STORAGE_URL}/Saft.webp` },
+    { key: 'Sushi.webp', label: 'Sushi', path: `${SUPABASE_STORAGE_URL}/Sushi.webp` },
+    { key: 'Noddemix.webp', label: 'Nøddemix', path: `${SUPABASE_STORAGE_URL}/Noddemix.webp` },
+    { key: 'Frugt.webp', label: 'Frugt', path: `${SUPABASE_STORAGE_URL}/Frugt.webp` },
+    { key: 'Frugter.webp', label: 'Frugter', path: `${SUPABASE_STORAGE_URL}/Frugter.webp` },
+    { key: 'Suppe.webp', label: 'Suppe', path: `${SUPABASE_STORAGE_URL}/Suppe.webp` },
+    { key: 'Pizza.webp', label: 'Pizza', path: `${SUPABASE_STORAGE_URL}/Pizza.webp` },
+    { key: 'stegt_flaesk.webp', label: 'Stegt flæsk', path: `${SUPABASE_STORAGE_URL}/stegt_flaesk.webp` },
+    { key: 'smorrebrod.webp', label: 'Smørrebrød', path: `${SUPABASE_STORAGE_URL}/smorrebrod.webp` },
+    { key: 'pizzatoast.webp', label: 'Pizza Toast', path: `${SUPABASE_STORAGE_URL}/pizzatoast.webp` },
 ];
 
 /**

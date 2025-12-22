@@ -174,73 +174,208 @@ function syncSugarPolicyEnabledLabel() {
     label.textContent = sugarPolicyState.enabled ? 'Sukkerpolitik er slået TIL' : 'Sukkerpolitik er slået FRA';
 }
 
-function renderSugarPolicyProductList() {
-    const listEl = document.getElementById('sugar-policy-product-list');
-    if (!listEl) return;
-    listEl.innerHTML = '';
+// State for product rules modal
+let productRulesState = {
+    sugarPolicyEnabled: false,
+    parentPortalAllowsUnhealthy: true, // Om forældreportal tillader at bruge usund-funktionen
+    productLimits: new Map(), // productId -> max_per_day
+    institutionId: null
+};
+
+async function fetchProductLimits(institutionId) {
+    if (!institutionId) return new Map();
+    try {
+        const { data, error } = await supabaseClient
+            .from('product_limits')
+            .select('product_id, max_per_day')
+            .eq('institution_id', institutionId);
+        if (error) {
+            console.warn('[product-rules] fetchProductLimits error:', error?.message);
+            return new Map();
+        }
+        const map = new Map();
+        (data || []).forEach(row => map.set(row.product_id, row.max_per_day));
+        return map;
+    } catch (err) {
+        console.warn('[product-rules] fetchProductLimits unexpected error:', err);
+        return new Map();
+    }
+}
+
+async function saveProductUnhealthy(productId, isUnhealthy) {
+    const { error } = await supabaseClient
+        .from('products')
+        .update({ unhealthy: isUnhealthy })
+        .eq('id', productId);
+    if (error) {
+        console.error('[product-rules] Error saving unhealthy status:', error);
+    }
+}
+
+async function saveProductActive(productId, isActive) {
+    const { error } = await supabaseClient
+        .from('products')
+        .update({ is_enabled: isActive })
+        .eq('id', productId);
+    if (error) {
+        console.error('[product-rules] Error saving active status:', error);
+    }
+}
+
+function renderProductRulesTable() {
+    const tbody = document.getElementById('product-rules-tbody');
+    const emptyEl = document.getElementById('product-rules-empty');
+    const tableContainer = document.getElementById('product-rules-table-container');
+    const unhealthyColHeader = document.getElementById('col-unhealthy');
+
+    if (!tbody) return;
+    tbody.innerHTML = '';
 
     const products = getAllProductsForSugarPolicy();
+
+    // Show/hide empty message
     if (!products || products.length === 0) {
-        const empty = document.createElement('p');
-        empty.textContent = 'Ingen produkter fundet. Tilføj eller indlæs produkter under “Rediger Menu”.';
-        listEl.appendChild(empty);
+        if (tableContainer) tableContainer.style.display = 'none';
+        if (emptyEl) emptyEl.style.display = 'block';
         return;
+    }
+    if (tableContainer) tableContainer.style.display = 'block';
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    // Determine if Usund column should be visible
+    // Hide if: sugar policy is OFF OR parent portal doesn't allow it
+    const showUnhealthyCol = productRulesState.sugarPolicyEnabled && productRulesState.parentPortalAllowsUnhealthy;
+
+    // Update column header visibility
+    if (unhealthyColHeader) {
+        unhealthyColHeader.style.display = showUnhealthyCol ? '' : 'none';
     }
 
     const sortedProducts = [...products].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
     sortedProducts.forEach((product) => {
-        const row = document.createElement('div');
-        row.className = 'modal-entry';
-        row.dataset.productId = product.id;
+        const tr = document.createElement('tr');
+        tr.dataset.productId = product.id;
+        tr.style.borderBottom = '1px solid #eee';
 
-        const info = document.createElement('div');
-        info.className = 'modal-entry-info';
+        const isActive = product.is_enabled !== false;
+        const isUnhealthy = product.unhealthy === true;
+        const hasRefill = product.refill_enabled === true;
+        const purchaseLimit = productRulesState.productLimits.get(product.id);
 
+        // 1. Ikon
+        const tdIcon = document.createElement('td');
+        tdIcon.style.cssText = 'padding: 8px; vertical-align: middle;';
         const iconInfo = getProductIconInfo(product);
         if (iconInfo?.path) {
-            const icon = document.createElement('img');
-            icon.src = iconInfo.path;
-            icon.alt = iconInfo.alt || product.name || 'Produkt';
-            icon.className = `product-icon-small${iconInfo.className || ''}`;
-            info.appendChild(icon);
+            tdIcon.innerHTML = `<img src="${iconInfo.path}" alt="${product.name}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 4px;">`;
         } else {
-            const fallback = document.createElement('span');
-            fallback.textContent = product.emoji || '🛒';
-            fallback.className = 'product-icon-small';
-            info.appendChild(fallback);
+            tdIcon.innerHTML = `<span style="font-size: 24px;">${product.emoji || '🛒'}</span>`;
+        }
+        tr.appendChild(tdIcon);
+
+        // 2. Navn
+        const tdName = document.createElement('td');
+        tdName.style.cssText = 'padding: 8px; vertical-align: middle; font-weight: 500;';
+        tdName.textContent = product.name || 'Produkt';
+        tr.appendChild(tdName);
+
+        // 3. Pris
+        const tdPrice = document.createElement('td');
+        tdPrice.style.cssText = 'padding: 8px; vertical-align: middle; text-align: right;';
+        tdPrice.textContent = product.price ? `${product.price.toFixed(2)} kr.` : '-';
+        tr.appendChild(tdPrice);
+
+        // 4. Genopfyldning (refill status - readonly indicator)
+        const tdRefill = document.createElement('td');
+        tdRefill.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+        if (hasRefill) {
+            const refillPrice = product.refill_price != null ? `${product.refill_price} kr.` : 'Gratis';
+            tdRefill.innerHTML = `<span style="color: #2e7d32; font-size: 12px;" title="Refill pris: ${refillPrice}">✅ ${refillPrice}</span>`;
+        } else {
+            tdRefill.innerHTML = `<span style="color: #999; font-size: 12px;">—</span>`;
+        }
+        tr.appendChild(tdRefill);
+
+        // 5. Købsgrænse (readonly indicator)
+        const tdLimit = document.createElement('td');
+        tdLimit.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+        if (purchaseLimit != null && purchaseLimit > 0) {
+            tdLimit.innerHTML = `<span style="color: #1565c0; font-weight: 500;">${purchaseLimit}/dag</span>`;
+        } else {
+            tdLimit.innerHTML = `<span style="color: #999; font-size: 12px;">∞</span>`;
+        }
+        tr.appendChild(tdLimit);
+
+        // 6. Usund (toggle - conditional visibility)
+        const tdUnhealthy = document.createElement('td');
+        tdUnhealthy.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+        tdUnhealthy.style.display = showUnhealthyCol ? '' : 'none';
+        tdUnhealthy.className = 'col-unhealthy-cell';
+
+        const unhealthyToggle = document.createElement('input');
+        unhealthyToggle.type = 'checkbox';
+        unhealthyToggle.checked = isUnhealthy;
+        unhealthyToggle.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
+        unhealthyToggle.title = isUnhealthy ? 'Markeret som usund' : 'Klik for at markere som usund';
+        unhealthyToggle.addEventListener('change', async () => {
+            await saveProductUnhealthy(product.id, unhealthyToggle.checked);
+            // Update local product state
+            product.unhealthy = unhealthyToggle.checked;
+        });
+        tdUnhealthy.appendChild(unhealthyToggle);
+        tr.appendChild(tdUnhealthy);
+
+        // 7. Aktiv (toggle)
+        const tdActive = document.createElement('td');
+        tdActive.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+
+        const activeToggle = document.createElement('input');
+        activeToggle.type = 'checkbox';
+        activeToggle.checked = isActive;
+        activeToggle.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
+        activeToggle.title = isActive ? 'Produktet er aktivt' : 'Produktet er deaktiveret';
+        activeToggle.addEventListener('change', async () => {
+            await saveProductActive(product.id, activeToggle.checked);
+            // Update local product state
+            product.is_enabled = activeToggle.checked;
+            // Update row styling
+            tr.style.opacity = activeToggle.checked ? '1' : '0.5';
+        });
+        tdActive.appendChild(activeToggle);
+        tr.appendChild(tdActive);
+
+        // Apply inactive styling if not active
+        if (!isActive) {
+            tr.style.opacity = '0.5';
         }
 
-        const text = document.createElement('div');
-        text.innerHTML = `<strong>${product.name || 'Produkt'}</strong>${product.price ? ` – ${product.price} kr.` : ''}`;
-        info.appendChild(text);
+        // 8. Rediger (edit button)
+        const tdEdit = document.createElement('td');
+        tdEdit.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
 
-        const toggle = document.createElement('input');
-        toggle.type = 'checkbox';
-        toggle.className = 'sugar-product-toggle';
-        toggle.dataset.productId = product.id;
-        toggle.checked = sugarPolicyState.limitedProductIds.has(String(product.id));
-
-        row.appendChild(info);
-        row.appendChild(toggle);
-        listEl.appendChild(row);
-    });
-
-    if (!listEl.dataset.bindings) {
-        listEl.addEventListener('change', (evt) => {
-            if (evt.target.matches('.sugar-product-toggle')) {
-                const productId = evt.target.dataset.productId;
-                if (!productId) return;
-                if (evt.target.checked) {
-                    sugarPolicyState.limitedProductIds.add(String(productId));
-                } else {
-                    sugarPolicyState.limitedProductIds.delete(String(productId));
-                }
-                // Fremtidig persistens til Supabase/institution-settings kan placeres her.
+        const editBtn = document.createElement('button');
+        editBtn.innerHTML = '✍️';
+        editBtn.title = 'Rediger produkt';
+        editBtn.style.cssText = 'background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;';
+        editBtn.addEventListener('mouseenter', () => editBtn.style.background = '#f0f0f0');
+        editBtn.addEventListener('mouseleave', () => editBtn.style.background = 'none');
+        editBtn.addEventListener('click', () => {
+            // Close current modal and open edit product modal
+            const modal = document.getElementById('sugar-policy-modal');
+            if (modal) modal.style.display = 'none';
+            // Trigger product edit via global function if available
+            if (typeof window.__flangoEditProduct === 'function') {
+                window.__flangoEditProduct(product.id);
+            } else {
+                console.warn('[product-rules] __flangoEditProduct function not available');
             }
         });
-        listEl.dataset.bindings = 'true';
-    }
+        tdEdit.appendChild(editBtn);
+        tr.appendChild(tdEdit);
+
+        tbody.appendChild(tr);
+    });
 }
 
 function ensureSugarPolicyModal() {
@@ -263,20 +398,29 @@ async function openSugarPolicyModal() {
 
     const institutionId = getInstitutionId();
     if (!institutionId) {
-        console.error('[sugar-policy] No institution ID found');
+        console.error('[product-rules] No institution ID found');
         return;
     }
 
-    // Load current settings from database
+    // Load current settings from database (including parent portal settings)
     const { data, error } = await supabaseClient
         .from('institutions')
-        .select('sugar_policy_enabled, sugar_policy_max_unhealthy_per_day, sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled, sugar_policy_max_per_product_enabled')
+        .select('sugar_policy_enabled, sugar_policy_max_unhealthy_per_day, sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled, sugar_policy_max_per_product_enabled, parent_portal_no_unhealthy')
         .eq('id', institutionId)
         .single();
 
     if (error) {
-        console.error('[sugar-policy] Error loading settings:', error);
+        console.error('[product-rules] Error loading settings:', error);
     }
+
+    // Fetch product limits
+    productRulesState.institutionId = institutionId;
+    productRulesState.productLimits = await fetchProductLimits(institutionId);
+
+    // Check parent portal setting for unhealthy products
+    // If parent_portal_no_unhealthy is enabled, it means parents can opt out of unhealthy products
+    // So we should still show the column for admins to mark products as unhealthy
+    productRulesState.parentPortalAllowsUnhealthy = true; // Always allow admins to set this
 
     const toggle = document.getElementById('sugar-policy-enabled-toggle');
     const label = document.getElementById('sugar-policy-enabled-label');
@@ -290,11 +434,17 @@ async function openSugarPolicyModal() {
     if (data) {
         const enabled = data.sugar_policy_enabled || false;
         sugarPolicyState.enabled = enabled;
+        productRulesState.sugarPolicyEnabled = enabled;
         toggle.checked = enabled;
         maxUnhealthyInput.value = data.sugar_policy_max_unhealthy_per_day || 2;
         maxPerProductInput.value = data.sugar_policy_max_per_product_per_day || 1;
         maxUnhealthyEnabledCheckbox.checked = data.sugar_policy_max_unhealthy_enabled || false;
         maxPerProductEnabledCheckbox.checked = data.sugar_policy_max_per_product_enabled !== false; // default true
+
+        // Show/hide sugar policy settings section
+        if (settings) {
+            settings.style.display = enabled ? 'block' : 'none';
+        }
     }
 
     // Update UI - gråe ud inactive felter
@@ -306,6 +456,7 @@ async function openSugarPolicyModal() {
         const currentMaxUnhealthyEnabledCheckbox = document.getElementById('sugar-policy-max-unhealthy-enabled');
         const currentMaxPerProductEnabledCheckbox = document.getElementById('sugar-policy-max-per-product-enabled');
         const currentLabel = document.getElementById('sugar-policy-enabled-label');
+        const currentSettings = document.getElementById('sugar-policy-settings');
 
         if (!currentToggle || !currentMaxUnhealthyInput || !currentMaxPerProductInput || !currentMaxUnhealthyEnabledCheckbox || !currentMaxPerProductEnabledCheckbox) return;
 
@@ -315,6 +466,11 @@ async function openSugarPolicyModal() {
 
         // Main toggle label
         if (currentLabel) currentLabel.textContent = mainEnabled ? 'Sukkerpolitik er slået TIL' : 'Sukkerpolitik er slået FRA';
+
+        // Show/hide settings section
+        if (currentSettings) {
+            currentSettings.style.display = mainEnabled ? 'block' : 'none';
+        }
 
         // Hvis main toggle er slået fra, gråe begge felter ud
         if (!mainEnabled) {
@@ -337,6 +493,10 @@ async function openSugarPolicyModal() {
             currentMaxPerProductInput.disabled = !maxPerProductEnabled;
             currentMaxPerProductInput.style.opacity = maxPerProductEnabled ? '1' : '0.5';
         }
+
+        // Update product rules state and re-render table
+        productRulesState.sugarPolicyEnabled = mainEnabled;
+        renderProductRulesTable();
     };
 
     updateFieldStates();
@@ -349,7 +509,7 @@ async function openSugarPolicyModal() {
             .eq('id', institutionId);
 
         if (error) {
-            console.error('[sugar-policy] Error saving settings:', error);
+            console.error('[product-rules] Error saving settings:', error);
         }
     };
 
@@ -436,7 +596,7 @@ async function openSugarPolicyModal() {
         };
     }
 
-    renderSugarPolicyProductList();
+    renderProductRulesTable();
     modal.style.display = 'flex';
 }
 
@@ -650,10 +810,10 @@ async function openInstitutionPreferences() {
     titleEl.textContent = 'Indstillinger – Institutionens Præferencer';
     contentEl.innerHTML = '';
 
-    // Sukkerpolitik knap
+    // Regler for produkter knap (tidligere Sukkerpolitik)
     const sugarPolicyBtn = document.createElement('button');
     sugarPolicyBtn.className = 'settings-item-btn';
-    sugarPolicyBtn.innerHTML = `<strong>Sukkerpolitik</strong><div style="font-size: 12px; margin-top: 2px;">Begræns søde produkter til maks 1 pr. barn pr. dag.</div>`;
+    sugarPolicyBtn.innerHTML = `<strong>Regler for produkter</strong><div style="font-size: 12px; margin-top: 2px;">Administrer sukkerpolitik, købsgrænser og produktindstillinger.</div>`;
     sugarPolicyBtn.addEventListener('click', () => {
         backdrop.style.display = 'none';
         openSugarPolicyModal();
@@ -677,15 +837,6 @@ async function openInstitutionPreferences() {
         openParentPortalSettingsModal();
     });
 
-    // Admin regler knap
-    const adminRulesBtn = document.createElement('button');
-    adminRulesBtn.className = 'settings-item-btn';
-    adminRulesBtn.innerHTML = `<strong>Admin Regler</strong><div style="font-size: 12px; margin-top: 2px;">Konfigurer administrator indstillinger for caféen.</div>`;
-    adminRulesBtn.addEventListener('click', () => {
-        backdrop.style.display = 'none';
-        openAdminRulesModal();
-    });
-
     // Opdateringer knap
     const updatesBtn = document.createElement('button');
     updatesBtn.className = 'settings-item-btn';
@@ -707,7 +858,6 @@ async function openInstitutionPreferences() {
     contentEl.appendChild(sugarPolicyBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(parentPortalBtn);
-    contentEl.appendChild(adminRulesBtn);
     contentEl.appendChild(editAdminsBtn);
     contentEl.appendChild(updatesBtn);
     backdrop.style.display = 'flex';
@@ -729,11 +879,12 @@ async function openParentPortalSettingsModal() {
         .select(`
             parent_portal_email_notifications,
             parent_portal_spending_limit,
-            parent_portal_product_limit,
             parent_portal_allergens,
-            parent_portal_vegetarian_only,
-            parent_portal_no_pork,
-            parent_portal_no_unhealthy
+            parent_portal_product_limit,
+            topup_cash_enabled,
+            topup_qr_enabled,
+            topup_portal_enabled,
+            topup_qr_image_url
         `)
         .eq('id', institutionId)
         .single();
@@ -742,57 +893,127 @@ async function openParentPortalSettingsModal() {
         console.error('[parent-portal] Error loading settings:', error);
     }
 
-    // Get all checkboxes
+    // Get implemented feature checkboxes (4 active features)
     const emailNotifications = document.getElementById('parent-portal-email-notifications');
     const spendingLimit = document.getElementById('parent-portal-spending-limit');
-    const productLimit = document.getElementById('parent-portal-product-limit');
     const allergens = document.getElementById('parent-portal-allergens');
-    const vegetarianOnly = document.getElementById('parent-portal-vegetarian-only');
-    const noPork = document.getElementById('parent-portal-no-pork');
-    const noUnhealthy = document.getElementById('parent-portal-no-unhealthy');
+    const productLimit = document.getElementById('parent-portal-product-limit');
     const saveBtn = document.getElementById('save-parent-portal-settings-btn');
     const codesBtn = document.getElementById('parent-portal-codes-btn-inside');
 
-    // Set values from database (default all to true)
+    // Topup/payment method elements
+    const topupCash = document.getElementById('topup-cash-enabled');
+    const topupQr = document.getElementById('topup-qr-enabled');
+    const topupPortal = document.getElementById('topup-portal-enabled');
+    const topupQrImageSection = document.getElementById('topup-qr-image-section');
+    const topupQrImageUrl = document.getElementById('topup-qr-image-url');
+    const topupQrImageFile = document.getElementById('topup-qr-image-file');
+    const topupQrImagePreview = document.getElementById('topup-qr-image-preview');
+
+    // Set values from database (default all to true for parent portal features, false for topup)
     if (data) {
         emailNotifications.checked = data.parent_portal_email_notifications !== false;
         spendingLimit.checked = data.parent_portal_spending_limit !== false;
-        productLimit.checked = data.parent_portal_product_limit !== false;
         allergens.checked = data.parent_portal_allergens !== false;
-        vegetarianOnly.checked = data.parent_portal_vegetarian_only !== false;
-        noPork.checked = data.parent_portal_no_pork !== false;
-        noUnhealthy.checked = data.parent_portal_no_unhealthy !== false;
+        productLimit.checked = data.parent_portal_product_limit === true; // Default to false
+
+        // Topup settings (default to false - institution must explicitly enable)
+        topupCash.checked = data.topup_cash_enabled === true;
+        topupQr.checked = data.topup_qr_enabled === true;
+        topupPortal.checked = data.topup_portal_enabled === true;
+
+        // QR image URL
+        if (data.topup_qr_image_url) {
+            topupQrImageUrl.value = data.topup_qr_image_url;
+            topupQrImagePreview.src = data.topup_qr_image_url;
+            topupQrImagePreview.style.display = 'block';
+        }
+
+        // Show/hide QR image section based on checkbox
+        topupQrImageSection.style.display = topupQr.checked ? 'block' : 'none';
     }
+
+    // Toggle QR image section when checkbox changes
+    topupQr.addEventListener('change', () => {
+        topupQrImageSection.style.display = topupQr.checked ? 'block' : 'none';
+    });
+
+    // Handle file upload for QR image
+    topupQrImageFile.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Convert to base64 data URL for preview and storage
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const dataUrl = event.target.result;
+            topupQrImageUrl.value = dataUrl;
+            topupQrImagePreview.src = dataUrl;
+            topupQrImagePreview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Update preview when URL is manually entered
+    topupQrImageUrl.addEventListener('input', () => {
+        const url = topupQrImageUrl.value.trim();
+        if (url) {
+            topupQrImagePreview.src = url;
+            topupQrImagePreview.style.display = 'block';
+        } else {
+            topupQrImagePreview.style.display = 'none';
+        }
+    });
 
     // Save button handler
     const newSaveBtn = saveBtn.cloneNode(true);
     saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
 
     newSaveBtn.addEventListener('click', async () => {
-        const updates = {
+        // Core parent portal settings (4 implemented features)
+        const coreUpdates = {
             parent_portal_email_notifications: emailNotifications.checked,
             parent_portal_spending_limit: spendingLimit.checked,
-            parent_portal_product_limit: productLimit.checked,
             parent_portal_allergens: allergens.checked,
-            parent_portal_vegetarian_only: vegetarianOnly.checked,
-            parent_portal_no_pork: noPork.checked,
-            parent_portal_no_unhealthy: noUnhealthy.checked
+            parent_portal_product_limit: productLimit.checked
         };
 
-        const { error: saveError } = await supabaseClient
+        // Topup/payment method settings (may not exist in older databases)
+        const topupUpdates = {
+            topup_cash_enabled: topupCash.checked,
+            topup_qr_enabled: topupQr.checked,
+            topup_portal_enabled: topupPortal.checked,
+            topup_qr_image_url: topupQr.checked ? topupQrImageUrl.value.trim() : null
+        };
+
+        // Try saving all settings first
+        let { error: saveError } = await supabaseClient
             .from('institutions')
-            .update(updates)
+            .update({ ...coreUpdates, ...topupUpdates })
             .eq('id', institutionId);
 
+        // If error (likely missing topup columns), try saving just core settings
         if (saveError) {
-            console.error('[parent-portal] Error saving settings:', saveError);
-            alert('Fejl ved gemning af indstillinger');
-        } else {
-            modal.style.display = 'none';
-            // Reload products if allergens/vegetarian/pork settings changed
-            if (typeof window.__flangoFetchAndRenderProducts === 'function') {
-                window.__flangoFetchAndRenderProducts();
+            console.warn('[parent-portal] Full save failed, trying core settings only:', saveError.message);
+            const { error: coreError } = await supabaseClient
+                .from('institutions')
+                .update(coreUpdates)
+                .eq('id', institutionId);
+
+            if (coreError) {
+                console.error('[parent-portal] Error saving settings:', coreError);
+                alert('Fejl ved gemning af indstillinger');
+                return;
+            } else {
+                // Core saved, but topup columns missing
+                alert('Indstillinger gemt!\n\nBemærk: Optanknings-indstillinger kræver database-opdatering.\nKontakt support eller kør SQL-migrering.');
             }
+        }
+
+        modal.style.display = 'none';
+        // Reload products if allergens/vegetarian/pork settings changed
+        if (typeof window.__flangoFetchAndRenderProducts === 'function') {
+            window.__flangoFetchAndRenderProducts();
         }
     });
 

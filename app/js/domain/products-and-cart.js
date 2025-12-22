@@ -5,14 +5,16 @@ import { MAX_ITEMS_PER_ORDER } from '../core/constants.js';
 
 export const CUSTOM_ICON_PREFIX = '::icon::';
 
+const SUPABASE_STORAGE_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/standard';
+
 export const PRODUCT_ICON_MAP = {
-    'toast': 'Icons/webp/Food/Toast.webp',
-    'pizza': 'Icons/webp/Food/Pizza.webp',
-    'sushi': 'Icons/webp/Food/Sushi.webp',
-    'nøddemix': 'Icons/webp/Food/Nøddemix.webp',
-    'frugt': 'Icons/webp/Food/Frugt.webp',
-    'saft': 'Icons/webp/Food/Saft.webp',
-    'suppe': 'Icons/webp/Food/Suppe.webp'
+    'toast': `${SUPABASE_STORAGE_URL}/Toast.webp`,
+    'pizza': `${SUPABASE_STORAGE_URL}/Pizza.webp`,
+    'sushi': `${SUPABASE_STORAGE_URL}/Sushi.webp`,
+    'nøddemix': `${SUPABASE_STORAGE_URL}/Noddemix.webp`,
+    'frugt': `${SUPABASE_STORAGE_URL}/Frugt.webp`,
+    'saft': `${SUPABASE_STORAGE_URL}/Saft.webp`,
+    'suppe': `${SUPABASE_STORAGE_URL}/Suppe.webp`
 };
 
 export const PRODUCT_ICON_CLASS_MAP = {

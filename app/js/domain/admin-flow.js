@@ -214,6 +214,8 @@ export function setupAdminFlow({
             allUsers: getAllUsers(),
             getAllUsers,
             clerkProfile,
+            supabaseClient,
+            adminProfile,
             getCurrentSortKey,
             setCurrentSortKey,
             getBalanceSortOrder,

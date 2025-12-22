@@ -1,6 +1,7 @@
 import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '../ui/sound-and-alerts.js';
 import { initializeSoundSettings } from '../core/sound-manager.js';
 import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen } from '../ui/shell-and-theme.js';
+import { getCurrentTheme } from '../ui/theme-loader.js';
 import { configureHistoryModule, showTransactionsInSummary } from './history-and-reports.js';
 import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js';
 import { setupLogoutFlow } from './logout-flow.js';
@@ -182,8 +183,8 @@ export async function startApp() {
         const clerkName = clerkProfile?.name || adultName;
         userDisplay.textContent = `👤 ${clerkName}  |  🔐 ${adultName}`;
 
-        // Create sticky notes for Unstoppable theme
-        if (sessionBanner) {
+        // Create sticky notes only for Unstoppable theme
+        if (sessionBanner && getCurrentTheme() === 'flango-unstoppable') {
             // Remove existing sticky notes if any
             sessionBanner.querySelectorAll('.session-sticky-note').forEach(el => el.remove());
 
@@ -205,6 +206,9 @@ export async function startApp() {
 
             sessionBanner.appendChild(clerkNote);
             sessionBanner.appendChild(adultNote);
+        } else if (sessionBanner) {
+            // Remove sticky notes for other themes
+            sessionBanner.querySelectorAll('.session-sticky-note').forEach(el => el.remove());
         }
 
         const userId = clerkProfile.id;

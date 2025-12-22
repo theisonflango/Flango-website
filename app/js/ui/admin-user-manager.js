@@ -15,6 +15,8 @@ export function setupAdminUserManagerFromModule(config = {}) {
         allUsers,
         getAllUsers,
         clerkProfile,
+        supabaseClient,
+        adminProfile,
         getCurrentSortKey = () => 'name',
         setCurrentSortKey = () => {},
         getBalanceSortOrder = () => 'desc',
@@ -163,10 +165,15 @@ export function setupAdminUserManagerFromModule(config = {}) {
         if (addUserBtn) {
             addUserBtn.textContent = isAdminMode ? '➕ Tilføj Admin' : '➕ Tilføj Ny Bruger';
         }
+        // Vis kun Admin Regler i admin-tilstand
+        const adminRulesSection = modal.querySelector('#admin-rules-inline');
+        if (adminRulesSection) {
+            adminRulesSection.style.display = isAdminMode ? 'block' : 'none';
+        }
     };
     applyUserManagerMode();
 
-    window.__flangoOpenAdminUserManager = (mode = adminManagerMode) => {
+    window.__flangoOpenAdminUserManager = async (mode = adminManagerMode) => {
         const normalizedMode = mode === 'admins' ? 'admins' : 'customers';
         const switchingModes = normalizedMode !== adminManagerMode;
         setMode(normalizedMode);
@@ -178,6 +185,41 @@ export function setupAdminUserManagerFromModule(config = {}) {
         renderAdminUserListFromModule();
         modal.style.display = 'flex';
         setTimeout(() => searchInput.focus(), 50);
+
+        // Load and wire up admin rules if supabaseClient is available
+        if (supabaseClient && adminProfile?.institution_id) {
+            const showAdminsCheckbox = modal.querySelector('#admin-rules-show-admins-inline');
+            const adminsFreeCheckbox = modal.querySelector('#admin-rules-admins-free-inline');
+
+            if (showAdminsCheckbox && adminsFreeCheckbox) {
+                // Load current settings
+                const { data } = await supabaseClient
+                    .from('institutions')
+                    .select('show_admins_in_user_list, admins_purchase_free')
+                    .eq('id', adminProfile.institution_id)
+                    .single();
+
+                if (data) {
+                    showAdminsCheckbox.checked = data.show_admins_in_user_list || false;
+                    adminsFreeCheckbox.checked = data.admins_purchase_free || false;
+                }
+
+                // Auto-save on change
+                const saveAdminRules = async () => {
+                    await supabaseClient
+                        .from('institutions')
+                        .update({
+                            show_admins_in_user_list: showAdminsCheckbox.checked,
+                            admins_purchase_free: adminsFreeCheckbox.checked
+                        })
+                        .eq('id', adminProfile.institution_id);
+                };
+
+                // Remove old listeners and add new ones
+                showAdminsCheckbox.onchange = saveAdminRules;
+                adminsFreeCheckbox.onchange = saveAdminRules;
+            }
+        }
     };
 
     const handleAdminKeydown = (e) => {

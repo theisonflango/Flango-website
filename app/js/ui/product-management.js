@@ -650,16 +650,18 @@ export function createProductManagementUI(options = {}) {
             : 0;
         const existingUnhealthy = isEditing && product?.unhealthy === true;
 
-        // Load parent portal settings to determine which fields to show
+        // Load parent portal settings and sugar policy to determine which fields to show
         const { data: portalSettings } = await supabaseClient
             .from('institutions')
-            .select('parent_portal_allergens, parent_portal_vegetarian_only, parent_portal_no_pork')
+            .select('parent_portal_allergens, parent_portal_vegetarian_only, parent_portal_no_pork, sugar_policy_enabled')
             .eq('id', institutionId)
             .single();
 
         const showAllergens = portalSettings?.parent_portal_allergens !== false;
         const showVegetarian = portalSettings?.parent_portal_vegetarian_only !== false;
         const showPork = portalSettings?.parent_portal_no_pork !== false;
+        // Only show "Usund Vare" checkbox if sugar policy is enabled
+        const showUnhealthy = portalSettings?.sugar_policy_enabled === true;
 
         const allergenOptions = [
             { value: 'peanuts', label: '🥜 Jordnødder (peanuts)' },
@@ -696,12 +698,12 @@ export function createProductManagementUI(options = {}) {
                         Aktiver rabat ved Refill/Genopfyldning
                     </label>
                 </div>
-                <div class="refill-row">
+                ${showUnhealthy ? `<div class="refill-row">
                     <label class="refill-option">
                         <input type="checkbox" id="product-unhealthy-enabled" ${existingUnhealthy ? 'checked' : ''}>
                         Usund Vare
                     </label>
-                </div>
+                </div>` : ''}
                 ${showPork ? `<div class="refill-row">
                     <label class="refill-option">
                         <input type="checkbox" id="product-contains-pork" ${product?.contains_pork === true ? 'checked' : ''}>
