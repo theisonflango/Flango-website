@@ -2477,10 +2477,28 @@
         const listEl = document.getElementById("product-limit-list");
         if (!listEl) return;
 
+        // DEBUG: Log parametre
+        console.log("[loadProductLimits] START", { institutionId, childId });
+
         listEl.innerHTML = '<div class="product-limit-empty">Indlæser produkter...</div>';
 
         try {
           // Hent aktive produkter fra institutionen
+          console.log("[loadProductLimits] Fetching products for institution:", institutionId);
+
+          // DEBUG: Test først UDEN is_enabled filter for at se om det er RLS
+          const { data: allProds, error: allProdsError } = await supabase
+            .from("products")
+            .select("id, name, is_enabled")
+            .eq("institution_id", institutionId)
+            .limit(5);
+
+          console.log("[loadProductLimits] DEBUG all products (no filter):", {
+            count: allProds?.length ?? 0,
+            error: allProdsError?.message,
+            sample: allProds?.map(p => ({ name: p.name, enabled: p.is_enabled }))
+          });
+
           const { data: products, error: productsError } = await supabase
             .from("products")
             .select("id, name, price, emoji, icon_url")
@@ -2488,16 +2506,25 @@
             .eq("is_enabled", true)
             .order("sort_order", { ascending: true });
 
+          console.log("[loadProductLimits] Query result:", {
+            productsCount: products?.length ?? 0,
+            error: productsError,
+            firstProduct: products?.[0]
+          });
+
           if (productsError) {
             console.error("Fejl ved hentning af produkter:", productsError);
-            listEl.innerHTML = '<div class="product-limit-empty">Kunne ikke indlæse produkter.</div>';
+            listEl.innerHTML = `<div class="product-limit-empty">Kunne ikke indlæse produkter. (Debug: ${productsError.message || 'ukendt fejl'})</div>`;
             return;
           }
 
           productLimitProducts = products || [];
 
           if (productLimitProducts.length === 0) {
-            listEl.innerHTML = '<div class="product-limit-empty">Ingen aktive produkter fundet.</div>';
+            console.warn("[loadProductLimits] Ingen produkter fundet for institution:", institutionId);
+            // DEBUG: Vis institution ID og allProds count i fejlbesked
+            const allCount = allProds?.length ?? 0;
+            listEl.innerHTML = `<div class="product-limit-empty">Ingen aktive produkter fundet. (Debug: inst=${institutionId?.substring(0,8) || 'MANGLER'}, alle=${allCount})</div>`;
             return;
           }
 
