@@ -2159,6 +2159,8 @@
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/save-parent-notification";
       const GET_ALLERGY_URL =
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-allergy-settings";
+      const GET_PRODUCTS_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-products-for-parent";
 
       const SUPABASE_URL = "https://jbknjgbpghrbrstqwoxj.supabase.co";
       const SUPABASE_ANON_KEY =
@@ -2477,95 +2479,54 @@
         const listEl = document.getElementById("product-limit-list");
         if (!listEl) return;
 
-        // DEBUG: Log parametre
-        console.log("[loadProductLimits] START", { institutionId, childId });
-
+        console.log("[loadProductLimits] START via Edge Function", { institutionId, childId });
         listEl.innerHTML = '<div class="product-limit-empty">Indlæser produkter...</div>';
 
         try {
-          // Hent aktive produkter fra institutionen
-          console.log("[loadProductLimits] Fetching products for institution:", institutionId);
-
-          // DEBUG: Test først UDEN is_enabled filter for at se om det er RLS
-          const { data: allProds, error: allProdsError } = await supabase
-            .from("products")
-            .select("id, name, is_enabled")
-            .eq("institution_id", institutionId)
-            .limit(5);
-
-          console.log("[loadProductLimits] DEBUG all products (no filter):", {
-            count: allProds?.length ?? 0,
-            error: allProdsError?.message,
-            sample: allProds?.map(p => ({ name: p.name, enabled: p.is_enabled }))
+          // Brug Edge Function i stedet for direkte Supabase query (løser RLS-problemer på mobil)
+          const res = await fetch(GET_PRODUCTS_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              institution_id: institutionId,
+              child_id: childId,
+            }),
           });
 
-          const { data: products, error: productsError } = await supabase
-            .from("products")
-            .select("id, name, price, emoji, icon_url")
-            .eq("institution_id", institutionId)
-            .eq("is_enabled", true)
-            .order("sort_order", { ascending: true });
+          const data = await res.json().catch(() => ({}));
+          console.log("[loadProductLimits] Edge Function response:", { status: res.status, data });
 
-          console.log("[loadProductLimits] Query result:", {
-            productsCount: products?.length ?? 0,
-            error: productsError,
-            firstProduct: products?.[0]
-          });
-
-          if (productsError) {
-            console.error("Fejl ved hentning af produkter:", productsError);
-            listEl.innerHTML = `<div class="product-limit-empty">Kunne ikke indlæse produkter. (Debug: ${productsError.message || 'ukendt fejl'})</div>`;
+          if (!res.ok) {
+            console.error("Fejl fra Edge Function:", data);
+            listEl.innerHTML = `<div class="product-limit-empty">Kunne ikke indlæse produkter. (${data.error || 'ukendt fejl'})</div>`;
             return;
           }
 
-          productLimitProducts = products || [];
+          productLimitProducts = data.products || [];
 
           if (productLimitProducts.length === 0) {
-            console.warn("[loadProductLimits] Ingen produkter fundet for institution:", institutionId);
-            // DEBUG: Vis fuld debug info DIREKTE på siden (til iPhone test)
-            const allCount = allProds?.length ?? 0;
-            const enabledCount = allProds?.filter(p => p.is_enabled === true).length ?? 0;
-            const sampleData = allProds?.slice(0,2)?.map(p => `${p.name?.substring(0,8)}:${p.is_enabled}`).join(', ') || 'ingen';
-            const debugHtml = `
-              <div style="font-size:10px; color:#888; margin-top:10px; padding:8px; background:#f5f5f5; border-radius:6px; text-align:left;">
-                <b>DEBUG:</b><br>
-                institution: ${institutionId || 'MANGLER'}<br>
-                alle produkter: ${allCount}<br>
-                med is_enabled=true: ${enabledCount}<br>
-                sample: ${sampleData}
-              </div>
-            `;
-            listEl.innerHTML = `<div class="product-limit-empty">Ingen aktive produkter fundet.${debugHtml}</div>`;
+            console.warn("[loadProductLimits] Ingen produkter fra Edge Function");
+            listEl.innerHTML = '<div class="product-limit-empty">Ingen aktive produkter fundet.</div>';
             return;
           }
 
-          // Hent institutionens produktgrænser (product_limits tabel)
-          const { data: instLimits, error: instLimitsError } = await supabase
-            .from("product_limits")
-            .select("product_id, max_per_day")
-            .eq("institution_id", institutionId);
-
+          // Sæt institutionens produktgrænser
           institutionProductLimits.clear();
-          if (!instLimitsError && instLimits) {
-            instLimits.forEach(row => {
-              if (row.max_per_day != null && row.max_per_day > 0) {
-                institutionProductLimits.set(row.product_id, row.max_per_day);
-              }
-            });
-          }
+          (data.institution_limits || []).forEach(row => {
+            if (row.max_per_day != null && row.max_per_day > 0) {
+              institutionProductLimits.set(row.product_id, row.max_per_day);
+            }
+          });
 
-          // Hent barnets eksisterende produktgrænser (fra parent_limits tabel)
-          const { data: childLimits, error: childLimitsError } = await supabase
-            .from("parent_limits")
-            .select("product_id, max_per_day")
-            .eq("child_id", childId);
-
+          // Sæt barnets produktgrænser
           productLimitSettings.clear();
-          if (!childLimitsError && childLimits) {
-            childLimits.forEach(row => {
-              productLimitSettings.set(row.product_id, row.max_per_day);
-            });
-          }
+          (data.child_limits || []).forEach(row => {
+            productLimitSettings.set(row.product_id, row.max_per_day);
+          });
 
           renderProductLimitList();
           wireProductLimitEvents();
