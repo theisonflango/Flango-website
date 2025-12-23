@@ -2522,9 +2522,20 @@
 
           if (productLimitProducts.length === 0) {
             console.warn("[loadProductLimits] Ingen produkter fundet for institution:", institutionId);
-            // DEBUG: Vis institution ID og allProds count i fejlbesked
+            // DEBUG: Vis fuld debug info DIREKTE på siden (til iPhone test)
             const allCount = allProds?.length ?? 0;
-            listEl.innerHTML = `<div class="product-limit-empty">Ingen aktive produkter fundet. (Debug: inst=${institutionId?.substring(0,8) || 'MANGLER'}, alle=${allCount})</div>`;
+            const enabledCount = allProds?.filter(p => p.is_enabled === true).length ?? 0;
+            const sampleData = allProds?.slice(0,2)?.map(p => `${p.name?.substring(0,8)}:${p.is_enabled}`).join(', ') || 'ingen';
+            const debugHtml = `
+              <div style="font-size:10px; color:#888; margin-top:10px; padding:8px; background:#f5f5f5; border-radius:6px; text-align:left;">
+                <b>DEBUG:</b><br>
+                institution: ${institutionId || 'MANGLER'}<br>
+                alle produkter: ${allCount}<br>
+                med is_enabled=true: ${enabledCount}<br>
+                sample: ${sampleData}
+              </div>
+            `;
+            listEl.innerHTML = `<div class="product-limit-empty">Ingen aktive produkter fundet.${debugHtml}</div>`;
             return;
           }
 
