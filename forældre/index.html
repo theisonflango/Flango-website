@@ -2102,6 +2102,75 @@
                 </div>
               </section>
 
+              <!-- Sukkerpolitik -->
+              <section id="sugar-policy-section" class="product-limit-card" style="display: none;">
+                <div class="product-limit-header">
+                  <div class="product-limit-title">
+                    <div class="icon">🍬</div>
+                    Sukkerpolitik
+                  </div>
+                  <span class="product-limit-badge">Valgfrit</span>
+                </div>
+                <p class="product-limit-description">
+                  Her kan du vælge, hvordan dit barn må købe sukkerholdige/usunde produkter i caféen.
+                </p>
+
+                <div style="padding: 0 16px 16px;">
+                  <!-- Aktiver/deaktiver toggle -->
+                  <label style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; cursor: pointer; padding: 14px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(167, 139, 250, 0.08)); border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.2);">
+                    <input type="checkbox" id="sugar-policy-enabled" style="width: 22px; height: 22px; cursor: pointer; accent-color: #8b5cf6;">
+                    <div>
+                      <strong style="color: #7c3aed;">Aktiver sukkerpolitik</strong>
+                      <div style="font-size: 12px; color: #666; margin-top: 2px;">Slå til for at begrænse usunde køb</div>
+                    </div>
+                  </label>
+
+                  <!-- Sugar policy controls (skjult når deaktiveret) -->
+                  <div id="sugar-policy-controls" style="display: none;">
+                    <!-- Block unhealthy checkbox -->
+                    <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; cursor: pointer; padding: 12px; background: rgba(239, 68, 68, 0.08); border-radius: 10px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                      <input type="checkbox" id="sugar-block-unhealthy" style="width: 20px; height: 20px; cursor: pointer;">
+                      <div>
+                        <strong style="color: #dc2626;">Mit barn må ikke købe usunde produkter</strong>
+                        <div style="font-size: 12px; color: #666; margin-top: 2px;">Barnet kan stadig se produkterne, men de kan ikke købes.</div>
+                      </div>
+                    </label>
+
+                    <!-- Limit inputs container -->
+                    <div id="sugar-limits-container" style="display: flex; flex-direction: column; gap: 12px;">
+                      <div>
+                        <label for="sugar-max-per-day" style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #374151;">
+                          Maks antal usunde produkter pr. dag
+                        </label>
+                        <div style="position: relative;">
+                          <input type="number" id="sugar-max-per-day" max="10" placeholder="Ingen grænse"
+                                 style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                          <span id="sugar-max-per-day-label" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #9ca3af; pointer-events: none;"></span>
+                        </div>
+                        <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">Gælder samlet for alle usunde produkter. Tom = ingen grænse.</div>
+                      </div>
+
+                      <div>
+                        <label for="sugar-max-per-product" style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #374151;">
+                          Maks antal af hvert usundt produkt pr. dag
+                        </label>
+                        <div style="position: relative;">
+                          <input type="number" id="sugar-max-per-product" max="10" placeholder="Ingen grænse"
+                                 style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                          <span id="sugar-max-per-product-label" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #9ca3af; pointer-events: none;"></span>
+                        </div>
+                        <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">Gælder pr. produkt (fx sodavand eller slik). Tom = ingen grænse.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button type="button" id="save-sugar-policy-btn" style="margin-top: 16px; width: 100%; padding: 12px; background: linear-gradient(135deg, #8b5cf6, #a78bfa); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);">
+                    Gem sukkerpolitik
+                  </button>
+                  <div id="sugar-policy-feedback" style="margin-top: 8px; font-size: 12px; text-align: center;"></div>
+                </div>
+              </section>
+
               <!-- Skift kode-kort -->
               <section class="card" style="margin-top: 12px; background: rgba(255, 255, 255, 0.98); border-radius: 16px; padding: 10px 12px 11px; border: 1px solid rgba(220, 220, 220, 0.95); box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);">
                 <h2 class="section-title" style="font-size: 13px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 7px;">
@@ -2161,6 +2230,8 @@
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-allergy-settings";
       const GET_PRODUCTS_URL =
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-products-for-parent";
+      const SAVE_SUGAR_POLICY_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/save-parent-sugar-policy";
 
       const SUPABASE_URL = "https://jbknjgbpghrbrstqwoxj.supabase.co";
       const SUPABASE_ANON_KEY =
@@ -2468,6 +2539,16 @@
             loadProductLimits(currentInstitutionId, currentChildId);
           }
         }
+
+        // Sukkerpolitik (default false - institution må aktivere)
+        const sugarPolicySection = document.getElementById("sugar-policy-section");
+        const sugarPolicyEnabled = prefs && prefs.parent_portal_sugar_policy === true;
+        if (sugarPolicySection) {
+          sugarPolicySection.style.display = sugarPolicyEnabled ? "block" : "none";
+          if (sugarPolicyEnabled && currentChildId) {
+            loadSugarPolicy();
+          }
+        }
       }
 
       // ===== PRODUKTGRÆNSER FUNKTIONER =====
@@ -2741,6 +2822,152 @@
           if (saveBtn) saveBtn.disabled = false;
         }
       }
+
+      // ===== SUKKERPOLITIK FUNKTIONER =====
+      let currentSugarPolicy = null;
+
+      function loadSugarPolicy() {
+        const enabledCheckbox = document.getElementById("sugar-policy-enabled");
+        const blockCheckbox = document.getElementById("sugar-block-unhealthy");
+        const maxPerDayInput = document.getElementById("sugar-max-per-day");
+        const maxPerProductInput = document.getElementById("sugar-max-per-product");
+
+        if (!enabledCheckbox || !blockCheckbox || !maxPerDayInput || !maxPerProductInput) return;
+
+        // Indlæs fra get-parent-view response (gemt i currentSugarPolicy)
+        if (currentSugarPolicy) {
+          // enabled = true hvis feltet er sat, ellers default false
+          enabledCheckbox.checked = currentSugarPolicy.enabled === true;
+          blockCheckbox.checked = currentSugarPolicy.block_unhealthy === true;
+          // Vis tom for null/0 (= ingen grænse)
+          const maxDay = currentSugarPolicy.max_unhealthy_per_day;
+          const maxProduct = currentSugarPolicy.max_unhealthy_per_product_per_day;
+          maxPerDayInput.value = (maxDay != null && maxDay > 0) ? maxDay : "";
+          maxPerProductInput.value = (maxProduct != null && maxProduct > 0) ? maxProduct : "";
+        } else {
+          enabledCheckbox.checked = false;
+          blockCheckbox.checked = false;
+          maxPerDayInput.value = "";
+          maxPerProductInput.value = "";
+        }
+
+        updateSugarInputsState();
+      }
+
+      function updateSugarInputsState() {
+        const enabledCheckbox = document.getElementById("sugar-policy-enabled");
+        const controlsContainer = document.getElementById("sugar-policy-controls");
+        const blockCheckbox = document.getElementById("sugar-block-unhealthy");
+        const limitsContainer = document.getElementById("sugar-limits-container");
+        const maxPerDayInput = document.getElementById("sugar-max-per-day");
+        const maxPerProductInput = document.getElementById("sugar-max-per-product");
+
+        if (!enabledCheckbox || !controlsContainer) return;
+
+        // Vis/skjul controls baseret på enabled
+        const isEnabled = enabledCheckbox.checked;
+        controlsContainer.style.display = isEnabled ? "block" : "none";
+
+        // Hvis enabled, håndter block checkbox og limits
+        if (isEnabled && blockCheckbox && limitsContainer) {
+          if (blockCheckbox.checked) {
+            limitsContainer.style.opacity = "0.5";
+            if (maxPerDayInput) maxPerDayInput.disabled = true;
+            if (maxPerProductInput) maxPerProductInput.disabled = true;
+          } else {
+            limitsContainer.style.opacity = "1";
+            if (maxPerDayInput) maxPerDayInput.disabled = false;
+            if (maxPerProductInput) maxPerProductInput.disabled = false;
+          }
+        }
+      }
+
+      async function saveSugarPolicy() {
+        const enabledCheckbox = document.getElementById("sugar-policy-enabled");
+        const blockCheckbox = document.getElementById("sugar-block-unhealthy");
+        const maxPerDayInput = document.getElementById("sugar-max-per-day");
+        const maxPerProductInput = document.getElementById("sugar-max-per-product");
+        const feedback = document.getElementById("sugar-policy-feedback");
+        const saveBtn = document.getElementById("save-sugar-policy-btn");
+
+        if (!currentChildId || !currentParentPin) {
+          if (feedback) {
+            feedback.textContent = "Fejl: Mangler login-information.";
+            feedback.style.color = "#dc2626";
+          }
+          return;
+        }
+
+        const isEnabled = enabledCheckbox?.checked === true;
+
+        // Hvis deaktiveret, sæt alle begrænsninger til null/false
+        const payload = {
+          child_id: currentChildId,
+          parent_pin: currentParentPin,
+          enabled: isEnabled,
+          block_unhealthy: isEnabled ? (blockCheckbox?.checked === true) : false,
+          max_unhealthy_per_day: isEnabled && maxPerDayInput?.value ? parseInt(maxPerDayInput.value, 10) : null,
+          max_unhealthy_per_product_per_day: isEnabled && maxPerProductInput?.value ? parseInt(maxPerProductInput.value, 10) : null,
+        };
+
+        if (saveBtn) saveBtn.disabled = true;
+
+        try {
+          const res = await fetch(SAVE_SUGAR_POLICY_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify(payload),
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            if (feedback) {
+              feedback.textContent = "Sukkerpolitik gemt!";
+              feedback.style.color = "#16a34a";
+            }
+            // Opdater lokal state
+            currentSugarPolicy = {
+              enabled: payload.enabled,
+              block_unhealthy: payload.block_unhealthy,
+              max_unhealthy_per_day: payload.max_unhealthy_per_day,
+              max_unhealthy_per_product_per_day: payload.max_unhealthy_per_product_per_day,
+            };
+          } else {
+            if (feedback) {
+              feedback.textContent = data.error || "Kunne ikke gemme.";
+              feedback.style.color = "#dc2626";
+            }
+          }
+        } catch (e) {
+          console.error("[saveSugarPolicy] Error:", e);
+          if (feedback) {
+            feedback.textContent = "Netværksfejl. Prøv igen.";
+            feedback.style.color = "#dc2626";
+          }
+        } finally {
+          if (saveBtn) saveBtn.disabled = false;
+          setTimeout(() => { if (feedback) feedback.textContent = ""; }, 3000);
+        }
+      }
+
+      // Event listeners for sukkerpolitik
+      document.getElementById("sugar-policy-enabled")?.addEventListener("change", updateSugarInputsState);
+      document.getElementById("sugar-block-unhealthy")?.addEventListener("change", updateSugarInputsState);
+      document.getElementById("save-sugar-policy-btn")?.addEventListener("click", saveSugarPolicy);
+
+      // Ryd felt når værdi går til 0 eller under (vis "Ingen grænse" placeholder)
+      function handleSugarLimitInput(e) {
+        const val = parseInt(e.target.value, 10);
+        if (val <= 0 || isNaN(val)) {
+          e.target.value = "";
+        }
+      }
+      document.getElementById("sugar-max-per-day")?.addEventListener("input", handleSugarLimitInput);
+      document.getElementById("sugar-max-per-product")?.addEventListener("input", handleSugarLimitInput);
 
       async function loadInstitutionPreferences(institutionId) {
         if (!institutionId) return null;
@@ -3361,6 +3588,8 @@
 
       function displayResults(data) {
         currentChildId = data.child_id || null;
+        // Gem sukkerpolitik fra response
+        currentSugarPolicy = data.sugar_policy ?? null;
         // Hvis vi allerede har institutionspræferencer, så render betalingsmuligheder + funktioner
         if (currentInstitutionPrefs) {
           renderPaymentSection(currentInstitutionPrefs || {});

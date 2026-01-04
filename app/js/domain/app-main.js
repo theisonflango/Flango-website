@@ -2,7 +2,7 @@ import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '.
 import { initializeSoundSettings } from '../core/sound-manager.js';
 import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen } from '../ui/shell-and-theme.js';
 import { getCurrentTheme } from '../ui/theme-loader.js';
-import { configureHistoryModule, showTransactionsInSummary } from './history-and-reports.js';
+import { configureHistoryModule, showTransactionsInSummary, showOverviewInSummary, resetSharedHistoryControls } from './history-and-reports.js';
 import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js';
 import { setupLogoutFlow } from './logout-flow.js';
 import { getFinancialState, setCurrentCustomer, getCurrentCustomer, clearEvaluation } from './cafe-session-store.js';
@@ -16,6 +16,7 @@ import {
     preloadChildProductLimitSnapshot,
     applyProductLimitsToButtons,
 } from './products-and-cart.js';
+import { getChildSugarPolicySnapshot, getInstitutionSugarPolicy } from './purchase-limits.js';
 import { showPinModal } from '../ui/user-modals.js';
 import { setupAvatarPicker } from '../ui/avatar-picker.js';
 import { setupKeyboardShortcuts } from '../ui/keyboard-shortcuts.js';
@@ -66,6 +67,73 @@ export async function startApp() {
         console.log(`[app-main] setAllProducts called: ${next.length} products`);
     };
     let currentOrder = [];
+    let currentSugarData = null; // Sukkerpolitik data for valgt barn { policy, snapshot }
+    window.__flangoGetSugarData = () => currentSugarData;
+
+    // Funktion til at genindlæse sukkerpolitik fra databasen og opdatere produkt-låsning
+    window.__flangoRefreshSugarPolicy = async () => {
+        const selectedUser = getCurrentCustomer();
+        if (!selectedUser) {
+            console.log('[__flangoRefreshSugarPolicy] Ingen bruger valgt');
+            return false;
+        }
+
+        console.log('[__flangoRefreshSugarPolicy] Genindlæser sukkerpolitik for:', selectedUser.id);
+
+        try {
+            // Hent både forældre- og institutions-sukkerpolitik parallelt
+            const [parentSugarData, institutionSugarData] = await Promise.all([
+                getChildSugarPolicySnapshot(selectedUser.id),
+                getInstitutionSugarPolicy(selectedUser.institution_id),
+            ]);
+
+            console.log('[__flangoRefreshSugarPolicy] parentSugarData:', parentSugarData);
+            console.log('[__flangoRefreshSugarPolicy] institutionSugarData:', institutionSugarData);
+
+            // Hent snapshot hvis institutions-policy er aktiv men forældre-policy ikke er
+            let snapshot = parentSugarData.snapshot;
+            if (!parentSugarData.policy && institutionSugarData.policy && !snapshot) {
+                try {
+                    const { data: checkResult } = await supabaseClient.functions.invoke('check-sugar-policy', {
+                        body: {
+                            user_id: selectedUser.id,
+                            policy: {
+                                blockUnhealthy: false,
+                                maxUnhealthyPerDay: institutionSugarData.policy.maxUnhealthyPerDay,
+                                maxUnhealthyPerProductPerDay: institutionSugarData.policy.maxUnhealthyPerProductPerDay,
+                            },
+                        },
+                    });
+                    snapshot = {
+                        unhealthyTotal: checkResult?.unhealthyTotal ?? 0,
+                        unhealthyPerProduct: checkResult?.unhealthyPerProduct ?? {},
+                    };
+                } catch (err) {
+                    console.error('[__flangoRefreshSugarPolicy] Fejl ved hentning af snapshot:', err);
+                }
+            }
+
+            // Opdater currentSugarData
+            currentSugarData = {
+                policy: parentSugarData.policy || institutionSugarData.policy,
+                snapshot: snapshot,
+                parentPolicy: parentSugarData.policy,
+                institutionPolicy: institutionSugarData.policy,
+            };
+            console.log('[__flangoRefreshSugarPolicy] currentSugarData opdateret:', currentSugarData);
+
+            // Opdater produkt-låsning
+            const productsEl = document.getElementById('products');
+            await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, selectedUser.id, currentSugarData);
+
+            console.log('[__flangoRefreshSugarPolicy] Produkt-låsning opdateret');
+            return true;
+        } catch (err) {
+            console.error('[__flangoRefreshSugarPolicy] Fejl:', err);
+            return false;
+        }
+    };
+
     let currentSortKey = 'name';
     let balanceSortOrder = 'desc';
     // Statistik for den nuværende session
@@ -136,25 +204,49 @@ export async function startApp() {
     const addProductBtn = document.getElementById('add-btn-modal');
     const editUserDetailModal = document.getElementById('edit-user-detail-modal');
     const assignBadgeModal = document.getElementById('assign-badge-modal');
+    // DEBOUNCE: Undgå multiple refreshes ved hurtige ændringer
+    let refreshDebounceTimer = null;
+    let refreshPending = null;
+    const REFRESH_DEBOUNCE_MS = 50; // 50ms debounce window
+
     const refreshProductLocks = async (options = {}) => {
         const productsEl = document.getElementById('products');
         const selectedUser = getCurrentCustomer();
         const childId = selectedUser?.id || null;
 
-        // VIGTIGT: Opdater quantity badges først så tallene er korrekte
+        // VIGTIGT: Opdater quantity badges først så tallene er korrekte (instant, ingen debounce)
         updateProductQuantityBadges();
 
-        if (options.skipSnapshotRefresh) {
-            // Skip full snapshot refresh (used for remove operations)
-            // Just update UI classes without refetching snapshot
-            if (selectedUser) {
-                await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, childId);
-            }
-            return;
+        // DEBOUNCE: Hvis der allerede er en pending refresh, afvent den
+        if (refreshDebounceTimer) {
+            clearTimeout(refreshDebounceTimer);
         }
 
-        // Full refresh path (for add operations)
-        await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, childId);
+        // Return existing pending promise if we're already waiting
+        if (refreshPending) {
+            return refreshPending;
+        }
+
+        refreshPending = new Promise((resolve) => {
+            refreshDebounceTimer = setTimeout(async () => {
+                refreshDebounceTimer = null;
+
+                if (options.skipSnapshotRefresh) {
+                    // Skip full snapshot refresh (used for remove operations)
+                    if (selectedUser) {
+                        await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, childId, currentSugarData);
+                    }
+                } else {
+                    // Full refresh path (for add operations)
+                    await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, childId, currentSugarData);
+                }
+
+                refreshPending = null;
+                resolve();
+            }, REFRESH_DEBOUNCE_MS);
+        });
+
+        return refreshPending;
     };
     const addToOrderWithLocks = (product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, optionsArg = {}) =>
         addToOrder(product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, { ...optionsArg, onOrderChanged: refreshProductLocks });
@@ -443,7 +535,7 @@ export async function startApp() {
         getAllProducts: () => allProducts,
         renderProductsInModal,
         openSoundSettingsModal,
-        showSalesHistory: () => openSummaryModal(getInstitutionId(), 'transactions'),
+        showSalesHistory: () => openSummaryModal(getInstitutionId()),
         settingsMinFlangoStatusBtn,
         showAlert,
     });
@@ -452,9 +544,15 @@ export async function startApp() {
     const institutionId = getInstitutionId();
     setupSummaryModal(institutionId);
 
-    // Setup global function for loading transactions in summary modal
+    // Setup global functions for loading views in summary modal
     window.__flangoLoadTransactionsInSummary = () => {
         showTransactionsInSummary();
+    };
+    window.__flangoLoadOverviewInSummary = () => {
+        showOverviewInSummary();
+    };
+    window.__flangoResetSharedHistoryControls = () => {
+        resetSharedHistoryControls();
     };
 
     // Setup close button for summary modal
@@ -520,9 +618,10 @@ export async function startApp() {
             return;
         }
 
-        // Ryd den gamle ordre FØR vi sætter en ny bruger.
-        // Dette sikrer, at `applyProductLimitsToButtons` ikke bruger en forældet kurv.
+        // Ryd den gamle ordre og sukkerpolitik FØR vi sætter en ny bruger.
+        // Dette sikrer, at `applyProductLimitsToButtons` ikke bruger forældede data.
         currentOrder = [];
+        currentSugarData = null;
         setOrder([]); // KRITISK: Sync order-store module state så getOrderTotal() returnerer 0
         clearEvaluation(); // Ryd evaluation cache så "Ny Saldo" vises korrekt
         renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
@@ -532,8 +631,53 @@ export async function startApp() {
 
         setCurrentCustomer(selectedUser);
 
-        // Preload dagens købs-snapshot og VENT på, at låsene er anvendt.
-        await preloadChildProductLimitSnapshot(selectedUser.id);
+        // Preload dagens købs-snapshot og sukkerpolitik parallelt (både forældre og institution)
+        console.log('[selectUser] Henter sukkerpolitik for barn:', selectedUser.id, 'institution:', selectedUser.institution_id);
+        const [_, parentSugarData, institutionSugarData] = await Promise.all([
+            preloadChildProductLimitSnapshot(selectedUser.id),
+            getChildSugarPolicySnapshot(selectedUser.id),
+            getInstitutionSugarPolicy(selectedUser.institution_id),
+        ]);
+
+        // Hvis vi har institutions-policy men ikke forældre-policy, hent snapshot separat
+        let snapshot = parentSugarData.snapshot;
+        if (!parentSugarData.policy && institutionSugarData.policy && !snapshot) {
+            console.log('[selectUser] Henter snapshot for institutions-sukkerpolitik...');
+            try {
+                const { data: checkResult } = await supabaseClient.functions.invoke('check-sugar-policy', {
+                    body: {
+                        user_id: selectedUser.id,
+                        policy: {
+                            blockUnhealthy: false,
+                            maxUnhealthyPerDay: institutionSugarData.policy.maxUnhealthyPerDay,
+                            maxUnhealthyPerProductPerDay: institutionSugarData.policy.maxUnhealthyPerProductPerDay,
+                        },
+                    },
+                });
+                snapshot = {
+                    unhealthyTotal: checkResult?.unhealthyTotal ?? 0,
+                    unhealthyPerProduct: checkResult?.unhealthyPerProduct ?? {},
+                };
+                console.log('[selectUser] Institutions-snapshot hentet:', snapshot);
+            } catch (err) {
+                console.error('[selectUser] Fejl ved hentning af institutions-snapshot:', err);
+            }
+        }
+
+        // Kombiner forældre- og institutions-sukkerpolitik
+        // Forældre-policy har højere prioritet (mere restriktiv)
+        currentSugarData = {
+            policy: parentSugarData.policy || institutionSugarData.policy,
+            snapshot: snapshot,
+            parentPolicy: parentSugarData.policy,
+            institutionPolicy: institutionSugarData.policy,
+        };
+        console.log('[selectUser] currentSugarData sat til:', currentSugarData);
+
+        // KRITISK: Anvend produktlåsning (inkl. sukkerpolitik) EFTER vi har hentet data
+        console.log('[selectUser] Kalder refreshProductLocks...');
+        await refreshProductLocks();
+        console.log('[selectUser] refreshProductLocks færdig');
 
         // Opdater quantity badges efter produkterne er genrenderet
         updateProductQuantityBadges();

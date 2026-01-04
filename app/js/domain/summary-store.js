@@ -8,6 +8,7 @@ let currentSummaryState = {
         to: null    // Will be set to default on init
     },
     includeTestUsers: false, // Whether to include test users in summary
+    onlyTestUsers: false, // Whether to show ONLY test users (exclusive with includeTestUsers)
     data: null,
     loading: false,
     error: null
@@ -63,6 +64,14 @@ export function setSummaryDateRange(from, to) {
  */
 export function setIncludeTestUsers(include) {
     currentSummaryState.includeTestUsers = !!include;
+}
+
+/**
+ * Set whether to show ONLY test users
+ * @param {boolean} only
+ */
+export function setOnlyTestUsers(only) {
+    currentSummaryState.onlyTestUsers = !!only;
 }
 
 /**

@@ -1126,7 +1126,7 @@
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--primary-color) rgba(168, 85, 247, 0.2);
-    z-index: 200;
+    z-index: 999999 !important; /* Højere end alle modaler inkl. edit-sale-modal (99990) */
 }
 
 #custom-alert-modal::-webkit-scrollbar {

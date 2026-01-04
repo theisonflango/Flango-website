@@ -55,10 +55,17 @@ export function showCustomAlert(title, body, config = 'alert') {
         showCancel = false,
         confirmKey = 'Enter',
         cancelKey = 'Escape',
-        focus = 'ok'
+        focus = 'ok',
+        zIndex = null
     } = options;
 
     if (!customAlertModal || !customAlertOk) return Promise.resolve(false);
+
+    // Gem original z-index og sæt evt. custom z-index
+    const originalZIndex = customAlertModal.style.zIndex;
+    if (zIndex !== null) {
+        customAlertModal.style.zIndex = String(zIndex);
+    }
 
     customAlertTitle.textContent = title;
     customAlertBody.innerHTML = body;
@@ -84,6 +91,10 @@ export function showCustomAlert(title, body, config = 'alert') {
         const cleanup = (result) => {
             customAlertModal.classList.remove('dropdown-active');
             customAlertModal.style.display = 'none';
+            // Gendan original z-index
+            if (zIndex !== null) {
+                customAlertModal.style.zIndex = originalZIndex || '';
+            }
             customAlertOk.onclick = null;
             if (customAlertCancel) customAlertCancel.onclick = null;
             document.removeEventListener('keydown', handleKeydown);

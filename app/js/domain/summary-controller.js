@@ -8,6 +8,7 @@ import {
     getSummaryState,
     initSummaryState,
     setIncludeTestUsers,
+    setOnlyTestUsers,
     setEmployeeRole
 } from './summary-store.js';
 
@@ -46,22 +47,40 @@ export function setupSummaryModal(currentInstitutionId) {
                 roleSelector.style.display = viewMode === 'employee' ? 'flex' : 'none';
             }
 
-            // Switch between transactions view and summary table views
+            // Switch between overview, transactions and summary table views
+            const overviewContainer = document.getElementById('overview-view-container');
             const transactionsContainer = document.getElementById('transactions-view-container');
             const summaryTableContainer = document.getElementById('summary-table-view-container');
+            const sharedControls = document.getElementById('shared-history-controls');
 
-            if (viewMode === 'transactions') {
-                // Show transactions view, hide summary table
+            // Skjul alle containers først
+            if (overviewContainer) overviewContainer.style.display = 'none';
+            if (transactionsContainer) transactionsContainer.style.display = 'none';
+            if (summaryTableContainer) summaryTableContainer.style.display = 'none';
+
+            // Vis/skjul delte kontroller baseret på view mode
+            if (sharedControls) {
+                sharedControls.style.display = (viewMode === 'overview' || viewMode === 'transactions') ? 'block' : 'none';
+            }
+
+            if (viewMode === 'overview') {
+                // Vis oversigt-view (kun opsummering og diagram)
+                if (overviewContainer) overviewContainer.style.display = 'block';
+
+                // Load overview data
+                if (typeof window.__flangoLoadOverviewInSummary === 'function') {
+                    window.__flangoLoadOverviewInSummary();
+                }
+            } else if (viewMode === 'transactions') {
+                // Vis transaktioner-view (kun posteringsliste)
                 if (transactionsContainer) transactionsContainer.style.display = 'block';
-                if (summaryTableContainer) summaryTableContainer.style.display = 'none';
 
                 // Load transaction history
                 if (typeof window.__flangoLoadTransactionsInSummary === 'function') {
                     window.__flangoLoadTransactionsInSummary();
                 }
             } else {
-                // Show summary table, hide transactions view
-                if (transactionsContainer) transactionsContainer.style.display = 'none';
+                // Vis summary table (dag, uge, måned, år, personale)
                 if (summaryTableContainer) summaryTableContainer.style.display = 'block';
 
                 // Load summary data
@@ -117,9 +136,32 @@ export function setupSummaryModal(currentInstitutionId) {
     });
 
     // Test users toggle
+    const onlyTestUsersBtn = document.getElementById('summary-only-test-users-btn');
+
     if (testUsersCheckbox) {
         testUsersCheckbox.addEventListener('change', async () => {
+            // If "include test users" is checked, remove "only" mode
+            if (onlyTestUsersBtn) {
+                onlyTestUsersBtn.classList.remove('active');
+                onlyTestUsersBtn.textContent = 'Vis KUN testbrugere';
+            }
+            setOnlyTestUsers(false);
             setIncludeTestUsers(testUsersCheckbox.checked);
+            await fetchSummaryData(institutionId);
+            renderSummaryTable(tableContainer);
+        });
+    }
+
+    if (onlyTestUsersBtn) {
+        onlyTestUsersBtn.addEventListener('click', async () => {
+            const isActive = onlyTestUsersBtn.classList.toggle('active');
+            onlyTestUsersBtn.textContent = isActive ? '✓ Kun testbrugere' : 'Vis KUN testbrugere';
+            // If "only test users" is active, uncheck the include checkbox
+            if (isActive && testUsersCheckbox) {
+                testUsersCheckbox.checked = false;
+            }
+            setIncludeTestUsers(isActive); // Need to include them first before filtering
+            setOnlyTestUsers(isActive);
             await fetchSummaryData(institutionId);
             renderSummaryTable(tableContainer);
         });
@@ -133,7 +175,7 @@ export function setupSummaryModal(currentInstitutionId) {
  * @param {string} currentInstitutionId - Current institution UUID
  * @param {string} initialView - Initial view to show ('transactions', 'day', 'week', etc.) - defaults to 'transactions'
  */
-export async function openSummaryModal(currentInstitutionId, initialView = 'transactions') {
+export async function openSummaryModal(currentInstitutionId, initialView = 'overview') {
     institutionId = currentInstitutionId;
 
     if (!institutionId) {
@@ -164,10 +206,16 @@ export async function openSummaryModal(currentInstitutionId, initialView = 'tran
     toDateInput.value = defaultRange.to;
     setSummaryDateRange(defaultRange.from, defaultRange.to);
 
-    // Set initial checkbox state (unchecked by default)
+    // Set initial checkbox/button states (unchecked/inactive by default)
+    const onlyTestUsersBtn = document.getElementById('summary-only-test-users-btn');
     if (testUsersCheckbox) {
         testUsersCheckbox.checked = false;
         setIncludeTestUsers(false);
+    }
+    if (onlyTestUsersBtn) {
+        onlyTestUsersBtn.classList.remove('active');
+        onlyTestUsersBtn.textContent = 'Vis KUN testbrugere';
+        setOnlyTestUsers(false);
     }
 
     // Set default view mode button as active
@@ -181,19 +229,39 @@ export async function openSummaryModal(currentInstitutionId, initialView = 'tran
     // Show modal
     modal.style.display = 'block';
 
+    // Hent alle view containers
+    const overviewContainer = document.getElementById('overview-view-container');
+    const sharedControls = document.getElementById('shared-history-controls');
+
+    // Skjul alle containers først
+    if (overviewContainer) overviewContainer.style.display = 'none';
+    if (transactionsContainer) transactionsContainer.style.display = 'none';
+    if (summaryTableContainer) summaryTableContainer.style.display = 'none';
+
+    // Vis/skjul delte kontroller baseret på initial view
+    if (sharedControls) {
+        sharedControls.style.display = (initialView === 'overview' || initialView === 'transactions') ? 'block' : 'none';
+    }
+
     // Show correct view container based on initialView
-    if (initialView === 'transactions') {
-        // Show transactions view
+    if (initialView === 'overview') {
+        // Vis oversigt-view (kun opsummering og diagram)
+        if (overviewContainer) overviewContainer.style.display = 'block';
+
+        // Load overview data
+        if (typeof window.__flangoLoadOverviewInSummary === 'function') {
+            window.__flangoLoadOverviewInSummary();
+        }
+    } else if (initialView === 'transactions') {
+        // Vis transaktioner-view (kun posteringsliste)
         if (transactionsContainer) transactionsContainer.style.display = 'block';
-        if (summaryTableContainer) summaryTableContainer.style.display = 'none';
 
         // Load transaction history
         if (typeof window.__flangoLoadTransactionsInSummary === 'function') {
             window.__flangoLoadTransactionsInSummary();
         }
     } else {
-        // Show summary table view
-        if (transactionsContainer) transactionsContainer.style.display = 'none';
+        // Vis summary table view (dag, uge, måned, år, personale)
         if (summaryTableContainer) summaryTableContainer.style.display = 'block';
 
         // Set view mode in state
@@ -214,6 +282,11 @@ export function closeSummaryModal() {
     const modal = document.getElementById('summary-modal');
     if (modal) {
         modal.style.display = 'none';
+    }
+
+    // Reset shared history controls for next opening
+    if (typeof window.__flangoResetSharedHistoryControls === 'function') {
+        window.__flangoResetSharedHistoryControls();
     }
 }
 

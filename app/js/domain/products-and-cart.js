@@ -1,5 +1,5 @@
 // Produkt-helpers: ikon-konstanter og helper-funktioner
-import { getChildProductLimitSnapshot, canChildPurchase, invalidateTodaysSalesCache, getRefillEligibility } from './purchase-limits.js';
+import { getChildProductLimitSnapshot, canChildPurchase, invalidateTodaysSalesCache, getRefillEligibility, invalidateLimitsCache } from './purchase-limits.js';
 import { getCurrentCustomer } from './cafe-session-store.js';
 import { MAX_ITEMS_PER_ORDER } from '../core/constants.js';
 
@@ -254,6 +254,7 @@ export function invalidateChildLimitSnapshot() {
     currentChildLimitSnapshot = null;
     currentChildLimitSnapshotChildId = null;
     invalidateTodaysSalesCache(); // Also invalidate the sales cache
+    invalidateLimitsCache(); // Also invalidate the limits memory cache
 }
 
 // Bruges til at sikre, at kun seneste apply-call opdaterer UI (undgår race på tværs af async fetches).
@@ -263,21 +264,24 @@ export async function preloadChildProductLimitSnapshot(childId) {
     return await ensureChildLimitSnapshot(childId);
 }
 
-export async function applyProductLimitsToButtons(allProducts, productsContainer, currentOrder = [], childIdOverride = null) {
+export async function applyProductLimitsToButtons(allProducts, productsContainer, currentOrder = [], childIdOverride = null, sugarData = null) {
     if (!productsContainer) return;
     const requestId = ++latestApplyRequestId;
     const customer = typeof getCurrentCustomer === 'function' ? getCurrentCustomer() : null;
     const childId = childIdOverride || customer?.id || null;
     const institutionId = customer?.institution_id || null;
-    
+
     if (!childId) {
         // Hvis ingen kunde er valgt, skal alle låse fjernes.
-        productsContainer.querySelectorAll('.product-btn').forEach(btn => btn.classList.remove('product-limit-reached'));
+        productsContainer.querySelectorAll('.product-btn').forEach(btn => {
+            btn.classList.remove('product-limit-reached');
+            delete btn.dataset.sugarLocked;
+        });
         return;
     }
-    // VIGTIGT: Tving genhentning af et helt friskt snapshot for den specifikke bruger for at undgå race conditions.
-    // Dette sikrer, at vi ikke bruger en forældet cache fra et tidligere brugervalg.
-    const snapshot = await getChildProductLimitSnapshot(childId, institutionId);
+    // OPTIMERING: Brug cachet snapshot hvis tilgængeligt (ensureChildLimitSnapshot håndterer childId-skift)
+    // Dette reducerer redundante DB-kald når vi allerede har hentet snapshot for denne bruger.
+    const snapshot = await ensureChildLimitSnapshot(childId, institutionId);
     // En nyere apply-start betyder, at denne respons er forældet og ikke må overskrive UI.
     if (requestId !== latestApplyRequestId) return;
     const byProductId = snapshot?.byProductId || {};
@@ -317,12 +321,65 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
         const computedIsAtLimit = (effectiveMaxPerDay !== null && effectiveMaxPerDay !== undefined)
             ? (effectiveMaxPerDay === 0 || todaysQty + qtyInCart >= effectiveMaxPerDay)
             : false;
-        const isAtLimit = snapshotEntry?.is_at_limit ?? computedIsAtLimit;
+        let isAtLimit = snapshotEntry?.is_at_limit ?? computedIsAtLimit;
+        let sugarLocked = false;
+
+        // SUKKERPOLITIK: Tjek om produktet er usundt og låst af forældre-sukkerpolitik
+        if (!isAtLimit && sugarData?.policy) {
+            const product = productMap.get(pid);
+            console.log(`[applyProductLimitsToButtons] Sugar check for ${pid}: product.unhealthy=${product?.unhealthy}, policy=`, sugarData.policy, 'snapshot=', sugarData.snapshot);
+            if (product?.unhealthy === true) {
+                const { policy, snapshot: sugarSnapshot } = sugarData;
+
+                // KURV-TÆLLING: Tæl usunde produkter i kurven (client-side, ingen API-kald)
+                let unhealthyInCartTotal = 0;
+                let thisProductInCart = 0;
+                for (const line of (currentOrder || [])) {
+                    const lineId = line?.product_id || line?.productId || line?.id;
+                    if (lineId == null) continue;
+                    const lineProduct = productMap.get(String(lineId));
+                    if (lineProduct?.unhealthy === true) {
+                        const qty = typeof line?.quantity === 'number' && Number.isFinite(line.quantity) ? line.quantity : 1;
+                        unhealthyInCartTotal += qty;
+                        if (String(lineId) === pid) {
+                            thisProductInCart += qty;
+                        }
+                    }
+                }
+
+                // Kombinér allerede-købte (snapshot) + kurv-indhold
+                const unhealthyTotal = (sugarSnapshot?.unhealthyTotal ?? 0) + unhealthyInCartTotal;
+                const perProduct = (sugarSnapshot?.unhealthyPerProduct?.[pid] ?? 0) + thisProductInCart;
+
+                console.log(`[applyProductLimitsToButtons] ${pid} is unhealthy. Purchased: ${sugarSnapshot?.unhealthyTotal ?? 0}, InCart: ${unhealthyInCartTotal}, Total: ${unhealthyTotal}, perProduct: ${perProduct}, maxPerDay: ${policy.maxUnhealthyPerDay}, maxPerProduct: ${policy.maxUnhealthyPerProductPerDay}`);
+
+                if (policy.blockUnhealthy === true) {
+                    console.log(`[applyProductLimitsToButtons] ${pid} BLOCKED: blockUnhealthy=true`);
+                    isAtLimit = true;
+                    sugarLocked = true;
+                } else if (policy.maxUnhealthyPerDay != null && policy.maxUnhealthyPerDay > 0 && unhealthyTotal >= policy.maxUnhealthyPerDay) {
+                    // Kun blokér hvis grænsen er > 0 (0 eller null = ingen grænse)
+                    console.log(`[applyProductLimitsToButtons] ${pid} BLOCKED: ${unhealthyTotal} >= ${policy.maxUnhealthyPerDay}`);
+                    isAtLimit = true;
+                    sugarLocked = true;
+                } else if (policy.maxUnhealthyPerProductPerDay != null && policy.maxUnhealthyPerProductPerDay > 0 && perProduct >= policy.maxUnhealthyPerProductPerDay) {
+                    // Kun blokér hvis grænsen er > 0 (0 eller null = ingen grænse)
+                    console.log(`[applyProductLimitsToButtons] ${pid} BLOCKED: perProduct ${perProduct} >= ${policy.maxUnhealthyPerProductPerDay}`);
+                    isAtLimit = true;
+                    sugarLocked = true;
+                } else {
+                    console.log(`[applyProductLimitsToButtons] ${pid} allowed (under limit)`);
+                }
+            }
+        } else if (!isAtLimit) {
+            console.log(`[applyProductLimitsToButtons] ${pid}: No sugar policy or already at limit`);
+        }
 
         buttonData.push({
             btn,
             pid,
             isAtLimit,
+            sugarLocked,
             needsFallbackCheck: !isAtLimit && childId && productMap.has(pid)
         });
     }
@@ -358,9 +415,16 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
         if (data.isAtLimit) {
             data.btn.classList.add('product-limit-reached');
             data.btn.dataset.limitState = 'reached';
+            // Marker om låsning skyldes sukkerpolitik (til evt. UI feedback)
+            if (data.sugarLocked) {
+                data.btn.dataset.sugarLocked = 'true';
+            } else {
+                delete data.btn.dataset.sugarLocked;
+            }
         } else {
             data.btn.classList.remove('product-limit-reached');
             data.btn.dataset.limitState = 'ok';
+            delete data.btn.dataset.sugarLocked;
         }
     }
 }

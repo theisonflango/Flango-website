@@ -11,6 +11,7 @@ import {
     isThemePackTheme,
     ALL_VALID_THEMES
 } from './theme-loader.js';
+import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 const sugarPolicyState = {
@@ -596,6 +597,58 @@ async function openSugarPolicyModal() {
         };
     }
 
+    // Anvend ændringer knap - genindlæser sukkerpolitik for valgt bruger
+    const applyBtn = document.getElementById('apply-sugar-policy-btn');
+    if (applyBtn) {
+        const newApplyBtn = applyBtn.cloneNode(true);
+        applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+        newApplyBtn.onclick = async () => {
+            newApplyBtn.disabled = true;
+            newApplyBtn.textContent = 'Anvender...';
+
+            try {
+                if (typeof window.__flangoRefreshSugarPolicy === 'function') {
+                    const success = await window.__flangoRefreshSugarPolicy();
+                    if (success) {
+                        newApplyBtn.textContent = '✓ Anvendt!';
+                        newApplyBtn.style.background = '#2e7d32';
+                        setTimeout(() => {
+                            newApplyBtn.textContent = 'Anvend ændringer';
+                            newApplyBtn.style.background = '#4CAF50';
+                            newApplyBtn.disabled = false;
+                        }, 2000);
+                    } else {
+                        newApplyBtn.textContent = 'Ingen bruger valgt';
+                        newApplyBtn.style.background = '#ff9800';
+                        setTimeout(() => {
+                            newApplyBtn.textContent = 'Anvend ændringer';
+                            newApplyBtn.style.background = '#4CAF50';
+                            newApplyBtn.disabled = false;
+                        }, 2000);
+                    }
+                } else {
+                    console.warn('[sugar-policy] __flangoRefreshSugarPolicy ikke tilgængelig');
+                    newApplyBtn.textContent = 'Fejl';
+                    newApplyBtn.style.background = '#f44336';
+                    setTimeout(() => {
+                        newApplyBtn.textContent = 'Anvend ændringer';
+                        newApplyBtn.style.background = '#4CAF50';
+                        newApplyBtn.disabled = false;
+                    }, 2000);
+                }
+            } catch (err) {
+                console.error('[sugar-policy] Fejl ved anvendelse:', err);
+                newApplyBtn.textContent = 'Fejl';
+                newApplyBtn.style.background = '#f44336';
+                setTimeout(() => {
+                    newApplyBtn.textContent = 'Anvend ændringer';
+                    newApplyBtn.style.background = '#4CAF50';
+                    newApplyBtn.disabled = false;
+                }, 2000);
+            }
+        };
+    }
+
     renderProductRulesTable();
     modal.style.display = 'flex';
 }
@@ -855,11 +908,56 @@ async function openInstitutionPreferences() {
         window.__flangoOpenAdminUserManager?.('admins');
     });
 
+    // MobilePay Import knap
+    const mobilePayImportBtn = document.createElement('button');
+    mobilePayImportBtn.className = 'settings-item-btn';
+    mobilePayImportBtn.innerHTML = `<strong>MobilePay CSV Import</strong><div style="font-size: 12px; margin-top: 2px;">Importér indbetalinger fra MobilePay CSV-eksport og sæt dem på børnenes saldo.</div>`;
+    mobilePayImportBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openMobilePayImportModal();
+    });
+
     contentEl.appendChild(sugarPolicyBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(parentPortalBtn);
     contentEl.appendChild(editAdminsBtn);
+    contentEl.appendChild(mobilePayImportBtn);
     contentEl.appendChild(updatesBtn);
+    backdrop.style.display = 'flex';
+}
+
+/**
+ * Åbner MobilePay CSV Import modal
+ */
+function openMobilePayImportModal() {
+    // Inject styles hvis ikke allerede gjort
+    injectMobilePayStyles();
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) {
+        console.error('[mobilepay-import] No institution ID found');
+        return;
+    }
+
+    // Brug settings modal til at vise import UI
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    titleEl.textContent = 'MobilePay CSV Import';
+    contentEl.innerHTML = '';
+
+    // Opret container til import controller
+    const importContainer = document.createElement('div');
+    importContainer.id = 'mobilepay-import-container';
+    importContainer.style.cssText = 'min-height: 400px; max-height: 70vh; overflow-y: auto;';
+    contentEl.appendChild(importContainer);
+
+    // Initialiser import controller
+    initMobilePayImport('mobilepay-import-container', institutionId);
+
     backdrop.style.display = 'flex';
 }
 
@@ -881,6 +979,7 @@ async function openParentPortalSettingsModal() {
             parent_portal_spending_limit,
             parent_portal_allergens,
             parent_portal_product_limit,
+            parent_portal_sugar_policy,
             topup_cash_enabled,
             topup_qr_enabled,
             topup_portal_enabled,
@@ -898,6 +997,7 @@ async function openParentPortalSettingsModal() {
     const spendingLimit = document.getElementById('parent-portal-spending-limit');
     const allergens = document.getElementById('parent-portal-allergens');
     const productLimit = document.getElementById('parent-portal-product-limit');
+    const sugarPolicy = document.getElementById('parent-portal-sugar-policy');
     const saveBtn = document.getElementById('save-parent-portal-settings-btn');
     const codesBtn = document.getElementById('parent-portal-codes-btn-inside');
 
@@ -916,6 +1016,7 @@ async function openParentPortalSettingsModal() {
         spendingLimit.checked = data.parent_portal_spending_limit !== false;
         allergens.checked = data.parent_portal_allergens !== false;
         productLimit.checked = data.parent_portal_product_limit === true; // Default to false
+        if (sugarPolicy) sugarPolicy.checked = data.parent_portal_sugar_policy === true; // Default false
 
         // Topup settings (default to false - institution must explicitly enable)
         topupCash.checked = data.topup_cash_enabled === true;
@@ -970,12 +1071,13 @@ async function openParentPortalSettingsModal() {
     saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
 
     newSaveBtn.addEventListener('click', async () => {
-        // Core parent portal settings (4 implemented features)
+        // Core parent portal settings (4 implemented features + sugar policy)
         const coreUpdates = {
             parent_portal_email_notifications: emailNotifications.checked,
             parent_portal_spending_limit: spendingLimit.checked,
             parent_portal_allergens: allergens.checked,
-            parent_portal_product_limit: productLimit.checked
+            parent_portal_product_limit: productLimit.checked,
+            parent_portal_sugar_policy: sugarPolicy ? sugarPolicy.checked : false
         };
 
         // Topup/payment method settings (may not exist in older databases)

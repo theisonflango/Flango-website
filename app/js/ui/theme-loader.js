@@ -21,7 +21,7 @@ const MOBILE_CSS_FILE = 'mobile.css';
 const THEME_PACK_THEMES = ['flango-unstoppable'];
 
 // All valid themes
-const ALL_VALID_THEMES = ['default', 'pastel-pop', 'pos-pro', 'flango-unstoppable'];
+const ALL_VALID_THEMES = ['flango-unstoppable'];
 
 /**
  * Check if a theme uses a theme-pack (complete CSS replacement)
@@ -120,7 +120,7 @@ function loadThemePack(themeName) {
  */
 export function initThemeLoader() {
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-    const themeName = ALL_VALID_THEMES.includes(savedTheme) ? savedTheme : 'default';
+    const themeName = ALL_VALID_THEMES.includes(savedTheme) ? savedTheme : 'flango-unstoppable';
 
     // Set data-theme attribute
     document.body.dataset.theme = themeName;
@@ -136,7 +136,7 @@ export function initThemeLoader() {
  */
 export function switchTheme(themeName) {
     if (!ALL_VALID_THEMES.includes(themeName)) {
-        themeName = 'default';
+        themeName = 'flango-unstoppable';
     }
 
     // Save to localStorage
@@ -162,7 +162,7 @@ export function switchTheme(themeName) {
  * Get current theme name
  */
 export function getCurrentTheme() {
-    return document.body.dataset.theme || 'default';
+    return document.body.dataset.theme || 'flango-unstoppable';
 }
 
 /**

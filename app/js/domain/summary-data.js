@@ -14,7 +14,7 @@ import {
  */
 export async function fetchSummaryData(institutionId) {
     const state = getSummaryState();
-    const { viewMode, dateRange, includeTestUsers, employeeRole } = state;
+    const { viewMode, dateRange, includeTestUsers, onlyTestUsers, employeeRole } = state;
 
     if (!institutionId) {
         console.error('[summary-data] No institution ID provided');
@@ -54,13 +54,14 @@ export async function fetchSummaryData(institutionId) {
                 throw new Error(`Unknown view mode: ${viewMode}`);
         }
 
-        console.log(`[summary-data] Fetching ${viewMode} data from ${dateRange.from} to ${dateRange.to} (includeTestUsers: ${includeTestUsers}${viewMode === 'employee' ? `, employeeRole: ${employeeRole}` : ''})`);
+        console.log(`[summary-data] Fetching ${viewMode} data from ${dateRange.from} to ${dateRange.to} (includeTestUsers: ${includeTestUsers}, onlyTestUsers: ${onlyTestUsers}${viewMode === 'employee' ? `, employeeRole: ${employeeRole}` : ''})`);
 
         const rpcParams = {
             p_institution_id: institutionId,
             p_from_date: dateRange.from,
             p_to_date: dateRange.to,
-            p_include_test_users: includeTestUsers
+            p_include_test_users: includeTestUsers || onlyTestUsers,  // Include test users if either flag is set
+            p_only_test_users: onlyTestUsers  // Filter to ONLY test users
         };
 
         // Add employee role parameter for employee view

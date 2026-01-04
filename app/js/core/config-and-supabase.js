@@ -1,4 +1,5 @@
 // Ansvar: Supabase-client, institutionsvalg, login, profiler, generel config.
+import { instrumentSupabase } from './db-instrumentation.js';
 
 // App version - skal matche version.json efter deploy
 export const FLANGO_VERSION = '3.0.1';
@@ -9,7 +10,10 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 export const INSTITUTION_ID_KEY = 'flango_institution_id';
 export const INSTITUTION_NAME_KEY = 'flango_institution_name';
 
-export const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Opret Supabase client med instrumentering
+const _rawClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabaseClient = instrumentSupabase(_rawClient);
+
 console.log('Supabase client initialiseret til Flango-3.');
 
 const adminCacheByInstitution = {};

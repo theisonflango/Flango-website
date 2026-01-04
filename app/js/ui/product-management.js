@@ -154,7 +154,7 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
                 </div>
                 ${badgeMarkup}
             </div>
-            <div class="product-quantity-badge">${qtyInCart}</div>
+            <div class="product-quantity-badge"><span class="cart-icon">🛒</span><span class="cart-qty">${qtyInCart}</span></div>
             <div class="avatar-lock-overlay">
                 <img src="Icons/webp/Function/Lock.webp" alt="locked">
             </div>`;
@@ -208,19 +208,19 @@ export function updateProductQuantityBadges() {
         // Opdater data-quantity attribute
         btn.dataset.quantity = qtyInCart;
 
-        // Opdater badge tekst og visibility med CSS class
+        // Opdater badge tal og visibility med CSS class
         const badge = btn.querySelector('.product-quantity-badge');
         if (badge) {
-            badge.textContent = qtyInCart;
+            const qtySpan = badge.querySelector('.cart-qty');
+            if (qtySpan) {
+                qtySpan.textContent = qtyInCart;
+            }
             // Vis badge hvis quantity > 0 ved at tilføje 'visible' class
             if (qtyInCart > 0) {
-                console.log(`[updateProductQuantityBadges] Product ${productId}: Viser badge med quantity ${qtyInCart}`);
                 badge.classList.add('visible');
             } else {
                 badge.classList.remove('visible');
             }
-        } else {
-            console.warn(`[updateProductQuantityBadges] Product ${productId}: Badge element ikke fundet!`);
         }
     });
 }

@@ -7,11 +7,13 @@ import { getProductIconInfo } from './products-and-cart.js';
 import { initHistoryStore, loadSalesHistory } from './history-store.js';
 import { formatKr, buildAdjustmentTexts, showConfirmModal } from '../ui/confirm-modals.js';
 import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
+import { invalidateTodaysSalesCache } from './purchase-limits.js';
 
 const HISTORY_DEBUG = false;
 
 let fullSalesHistory = [];
 let getAllUsersAccessor = () => [];
+let sharedControlsInitialized = false;
 
 const safeNumber = (value) => {
     const num = Number(value);
@@ -48,6 +50,7 @@ function isHistoryAdmin() {
 let currentEditSaleEvent = null;
 let currentItemCorrections = [];
 let currentManualAdjustment = 0;
+let currentAlreadyRefunded = 0; // Beløb allerede refunderet for dette salg
 
 export function configureHistoryModule({ getAllUsers } = {}) {
     if (typeof getAllUsers === 'function') {
@@ -146,31 +149,56 @@ export async function showSalesHistory() {
         });
     }
 
-    // Find or create the test users checkbox
+    // Find or create the test users checkbox and "only test users" button
     let showTestUsersCheckbox = salesHistoryModal.querySelector('#show-test-users-checkbox');
+    let onlyTestUsersBtn = salesHistoryModal.querySelector('#only-test-users-btn');
     if (!showTestUsersCheckbox) {
         if (filterPanel) {
-            // Create checkbox container
+            // Create checkbox container with both options
             const checkboxContainer = document.createElement('div');
             checkboxContainer.style.marginTop = '16px';
             checkboxContainer.style.paddingTop = '16px';
             checkboxContainer.style.borderTop = '1px solid var(--border-color, #e0e0e0)';
             checkboxContainer.innerHTML = `
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
-                    <input type="checkbox" id="show-test-users-checkbox" style="cursor: pointer;">
-                    <span>Vis testbrugere (Snoop Dog, Test Aladin)</span>
-                </label>
+                <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                        <input type="checkbox" id="show-test-users-checkbox" style="cursor: pointer;">
+                        <span>Vis testbrugere (Snoop Dog, Test Aladin)</span>
+                    </label>
+                    <button id="only-test-users-btn" class="action-button secondary-action" style="font-size: 12px; padding: 6px 12px;">
+                        Vis KUN testbrugere
+                    </button>
+                </div>
             `;
             filterPanel.appendChild(checkboxContainer);
 
-            // Get reference after creation
+            // Get references after creation
             showTestUsersCheckbox = document.getElementById('show-test-users-checkbox');
+            onlyTestUsersBtn = document.getElementById('only-test-users-btn');
         }
     }
 
-    // Wire up event listener to refetch history when toggled
+    // Wire up event listeners
     if (showTestUsersCheckbox) {
-        showTestUsersCheckbox.onchange = fetchHistory;
+        showTestUsersCheckbox.onchange = () => {
+            // If "include test users" is checked, remove "only" mode
+            if (onlyTestUsersBtn) {
+                onlyTestUsersBtn.classList.remove('active');
+                onlyTestUsersBtn.textContent = 'Vis KUN testbrugere';
+            }
+            fetchHistory();
+        };
+    }
+    if (onlyTestUsersBtn) {
+        onlyTestUsersBtn.onclick = () => {
+            const isActive = onlyTestUsersBtn.classList.toggle('active');
+            onlyTestUsersBtn.textContent = isActive ? '✓ Kun testbrugere' : 'Vis KUN testbrugere';
+            // If "only test users" is active, uncheck the include checkbox
+            if (isActive && showTestUsersCheckbox) {
+                showTestUsersCheckbox.checked = false;
+            }
+            fetchHistory();
+        };
     }
 
     salesHistoryModal.style.display = 'flex';
@@ -197,17 +225,20 @@ async function fetchHistory() {
     const historyStartDate = salesHistoryModal.querySelector('#history-start-date');
     const historyEndDate = salesHistoryModal.querySelector('#history-end-date');
     const testUsersCheckbox = document.getElementById('show-test-users-checkbox');
+    const onlyTestUsersBtn = document.getElementById('only-test-users-btn');
     if (!searchInput || !historyStartDate || !historyEndDate) return;
 
     searchInput.value = '';
     const startDateStr = historyStartDate.value;
     const endDateStr = historyEndDate.value;
-    const includeTestUsers = testUsersCheckbox ? testUsersCheckbox.checked : false;  // Default false
+    const includeTestUsers = testUsersCheckbox ? testUsersCheckbox.checked : false;
+    const onlyTestUsers = onlyTestUsersBtn ? onlyTestUsersBtn.classList.contains('active') : false;
 
     const { rows, error } = await loadSalesHistory({
         from: startDateStr,
         to: endDateStr,
-        includeTestUsers
+        includeTestUsers,
+        onlyTestUsers
     });
 
     if (error) {
@@ -216,6 +247,13 @@ async function fetchHistory() {
         return;
     }
     fullSalesHistory = rows;
+    // DEBUG: Log SALE_ADJUSTMENT events for troubleshooting
+    const adjustmentEvents = rows.filter(e => e.event_type === 'SALE_ADJUSTMENT');
+    if (adjustmentEvents.length > 0) {
+        console.log('[HISTORY DEBUG] Found SALE_ADJUSTMENT events:', adjustmentEvents.length, adjustmentEvents);
+    } else {
+        console.log('[HISTORY DEBUG] No SALE_ADJUSTMENT events in fetched data. Total events:', rows.length);
+    }
     if (HISTORY_DEBUG) console.log(
         'DEBUG history names:',
         fullSalesHistory.slice(0, 10).map(e => ({
@@ -231,7 +269,13 @@ async function fetchHistory() {
     renderSalesHistory(fullSalesHistory, null, isActive ? 'DEPOSIT' : null);
 }
 
-const getEventTimestamp = (event) => event?.created_at;
+const getEventTimestamp = (event) => {
+    // For SALE_UNDO: brug original_sale_time så rækken placeres korrekt i tidslinjen
+    if (event?.event_type === 'SALE_UNDO' && event?.details?.original_sale_time) {
+        return event.details.original_sale_time;
+    }
+    return event?.created_at;
+};
 
 function getEventAmount(event) {
     const details = event.details || {};
@@ -285,6 +329,12 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
                 .filter(cb => cb.checked)
                 .map(cb => cb.value);
 
+            // DEBUG: Log SALE_ADJUSTMENT filtering
+            const adjustmentsBeforeFilter = salesData.filter(e => e.event_type === 'SALE_ADJUSTMENT');
+            console.log('[HISTORY DEBUG] Before filter - SALE_ADJUSTMENT count:', adjustmentsBeforeFilter.length,
+                'checkedEventTypes:', checkedEventTypes,
+                'includes SALE_EDIT:', checkedEventTypes.includes('SALE_EDIT'));
+
             // Filtrer baseret på valgte event types
             if (checkedEventTypes.length === 0) {
                 // Hvis ingen er valgt, vis ingenting
@@ -299,6 +349,10 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
                     return checkedEventTypes.includes(eventType);
                 });
             }
+
+            // DEBUG: Log after filter
+            const adjustmentsAfterFilter = preFilteredData.filter(e => e.event_type === 'SALE_ADJUSTMENT');
+            console.log('[HISTORY DEBUG] After filter - SALE_ADJUSTMENT count:', adjustmentsAfterFilter.length);
         }
     }
 
@@ -354,6 +408,75 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
                 transition: background-color 0.2s;
             }
             .history-edit-btn:hover { background-color: #e4e4e4; }
+            /* Styling for child adjustments - visuelt adskilt med gul/orange */
+            .history-entry-adjustment-child {
+                background-color: #fff8e6 !important;
+                border-left: 3px solid #f59e0b !important;
+                font-size: 13px;
+            }
+            .history-entry-adjustment-child:hover {
+                background-color: #fef3c7 !important;
+            }
+            .history-entry-adjustment-child .history-primary {
+                color: #b45309;
+            }
+            /* FULDT REFUNDERET SALG - rød/pink styling */
+            .history-entry-refunded {
+                background-color: #fee2e2 !important;
+                border-left: 4px solid #ef4444 !important;
+            }
+            .history-entry-refunded:hover {
+                background-color: #fecaca !important;
+            }
+            .history-entry-refunded .history-primary {
+                color: #dc2626;
+            }
+            .history-entry-refunded .history-col-items,
+            .history-entry-refunded .history-col-amount {
+                text-decoration: line-through;
+                opacity: 0.7;
+            }
+            /* FULD FORTRYDELSE - grøn refund styling */
+            .history-entry-full-reversal {
+                background-color: #dcfce7 !important;
+                border-left: 3px solid #22c55e !important;
+            }
+            .history-entry-full-reversal:hover {
+                background-color: #bbf7d0 !important;
+            }
+            .history-entry-full-reversal .history-primary {
+                color: #16a34a;
+                font-weight: 600;
+            }
+            /* SALE_UNDO - Ghost row med gennemstregning */
+            .history-row-voided {
+                opacity: 0.8;
+                background-color: #fef2f2 !important;
+                border-left: 4px solid #f87171 !important;
+            }
+            .history-row-voided:hover {
+                background-color: #fee2e2 !important;
+            }
+            .history-row-voided .history-col-items .items-text,
+            .history-row-voided .history-col-amount .history-secondary {
+                text-decoration: line-through;
+                color: #9ca3af;
+            }
+            .voided-badge {
+                display: inline-block;
+                background-color: #ef4444;
+                color: white;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2px 6px;
+                border-radius: 999px;
+                margin-right: 4px;
+                vertical-align: middle;
+            }
+            .voided-info {
+                font-style: italic;
+                color: #9ca3af;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -366,24 +489,59 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
 
         salesList.replaceChildren();
         const adjustmentsBySaleId = new Map();
+        const fullyRefundedSaleIds = new Set();
+
+        // Først: Saml alle adjustments og find fuldt refunderede salg
         filteredEvents.forEach(ev => {
             if (ev.event_type === 'SALE_ADJUSTMENT' && ev.details?.adjusted_sale_id) {
                 const saleId = ev.details.adjusted_sale_id;
                 const list = adjustmentsBySaleId.get(saleId) || [];
                 list.push(ev);
                 adjustmentsBySaleId.set(saleId, list);
+
+                // Check om dette er en fuld fortrydelse
+                if (ev.details?.fullReversal === true || ev.details?.reason === 'FULL_SALE_REVERSAL') {
+                    fullyRefundedSaleIds.add(saleId);
+                }
+            }
+        });
+
+        // Check også for salg hvor sum af adjustments = -original beløb
+        filteredEvents.forEach(ev => {
+            if (ev.event_type === 'SALE') {
+                const saleId = ev.id || ev.event_id;
+                const adjustments = adjustmentsBySaleId.get(saleId) || [];
+                if (adjustments.length > 0) {
+                    const originalAmount = getEventAmount(ev);
+                    const totalAdjustment = adjustments.reduce((sum, adj) => {
+                        return sum + (Number(adj.details?.adjustment_amount) || 0);
+                    }, 0);
+                    // Hvis adjustments summer til -originalAmount (eller tæt på), er salget fuldt refunderet
+                    if (Math.abs(totalAdjustment + originalAmount) < 0.01) {
+                        fullyRefundedSaleIds.add(saleId);
+                    }
+                }
             }
         });
 
         filteredEvents.forEach(event => {
             const adjustedSaleId = event.details?.adjusted_sale_id;
             const isChildAdjustment = event.event_type === 'SALE_ADJUSTMENT' && adjustedSaleId;
-            if (isChildAdjustment) return;
 
-            const entryEl = buildSalesHistoryEntryElement(event);
+            // Check om parent SALE er i listen - hvis ikke, vis adjustment selvstændigt
+            const parentExists = isChildAdjustment &&
+                filteredEvents.some(e => (e.id || e.event_id) === adjustedSaleId);
+
+            // Skip KUN hvis parent faktisk findes (så den renderes som child under parent)
+            if (isChildAdjustment && parentExists) return;
+
+            // Check om dette salg er fuldt refunderet
+            const eventId = event.id || event.event_id || null;
+            const isFullyRefunded = event.event_type === 'SALE' && fullyRefundedSaleIds.has(eventId);
+
+            const entryEl = buildSalesHistoryEntryElement(event, { isFullyRefunded });
             salesList.appendChild(entryEl);
 
-            const eventId = event.id || event.event_id || null;
             if (event.event_type === 'SALE' && eventId) {
                 const children = adjustmentsBySaleId.get(eventId) || [];
                 children.forEach(adjEvent => {
@@ -539,9 +697,29 @@ function buildSaleAdjustmentSummary(event) {
 function buildSalesHistoryEntryElement(event, options = {}) {
     const rowDiv = document.createElement('div');
     rowDiv.className = 'history-row';
+
+    // Check for full refund/reversal
+    const isFullReversal = event.details?.fullReversal === true ||
+        event.details?.reason === 'FULL_SALE_REVERSAL';
+    const isRefundedSale = options.isFullyRefunded === true;
+    const isSaleUndo = event.event_type === 'SALE_UNDO';
+
     if (options.isAdjustmentChild) {
         rowDiv.classList.add('history-entry-adjustment-child');
         rowDiv.style.paddingLeft = '26px';
+        if (isFullReversal) {
+            rowDiv.classList.add('history-entry-full-reversal');
+        }
+    }
+
+    // Mark parent SALE as refunded if it has been fully reversed
+    if (isRefundedSale) {
+        rowDiv.classList.add('history-entry-refunded');
+    }
+
+    // Mark SALE_UNDO as voided ghost row
+    if (isSaleUndo) {
+        rowDiv.classList.add('history-row-voided');
     }
 
     const saleDate = new Date(getEventTimestamp(event));
@@ -552,17 +730,21 @@ function buildSalesHistoryEntryElement(event, options = {}) {
     let actionLabel = 'Handling:';
     let customerName = event.target_user_name || 'Ukendt';
     if (event.event_type === 'SALE') {
-        actionLabel = 'Salg til:';
+        actionLabel = isRefundedSale ? '❌ Annulleret salg:' : 'Salg til:';
     } else if (event.event_type === 'DEPOSIT') {
         actionLabel = 'Indbetaling til:';
     } else if (event.event_type === 'BALANCE_EDIT') {
         actionLabel = 'Saldo ændret for:';
     } else if (event.event_type === 'SALE_ADJUSTMENT') {
         // Modpostering for et tidligere salg (justering)
-        actionLabel = '🔧 Justering af salg';
+        actionLabel = isFullReversal ? '↩️ Salg fortrudt' : '🔧 Justering af salg';
+    } else if (isSaleUndo) {
+        actionLabel = '<span class="voided-badge">FORTRUDT</span> Salg til:';
+        // Brug customer_name fra details hvis target_user_name ikke findes
+        customerName = event.target_user_name || event.details?.customer_name || 'Ukendt';
     }
 
-    // Felt 2: Produkter (SALE)
+    // Felt 2: Produkter (SALE og SALE_UNDO)
     let itemsText = '—';
     if (event.event_type === 'SALE' && event.items && Array.isArray(event.items) && event.items.length > 0) {
         itemsText = event.items.map(item => {
@@ -572,6 +754,19 @@ function buildSalesHistoryEntryElement(event, options = {}) {
         }).join(', ');
     } else if (event.event_type === 'SALE_ADJUSTMENT') {
         itemsText = buildSaleAdjustmentSummary(event);
+    } else if (isSaleUndo) {
+        // Vis produkter fra details.items (ligesom et normalt salg)
+        const undoItems = event.details?.items;
+        if (Array.isArray(undoItems) && undoItems.length > 0) {
+            itemsText = undoItems.map(item => {
+                const iconInfo = getProductIconInfo(item);
+                let visualMarkup = iconInfo ? `<img src="${iconInfo.path}" alt="${item.product_name}" class="product-icon-small" style="height: 1em; vertical-align: -0.1em;"> ` : (item.emoji ? `${item.emoji} ` : '');
+                return `<span style="white-space: nowrap;">${item.quantity} × ${visualMarkup}${item.product_name}</span>`;
+            }).join(', ');
+        } else {
+            const refunded = event.details?.refunded_amount;
+            itemsText = `Refunderet: ${refunded?.toFixed(2) || '?'} kr.`;
+        }
     }
 
     // Felt 3: Beløb
@@ -581,11 +776,28 @@ function buildSalesHistoryEntryElement(event, options = {}) {
         if (typeof adj === 'number' && Number.isFinite(adj)) {
             amount = adj;
         }
+    } else if (event.event_type === 'SALE_UNDO') {
+        const refunded = event.details?.refunded_amount;
+        if (typeof refunded === 'number' && Number.isFinite(refunded)) {
+            amount = refunded;
+        }
     }
     const amountText = `${amount.toFixed(2)} kr.`;
 
     // Felt 4: Dato/Tid
-    const datetimeHtml = `<div class="history-primary">${formattedDate}</div><div class="history-secondary">${formattedTime}</div>`;
+    let datetimeHtml = `<div class="history-primary">${formattedDate}</div><div class="history-secondary">${formattedTime}</div>`;
+
+    // For SALE_UNDO: tilføj "Fortrudt kl. X af Y"
+    if (isSaleUndo && event.created_at) {
+        const undoDate = new Date(event.created_at);
+        const undoTime = undoDate.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
+        const undoDateStr = undoDate.toLocaleDateString('da-DK', { day: '2-digit', month: '2-digit' });
+        const undoAdmin = event.admin_name || event.clerk_name || 'ukendt';
+        datetimeHtml = `
+            <div class="history-primary">${formattedDate} ${formattedTime}</div>
+            <div class="history-secondary voided-info">Fortrudt: ${undoDateStr} ${undoTime} af ${undoAdmin}</div>
+        `;
+    }
 
     // Felt 5: Ekspedient
     const clerkName = event.clerk_name || null;
@@ -616,8 +828,8 @@ function buildSalesHistoryEntryElement(event, options = {}) {
             <div class="history-secondary">${customerName}</div>
         </div>
         <div class="history-col-items">
-            <div class="history-primary">${event.event_type === 'SALE' ? 'Produkter:' : ''}</div>
-            <div class="history-secondary">${itemsText !== '—' ? itemsText : '—'}</div>
+            <div class="history-primary">${(event.event_type === 'SALE' || isSaleUndo) ? 'Produkter:' : ''}</div>
+            <div class="history-secondary items-text">${itemsText !== '—' ? itemsText : '—'}</div>
         </div>
         <div class="history-col-amount">
             <div class="history-primary">Beløb:</div>
@@ -720,6 +932,42 @@ function ensureEditSaleModal() {
     return backdrop;
 }
 
+/**
+ * Henter summen af alle tidligere justeringer for et salg
+ * @param {string} saleId - ID på det oprindelige salg
+ * @returns {Promise<number>} - Samlet beløb allerede justeret (negativt = refunderet)
+ */
+async function fetchPreviousAdjustmentsTotal(saleId) {
+    if (!saleId) return 0;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('events_view')
+            .select('details')
+            .eq('event_type', 'SALE_ADJUSTMENT')
+            .filter('details->>adjusted_sale_id', 'eq', saleId);
+
+        if (error) {
+            console.error('[fetchPreviousAdjustmentsTotal] Error:', error);
+            return 0;
+        }
+
+        if (!data || data.length === 0) return 0;
+
+        // Sum alle adjustment_amount værdier
+        const total = data.reduce((sum, row) => {
+            const amount = Number(row.details?.adjustment_amount) || 0;
+            return sum + amount;
+        }, 0);
+
+        console.log(`[fetchPreviousAdjustmentsTotal] Sale ${saleId}: ${data.length} adjustments, total: ${total}`);
+        return total;
+    } catch (e) {
+        console.error('[fetchPreviousAdjustmentsTotal] Exception:', e);
+        return 0;
+    }
+}
+
 function closeEditSaleModal() {
     const backdrop = document.getElementById('edit-sale-modal-backdrop');
     if (backdrop) {
@@ -732,9 +980,10 @@ function closeEditSaleModal() {
     currentEditSaleEvent = null;
     currentItemCorrections = [];
     currentManualAdjustment = 0;
+    currentAlreadyRefunded = 0;
 }
 
-function openEditSaleModal(historyEvent) {
+async function openEditSaleModal(historyEvent) {
     if (!historyEvent || historyEvent.event_type !== 'SALE') return;
 
     const historyModal = document.getElementById('sales-history-modal');
@@ -756,14 +1005,47 @@ function openEditSaleModal(historyEvent) {
     currentItemCorrections = [];
     currentManualAdjustment = 0;
 
+    // Hent tidligere justeringer for dette salg
+    const saleId = historyEvent.id || historyEvent.event_id || null;
+    currentAlreadyRefunded = await fetchPreviousAdjustmentsTotal(saleId);
+
     const dateStr = new Date(getEventTimestamp(historyEvent)).toLocaleString('da-DK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    const amount = getEventAmount(historyEvent).toFixed(2);
+    const originalAmount = getEventAmount(historyEvent);
+    const amount = originalAmount.toFixed(2);
+
+    // Beregn hvor meget der stadig kan refunderes
+    // currentAlreadyRefunded er negativt når der er refunderet (fx -5 betyder 5 kr refunderet)
+    const alreadyRefundedAbs = Math.abs(currentAlreadyRefunded);
+    const remainingRefundable = Math.max(0, originalAmount - alreadyRefundedAbs);
+
+    // Vis advarsel hvis salget allerede er delvist eller fuldt refunderet
+    let refundWarningHtml = '';
+    if (alreadyRefundedAbs > 0) {
+        const isFullyRefunded = remainingRefundable < 0.01;
+        if (isFullyRefunded) {
+            refundWarningHtml = `
+                <div style="background: #fee2e2; border: 1px solid #ef4444; border-radius: 6px; padding: 10px; margin-top: 10px; color: #b91c1c;">
+                    <strong>⚠️ Dette salg er allerede fuldt refunderet</strong><br>
+                    Der kan ikke refunderes yderligere.
+                </div>
+            `;
+        } else {
+            refundWarningHtml = `
+                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 10px; margin-top: 10px; color: #92400e;">
+                    <strong>ℹ️ Allerede refunderet:</strong> ${alreadyRefundedAbs.toFixed(2)} kr.<br>
+                    <strong>Kan stadig refunderes:</strong> ${remainingRefundable.toFixed(2)} kr.
+                </div>
+            `;
+        }
+    }
+
     originalSection.innerHTML = `
         <div><strong>Kunde:</strong> ${historyEvent.target_user_name || 'Ukendt'}</div>
         <div><strong>Beløb:</strong> ${amount} kr.</div>
         <div><strong>Tidspunkt:</strong> ${dateStr}</div>
         <div><strong>Ekspedient:</strong> ${historyEvent.admin_name || historyEvent.clerk_name || 'Ukendt'}</div>
         <div><strong>Voksen ansvarlig:</strong> ${historyEvent.session_admin_name || historyEvent.admin_name || '(ukendt)'}</div>
+        ${refundWarningHtml}
     `;
 
     const items = Array.isArray(historyEvent.items) ? historyEvent.items : [];
@@ -891,6 +1173,27 @@ function openEditSaleModal(historyEvent) {
             return;
         }
 
+        // SIKKERHEDSCHECK: Forhindre refundering ud over det mulige beløb
+        // totalAdjustmentAmount er negativt ved refundering (fx -5 = giv 5 kr tilbage)
+        // currentAlreadyRefunded er negativt ved tidligere refunderinger
+        if (totalAdjustmentAmount < 0) {
+            const alreadyRefundedAbs = Math.abs(currentAlreadyRefunded);
+            const requestedRefundAbs = Math.abs(totalAdjustmentAmount);
+            const totalRefundIfApplied = alreadyRefundedAbs + requestedRefundAbs;
+
+            if (totalRefundIfApplied > originalTotal + 0.01) { // +0.01 for floating point tolerance
+                const remainingRefundable = Math.max(0, originalTotal - alreadyRefundedAbs);
+                showCustomAlert(
+                    'Refundering ikke mulig',
+                    `Du forsøger at refundere ${requestedRefundAbs.toFixed(2)} kr, men der kan maksimalt refunderes ${remainingRefundable.toFixed(2)} kr.\n\n` +
+                    `Oprindeligt salg: ${originalTotal.toFixed(2)} kr.\n` +
+                    `Allerede refunderet: ${alreadyRefundedAbs.toFixed(2)} kr.`,
+                    { zIndex: 100000 }
+                );
+                return;
+            }
+        }
+
         const editedItems = currentItemCorrections
             .filter(entry => entry.diffQty !== 0)
             .map(entry => ({
@@ -928,16 +1231,91 @@ function openEditSaleModal(historyEvent) {
         updateEditSaleSummary();
     };
 
-    revertBtn.onclick = () => {
+    revertBtn.onclick = async () => {
         const originalAmount = getEventAmount(historyEvent);
-        const payload = {
-            originalEventId: historyEvent.id || historyEvent.event_id || null,
-            fullReversal: true,
-            suggestedTotalReversalAmount: -originalAmount,
-        };
-        console.log('FULL SALE REVERSAL:', payload);
-        showCustomAlert('Info', 'Fortrydelse af hele salget er registreret (TODO: send til Supabase).');
-        closeEditSaleModal();
+        const items = Array.isArray(historyEvent.items) ? historyEvent.items : [];
+        const customerName = historyEvent.target_user_name || 'Ukendt';
+        const customerId = historyEvent.target_user_id || historyEvent.customer_id || null;
+
+        // Hent sale_id fra event details (IKKE event id)
+        const saleId = historyEvent.details?.sale_id;
+        if (!saleId) {
+            showCustomAlert('Fejl', 'Kunne ikke finde salgs-ID. Salget kan ikke fortrydes.', { zIndex: 100000 });
+            return;
+        }
+
+        // Byg produktliste til bekræftelsesdialog
+        const productList = items.map(item => {
+            const qty = item.quantity || 1;
+            const name = item.product_name || item.name || 'Ukendt vare';
+            const emoji = item.emoji || '';
+            return `• ${qty}× ${emoji} ${name}`.trim();
+        }).join('\n');
+
+        // Vis bekræftelsesdialog med produktliste
+        const confirmed = await showConfirmModal({
+            title: 'Fortryd hele salget?',
+            message: `Er du sikker på, at du vil fortryde dette salg?\n\n` +
+                     `Kunde: ${customerName}\n` +
+                     `Beløb: ${originalAmount.toFixed(2)} kr.\n\n` +
+                     `Produkter:\n${productList}\n\n` +
+                     `${customerName} får ${originalAmount.toFixed(2)} kr. retur på sin saldo.\n\n` +
+                     `⚠️ Salget slettes permanent og kvoter nulstilles.`,
+            confirmText: 'Ja, fortryd salget',
+            cancelText: 'Annuller',
+        });
+
+        if (!confirmed) return;
+
+        try {
+            // Kald undo_sale RPC - sletter salget og logger SALE_UNDO event
+            const { data, error } = await supabaseClient.rpc('undo_sale', {
+                p_sale_id: saleId
+            });
+
+            if (error) {
+                console.error('undo_sale error:', error);
+                showCustomAlert('Fejl', 'Kunne ikke fortryde salget: ' + (error.message || error), { zIndex: 100000 });
+                return;
+            }
+
+            // Hent refunderet beløb fra response (undo_sale returnerer dette)
+            const refundedAmount = data?.[0]?.refunded_amount || originalAmount;
+
+            // Opdater kundens saldo lokalt
+            updateCustomerBalanceLocally(customerId, refundedAmount);
+
+            // Invalidér salgs-cache så produktgrænser/kvoter genberegnes
+            invalidateTodaysSalesCache();
+
+            // Opdater sukkerpolitik-låsninger hvis en bruger er valgt
+            if (typeof window.__flangoRefreshSugarPolicy === 'function') {
+                try {
+                    await window.__flangoRefreshSugarPolicy();
+                } catch (e) {
+                    console.warn('Kunne ikke opdatere sukkerpolitik:', e);
+                }
+            }
+
+            // Vis bekræftelse
+            showCustomAlert(
+                'Salg fortrudt',
+                `Salget er blevet fortrudt og slettet.\n\n${customerName} har fået ${refundedAmount.toFixed(2)} kr. retur på sin saldo.`,
+                { zIndex: 100000 }
+            );
+
+            // Luk modal og genindlæs historik
+            closeEditSaleModal();
+
+            // Genindlæs historikken så SALE_UNDO vises
+            if (typeof loadSalesHistory === 'function') {
+                await loadSalesHistory();
+            }
+
+        } catch (e) {
+            console.error('Fortryd salg fejl:', e);
+            showCustomAlert('Fejl', 'Noget gik galt under fortrydelse af salget.', { zIndex: 100000 });
+        }
     };
 
     closeBtn.onclick = () => {
@@ -1015,7 +1393,22 @@ async function applySaleAdjustmentWithConfirm(customerId, customerName, delta, p
             return { ok: false, error };
         }
         // Opdater den berørte brugers saldo lokalt, så UI afspejler ændringen med det samme
-        updateCustomerBalanceLocally(customerId, delta);
+        // BEMÆRK: -delta fordi databasen bruger "balance - delta", men lokal bruger "balance + delta"
+        // Eksempel: delta=-7 (reduktion) → kunde får +7 → -(-7) = +7
+        updateCustomerBalanceLocally(customerId, -delta);
+
+        // Invalidér salgs-cache så produktgrænser genberegnes (inkl. sukkerkvote)
+        invalidateTodaysSalesCache();
+
+        // Opdater sukkerpolitik-låsninger hvis en bruger er valgt
+        if (typeof window.__flangoRefreshSugarPolicy === 'function') {
+            try {
+                await window.__flangoRefreshSugarPolicy();
+            } catch (e) {
+                console.warn('Kunne ikke opdatere sukkerpolitik:', e);
+            }
+        }
+
         // Lav en kort og tydelig bekræftelse
         const absAmount = Math.abs(delta);
         const prettyAmount = formatKr(absAmount);
@@ -1031,7 +1424,8 @@ async function applySaleAdjustmentWithConfirm(customerId, customerName, delta, p
         const safeName = customerName || 'Kunden';
         showCustomAlert(
             'Justering gemt',
-            `Ændringen er gemt – ${safeName} ${sentencePart}`
+            `Ændringen er gemt – ${safeName} ${sentencePart}`,
+            { zIndex: 100000 }
         );
 
         return { ok: true };
@@ -1090,8 +1484,15 @@ function buildSalesHistorySummaryHTML(preFilteredData, filteredEvents) {
         }
     });
 
+    // Check if date range is today
+    const historyStartDate = document.getElementById('history-start-date-shared');
+    const historyEndDate = document.getElementById('history-end-date-shared');
+    const today = new Date().toISOString().split('T')[0];
+    const isToday = historyStartDate?.value === today && historyEndDate?.value === today;
+    const summaryTitle = isToday ? 'Dagens Oversigt' : 'Oversigt for den viste periode';
+
     let summaryHTML = `
-        <h3>Oversigt for den viste periode</h3>
+        <h3>${summaryTitle}</h3>
         ${totalRevenue > 0 ? `<p><strong>Total Omsætning (salg):</strong> ${totalRevenue.toFixed(2)} kr.</p>` : ''}
         ${totalDeposits > 0 ? `<p><strong>Total Indbetalinger:</strong> ${totalDeposits.toFixed(2)} kr.</p>` : ''}
         `;
@@ -1385,45 +1786,46 @@ function handlePrintNegativeBalance() {
 }
 
 /**
- * Load transaction history in summary modal (Transaktioner view)
- * This function initializes and displays the transaction history within the summary modal
+ * Initialize shared history controls (called once when modal opens)
+ * Sets up event listeners for the shared filter/date controls
  */
-export async function showTransactionsInSummary() {
-    // Get all elements with -summary suffix
-    const filterDepositsBtn = document.getElementById('filter-deposits-btn-summary');
-    const printReportBtn = document.getElementById('print-report-btn-summary');
-    const printNegativeBtn = document.getElementById('print-negative-balance-btn-summary');
-    const searchInput = document.getElementById('search-history-input-summary');
-    const historyStartDate = document.getElementById('history-start-date-summary');
-    const historyEndDate = document.getElementById('history-end-date-summary');
-    const printAllBalancesBtn = document.getElementById('print-all-balances-btn-summary');
-    const undoLastSaleBtn = document.getElementById('history-undo-last-sale-btn-summary');
-    const filterBtn = document.getElementById('history-filter-btn-summary');
-    const filterPanel = document.getElementById('history-filter-panel-summary');
-    const filterSelectAll = document.getElementById('history-filter-select-all-summary');
-    const filterDeselectAll = document.getElementById('history-filter-deselect-all-summary');
-    const filterCheckboxes = Array.from(document.querySelectorAll('.history-filter-checkbox-summary'));
+function initSharedHistoryControls() {
+    if (sharedControlsInitialized) {
+        return; // Already initialized
+    }
 
-    if (!filterDepositsBtn || !printReportBtn || !printNegativeBtn || !searchInput || !historyStartDate || !historyEndDate) {
-        console.error('[history-and-reports] Missing required elements in summary modal');
+    // Get all shared elements
+    const filterDepositsBtn = document.getElementById('filter-deposits-btn-shared');
+    const printReportBtn = document.getElementById('print-report-btn-shared');
+    const printNegativeBtn = document.getElementById('print-negative-balance-btn-shared');
+    const printAllBalancesBtn = document.getElementById('print-all-balances-btn-shared');
+    const undoLastSaleBtn = document.getElementById('history-undo-last-sale-btn-shared');
+    const searchInput = document.getElementById('search-history-input-shared');
+    const historyStartDate = document.getElementById('history-start-date-shared');
+    const historyEndDate = document.getElementById('history-end-date-shared');
+    const filterBtn = document.getElementById('history-filter-btn-shared');
+    const filterPanel = document.getElementById('history-filter-panel-shared');
+    const filterSelectAll = document.getElementById('history-filter-select-all-shared');
+    const filterDeselectAll = document.getElementById('history-filter-deselect-all-shared');
+    const filterCheckboxes = Array.from(document.querySelectorAll('.history-filter-checkbox-shared'));
+
+    if (!historyStartDate || !historyEndDate) {
+        console.error('[history-and-reports] Missing required shared elements');
         return;
     }
 
     // Setup filter deposits button
-    filterDepositsBtn.onclick = () => {
-        const isActive = filterDepositsBtn.classList.toggle('active');
-        if (isActive) {
-            filterDepositsBtn.textContent = 'Vis Alle Hændelser';
-            renderSalesHistoryInSummary(fullSalesHistory, null, 'DEPOSIT');
-        } else {
-            filterDepositsBtn.textContent = 'Vis Kun Indbetalinger';
-            renderSalesHistoryInSummary(fullSalesHistory);
-        }
-    };
+    if (filterDepositsBtn) {
+        filterDepositsBtn.onclick = () => {
+            const isActive = filterDepositsBtn.classList.toggle('active');
+            filterDepositsBtn.textContent = isActive ? 'Vis Alle Hændelser' : 'Vis Kun Indbetalinger';
+            reloadCurrentHistoryView();
+        };
+    }
 
     // Setup other buttons
-    printReportBtn.onclick = handlePrintReport;
-    printNegativeBtn.onclick = handlePrintNegativeBalance;
+    if (printReportBtn) printReportBtn.onclick = handlePrintReport;
+    if (printNegativeBtn) printNegativeBtn.onclick = handlePrintNegativeBalance;
     if (printAllBalancesBtn) printAllBalancesBtn.onclick = handlePrintAllBalances;
     if (undoLastSaleBtn) {
         undoLastSaleBtn.onclick = () => {
@@ -1448,96 +1850,176 @@ export async function showTransactionsInSummary() {
     if (filterSelectAll) {
         filterSelectAll.onclick = () => {
             filterCheckboxes.forEach(cb => cb.checked = true);
-            fetchHistoryInSummary();
+            reloadCurrentHistoryView();
         };
     }
 
     if (filterDeselectAll) {
         filterDeselectAll.onclick = () => {
             filterCheckboxes.forEach(cb => cb.checked = false);
-            fetchHistoryInSummary();
+            reloadCurrentHistoryView();
         };
     }
 
     // Setup filter checkboxes
     filterCheckboxes.forEach(cb => {
-        cb.onchange = () => fetchHistoryInSummary();
+        cb.onchange = () => reloadCurrentHistoryView();
     });
 
     // Setup search input
-    searchInput.oninput = () => {
-        const isActive = filterDepositsBtn.classList.contains('active');
-        if (isActive) {
-            renderSalesHistoryInSummary(fullSalesHistory, searchInput.value, 'DEPOSIT');
-        } else {
-            renderSalesHistoryInSummary(fullSalesHistory, searchInput.value);
-        }
-    };
+    if (searchInput) {
+        searchInput.oninput = () => {
+            const filterDepositsActive = document.getElementById('filter-deposits-btn-shared')?.classList.contains('active');
+            if (filterDepositsActive) {
+                renderSalesHistoryInSummary(fullSalesHistory, searchInput.value, 'DEPOSIT');
+            } else {
+                renderSalesHistoryInSummary(fullSalesHistory, searchInput.value);
+            }
+        };
+    }
 
-    // Find or create the test users checkbox
-    let showTestUsersCheckbox = document.getElementById('show-test-users-checkbox-summary');
-    if (!showTestUsersCheckbox) {
-        if (filterPanel) {
-            // Create checkbox container
-            const checkboxContainer = document.createElement('div');
-            checkboxContainer.style.marginTop = '16px';
-            checkboxContainer.style.paddingTop = '16px';
-            checkboxContainer.style.borderTop = '1px solid var(--border-color, #e0e0e0)';
-            checkboxContainer.innerHTML = `
+    // Setup date inputs - default til i dag
+    const today = new Date().toISOString().split('T')[0];
+    historyStartDate.value = today;
+    historyEndDate.value = today;
+    historyStartDate.onchange = () => reloadCurrentHistoryView();
+    historyEndDate.onchange = () => reloadCurrentHistoryView();
+
+    // Create test users controls in filter panel if not exists
+    if (filterPanel && !document.getElementById('show-test-users-checkbox-shared')) {
+        const checkboxContainer = document.createElement('div');
+        checkboxContainer.style.marginTop = '16px';
+        checkboxContainer.style.paddingTop = '16px';
+        checkboxContainer.style.borderTop = '1px solid var(--border-color, #e0e0e0)';
+        checkboxContainer.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
-                    <input type="checkbox" id="show-test-users-checkbox-summary" style="cursor: pointer;">
+                    <input type="checkbox" id="show-test-users-checkbox-shared" style="cursor: pointer;">
                     <span>Vis testbrugere (Snoop Dog, Test Aladin)</span>
                 </label>
-            `;
-            filterPanel.appendChild(checkboxContainer);
-
-            // Get reference after creation
-            showTestUsersCheckbox = document.getElementById('show-test-users-checkbox-summary');
-        }
+                <button id="only-test-users-btn-shared" class="action-button secondary-action" style="font-size: 12px; padding: 6px 12px;">
+                    Vis KUN testbrugere
+                </button>
+            </div>
+        `;
+        filterPanel.appendChild(checkboxContainer);
     }
 
-    // Wire up event listener to refetch history when toggled
+    // Wire up test users event listeners
+    const showTestUsersCheckbox = document.getElementById('show-test-users-checkbox-shared');
+    const onlyTestUsersBtn = document.getElementById('only-test-users-btn-shared');
+
     if (showTestUsersCheckbox) {
-        showTestUsersCheckbox.onchange = fetchHistoryInSummary;
+        showTestUsersCheckbox.onchange = () => {
+            if (onlyTestUsersBtn) {
+                onlyTestUsersBtn.classList.remove('active');
+                onlyTestUsersBtn.textContent = 'Vis KUN testbrugere';
+            }
+            reloadCurrentHistoryView();
+        };
     }
 
-    // Setup date inputs
-    const today = new Date().toISOString().split('T')[0];
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    historyStartDate.value = thirtyDaysAgo;
-    historyEndDate.value = today;
-    historyStartDate.onchange = fetchHistoryInSummary;
-    historyEndDate.onchange = fetchHistoryInSummary;
+    if (onlyTestUsersBtn) {
+        onlyTestUsersBtn.onclick = () => {
+            const isActive = onlyTestUsersBtn.classList.toggle('active');
+            onlyTestUsersBtn.textContent = isActive ? '✓ Kun testbrugere' : 'Vis KUN testbrugere';
+            if (isActive && showTestUsersCheckbox) {
+                showTestUsersCheckbox.checked = false;
+            }
+            reloadCurrentHistoryView();
+        };
+    }
 
-    // Load initial data
+    sharedControlsInitialized = true;
+    console.log('[history-and-reports] Shared controls initialized');
+}
+
+/**
+ * Reload current history view (overview or transactions) based on which is visible
+ */
+async function reloadCurrentHistoryView() {
+    const overviewContainer = document.getElementById('overview-view-container');
+    const transactionsContainer = document.getElementById('transactions-view-container');
+
+    if (overviewContainer && overviewContainer.style.display !== 'none') {
+        await fetchOverviewData();
+    }
+    if (transactionsContainer && transactionsContainer.style.display !== 'none') {
+        await fetchHistoryInSummary();
+    }
+}
+
+/**
+ * Reset shared controls state (called when modal closes or reopens)
+ */
+export function resetSharedHistoryControls() {
+    sharedControlsInitialized = false;
+
+    // Reset filter deposits button
+    const filterDepositsBtn = document.getElementById('filter-deposits-btn-shared');
+    if (filterDepositsBtn) {
+        filterDepositsBtn.classList.remove('active');
+        filterDepositsBtn.textContent = 'Vis Kun Indbetalinger';
+    }
+
+    // Reset search input
+    const searchInput = document.getElementById('search-history-input-shared');
+    if (searchInput) searchInput.value = '';
+
+    // Reset filter checkboxes to checked
+    const filterCheckboxes = document.querySelectorAll('.history-filter-checkbox-shared');
+    filterCheckboxes.forEach(cb => cb.checked = true);
+
+    // Hide filter panel
+    const filterPanel = document.getElementById('history-filter-panel-shared');
+    if (filterPanel) filterPanel.style.display = 'none';
+
+    // Reset test users controls
+    const showTestUsersCheckbox = document.getElementById('show-test-users-checkbox-shared');
+    if (showTestUsersCheckbox) showTestUsersCheckbox.checked = false;
+    const onlyTestUsersBtn = document.getElementById('only-test-users-btn-shared');
+    if (onlyTestUsersBtn) {
+        onlyTestUsersBtn.classList.remove('active');
+        onlyTestUsersBtn.textContent = 'Vis KUN testbrugere';
+    }
+}
+
+/**
+ * Load transaction history in summary modal (Transaktioner view)
+ * This function initializes and displays the transaction history within the summary modal
+ */
+export async function showTransactionsInSummary() {
+    // Initialize shared controls (only once)
+    initSharedHistoryControls();
+
+    // Load data for transactions view
     await fetchHistoryInSummary();
-    filterDepositsBtn.classList.remove('active');
-    filterDepositsBtn.textContent = 'Vis Kun Indbetalinger';
 }
 
 /**
  * Fetch history data for summary modal transactions view
  */
 async function fetchHistoryInSummary() {
-    const searchInput = document.getElementById('search-history-input-summary');
-    const historyStartDate = document.getElementById('history-start-date-summary');
-    const historyEndDate = document.getElementById('history-end-date-summary');
-    const testUsersCheckbox = document.getElementById('show-test-users-checkbox-summary');
-    const filterCheckboxes = Array.from(document.querySelectorAll('.history-filter-checkbox-summary'));
+    const searchInput = document.getElementById('search-history-input-shared');
+    const historyStartDate = document.getElementById('history-start-date-shared');
+    const historyEndDate = document.getElementById('history-end-date-shared');
+    const testUsersCheckbox = document.getElementById('show-test-users-checkbox-shared');
+    const onlyTestUsersBtn = document.getElementById('only-test-users-btn-shared');
+    const filterCheckboxes = Array.from(document.querySelectorAll('.history-filter-checkbox-shared'));
 
-    if (!searchInput || !historyStartDate || !historyEndDate) return;
-
-    searchInput.value = '';
+    if (!historyStartDate || !historyEndDate) return;
     const startDateStr = historyStartDate.value;
     const endDateStr = historyEndDate.value;
-    const includeTestUsers = testUsersCheckbox ? testUsersCheckbox.checked : false;  // Default false
+    const includeTestUsers = testUsersCheckbox ? testUsersCheckbox.checked : false;
+    const onlyTestUsers = onlyTestUsersBtn ? onlyTestUsersBtn.classList.contains('active') : false;
     const selectedEventTypes = filterCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
 
     // Load history from database
     const { rows, error } = await loadSalesHistory({
         from: startDateStr,
         to: endDateStr,
-        includeTestUsers
+        includeTestUsers,
+        onlyTestUsers
     });
 
     if (error) {
@@ -1548,22 +2030,129 @@ async function fetchHistoryInSummary() {
         return;
     }
 
-    // Filter by event types client-side
-    fullSalesHistory = rows.filter(event => selectedEventTypes.includes(event.event_type));
+    // DEBUG: Log raw data BEFORE filtering
+    const rawAdjustments = rows.filter(e => e.event_type === 'SALE_ADJUSTMENT');
+    console.log('[HISTORY SUMMARY DEBUG] Raw SALE_ADJUSTMENT events from DB:', rawAdjustments.length,
+        rawAdjustments.length > 0 ? rawAdjustments : '(none)');
+
+    // Filter by event types client-side (med mapping for specielle typer)
+    fullSalesHistory = rows.filter(event => {
+        const eventType = event.event_type;
+        // Map event types til checkbox values (samme som i renderSalesHistory)
+        if (eventType === 'BALANCE_EDIT') return selectedEventTypes.includes('BALANCE_ADJUSTMENT');
+        if (eventType === 'SALE_ADJUSTMENT') return selectedEventTypes.includes('SALE_EDIT');
+        return selectedEventTypes.includes(eventType);
+    });
+
+    // DEBUG: Log SALE_ADJUSTMENT events
+    const adjustmentEvents = fullSalesHistory.filter(e => e.event_type === 'SALE_ADJUSTMENT');
+    console.log('[HISTORY SUMMARY DEBUG] SALE_ADJUSTMENT events after filter:', adjustmentEvents.length,
+        'selectedEventTypes:', selectedEventTypes,
+        'includes SALE_EDIT:', selectedEventTypes.includes('SALE_EDIT'));
 
     renderSalesHistoryInSummary(fullSalesHistory);
 }
 
 /**
- * Render sales history in summary modal
+ * Show overview (summary/charts only) in summary modal
+ * Viser KUN opsummering og diagram uden posteringsliste
+ */
+export async function showOverviewInSummary() {
+    // Initialize shared controls (only once)
+    initSharedHistoryControls();
+
+    // Load data for overview view
+    await fetchOverviewData();
+}
+
+/**
+ * Fetch overview data for the overview view
+ */
+async function fetchOverviewData() {
+    const historyStartDate = document.getElementById('history-start-date-shared');
+    const historyEndDate = document.getElementById('history-end-date-shared');
+    const filterCheckboxes = Array.from(document.querySelectorAll('.history-filter-checkbox-shared'));
+    const filterDepositsBtn = document.getElementById('filter-deposits-btn-shared');
+    const testUsersCheckbox = document.getElementById('show-test-users-checkbox-shared');
+    const onlyTestUsersBtn = document.getElementById('only-test-users-btn-shared');
+
+    if (!historyStartDate || !historyEndDate) return;
+
+    const startDateStr = historyStartDate.value;
+    const endDateStr = historyEndDate.value;
+    const isDepositsOnly = filterDepositsBtn?.classList.contains('active');
+    const includeTestUsers = testUsersCheckbox ? testUsersCheckbox.checked : false;
+    const onlyTestUsers = onlyTestUsersBtn ? onlyTestUsersBtn.classList.contains('active') : false;
+
+    // Get selected event types
+    let selectedEventTypes = filterCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+    if (selectedEventTypes.length === 0) {
+        selectedEventTypes = ['SALE', 'DEPOSIT', 'BALANCE_ADJUSTMENT'];
+    }
+
+    // Load history from database
+    const { rows, error } = await loadSalesHistory({
+        from: startDateStr,
+        to: endDateStr,
+        includeTestUsers,
+        onlyTestUsers
+    });
+
+    if (error) {
+        console.error('[history-and-reports] Error loading overview data:', error);
+        return;
+    }
+
+    // Filter by event types and deposits mode
+    let filteredRows = rows.filter(event => {
+        const eventType = event.event_type;
+        if (isDepositsOnly) {
+            return eventType === 'DEPOSIT' || eventType === 'BALANCE_EDIT';
+        }
+        // Map database event types to checkbox values
+        if (eventType === 'BALANCE_EDIT') return selectedEventTypes.includes('BALANCE_ADJUSTMENT');
+        if (eventType === 'SALE_ADJUSTMENT') return selectedEventTypes.includes('SALE_EDIT');
+        return selectedEventTypes.includes(eventType);
+    });
+
+    // Render only the summary (no list)
+    renderOverviewSummary(filteredRows);
+}
+
+/**
+ * Render only the overview summary (charts and stats)
+ */
+function renderOverviewSummary(history) {
+    const salesSummary = document.getElementById('sales-summary-overview');
+
+    if (!salesSummary) {
+        console.error('[history-and-reports] Missing sales-summary-overview element');
+        return;
+    }
+
+    if (history.length === 0) {
+        salesSummary.innerHTML = '<p style="text-align:center; padding: 40px; color: #666;">Ingen data i den valgte periode.</p>';
+        return;
+    }
+
+    // Build and render summary HTML with charts
+    const summaryHTML = buildSalesHistorySummaryHTML(history, history);
+    salesSummary.innerHTML = summaryHTML;
+
+    // Initialize chart carousel
+    initHistoryChartCarousel(salesSummary);
+}
+
+/**
+ * Render sales history in summary modal (kun posteringsliste, ingen opsummering)
  */
 function renderSalesHistoryInSummary(history, searchQuery = null, eventTypeFilter = null) {
     const salesHistoryList = document.getElementById('sales-history-list-summary');
-    const salesSummary = document.getElementById('sales-summary-summary');
-    const searchInput = document.getElementById('search-history-input-summary');
+    const salesSummary = document.getElementById('sales-summary-transactions');
+    const searchInput = document.getElementById('search-history-input-shared');
 
-    if (!salesHistoryList || !salesSummary) {
-        console.error('[history-and-reports] Missing required summary elements');
+    if (!salesHistoryList) {
+        console.error('[history-and-reports] Missing sales-history-list-summary element');
         return;
     }
 
@@ -1577,7 +2166,7 @@ function renderSalesHistoryInSummary(history, searchQuery = null, eventTypeFilte
         preFilteredData = history.filter(e => e.event_type === eventTypeFilter);
     } else {
         // Apply checkbox-based filter
-        const filterCheckboxes = Array.from(document.querySelectorAll('.history-filter-checkbox-summary'));
+        const filterCheckboxes = Array.from(document.querySelectorAll('.history-filter-checkbox-shared'));
         if (filterCheckboxes.length > 0) {
             const checkedEventTypes = filterCheckboxes
                 .filter(cb => cb.checked)
@@ -1607,7 +2196,7 @@ function renderSalesHistoryInSummary(history, searchQuery = null, eventTypeFilte
     if (filteredEvents.length === 0) {
         const message = searchTerm ? 'Ingen salg matcher din søgning.' : 'Der er ingen salg i den valgte periode.';
         salesHistoryList.innerHTML = `<p style="text-align:center; padding: 20px;">${message}</p>`;
-        salesSummary.replaceChildren();
+        if (salesSummary) salesSummary.replaceChildren();
         return;
     }
 
@@ -1648,42 +2237,149 @@ function renderSalesHistoryInSummary(history, searchQuery = null, eventTypeFilte
                 transition: background-color 0.2s;
             }
             .history-edit-btn:hover { background-color: #e4e4e4; }
+            /* Styling for child adjustments - visuelt adskilt med gul/orange */
+            .history-entry-adjustment-child {
+                background-color: #fff8e6 !important;
+                border-left: 3px solid #f59e0b !important;
+                font-size: 13px;
+            }
+            .history-entry-adjustment-child:hover {
+                background-color: #fef3c7 !important;
+            }
+            .history-entry-adjustment-child .history-primary {
+                color: #b45309;
+            }
+            /* FULDT REFUNDERET SALG - rød/pink styling */
+            .history-entry-refunded {
+                background-color: #fee2e2 !important;
+                border-left: 4px solid #ef4444 !important;
+            }
+            .history-entry-refunded:hover {
+                background-color: #fecaca !important;
+            }
+            .history-entry-refunded .history-primary {
+                color: #dc2626;
+            }
+            .history-entry-refunded .history-col-items,
+            .history-entry-refunded .history-col-amount {
+                text-decoration: line-through;
+                opacity: 0.7;
+            }
+            /* FULD FORTRYDELSE - grøn refund styling */
+            .history-entry-full-reversal {
+                background-color: #dcfce7 !important;
+                border-left: 3px solid #22c55e !important;
+            }
+            .history-entry-full-reversal:hover {
+                background-color: #bbf7d0 !important;
+            }
+            .history-entry-full-reversal .history-primary {
+                color: #16a34a;
+                font-weight: 600;
+            }
+            /* SALE_UNDO - Ghost row med gennemstregning */
+            .history-row-voided {
+                opacity: 0.8;
+                background-color: #fef2f2 !important;
+                border-left: 4px solid #f87171 !important;
+            }
+            .history-row-voided:hover {
+                background-color: #fee2e2 !important;
+            }
+            .history-row-voided .history-col-items .items-text,
+            .history-row-voided .history-col-amount .history-secondary {
+                text-decoration: line-through;
+                color: #9ca3af;
+            }
+            .voided-badge {
+                display: inline-block;
+                background-color: #ef4444;
+                color: white;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2px 6px;
+                border-radius: 999px;
+                margin-right: 4px;
+                vertical-align: middle;
+            }
+            .voided-info {
+                font-style: italic;
+                color: #9ca3af;
+            }
         `;
         document.head.appendChild(style);
     }
 
     if (filteredEvents.length > 0) {
-        // Build summary HTML with charts (same as original)
-        const summaryHTML = buildSalesHistorySummaryHTML(preFilteredData, filteredEvents);
-        salesSummary.innerHTML = summaryHTML;
-
-        // Initialize chart carousel after setting HTML
-        initHistoryChartCarousel(salesSummary);
+        // Ryd opsummeringssektionen (vises nu kun i Oversigt-view)
+        if (salesSummary) salesSummary.replaceChildren();
 
         // Render transaction list
         salesHistoryList.replaceChildren();
 
-        // Group adjustments by sale ID
+        // Group adjustments by sale ID and find fully refunded sales
         const adjustmentsBySaleId = new Map();
+        const fullyRefundedSaleIds = new Set();
+
         filteredEvents.forEach(ev => {
             if (ev.event_type === 'SALE_ADJUSTMENT' && ev.details?.adjusted_sale_id) {
                 const saleId = ev.details.adjusted_sale_id;
                 const list = adjustmentsBySaleId.get(saleId) || [];
                 list.push(ev);
                 adjustmentsBySaleId.set(saleId, list);
+
+                // Check om dette er en fuld fortrydelse
+                if (ev.details?.fullReversal === true || ev.details?.reason === 'FULL_SALE_REVERSAL') {
+                    fullyRefundedSaleIds.add(saleId);
+                }
+            }
+        });
+
+        // Check også for salg hvor sum af adjustments = -original beløb
+        filteredEvents.forEach(ev => {
+            if (ev.event_type === 'SALE') {
+                const saleId = ev.id || ev.event_id;
+                const adjustments = adjustmentsBySaleId.get(saleId) || [];
+                if (adjustments.length > 0) {
+                    const originalAmount = getEventAmount(ev);
+                    const totalAdjustment = adjustments.reduce((sum, adj) => {
+                        return sum + (Number(adj.details?.adjustment_amount) || 0);
+                    }, 0);
+                    if (Math.abs(totalAdjustment + originalAmount) < 0.01) {
+                        fullyRefundedSaleIds.add(saleId);
+                    }
+                }
             }
         });
 
         // Render each event with full detail columns
+        let renderedSaleAdjustments = 0;
+        let skippedSaleAdjustments = 0;
         filteredEvents.forEach(event => {
             const adjustedSaleId = event.details?.adjusted_sale_id;
             const isChildAdjustment = event.event_type === 'SALE_ADJUSTMENT' && adjustedSaleId;
-            if (isChildAdjustment) return;
 
-            const entryEl = buildSalesHistoryEntryElement(event);
+            // Check om parent SALE er i listen - hvis ikke, vis adjustment selvstændigt
+            const parentExists = isChildAdjustment &&
+                filteredEvents.some(e => (e.id || e.event_id) === adjustedSaleId);
+
+            // Skip KUN hvis parent faktisk findes (så den renderes som child under parent)
+            if (isChildAdjustment && parentExists) {
+                skippedSaleAdjustments++;
+                return;
+            }
+
+            if (event.event_type === 'SALE_ADJUSTMENT') {
+                renderedSaleAdjustments++;
+            }
+
+            // Check om dette salg er fuldt refunderet
+            const eventId = event.id || event.event_id || null;
+            const isFullyRefunded = event.event_type === 'SALE' && fullyRefundedSaleIds.has(eventId);
+
+            const entryEl = buildSalesHistoryEntryElement(event, { isFullyRefunded });
             salesHistoryList.appendChild(entryEl);
 
-            const eventId = event.id || event.event_id || null;
             if (event.event_type === 'SALE' && eventId) {
                 const children = adjustmentsBySaleId.get(eventId) || [];
                 children.forEach(adjEvent => {
@@ -1693,7 +2389,7 @@ function renderSalesHistoryInSummary(history, searchQuery = null, eventTypeFilte
             }
         });
     } else {
-        salesSummary.replaceChildren();
+        if (salesSummary) salesSummary.replaceChildren();
         const message = searchTerm ? 'Ingen salg matcher din søgning.' : 'Der er ingen salg i den valgte periode.';
         salesHistoryList.innerHTML = `<p style="text-align:center; padding: 20px;">${message}</p>`;
     }

@@ -25,26 +25,41 @@ export async function loadUsersAndNotifications({
     let showAdminsInList = true; // Default: vis ALLE brugere (backward compatible)
     let adminsPurchaseFree = false;
 
-    try {
-        const { data: institutionData, error: institutionError } = await supabaseClient
-            .from('institutions')
-            .select('show_admins_in_user_list, admins_purchase_free')
-            .eq('id', institutionId)
-            .single();
+    // OPTIMERING: Brug memory cache først (0 DB kald)
+    let institutionData = typeof window !== 'undefined' && typeof window.__flangoGetInstitutionById === 'function'
+        ? window.__flangoGetInstitutionById(institutionId)
+        : null;
 
-        if (!institutionError && institutionData) {
-            // Kun hvis kolonnen eksisterer og har en værdi, brug den
-            if (typeof institutionData.show_admins_in_user_list === 'boolean') {
-                showAdminsInList = institutionData.show_admins_in_user_list;
+    // Fallback: hent fra DB kun hvis ikke i cache
+    if (!institutionData) {
+        console.debug('[admin-flow] Cache miss for institution, fetching from DB');
+        try {
+            const { data: dbData, error: institutionError } = await supabaseClient
+                .from('institutions')
+                .select('show_admins_in_user_list, admins_purchase_free')
+                .eq('id', institutionId)
+                .single();
+
+            if (!institutionError && dbData) {
+                institutionData = dbData;
+            } else {
+                console.warn('[admin-flow] Kunne ikke hente institution settings (måske migration ikke kørt endnu):', institutionError);
             }
-            if (typeof institutionData.admins_purchase_free === 'boolean') {
-                adminsPurchaseFree = institutionData.admins_purchase_free;
-            }
-        } else {
-            console.warn('[admin-flow] Kunne ikke hente institution settings (måske migration ikke kørt endnu):', institutionError);
+        } catch (err) {
+            console.warn('[admin-flow] Fejl ved hentning af institution settings, bruger defaults:', err);
         }
-    } catch (err) {
-        console.warn('[admin-flow] Fejl ved hentning af institution settings, bruger defaults:', err);
+    } else {
+        console.debug('[admin-flow] Cache hit for institution:', institutionId);
+    }
+
+    // Anvend settings fra cache eller DB
+    if (institutionData) {
+        if (typeof institutionData.show_admins_in_user_list === 'boolean') {
+            showAdminsInList = institutionData.show_admins_in_user_list;
+        }
+        if (typeof institutionData.admins_purchase_free === 'boolean') {
+            adminsPurchaseFree = institutionData.admins_purchase_free;
+        }
     }
 
     console.log('[admin-flow] Institution settings:', { showAdminsInList, adminsPurchaseFree });

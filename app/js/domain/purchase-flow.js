@@ -253,12 +253,20 @@ async function fetchProductAllergensMap(productIds) {
 }
 
 export async function enforceSugarPolicy({ customer, currentOrder, allProducts }) {
-    // Load institution sugar policy settings
-    const { data: institution } = await supabaseClient
-        .from('institutions')
-        .select('sugar_policy_enabled, sugar_policy_max_unhealthy_per_day, sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled, sugar_policy_max_per_product_enabled')
-        .eq('id', customer.institution_id)
-        .single();
+    // OPTIMERING: Brug memory cache først (0 DB kald)
+    let institution = typeof window !== 'undefined' && typeof window.__flangoGetInstitutionById === 'function'
+        ? window.__flangoGetInstitutionById(customer.institution_id)
+        : null;
+
+    // Fallback: hent fra DB kun hvis ikke i cache
+    if (!institution) {
+        const { data } = await supabaseClient
+            .from('institutions')
+            .select('sugar_policy_enabled, sugar_policy_max_unhealthy_per_day, sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled, sugar_policy_max_per_product_enabled')
+            .eq('id', customer.institution_id)
+            .single();
+        institution = data;
+    }
 
     if (!institution?.sugar_policy_enabled) {
         return true; // Policy not enabled, allow purchase
@@ -519,22 +527,30 @@ export async function handleCompletePurchase({
     const finance = getFinancialState(finalTotal);
     const newBalance = Number.isFinite(finance.newBalance) ? finance.newBalance : customer.balance - finalTotal;
 
-    // Load institution policy settings
-    const { data: institutionSettings } = await supabaseClient
-        .from('institutions')
-        .select(`
-            balance_limit_enabled,
-            balance_limit_amount,
-            balance_limit_exempt_admins,
-            balance_limit_exempt_test_users,
-            spending_limit_enabled,
-            spending_limit_amount,
-            spending_limit_applies_to_regular_users,
-            spending_limit_applies_to_admins,
-            spending_limit_applies_to_test_users
-        `)
-        .eq('id', customer.institution_id)
-        .single();
+    // OPTIMERING: Brug memory cache først (0 DB kald)
+    let institutionSettings = typeof window !== 'undefined' && typeof window.__flangoGetInstitutionById === 'function'
+        ? window.__flangoGetInstitutionById(customer.institution_id)
+        : null;
+
+    // Fallback: hent fra DB kun hvis ikke i cache
+    if (!institutionSettings) {
+        const { data } = await supabaseClient
+            .from('institutions')
+            .select(`
+                balance_limit_enabled,
+                balance_limit_amount,
+                balance_limit_exempt_admins,
+                balance_limit_exempt_test_users,
+                spending_limit_enabled,
+                spending_limit_amount,
+                spending_limit_applies_to_regular_users,
+                spending_limit_applies_to_admins,
+                spending_limit_applies_to_test_users
+            `)
+            .eq('id', customer.institution_id)
+            .single();
+        institutionSettings = data;
+    }
 
     // === SPENDING LIMIT CHECK ===
     if (institutionSettings?.spending_limit_enabled) {
@@ -627,7 +643,7 @@ export async function handleCompletePurchase({
         showAlert('Database Fejl: ' + error.message);
         setButtonLoadingState(completePurchaseBtn, 'normal');
     } else {
-        // Purchase successful - invalidate cache to ensure fresh data
+        // Purchase successful - invalidate caches to ensure fresh data
         invalidateTodaysSalesCache();
 
         if (typeof incrementSessionSalesCount === 'function') {

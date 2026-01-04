@@ -21,9 +21,9 @@
     <link rel="stylesheet" href="css/users.css">
     <link rel="stylesheet" href="css/features.css">
     <link rel="stylesheet" href="mobile.css">
-    <!-- Theme Overrides (loaded last to ensure specificity) -->
-    <link rel="stylesheet" href="css/themes/pos-pro.css">
-    <!-- flango-unstoppable uses theme-pack system - CSS loaded dynamically by theme-loader.js -->
+    <!-- Theme: flango-unstoppable (only active theme - CSS loaded dynamically by theme-loader.js) -->
+    <!-- DISABLED: pos-pro.css not in use -->
+    <!-- <link rel="stylesheet" href="css/themes/pos-pro.css"> -->
     <style>
         .settings-modal-backdrop {
             position: fixed;
@@ -245,12 +245,6 @@
                         <label><input type="checkbox" class="history-filter-checkbox" value="SALE_EDIT" checked> Redigerede Salg</label>
                         <label><input type="checkbox" class="history-filter-checkbox" value="SALE_UNDO" checked> Fortrudte Salg</label>
                     </div>
-                    <div class="filter-column">
-                        <label><input type="checkbox" class="history-filter-checkbox" value="USER_CREATE" checked> Oprettelse af brugere</label>
-                        <label><input type="checkbox" class="history-filter-checkbox" value="USER_EDIT" checked> Redigering af brugere</label>
-                        <label><input type="checkbox" class="history-filter-checkbox" value="PRODUCT_CREATE" checked> Oprettelse af produkter</label>
-                        <label><input type="checkbox" class="history-filter-checkbox" value="PRODUCT_EDIT" checked> Redigering af produkter</label>
-                    </div>
                 </div>
             </div>
             <div class="date-filter">
@@ -355,8 +349,9 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-start;">
+            <div class="modal-footer" style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: space-between;">
                 <button id="back-to-preferences-sugar-policy-btn" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">← Tilbage</button>
+                <button id="apply-sugar-policy-btn" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Anvend ændringer</button>
             </div>
         </div>
     </div>
@@ -472,6 +467,14 @@
                             <div>
                                 <strong>Købsgrænse pr produkt</strong>
                                 <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan begrænse antal af specifikke produkter per dag</div>
+                            </div>
+                        </label>
+
+                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
+                            <input type="checkbox" id="parent-portal-sugar-policy" style="margin-right: 12px; cursor: pointer;">
+                            <div>
+                                <strong>Sukkerpolitik</strong>
+                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan begrænse usunde produkter for deres barn</div>
                             </div>
                         </label>
                     </div>
@@ -648,7 +651,8 @@
 
             <!-- View Mode Selector -->
             <div class="summary-view-selector">
-                <button class="summary-view-btn active" data-view="transactions">📜 Transaktioner</button>
+                <button class="summary-view-btn active" data-view="overview">📊 Oversigt</button>
+                <button class="summary-view-btn" data-view="transactions">📜 Transaktioner</button>
                 <button class="summary-view-btn" data-view="day">📅 Dag</button>
                 <button class="summary-view-btn" data-view="week">📆 Uge</button>
                 <button class="summary-view-btn" data-view="month">🗓️ Måned</button>
@@ -662,47 +666,52 @@
                 <button class="summary-role-btn" data-role="kunde">👦 Børn</button>
             </div>
 
-            <!-- Transactions View (when Transaktioner is selected) -->
-            <div id="transactions-view-container" class="summary-view-content">
+            <!-- Delt Filter/Dato sektion for Oversigt og Transaktioner -->
+            <div id="shared-history-controls" style="display: none;">
                 <div class="report-buttons">
-                    <button id="history-filter-btn-summary" class="action-button btn-filter" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Filter</button>
-                    <button id="filter-deposits-btn-summary" class="action-button" style="background-color: var(--secondary-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Vis Kun Indbetalinger</button>
-                    <button id="print-negative-balance-btn-summary" class="action-button" style="background-color: var(--warning-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem Negativ Saldo</button>
-                    <button id="print-report-btn-summary" class="action-button" style="background-color: var(--success-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem Rapport</button>
-                    <button id="print-all-balances-btn-summary" class="action-button btn-all-balances" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem liste med alle saldoer</button>
-                    <button id="history-undo-last-sale-btn-summary" class="action-button btn-undo-last-sale" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Fortryd Sidste Salg</button>
+                    <button id="history-filter-btn-shared" class="action-button btn-filter" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Filter</button>
+                    <button id="filter-deposits-btn-shared" class="action-button" style="background-color: var(--secondary-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Vis Kun Indbetalinger</button>
+                    <button id="print-negative-balance-btn-shared" class="action-button" style="background-color: var(--warning-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem Negativ Saldo</button>
+                    <button id="print-report-btn-shared" class="action-button" style="background-color: var(--success-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem Rapport</button>
+                    <button id="print-all-balances-btn-shared" class="action-button btn-all-balances" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem liste med alle saldoer</button>
+                    <button id="history-undo-last-sale-btn-shared" class="action-button btn-undo-last-sale" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Fortryd Sidste Salg</button>
                 </div>
-                <div id="history-filter-panel-summary" class="history-filter-panel" style="display: none;">
+                <div id="history-filter-panel-shared" class="history-filter-panel" style="display: none;">
                     <div class="filter-actions">
-                        <button id="history-filter-deselect-all-summary" class="action-button secondary-action">Fravælg alle</button>
-                        <button id="history-filter-select-all-summary" class="action-button secondary-action">Vælg alle</button>
+                        <button id="history-filter-deselect-all-shared" class="action-button secondary-action">Fravælg alle</button>
+                        <button id="history-filter-select-all-shared" class="action-button secondary-action">Vælg alle</button>
                     </div>
                     <div class="filter-options">
                         <div class="filter-column">
-                            <label><input type="checkbox" class="history-filter-checkbox-summary" value="SALE" checked> Salg</label>
-                            <label><input type="checkbox" class="history-filter-checkbox-summary" value="DEPOSIT" checked> Indbetalinger</label>
-                            <label><input type="checkbox" class="history-filter-checkbox-summary" value="BALANCE_ADJUSTMENT" checked> Saldo Rettelser</label>
-                            <label><input type="checkbox" class="history-filter-checkbox-summary" value="SALE_EDIT" checked> Redigerede Salg</label>
-                            <label><input type="checkbox" class="history-filter-checkbox-summary" value="SALE_UNDO" checked> Fortrudte Salg</label>
-                        </div>
-                        <div class="filter-column">
-                            <label><input type="checkbox" class="history-filter-checkbox-summary" value="USER_CREATE" checked> Oprettelse af brugere</label>
-                            <label><input type="checkbox" class="history-filter-checkbox-summary" value="USER_EDIT" checked> Redigering af brugere</label>
-                            <label><input type="checkbox" class="history-filter-checkbox-summary" value="PRODUCT_CREATE" checked> Oprettelse af produkter</label>
-                            <label><input type="checkbox" class="history-filter-checkbox-summary" value="PRODUCT_EDIT" checked> Redigering af produkter</label>
+                            <label><input type="checkbox" class="history-filter-checkbox-shared" value="SALE" checked> Salg</label>
+                            <label><input type="checkbox" class="history-filter-checkbox-shared" value="DEPOSIT" checked> Indbetalinger</label>
+                            <label><input type="checkbox" class="history-filter-checkbox-shared" value="BALANCE_ADJUSTMENT" checked> Saldo Rettelser</label>
+                            <label><input type="checkbox" class="history-filter-checkbox-shared" value="SALE_EDIT" checked> Redigerede Salg</label>
+                            <label><input type="checkbox" class="history-filter-checkbox-shared" value="SALE_UNDO" checked> Fortrudte Salg</label>
                         </div>
                     </div>
                 </div>
                 <div class="date-filter">
-                    <input type="date" id="history-start-date-summary" autocomplete="off" spellcheck="false" autocapitalize="off">
+                    <input type="date" id="history-start-date-shared" autocomplete="off" spellcheck="false" autocapitalize="off">
                     <span>til</span>
-                    <input type="date" id="history-end-date-summary" autocomplete="off" spellcheck="false" autocapitalize="off">
+                    <input type="date" id="history-end-date-shared" autocomplete="off" spellcheck="false" autocapitalize="off">
                 </div>
                 <div class="modal-controls" style="padding-top: 15px;">
-                    <input type="text" id="search-history-input-summary" placeholder="Søg efter kunde..." autocomplete="off" spellcheck="false" autocapitalize="off">
+                    <input type="text" id="search-history-input-shared" placeholder="Søg efter kunde..." autocomplete="off" spellcheck="false" autocapitalize="off">
                 </div>
+            </div>
+
+            <!-- Overview View (when Oversigt is selected) - viser kun opsummering og diagram -->
+            <div id="overview-view-container" class="summary-view-content" style="display: none;">
                 <div class="history-scroll-container">
-                    <div id="sales-summary-summary"></div>
+                    <div id="sales-summary-overview"></div>
+                </div>
+            </div>
+
+            <!-- Transactions View (when Transaktioner is selected) - viser kun posteringsliste -->
+            <div id="transactions-view-container" class="summary-view-content" style="display: none;">
+                <div class="history-scroll-container">
+                    <div id="sales-summary-transactions"></div>
                     <div id="sales-history-list-summary" class="modal-user-list"></div>
                 </div>
             </div>
@@ -725,10 +734,15 @@
 
                 <!-- Test Users Toggle -->
                 <div style="margin: 16px 0; padding-top: 16px; border-top: 1px solid var(--border-color, #e0e0e0);">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
-                        <input type="checkbox" id="summary-show-test-users-checkbox" style="cursor: pointer;">
-                        <span>Vis testbrugere (Snoop Dog, Test Aladin)</span>
-                    </label>
+                    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                            <input type="checkbox" id="summary-show-test-users-checkbox" style="cursor: pointer;">
+                            <span>Vis testbrugere (Snoop Dog, Test Aladin)</span>
+                        </label>
+                        <button id="summary-only-test-users-btn" class="action-button secondary-action" style="font-size: 12px; padding: 6px 12px;">
+                            Vis KUN testbrugere
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Table Container -->
@@ -846,49 +860,25 @@
         </details>
     </div></div></template>
 
+    <!-- DISABLED: Theme picker (flango-unstoppable is the only active theme) -->
+    <!--
     <button id="open-theme-picker" style="display:none;"></button>
-    <!-- Tema-vælger overlay (modal) -->
     <div id="theme-picker-backdrop" class="theme-picker-backdrop" style="display:none;">
         <div class="theme-picker-modal">
             <h2>Vælg tema</h2>
-
             <div class="theme-option">
-                <input type="radio" name="flango-theme" id="theme-default" value="default">
-                <label for="theme-default">
-                    <strong>Default</strong><br>
-                    Standard Flango-udseende
-                </label>
-            </div>
-
-            <div class="theme-option">
-                <input type="radio" name="flango-theme" id="theme-pastel-pop" value="pastel-pop">
-                <label for="theme-pastel-pop">
-                    <strong>Pastel Pop</strong><br>
-                    Farverig 3D-stil (eksperimentel)
-                </label>
-            </div>
-
-            <div class="theme-option">
-                <input type="radio" name="flango-theme" id="theme-pos-pro" value="pos-pro">
-                <label for="theme-pos-pro">
-                    <strong>POS Pro</strong><br>
-                    Professionelt kasseapparat-look
-                </label>
-            </div>
-
-            <div class="theme-option">
-                <input type="radio" name="flango-theme" id="theme-flango-unstoppable" value="flango-unstoppable">
+                <input type="radio" name="flango-theme" id="theme-flango-unstoppable" value="flango-unstoppable" checked>
                 <label for="theme-flango-unstoppable">
                     <strong>Flango Unstoppable</strong><br>
                     Fedt og energisk design
                 </label>
             </div>
-
             <div class="theme-picker-actions">
                 <button id="theme-picker-close" class="settings-button">Luk</button>
             </div>
         </div>
     </div>
+    -->
 
     <!-- Indstillinger modal -->
     <div id="settings-modal-backdrop" class="settings-modal-backdrop" style="display:none;">

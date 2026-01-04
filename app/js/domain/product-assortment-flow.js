@@ -1,6 +1,5 @@
 import { getCurrentCustomer } from './cafe-session-store.js';
 import { applyProductLimitsToButtons, getProductIconInfo } from './products-and-cart.js';
-
 let flangoReorderMode = false;
 let flangoLongPressTimer = null;
 let flangoDraggedCard = null;
@@ -236,6 +235,41 @@ export function setupProductAssortmentFlow({
         }
     }
 
+    // Render produkter fra lokal state (uden DB fetch)
+    // Genbruger samme render-logik som fetchAndRenderProducts
+    async function renderProductsFromLocalState(allProducts) {
+        const currentCustomer = getCurrentCustomer();
+        const childId = currentCustomer?.id || null;
+
+        await renderProductsGrid(
+            allProducts,
+            productsContainer,
+            async (product, evt) => {
+                if (flangoReorderMode) return null;
+                const result = await addToOrder(product, getCurrentOrder(), orderList, totalPriceEl, updateSelectedUserInfo, { sourceEvent: evt });
+                const currentChildId = getCurrentCustomer()?.id || null;
+                const sugarData = typeof window.__flangoGetSugarData === 'function' ? window.__flangoGetSugarData() : null;
+                await applyProductLimitsToButtons(allProducts, productsContainer, getCurrentOrder(), currentChildId, sugarData);
+                return result;
+            },
+            currentCustomer
+        );
+
+        // Lock-overlays
+        productsContainer.querySelectorAll('.product-btn').forEach(btn => {
+            if (!btn.querySelector('.product-lock-overlay')) {
+                const overlay = document.createElement('div');
+                overlay.className = 'avatar-lock-overlay product-lock-overlay';
+                btn.appendChild(overlay);
+            }
+        });
+
+        initProductReorder();
+        const sugarDataForLocks = typeof window.__flangoGetSugarData === 'function' ? window.__flangoGetSugarData() : null;
+        await applyProductLimitsToButtons(allProducts, productsContainer, getCurrentOrder(), childId, sugarDataForLocks);
+        renderProductsInModal(allProducts, modalProductList);
+    }
+
     async function fetchAndRenderProducts() {
         const { data, error } = await supabaseClient
             .from('products')
@@ -260,7 +294,8 @@ export function setupProductAssortmentFlow({
                 const result = await addToOrder(product, getCurrentOrder(), orderList, totalPriceEl, updateSelectedUserInfo, { sourceEvent: evt });
                 // VIGTIGT: Brug altid den opdaterede kurv her, og hent childId på ny.
                 const currentChildId = getCurrentCustomer()?.id || null;
-                await applyProductLimitsToButtons(allProducts, productsContainer, getCurrentOrder(), currentChildId);
+                const sugarData = typeof window.__flangoGetSugarData === 'function' ? window.__flangoGetSugarData() : null;
+                await applyProductLimitsToButtons(allProducts, productsContainer, getCurrentOrder(), currentChildId, sugarData);
                 return result;
             },
             currentCustomer // Send currentCustomer så refill kan beregnes
@@ -275,7 +310,8 @@ export function setupProductAssortmentFlow({
             }
         });
         initProductReorder();
-        await applyProductLimitsToButtons(allProducts, productsContainer, getCurrentOrder(), childId);
+        const sugarDataForLocks = typeof window.__flangoGetSugarData === 'function' ? window.__flangoGetSugarData() : null;
+        await applyProductLimitsToButtons(allProducts, productsContainer, getCurrentOrder(), childId, sugarDataForLocks);
         renderProductsInModal(allProducts, modalProductList);
     }
 
@@ -318,7 +354,22 @@ export function setupProductAssortmentFlow({
                         showAlert(`Kunne ikke opdatere rækkefølge: ${firstError.message}`);
                         return;
                     }
-                    await fetchAndRenderProducts();
+                    // Optimistisk update: opdater lokal state uden DB fetch
+                    const currentProducts = getAllProducts();
+                    const productMap = new Map(currentProducts.map(p => [String(p.id), p]));
+                    const reorderedProducts = reorderedIds.map((id, index) => {
+                        const prod = productMap.get(String(id));
+                        return prod ? { ...prod, sort_order: index } : null;
+                    }).filter(Boolean);
+                    // Behold skjulte/disabled produkter med højere sort_order
+                    const hiddenProducts = currentProducts
+                        .filter(p => !reorderedIds.includes(String(p.id)))
+                        .map((p, i) => ({ ...p, sort_order: reorderedIds.length + i }));
+                    const allUpdated = [...reorderedProducts, ...hiddenProducts]
+                        .sort((a, b) => a.sort_order - b.sort_order);
+
+                    setAllProducts(allUpdated);
+                    await renderProductsFromLocalState(allUpdated);
                 } catch (err) {
                     console.error('[assortment] Uventet fejl ved opdatering af rækkefølge:', err);
                     showAlert('Der opstod en fejl ved opdatering af rækkefølgen');
@@ -345,8 +396,13 @@ export function setupProductAssortmentFlow({
                     return;
                 }
 
-                // Kun hvis opdateringen lykkedes, hent produkterne igen
-                await fetchAndRenderProducts();
+                // Optimistisk update: opdater lokal state uden DB fetch
+                const currentProducts = getAllProducts();
+                const updatedProducts = currentProducts.map(p =>
+                    String(p.id) === String(productId) ? { ...p, is_visible: isVisible } : p
+                );
+                setAllProducts(updatedProducts);
+                await renderProductsFromLocalState(updatedProducts);
             }
         };
     }

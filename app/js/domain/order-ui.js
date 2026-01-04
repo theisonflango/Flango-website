@@ -189,6 +189,70 @@ export async function addToOrder(product, currentOrder, orderListEl, totalPriceE
         }
     }
 
+    // 3) SUKKERPOLITIK: SYNKRONT client-side check FØRST (ingen server-kald, blokerer race conditions)
+    if (childId && productId != null && product?.unhealthy === true) {
+        const sugarData = typeof window.__flangoGetSugarData === 'function' ? window.__flangoGetSugarData() : null;
+        if (sugarData?.policy) {
+            const { policy, snapshot: sugarSnapshot } = sugarData;
+
+            // Tæl usunde produkter allerede i kurven (synkront, ingen API-kald)
+            const allProducts = typeof window.__flangoGetAllProducts === 'function' ? window.__flangoGetAllProducts() : [];
+            const productMap = new Map(allProducts.map(p => [String(p.id), p]));
+
+            let unhealthyInCart = 0;
+            let thisProductInCart = 0;
+            for (const line of currentOrder) {
+                const lineId = line?.product_id || line?.productId || line?.id;
+                if (lineId == null) continue;
+                const lineProduct = productMap.get(String(lineId));
+                if (lineProduct?.unhealthy === true) {
+                    unhealthyInCart++;
+                    if (String(lineId) === String(productId)) {
+                        thisProductInCart++;
+                    }
+                }
+            }
+
+            // Kombinér snapshot (allerede købt i dag) + kurv
+            const totalUnhealthy = (sugarSnapshot?.unhealthyTotal ?? 0) + unhealthyInCart;
+            const thisProductTotal = (sugarSnapshot?.unhealthyPerProduct?.[String(productId)] ?? 0) + thisProductInCart;
+
+            // SYNKRONT CHECK: Blokér øjeblikkeligt hvis grænsen er nået
+            let blocked = false;
+            let blockReason = '';
+
+            if (policy.blockUnhealthy === true) {
+                blocked = true;
+                blockReason = 'Usunde produkter er blokeret';
+            } else if (policy.maxUnhealthyPerDay != null && policy.maxUnhealthyPerDay > 0 && totalUnhealthy >= policy.maxUnhealthyPerDay) {
+                blocked = true;
+                blockReason = `Maks ${policy.maxUnhealthyPerDay} usunde produkter pr. dag`;
+            } else if (policy.maxUnhealthyPerProductPerDay != null && policy.maxUnhealthyPerProductPerDay > 0 && thisProductTotal >= policy.maxUnhealthyPerProductPerDay) {
+                blocked = true;
+                blockReason = `Maks ${policy.maxUnhealthyPerProductPerDay} af dette produkt pr. dag`;
+            }
+
+            if (blocked) {
+                // Lås knappen visuelt
+                if (productsContainer) {
+                    const pid = String(productId);
+                    const btn = productsContainer.querySelector(`.product-btn[data-product-id="${pid}"]`);
+                    if (btn) {
+                        btn.classList.add('product-limit-reached');
+                        btn.dataset.sugarLocked = 'true';
+                        const overlay = btn.querySelector('.avatar-lock-overlay, .product-lock-overlay');
+                        if (overlay) {
+                            overlay.classList.add('shake');
+                            overlay.addEventListener('animationend', () => overlay.classList.remove('shake'), { once: true });
+                        }
+                    }
+                }
+                try { playSound('error'); } catch {}
+                return { success: false, reason: 'sugar-policy-sync', message: blockReason };
+            }
+        }
+    }
+
     // Hvis vi ikke har et gyldigt barn eller produkt-id, bruger vi bare normal logik
     return await proceedAdd();
 

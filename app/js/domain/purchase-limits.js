@@ -1,11 +1,60 @@
 import { supabaseClient } from '../core/config-and-supabase.js';
-import { CACHE_TTL_MS } from '../core/constants.js';
 
 const LIMITS_DEBUG = false;
 
-// Cache for getTodaysSalesForChild to avoid duplicate queries
+// ============================================================================
+// SALES CACHE (session-niveau - kun invalidér ved selectUser/afterPurchase)
+// ============================================================================
+// REGEL: Sales må KUN fetches på selectUser og afterPurchase.
+// Add-to-cart må ALDRIG trigge sales fetch.
 const todaysSalesCache = new Map();
-let cacheTimestamp = 0;
+const salesInflight = new Map(); // In-flight dedup: cacheKey → Promise
+const SALES_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutter session-niveau TTL
+let salesCacheTimestamp = 0;
+
+// ============================================================================
+// MEMORY CACHE FOR LIMITS (eliminerer per-product queries)
+// ============================================================================
+// Structure:
+//   window.__flangoLimitsCache = {
+//       childId: string,
+//       institutionId: string,
+//       clubMaxByProductId: { [productId]: maxPerDay },
+//       parentMaxByProductId: { [productId]: maxPerDay },
+//       timestamp: number
+//   }
+const LIMITS_CACHE_TTL_MS = 60000; // 1 minut TTL for limits cache
+
+function getLimitsCache() {
+    if (typeof window === 'undefined') return null;
+    const cache = window.__flangoLimitsCache;
+    if (!cache) return null;
+    // Check TTL
+    if (Date.now() - cache.timestamp > LIMITS_CACHE_TTL_MS) {
+        window.__flangoLimitsCache = null;
+        return null;
+    }
+    return cache;
+}
+
+function setLimitsCache(childId, institutionId, clubMaxByProductId, parentMaxByProductId) {
+    if (typeof window === 'undefined') return;
+    window.__flangoLimitsCache = {
+        childId: String(childId),
+        institutionId: institutionId ? String(institutionId) : null,
+        clubMaxByProductId,
+        parentMaxByProductId,
+        timestamp: Date.now()
+    };
+    if (LIMITS_DEBUG) console.log('[limits] Limits cache sat for child:', childId);
+}
+
+export function invalidateLimitsCache() {
+    if (typeof window !== 'undefined') {
+        window.__flangoLimitsCache = null;
+        if (LIMITS_DEBUG) console.log('[limits] Limits cache invalideret');
+    }
+}
 
 function getCacheKey(childId, institutionId) {
     return `${childId}:${institutionId || 'null'}`;
@@ -13,8 +62,9 @@ function getCacheKey(childId, institutionId) {
 
 export function invalidateTodaysSalesCache() {
     todaysSalesCache.clear();
-    cacheTimestamp = Date.now();
-    if (LIMITS_DEBUG) console.log('[limits] Cache invalidated');
+    salesInflight.clear();
+    salesCacheTimestamp = Date.now();
+    if (LIMITS_DEBUG) console.log('[limits] Sales cache invalidated');
 }
 
 const safeNumber = (value, fallback = 0) => {
@@ -32,6 +82,20 @@ function buildTodayRangeLocal() {
 }
 
 async function getProductById(productId) {
+    // OPTIMERING: Brug allerede-loadet produkter fra memory (0 DB kald)
+    const allProducts = typeof window !== 'undefined' && typeof window.__flangoGetAllProducts === 'function'
+        ? window.__flangoGetAllProducts()
+        : null;
+
+    if (allProducts && allProducts.length > 0) {
+        const product = allProducts.find(p => String(p.id) === String(productId));
+        if (product) {
+            if (LIMITS_DEBUG) console.log('[canChildPurchase] Produkt fundet i memory cache');
+            return { product, error: null };
+        }
+    }
+
+    // Fallback: hent fra DB (kun hvis ikke i memory)
     const { data, error } = await supabaseClient
         .from('products')
         .select('id, name, price, max_per_day, unhealthy, is_enabled')
@@ -45,6 +109,20 @@ async function getProductById(productId) {
 }
 
 async function getParentLimit(childId, productId) {
+    // OPTIMERING: Brug memory cache først (0 DB kald)
+    const limitsCache = getLimitsCache();
+    if (limitsCache && limitsCache.childId === String(childId)) {
+        const maxPerDay = limitsCache.parentMaxByProductId[String(productId)];
+        if (maxPerDay !== undefined) {
+            if (LIMITS_DEBUG) console.log('[getParentLimit] Cache hit for', productId);
+            return { parentLimit: { max_per_day: maxPerDay, child_id: childId, product_id: productId }, error: null };
+        }
+        // Product not in parent limits = no limit set
+        if (LIMITS_DEBUG) console.log('[getParentLimit] Cache hit (no limit) for', productId);
+        return { parentLimit: null, error: null };
+    }
+
+    // Fallback: hent fra DB
     const { data, error } = await supabaseClient
         .from('parent_limits')
         .select('id, parent_id, child_id, product_id, max_per_day')
@@ -59,6 +137,18 @@ async function getParentLimit(childId, productId) {
 }
 
 async function getChildProfile(childId) {
+    // OPTIMERING: Brug allerede-loadet brugere fra memory (0 DB kald)
+    const allUsers = typeof window !== 'undefined' ? window.__flangoAllUsers : null;
+
+    if (Array.isArray(allUsers) && allUsers.length > 0) {
+        const child = allUsers.find(u => String(u.id) === String(childId));
+        if (child) {
+            if (LIMITS_DEBUG) console.log('[canChildPurchase] Bruger fundet i memory cache');
+            return { child, error: null };
+        }
+    }
+
+    // Fallback: hent fra DB (kun hvis ikke i memory)
     const { data, error } = await supabaseClient
         .from('users')
         .select('id, daily_spend_limit, institution_id')
@@ -72,12 +162,6 @@ async function getChildProfile(childId) {
 }
 
 async function getTodaysSalesForChild(childId, institutionIdOverride = null) {
-    // Check cache expiration and invalidate if needed
-    const now = Date.now();
-    if (now - cacheTimestamp > CACHE_TTL_MS) {
-        invalidateTodaysSalesCache();
-    }
-
     // Resolve institutionId
     let institutionId = institutionIdOverride;
     if (!institutionId) {
@@ -85,79 +169,106 @@ async function getTodaysSalesForChild(childId, institutionIdOverride = null) {
         institutionId = child?.institution_id || null;
     }
 
-    // Check cache
     const cacheKey = getCacheKey(childId, institutionId);
+
+    // 1) Check TTL - kun invalidér hvis VIRKELIG udløbet (5 min session-niveau)
+    const now = Date.now();
+    if (now - salesCacheTimestamp > SALES_CACHE_TTL_MS) {
+        todaysSalesCache.clear();
+        salesInflight.clear();
+        salesCacheTimestamp = now;
+        if (LIMITS_DEBUG) console.log('[limits] Sales cache TTL expired, cleared');
+    }
+
+    // 2) Check cache HIT
     if (todaysSalesCache.has(cacheKey)) {
         if (LIMITS_DEBUG) console.log('[limits] CACHE HIT for getTodaysSalesForChild', { childId, institutionId });
         return todaysSalesCache.get(cacheKey);
     }
 
-    // Cache miss - fetch from database
+    // 3) In-flight dedup: hvis der allerede er en fetch i gang, vent på den
+    if (salesInflight.has(cacheKey)) {
+        if (LIMITS_DEBUG) console.log('[limits] IN-FLIGHT DEDUP for getTodaysSalesForChild', { childId, institutionId });
+        return salesInflight.get(cacheKey);
+    }
+
+    // 4) Cache miss - fetch from database med in-flight dedup
     if (LIMITS_DEBUG) console.log('[limits] CACHE MISS - fetching getTodaysSalesForChild', { childId, institutionId });
 
-    const { startIso, endIso } = buildTodayRangeLocal();
+    const fetchPromise = (async () => {
+        const { startIso, endIso } = buildTodayRangeLocal();
 
-    // KRITISK: Hent fra sales + sale_items for at få is_refill data
-    let query = supabaseClient
-        .from('sales')
-        .select(`
-            id,
-            created_at,
-            customer_id,
-            institution_id,
-            sale_items (
-                product_id,
-                quantity,
-                price_at_purchase,
-                is_refill,
-                product_name_at_purchase
-            )
-        `)
-        .eq('customer_id', childId)
-        .gte('created_at', startIso)
-        .lt('created_at', endIso);
+        // KRITISK: Hent fra sales + sale_items for at få is_refill data
+        let query = supabaseClient
+            .from('sales')
+            .select(`
+                id,
+                created_at,
+                customer_id,
+                institution_id,
+                sale_items (
+                    product_id,
+                    quantity,
+                    price_at_purchase,
+                    is_refill,
+                    product_name_at_purchase
+                )
+            `)
+            .eq('customer_id', childId)
+            .gte('created_at', startIso)
+            .lt('created_at', endIso);
 
-    if (institutionId) {
-        query = query.eq('institution_id', institutionId);
-    }
+        if (institutionId) {
+            query = query.eq('institution_id', institutionId);
+        }
 
-    const { data, error } = await query;
-    if (error) {
-        if (LIMITS_DEBUG) console.warn('[canChildPurchase] Fejl ved hentning af dagens køb:', error?.message);
-        return { rows: [], error };
-    }
+        const { data, error } = await query;
+        if (error) {
+            if (LIMITS_DEBUG) console.warn('[canChildPurchase] Fejl ved hentning af dagens køb:', error?.message);
+            return { rows: [], error };
+        }
 
-    // Transform data til samme format som events_view for bagud-kompatibilitet
-    const rows = Array.isArray(data) ? data.map(sale => ({
-        event_type: 'SALE',
-        created_at: sale.created_at,
-        target_user_id: sale.customer_id,
-        institution_id: sale.institution_id,
-        // Map sale_items til items format med is_refill
-        items: (sale.sale_items || []).map(item => ({
-            product_id: item.product_id,
-            quantity: item.quantity,
-            price: item.price_at_purchase,
-            is_refill: item.is_refill || false,
-            product_name: item.product_name_at_purchase
-        })),
-        details: {
+        // Transform data til samme format som events_view for bagud-kompatibilitet
+        const rows = Array.isArray(data) ? data.map(sale => ({
+            event_type: 'SALE',
+            created_at: sale.created_at,
+            target_user_id: sale.customer_id,
+            institution_id: sale.institution_id,
+            // Map sale_items til items format med is_refill
             items: (sale.sale_items || []).map(item => ({
                 product_id: item.product_id,
                 quantity: item.quantity,
                 price: item.price_at_purchase,
                 is_refill: item.is_refill || false,
                 product_name: item.product_name_at_purchase
-            }))
-        }
-    })) : [];
+            })),
+            details: {
+                items: (sale.sale_items || []).map(item => ({
+                    product_id: item.product_id,
+                    quantity: item.quantity,
+                    price: item.price_at_purchase,
+                    is_refill: item.is_refill || false,
+                    product_name: item.product_name_at_purchase
+                }))
+            }
+        })) : [];
 
-    // Store in cache
-    const result = { rows, error: null };
-    todaysSalesCache.set(cacheKey, result);
-    if (LIMITS_DEBUG) console.log('[limits] Stored in cache - getTodaysSalesForChild result', { childId, institutionId, rowCount: rows.length });
+        return { rows, error: null };
+    })();
 
-    return result;
+    // Registrer in-flight promise
+    salesInflight.set(cacheKey, fetchPromise);
+
+    try {
+        const result = await fetchPromise;
+        // Store in cache
+        todaysSalesCache.set(cacheKey, result);
+        if (LIMITS_DEBUG) console.log('[limits] Stored in cache - getTodaysSalesForChild result', { childId, institutionId, rowCount: result.rows?.length });
+        return result;
+    } finally {
+        // Ryd in-flight uanset succes/fejl
+        salesInflight.delete(cacheKey);
+    }
 }
 
 function extractProductId(item) {
@@ -253,6 +364,94 @@ export async function getUnhealthyPurchasesSnapshot(childId) {
     }
 }
 
+/**
+ * Henter barnets sukkerpolitik og snapshot via Edge Function.
+ * App'en må IKKE query parent_sugar_policy direkte - kun via Edge Functions.
+ * @param {string} childId
+ * @returns {Promise<{policy: object|null, snapshot: object|null}>}
+ */
+export async function getChildSugarPolicySnapshot(childId) {
+    if (!childId) return { policy: null, snapshot: null };
+
+    try {
+        const { data, error } = await supabaseClient.functions.invoke('get-child-sugar-policy', {
+            body: { child_id: childId },
+        });
+
+        if (error) {
+            console.error('[getChildSugarPolicySnapshot] Error:', error);
+            return { policy: null, snapshot: null };
+        }
+
+        // DEBUG: Altid log for at hjælpe med fejlfinding
+        console.log('[getChildSugarPolicySnapshot] Hentet policy for barn:', {
+            childId,
+            policy: data?.policy,
+            snapshot: data?.snapshot,
+        });
+
+        return {
+            policy: data?.policy ?? null,
+            snapshot: data?.snapshot ?? null,
+        };
+    } catch (err) {
+        console.error('[getChildSugarPolicySnapshot] Exception:', err);
+        return { policy: null, snapshot: null };
+    }
+}
+
+/**
+ * Henter institutionens sukkerpolitik-indstillinger.
+ * Returnerer null hvis policy ikke er aktiveret.
+ * @param {string} institutionId
+ * @returns {Promise<{policy: object|null}>}
+ */
+export async function getInstitutionSugarPolicy(institutionId) {
+    if (!institutionId) return { policy: null };
+
+    // OPTIMERING: Brug memory cache først (0 DB kald)
+    const cachedInst = typeof window !== 'undefined' && typeof window.__flangoGetInstitutionById === 'function'
+        ? window.__flangoGetInstitutionById(institutionId)
+        : null;
+
+    let data = cachedInst;
+
+    // Fallback: hent fra DB kun hvis ikke i cache
+    if (!data) {
+        try {
+            const { data: dbData, error } = await supabaseClient
+                .from('institutions')
+                .select('sugar_policy_enabled, sugar_policy_max_unhealthy_per_day, sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled, sugar_policy_max_per_product_enabled')
+                .eq('id', institutionId)
+                .single();
+
+            if (error || !dbData) {
+                console.error('[getInstitutionSugarPolicy] Error:', error);
+                return { policy: null };
+            }
+            data = dbData;
+        } catch (err) {
+            console.error('[getInstitutionSugarPolicy] Exception:', err);
+            return { policy: null };
+        }
+    } else {
+        if (LIMITS_DEBUG) console.log('[getInstitutionSugarPolicy] Cache hit for institution:', institutionId);
+    }
+
+    // Hvis policy ikke er aktiveret, returner null
+    if (!data.sugar_policy_enabled) {
+        return { policy: null };
+    }
+
+    return {
+        policy: {
+            enabled: data.sugar_policy_enabled,
+            maxUnhealthyPerDay: data.sugar_policy_max_unhealthy_enabled ? data.sugar_policy_max_unhealthy_per_day : null,
+            maxUnhealthyPerProductPerDay: data.sugar_policy_max_per_product_enabled !== false ? data.sugar_policy_max_per_product_per_day : null,
+        },
+    };
+}
+
 async function getTodaysTotalSpend(childId, institutionId = null) {
     const { rows, error } = await getTodaysSalesForChild(childId, institutionId);
     if (error) return 0;
@@ -289,6 +488,21 @@ async function getTodaysTotalSpend(childId, institutionId = null) {
 
 async function getProductLimit(institutionId, productId) {
     if (!institutionId || !productId) return null;
+
+    // OPTIMERING: Brug memory cache først (0 DB kald)
+    const limitsCache = getLimitsCache();
+    if (limitsCache && limitsCache.institutionId === String(institutionId)) {
+        const val = limitsCache.clubMaxByProductId[String(productId)];
+        if (val !== undefined) {
+            if (LIMITS_DEBUG) console.log('[getProductLimit] Cache hit for', productId);
+            return Number.isFinite(val) && val > 0 ? val : null;
+        }
+        // Product not in product_limits = no limit
+        if (LIMITS_DEBUG) console.log('[getProductLimit] Cache hit (no limit) for', productId);
+        return null;
+    }
+
+    // Fallback: hent fra DB
     try {
         const { data, error } = await supabaseClient
             .from('product_limits')
@@ -553,12 +767,23 @@ export async function getChildProductLimitSnapshot(childId, institutionId = null
             });
         });
 
-        const { data: products, error: productsError } = await supabaseClient
-            .from('products')
-            .select('id, is_enabled, refill_enabled, refill_price, refill_time_limit_minutes, refill_max_refills');
-        if (productsError) {
-            if (LIMITS_DEBUG) console.warn('[getChildProductLimitSnapshot] Fejl ved hentning af produkter:', productsError?.message);
-            return { byProductId: {} };
+        // OPTIMERING: Brug allerede-loadet produkter fra memory (0 DB kald)
+        let products = typeof window !== 'undefined' && typeof window.__flangoGetAllProducts === 'function'
+            ? window.__flangoGetAllProducts()
+            : null;
+
+        if (!products || products.length === 0) {
+            // Fallback: hent fra DB kun hvis ikke i memory
+            const { data: productsData, error: productsError } = await supabaseClient
+                .from('products')
+                .select('id, is_enabled, refill_enabled, refill_price, refill_time_limit_minutes, refill_max_refills');
+            if (productsError) {
+                if (LIMITS_DEBUG) console.warn('[getChildProductLimitSnapshot] Fejl ved hentning af produkter:', productsError?.message);
+                return { byProductId: {} };
+            }
+            products = productsData;
+        } else {
+            if (LIMITS_DEBUG) console.log('[getChildProductLimitSnapshot] Bruger produkter fra memory cache');
         }
 
         let productLimits = [];
@@ -596,6 +821,9 @@ export async function getChildProductLimitSnapshot(childId, institutionId = null
             const pid = String(row.product_id);
             if (pid) clubMaxByProductId[pid] = row.max_per_day;
         });
+
+        // CACHE: Gem limits maps i memory så getProductLimit/getParentLimit kan bruge dem
+        setLimitsCache(childId, resolvedInstitutionId, clubMaxByProductId, parentMaxByProductId);
 
         const byProductId = {};
         (products || []).forEach((product) => {

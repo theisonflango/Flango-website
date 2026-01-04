@@ -1008,7 +1008,7 @@ body[data-theme="pastel-pop"] .settings-modal {
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--secondary-color) rgba(255,255,255,0.35);
-    z-index: 200;
+    z-index: 999999 !important; /* Højere end alle modaler inkl. edit-sale-modal (99990) */
 }
 
 #custom-alert-modal::-webkit-scrollbar {
@@ -1255,6 +1255,15 @@ body[data-theme="pastel-pop"] .settings-modal {
     padding: 8px 12px;
     font-size: 14px;
     margin-bottom: 0;
+}
+
+/* Active state for "only test users" button */
+#only-test-users-btn.active,
+#only-test-users-btn-summary.active,
+#summary-only-test-users-btn.active {
+    background-color: var(--warning-color, #f59e0b) !important;
+    color: white !important;
+    border-color: var(--warning-color, #f59e0b) !important;
 }
 
 .history-filter-panel .filter-options {
