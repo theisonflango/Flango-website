@@ -12,6 +12,10 @@ const salesInflight = new Map(); // In-flight dedup: cacheKey → Promise
 const SALES_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutter session-niveau TTL
 let salesCacheTimestamp = 0;
 
+// CHECK-SUGAR-POLICY CACHE - deklareret her så den kan invalideres sammen med sales
+const checkSugarPolicyCache = new Map(); // childId → { data, timestamp }
+const CHECK_SUGAR_POLICY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutter
+
 // ============================================================================
 // MEMORY CACHE FOR LIMITS (eliminerer per-product queries)
 // ============================================================================
@@ -64,7 +68,9 @@ export function invalidateTodaysSalesCache() {
     todaysSalesCache.clear();
     salesInflight.clear();
     salesCacheTimestamp = Date.now();
-    if (LIMITS_DEBUG) console.log('[limits] Sales cache invalidated');
+    // VIGTIGT: Også invalidér check-sugar-policy cache da den afhænger af dagens køb
+    checkSugarPolicyCache.clear();
+    if (LIMITS_DEBUG) console.log('[limits] Sales + check-sugar-policy cache invalidated');
 }
 
 const safeNumber = (value, fallback = 0) => {
@@ -109,7 +115,8 @@ async function getProductById(productId) {
 }
 
 async function getParentLimit(childId, productId) {
-    // OPTIMERING: Brug memory cache først (0 DB kald)
+    // OPTIMERING: Brug KUN memory cache (0 DB kald)
+    // Cache populeres af getChildProductLimitSnapshot() når bruger vælges
     const limitsCache = getLimitsCache();
     if (limitsCache && limitsCache.childId === String(childId)) {
         const maxPerDay = limitsCache.parentMaxByProductId[String(productId)];
@@ -122,18 +129,10 @@ async function getParentLimit(childId, productId) {
         return { parentLimit: null, error: null };
     }
 
-    // Fallback: hent fra DB
-    const { data, error } = await supabaseClient
-        .from('parent_limits')
-        .select('id, parent_id, child_id, product_id, max_per_day')
-        .eq('child_id', childId)
-        .eq('product_id', productId)
-        .maybeSingle();
-    if (error) {
-        if (LIMITS_DEBUG) console.warn('[canChildPurchase] Forældrebegrænsning lookup fejlede:', error?.message);
-        return { parentLimit: null, error };
-    }
-    return { parentLimit: data, error: null };
+    // Cache miss = fail-open (ingen forældregrænse). Ingen DB fallback for at undgå N+1 queries.
+    // Hvis dette sker, er det fordi getChildProductLimitSnapshot() ikke blev kaldt først.
+    if (LIMITS_DEBUG) console.warn('[getParentLimit] Cache miss for child:', childId, 'product:', productId);
+    return { parentLimit: null, error: null };
 }
 
 async function getChildProfile(childId) {
@@ -344,25 +343,77 @@ async function getTodaysQuantityForProduct(childId, productId, institutionId = n
 }
 
 /**
+ * Fælles funktion til at kalde check-sugar-policy med caching.
+ * NOTE: Cache er deklareret øverst i filen og invalideres sammen med sales cache.
+ * Bruges af både getUnhealthyPurchasesSnapshot og app-main.js
+ * @param {string} childId
+ * @param {object} policyOverride - Valgfri policy at sende med
+ * @returns {Promise<object>} Fuld response fra Edge Function
+ */
+export async function getCachedCheckSugarPolicy(childId, policyOverride = null) {
+    if (!childId) return { boughtUnhealthyProductIds: [], totalUnhealthyToday: 0, countByProductId: {} };
+
+    // OPTIMERING: Check cache først (Edge Functions er dyre)
+    const cached = checkSugarPolicyCache.get(childId);
+    if (cached && Date.now() - cached.timestamp < CHECK_SUGAR_POLICY_CACHE_TTL_MS) {
+        if (LIMITS_DEBUG) console.log('[getCachedCheckSugarPolicy] Cache hit for child:', childId);
+        return cached.data;
+    }
+
+    try {
+        const body = { user_id: childId };
+        if (policyOverride) {
+            body.policy = policyOverride;
+        }
+
+        const { data, error } = await supabaseClient.functions.invoke('check-sugar-policy', {
+            body,
+        });
+
+        if (error) {
+            if (LIMITS_DEBUG) console.warn('[getCachedCheckSugarPolicy] Fejl:', error?.message);
+            return { boughtUnhealthyProductIds: [], totalUnhealthyToday: 0, countByProductId: {} };
+        }
+
+        const result = {
+            boughtUnhealthyProductIds: data?.boughtUnhealthyProductIds || [],
+            totalUnhealthyToday: data?.totalUnhealthyToday || 0,
+            countByProductId: data?.countByProductId || {},
+        };
+
+        // Gem i cache
+        checkSugarPolicyCache.set(childId, { data: result, timestamp: Date.now() });
+
+        return result;
+    } catch (err) {
+        if (LIMITS_DEBUG) console.warn('[getCachedCheckSugarPolicy] Uventet fejl:', err);
+        return { boughtUnhealthyProductIds: [], totalUnhealthyToday: 0, countByProductId: {} };
+    }
+}
+
+/**
  * Hent dagens køb af "usunde" varer via sugar-policy funktionen.
  * Returnerer en liste over produkt-ids, der allerede er købt i dag.
  */
 export async function getUnhealthyPurchasesSnapshot(childId) {
-    if (!childId) return { boughtUnhealthyProductIds: [] };
-    try {
-        const { data, error } = await supabaseClient.functions.invoke('check-sugar-policy', {
-            body: { user_id: childId },
-        });
-        if (error) {
-            if (LIMITS_DEBUG) console.warn('[getUnhealthyPurchasesSnapshot] Fejl fra sugar-policy:', error?.message);
-            return { boughtUnhealthyProductIds: [] };
-        }
-        return { boughtUnhealthyProductIds: data?.boughtUnhealthyProductIds || [] };
-    } catch (err) {
-        if (LIMITS_DEBUG) console.warn('[getUnhealthyPurchasesSnapshot] Uventet fejl:', err);
-        return { boughtUnhealthyProductIds: [] };
+    const result = await getCachedCheckSugarPolicy(childId);
+    return { boughtUnhealthyProductIds: result.boughtUnhealthyProductIds };
+}
+
+// Eksporter funktion til at invalidere check-sugar-policy cache (efter køb)
+export function invalidateCheckSugarPolicyCache(childId = null) {
+    if (childId) {
+        checkSugarPolicyCache.delete(childId);
+    } else {
+        checkSugarPolicyCache.clear();
     }
 }
+
+// ============================================================================
+// SUGAR POLICY CACHE - undgår gentagne Edge Function kald (dyre!)
+// ============================================================================
+const sugarPolicyCache = new Map(); // childId → { data, timestamp }
+const SUGAR_POLICY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutter (policy ændres sjældent)
 
 /**
  * Henter barnets sukkerpolitik og snapshot via Edge Function.
@@ -372,6 +423,13 @@ export async function getUnhealthyPurchasesSnapshot(childId) {
  */
 export async function getChildSugarPolicySnapshot(childId) {
     if (!childId) return { policy: null, snapshot: null };
+
+    // OPTIMERING: Check cache først (Edge Functions er dyre)
+    const cached = sugarPolicyCache.get(childId);
+    if (cached && Date.now() - cached.timestamp < SUGAR_POLICY_CACHE_TTL_MS) {
+        if (LIMITS_DEBUG) console.log('[getChildSugarPolicySnapshot] Cache hit for child:', childId);
+        return cached.data;
+    }
 
     try {
         const { data, error } = await supabaseClient.functions.invoke('get-child-sugar-policy', {
@@ -383,20 +441,35 @@ export async function getChildSugarPolicySnapshot(childId) {
             return { policy: null, snapshot: null };
         }
 
-        // DEBUG: Altid log for at hjælpe med fejlfinding
-        console.log('[getChildSugarPolicySnapshot] Hentet policy for barn:', {
-            childId,
-            policy: data?.policy,
-            snapshot: data?.snapshot,
-        });
-
-        return {
+        const result = {
             policy: data?.policy ?? null,
             snapshot: data?.snapshot ?? null,
         };
+
+        // Gem i cache
+        sugarPolicyCache.set(childId, { data: result, timestamp: Date.now() });
+
+        if (LIMITS_DEBUG) {
+            console.log('[getChildSugarPolicySnapshot] Hentet og cached policy for barn:', {
+                childId,
+                policy: result.policy,
+                snapshot: result.snapshot,
+            });
+        }
+
+        return result;
     } catch (err) {
         console.error('[getChildSugarPolicySnapshot] Exception:', err);
         return { policy: null, snapshot: null };
+    }
+}
+
+// Eksporter funktion til at invalidere sugar policy cache
+export function invalidateSugarPolicyCache(childId = null) {
+    if (childId) {
+        sugarPolicyCache.delete(childId);
+    } else {
+        sugarPolicyCache.clear();
     }
 }
 
@@ -489,7 +562,8 @@ async function getTodaysTotalSpend(childId, institutionId = null) {
 async function getProductLimit(institutionId, productId) {
     if (!institutionId || !productId) return null;
 
-    // OPTIMERING: Brug memory cache først (0 DB kald)
+    // OPTIMERING: Brug KUN memory cache (0 DB kald)
+    // Cache populeres af getChildProductLimitSnapshot() når bruger vælges
     const limitsCache = getLimitsCache();
     if (limitsCache && limitsCache.institutionId === String(institutionId)) {
         const val = limitsCache.clubMaxByProductId[String(productId)];
@@ -502,24 +576,10 @@ async function getProductLimit(institutionId, productId) {
         return null;
     }
 
-    // Fallback: hent fra DB
-    try {
-        const { data, error } = await supabaseClient
-            .from('product_limits')
-            .select('max_per_day')
-            .eq('institution_id', institutionId)
-            .eq('product_id', productId)
-            .maybeSingle();
-        if (error) {
-            if (LIMITS_DEBUG) console.warn('[limits] lookup fejl:', error?.message);
-            return null;
-        }
-        const val = data?.max_per_day;
-        return Number.isFinite(val) && val > 0 ? val : null;
-    } catch (err) {
-        if (LIMITS_DEBUG) console.warn('[limits] lookup uventet fejl:', err);
-        return null;
-    }
+    // Cache miss = fail-open (ingen grænse). Ingen DB fallback for at undgå N+1 queries.
+    // Hvis dette sker, er det fordi getChildProductLimitSnapshot() ikke blev kaldt først.
+    if (LIMITS_DEBUG) console.warn('[getProductLimit] Cache miss for institution:', institutionId, 'product:', productId);
+    return null;
 }
 
 /**
@@ -836,6 +896,9 @@ export async function getChildProductLimitSnapshot(childId, institutionId = null
 
             byProductId[pid] = {
                 effectiveMaxPerDay: effectiveMaxPerDay != null ? effectiveMaxPerDay : null,
+                // TOOLTIP: Gem separate kilder så tooltip kan vise begge
+                clubMaxPerDay: clubMax,
+                parentMaxPerDay: parentMax,
                 todaysQty,
                 // Include refill info for UI
                 refillEnabled: product.refill_enabled || false,

@@ -16,7 +16,7 @@ import {
     preloadChildProductLimitSnapshot,
     applyProductLimitsToButtons,
 } from './products-and-cart.js';
-import { getChildSugarPolicySnapshot, getInstitutionSugarPolicy } from './purchase-limits.js';
+import { getChildSugarPolicySnapshot, getInstitutionSugarPolicy, getCachedCheckSugarPolicy } from './purchase-limits.js';
 import { showPinModal } from '../ui/user-modals.js';
 import { setupAvatarPicker } from '../ui/avatar-picker.js';
 import { setupKeyboardShortcuts } from '../ui/keyboard-shortcuts.js';
@@ -91,22 +91,18 @@ export async function startApp() {
             console.log('[__flangoRefreshSugarPolicy] institutionSugarData:', institutionSugarData);
 
             // Hent snapshot hvis institutions-policy er aktiv men forældre-policy ikke er
+            // OPTIMERING: Brug cached version af check-sugar-policy (undgår gentagne Edge Function kald)
             let snapshot = parentSugarData.snapshot;
             if (!parentSugarData.policy && institutionSugarData.policy && !snapshot) {
                 try {
-                    const { data: checkResult } = await supabaseClient.functions.invoke('check-sugar-policy', {
-                        body: {
-                            user_id: selectedUser.id,
-                            policy: {
-                                blockUnhealthy: false,
-                                maxUnhealthyPerDay: institutionSugarData.policy.maxUnhealthyPerDay,
-                                maxUnhealthyPerProductPerDay: institutionSugarData.policy.maxUnhealthyPerProductPerDay,
-                            },
-                        },
+                    const checkResult = await getCachedCheckSugarPolicy(selectedUser.id, {
+                        blockUnhealthy: false,
+                        maxUnhealthyPerDay: institutionSugarData.policy.maxUnhealthyPerDay,
+                        maxUnhealthyPerProductPerDay: institutionSugarData.policy.maxUnhealthyPerProductPerDay,
                     });
                     snapshot = {
-                        unhealthyTotal: checkResult?.unhealthyTotal ?? 0,
-                        unhealthyPerProduct: checkResult?.unhealthyPerProduct ?? {},
+                        unhealthyTotal: checkResult?.totalUnhealthyToday ?? 0,
+                        unhealthyPerProduct: checkResult?.countByProductId ?? {},
                     };
                 } catch (err) {
                     console.error('[__flangoRefreshSugarPolicy] Fejl ved hentning af snapshot:', err);
@@ -391,6 +387,7 @@ export async function startApp() {
         incrementSessionSalesCount: () => { sessionSalesCount++; },
         completePurchaseBtn,
         refreshProductLocks,
+        renderProductsFromCache: () => productAssortment.renderFromCache(),
     }));
 
     // 5) Produktstyring
@@ -641,22 +638,18 @@ export async function startApp() {
 
         // Hvis vi har institutions-policy men ikke forældre-policy, hent snapshot separat
         let snapshot = parentSugarData.snapshot;
+        // OPTIMERING: Brug cached version af check-sugar-policy (undgår gentagne Edge Function kald)
         if (!parentSugarData.policy && institutionSugarData.policy && !snapshot) {
             console.log('[selectUser] Henter snapshot for institutions-sukkerpolitik...');
             try {
-                const { data: checkResult } = await supabaseClient.functions.invoke('check-sugar-policy', {
-                    body: {
-                        user_id: selectedUser.id,
-                        policy: {
-                            blockUnhealthy: false,
-                            maxUnhealthyPerDay: institutionSugarData.policy.maxUnhealthyPerDay,
-                            maxUnhealthyPerProductPerDay: institutionSugarData.policy.maxUnhealthyPerProductPerDay,
-                        },
-                    },
+                const checkResult = await getCachedCheckSugarPolicy(selectedUser.id, {
+                    blockUnhealthy: false,
+                    maxUnhealthyPerDay: institutionSugarData.policy.maxUnhealthyPerDay,
+                    maxUnhealthyPerProductPerDay: institutionSugarData.policy.maxUnhealthyPerProductPerDay,
                 });
                 snapshot = {
-                    unhealthyTotal: checkResult?.unhealthyTotal ?? 0,
-                    unhealthyPerProduct: checkResult?.unhealthyPerProduct ?? {},
+                    unhealthyTotal: checkResult?.totalUnhealthyToday ?? 0,
+                    unhealthyPerProduct: checkResult?.countByProductId ?? {},
                 };
                 console.log('[selectUser] Institutions-snapshot hentet:', snapshot);
             } catch (err) {
@@ -678,6 +671,12 @@ export async function startApp() {
         console.log('[selectUser] Kalder refreshProductLocks...');
         await refreshProductLocks();
         console.log('[selectUser] refreshProductLocks færdig');
+
+        // KRITISK: Genrender produktgitter for at vise refill-status (grøn knap, timer, refill-pris)
+        // OPTIMERING: Brug renderFromCache (0 DB kald) i stedet for fetchAndRenderProducts
+        console.log('[selectUser] Genrenderer produkter for refill-visning...');
+        await productAssortment.renderFromCache();
+        console.log('[selectUser] Produkter genrenderet');
 
         // Opdater quantity badges efter produkterne er genrenderet
         updateProductQuantityBadges();

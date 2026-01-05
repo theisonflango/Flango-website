@@ -153,11 +153,12 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
                     <span class="product-price${isRefill ? ' refill-price' : ''}">${displayPrice.toFixed(2)} DKK</span>
                 </div>
                 ${badgeMarkup}
+                <div class="product-quantity-badge"><span class="cart-icon">🛒</span><span class="cart-qty">${qtyInCart}</span></div>
             </div>
-            <div class="product-quantity-badge"><span class="cart-icon">🛒</span><span class="cart-qty">${qtyInCart}</span></div>
             <div class="avatar-lock-overlay">
                 <img src="Icons/webp/Function/Lock.webp" alt="locked">
-            </div>`;
+            </div>
+            <div class="product-limit-counter" aria-hidden="true"></div>`;
 
         if (typeof onProductClick === 'function') {
             productBtn.addEventListener('click', (evt) => {

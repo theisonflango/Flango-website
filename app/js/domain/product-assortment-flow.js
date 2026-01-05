@@ -422,6 +422,16 @@ export function setupProductAssortmentFlow({
 
     return {
         fetchAndRenderProducts,
+        // OPTIMERING: Eksporter renderFromCache til brug hvor produkter allerede er loadet (0 DB kald)
+        renderFromCache: async () => {
+            const allProducts = getAllProducts();
+            if (allProducts && allProducts.length > 0) {
+                await renderProductsFromLocalState(allProducts);
+            } else {
+                // Fallback: hent fra DB hvis cache er tom
+                await fetchAndRenderProducts();
+            }
+        },
         initProductReorder, // Eksporter så den kan kaldes efter user selection
     };
 }

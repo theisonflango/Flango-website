@@ -189,8 +189,9 @@ body.reorder-mode .product-reorder-hint {
     box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
     cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.2s ease;
-    overflow: hidden;
+    overflow: visible;
     height: 100%;
+    isolation: isolate; /* Etabler stacking context så z-index virker korrekt */
 }
 
 /* Refill produkter - distinkt grøn styling for at indikere rabat */
@@ -249,11 +250,10 @@ body.reorder-mode .product-reorder-hint {
     cursor: not-allowed;
 }
 
-/* Produktindhold får absolute positioning */
+/* Produktindhold får absolute positioning (INGEN z-index for at undgå stacking context problemer) */
 .product-btn.product-limit-reached .product-btn-inner {
     position: absolute;
     inset: 0;
-    z-index: 1;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -265,13 +265,12 @@ body.reorder-mode .product-reorder-hint {
 }
 
 /* Vis avatar-låse-overlay ovenpå produktkortet når det er låst */
+/* BEMÆRK: backdrop-filter fjernet fordi det skaber stacking context der skjuler counteren */
 .product-btn.product-limit-reached .avatar-lock-overlay {
     display: flex;
     position: absolute;
     inset: 0;
-    background: rgba(255, 255, 255, 0.00);
-    backdrop-filter: blur(0.5px);
-    -webkit-backdrop-filter: blur(2px);
+    background: rgba(255, 255, 255, 0.5);
     align-items: center;
     justify-content: center;
     z-index: 10;
@@ -294,6 +293,11 @@ body.reorder-mode .product-reorder-hint {
     transform: none;
     box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
     border-color: #f1d7a7;
+}
+
+/* Counter z-index override for låste produkter - nu virker det fordi product-btn-inner ikke har z-index */
+.product-btn.product-limit-reached .product-limit-counter {
+    z-index: 50;
 }
 
 /* ============================================================
@@ -353,8 +357,8 @@ body.reorder-mode .product-reorder-hint {
 
 .product-shortcut {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: 6px;
+    left: 6px;
     width: 24px;
     height: 24px;
     background-color: var(--secondary-color);
@@ -364,7 +368,8 @@ body.reorder-mode .product-reorder-hint {
     justify-content: center;
     align-items: center;
     font-size: 14px;
-    font-weight: 700
+    font-weight: 700;
+    z-index: 15;
 }
 
 /* ============================================================
@@ -476,4 +481,181 @@ body.reorder-mode .product-reorder-hint {
 
 .confirm-product-emoji {
     font-size: 112px;
+}
+
+/* ============================================================
+   PRODUCT QUANTITY BADGE (Cart Count)
+   ============================================================ */
+
+.product-quantity-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: none;
+    align-items: center;
+    gap: 3px;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1.5px solid #f59e0b;
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #92400e;
+    z-index: 15;
+    pointer-events: none;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+}
+
+.product-quantity-badge.visible {
+    display: flex;
+}
+
+.product-quantity-badge .cart-icon {
+    font-size: 11px;
+}
+
+.product-quantity-badge .cart-qty {
+    font-family: 'Poppins', sans-serif;
+}
+
+/* ============================================================
+   PRODUCT LIMIT COUNTER (Purchased Today / Max)
+   ============================================================ */
+
+/* Counter er i HTML-templaten som direkte barn af .product-btn (efter lock-overlay) */
+/* z-index 50 > lock-overlay's 10, så counteren vises OVER låsen */
+.product-limit-counter {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1.5px solid #7dd3fc;
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0369a1;
+    font-family: 'Poppins', sans-serif;
+    z-index: 50;
+    pointer-events: auto; /* Tillad hover for tooltip */
+    cursor: help;
+    box-shadow: 0 2px 6px rgba(14, 165, 233, 0.2);
+    white-space: nowrap;
+}
+
+.product-limit-counter.visible {
+    display: inline-flex !important;
+    width: auto !important;
+}
+
+/* Når grænsen er nået - rød/advarsel styling */
+.product-limit-counter.at-limit {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border-color: #f87171;
+    color: #b91c1c;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+}
+
+/* ============================================================
+   LIMIT COUNTER TOOLTIP
+   ============================================================ */
+
+.limit-tooltip {
+    position: absolute;
+    /* Positioner under counter-badgen (counter er ved top: 6px, badge er ~24px høj) */
+    top: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 220px;
+    max-width: 280px;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+.limit-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-bottom-color: #1e293b;
+}
+
+.limit-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.limit-tooltip-block {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.limit-tooltip-block:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.limit-tooltip-source {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Farvekoder for forskellige kilder */
+.limit-tooltip-source.club {
+    color: #60a5fa; /* Blå for klub */
+}
+
+.limit-tooltip-source.parent {
+    color: #a78bfa; /* Lilla for forælder */
+}
+
+.limit-tooltip-source.sugar {
+    color: #f472b6; /* Pink for sukkerpolitik */
+}
+
+.limit-tooltip-source.allergy {
+    color: #fb923c; /* Orange for allergi */
+}
+
+.limit-tooltip-source.refill {
+    color: #34d399; /* Grøn for refill */
+}
+
+.limit-tooltip-message {
+    font-size: 12px;
+    font-weight: 400;
+    color: #f1f5f9;
+    line-height: 1.4;
+}
+
+.limit-tooltip-message strong {
+    font-weight: 600;
+    color: #fff;
+}
+
+/* Ikon i source header */
+.limit-tooltip-icon {
+    font-size: 11px;
 }

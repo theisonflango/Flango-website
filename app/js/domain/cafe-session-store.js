@@ -7,8 +7,21 @@ import { OVERDRAFT_LIMIT } from '../core/constants.js';
 let currentCustomer = null;
 let lastEvaluation = null;
 
+// ============================================================================
+// ALLERGEN CACHE - undgår gentagne DB-kald for samme barn
+// ============================================================================
+const allergenCache = new Map(); // childId → { data, timestamp }
+const ALLERGEN_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutter (ændres sjældent)
+
 async function loadChildAllergyPolicy(childId) {
     try {
+        // OPTIMERING: Check cache først
+        const cached = allergenCache.get(childId);
+        if (cached && Date.now() - cached.timestamp < ALLERGEN_CACHE_TTL_MS) {
+            currentCustomer.allergyPolicy = cached.data;
+            return;
+        }
+
         const { data, error } = await supabaseClient
             .from('child_allergen_settings')
             .select('allergen, policy')
@@ -24,12 +37,24 @@ async function loadChildAllergyPolicy(childId) {
         (data || []).forEach(row => {
             map[row.allergen] = row.policy;
         });
+
+        // Gem i cache
+        allergenCache.set(childId, { data: map, timestamp: Date.now() });
         currentCustomer.allergyPolicy = map;
     } catch (err) {
         console.error('[allergies] unexpected error:', err);
         if (currentCustomer) {
             currentCustomer.allergyPolicy = {};
         }
+    }
+}
+
+// Eksporter funktion til at invalidere cache (hvis forælder ændrer indstillinger)
+export function invalidateAllergenCache(childId = null) {
+    if (childId) {
+        allergenCache.delete(childId);
+    } else {
+        allergenCache.clear();
     }
 }
 

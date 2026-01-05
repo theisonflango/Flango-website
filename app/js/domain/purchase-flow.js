@@ -231,25 +231,69 @@ async function fetchAllergyPolicyForChild(childId, institutionId) {
     }
 }
 
+// ============================================================================
+// PRODUCT ALLERGENS CACHE - undgår gentagne DB-kald (ændres sjældent)
+// ============================================================================
+const productAllergensCache = new Map(); // productId → allergens[]
+let productAllergensCacheTimestamp = 0;
+const PRODUCT_ALLERGENS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutter
+
 async function fetchProductAllergensMap(productIds) {
     if (!Array.isArray(productIds) || productIds.length === 0) return {};
     const uniqueIds = Array.from(new Set(productIds.filter(Boolean)));
     if (uniqueIds.length === 0) return {};
+
+    // Check cache TTL
+    const now = Date.now();
+    if (now - productAllergensCacheTimestamp > PRODUCT_ALLERGENS_CACHE_TTL_MS) {
+        productAllergensCache.clear();
+        productAllergensCacheTimestamp = now;
+    }
+
+    // OPTIMERING: Check hvilke produkter vi allerede har cached
+    const cachedResults = {};
+    const uncachedIds = [];
+
+    uniqueIds.forEach(id => {
+        if (productAllergensCache.has(id)) {
+            cachedResults[id] = productAllergensCache.get(id);
+        } else {
+            uncachedIds.push(id);
+        }
+    });
+
+    // Hvis alle er cached, returner direkte (0 DB kald)
+    if (uncachedIds.length === 0) {
+        return cachedResults;
+    }
+
+    // Fetch kun de manglende
     const { data, error } = await supabaseClient
         .from('product_allergens')
         .select('product_id, allergen')
-        .in('product_id', uniqueIds);
+        .in('product_id', uncachedIds);
+
     if (error) {
         console.warn('[allergies] failed to load product allergens', error);
-        return {};
+        return cachedResults; // Returner hvad vi har cached
     }
-    const map = {};
+
+    // Byg map og cache resultaterne
+    const fetchedMap = {};
     (data || []).forEach(row => {
         if (!row.product_id || !row.allergen) return;
-        if (!map[row.product_id]) map[row.product_id] = [];
-        map[row.product_id].push(row.allergen);
+        if (!fetchedMap[row.product_id]) fetchedMap[row.product_id] = [];
+        fetchedMap[row.product_id].push(row.allergen);
     });
-    return map;
+
+    // Cache alle hentede (inkl. produkter uden allergener)
+    uncachedIds.forEach(id => {
+        const allergens = fetchedMap[id] || [];
+        productAllergensCache.set(id, allergens);
+    });
+
+    // Kombiner cached og nyhentede
+    return { ...cachedResults, ...fetchedMap };
 }
 
 export async function enforceSugarPolicy({ customer, currentOrder, allProducts }) {
@@ -363,6 +407,7 @@ export async function handleCompletePurchase({
     incrementSessionSalesCount,
     completePurchaseBtn,
     refreshProductLocks,
+    renderProductsFromCache,
 }) {
     if (!customer) return showAlert("Fejl: Vælg venligst en kunde!");
     if (currentOrder.length === 0) return showAlert("Fejl: Indkøbskurven er tom!");
@@ -665,6 +710,10 @@ export async function handleCompletePurchase({
         renderOrder(orderList, nextOrder, totalPriceEl, updateSelectedUserInfo);
         if (typeof refreshProductLocks === 'function') {
             refreshProductLocks();
+        }
+        // KRITISK: Genrender produkter for at fjerne refill-styling (navn, pris, grøn farve)
+        if (typeof renderProductsFromCache === 'function') {
+            renderProductsFromCache();
         }
         // NOTE: Don't hide selected-user-info here - updateSelectedUserInfo() handles display state
         setButtonLoadingState(completePurchaseBtn, 'normal');
