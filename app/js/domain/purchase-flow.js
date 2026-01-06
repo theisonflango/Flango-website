@@ -694,6 +694,8 @@ export async function handleCompletePurchase({
         if (typeof incrementSessionSalesCount === 'function') {
             incrementSessionSalesCount();
         }
+        // Dispatch event for shift-timer (bytte-timer) salgstælling
+        window.dispatchEvent(new CustomEvent('flango:saleCompleted'));
         playSound('purchase');
         const appliedBalance = Number.isFinite(newBalance) ? newBalance : customer.balance - finalTotal;
         updateCustomerBalanceGlobally(customer.id, appliedBalance, -finalTotal, 'purchase');

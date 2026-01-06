@@ -1074,3 +1074,575 @@ body:not([data-theme="pastel-pop"]) .cafe-icon {
     gap: 12px;
     flex-wrap: wrap;
 }
+
+/* ============================================================
+   SHIFT TIMER - Bytte-timer for ekspedient-skift
+   FLIP-CLOCK STYLE - Visuelt tiltalende og klikbart
+   ============================================================ */
+
+/* Timer-pille i header - INAKTIV STATE */
+.shift-timer-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(145deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 2px solid #cbd5e1;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: 'Poppins', sans-serif;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.shift-timer-pill:hover {
+    background: linear-gradient(145deg, #e2e8f0 0%, #cbd5e1 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    border-color: #94a3b8;
+}
+
+.shift-timer-pill:active {
+    transform: translateY(0);
+}
+
+/* Inaktiv pille styling */
+.pill-add-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border-radius: 50%;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.pill-add-text {
+    color: #475569;
+}
+
+/* Timer-pille - AKTIV STATE med flip-clock */
+.shift-timer-pill.shift-timer-active {
+    padding: 6px 12px;
+    background: linear-gradient(145deg, #1e293b 0%, #334155 100%);
+    border-color: #475569;
+    color: white;
+    box-shadow: 0 4px 16px rgba(30, 41, 59, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.shift-timer-pill.shift-timer-active:hover {
+    background: linear-gradient(145deg, #334155 0%, #475569 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(30, 41, 59, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Flip-clock display container */
+.flip-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.flip-icon {
+    font-size: 16px;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.flip-digits {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Flip digit unit (wrapper) */
+.flip-unit {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Flip card - the actual digit display */
+.flip-card {
+    position: relative;
+    width: 20px;
+    height: 26px;
+    perspective: 200px;
+}
+
+.flip-card-inner {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+        0 2px 4px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Middle split line effect */
+.flip-card-inner::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.flip-digit {
+    font-family: 'Courier New', 'Monaco', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: #f1f5f9;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    letter-spacing: -0.5px;
+}
+
+/* Colon separator */
+.flip-colon {
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: #60a5fa;
+    margin: 0 1px;
+    text-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+    animation: colon-blink 1s ease-in-out infinite;
+}
+
+@keyframes colon-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Slash separator for sales */
+.flip-slash {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: #94a3b8;
+    margin: 0 2px;
+}
+
+/* Separator between time and sales */
+.flip-separator {
+    color: #64748b;
+    font-size: 10px;
+    margin: 0 8px;
+}
+
+/* ============================================================
+   CONFIGURATION MODAL
+   ============================================================ */
+
+.shift-timer-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: modal-fade-in 0.2s ease;
+}
+
+@keyframes modal-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.shift-timer-modal {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    padding: 28px;
+    border-radius: 20px;
+    max-width: 360px;
+    width: 90%;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    animation: modal-slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modal-slide-up {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.shift-timer-modal-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 24px 0;
+    text-align: center;
+}
+
+.shift-timer-section {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.shift-timer-section-last {
+    border-bottom: none;
+    margin-bottom: 24px;
+    padding-bottom: 0;
+}
+
+/* Toggle switch styling */
+.shift-timer-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    margin-bottom: 12px;
+    position: relative;
+}
+
+.shift-timer-toggle-row input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    width: 44px;
+    height: 24px;
+    background: #cbd5e1;
+    border-radius: 12px;
+    position: relative;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.toggle-slider::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.shift-timer-toggle-row input[type="checkbox"]:checked + .toggle-slider {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.shift-timer-toggle-row input[type="checkbox"]:checked + .toggle-slider::after {
+    transform: translateX(20px);
+}
+
+.toggle-text {
+    font-weight: 600;
+}
+
+.shift-timer-input-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: 56px;
+    transition: all 0.2s ease;
+}
+
+.shift-timer-input-row input[type="number"] {
+    width: 80px;
+    padding: 10px 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+    background: #f8fafc;
+    transition: all 0.2s ease;
+}
+
+.shift-timer-input-row input[type="number"]:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+.shift-timer-input-row span {
+    font-size: 15px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.shift-timer-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 10px;
+}
+
+.shift-timer-text-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 15px;
+    box-sizing: border-box;
+    background: #f8fafc;
+    transition: all 0.2s ease;
+}
+
+.shift-timer-text-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+.shift-timer-text-input::placeholder {
+    color: #94a3b8;
+}
+
+/* Modal action buttons */
+.shift-timer-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.shift-timer-btn {
+    flex: 1;
+    min-width: 90px;
+    padding: 14px 18px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.shift-timer-btn.primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.shift-timer-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+.shift-timer-btn.secondary {
+    background: #f1f5f9;
+    color: #475569;
+    border: 2px solid #e2e8f0;
+}
+
+.shift-timer-btn.secondary:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+}
+
+.shift-timer-btn.danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.shift-timer-btn.danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+/* ============================================================
+   BLOCKING SWAP POPUP - Centreret modal
+   ============================================================ */
+
+.shift-swap-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: swap-fade-in 0.3s ease;
+}
+
+@keyframes swap-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.shift-swap-popup {
+    background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+    padding: 40px 36px;
+    border-radius: 24px;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    animation: swap-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes swap-bounce {
+    0% { transform: scale(0.7) translateY(30px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Animated icon container */
+.shift-swap-icon-container {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 20px;
+}
+
+.shift-swap-icon-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border-radius: 50%;
+    animation: icon-pulse 2s ease-in-out infinite;
+}
+
+@keyframes icon-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.15); opacity: 0.3; }
+}
+
+.shift-swap-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    animation: icon-spin 3s ease-in-out infinite;
+}
+
+@keyframes icon-spin {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-10deg); }
+    75% { transform: rotate(10deg); }
+}
+
+.shift-swap-title {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0 0 12px 0;
+    letter-spacing: -0.5px;
+}
+
+.shift-swap-reason {
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #92400e;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    padding: 8px 16px;
+    border-radius: 20px;
+    margin: 0 0 16px 0;
+    border: 1px solid #fcd34d;
+}
+
+.shift-swap-text {
+    font-size: 16px;
+    color: #475569;
+    line-height: 1.6;
+    margin: 0 0 20px 0;
+}
+
+.shift-swap-next {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    padding: 16px 20px;
+    border-radius: 14px;
+    margin: 0 0 24px 0;
+    border: 2px solid #93c5fd;
+}
+
+.shift-swap-next .next-label {
+    font-size: 13px;
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+.shift-swap-next .next-name {
+    font-size: 22px;
+    font-weight: 800;
+    color: #1e40af;
+}
+
+.shift-swap-actions {
+    display: flex;
+    gap: 14px;
+}
+
+.shift-swap-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 24px;
+    border: none;
+    border-radius: 14px;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.shift-swap-btn .btn-icon {
+    font-size: 20px;
+}
+
+.shift-swap-btn.primary {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.shift-swap-btn.primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.5);
+}
+
+.shift-swap-btn.primary:active {
+    transform: translateY(-1px);
+}
+
+.shift-swap-btn.secondary {
+    background: #f1f5f9;
+    color: #475569;
+    border: 2px solid #e2e8f0;
+}
+
+.shift-swap-btn.secondary:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+}

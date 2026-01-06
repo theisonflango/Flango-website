@@ -9,6 +9,7 @@ import {
 import { parseBadgeList, formatBadgeList, renderSimpleBadgeDisplay } from '../domain/stats-and-badges.js';
 import { showAlert, showCustomAlert } from './sound-and-alerts.js';
 import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
+import { refetchUserBalance } from '../core/data-refetch.js';
 
 export function setupAdminUserManagerFromModule(config = {}) {
     const {
@@ -397,7 +398,15 @@ export function setupAdminUserManagerFromModule(config = {}) {
         if (!isNaN(depositVal) && depositVal > 0) {
             const { error } = await depositToUser(user.id, depositVal);
             if (error) return showAlert(`Fejl ved indbetaling: ${error.message}`);
-            updateCustomerBalanceGlobally(user.id, user.balance + depositVal, depositVal, 'admin-manager-deposit');
+
+            // REFETCH fra DB for garanteret nøjagtighed
+            const newBalance = await refetchUserBalance(user.id);
+            if (newBalance !== null) {
+                updateCustomerBalanceGlobally(user.id, newBalance, depositVal, 'admin-manager-deposit');
+            } else {
+                // Fallback hvis refetch fejler
+                updateCustomerBalanceGlobally(user.id, user.balance + depositVal, depositVal, 'admin-manager-deposit');
+            }
         }
 
         if (newBalanceVal) {

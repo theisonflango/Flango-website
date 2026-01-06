@@ -417,11 +417,16 @@ body.reorder-mode .product-reorder-hint {
    ============================================================ */
 
 .refill-timer {
-    font-size: 16px;
+    /* Absolut positioneret under limit-counter (som er ved top: 6px, ~28px høj) */
+    position: absolute;
+    top: 38px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 45;
+    font-size: 14px;
     color: #059669;
     font-weight: 700;
-    margin-bottom: 8px;
-    padding: 6px 10px;
+    padding: 4px 10px;
     background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
     border-radius: 8px;
     display: flex;
@@ -430,13 +435,14 @@ body.reorder-mode .product-reorder-hint {
     justify-content: center;
     border: 1.5px solid #10b981;
     box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15);
+    white-space: nowrap;
 }
 
 .refill-timer .timer-value {
     font-family: 'Courier New', monospace;
     font-weight: 800;
     letter-spacing: 1px;
-    font-size: 17px;
+    font-size: 14px;
 }
 
 /* ============================================================
@@ -477,6 +483,9 @@ body.reorder-mode .product-reorder-hint {
     width: 176px;
     height: 176px;
     object-fit: contain;
+    /* Forhindrer layout-thrashing under modal-animation */
+    aspect-ratio: 1/1;
+    contain: layout style paint;
 }
 
 .confirm-product-emoji {

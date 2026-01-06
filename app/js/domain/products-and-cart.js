@@ -837,12 +837,18 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
                 limitCounter.onmouseleave = () => {
                     tooltip.style.display = 'none';
                 };
+                // Click skjuler også tooltip (for touch devices og bedre UX)
+                limitCounter.onclick = (e) => {
+                    e.stopPropagation(); // Forhindrer at produktet tilføjes til kurv
+                    tooltip.style.display = 'none';
+                };
             } else {
-                // Ingen begrænsninger - fjern hover
+                // Ingen begrænsninger - fjern hover og click
                 limitCounter.style.pointerEvents = 'none';
                 limitCounter.style.cursor = '';
                 limitCounter.onmouseenter = null;
                 limitCounter.onmouseleave = null;
+                limitCounter.onclick = null;
             }
         }
     }

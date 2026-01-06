@@ -43,6 +43,7 @@ import {
     setSessionStartTime,
     getSessionStartTime,
 } from './session-store.js';
+import { initShiftTimer } from './shift-timer.js';
 
 export async function startApp() {
     const adminProfile = getCurrentAdmin();
@@ -323,6 +324,12 @@ export async function startApp() {
         }
     }
     updateLoggedInUserDisplay();
+
+    // 3.5) Initialiser bytte-timer (shift timer)
+    const sessionBanner = document.getElementById('user-session-banner');
+    if (sessionBanner) {
+        initShiftTimer(sessionBanner);
+    }
 
     // 4) Basis event wiring (logout + modal luk)
     setupLogoutFlow({

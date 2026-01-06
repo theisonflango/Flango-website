@@ -75,9 +75,13 @@ export function showCustomAlert(title, body, config = 'alert') {
         const shouldShowCancel = (type === 'confirm') || showCancel;
         customAlertCancel.style.display = shouldShowCancel ? 'inline-block' : 'none';
     }
-    customAlertModal.style.display = 'flex';
-    customAlertModal.classList.add('dropdown-active');
+    // VIGTIGT: Reset scroll FØR animation starter for at undgå layout-thrashing
     if (customAlertContent) customAlertContent.scrollTop = 0;
+    customAlertModal.style.display = 'flex';
+    // Brug requestAnimationFrame for at sikre layout er færdig før animation
+    requestAnimationFrame(() => {
+        customAlertModal.classList.add('dropdown-active');
+    });
 
     const focusTarget = (focus === 'cancel' ? customAlertCancel : customAlertOk);
     setTimeout(() => focusTarget?.focus(), 50);
