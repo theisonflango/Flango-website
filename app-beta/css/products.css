@@ -1,0 +1,670 @@
+/* ============================================================
+   PRODUCTS STYLES - Flango Café
+   Product Grid, Cards, Buttons, Refills, Locks, Icons
+   ============================================================ */
+
+/* Product Grid Container */
+#products {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    background-color: var(--white);
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, .1);
+    overflow-y: auto;
+    height: 100%;
+    align-content: stretch;
+    grid-auto-rows: 1fr;
+    flex: 1;
+    min-height: 0;
+}
+
+.product-reorder-hint {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 6px;
+    text-align: left;
+    display: none;
+}
+
+body.reorder-mode .product-reorder-hint {
+    display: block;
+}
+
+/* ===== Dynamisk produkt-grid (2–5 produkter) ===== */
+
+/* 2 produkter → 1x2 grid */
+#products:has(> .product-btn:nth-child(2):last-child) {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* 3 produkter → 1x3 grid (standard) */
+#products:has(> .product-btn:nth-child(3):last-child) {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* 4 produkter → 2x2 grid */
+#products:has(> .product-btn:nth-child(4):last-child) {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* 5 produkter → 3 kolonner + hero-kort */
+#products:has(> .product-btn:nth-child(5):last-child) {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* Hero-kort: første produkt er bredere (span 2 kolonner) når der er præcis 5 produkter */
+#products:has(> .product-btn:nth-child(5):last-child) > .product-btn:first-child {
+    grid-column: span 2;
+}
+
+/* ===== 6 produkter → 3×2 symmetrisk grid ===== */
+#products:has(> .product-btn:nth-child(6):last-child) {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* ===== 7 produkter → Diagonal Balance Layout ===== */
+/*
+ * Visuelt layout:
+ * ┌────────────┬────────────┬────────────┐
+ * │   HERO     │   HERO     │  Prod 2    │
+ * │  (span 2)  │  (span 2)  │            │
+ * ├────────────┼────────────┼────────────┤
+ * │  Prod 3    │  Prod 4    │  Prod 5    │
+ * ├────────────┼────────────┴────────────┤
+ * │  Prod 6    │     Prod 7 (span 2)     │
+ * └────────────┴─────────────────────────┘
+ *
+ * Designrationale:
+ * - Hero (første produkt) forankrer top-venstre
+ * - Sidste produkt forankrer bund-højre
+ * - Skaber diagonal balance og visuel spænding
+ * - Ingen tomme celler: 5×1 + 2×2 = 9 celler
+ */
+#products:has(> .product-btn:nth-child(7):last-child) {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* Hero: Første produkt spænder 2 kolonner */
+#products:has(> .product-btn:nth-child(7):last-child) > .product-btn:first-child {
+    grid-column: span 2;
+}
+
+/* Anchor: Sidste produkt spænder 2 kolonner (diagonal balance) */
+#products:has(> .product-btn:nth-child(7):last-child) > .product-btn:last-child {
+    grid-column: span 2;
+}
+
+/* ===== 8 produkter → Hero + 7 normale ===== */
+/*
+ * Visuelt layout:
+ * ┌────────────┬────────────┬────────────┐
+ * │   HERO     │   HERO     │  Prod 2    │
+ * ├────────────┼────────────┼────────────┤
+ * │  Prod 3    │  Prod 4    │  Prod 5    │
+ * ├────────────┼────────────┼────────────┤
+ * │  Prod 6    │  Prod 7    │  Prod 8    │
+ * └────────────┴────────────┴────────────┘
+ *
+ * Hero forankrer øverst, resten fylder symmetrisk.
+ * 1×2 + 7×1 = 9 celler (3×3 grid)
+ */
+#products:has(> .product-btn:nth-child(8):last-child) {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+#products:has(> .product-btn:nth-child(8):last-child) > .product-btn:first-child {
+    grid-column: span 2;
+}
+
+/* ===== 9 produkter → Perfekt 3×3 grid (ingen hero) ===== */
+/*
+ * Visuelt layout:
+ * ┌────────────┬────────────┬────────────┐
+ * │  Prod 1    │  Prod 2    │  Prod 3    │
+ * ├────────────┼────────────┼────────────┤
+ * │  Prod 4    │  Prod 5    │  Prod 6    │
+ * ├────────────┼────────────┼────────────┤
+ * │  Prod 7    │  Prod 8    │  Prod 9    │
+ * └────────────┴────────────┴────────────┘
+ *
+ * 9 er et perfekt kvadrattal - ingen hero nødvendig.
+ * Symmetrisk og balanceret som det er.
+ */
+#products:has(> .product-btn:nth-child(9):last-child) {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* ===== 10 produkter → Diagonal Balance (som 7) ===== */
+/*
+ * Visuelt layout:
+ * ┌────────────┬────────────┬────────────┐
+ * │   HERO     │   HERO     │  Prod 2    │
+ * ├────────────┼────────────┼────────────┤
+ * │  Prod 3    │  Prod 4    │  Prod 5    │
+ * ├────────────┼────────────┼────────────┤
+ * │  Prod 6    │  Prod 7    │  Prod 8    │
+ * ├────────────┼────────────┴────────────┤
+ * │  Prod 9    │    Prod 10 (span 2)     │
+ * └────────────┴─────────────────────────┘
+ *
+ * Samme diagonal balance mønster som 7 produkter.
+ * Hero top-left + anchor bottom-right.
+ * 2×2 + 8×1 = 12 celler (3×4 grid)
+ */
+#products:has(> .product-btn:nth-child(10):last-child) {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+#products:has(> .product-btn:nth-child(10):last-child) > .product-btn:first-child {
+    grid-column: span 2;
+}
+
+#products:has(> .product-btn:nth-child(10):last-child) > .product-btn:last-child {
+    grid-column: span 2;
+}
+
+/* ===== 11+ produkter → Standard 3-kolonne grid ===== */
+/*
+ * For 11+ produkter bruger vi standard 3-kolonne flow.
+ * CSS :has() selectors ovenfor håndterer specifikt 2-10 produkter.
+ * Alt over 10 falder tilbage til default grid-template-columns: repeat(3, 1fr)
+ * som er defineret i #products base styles.
+ */
+
+/* ============================================================
+   PRODUCT BUTTONS
+   ============================================================ */
+
+.product-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 16px;
+    border-radius: 14px;
+    border: 2px solid #f1d7a7;
+    background: #fddfa9;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.2s ease;
+    overflow: visible;
+    height: 100%;
+    isolation: isolate; /* Etabler stacking context så z-index virker korrekt */
+}
+
+/* Refill produkter - distinkt grøn styling for at indikere rabat */
+.product-btn.product-refill {
+    border-color: #10b981;
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    box-shadow: 0 6px 14px rgba(16, 185, 129, 0.15);
+}
+
+.product-btn.product-refill:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(16, 185, 129, 0.25);
+    border-color: #059669;
+}
+
+.product-btn.product-refill:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.12);
+}
+
+.product-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+    border-color: #f6c97a;
+}
+
+.product-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+}
+
+.product-btn.toast-product {
+    position: relative;
+    justify-content: flex-end;
+    padding: 5px;
+}
+
+/* Indhold inde i knappen */
+.product-btn .product-btn-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ============================================================
+   PRODUCT LOCK OVERLAY
+   ============================================================ */
+
+/* Standard: ingen lock-overlay på produkter */
+.product-btn .avatar-lock-overlay {
+    display: none;
+}
+
+/* Når produktet har ramt daglig grænse */
+.product-btn.product-limit-reached {
+    cursor: not-allowed;
+}
+
+/* Produktindhold får absolute positioning (INGEN z-index for at undgå stacking context problemer) */
+.product-btn.product-limit-reached .product-btn-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Sørg for at produktikonet er synligt under overlay */
+.product-btn.product-limit-reached .product-icon {
+    z-index: 2;
+}
+
+/* Vis avatar-låse-overlay ovenpå produktkortet når det er låst */
+/* BEMÆRK: backdrop-filter fjernet fordi det skaber stacking context der skjuler counteren */
+.product-btn.product-limit-reached .avatar-lock-overlay {
+    display: flex;
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.5);
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 14px;
+}
+
+/* Gør låse-ikonet 100% synligt og stort */
+.product-btn.product-limit-reached .avatar-lock-overlay img {
+    width: 100%;
+    height: 100%;
+    max-width: 180px;
+    max-height: 180px;
+    object-fit: contain;
+    opacity: 1.0;
+    filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8));
+}
+
+/* Fjern hover effekt på låste produkter */
+.product-btn.product-limit-reached:hover {
+    transform: none;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+    border-color: #f1d7a7;
+}
+
+/* Counter z-index override for låste produkter - nu virker det fordi product-btn-inner ikke har z-index */
+.product-btn.product-limit-reached .product-limit-counter {
+    z-index: 50;
+}
+
+/* ============================================================
+   PRODUCT CONTENT - Icons, Emojis, Names, Prices
+   ============================================================ */
+
+.product-emoji {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10vw;
+    z-index: 0;
+}
+
+.product-icon {
+    width: 40px;
+    height: 40px;
+    display: block;
+    object-fit: contain;
+    margin: 0 auto 6px;
+}
+
+.product-btn .product-icon {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 13px;
+    opacity: 1;
+    z-index: 0;
+}
+
+.product-icon-small {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.product-name {
+    margin-top: 8px;
+    font-weight: 700
+}
+
+.product-price {
+    font-size: 14px;
+    color: #555
+}
+
+/* Refill pris styling - fremhæv med grøn farve */
+.product-price.refill-price {
+    color: #059669;
+    font-weight: 700;
+}
+
+.product-shortcut {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 24px;
+    height: 24px;
+    background-color: var(--secondary-color);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 700;
+    z-index: 15;
+}
+
+/* ============================================================
+   PRODUCT INFO BOX
+   ============================================================ */
+
+.product-info-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-radius: 8px;
+    z-index: 1;
+    position: absolute;
+    background-color: #e8b979;
+    color: #5c411a;
+    font-weight: 700;
+    font-family: 'Poppins', sans-serif;
+    line-height: 1;
+    font-size: clamp(12px, 1.5vw, 18px);
+    padding: clamp(1px, 0.3vw, 4px) clamp(8px, 1.2vw, 12px);
+    bottom: clamp(4px, 1vw, 8px);
+    left: clamp(4px, 1vw, 8px);
+    right: clamp(4px, 1vw, 8px);
+}
+
+.product-info-box .product-price {
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+}
+
+.product-info-box .product-name,
+.product-info-box .product-price {
+    position: relative;
+    top: -0.2em;
+}
+
+.product-info-box .product-name {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ============================================================
+   REFILL TIMER
+   ============================================================ */
+
+.refill-timer {
+    /* Absolut positioneret under limit-counter (som er ved top: 6px, ~28px høj) */
+    position: absolute;
+    top: 38px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 45;
+    font-size: 14px;
+    color: #059669;
+    font-weight: 700;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: center;
+    border: 1.5px solid #10b981;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15);
+    white-space: nowrap;
+}
+
+.refill-timer .timer-value {
+    font-family: 'Courier New', monospace;
+    font-weight: 800;
+    letter-spacing: 1px;
+    font-size: 14px;
+}
+
+/* ============================================================
+   CART & CONFIRMATION PRODUCT DISPLAY
+   ============================================================ */
+
+.cart-product-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cart-product-icon {
+    width: clamp(32px, 6vw, 48px);
+    height: clamp(32px, 6vw, 48px);
+    object-fit: contain;
+}
+
+.cart-product-emoji {
+    font-size: clamp(24px, 5vw, 40px);
+}
+
+.cart-remove-icon {
+    width: 24px;
+    height: 24px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.confirm-product-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 6px 0;
+}
+
+.confirm-product-icon {
+    width: 176px;
+    height: 176px;
+    object-fit: contain;
+    /* Forhindrer layout-thrashing under modal-animation */
+    aspect-ratio: 1/1;
+    contain: layout style paint;
+}
+
+.confirm-product-emoji {
+    font-size: 112px;
+}
+
+/* ============================================================
+   PRODUCT QUANTITY BADGE (Cart Count)
+   ============================================================ */
+
+.product-quantity-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: none;
+    align-items: center;
+    gap: 3px;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1.5px solid #f59e0b;
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #92400e;
+    z-index: 15;
+    pointer-events: none;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+}
+
+.product-quantity-badge.visible {
+    display: flex;
+}
+
+.product-quantity-badge .cart-icon {
+    font-size: 11px;
+}
+
+.product-quantity-badge .cart-qty {
+    font-family: 'Poppins', sans-serif;
+}
+
+/* ============================================================
+   PRODUCT LIMIT COUNTER (Purchased Today / Max)
+   ============================================================ */
+
+/* Counter er i HTML-templaten som direkte barn af .product-btn (efter lock-overlay) */
+/* z-index 50 > lock-overlay's 10, så counteren vises OVER låsen */
+.product-limit-counter {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1.5px solid #7dd3fc;
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0369a1;
+    font-family: 'Poppins', sans-serif;
+    z-index: 50;
+    pointer-events: auto; /* Tillad hover for tooltip */
+    cursor: help;
+    box-shadow: 0 2px 6px rgba(14, 165, 233, 0.2);
+    white-space: nowrap;
+}
+
+.product-limit-counter.visible {
+    display: inline-flex !important;
+    width: auto !important;
+}
+
+/* Når grænsen er nået - rød/advarsel styling */
+.product-limit-counter.at-limit {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border-color: #f87171;
+    color: #b91c1c;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+}
+
+/* ============================================================
+   LIMIT COUNTER TOOLTIP
+   ============================================================ */
+
+.limit-tooltip {
+    position: absolute;
+    /* Positioner under counter-badgen (counter er ved top: 6px, badge er ~24px høj) */
+    top: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 220px;
+    max-width: 280px;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+.limit-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-bottom-color: #1e293b;
+}
+
+.limit-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.limit-tooltip-block {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.limit-tooltip-block:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.limit-tooltip-source {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Farvekoder for forskellige kilder */
+.limit-tooltip-source.club {
+    color: #60a5fa; /* Blå for klub */
+}
+
+.limit-tooltip-source.parent {
+    color: #a78bfa; /* Lilla for forælder */
+}
+
+.limit-tooltip-source.sugar {
+    color: #f472b6; /* Pink for sukkerpolitik */
+}
+
+.limit-tooltip-source.allergy {
+    color: #fb923c; /* Orange for allergi */
+}
+
+.limit-tooltip-source.refill {
+    color: #34d399; /* Grøn for refill */
+}
+
+.limit-tooltip-message {
+    font-size: 12px;
+    font-weight: 400;
+    color: #f1f5f9;
+    line-height: 1.4;
+}
+
+.limit-tooltip-message strong {
+    font-weight: 600;
+    color: #fff;
+}
+
+/* Ikon i source header */
+.limit-tooltip-icon {
+    font-size: 11px;
+}

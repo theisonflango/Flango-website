@@ -1,0 +1,1136 @@
+/* ============================================================
+   POS PRO THEME - Modern, Colorful Point-of-Sale Look
+   All styles scoped to body[data-theme="pos-pro"]
+   ============================================================ */
+
+/* ============================================================
+   CSS VARIABLES OVERRIDE
+   ============================================================ */
+
+body[data-theme="pos-pro"] {
+    --primary-color: #6366f1;
+    --secondary-color: #8b5cf6;
+    --admin-color: #a855f7;
+    --background-light: #f0f4ff;
+    --white: #ffffff;
+    --product-bg: linear-gradient(135deg, #fef3f2 0%, #fef9f5 100%);
+    --product-border: #e0e7ff;
+    --success-color: #10b981;
+    --reset-color: #64748b;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+
+    /* POS Pro specific variables */
+    --pos-gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    --pos-gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --pos-gradient-warm: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+    --pos-gradient-cool: linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%);
+    --pos-gradient-soft: linear-gradient(135deg, #e8ecff 0%, #dbeafe 100%);
+    --pos-gradient-card: linear-gradient(135deg, #e8ecff 0%, #dbeafe 100%);
+    --pos-card-shadow: 0 4px 12px rgba(99, 102, 241, 0.12);
+    --pos-card-hover-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);
+    --pos-border-radius: 16px;
+    --pos-border-radius-sm: 12px;
+    --pos-text-primary: #1e293b;
+    --pos-text-secondary: #64748b;
+}
+
+/* ============================================================
+   BODY BACKGROUND
+   ============================================================ */
+
+body[data-theme="pos-pro"] {
+    background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 50%, #ede9fe 100%);
+}
+
+/* ============================================================
+   MAIN APP LAYOUT
+   ============================================================ */
+
+body[data-theme="pos-pro"] #main-app {
+    background: transparent;
+}
+
+/* ============================================================
+   HEADER / TOOLBAR
+   ============================================================ */
+
+body[data-theme="pos-pro"] .sidebar-main-header {
+    background: var(--pos-gradient-primary);
+    border-bottom: none;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25);
+}
+
+body[data-theme="pos-pro"] .header-actions {
+    gap: 8px;
+}
+
+body[data-theme="pos-pro"] .header-action-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    border: none;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
+}
+
+body[data-theme="pos-pro"] .header-action-btn:hover {
+    background: rgba(255, 255, 255, 0.35);
+    transform: translateY(-2px);
+}
+
+/* Keep original icon colors - no filter/invert */
+body[data-theme="pos-pro"] .header-action-btn img {
+    filter: none;
+    opacity: 1;
+}
+
+/* ============================================================
+   USER SESSION BANNER
+   ============================================================ */
+
+body[data-theme="pos-pro"] .user-session-banner {
+    background: var(--pos-gradient-soft);
+    color: var(--pos-text-primary);
+    border-bottom: 2px solid #c7d2fe;
+    padding: 14px 20px;
+}
+
+body[data-theme="pos-pro"] #logged-in-user {
+    color: var(--pos-text-primary);
+    font-weight: 700;
+}
+
+/* ============================================================
+   PRODUCTS AREA
+   ============================================================ */
+
+body[data-theme="pos-pro"] #products-area {
+    background: transparent;
+    padding: 20px;
+}
+
+/* ============================================================
+   PRODUCT CARDS - Different gradient colors for each card
+   ============================================================ */
+
+body[data-theme="pos-pro"] .product-btn {
+    background: linear-gradient(145deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #fcd34d;
+    border-radius: var(--pos-border-radius);
+    box-shadow: var(--pos-card-shadow);
+    transition: all 0.25s ease;
+    padding: 16px;
+}
+
+body[data-theme="pos-pro"] .product-btn:hover {
+    box-shadow: var(--pos-card-hover-shadow);
+    transform: translateY(-4px);
+}
+
+body[data-theme="pos-pro"] .product-btn:active {
+    transform: translateY(-2px);
+}
+
+/* Different colors for each product position */
+body[data-theme="pos-pro"] .product-btn:nth-child(1) {
+    background: linear-gradient(145deg, #fef3c7 0%, #fde68a 100%);
+    border-color: #fbbf24;
+}
+body[data-theme="pos-pro"] .product-btn:nth-child(1):hover {
+    border-color: #f59e0b;
+    box-shadow: 0 8px 24px rgba(251, 191, 36, 0.3);
+}
+
+body[data-theme="pos-pro"] .product-btn:nth-child(2) {
+    background: linear-gradient(145deg, #dcfce7 0%, #bbf7d0 100%);
+    border-color: #86efac;
+}
+body[data-theme="pos-pro"] .product-btn:nth-child(2):hover {
+    border-color: #4ade80;
+    box-shadow: 0 8px 24px rgba(74, 222, 128, 0.3);
+}
+
+body[data-theme="pos-pro"] .product-btn:nth-child(3) {
+    background: linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%);
+    border-color: #93c5fd;
+}
+body[data-theme="pos-pro"] .product-btn:nth-child(3):hover {
+    border-color: #60a5fa;
+    box-shadow: 0 8px 24px rgba(96, 165, 250, 0.3);
+}
+
+body[data-theme="pos-pro"] .product-btn:nth-child(4) {
+    background: linear-gradient(145deg, #fce7f3 0%, #fbcfe8 100%);
+    border-color: #f9a8d4;
+}
+body[data-theme="pos-pro"] .product-btn:nth-child(4):hover {
+    border-color: #f472b6;
+    box-shadow: 0 8px 24px rgba(244, 114, 182, 0.3);
+}
+
+body[data-theme="pos-pro"] .product-btn:nth-child(5) {
+    background: linear-gradient(145deg, #e0e7ff 0%, #c7d2fe 100%);
+    border-color: #a5b4fc;
+}
+body[data-theme="pos-pro"] .product-btn:nth-child(5):hover {
+    border-color: #818cf8;
+    box-shadow: 0 8px 24px rgba(129, 140, 248, 0.3);
+}
+
+body[data-theme="pos-pro"] .product-btn:nth-child(6) {
+    background: linear-gradient(145deg, #ffedd5 0%, #fed7aa 100%);
+    border-color: #fdba74;
+}
+body[data-theme="pos-pro"] .product-btn:nth-child(6):hover {
+    border-color: #fb923c;
+    box-shadow: 0 8px 24px rgba(251, 146, 60, 0.3);
+}
+
+body[data-theme="pos-pro"] .product-btn:nth-child(7) {
+    background: linear-gradient(145deg, #cffafe 0%, #a5f3fc 100%);
+    border-color: #67e8f9;
+}
+body[data-theme="pos-pro"] .product-btn:nth-child(7):hover {
+    border-color: #22d3ee;
+    box-shadow: 0 8px 24px rgba(34, 211, 238, 0.3);
+}
+
+body[data-theme="pos-pro"] .product-btn:nth-child(8) {
+    background: linear-gradient(145deg, #ede9fe 0%, #ddd6fe 100%);
+    border-color: #c4b5fd;
+}
+body[data-theme="pos-pro"] .product-btn:nth-child(8):hover {
+    border-color: #a78bfa;
+    box-shadow: 0 8px 24px rgba(167, 139, 250, 0.3);
+}
+
+body[data-theme="pos-pro"] .product-btn:nth-child(9) {
+    background: linear-gradient(145deg, #fef9c3 0%, #fef08a 100%);
+    border-color: #fde047;
+}
+body[data-theme="pos-pro"] .product-btn:nth-child(9):hover {
+    border-color: #facc15;
+    box-shadow: 0 8px 24px rgba(250, 204, 21, 0.3);
+}
+
+body[data-theme="pos-pro"] .product-btn:nth-child(10) {
+    background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%);
+    border-color: #6ee7b7;
+}
+body[data-theme="pos-pro"] .product-btn:nth-child(10):hover {
+    border-color: #34d399;
+    box-shadow: 0 8px 24px rgba(52, 211, 153, 0.3);
+}
+
+body[data-theme="pos-pro"] .product-btn .product-name {
+    color: var(--pos-text-primary);
+    font-weight: 700;
+    font-size: 15px;
+}
+
+body[data-theme="pos-pro"] .product-btn .product-price {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
+    font-size: 17px;
+}
+
+/* Keep emojis large - same as base */
+body[data-theme="pos-pro"] .product-btn .product-emoji {
+    font-size: 10vw;
+}
+
+/* Hero product card - special golden treatment */
+body[data-theme="pos-pro"] .product-btn.hero-card {
+    background: linear-gradient(145deg, #fef3c7 0%, #fcd34d 50%, #fbbf24 100%);
+    border: 3px solid #f59e0b;
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35);
+}
+
+body[data-theme="pos-pro"] .product-btn.hero-card:hover {
+    border-color: #d97706;
+    box-shadow: 0 10px 30px rgba(245, 158, 11, 0.45);
+}
+
+/* ============================================================
+   SIDEBAR (Cart) - Sand-yellow theme like default products
+   ============================================================ */
+
+body[data-theme="pos-pro"] #sidebar {
+    background: linear-gradient(180deg, #fef7ed 0%, #fef3c7 100%);
+    border-left: 2px solid #fcd34d;
+    box-shadow: -4px 0 20px rgba(251, 191, 36, 0.15);
+}
+
+body[data-theme="pos-pro"] .sidebar-header {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    padding: 16px 20px;
+    border-bottom: none;
+    border-radius: 0;
+}
+
+body[data-theme="pos-pro"] .sidebar-header h2 {
+    color: white;
+    font-size: 18px;
+    margin: 0;
+}
+
+/* Keep sidebar icon visible */
+body[data-theme="pos-pro"] .sidebar-header-icon {
+    filter: brightness(0) invert(1);
+    opacity: 0.95;
+}
+
+/* ============================================================
+   ORDER LIST / CART ITEMS
+   ============================================================ */
+
+body[data-theme="pos-pro"] #current-order {
+    background: linear-gradient(180deg, #fef9ed 0%, #fef3c7 100%);
+}
+
+body[data-theme="pos-pro"] #order-list li {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 2px solid #fcd34d;
+    border-radius: var(--pos-border-radius-sm);
+    margin: 8px 12px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.15);
+    transition: all 0.2s ease;
+}
+
+body[data-theme="pos-pro"] #order-list li:hover {
+    border-color: #f59e0b;
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.25);
+}
+
+body[data-theme="pos-pro"] .order-item-name {
+    color: var(--pos-text-primary);
+    font-weight: 600;
+}
+
+body[data-theme="pos-pro"] .order-item-price {
+    color: #92400e;
+    font-weight: 700;
+}
+
+/* ============================================================
+   CHECKOUT AREA
+   ============================================================ */
+
+body[data-theme="pos-pro"] #checkout-stack {
+    background: linear-gradient(180deg, #fef9ed 0%, #fde68a 100%);
+    border-top: 2px solid #fbbf24;
+    padding: 16px;
+}
+
+body[data-theme="pos-pro"] #total-price {
+    background: var(--pos-gradient-primary);
+    color: white;
+    font-size: 22px;
+    font-weight: 800;
+    padding: 18px 24px;
+    border-radius: var(--pos-border-radius);
+    text-align: center;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+}
+
+/* ============================================================
+   BUTTONS - Modern Pill Style
+   ============================================================ */
+
+body[data-theme="pos-pro"] .action-button {
+    border-radius: var(--pos-border-radius-sm);
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+    border: none;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+body[data-theme="pos-pro"] .action-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+body[data-theme="pos-pro"] #complete-purchase {
+    background: var(--pos-gradient-success);
+    font-size: 16px;
+    padding: 16px 24px;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+}
+
+body[data-theme="pos-pro"] #complete-purchase:hover {
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+body[data-theme="pos-pro"] #select-customer-main-btn {
+    background: var(--pos-gradient-primary);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+}
+
+body[data-theme="pos-pro"] #select-customer-main-btn:hover {
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+/* Secondary/Reset buttons */
+body[data-theme="pos-pro"] .secondary-action {
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%) !important;
+    color: #475569 !important;
+}
+
+body[data-theme="pos-pro"] .secondary-action:hover {
+    background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%) !important;
+}
+
+/* ============================================================
+   SELECTED USER INFO BOX
+   ============================================================ */
+
+body[data-theme="pos-pro"] #selected-user-info {
+    background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+    border: 2px solid #a5b4fc;
+    border-radius: var(--pos-border-radius-sm);
+    color: var(--pos-text-primary);
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+
+body[data-theme="pos-pro"] .modal-content {
+    border-radius: 20px;
+    box-shadow: 0 16px 48px rgba(99, 102, 241, 0.2);
+    border: 2px solid #c7d2fe;
+    background: linear-gradient(180deg, #f0f4ff 0%, #e0e7ff 100%);
+}
+
+body[data-theme="pos-pro"] .modal-header {
+    background: var(--pos-gradient-primary);
+    color: white;
+    border-radius: 18px 18px 0 0;
+    padding: 18px 24px;
+}
+
+body[data-theme="pos-pro"] .modal-header h2 {
+    color: white;
+}
+
+body[data-theme="pos-pro"] .modal-header .close-btn {
+    color: white;
+    opacity: 0.8;
+    font-size: 28px;
+}
+
+body[data-theme="pos-pro"] .modal-header .close-btn:hover {
+    opacity: 1;
+}
+
+/* ============================================================
+   USER LIST IN MODALS
+   ============================================================ */
+
+body[data-theme="pos-pro"] .modal-user-list {
+    background: linear-gradient(180deg, #e8ecff 0%, #dbeafe 100%);
+}
+
+body[data-theme="pos-pro"] .user-list-header {
+    background: var(--pos-gradient-soft);
+    border-bottom: 2px solid #c7d2fe;
+}
+
+body[data-theme="pos-pro"] .user-list-header .sort-header {
+    color: var(--pos-text-primary);
+    font-weight: 700;
+}
+
+body[data-theme="pos-pro"] .user-list-header .sort-header.active {
+    color: var(--primary-color);
+}
+
+body[data-theme="pos-pro"] .user-row {
+    border-bottom: 1px solid #e0e7ff;
+    transition: all 0.2s ease;
+}
+
+body[data-theme="pos-pro"] .user-row:hover {
+    background: linear-gradient(135deg, #eff6ff 0%, #f0f4ff 100%);
+}
+
+/* ============================================================
+   SETTINGS MODAL
+   ============================================================ */
+
+body[data-theme="pos-pro"] .settings-modal {
+    border-radius: 20px;
+    box-shadow: 0 16px 48px rgba(99, 102, 241, 0.2);
+    background: linear-gradient(180deg, #f0f4ff 0%, #e0e7ff 100%);
+    border: 2px solid #c7d2fe;
+}
+
+body[data-theme="pos-pro"] .settings-item-btn {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius-sm);
+    transition: all 0.25s ease;
+    font-weight: 600;
+    color: var(--pos-text-primary);
+}
+
+body[data-theme="pos-pro"] .settings-item-btn:hover {
+    background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+    border-color: #a5b4fc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+}
+
+body[data-theme="pos-pro"] .settings-item-btn strong {
+    color: var(--primary-color);
+}
+
+/* ============================================================
+   THEME PICKER
+   ============================================================ */
+
+body[data-theme="pos-pro"] .theme-picker-modal {
+    border-radius: 20px;
+    box-shadow: 0 16px 48px rgba(99, 102, 241, 0.2);
+    background: linear-gradient(180deg, #f0f4ff 0%, #e0e7ff 100%);
+    border: 2px solid #c7d2fe;
+}
+
+body[data-theme="pos-pro"] .theme-option {
+    border: 2px solid #e0e7ff;
+    border-radius: var(--pos-border-radius-sm);
+    transition: all 0.25s ease;
+    background: var(--pos-gradient-soft);
+}
+
+body[data-theme="pos-pro"] .theme-option:hover {
+    border-color: #a5b4fc;
+    background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+}
+
+body[data-theme="pos-pro"] .theme-picker-actions .settings-button {
+    background: var(--pos-gradient-primary);
+    color: white;
+    border: none;
+    border-radius: var(--pos-border-radius-sm);
+    font-weight: 700;
+    padding: 12px 24px;
+}
+
+/* ============================================================
+   LOGIN SCREENS
+   ============================================================ */
+
+body[data-theme="pos-pro"] .login-container {
+    border-radius: 24px;
+    box-shadow: 0 16px 48px rgba(99, 102, 241, 0.15);
+    border: 2px solid #c7d2fe;
+    background: linear-gradient(180deg, #f0f4ff 0%, #e0e7ff 100%);
+}
+
+body[data-theme="pos-pro"] .login-container button {
+    border-radius: var(--pos-border-radius-sm);
+    font-weight: 700;
+    border: none;
+}
+
+body[data-theme="pos-pro"] .login-container button:not(.secondary-action):not(.switch-club-btn) {
+    background: var(--pos-gradient-success);
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+}
+
+body[data-theme="pos-pro"] .login-container select,
+body[data-theme="pos-pro"] .login-container input {
+    border-radius: var(--pos-border-radius-sm);
+    border: 2px solid #e0e7ff;
+    background: var(--pos-gradient-soft);
+}
+
+body[data-theme="pos-pro"] .login-container select:focus,
+body[data-theme="pos-pro"] .login-container input:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+/* ============================================================
+   UPDATE CHIP
+   ============================================================ */
+
+body[data-theme="pos-pro"] .flango-update-chip {
+    background: var(--pos-gradient-success);
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+body[data-theme="pos-pro"] .flango-update-chip:hover {
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+/* ============================================================
+   HISTORY / SALES MODAL - Summary View Buttons Style
+   ============================================================ */
+
+body[data-theme="pos-pro"] .summary-view-selector {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius);
+    padding: 8px;
+}
+
+body[data-theme="pos-pro"] .summary-view-btn {
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: var(--pos-border-radius-sm);
+    color: var(--pos-text-secondary);
+    font-weight: 600;
+}
+
+body[data-theme="pos-pro"] .summary-view-btn:hover {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary-color);
+}
+
+body[data-theme="pos-pro"] .summary-view-btn.active {
+    background: var(--pos-gradient-primary);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+body[data-theme="pos-pro"] .date-filter input[type="date"] {
+    border-radius: var(--pos-border-radius-sm);
+    border: 2px solid #e0e7ff;
+    background: var(--pos-gradient-soft);
+}
+
+body[data-theme="pos-pro"] .date-filter input[type="date"]:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+body[data-theme="pos-pro"] .report-buttons .action-button {
+    border-radius: var(--pos-border-radius-sm);
+    font-weight: 600;
+}
+
+body[data-theme="pos-pro"] .history-filter-panel {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius-sm);
+}
+
+/* ============================================================
+   FORM ELEMENTS
+   ============================================================ */
+
+body[data-theme="pos-pro"] input[type="text"],
+body[data-theme="pos-pro"] input[type="number"],
+body[data-theme="pos-pro"] input[type="email"],
+body[data-theme="pos-pro"] input[type="password"],
+body[data-theme="pos-pro"] select,
+body[data-theme="pos-pro"] textarea {
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius-sm);
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8ecff 100%);
+    transition: all 0.2s ease;
+}
+
+body[data-theme="pos-pro"] input[type="text"]:focus,
+body[data-theme="pos-pro"] input[type="number"]:focus,
+body[data-theme="pos-pro"] input[type="email"]:focus,
+body[data-theme="pos-pro"] input[type="password"]:focus,
+body[data-theme="pos-pro"] select:focus,
+body[data-theme="pos-pro"] textarea:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+/* ============================================================
+   CHECKBOX & TOGGLE STYLING
+   ============================================================ */
+
+body[data-theme="pos-pro"] input[type="checkbox"] {
+    accent-color: var(--primary-color);
+}
+
+/* ============================================================
+   ALERT MODAL
+   ============================================================ */
+
+body[data-theme="pos-pro"] #custom-alert-content {
+    border-radius: 20px;
+    box-shadow: 0 16px 48px rgba(99, 102, 241, 0.2);
+    background: linear-gradient(180deg, #f0f4ff 0%, #e0e7ff 100%);
+    border: 2px solid #c7d2fe;
+}
+
+body[data-theme="pos-pro"] #custom-alert-ok {
+    background: var(--pos-gradient-success);
+    border-radius: var(--pos-border-radius-sm);
+    border: none;
+    font-weight: 700;
+}
+
+body[data-theme="pos-pro"] #custom-alert-cancel {
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+    color: #475569;
+    border-radius: var(--pos-border-radius-sm);
+    border: none;
+    font-weight: 700;
+}
+
+/* ============================================================
+   PIN MODAL
+   ============================================================ */
+
+body[data-theme="pos-pro"] #pin-display {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius-sm);
+}
+
+body[data-theme="pos-pro"] .keypad-btn {
+    background: linear-gradient(145deg, #e0e7ff 0%, #c7d2fe 100%);
+    border: 2px solid #a5b4fc;
+    border-radius: var(--pos-border-radius-sm);
+    font-weight: 700;
+    color: var(--pos-text-primary);
+    transition: all 0.2s ease;
+}
+
+body[data-theme="pos-pro"] .keypad-btn:hover {
+    background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+    border-color: #a5b4fc;
+    transform: translateY(-2px);
+}
+
+body[data-theme="pos-pro"] .keypad-btn:active {
+    background: var(--pos-gradient-primary);
+    color: white;
+    border-color: transparent;
+}
+
+body[data-theme="pos-pro"] .keypad-action {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+body[data-theme="pos-pro"] .keypad-action:hover {
+    background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
+}
+
+/* ============================================================
+   PRODUCT MODAL / EDIT MENU
+   ============================================================ */
+
+body[data-theme="pos-pro"] .modal-product-list {
+    background: linear-gradient(180deg, #e0e7ff 0%, #dbeafe 100%);
+}
+
+body[data-theme="pos-pro"] .modal-entry {
+    background: linear-gradient(145deg, #e8ecff 0%, #dbeafe 100%);
+    border: 2px solid #a5b4fc;
+    border-radius: var(--pos-border-radius-sm);
+    margin: 8px 0;
+    transition: all 0.2s ease;
+}
+
+body[data-theme="pos-pro"] .modal-entry:hover {
+    border-color: #a5b4fc;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.12);
+}
+
+body[data-theme="pos-pro"] .add-product-btn {
+    background: var(--pos-gradient-primary);
+    color: white;
+    border: none;
+    border-radius: var(--pos-border-radius-sm);
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
+body[data-theme="pos-pro"] .add-product-btn:hover {
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+}
+
+/* ============================================================
+   SETTINGS SECTIONS (Sugar Policy, Spending Limit, etc.)
+   ============================================================ */
+
+body[data-theme="pos-pro"] .settings-section {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius);
+    padding: 16px;
+    margin: 12px 0;
+}
+
+body[data-theme="pos-pro"] .settings-section h3 {
+    color: var(--primary-color);
+    border-bottom-color: #c7d2fe;
+}
+
+body[data-theme="pos-pro"] .toggle-row {
+    background: linear-gradient(145deg, #e8ecff 0%, #dbeafe 100%);
+    border: 2px solid #a5b4fc;
+    border-radius: var(--pos-border-radius-sm);
+    padding: 12px 16px;
+}
+
+/* ============================================================
+   MODAL FOOTER / ACTIONS
+   ============================================================ */
+
+body[data-theme="pos-pro"] .modal-footer {
+    background: var(--pos-gradient-soft);
+    border-top: 2px solid #c7d2fe;
+    border-radius: 0 0 18px 18px;
+}
+
+body[data-theme="pos-pro"] .modal-actions button {
+    border-radius: var(--pos-border-radius-sm);
+    font-weight: 700;
+}
+
+/* ============================================================
+   AVATAR PICKER
+   ============================================================ */
+
+body[data-theme="pos-pro"] .avatar-carousel-container {
+    background: var(--pos-gradient-soft);
+    border-radius: var(--pos-border-radius);
+    border: 2px solid #c7d2fe;
+}
+
+body[data-theme="pos-pro"] #avatar-picker-summary {
+    background: linear-gradient(145deg, #e8ecff 0%, #dbeafe 100%);
+    border: 2px solid #a5b4fc;
+    border-radius: var(--pos-border-radius-sm);
+    padding: 16px;
+}
+
+/* ============================================================
+   BADGE PICKER
+   ============================================================ */
+
+body[data-theme="pos-pro"] .badge-section {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius-sm);
+    margin: 8px 0;
+}
+
+body[data-theme="pos-pro"] .badge-section summary {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+body[data-theme="pos-pro"] .badge-option {
+    background: linear-gradient(145deg, #e8ecff 0%, #dbeafe 100%);
+    border: 2px solid #a5b4fc;
+    border-radius: var(--pos-border-radius-sm);
+    transition: all 0.2s ease;
+}
+
+body[data-theme="pos-pro"] .badge-option:hover {
+    border-color: #a5b4fc;
+    background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+    transform: translateY(-2px);
+}
+
+/* ============================================================
+   ASSORTMENT MODAL
+   ============================================================ */
+
+body[data-theme="pos-pro"] #assortment-list {
+    background: var(--pos-gradient-soft);
+    border-radius: var(--pos-border-radius-sm);
+}
+
+/* ============================================================
+   EDIT USER DETAIL MODAL
+   ============================================================ */
+
+body[data-theme="pos-pro"] .edit-user-form {
+    background: linear-gradient(180deg, #e0e7ff 0%, #dbeafe 100%);
+    border-radius: var(--pos-border-radius-sm);
+    padding: 16px;
+}
+
+body[data-theme="pos-pro"] .form-group label {
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+body[data-theme="pos-pro"] .preset-btn {
+    background: var(--pos-gradient-cool);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+body[data-theme="pos-pro"] .preset-btn:hover {
+    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+}
+
+body[data-theme="pos-pro"] .balance-display {
+    background: var(--pos-gradient-primary);
+    color: white;
+    border-radius: var(--pos-border-radius-sm);
+    padding: 12px 16px;
+    font-weight: 700;
+}
+
+/* ============================================================
+   SCROLLBAR STYLING
+   ============================================================ */
+
+body[data-theme="pos-pro"] ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+body[data-theme="pos-pro"] ::-webkit-scrollbar-track {
+    background: linear-gradient(180deg, #dbeafe 0%, #c7d2fe 100%);
+    border-radius: 5px;
+}
+
+body[data-theme="pos-pro"] ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #a5b4fc 0%, #818cf8 100%);
+    border-radius: 5px;
+}
+
+body[data-theme="pos-pro"] ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #818cf8 0%, #6366f1 100%);
+}
+
+/* ============================================================
+   TYPOGRAPHY ADJUSTMENTS
+   ============================================================ */
+
+body[data-theme="pos-pro"] h2 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+}
+
+body[data-theme="pos-pro"] h3 {
+    color: var(--primary-color);
+    border-bottom-color: #c7d2fe;
+}
+
+/* ============================================================
+   VERSION INFO PANEL
+   ============================================================ */
+
+body[data-theme="pos-pro"] .version-info-panel {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius);
+}
+
+body[data-theme="pos-pro"] .version-refresh-btn {
+    background: var(--pos-gradient-success);
+    border-radius: var(--pos-border-radius-sm);
+}
+
+body[data-theme="pos-pro"] .version-check-btn {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    color: var(--pos-text-primary);
+    border-radius: var(--pos-border-radius-sm);
+}
+
+/* ============================================================
+   AUTO IMPORT MODAL
+   ============================================================ */
+
+body[data-theme="pos-pro"] .auto-import-summary,
+body[data-theme="pos-pro"] .auto-import-preview {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius-sm);
+}
+
+body[data-theme="pos-pro"] .auto-import-mapping-row {
+    background: linear-gradient(145deg, #e8ecff 0%, #dbeafe 100%);
+    border: 2px solid #a5b4fc;
+    border-radius: var(--pos-border-radius-sm);
+    padding: 12px;
+    margin: 8px 0;
+}
+
+/* ============================================================
+   FILTER BUTTONS (History)
+   ============================================================ */
+
+body[data-theme="pos-pro"] .filter-btn {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius-sm);
+    color: var(--pos-text-primary);
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+body[data-theme="pos-pro"] .filter-btn:hover {
+    background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+    border-color: #a5b4fc;
+}
+
+body[data-theme="pos-pro"] .filter-btn.active {
+    background: var(--pos-gradient-primary);
+    color: white;
+    border-color: transparent;
+}
+
+/* ============================================================
+   USER FILTER BUTTONS
+   ============================================================ */
+
+body[data-theme="pos-pro"] .user-filter-buttons .filter-btn {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius-sm);
+}
+
+body[data-theme="pos-pro"] .user-filter-buttons .filter-btn.active {
+    background: var(--pos-gradient-primary);
+    color: white;
+    border-color: transparent;
+}
+
+/* ============================================================
+   MODAL CONTROLS (Search inputs)
+   ============================================================ */
+
+body[data-theme="pos-pro"] .modal-controls input {
+    background: linear-gradient(145deg, #f0f4ff 0%, #e8ecff 100%);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius-sm);
+}
+
+body[data-theme="pos-pro"] .modal-controls input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+/* ============================================================
+   ADMIN PANEL BUTTONS
+   ============================================================ */
+
+body[data-theme="pos-pro"] .admin-btn {
+    background: var(--pos-gradient-primary);
+    border-radius: var(--pos-border-radius-sm);
+    font-weight: 700;
+}
+
+body[data-theme="pos-pro"] .admin-btn:hover {
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+}
+
+/* ============================================================
+   SUMMARY TABLE
+   ============================================================ */
+
+body[data-theme="pos-pro"] .summary-table-container {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius);
+}
+
+body[data-theme="pos-pro"] .summary-filters {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius-sm);
+    padding: 16px;
+}
+
+body[data-theme="pos-pro"] .summary-actions .action-button {
+    border-radius: var(--pos-border-radius-sm);
+}
+
+/* ============================================================
+   ROLE SELECTOR BUTTONS
+   ============================================================ */
+
+body[data-theme="pos-pro"] .summary-role-btn {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius-sm);
+    color: var(--pos-text-primary);
+    font-weight: 600;
+}
+
+body[data-theme="pos-pro"] .summary-role-btn.active {
+    background: var(--pos-gradient-warm);
+    color: white;
+    border-color: transparent;
+}
+
+/* ============================================================
+   PRODUCT ICON PICKER
+   ============================================================ */
+
+body[data-theme="pos-pro"] .icon-picker-grid {
+    background: var(--pos-gradient-soft);
+    border: 2px solid #c7d2fe;
+    border-radius: var(--pos-border-radius-sm);
+}
+
+body[data-theme="pos-pro"] .icon-option {
+    background: linear-gradient(145deg, #e8ecff 0%, #dbeafe 100%);
+    border: 2px solid #a5b4fc;
+    border-radius: var(--pos-border-radius-sm);
+    transition: all 0.2s ease;
+}
+
+body[data-theme="pos-pro"] .icon-option:hover {
+    border-color: #a5b4fc;
+    background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+}
+
+body[data-theme="pos-pro"] .icon-option.selected {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, #dbeafe 0%, #c7d2fe 100%);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+/* ============================================================
+   PRODUCT REORDER HINT
+   ============================================================ */
+
+body[data-theme="pos-pro"] .product-reorder-hint {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #fcd34d;
+    border-radius: var(--pos-border-radius-sm);
+    color: #92400e;
+}
+
+/* ============================================================
+   CAFÉ MODE BUTTON
+   ============================================================ */
+
+body[data-theme="pos-pro"] #cafe-mode-btn {
+    background: var(--pos-gradient-warm);
+    border-radius: var(--pos-border-radius-sm);
+    font-weight: 700;
+    box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
+}
+
+body[data-theme="pos-pro"] #cafe-mode-btn:hover {
+    box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+}
