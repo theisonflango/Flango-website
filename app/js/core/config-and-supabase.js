@@ -2,10 +2,10 @@
 import { instrumentSupabase } from './db-instrumentation.js';
 
 // App version - skal matche version.json efter deploy
-export const FLANGO_VERSION = '3.0.3';
+export const FLANGO_VERSION = '3.0.4';
 
 const SUPABASE_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co'; // Dette er din nye URL for Flango-3
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impia25qZ2JwZ2hyYnJzdHF3b3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MjIwNjMsImV4cCI6MjA3ODE5ODA2M30.ZMlxQyzmXuy43EcKIN6-eO8pJZs2F6kfDw_cfaks9qQ';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impia25qZ2JwZ2hyYnN0cXdvempqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MjIwNjMsImV4cCI6MjA3ODE5ODA2M30.ZMlxQyzmXuy43EcKIN6-eO8pJZs2F6kfDw_cfaks9qQ';
 
 export const INSTITUTION_ID_KEY = 'flango_institution_id';
 export const INSTITUTION_NAME_KEY = 'flango_institution_name';
