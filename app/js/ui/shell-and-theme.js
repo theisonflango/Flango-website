@@ -12,6 +12,7 @@ import {
     ALL_VALID_THEMES
 } from './theme-loader.js';
 import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js';
+import { updateInstitutionCache } from '../domain/institution-store.js';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 const sugarPolicyState = {
@@ -917,12 +918,140 @@ async function openInstitutionPreferences() {
         openMobilePayImportModal();
     });
 
+    // Bytte-timer knap
+    const shiftTimerBtn = document.createElement('button');
+    shiftTimerBtn.className = 'settings-item-btn';
+    shiftTimerBtn.innerHTML = `<strong>Bytte-timer</strong><div style="font-size: 12px; margin-top: 2px;">Aktivér eller deaktivér bytte-timer funktionen for ekspedienter.</div>`;
+    shiftTimerBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openShiftTimerSettingsModal();
+    });
+
     contentEl.appendChild(sugarPolicyBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(parentPortalBtn);
     contentEl.appendChild(editAdminsBtn);
     contentEl.appendChild(mobilePayImportBtn);
+    contentEl.appendChild(shiftTimerBtn);
     contentEl.appendChild(updatesBtn);
+    backdrop.style.display = 'flex';
+}
+
+/**
+ * Åbner Bytte-timer indstillinger modal
+ */
+async function openShiftTimerSettingsModal() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) {
+        console.error('[shift-timer-settings] No institution ID found');
+        return;
+    }
+
+    titleEl.textContent = 'Bytte-timer Indstillinger';
+    contentEl.innerHTML = '';
+
+    // Hent nuværende værdi - kun eksplicit true viser flueben
+    const currentEnabled = window.__flangoInstitutionSettings?.shiftTimerEnabled === true;
+
+    // Opret container
+    const container = document.createElement('div');
+    container.style.cssText = 'padding: 20px;';
+    container.innerHTML = `
+        <div style="margin-bottom: 24px;">
+            <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin-bottom: 16px;">
+                Bytte-timeren giver ekspedienter mulighed for at sætte en timer eller salgstæller,
+                der minder dem om at bytte vagt.
+            </p>
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 16px; background: linear-gradient(135deg, #faf5ff, #f3e8ff); border-radius: 12px; border: 2px solid #d8b4fe;">
+                <input type="checkbox" id="shift-timer-enabled-checkbox" ${currentEnabled ? 'checked' : ''} style="width: 22px; height: 22px; cursor: pointer; accent-color: #7c3aed;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <strong style="color: #6d28d9; font-size: 16px;">Aktivér bytte-timer</strong>
+                        <span id="shift-timer-status-label" style="padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; ${currentEnabled ? 'background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534;' : 'background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b;'}">
+                            ${currentEnabled ? '✓ Aktiv' : '✗ Inaktiv'}
+                        </span>
+                    </div>
+                    <div style="font-size: 13px; color: #6b7280;">Vis bytte-timer i headeren for ekspedienter</div>
+                </div>
+            </label>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button id="shift-timer-save-btn" style="flex: 1; padding: 14px 20px; background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer;">Gem</button>
+            <button id="shift-timer-back-btn" style="padding: 14px 20px; background: #f3f4f6; color: #4b5563; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer;">Tilbage</button>
+        </div>
+    `;
+    contentEl.appendChild(container);
+
+    // Event listeners
+    const saveBtn = container.querySelector('#shift-timer-save-btn');
+    const backBtn = container.querySelector('#shift-timer-back-btn');
+    const checkbox = container.querySelector('#shift-timer-enabled-checkbox');
+    const statusLabel = container.querySelector('#shift-timer-status-label');
+
+    // Opdater status label når checkbox ændres
+    checkbox.addEventListener('change', () => {
+        const enabled = checkbox.checked;
+        if (statusLabel) {
+            statusLabel.textContent = enabled ? '✓ Aktiv' : '✗ Inaktiv';
+            statusLabel.style.cssText = enabled 
+                ? 'padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534;'
+                : 'padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b;';
+        }
+    });
+
+    saveBtn.addEventListener('click', async () => {
+        const enabled = checkbox.checked;
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Gemmer...';
+
+        try {
+            const { data, error } = await supabaseClient
+                .from('institutions')
+                .update({ shift_timer_enabled: enabled })
+                .eq('id', institutionId)
+                .select('shift_timer_enabled')
+                .single();
+
+            if (error) {
+                console.error('[shift-timer-settings] Error saving:', error);
+                alert('Kunne ikke gemme indstillingen. Prøv igen.');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Gem';
+                return;
+            }
+
+            // Opdater cache'en så næste login ikke behøver DB query
+            updateInstitutionCache(institutionId, { shift_timer_enabled: enabled });
+
+            // Opdater global setting
+            if (window.__flangoInstitutionSettings) {
+                window.__flangoInstitutionSettings.shiftTimerEnabled = enabled;
+            }
+
+            // Opdater shift-timer visibility
+            const shiftTimerPill = document.getElementById('shift-timer-pill');
+            if (shiftTimerPill) {
+                shiftTimerPill.style.display = enabled ? 'inline-flex' : 'none';
+            }
+
+            // Gå tilbage til præferencer
+            openInstitutionPreferences();
+        } catch (err) {
+            console.error('[shift-timer-settings] Unexpected error:', err);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Gem';
+        }
+    });
+
+    backBtn.addEventListener('click', () => {
+        openInstitutionPreferences();
+    });
+
     backdrop.style.display = 'flex';
 }
 

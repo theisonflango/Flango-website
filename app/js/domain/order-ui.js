@@ -9,7 +9,7 @@ import { MAX_ITEMS_PER_ORDER } from '../core/constants.js';
 /**
  * Genererer mini-kvittering med chips til mobil
  */
-function generateMiniReceipt(total) {
+function buildMiniReceiptNode(total) {
     const currentOrder = getOrder();
 
     // Group by product name and count quantities
@@ -26,21 +26,53 @@ function generateMiniReceipt(total) {
     const visibleEntries = entries.slice(0, maxChips);
     const overflow = entries.length - maxChips;
 
-    let chipsHTML = visibleEntries.map(([name, qty]) => {
-        return `<span class="order-chip" data-product-name="${name}">
-            <span class="order-chip-qty">${qty}×</span> ${name}
-            <span class="order-chip-remove">×</span>
-        </span>`;
-    }).join('');
+    const root = document.createElement('div');
 
-    if (overflow > 0) {
-        chipsHTML += `<span class="order-chip order-chip-overflow">+${overflow} flere</span>`;
+    const chipsWrap = document.createElement('div');
+    chipsWrap.id = 'mini-receipt-chips';
+
+    if (visibleEntries.length === 0) {
+        const empty = document.createElement('span');
+        empty.style.opacity = '0.6';
+        empty.textContent = 'Tom kurv';
+        chipsWrap.appendChild(empty);
+    } else {
+        visibleEntries.forEach(([name, qty]) => {
+            const chip = document.createElement('span');
+            chip.className = 'order-chip';
+            // IMPORTANT: set dataset via DOM to avoid HTML injection
+            chip.dataset.productName = String(name);
+
+            const qtyEl = document.createElement('span');
+            qtyEl.className = 'order-chip-qty';
+            qtyEl.textContent = `${qty}×`;
+            chip.appendChild(qtyEl);
+
+            chip.appendChild(document.createTextNode(` ${name} `));
+
+            const remove = document.createElement('span');
+            remove.className = 'order-chip-remove';
+            remove.textContent = '×';
+            chip.appendChild(remove);
+
+            chipsWrap.appendChild(chip);
+        });
+
+        if (overflow > 0) {
+            const more = document.createElement('span');
+            more.className = 'order-chip order-chip-overflow';
+            more.textContent = `+${overflow} flere`;
+            chipsWrap.appendChild(more);
+        }
     }
 
-    return `
-        <div id="mini-receipt-chips">${chipsHTML || '<span style="opacity: 0.6;">Tom kurv</span>'}</div>
-        <div id="total-price-value">Total: ${total.toFixed(2)} DKK</div>
-    `;
+    const totalEl = document.createElement('div');
+    totalEl.id = 'total-price-value';
+    totalEl.textContent = `Total: ${total.toFixed(2)} DKK`;
+
+    root.appendChild(chipsWrap);
+    root.appendChild(totalEl);
+    return root;
 }
 
 export function updateTotalPrice(totalPriceEl) {
@@ -48,34 +80,62 @@ export function updateTotalPrice(totalPriceEl) {
     const isMobile = window.innerWidth <= 767;
     const currentOrder = getOrder();
 
+    // Avoid innerHTML injection: build DOM instead
+    totalPriceEl.replaceChildren();
+
     if (isMobile) {
-        totalPriceEl.innerHTML = generateMiniReceipt(total);
-    } else {
-        // Generate product icon summary for all themes
-        const productSummaryHTML = generateProductIconSummary(currentOrder);
-        totalPriceEl.innerHTML = `${productSummaryHTML}<span class="total-text">Total: ${total.toFixed(2)} DKK</span>`;
+        totalPriceEl.appendChild(buildMiniReceiptNode(total));
+        return;
     }
+
+    const summary = buildProductIconSummaryNode(currentOrder);
+    if (summary) totalPriceEl.appendChild(summary);
+
+    const totalText = document.createElement('span');
+    totalText.className = 'total-text';
+    totalText.textContent = `Total: ${total.toFixed(2)} DKK`;
+    totalPriceEl.appendChild(totalText);
 }
 
 /**
  * Generates product icon summary showing Icon + Icon = total
  */
-function generateProductIconSummary(currentOrder) {
+function buildProductIconSummaryNode(currentOrder) {
     if (!currentOrder || currentOrder.length === 0) {
-        return '';
+        return null;
     }
 
-    const icons = currentOrder.map(item => {
+    const wrap = document.createElement('div');
+    wrap.className = 'total-product-summary';
+
+    currentOrder.forEach((item, idx) => {
         const iconInfo = getProductIconInfo(item);
-        if (iconInfo) {
-            return `<img src="${iconInfo.path}" alt="${item.name}">`;
+        if (iconInfo?.path) {
+            const img = document.createElement('img');
+            img.src = iconInfo.path;
+            img.alt = item?.name || 'Produkt';
+            wrap.appendChild(img);
+        } else {
+            const emoji = document.createElement('span');
+            emoji.style.fontSize = '20px';
+            emoji.textContent = item?.emoji || '❓';
+            wrap.appendChild(emoji);
         }
-        return `<span style="font-size: 20px;">${item.emoji || '❓'}</span>`;
+
+        if (idx < currentOrder.length - 1) {
+            const plus = document.createElement('span');
+            plus.className = 'plus-sign';
+            plus.textContent = '+';
+            wrap.appendChild(plus);
+        }
     });
 
-    // Join with plus signs and add equals sign at the end
-    const iconElements = icons.join('<span class="plus-sign">+</span>');
-    return `<div class="total-product-summary">${iconElements}<span class="equals-sign">=</span></div>`;
+    const eq = document.createElement('span');
+    eq.className = 'equals-sign';
+    eq.textContent = '=';
+    wrap.appendChild(eq);
+
+    return wrap;
 }
 
 export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo) {
@@ -92,16 +152,42 @@ export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelec
     // Use DocumentFragment for batched DOM insertion (reduces reflows)
     const fragment = document.createDocumentFragment();
     currentOrder.forEach((item, index) => {
-        const iconInfo = getProductIconInfo(item);
-        const visualMarkup = iconInfo
-            ? `<img src="${iconInfo.path}" alt="${item.name}" class="cart-product-icon">`
-            : `<span class="cart-product-emoji">${item.emoji || '❓'}</span>`;
         const listItem = document.createElement('li');
-        listItem.innerHTML = `
-            <span class="cart-product-line">${visualMarkup}<span>${item.name} - ${item.price.toFixed(2)} DKK</span></span>
-            <span class="remove-item-btn" data-index="${index}" title="Fjern vare">
-                <img src="Icons/webp/Function/Papirkurv.webp" alt="Fjern" class="cart-remove-icon">
-            </span>`;
+
+        const line = document.createElement('span');
+        line.className = 'cart-product-line';
+
+        const iconInfo = getProductIconInfo(item);
+        if (iconInfo?.path) {
+            const img = document.createElement('img');
+            img.src = iconInfo.path;
+            img.alt = item?.name || 'Produkt';
+            img.className = 'cart-product-icon';
+            line.appendChild(img);
+        } else {
+            const emoji = document.createElement('span');
+            emoji.className = 'cart-product-emoji';
+            emoji.textContent = item?.emoji || '❓';
+            line.appendChild(emoji);
+        }
+
+        const text = document.createElement('span');
+        text.textContent = `${item.name || 'Ukendt'} - ${Number(item.price || 0).toFixed(2)} DKK`;
+        line.appendChild(text);
+
+        const removeBtn = document.createElement('span');
+        removeBtn.className = 'remove-item-btn';
+        removeBtn.dataset.index = String(index);
+        removeBtn.title = 'Fjern vare';
+
+        const trash = document.createElement('img');
+        trash.src = 'Icons/webp/Function/Papirkurv.webp';
+        trash.alt = 'Fjern';
+        trash.className = 'cart-remove-icon';
+        removeBtn.appendChild(trash);
+
+        listItem.appendChild(line);
+        listItem.appendChild(removeBtn);
         fragment.appendChild(listItem);
     });
     // OPTIMERING: replaceChildren(fragment) i stedet for innerHTML = '' + appendChild
@@ -124,7 +210,8 @@ export function handleOrderListClick(event, currentOrder, rerender, onOrderChang
 
     currentOrder.splice(indexToRemove, 1);
     try {
-        setOrder(currentOrder);
+        // Deterministic sync: avoid sharing mutable array reference
+        setOrder([...currentOrder]);
     } catch (err) {
         console.warn('[order-store] sync failed after currentOrder mutation:', err);
     }
@@ -269,7 +356,8 @@ export async function addToOrder(product, currentOrder, orderListEl, totalPriceE
         }
 
         try {
-            setOrder(currentOrder);
+            // Deterministic sync: avoid sharing mutable array reference
+            setOrder([...currentOrder]);
         } catch (err) {
             console.warn('[order-store] sync failed after currentOrder mutation:', err);
         }
@@ -291,7 +379,8 @@ export function removeLastItemFromOrder(currentOrder, orderListEl, totalPriceEl,
     if (!removed) return;
 
     try {
-        setOrder(currentOrder);
+        // Deterministic sync: avoid sharing mutable array reference
+        setOrder([...currentOrder]);
     } catch (err) {
         console.warn('[order-store] sync failed after currentOrder mutation:', err);
     }
@@ -324,7 +413,8 @@ export function removeOneItemByName(productName, currentOrder, orderListEl, tota
     currentOrder.splice(indexToRemove, 1);
 
     try {
-        setOrder(currentOrder);
+        // Deterministic sync: avoid sharing mutable array reference
+        setOrder([...currentOrder]);
     } catch (err) {
         console.warn('[order-store] sync failed after currentOrder mutation:', err);
     }

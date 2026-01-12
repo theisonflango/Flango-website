@@ -24,19 +24,21 @@ export async function loadUsersAndNotifications({
     // Tjek om admins skal vises i bruger-listen (med fejlhåndtering)
     let showAdminsInList = true; // Default: vis ALLE brugere (backward compatible)
     let adminsPurchaseFree = false;
+    let shiftTimerEnabled = false; // Default: bytte-timer er IKKE aktiveret (skal aktiveres manuelt)
 
     // OPTIMERING: Brug memory cache først (0 DB kald)
     let institutionData = typeof window !== 'undefined' && typeof window.__flangoGetInstitutionById === 'function'
         ? window.__flangoGetInstitutionById(institutionId)
         : null;
 
-    // Fallback: hent fra DB kun hvis ikke i cache
-    if (!institutionData) {
-        console.debug('[admin-flow] Cache miss for institution, fetching from DB');
+    // Hvis cache mangler shift_timer_enabled, hent fra DB (cache kan være forældet)
+    const needsDbFetch = !institutionData || !('shift_timer_enabled' in institutionData);
+    
+    if (needsDbFetch) {
         try {
             const { data: dbData, error: institutionError } = await supabaseClient
                 .from('institutions')
-                .select('show_admins_in_user_list, admins_purchase_free')
+                .select('show_admins_in_user_list, admins_purchase_free, shift_timer_enabled')
                 .eq('id', institutionId)
                 .single();
 
@@ -48,8 +50,6 @@ export async function loadUsersAndNotifications({
         } catch (err) {
             console.warn('[admin-flow] Fejl ved hentning af institution settings, bruger defaults:', err);
         }
-    } else {
-        console.debug('[admin-flow] Cache hit for institution:', institutionId);
     }
 
     // Anvend settings fra cache eller DB
@@ -60,14 +60,17 @@ export async function loadUsersAndNotifications({
         if (typeof institutionData.admins_purchase_free === 'boolean') {
             adminsPurchaseFree = institutionData.admins_purchase_free;
         }
+        // Håndter shift_timer_enabled: både boolean true/false og null (behandles som false)
+        if (institutionData.shift_timer_enabled !== undefined) {
+            shiftTimerEnabled = institutionData.shift_timer_enabled === true;
+        }
     }
 
-    console.log('[admin-flow] Institution settings:', { showAdminsInList, adminsPurchaseFree });
-
-    // Gem settings globalt så de kan bruges i purchase flow
+    // Gem settings globalt så de kan bruges i purchase flow og shift-timer
     window.__flangoInstitutionSettings = {
         showAdminsInUserList: showAdminsInList,
-        adminsPurchaseFree: adminsPurchaseFree
+        adminsPurchaseFree: adminsPurchaseFree,
+        shiftTimerEnabled: shiftTimerEnabled
     };
 
     // Byg bruger-query baseret på settings

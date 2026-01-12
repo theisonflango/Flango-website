@@ -48,17 +48,33 @@ export function setupClerkLoginButton({
         };
 
         const renderClerkList = (list) => {
+            userListContainer.replaceChildren();
             if (!list || list.length === 0) {
-                userListContainer.innerHTML = '<p style="text-align:center; padding: 20px;">Ingen børne-/ekspedient-brugere fundet.</p>';
+                const p = document.createElement('p');
+                p.style.textAlign = 'center';
+                p.style.padding = '20px';
+                p.textContent = 'Ingen børne-/ekspedient-brugere fundet.';
+                userListContainer.appendChild(p);
                 return;
             }
-            userListContainer.innerHTML = list.map((c, i) => `
-              <div class="modal-entry">
-                <div class="modal-entry-info ${i===0 ? 'highlight' : ''}" data-user-id="${c.id}" style="cursor:pointer; padding: 12px; font-weight:700;">
-                  ${c.name} ${c.number ? `(${c.number})` : ''}
-                </div>
-              </div>
-            `).join('');
+
+            const fragment = document.createDocumentFragment();
+            list.forEach((c, i) => {
+                const entry = document.createElement('div');
+                entry.className = 'modal-entry';
+
+                const info = document.createElement('div');
+                info.className = `modal-entry-info ${i === 0 ? 'highlight' : ''}`.trim();
+                info.dataset.userId = c.id;
+                info.style.cursor = 'pointer';
+                info.style.padding = '12px';
+                info.style.fontWeight = '700';
+                info.textContent = `${c.name}${c.number ? ` (${c.number})` : ''}`;
+
+                entry.appendChild(info);
+                fragment.appendChild(entry);
+            });
+            userListContainer.appendChild(fragment);
             highlightFirstEntry();
         };
 
@@ -157,6 +173,30 @@ export function setupClerkLoginButton({
             }
 
             const welcomeTitle = `Velkommen, ${clerk.name}!`;
+            // Tjek om bytte-timer er aktiveret for institutionen (kun eksplicit true)
+            const shiftTimerEnabled = window.__flangoInstitutionSettings?.shiftTimerEnabled === true;
+            const shiftTimerButtonHtml = shiftTimerEnabled ? `
+                  <div style="margin-top: 16px;">
+                    <button onclick="window.__flangoOpenShiftTimer?.()" style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 8px;
+                      padding: 10px 18px;
+                      background: linear-gradient(135deg, #faf5ff, #f3e8ff);
+                      border: 2px solid #d8b4fe;
+                      border-radius: 12px;
+                      cursor: pointer;
+                      font-family: 'Poppins', sans-serif;
+                      font-size: 14px;
+                      font-weight: 600;
+                      color: #7c3aed;
+                      transition: all 0.2s ease;
+                      box-shadow: 0 2px 8px rgba(168,139,250,0.2);
+                    ">
+                      <span style="font-size: 16px;">⏱️</span>
+                      Sæt bytte-timer
+                    </button>
+                  </div>` : '';
             const welcomeBody = `
               <div style="display: flex; align-items: center; gap: 20px;">
                 <img src="Icons/webp/Avatar/Ekspedient-mand-Flango1.webp" alt="Hr. Flango" style="width: 120px; height: auto; flex-shrink: 0;">
@@ -165,7 +205,7 @@ export function setupClerkLoginButton({
                   Dit job er at sørge for, at kunderne betaler det rigtige – hverken mere eller mindre.<br><br>
                   Når du er logget ind, er det kun dig, der må bruge systemet. Hvis nogen laver fejl på din konto, er det dit ansvar.<br><br>
                   Husk derfor altid at logge ud, når du er færdig – Flango husker ALT! 😎<br><br>
-                  Hav en super god dag i caféen! 🍪☕
+                  Hav en super god dag i caféen! 🍪☕${shiftTimerButtonHtml}
                 </div>
               </div>`;
             await showCustomAlert(welcomeTitle, welcomeBody);

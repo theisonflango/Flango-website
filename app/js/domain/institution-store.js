@@ -35,7 +35,7 @@ export async function fetchInstitutions(forceRefresh = false) {
                 spending_limit_enabled, spending_limit_amount,
                 spending_limit_applies_to_regular_users, spending_limit_applies_to_admins,
                 spending_limit_applies_to_test_users,
-                show_admins_in_user_list, admins_purchase_free
+                show_admins_in_user_list, admins_purchase_free, shift_timer_enabled
             `)
             .order('name');
         if (error) throw error;
@@ -76,4 +76,18 @@ export async function ensureActiveInstitution() {
 
 export function getActiveInstitution() {
     return activeInstitution;
+}
+
+/**
+ * Opdater en institution i cache'en (fx efter at have gemt shift_timer_enabled)
+ * @param {string} institutionId
+ * @param {object} updates - Felter der skal opdateres
+ */
+export function updateInstitutionCache(institutionId, updates) {
+    if (!institutionId || !updates) return;
+    const strId = String(institutionId);
+    const index = institutionsCache.findIndex(inst => String(inst.id) === strId);
+    if (index !== -1) {
+        institutionsCache[index] = { ...institutionsCache[index], ...updates };
+    }
 }

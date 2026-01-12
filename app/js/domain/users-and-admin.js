@@ -3,6 +3,7 @@
 // Al user/admin-logik lever lige nu i app.js af hensyn til stabilitet.
 
 import { supabaseClient } from '../core/config-and-supabase.js';
+import { escapeHtml } from '../core/escape-html.js';
 
 const adminCacheByInstitutionUsers = {};
 
@@ -47,8 +48,8 @@ export function buildUserAdminTableRows(users, selectedIndex = 0) {
         return `
             <div class="modal-entry">
                 <div class="modal-entry-info${highlightClass}" data-index="${index}" data-user-id="${user.id}">
-                    <span class="user-list-name">${user.name}</span>
-                    <span class="user-list-number">${safeNumber(user.number)}</span>
+                    <span class="user-list-name">${escapeHtml(user.name)}</span>
+                    <span class="user-list-number">${escapeHtml(safeNumber(user.number))}</span>
                     <span class="user-list-balance ${balanceClass}">${safeBalance(user.balance)} kr.</span>
                     <div class="admin-action-column">
                         <button type="button" class="admin-action-btn" data-user-action="deposit" data-id="${user.id}">Opdater Saldo</button>
@@ -63,8 +64,8 @@ export function buildCustomerSelectionEntryElement(user, index, isHighlighted) {
     userElement.className = 'modal-entry';
     userElement.innerHTML = `
         <div class="modal-entry-info ${isHighlighted ? 'highlight' : ''}" data-user-id="${user.id}" data-user-role="${user.role}" style="cursor: pointer;">
-            <span class="user-list-name">${user.name}</span>
-            <span class="user-list-number">${user.number || '—'}</span>
+            <span class="user-list-name">${escapeHtml(user.name)}</span>
+            <span class="user-list-number">${escapeHtml(user.number || '—')}</span>
             <span class="user-list-balance ${user.balance < 0 ? 'negative' : 'positive'}">${user.balance.toFixed(2)} kr.</span>
         </div>`;
     return userElement;

@@ -9,7 +9,12 @@ import {
     formatIconUpdateTime
 } from '../core/product-icon-utils.js';
 
-console.log('🔥🔥🔥 product-management.js LOADED - Version with REFETCH + Custom Icon Upload 🔥🔥🔥');
+// Sæt til true ved fejlsøgning; hold false i prod for mindre console-støj
+const PRODUCT_MANAGEMENT_DEBUG = false;
+
+if (PRODUCT_MANAGEMENT_DEBUG) {
+    console.log('🔥🔥🔥 product-management.js LOADED - Version with REFETCH + Custom Icon Upload 🔥🔥🔥');
+}
 
 export function renderProductsInModal(allProducts, modalProductList) {
     if (!modalProductList) return;
@@ -52,7 +57,7 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
     // Pre-beregn refill-berettigelse hvis der er en kunde
     const effectiveProducts = new Map();
     if (currentCustomer?.id) {
-        console.log('[renderProductsGrid] Beregner refill for kunde:', currentCustomer.name, currentCustomer.id);
+        if (PRODUCT_MANAGEMENT_DEBUG) console.log('[renderProductsGrid] Beregner refill for kunde:', currentCustomer.name, currentCustomer.id);
         const { getEffectiveProductForChild } = await import('../domain/products-and-cart.js');
         const childContext = {
             childId: currentCustomer.id,
@@ -62,9 +67,9 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
         // Batch alle refill checks parallelt for performance
         const refillChecks = visibleProducts.map(async (product) => {
             try {
-                console.log('[renderProductsGrid] Tjekker refill for produkt:', product.name, 'refill_enabled:', product.refill_enabled);
+                if (PRODUCT_MANAGEMENT_DEBUG) console.log('[renderProductsGrid] Tjekker refill for produkt:', product.name, 'refill_enabled:', product.refill_enabled);
                 const effective = await getEffectiveProductForChild(product, childContext);
-                console.log('[renderProductsGrid] Effective result for', product.name, ':', effective);
+                if (PRODUCT_MANAGEMENT_DEBUG) console.log('[renderProductsGrid] Effective result for', product.name, ':', effective);
                 return { productId: product.id, effective };
             } catch (err) {
                 console.warn('[renderProductsGrid] Fejl ved refill-check for produkt:', product.id, err);
@@ -84,13 +89,13 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
             effectiveProducts.set(String(productId), effective);
         });
     } else {
-        console.log('[renderProductsGrid] Ingen kunde valgt, springer refill over');
+        if (PRODUCT_MANAGEMENT_DEBUG) console.log('[renderProductsGrid] Ingen kunde valgt, springer refill over');
     }
 
     visibleProducts.forEach((product, index) => {
         const productBtn = document.createElement('button');
         productBtn.dataset.productId = String(product.id);
-        console.log(`[renderProductsGrid] Created button for product ${product.name} (id: ${product.id}), dataset.productId = "${productBtn.dataset.productId}"`);
+        if (PRODUCT_MANAGEMENT_DEBUG) console.log(`[renderProductsGrid] Created button for product ${product.name} (id: ${product.id}), dataset.productId = "${productBtn.dataset.productId}"`);
         const productNameLower = product.name ? product.name.trim().toLowerCase() : '';
 
         // Hent effektive værdier (med refill hvis berettiget)

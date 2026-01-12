@@ -5,8 +5,9 @@ import { getCurrentTheme } from '../ui/theme-loader.js';
 import { configureHistoryModule, showTransactionsInSummary, showOverviewInSummary, resetSharedHistoryControls } from './history-and-reports.js';
 import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js';
 import { setupLogoutFlow } from './logout-flow.js';
-import { getFinancialState, setCurrentCustomer, getCurrentCustomer, clearEvaluation } from './cafe-session-store.js';
+import { getFinancialState, setCurrentCustomer, getCurrentCustomer, clearEvaluation, getSelectionToken, clearCurrentCustomer } from './cafe-session-store.js';
 import { getOrderTotal, setOrder } from './order-store.js';
+import { updateLoggedInUserDisplay, updateAvatarStorage, updateSelectedUserInfo } from './app-ui-updates.js';
 import { updateTotalPrice, renderOrder, handleOrderListClick, addToOrder, removeLastItemFromOrder, removeOneItemByName } from './order-ui.js';
 import { renderProductsInModal, renderProductsGrid, createProductManagementUI, updateProductQuantityBadges } from '../ui/product-management.js';
 import { supabaseClient } from '../core/config-and-supabase.js';
@@ -16,11 +17,13 @@ import {
     preloadChildProductLimitSnapshot,
     applyProductLimitsToButtons,
 } from './products-and-cart.js';
-import { getChildSugarPolicySnapshot, getInstitutionSugarPolicy, getCachedCheckSugarPolicy } from './purchase-limits.js';
+import { getChildSugarPolicySnapshot, getInstitutionSugarPolicy, getCachedCheckSugarPolicy, getUnhealthySnapshotFromSalesCache } from './purchase-limits.js';
 import { showPinModal } from '../ui/user-modals.js';
 import { setupAvatarPicker } from '../ui/avatar-picker.js';
 import { setupKeyboardShortcuts } from '../ui/keyboard-shortcuts.js';
 import { setupRuntimeUIEvents } from '../ui/runtime-ui-events.js';
+// VIGTIGT: shift-timer importeres FØR clerk-login-modal for at sætte window.__flangoOpenShiftTimer
+import { initShiftTimer } from './shift-timer.js';
 import { setupClerkLoginButton } from '../ui/clerk-login-modal.js';
 import {
     handleCompletePurchase,
@@ -43,7 +46,6 @@ import {
     setSessionStartTime,
     getSessionStartTime,
 } from './session-store.js';
-import { initShiftTimer } from './shift-timer.js';
 
 export async function startApp() {
     const adminProfile = getCurrentAdmin();
@@ -92,19 +94,29 @@ export async function startApp() {
             console.log('[__flangoRefreshSugarPolicy] institutionSugarData:', institutionSugarData);
 
             // Hent snapshot hvis institutions-policy er aktiv men forældre-policy ikke er
-            // OPTIMERING: Brug cached version af check-sugar-policy (undgår gentagne Edge Function kald)
+            // OPTIMERING: Byg snapshot ud fra sales-cache (undgår Edge Function kald),
+            // fallback til cached check-sugar-policy hvis nødvendigt.
             let snapshot = parentSugarData.snapshot;
             if (!parentSugarData.policy && institutionSugarData.policy && !snapshot) {
                 try {
-                    const checkResult = await getCachedCheckSugarPolicy(selectedUser.id, {
-                        blockUnhealthy: false,
-                        maxUnhealthyPerDay: institutionSugarData.policy.maxUnhealthyPerDay,
-                        maxUnhealthyPerProductPerDay: institutionSugarData.policy.maxUnhealthyPerProductPerDay,
-                    });
-                    snapshot = {
-                        unhealthyTotal: checkResult?.totalUnhealthyToday ?? 0,
-                        unhealthyPerProduct: checkResult?.countByProductId ?? {},
-                    };
+                    const fromSales = await getUnhealthySnapshotFromSalesCache(
+                        selectedUser.id,
+                        selectedUser.institution_id,
+                        allProducts
+                    );
+                    if (fromSales) {
+                        snapshot = fromSales;
+                    } else {
+                        const checkResult = await getCachedCheckSugarPolicy(selectedUser.id, {
+                            blockUnhealthy: false,
+                            maxUnhealthyPerDay: institutionSugarData.policy.maxUnhealthyPerDay,
+                            maxUnhealthyPerProductPerDay: institutionSugarData.policy.maxUnhealthyPerProductPerDay,
+                        });
+                        snapshot = {
+                            unhealthyTotal: checkResult?.totalUnhealthyToday ?? 0,
+                            unhealthyPerProduct: checkResult?.countByProductId ?? {},
+                        };
+                    }
                 } catch (err) {
                     console.error('[__flangoRefreshSugarPolicy] Fejl ved hentning af snapshot:', err);
                 }
@@ -204,6 +216,7 @@ export async function startApp() {
     // DEBOUNCE: Undgå multiple refreshes ved hurtige ændringer
     let refreshDebounceTimer = null;
     let refreshPending = null;
+    let refreshPendingResolve = null;
     const REFRESH_DEBOUNCE_MS = 50; // 50ms debounce window
 
     const refreshProductLocks = async (options = {}) => {
@@ -211,37 +224,102 @@ export async function startApp() {
         const selectedUser = getCurrentCustomer();
         const childId = selectedUser?.id || null;
 
+        // Race protection: avoid applying lock UI for a user that is no longer selected
+        const tokenAtStart = typeof getSelectionToken === 'function' ? getSelectionToken() : null;
+        const childIdAtStart = childId != null ? String(childId) : null;
+
         // VIGTIGT: Opdater quantity badges først så tallene er korrekte (instant, ingen debounce)
         updateProductQuantityBadges();
 
-        // DEBOUNCE: Hvis der allerede er en pending refresh, afvent den
-        if (refreshDebounceTimer) {
-            clearTimeout(refreshDebounceTimer);
+        // MUST-RUN path: allow callers (purchase/undo/user-select) to force an immediate refresh
+        const force = options?.force === true;
+
+        // Track the latest requested options within the debounce window
+        // If any caller requests a full refresh, we must do a full refresh (stronger wins).
+        refreshProductLocks._latestOptions = refreshProductLocks._latestOptions || {};
+        const prev = refreshProductLocks._latestOptions;
+        refreshProductLocks._latestOptions = {
+            ...prev,
+            ...options,
+            // If any call does NOT skip snapshot refresh, then don't skip.
+            skipSnapshotRefresh: (prev.skipSnapshotRefresh === true) && (options.skipSnapshotRefresh === true),
+        };
+
+        const runNow = async () => {
+            // Abort if selection changed since this refresh was requested.
+            if (tokenAtStart !== null && typeof getSelectionToken === 'function') {
+                const tokenNow = getSelectionToken();
+                if (tokenNow !== tokenAtStart) return;
+            }
+
+            // Extra guard on user id (if token is unavailable or not trusted somewhere)
+            const selectedNow = getCurrentCustomer();
+            const childIdNow = selectedNow?.id != null ? String(selectedNow.id) : null;
+            if (childIdAtStart !== childIdNow) return;
+
+            const effectiveOptions = refreshProductLocks._latestOptions || {};
+
+            if (effectiveOptions.skipSnapshotRefresh) {
+                if (selectedNow) {
+                    await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, selectedNow.id, currentSugarData);
+                }
+            } else {
+                await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, selectedNow?.id || null, currentSugarData);
+            }
+        };
+
+        if (force) {
+            if (refreshDebounceTimer) {
+                clearTimeout(refreshDebounceTimer);
+                refreshDebounceTimer = null;
+            }
+            try {
+                await runNow();
+            } finally {
+                refreshProductLocks._latestOptions = null;
+                if (refreshPending) {
+                    refreshPending = null;
+                    refreshPendingResolve?.();
+                    refreshPendingResolve = null;
+                }
+            }
+            return;
         }
 
-        // Return existing pending promise if we're already waiting
+        // If we're already waiting, just reschedule the timer and return the same promise.
         if (refreshPending) {
+            if (refreshDebounceTimer) {
+                clearTimeout(refreshDebounceTimer);
+            }
+            refreshDebounceTimer = setTimeout(async () => {
+                refreshDebounceTimer = null;
+                try {
+                    await runNow();
+                } finally {
+                    refreshProductLocks._latestOptions = null;
+                    refreshPending = null;
+                    refreshPendingResolve?.();
+                    refreshPendingResolve = null;
+                }
+            }, REFRESH_DEBOUNCE_MS);
             return refreshPending;
         }
 
         refreshPending = new Promise((resolve) => {
-            refreshDebounceTimer = setTimeout(async () => {
-                refreshDebounceTimer = null;
-
-                if (options.skipSnapshotRefresh) {
-                    // Skip full snapshot refresh (used for remove operations)
-                    if (selectedUser) {
-                        await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, childId, currentSugarData);
-                    }
-                } else {
-                    // Full refresh path (for add operations)
-                    await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, childId, currentSugarData);
-                }
-
-                refreshPending = null;
-                resolve();
-            }, REFRESH_DEBOUNCE_MS);
+            refreshPendingResolve = resolve;
         });
+
+        refreshDebounceTimer = setTimeout(async () => {
+            refreshDebounceTimer = null;
+            try {
+                await runNow();
+            } finally {
+                refreshProductLocks._latestOptions = null;
+                refreshPending = null;
+                refreshPendingResolve?.();
+                refreshPendingResolve = null;
+            }
+        }, REFRESH_DEBOUNCE_MS);
 
         return refreshPending;
     };
@@ -261,75 +339,8 @@ export async function startApp() {
 
     console.log('Admin-profil:', adminProfile);
 
-    function updateLoggedInUserDisplay() {
-        const userDisplay = document.getElementById('logged-in-user');
-        const avatarContainer = document.getElementById('logged-in-user-avatar-container');
-        const sessionBanner = document.getElementById('user-session-banner');
-        if (!userDisplay || !avatarContainer) return;
-
-        const sessionAdmin = getCurrentSessionAdmin();
-        const adultName = sessionAdmin?.name || '(ukendt)';
-        const clerkName = clerkProfile?.name || adultName;
-        userDisplay.textContent = `👤 ${clerkName}  |  🔐 ${adultName}`;
-
-        // Create sticky notes only for Unstoppable theme
-        if (sessionBanner && getCurrentTheme() === 'flango-unstoppable') {
-            // Remove existing sticky notes if any
-            sessionBanner.querySelectorAll('.session-sticky-note').forEach(el => el.remove());
-
-            // Create clerk sticky note
-            const clerkNote = document.createElement('div');
-            clerkNote.className = 'session-sticky-note clerk-note';
-            clerkNote.innerHTML = `
-                <div class="sticky-label">Ekspedient:</div>
-                <div class="sticky-name">${clerkName}</div>
-            `;
-
-            // Create adult sticky note
-            const adultNote = document.createElement('div');
-            adultNote.className = 'session-sticky-note adult-note';
-            adultNote.innerHTML = `
-                <div class="sticky-label">🔐 Voksen:</div>
-                <div class="sticky-name">${adultName}</div>
-            `;
-
-            sessionBanner.appendChild(clerkNote);
-            sessionBanner.appendChild(adultNote);
-        } else if (sessionBanner) {
-            // Remove sticky notes for other themes
-            sessionBanner.querySelectorAll('.session-sticky-note').forEach(el => el.remove());
-        }
-
-        const userId = clerkProfile.id;
-        const storageKey = `${AVATAR_STORAGE_PREFIX}${userId}`;
-
-        // OPTIMERING: Brug in-memory cache i stedet for synkron localStorage
-        let savedAvatar;
-        if (avatarCache.has(userId)) {
-            savedAvatar = avatarCache.get(userId);
-        } else {
-            savedAvatar = localStorage.getItem(storageKey);
-            if (!savedAvatar) {
-                savedAvatar = DEFAULT_AVATAR_URL;
-                localStorage.setItem(storageKey, savedAvatar);
-            }
-            avatarCache.set(userId, savedAvatar);
-        }
-
-        avatarContainer.innerHTML = `<img src="${savedAvatar}" alt="Valgt avatar" id="logged-in-user-avatar">`;
-
-        const avatarImg = avatarContainer.querySelector('#logged-in-user-avatar');
-        if (avatarImg) {
-            avatarContainer.onclick = () => window.__flangoOpenAvatarPicker?.();
-        }
-    }
-    updateLoggedInUserDisplay();
-
-    // 3.5) Initialiser bytte-timer (shift timer)
-    const sessionBanner = document.getElementById('user-session-banner');
-    if (sessionBanner) {
-        initShiftTimer(sessionBanner);
-    }
+    // Update logged-in user display (refactored to app-ui-updates.js)
+    updateLoggedInUserDisplay(clerkProfile, avatarCache, { AVATAR_STORAGE_PREFIX, DEFAULT_AVATAR_URL });
 
     // 4) Basis event wiring (logout + modal luk)
     setupLogoutFlow({
@@ -381,21 +392,25 @@ export async function startApp() {
     });
 
     // Købshåndtering
-    completePurchaseBtn.addEventListener('click', () => handleCompletePurchase({
-        customer: getCurrentCustomer(),
-        currentOrder,
-        setCurrentOrder: (next) => { currentOrder = next; },
-        allProducts,
-        updateSelectedUserInfo,
-        orderList,
-        totalPriceEl,
-        clerkProfile,
-        adminProfile,
-        incrementSessionSalesCount: () => { sessionSalesCount++; },
-        completePurchaseBtn,
-        refreshProductLocks,
-        renderProductsFromCache: () => productAssortment.renderFromCache(),
-    }));
+    completePurchaseBtn.addEventListener('click', async () => {
+        await handleCompletePurchase({
+            customer: getCurrentCustomer(),
+            currentOrder,
+            setCurrentOrder: (next) => { currentOrder = next; },
+            allProducts,
+            updateSelectedUserInfo,
+            orderList,
+            totalPriceEl,
+            clerkProfile,
+            adminProfile,
+            incrementSessionSalesCount: () => { sessionSalesCount++; },
+            completePurchaseBtn,
+            refreshProductLocks,
+            renderProductsFromCache: () => productAssortment.renderFromCache(),
+        });
+        // MUST-RUN: After any purchase attempt, force refresh so locks can't be dropped by debounce.
+        await refreshProductLocks({ force: true });
+    });
 
     // 5) Produktstyring
     createProductManagementUI({
@@ -429,9 +444,23 @@ export async function startApp() {
             },
         });
 
-        undoLastSaleBtn.addEventListener('click', () => handleUndoLastSale());
+        undoLastSaleBtn.addEventListener('click', async () => {
+            const ok = await handleUndoLastSale();
+            if (ok) {
+                // MUST-RUN: Ensure locks are refreshed after DB write.
+                await refreshProductLocks({ force: true });
+            }
+        });
 
-    // 6) UI-input flows
+    // 6) Keyboard usage tip tracking
+    const { initKeyboardUsageTip } = await import('../ui/keyboard-usage-tip.js');
+    initKeyboardUsageTip({
+        productsContainer,
+        selectUserButton: selectUserBtn,
+        completePurchaseButton: completePurchaseBtn,
+    });
+
+    // 7) UI-input flows
     setupKeyboardShortcuts({
         getAllProducts: () => allProducts,
         getCurrentOrder: () => currentOrder,
@@ -483,6 +512,12 @@ export async function startApp() {
         userModal,
         searchUserInput,
     });
+
+    // 3.5) Initialiser bytte-timer (shift timer) EFTER indstillinger er loadet
+    const sessionBanner = document.getElementById('user-session-banner');
+    if (sessionBanner) {
+        initShiftTimer(sessionBanner);
+    }
 
     // Make selected-user-info box clickable to open customer selection
     const selectedUserInfoBox = document.getElementById('selected-user-info');
@@ -594,11 +629,10 @@ export async function startApp() {
     }
 
     // Helper til at opdatere avatar (både localStorage og cache)
-    function updateAvatarStorage(userId, avatarUrl) {
-        const storageKey = `${AVATAR_STORAGE_PREFIX}${userId}`;
-        localStorage.setItem(storageKey, avatarUrl);
-        avatarCache.set(userId, avatarUrl);
-    }
+    // Helper til at opdatere avatar (både localStorage og cache) - refactored to app-ui-updates.js
+    const updateAvatarStorageWrapper = (userId, avatarUrl) => {
+        updateAvatarStorage(userId, avatarUrl, avatarCache, AVATAR_STORAGE_PREFIX);
+    };
 
     // 11) Opsæt avatar-vælgeren for alle brugere
     await setupAvatarPicker({
@@ -606,8 +640,8 @@ export async function startApp() {
         sessionStartTime,
         getSessionSalesCount: () => sessionSalesCount,
         AVATAR_STORAGE_PREFIX,
-        updateLoggedInUserDisplay,
-        updateAvatarStorage,
+        updateLoggedInUserDisplay: () => updateLoggedInUserDisplay(clerkProfile, avatarCache, { AVATAR_STORAGE_PREFIX, DEFAULT_AVATAR_URL }),
+        updateAvatarStorage: updateAvatarStorageWrapper,
     });
 
     // 12) Første produkt-load
@@ -634,6 +668,7 @@ export async function startApp() {
         if (!selectedUser) return;
 
         setCurrentCustomer(selectedUser);
+        const token = getSelectionToken(); // Capture token for race protection
 
         // Preload dagens købs-snapshot og sukkerpolitik parallelt (både forældre og institution)
         console.log('[selectUser] Henter sukkerpolitik for barn:', selectedUser.id, 'institution:', selectedUser.institution_id);
@@ -643,25 +678,47 @@ export async function startApp() {
             getInstitutionSugarPolicy(selectedUser.institution_id),
         ]);
 
+        // Guard: If user switched during async load, discard stale data
+        if (getSelectionToken() !== token) {
+            console.log('[selectUser] User switched during async load, discarding stale data');
+            return;
+        }
+
         // Hvis vi har institutions-policy men ikke forældre-policy, hent snapshot separat
         let snapshot = parentSugarData.snapshot;
-        // OPTIMERING: Brug cached version af check-sugar-policy (undgår gentagne Edge Function kald)
+        // OPTIMERING: Byg snapshot ud fra sales-cache (undgår Edge Function kald),
+        // fallback til cached check-sugar-policy hvis nødvendigt.
         if (!parentSugarData.policy && institutionSugarData.policy && !snapshot) {
             console.log('[selectUser] Henter snapshot for institutions-sukkerpolitik...');
             try {
-                const checkResult = await getCachedCheckSugarPolicy(selectedUser.id, {
-                    blockUnhealthy: false,
-                    maxUnhealthyPerDay: institutionSugarData.policy.maxUnhealthyPerDay,
-                    maxUnhealthyPerProductPerDay: institutionSugarData.policy.maxUnhealthyPerProductPerDay,
-                });
-                snapshot = {
-                    unhealthyTotal: checkResult?.totalUnhealthyToday ?? 0,
-                    unhealthyPerProduct: checkResult?.countByProductId ?? {},
-                };
+                const fromSales = await getUnhealthySnapshotFromSalesCache(
+                    selectedUser.id,
+                    selectedUser.institution_id,
+                    allProducts
+                );
+                if (fromSales) {
+                    snapshot = fromSales;
+                } else {
+                    const checkResult = await getCachedCheckSugarPolicy(selectedUser.id, {
+                        blockUnhealthy: false,
+                        maxUnhealthyPerDay: institutionSugarData.policy.maxUnhealthyPerDay,
+                        maxUnhealthyPerProductPerDay: institutionSugarData.policy.maxUnhealthyPerProductPerDay,
+                    });
+                    snapshot = {
+                        unhealthyTotal: checkResult?.totalUnhealthyToday ?? 0,
+                        unhealthyPerProduct: checkResult?.countByProductId ?? {},
+                    };
+                }
                 console.log('[selectUser] Institutions-snapshot hentet:', snapshot);
             } catch (err) {
                 console.error('[selectUser] Fejl ved hentning af institutions-snapshot:', err);
             }
+        }
+
+        // Guard: If user switched during snapshot fetch, discard stale data
+        if (getSelectionToken() !== token) {
+            console.log('[selectUser] User switched during snapshot fetch, discarding stale data');
+            return;
         }
 
         // Kombiner forældre- og institutions-sukkerpolitik
@@ -676,8 +733,14 @@ export async function startApp() {
 
         // KRITISK: Anvend produktlåsning (inkl. sukkerpolitik) EFTER vi har hentet data
         console.log('[selectUser] Kalder refreshProductLocks...');
-        await refreshProductLocks();
+        await refreshProductLocks({ force: true });
         console.log('[selectUser] refreshProductLocks færdig');
+
+        // Guard: If user switched during lock refresh, skip remaining updates
+        if (getSelectionToken() !== token) {
+            console.log('[selectUser] User switched during lock refresh, skipping remaining updates');
+            return;
+        }
 
         // KRITISK: Genrender produktgitter for at vise refill-status (grøn knap, timer, refill-pris)
         // OPTIMERING: Brug renderFromCache (0 DB kald) i stedet for fetchAndRenderProducts
@@ -685,83 +748,27 @@ export async function startApp() {
         await productAssortment.renderFromCache();
         console.log('[selectUser] Produkter genrenderet');
 
+        // Guard: If user switched during render, skip remaining updates
+        if (getSelectionToken() !== token) {
+            console.log('[selectUser] User switched during render, skipping remaining updates');
+            return;
+        }
+
         // Opdater quantity badges efter produkterne er genrenderet
         updateProductQuantityBadges();
+
+        // Guard: Final check before UI update
+        if (getSelectionToken() !== token) {
+            console.log('[selectUser] User switched before UI update, skipping');
+            return;
+        }
 
         // Kør UI-opdatering EFTER alle asynkrone kald er færdige.
         updateSelectedUserInfo();
         userModal.style.display = 'none';
     }
 
-    function updateSelectedUserInfo() {
-        try {
-            const userInfoEl = document.getElementById('selected-user-info');
-            console.log('[app-main] updateSelectedUserInfo START - element:', userInfoEl);
-
-            if (!userInfoEl) {
-                console.error('[app-main] CRITICAL: #selected-user-info element not found!');
-                return;
-            }
-
-            const selectedUser = getCurrentCustomer();
-            console.log('[app-main] selectedUser:', selectedUser);
-
-            if (!selectedUser) {
-                console.log('[app-main] No user selected - showing empty state');
-                // Vis boks med "Ingen kunde valgt" i stedet for at skjule
-                userInfoEl.innerHTML = `
-                    <div class="info-box" style="grid-column: 1 / -1;">
-                        <span class="info-box-label">Status</span>
-                        <span class="info-box-value">Ingen kunde valgt</span>
-                    </div>
-                `;
-                userInfoEl.style.display = 'grid';
-                console.log('[app-main] Empty state HTML set, children count:', userInfoEl.children.length);
-                return;
-            }
-
-            // Brug den centrale order-store til totalen
-            const total = getOrderTotal();
-            console.log('[app-main] Order total:', total);
-
-            // Brug cafe-session-store til den finansielle tilstand
-            const finance = getFinancialState(total);
-            console.log('[app-main] Financial state:', finance);
-
-            // Robust udregning af nuværende saldo og ny saldo
-            const currentBalance = Number.isFinite(finance.balance)
-                ? finance.balance
-                : (Number.isFinite(selectedUser.balance) ? selectedUser.balance : 0);
-
-            const newBalance = Number.isFinite(finance.newBalance)
-                ? finance.newBalance
-                : currentBalance - total;
-
-            console.log(`[app-main] ABOUT TO SET HTML - currentBalance: ${currentBalance}, newBalance: ${newBalance}`);
-
-            userInfoEl.innerHTML = `
-                <div class="info-box">
-                    <span class="info-box-label">Valgt:</span>
-                    <span class="info-box-value">${selectedUser.name}</span>
-                </div>
-                <div class="info-box">
-                    <span class="info-box-label">Nuværende Saldo:</span>
-                    <span class="info-box-value">${currentBalance.toFixed(2)} kr.</span>
-                </div>
-                <div class="info-box">
-                    <span class="info-box-label">Ny Saldo:</span>
-                    <span class="info-box-value ${newBalance < 0 ? 'negative' : ''}">${newBalance.toFixed(2)} kr.</span>
-                </div>
-            `;
-            userInfoEl.style.display = 'grid';
-
-            console.log('[app-main] HTML SET! Children count:', userInfoEl.children.length);
-            console.log('[app-main] HTML content:', userInfoEl.innerHTML.substring(0, 100) + '...');
-        } catch (error) {
-            console.error('[app-main] ERROR in updateSelectedUserInfo:', error);
-            console.error('[app-main] Error stack:', error.stack);
-        }
-    }
+    // updateSelectedUserInfo moved to app-ui-updates.js
 
     // Register listener for balance changes to update UI
     onBalanceChange('main-ui-updater', (event) => {
@@ -783,12 +790,45 @@ export async function startApp() {
         }
     });
 
-    window.__flangoUndoLastSale = () => handleUndoLastSale();
-    window.__flangoUndoPreviousSale = () => handleUndoPreviousSale();
+    window.__flangoUndoLastSale = async () => {
+        const ok = await handleUndoLastSale();
+        if (ok) {
+            await refreshProductLocks({ force: true });
+        }
+        return ok;
+    };
+    window.__flangoUndoPreviousSale = async () => {
+        const ok = await handleUndoPreviousSale();
+        if (ok) {
+            await refreshProductLocks({ force: true });
+        }
+        return ok;
+    };
 
     // KRITISK: Initialiser selected-user-info boksen ved app start
     console.log('[app-main] startApp complete - initializing selected-user-info box');
     updateSelectedUserInfo();
+
+    // Expose deselect user function globally
+    window.__flangoDeselectUser = async () => {
+        // Clear customer and evaluation
+        clearCurrentCustomer();
+        clearEvaluation();
+        
+        // Clear order
+        currentOrder = [];
+        setOrder([]);
+        renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
+        
+        // Clear sugar data
+        currentSugarData = null;
+        
+        // Refresh product locks (remove locks when no user selected)
+        await refreshProductLocks({ force: true });
+        
+        // Update UI
+        updateSelectedUserInfo();
+    };
 }
 
 

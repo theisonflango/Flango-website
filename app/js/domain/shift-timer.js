@@ -19,6 +19,14 @@ let pillElement = null;
 let modalElement = null;
 let blockingPopupElement = null;
 
+// Eksponér openShiftTimerModal globalt med det samme (for velkomst-dialog)
+// Funktionen defineres senere, men referencen opdateres automatisk
+window.__flangoOpenShiftTimer = () => {
+    if (typeof openModal === 'function') {
+        openModal();
+    }
+};
+
 // ============================================================================
 // STATE PERSISTENCE (sessionStorage)
 // ============================================================================
@@ -139,12 +147,18 @@ function updatePillDisplay() {
     if (!pillElement) return;
 
     if (!state.active) {
-        // Inactive state: show "+ Bytte-timer" med blødt design
+        // Inactive state: Vis preview med 00:00 og 0/0 i dæmpede farver, + i midten
         pillElement.innerHTML = `
-            <span style="display:inline-flex;align-items:center;gap:8px;">
-                <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:linear-gradient(135deg,#a78bfa,#8b5cf6);color:white;border-radius:50%;font-size:18px;font-weight:700;box-shadow:0 2px 8px rgba(139,92,246,0.3);">+</span>
-                <span style="color:#6b7280;font-weight:600;">Bytte-timer</span>
-            </span>`;
+            <span style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#f3f4f6,#e5e7eb);padding:6px 12px;border-radius:20px;border:2px dashed #d1d5db;opacity:0.7;">
+                <span style="font-size:16px;filter:grayscale(50%);">⏱️</span>
+                <span style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:#9ca3af;">00:00</span>
+            </span>
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background:linear-gradient(135deg,#a78bfa,#8b5cf6);color:white;border-radius:50%;font-size:16px;font-weight:700;box-shadow:0 2px 8px rgba(139,92,246,0.3);">+</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#f3f4f6,#e5e7eb);padding:6px 12px;border-radius:20px;border:2px dashed #d1d5db;opacity:0.7;">
+                <span style="font-size:16px;filter:grayscale(50%);">🛒</span>
+                <span style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:#9ca3af;">0/0</span>
+            </span>
+        `;
         pillElement.style.background = 'linear-gradient(135deg, #faf5ff, #f3e8ff)';
         pillElement.style.borderColor = '#d8b4fe';
         pillElement.style.boxShadow = '0 2px 8px rgba(168,139,250,0.15)';
@@ -207,7 +221,7 @@ function createModal() {
         background: rgba(15, 23, 42, 0.7) !important;
         align-items: center !important;
         justify-content: center !important;
-        z-index: 99998 !important;
+        z-index: 9999999 !important;
         backdrop-filter: blur(4px);
     `;
     modalElement.innerHTML = `
@@ -448,10 +462,15 @@ function triggerSwapPopup(reason) {
 export function initShiftTimer(sessionBanner) {
     loadState();
 
+    // Tjek om bytte-timer er aktiveret for institutionen (kun eksplicit true)
+    const isEnabled = window.__flangoInstitutionSettings?.shiftTimerEnabled === true;
+
     // GUARD: Prevent duplicate pill creation
     const existingPill = document.getElementById('shift-timer-pill');
     if (existingPill) {
         pillElement = existingPill;
+        // Opdater visibility baseret på setting
+        pillElement.style.display = isEnabled ? 'inline-flex' : 'none';
         updatePillDisplay();
         return;
     }
@@ -461,7 +480,7 @@ export function initShiftTimer(sessionBanner) {
     pillElement.id = 'shift-timer-pill';
     pillElement.className = 'shift-timer-pill';
     pillElement.style.cssText = `
-        display: inline-flex;
+        display: ${isEnabled ? 'inline-flex' : 'none'};
         align-items: center;
         gap: 8px;
         padding: 8px 14px;
@@ -517,4 +536,9 @@ export function resetShiftTimer() {
 
 export function getShiftTimerState() {
     return { ...state };
+}
+
+// Eksportér openModal så den kan kaldes fra velkomst-skærm
+export function openShiftTimerModal() {
+    openModal();
 }

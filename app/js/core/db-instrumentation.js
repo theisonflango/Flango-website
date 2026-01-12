@@ -57,6 +57,55 @@ if (typeof window !== 'undefined') {
         byRpc: {},
         byFunction: {},
         log: [],
+        mark() {
+            // Snapshot (deep-ish copy) to allow delta summaries
+            return {
+                totalCalls: this.totalCalls,
+                byType: { ...this.byType },
+                byTable: { ...this.byTable },
+                byRpc: { ...this.byRpc },
+                byFunction: { ...this.byFunction },
+            };
+        },
+        summarySince(mark, label = 'since mark') {
+            if (!mark) {
+                console.warn('[Flango DB] summarySince: missing mark');
+                return;
+            }
+
+            const diffNum = (now, prev) => (Number(now) || 0) - (Number(prev) || 0);
+            const diffObj = (nowObj, prevObj) => {
+                const out = {};
+                const keys = new Set([
+                    ...Object.keys(nowObj || {}),
+                    ...Object.keys(prevObj || {})
+                ]);
+                keys.forEach((k) => {
+                    const d = diffNum(nowObj?.[k], prevObj?.[k]);
+                    if (d !== 0) out[k] = d;
+                });
+                return out;
+            };
+
+            const totalDelta = diffNum(this.totalCalls, mark.totalCalls);
+            const byTypeDelta = diffObj(this.byType, mark.byType);
+            const byTableDelta = diffObj(this.byTable, mark.byTable);
+            const byRpcDelta = diffObj(this.byRpc, mark.byRpc);
+            const byFunctionDelta = diffObj(this.byFunction, mark.byFunction);
+
+            console.groupCollapsed(`[Flango DB] Summary (${label}) - ${totalDelta} kald`);
+            console.table({
+                'Total kald': totalDelta,
+                'from()': byTypeDelta.from || 0,
+                'rpc()': byTypeDelta.rpc || 0,
+                'functions': byTypeDelta.functions || 0,
+                'auth': byTypeDelta.auth || 0,
+            });
+            console.log('Tabeller (delta):', byTableDelta);
+            console.log('RPC (delta):', byRpcDelta);
+            console.log('Functions (delta):', byFunctionDelta);
+            console.groupEnd();
+        },
         reset() {
             this.totalCalls = 0;
             this.byType = { from: 0, rpc: 0, functions: 0, auth: 0 };

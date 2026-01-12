@@ -1,7 +1,10 @@
 // Produkt-helpers: ikon-konstanter og helper-funktioner
-import { getChildProductLimitSnapshot, canChildPurchase, invalidateTodaysSalesCache, getRefillEligibility, invalidateLimitsCache } from './purchase-limits.js';
+import { getChildProductLimitSnapshot, canChildPurchase, invalidateAllLimitCaches, getRefillEligibility } from './purchase-limits.js';
 import { getCurrentCustomer } from './cafe-session-store.js';
 import { MAX_ITEMS_PER_ORDER } from '../core/constants.js';
+
+// Sæt til true ved fejlsøgning; hold false i prod for bedre UI/CPU og mindre console-støj
+const LIMITS_UI_DEBUG = false;
 
 export const CUSTOM_ICON_PREFIX = '::icon::';
 
@@ -265,8 +268,8 @@ async function ensureChildLimitSnapshot(childId, institutionId = null) {
 export function invalidateChildLimitSnapshot() {
     currentChildLimitSnapshot = null;
     currentChildLimitSnapshotChildId = null;
-    invalidateTodaysSalesCache(); // Also invalidate the sales cache
-    invalidateLimitsCache(); // Also invalidate the limits memory cache
+    // Invalidate ALL caches to ensure consistency
+    invalidateAllLimitCaches();
 }
 
 // Bruges til at sikre, at kun seneste apply-call opdaterer UI (undgår race på tværs af async fetches).
@@ -274,6 +277,19 @@ let latestApplyRequestId = 0;
 
 export async function preloadChildProductLimitSnapshot(childId) {
     return await ensureChildLimitSnapshot(childId);
+}
+
+/**
+ * Helper til at hente alle limit UI elementer fra en produktknap (reducerer duplication).
+ * @param {HTMLElement} btn - Produktknap element
+ * @returns {Object} { limitCounter, refillTimer, tooltip }
+ */
+function getLimitUiNodes(btn) {
+    return {
+        limitCounter: btn.querySelector('.product-limit-counter'),
+        refillTimer: btn.querySelector('.refill-timer'),
+        tooltip: btn.querySelector('.limit-tooltip'),
+    };
 }
 
 export async function applyProductLimitsToButtons(allProducts, productsContainer, currentOrder = [], childIdOverride = null, sugarData = null) {
@@ -292,8 +308,11 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
             delete btn.dataset.limitState;
             delete btn.dataset.refillTimerMinutes;
             delete btn.dataset.refillLastPurchase;
+            
+            // OPTIMERING: Brug helper til at hente alle UI elementer én gang
+            const { limitCounter, refillTimer, tooltip } = getLimitUiNodes(btn);
+            
             // Skjul limit counter og fjern hover
-            const limitCounter = btn.querySelector('.product-limit-counter');
             if (limitCounter) {
                 limitCounter.textContent = '';
                 limitCounter.style.display = 'none';
@@ -301,12 +320,10 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
                 limitCounter.onmouseleave = null;
             }
             // Fjern refill timer element
-            const refillTimer = btn.querySelector('.refill-timer');
             if (refillTimer) {
                 refillTimer.remove();
             }
             // Fjern tooltip
-            const tooltip = btn.querySelector('.limit-tooltip');
             if (tooltip) {
                 tooltip.remove();
             }
@@ -366,7 +383,7 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
         const product = productMap.get(pid);
 
         // DEBUG: Log refill felter for at forstå hvad vi har
-        if (product?.refill_enabled) {
+        if (LIMITS_UI_DEBUG && product?.refill_enabled) {
             console.log(`[applyProductLimitsToButtons] Refill product check for ${product.name}:`, {
                 refill_enabled: product.refill_enabled,
                 refill_max_refills: product.refill_max_refills,
@@ -379,6 +396,8 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
         if (product?.refill_enabled && product?.refill_max_refills > 0 && childId) {
             try {
                 const eligibility = await getRefillEligibility(childId, pid, product, institutionId);
+                // RACE GUARD: Abort hvis en nyere request er startet under async-kaldet
+                if (requestId !== latestApplyRequestId) return;
 
                 // KUN vis refill counter hvis kunden er i refill-mode (har lavet første køb)
                 // Ellers skal counteren ikke vises da refill ikke er aktiveret endnu
@@ -397,7 +416,7 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
 
                     refillUsed = refillUsed + refillsInCart;
 
-                    console.log(`[applyProductLimitsToButtons] Refill status for ${product.name}:`, {
+                    if (LIMITS_UI_DEBUG) console.log(`[applyProductLimitsToButtons] Refill status for ${product.name}:`, {
                         refillsFromDB: eligibility.refillsUsed,
                         refillsInCart,
                         totalRefillUsed: refillUsed,
@@ -410,10 +429,10 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
                     if (refillUsed >= refillMax) {
                         refillLimitReached = true;
                         isAtLimit = true;
-                        console.log(`[applyProductLimitsToButtons] Refill limit REACHED for ${product.name}: ${refillUsed}/${refillMax}`);
+                        if (LIMITS_UI_DEBUG) console.log(`[applyProductLimitsToButtons] Refill limit REACHED for ${product.name}: ${refillUsed}/${refillMax}`);
                     }
                 } else {
-                    console.log(`[applyProductLimitsToButtons] ${product.name}: Ingen køb endnu, refill counter skjules`);
+                    if (LIMITS_UI_DEBUG) console.log(`[applyProductLimitsToButtons] ${product.name}: Ingen køb endnu, refill counter skjules`);
                 }
             } catch (err) {
                 console.warn('[applyProductLimitsToButtons] Refill check fejl:', err);
@@ -427,7 +446,7 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
 
         if (sugarData?.policy) {
             const product = productMap.get(pid);
-            console.log(`[applyProductLimitsToButtons] Sugar check for ${pid}: product.unhealthy=${product?.unhealthy}, policy=`, sugarData.policy, 'snapshot=', sugarData.snapshot);
+            if (LIMITS_UI_DEBUG) console.log(`[applyProductLimitsToButtons] Sugar check for ${pid}: product.unhealthy=${product?.unhealthy}, policy=`, sugarData.policy, 'snapshot=', sugarData.snapshot);
             if (product?.unhealthy === true) {
                 const { policy, snapshot: sugarSnapshot } = sugarData;
 
@@ -457,30 +476,30 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
                     sugarPerProductMax = policy.maxUnhealthyPerProductPerDay;
                 }
 
-                console.log(`[applyProductLimitsToButtons] ${pid} is unhealthy. Purchased: ${sugarSnapshot?.unhealthyTotal ?? 0}, InCart: ${unhealthyInCartTotal}, Total: ${unhealthyTotal}, perProduct: ${perProduct}, maxPerDay: ${policy.maxUnhealthyPerDay}, maxPerProduct: ${policy.maxUnhealthyPerProductPerDay}`);
+                if (LIMITS_UI_DEBUG) console.log(`[applyProductLimitsToButtons] ${pid} is unhealthy. Purchased: ${sugarSnapshot?.unhealthyTotal ?? 0}, InCart: ${unhealthyInCartTotal}, Total: ${unhealthyTotal}, perProduct: ${perProduct}, maxPerDay: ${policy.maxUnhealthyPerDay}, maxPerProduct: ${policy.maxUnhealthyPerProductPerDay}`);
 
                 if (!isAtLimit) {
                     if (policy.blockUnhealthy === true) {
-                        console.log(`[applyProductLimitsToButtons] ${pid} BLOCKED: blockUnhealthy=true`);
+                        if (LIMITS_UI_DEBUG) console.log(`[applyProductLimitsToButtons] ${pid} BLOCKED: blockUnhealthy=true`);
                         isAtLimit = true;
                         sugarLocked = true;
                     } else if (policy.maxUnhealthyPerDay != null && policy.maxUnhealthyPerDay > 0 && unhealthyTotal >= policy.maxUnhealthyPerDay) {
                         // Kun blokér hvis grænsen er > 0 (0 eller null = ingen grænse)
-                        console.log(`[applyProductLimitsToButtons] ${pid} BLOCKED: ${unhealthyTotal} >= ${policy.maxUnhealthyPerDay}`);
+                        if (LIMITS_UI_DEBUG) console.log(`[applyProductLimitsToButtons] ${pid} BLOCKED: ${unhealthyTotal} >= ${policy.maxUnhealthyPerDay}`);
                         isAtLimit = true;
                         sugarLocked = true;
                     } else if (policy.maxUnhealthyPerProductPerDay != null && policy.maxUnhealthyPerProductPerDay > 0 && perProduct >= policy.maxUnhealthyPerProductPerDay) {
                         // Kun blokér hvis grænsen er > 0 (0 eller null = ingen grænse)
-                        console.log(`[applyProductLimitsToButtons] ${pid} BLOCKED: perProduct ${perProduct} >= ${policy.maxUnhealthyPerProductPerDay}`);
+                        if (LIMITS_UI_DEBUG) console.log(`[applyProductLimitsToButtons] ${pid} BLOCKED: perProduct ${perProduct} >= ${policy.maxUnhealthyPerProductPerDay}`);
                         isAtLimit = true;
                         sugarLocked = true;
                     } else {
-                        console.log(`[applyProductLimitsToButtons] ${pid} allowed (under limit)`);
+                        if (LIMITS_UI_DEBUG) console.log(`[applyProductLimitsToButtons] ${pid} allowed (under limit)`);
                     }
                 }
             }
         } else if (!isAtLimit) {
-            console.log(`[applyProductLimitsToButtons] ${pid}: No sugar policy or already at limit`);
+            if (LIMITS_UI_DEBUG) console.log(`[applyProductLimitsToButtons] ${pid}: No sugar policy or already at limit`);
         }
 
         // TOOLTIP: Saml alle begrænsninger med kilde-information
@@ -647,6 +666,8 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
         }));
 
     const fallbackResults = await Promise.allSettled(fallbackChecks.map(fc => fc.promise));
+    // RACE GUARD: Abort hvis en nyere request er startet under async-kaldet
+    if (requestId !== latestApplyRequestId) return;
 
     // Anvend fallback resultater
     fallbackChecks.forEach((fc, idx) => {
@@ -744,7 +765,7 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
                 limitCounter.textContent = '';
                 limitCounter.style.display = 'none';
                 // Fjern evt. tooltip når counter er skjult (tooltip er på btn, ikke counter)
-                const oldTooltip = data.btn.querySelector('.limit-tooltip');
+                const { tooltip: oldTooltip } = getLimitUiNodes(data.btn);
                 if (oldTooltip) oldTooltip.remove();
                 limitCounter.onmouseenter = null;
                 limitCounter.onmouseleave = null;
@@ -753,7 +774,7 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
 
             // TOOLTIP: Generer og tilføj tooltip hvis der er begrænsninger OG counter er synlig
             // Tooltip er et SEPARAT element på product-btn niveau (ikke inde i counter)
-            const existingTooltip = data.btn.querySelector('.limit-tooltip');
+            const { tooltip: existingTooltip } = getLimitUiNodes(data.btn);
             if (existingTooltip) {
                 existingTooltip.remove();
             }

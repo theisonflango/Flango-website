@@ -6,6 +6,7 @@ import { OVERDRAFT_LIMIT } from '../core/constants.js';
 
 let currentCustomer = null;
 let lastEvaluation = null;
+let selectionToken = 0; // Race protection: increments on each user selection/clear
 
 // ============================================================================
 // ALLERGEN CACHE - undgår gentagne DB-kald for samme barn
@@ -14,11 +15,20 @@ const allergenCache = new Map(); // childId → { data, timestamp }
 const ALLERGEN_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutter (ændres sjældent)
 
 async function loadChildAllergyPolicy(childId) {
+    const tokenAtStart = selectionToken;
     try {
+        const assignIfStillSelected = (policy) => {
+            if (!currentCustomer) return;
+            if (String(currentCustomer.id) !== String(childId)) return;
+            // Guard against fast user-switch while the fetch is in flight
+            if (selectionToken !== tokenAtStart) return;
+            currentCustomer.allergyPolicy = policy;
+        };
+
         // OPTIMERING: Check cache først
         const cached = allergenCache.get(childId);
         if (cached && Date.now() - cached.timestamp < ALLERGEN_CACHE_TTL_MS) {
-            currentCustomer.allergyPolicy = cached.data;
+            assignIfStillSelected(cached.data);
             return;
         }
 
@@ -29,7 +39,7 @@ async function loadChildAllergyPolicy(childId) {
 
         if (error) {
             console.warn('[allergies] fetch error:', error.message);
-            currentCustomer.allergyPolicy = {};
+            assignIfStillSelected({});
             return;
         }
 
@@ -40,10 +50,10 @@ async function loadChildAllergyPolicy(childId) {
 
         // Gem i cache
         allergenCache.set(childId, { data: map, timestamp: Date.now() });
-        currentCustomer.allergyPolicy = map;
+        assignIfStillSelected(map);
     } catch (err) {
         console.error('[allergies] unexpected error:', err);
-        if (currentCustomer) {
+        if (currentCustomer && String(currentCustomer.id) === String(childId) && selectionToken === tokenAtStart) {
             currentCustomer.allergyPolicy = {};
         }
     }
@@ -77,6 +87,11 @@ export function getCurrentBalance() {
  */
 export function setCurrentCustomer(customer) {
     currentCustomer = customer || null;
+    selectionToken++; // Increment token on each selection change
+    // Mirror to window global for backward compatibility
+    if (typeof window !== 'undefined') {
+        window.__flangoCurrentCustomer = currentCustomer;
+    }
     if (customer?.id) {
         loadChildAllergyPolicy(customer.id);
     }
@@ -94,11 +109,24 @@ export function getCurrentCustomer() {
 }
 
 /**
+ * Hent nuværende selection token (for race protection).
+ * @returns {number}
+ */
+export function getSelectionToken() {
+    return selectionToken;
+}
+
+/**
  * Nulstil kun den valgte kunde (og evaluering).
  */
 export function clearCurrentCustomer() {
     currentCustomer = null;
     lastEvaluation = null;
+    selectionToken++; // Increment token on clear (user deselected)
+    // Clear window global mirror
+    if (typeof window !== 'undefined') {
+        window.__flangoCurrentCustomer = null;
+    }
 }
 
 /**

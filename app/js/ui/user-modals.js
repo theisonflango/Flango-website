@@ -5,12 +5,19 @@ export function showPinModal(userName) {
     const pinDisplay = document.getElementById('pin-display');
     const pinKeypad = document.getElementById('pin-keypad');
     const pinModalTitle = document.getElementById('pin-modal-title');
+    const pinOkBtn = document.getElementById('pin-modal-ok-btn');
     const closeBtn = pinModal.querySelector('.close-btn');
     let currentPin = '';
 
     pinModalTitle.textContent = `Indtast PIN for ${userName}`;
     pinDisplay.textContent = '';
     pinModal.style.display = 'flex';
+
+    const updateOkButton = () => {
+        if (pinOkBtn) {
+            pinOkBtn.disabled = currentPin.length !== 4;
+        }
+    };
 
     return new Promise((resolve) => {
         const processKey = (key) => {
@@ -26,6 +33,7 @@ export function showPinModal(userName) {
                 currentPin = '';
             }
             pinDisplay.textContent = '●'.repeat(currentPin.length);
+            updateOkButton();
         };
 
         const handleKeypadClick = (event) => {
@@ -47,15 +55,26 @@ export function showPinModal(userName) {
             }
         };
 
+        const handleOkClick = () => {
+            if (currentPin.length === 4) {
+                close(currentPin);
+            }
+        };
+
         const close = (value) => {
             pinKeypad.removeEventListener('click', handleKeypadClick);
             document.removeEventListener('keydown', handlePhysicalKey);
+            if (pinOkBtn) pinOkBtn.removeEventListener('click', handleOkClick);
             pinModal.style.display = 'none';
             resolve(value);
         };
 
         pinKeypad.addEventListener('click', handleKeypadClick);
         document.addEventListener('keydown', handlePhysicalKey);
+        if (pinOkBtn) {
+            pinOkBtn.addEventListener('click', handleOkClick);
+            updateOkButton();
+        }
         closeBtn.onclick = () => close(null);
         pinDisplay.onclick = () => {
             if (currentPin.length === 4) {

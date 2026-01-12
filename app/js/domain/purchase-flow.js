@@ -10,9 +10,10 @@ import {
 } from './cafe-session-store.js';
 import { renderOrder } from './order-ui.js';
 import { getProductIconInfo } from './products-and-cart.js';
-import { canChildPurchase, invalidateTodaysSalesCache } from './purchase-limits.js';
+import { canChildPurchase, invalidateAllLimitCaches } from './purchase-limits.js';
 import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
 import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
+import { escapeHtml } from '../core/escape-html.js';
 
 // ============================================================================
 // HELPER FUNKTIONER FOR handleCompletePurchase (OPT-6)
@@ -54,8 +55,11 @@ function enrichOrderWithAllergens(order, allProducts, productAllergenMap) {
  */
 function groupOrderItems(order) {
     return order.reduce((acc, item) => {
-        acc[item.id] = acc[item.id] || { ...item, count: 0 };
-        acc[item.id].count++;
+        const productId = item?.product_id || item?.productId || item?.id;
+        if (productId == null) return acc;
+        const key = String(productId);
+        acc[key] = acc[key] || { ...item, id: productId, count: 0 };
+        acc[key].count++;
         return acc;
     }, {});
 }
@@ -72,14 +76,39 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance) {
     // Grupper items efter produkt ID
     const itemCounts = groupOrderItems(currentOrder);
 
-    // Byg produkt liste
-    const itemsSummary = Object.values(itemCounts).map(item => {
+    // Byg DOM først (undgår innerHTML injection fra produkt-/kundenavne)
+    const root = document.createElement('div');
+
+    const title = document.createElement('strong');
+    title.textContent = customer?.name || 'Ukendt';
+    root.appendChild(title);
+    root.appendChild(document.createTextNode(' køber:'));
+    root.appendChild(document.createElement('br'));
+
+    Object.values(itemCounts).forEach((item) => {
+        const line = document.createElement('div');
+        line.className = 'confirm-product-line';
+
         const iconInfo = getProductIconInfo(item);
-        const visual = iconInfo
-            ? `<img src="${iconInfo.path}" alt="${item.name}" class="confirm-product-icon">`
-            : `<span class="confirm-product-emoji">${item.emoji || '❓'}</span>`;
-        return `<div class="confirm-product-line">${visual}<span>${item.count} x ${item.name}</span></div>`;
-    }).join('');
+        if (iconInfo?.path) {
+            const img = document.createElement('img');
+            img.src = iconInfo.path;
+            img.alt = item?.name || 'Produkt';
+            img.className = 'confirm-product-icon';
+            line.appendChild(img);
+        } else {
+            const emoji = document.createElement('span');
+            emoji.className = 'confirm-product-emoji';
+            emoji.textContent = item?.emoji || '❓';
+            line.appendChild(emoji);
+        }
+
+        const text = document.createElement('span');
+        text.textContent = `${item.count} x ${item.name || 'Ukendt'}`;
+        line.appendChild(text);
+
+        root.appendChild(line);
+    });
 
     // Byg negativ balance advarsel hvis relevant
     let negativeBalanceWarning = '';
@@ -91,7 +120,11 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance) {
         }
     }
 
-    return `<strong>${customer.name}</strong> køber:<br>${itemsSummary}<br>for <strong>${finalTotal.toFixed(2)} kr.</strong><hr style="margin: 15px 0; border: 1px solid #eee;">${customer.name} har <strong>${newBalance.toFixed(2)} kr.</strong> tilbage.${negativeBalanceWarning}`;
+    // Append totals section (as HTML string for formatting; names are escaped)
+    const totalsHtml = `<br>for <strong>${Number(finalTotal).toFixed(2)} kr.</strong><hr style="margin: 15px 0; border: 1px solid #eee;">${escapeHtml(customer?.name || 'Ukendt')} har <strong>${Number(newBalance).toFixed(2)} kr.</strong> tilbage.${negativeBalanceWarning}`;
+    root.insertAdjacentHTML('beforeend', totalsHtml);
+
+    return root.innerHTML;
 }
 
 /**
@@ -360,7 +393,7 @@ export async function enforceSugarPolicy({ customer, currentOrder, allProducts }
         if (totalUnhealthyToday + totalUnhealthyInCart > maxUnhealthy) {
             await showCustomAlert(
                 'Køb Blokeret',
-                `Hov, ${customer.name} har allerede købt <strong>${totalUnhealthyToday}</strong> usunde varer i dag.<br><br>Maks antal usunde produkter per dag: <strong>${maxUnhealthy}</strong>`
+                `Hov, ${escapeHtml(customer.name)} har allerede købt <strong>${totalUnhealthyToday}</strong> usunde varer i dag.<br><br>Maks antal usunde produkter per dag: <strong>${maxUnhealthy}</strong>`
             );
             return false;
         }
@@ -384,7 +417,7 @@ export async function enforceSugarPolicy({ customer, currentOrder, allProducts }
                 const product = allProducts.find(p => p.id === productId);
                 await showCustomAlert(
                     'Køb Blokeret',
-                    `Hov, ${customer.name} har allerede købt <strong>${product?.name || 'denne vare'}</strong> ${boughtCount} gang(e) i dag.<br><br>Maks antal af hver usund vare per dag: <strong>${maxPerProduct}</strong>`
+                    `Hov, ${escapeHtml(customer.name)} har allerede købt <strong>${escapeHtml(product?.name || 'denne vare')}</strong> ${boughtCount} gang(e) i dag.<br><br>Maks antal af hver usund vare per dag: <strong>${maxPerProduct}</strong>`
                 );
                 return false;
             }
@@ -447,7 +480,7 @@ export async function handleCompletePurchase({
         const details = groupAllergyReasons(allergyResult.reasons);
         await showCustomAlert(
             'Køb Blokeret (Allergi)',
-            `Hov, ${customer.name} må ikke købe disse varer pga. registrerede allergier:<br><br>${details}<br><br>Ret venligst kurven eller vælg andre varer.`
+            `Hov, ${escapeHtml(customer.name)} må ikke købe disse varer pga. registrerede allergier:<br><br>${details}<br><br>Ret venligst kurven eller vælg andre varer.`
         );
         return;
     }
@@ -456,7 +489,7 @@ export async function handleCompletePurchase({
         const details = groupAllergyReasons(allergyResult.reasons);
         const confirmedAllergy = await showCustomAlert(
             'Allergi-advarsel',
-            `OBS: Der er registreret allergier/advarsler for ${customer.name}:<br><br>${details}<br><br>Vil du gennemføre købet alligevel?`,
+            `OBS: Der er registreret allergier/advarsler for ${escapeHtml(customer.name)}:<br><br>${details}<br><br>Vil du gennemføre købet alligevel?`,
             'confirm'
         );
         if (!confirmedAllergy) {
@@ -466,7 +499,8 @@ export async function handleCompletePurchase({
     // === SLUT ALLERGI-CHECK ===
     let evaluation = null;
     try {
-        setOrder(currentOrder);
+        // Deterministic sync: avoid sharing mutable array reference
+        setOrder(Array.isArray(currentOrder) ? [...currentOrder] : []);
         const shadowOrder = getOrder();
         console.log('[order-store] shadow sync:', {
             currentOrderLength: currentOrder.length,
@@ -519,7 +553,18 @@ export async function handleCompletePurchase({
             return;
         }
     } catch (err) {
-        console.warn('[canChildPurchase] Uventet fejl, tillader køb som fallback:', err);
+        console.warn('[canChildPurchase] Validering fejlede – afviser køb (fail-closed):', err);
+        
+        // Giv bruger feedback (lyd/alert)
+        try { 
+            playSound?.('error'); 
+        } catch {}
+        
+        await showCustomAlert(
+            'Kan ikke bekræfte regler', 
+            'Vi kan ikke bekræfte grænserne lige nu. Prøv igen om 5 sekunder eller tjek din forbindelse.'
+        );
+        return;
     }
 
     const legacyTotal = getOrderTotal();
@@ -683,13 +728,15 @@ export async function handleCompletePurchase({
     if (clerkId) {
         salePayload.p_clerk_id = clerkId;
     }
+    const balanceUpdateNonce = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
     const { error } = await supabaseClient.rpc('process_sale', salePayload);
     if (error) {
         showAlert('Database Fejl: ' + error.message);
         setButtonLoadingState(completePurchaseBtn, 'normal');
     } else {
-        // Purchase successful - invalidate caches to ensure fresh data
-        invalidateTodaysSalesCache();
+        // Purchase successful - invalidate ALL caches to ensure fresh data
+        invalidateAllLimitCaches(customer.id);
 
         if (typeof incrementSessionSalesCount === 'function') {
             incrementSessionSalesCount();
@@ -698,10 +745,30 @@ export async function handleCompletePurchase({
         window.dispatchEvent(new CustomEvent('flango:saleCompleted'));
         playSound('purchase');
         const appliedBalance = Number.isFinite(newBalance) ? newBalance : customer.balance - finalTotal;
-        updateCustomerBalanceGlobally(customer.id, appliedBalance, -finalTotal, 'purchase');
+        // 1) Provisional optimistic update for snappy POS feel
+        updateCustomerBalanceGlobally(customer.id, appliedBalance, -finalTotal, 'purchase-provisional', {
+            status: 'provisional',
+            nonce: balanceUpdateNonce,
+        });
+        // 2) Confirm against server state and correct if needed
+        const confirmedBalance = await refreshCustomerBalanceFromDB(customer.id, {
+            status: 'confirmed',
+            nonce: balanceUpdateNonce,
+            retry: 1,
+        });
+        if (confirmedBalance !== null && Math.abs(confirmedBalance - appliedBalance) > 0.009) {
+            console.warn('[purchase-flow] Balance mismatch after confirm', {
+                provisional: appliedBalance,
+                confirmed: confirmedBalance,
+                nonce: balanceUpdateNonce,
+            });
+        } else if (confirmedBalance === null) {
+            console.warn('[purchase-flow] Balance confirmation failed; UI remains on provisional', { nonce: balanceUpdateNonce });
+        }
         let nextOrder = clearOrder();
         try {
-            setOrder(nextOrder);
+            // State-consistency: always use spread to avoid sharing mutable array reference
+            setOrder([...nextOrder]);
         } catch (err) {
             console.warn('[order-store] sync failed after currentOrder mutation:', err);
         }
@@ -711,7 +778,8 @@ export async function handleCompletePurchase({
         clearCurrentCustomer();
         renderOrder(orderList, nextOrder, totalPriceEl, updateSelectedUserInfo);
         if (typeof refreshProductLocks === 'function') {
-            refreshProductLocks();
+            // MUST-RUN: ensure locks refresh is not dropped by debounce/cancellation
+            await refreshProductLocks({ force: true });
         }
         // KRITISK: Genrender produkter for at fjerne refill-styling (navn, pris, grøn farve)
         if (typeof renderProductsFromCache === 'function') {
@@ -724,19 +792,20 @@ export async function handleCompletePurchase({
 
 export async function handleUndoLastSale() {
     const confirmed = await showCustomAlert('Fortryd Sidste Køb', 'Er du sikker på, du vil fortryde det seneste salg? Handlingen kan ikke omgøres.', 'confirm');
-    if (!confirmed) return;
+    if (!confirmed) return false;
     const { data, error } = await supabaseClient.rpc('undo_last_sale');
     if (error) {
         showAlert('Fejl ved fortrydelse: ' + error.message);
+        return false;
     } else {
         const result = data[0];
-        await showCustomAlert('Success!', `Salget for ${result.customer_name} på ${result.refunded_amount.toFixed(2)} kr. er blevet fortrudt.`);
+        await showCustomAlert('Success!', `Salget for ${escapeHtml(result.customer_name)} på ${result.refunded_amount.toFixed(2)} kr. er blevet fortrudt.`);
 
         // Refresh balance from DB instead of full reload
         await refreshCustomerBalanceFromDB(result.customer_id);
 
-        // Invalidate today's sales cache and refresh order UI
-        invalidateTodaysSalesCache();
+        // Invalidate ALL caches and refresh order UI
+        invalidateAllLimitCaches(result.customer_id);
         if (typeof setCurrentOrder === 'function') {
             setCurrentOrder([]);
         }
@@ -747,8 +816,10 @@ export async function handleUndoLastSale() {
             renderOrder(orderList, [], totalPriceEl, updateSelectedUserInfo);
         }
     }
+    return true;
 }
 
-export function handleUndoPreviousSale() {
+export async function handleUndoPreviousSale() {
     showAlert('Avanceret fortrydelse er på vej.');
+    return false;
 }

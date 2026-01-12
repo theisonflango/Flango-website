@@ -3,6 +3,8 @@
 // Part of "Refetch After Write" pattern for failsafe data consistency
 
 import { supabaseClient } from './config-and-supabase.js';
+import { safeDbCall } from './safe-db-call.js';
+import { getCurrentCustomer, setCustomerBalance } from '../domain/cafe-session-store.js';
 
 /**
  * Refetch all users for current institution from database
@@ -20,16 +22,17 @@ export async function refetchAllUsers() {
 
     console.log('[data-refetch] Refetching all users for institution:', institutionId);
 
-    const { data, error } = await supabaseClient
+    const result = await safeDbCall('refetchAllUsers', () => supabaseClient
         .from('users')
         .select('*, last_parent_login_at, parent_pin_is_custom')
         .eq('institution_id', institutionId)
-        .order('name');
+        .order('name'), { retry: 1, critical: true });
 
-    if (error) {
-        console.error('[data-refetch] Error loading users:', error);
+    if (!result.ok) {
+        console.error('[data-refetch] Error loading users:', result.error);
         return null;
     }
+    const data = result.data;
 
     // Update global cache via setter if available
     if (typeof window.__flangoSetAllUsers === 'function') {
@@ -60,16 +63,17 @@ export async function refetchAllProducts() {
 
     console.log('[data-refetch] Refetching all products for institution:', institutionId);
 
-    const { data, error } = await supabaseClient
+    const result = await safeDbCall('refetchAllProducts', () => supabaseClient
         .from('products')
         .select('*')
         .eq('institution_id', institutionId)
-        .order('sort_order');
+        .order('sort_order'), { retry: 1, critical: true });
 
-    if (error) {
-        console.error('[data-refetch] Error loading products:', error);
+    if (!result.ok) {
+        console.error('[data-refetch] Error loading products:', result.error);
         return null;
     }
+    const data = result.data;
 
     // Update cache via setter if available
     if (typeof window.__flangoSetAllProducts === 'function') {
@@ -96,18 +100,18 @@ export async function refetchUserBalance(userId) {
 
     console.log('[data-refetch] Refetching balance for user:', userId);
 
-    const { data, error } = await supabaseClient
+    const result = await safeDbCall('refetchUserBalance', () => supabaseClient
         .from('users')
         .select('balance')
         .eq('id', userId)
-        .single();
+        .single(), { retry: 1, critical: true });
 
-    if (error) {
-        console.error('[data-refetch] Error loading balance:', error);
+    if (!result.ok) {
+        console.error('[data-refetch] Error loading balance:', result.error);
         return null;
     }
 
-    const newBalance = data.balance;
+    const newBalance = result.data.balance;
 
     // Update in window.__flangoAllUsers
     const users = window.__flangoAllUsers;
@@ -123,10 +127,10 @@ export async function refetchUserBalance(userId) {
         }
     }
 
-    // Also update currentCustomer if it's the same user
-    const currentCustomer = window.__flangoCurrentCustomer;
+    // Also update currentCustomer if it's the same user - use canonical source
+    const currentCustomer = getCurrentCustomer();
     if (currentCustomer && currentCustomer.id === userId) {
-        currentCustomer.balance = newBalance;
+        setCustomerBalance(newBalance);
         console.log('[data-refetch] Balance updated for current customer:', newBalance);
     }
 
@@ -147,19 +151,19 @@ export async function refetchSingleProduct(productId) {
 
     console.log('[data-refetch] Refetching product:', productId);
 
-    const { data, error } = await supabaseClient
+    const result = await safeDbCall('refetchSingleProduct', () => supabaseClient
         .from('products')
         .select('*')
         .eq('id', productId)
-        .single();
+        .single(), { retry: 1 });
 
-    if (error) {
-        console.error('[data-refetch] Error loading product:', error);
+    if (!result.ok) {
+        console.error('[data-refetch] Error loading product:', result.error);
         return null;
     }
 
-    console.log('[data-refetch] Product refreshed:', data.name);
-    return data;
+    console.log('[data-refetch] Product refreshed:', result.data.name);
+    return result.data;
 }
 
 // Debug helper: Log current cache state

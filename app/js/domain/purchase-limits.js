@@ -73,6 +73,48 @@ export function invalidateTodaysSalesCache() {
     if (LIMITS_DEBUG) console.log('[limits] Sales + check-sugar-policy cache invalidated');
 }
 
+/**
+ * Invaliderer ALLE limits-relaterede caches på én gang.
+ * Brug efter køb, bruger-skift, eller når grænser opdateres i admin.
+ * @param {string|null} childId - Specifikt barn eller null for at rydde alt
+ */
+export function invalidateAllLimitCaches(childId = null) {
+    // 1. Sales cache (5-min TTL)
+    if (childId) {
+        // Ryd kun for specifikt barn (baseret på cacheKey pattern)
+        for (const key of todaysSalesCache.keys()) {
+            if (key.startsWith(`${childId}:`)) {
+                todaysSalesCache.delete(key);
+            }
+        }
+    } else {
+        todaysSalesCache.clear();
+    }
+    salesInflight.clear();
+    salesCacheTimestamp = Date.now();
+
+    // 2. Check-sugar-policy cache (5-min TTL)
+    if (childId) {
+        checkSugarPolicyCache.delete(childId);
+    } else {
+        checkSugarPolicyCache.clear();
+    }
+
+    // 3. Sugar policy cache (5-min TTL)
+    if (childId) {
+        sugarPolicyCache.delete(childId);
+    } else {
+        sugarPolicyCache.clear();
+    }
+
+    // 4. Limits memory cache (1-min TTL)
+    if (typeof window !== 'undefined') {
+        window.__flangoLimitsCache = null;
+    }
+
+    if (LIMITS_DEBUG) console.log('[limits] ALL caches invalidated', childId ? `for child: ${childId}` : '(global)');
+}
+
 const safeNumber = (value, fallback = 0) => {
     const num = Number(value);
     return Number.isFinite(num) ? num : fallback;
@@ -270,6 +312,33 @@ async function getTodaysSalesForChild(childId, institutionIdOverride = null) {
     }
 }
 
+/**
+ * Peek today's sales cache WITHOUT fetching.
+ * Returns null if cache is not ready yet (fail-closed).
+ *
+ * NOTE: This is intentionally strict to avoid "false OK" unlocks on cold start.
+ * Callers should fall back to Edge Function or show a loading state.
+ *
+ * @param {string} childId
+ * @param {string|null} institutionId
+ * @returns {{rows:Array, error:any}|null}
+ */
+export function peekTodaysSalesCache(childId, institutionId = null) {
+    if (!childId) return null;
+
+    // Respect TTL semantics used by getTodaysSalesForChild (do not serve stale)
+    const now = Date.now();
+    if (now - salesCacheTimestamp > SALES_CACHE_TTL_MS) {
+        return null;
+    }
+
+    const cacheKey = getCacheKey(childId, institutionId);
+    if (!todaysSalesCache.has(cacheKey)) {
+        return null;
+    }
+    return todaysSalesCache.get(cacheKey) || null;
+}
+
 function extractProductId(item) {
     return item?.product_id ?? item?.productId ?? item?.id ?? null;
 }
@@ -398,6 +467,65 @@ export async function getCachedCheckSugarPolicy(childId, policyOverride = null) 
 export async function getUnhealthyPurchasesSnapshot(childId) {
     const result = await getCachedCheckSugarPolicy(childId);
     return { boughtUnhealthyProductIds: result.boughtUnhealthyProductIds };
+}
+
+/**
+ * Byg et sukker-snapshot (unhealthyTotal + unhealthyPerProduct) ud fra dagens sales-cache.
+ * Dette undgår Edge Function kaldet check-sugar-policy, men bevarer "live" korrekthed,
+ * fordi sales-cache invalideres efter køb.
+ *
+ * @param {string} childId
+ * @param {string|null} institutionId
+ * @param {Array} allProducts - skal indeholde `unhealthy === true` for relevante produkter
+ * @returns {Promise<{unhealthyTotal:number, unhealthyPerProduct:Object}|null>}
+ */
+export async function getUnhealthySnapshotFromSalesCache(childId, institutionId = null, allProducts = []) {
+    try {
+        if (!childId) return null;
+        if (!Array.isArray(allProducts) || allProducts.length === 0) return null;
+
+        const unhealthyIds = new Set(
+            allProducts
+                .filter(p => p && p.unhealthy === true)
+                .map(p => String(p.id))
+        );
+        if (unhealthyIds.size === 0) {
+            return { unhealthyTotal: 0, unhealthyPerProduct: {} };
+        }
+
+        // IMPORTANT: Do NOT fetch here. Only use cache; otherwise return null and let caller fall back.
+        const cached = peekTodaysSalesCache(childId, institutionId);
+        if (!cached) {
+            if (LIMITS_DEBUG) console.log('[getUnhealthySnapshotFromSalesCache] Cache miss (fail-closed)', { childId, institutionId });
+            return null;
+        }
+        const { rows, error } = cached;
+        if (error) return null;
+
+        const allItems = (rows || []).flatMap(row => normalizeItems(row?.items ?? row?.details));
+        // If we cannot extract any product_id at all, treat as incomplete and fail-closed.
+        if (allItems.length > 0 && allItems.every((it) => extractProductId(it) == null)) {
+            if (LIMITS_DEBUG) console.log('[getUnhealthySnapshotFromSalesCache] No product_id in cached items (fail-closed)', { childId, institutionId });
+            return null;
+        }
+        let unhealthyTotal = 0;
+        const unhealthyPerProduct = {};
+
+        allItems.forEach((item) => {
+            const pidRaw = extractProductId(item);
+            if (pidRaw == null) return;
+            const pid = String(pidRaw);
+            if (!unhealthyIds.has(pid)) return;
+            const qty = extractQuantity(item);
+            unhealthyTotal += qty;
+            unhealthyPerProduct[pid] = (unhealthyPerProduct[pid] || 0) + qty;
+        });
+
+        return { unhealthyTotal, unhealthyPerProduct };
+    } catch (err) {
+        if (LIMITS_DEBUG) console.warn('[getUnhealthySnapshotFromSalesCache] Uventet fejl:', err);
+        return null;
+    }
 }
 
 // Eksporter funktion til at invalidere check-sugar-policy cache (efter køb)
@@ -559,6 +687,16 @@ async function getTodaysTotalSpend(childId, institutionId = null) {
     return total;
 }
 
+/**
+ * Offentlig helper til at genbruge sales-cache (undgå ekstra DB-kald).
+ * @param {string} childId
+ * @param {string|null} institutionId
+ * @returns {Promise<number>} total spend i dag
+ */
+export async function getTodaysTotalSpendForChild(childId, institutionId = null) {
+    return await getTodaysTotalSpend(childId, institutionId);
+}
+
 async function getProductLimit(institutionId, productId) {
     if (!institutionId || !productId) return null;
 
@@ -693,15 +831,17 @@ export async function getRefillEligibility(childId, productId, product, institut
     const timeLimitMinutes = safeNumber(product.refill_time_limit_minutes, 0);
     const maxRefills = safeNumber(product.refill_max_refills, 0);
 
-    console.log('[getRefillEligibility] Produkt refill config:', {
-        productName: product.name,
-        refill_enabled: product.refill_enabled,
-        refill_price: product.refill_price,
-        refill_time_limit_minutes: product.refill_time_limit_minutes,
-        timeLimitMinutes, // efter safeNumber
-        refill_max_refills: product.refill_max_refills,
-        maxRefills // efter safeNumber
-    });
+    if (LIMITS_DEBUG) {
+        console.log('[getRefillEligibility] Produkt refill config:', {
+            productName: product.name,
+            refill_enabled: product.refill_enabled,
+            refill_price: product.refill_price,
+            refill_time_limit_minutes: product.refill_time_limit_minutes,
+            timeLimitMinutes, // efter safeNumber
+            refill_max_refills: product.refill_max_refills,
+            maxRefills // efter safeNumber
+        });
+    }
 
     // Hent barnets køb for dette produkt
     const { rows, error } = await getTodaysSalesForChild(childId, institutionId);
@@ -710,13 +850,15 @@ export async function getRefillEligibility(childId, productId, product, institut
         return { eligible: false, purchaseCount: 0, refillsUsed: 0 };
     }
 
-    console.log('[getRefillEligibility] Dagens salg rows:', rows.length, 'rows');
-    if (rows.length > 0) {
-        console.log('[getRefillEligibility] Første salg:', {
-            created_at: rows[0].created_at,
-            items: rows[0].items,
-            details: rows[0].details
-        });
+    if (LIMITS_DEBUG) {
+        console.log('[getRefillEligibility] Dagens salg rows:', rows.length, 'rows');
+        if (rows.length > 0) {
+            console.log('[getRefillEligibility] Første salg:', {
+                created_at: rows[0].created_at,
+                items: rows[0].items,
+                details: rows[0].details
+            });
+        }
     }
 
     const now = new Date();
@@ -781,16 +923,18 @@ export async function getRefillEligibility(childId, productId, product, institut
 
     const eligible = hasInitialPurchase && withinRefillLimit;
 
-    console.log('[getRefillEligibility] Resultat:', {
-        productName: product.name,
-        totalPurchases,
-        refillPurchases,
-        hasInitialPurchase,
-        withinRefillLimit,
-        maxRefills,
-        eligible,
-        cutoffTime: cutoffTime.toISOString()
-    });
+    if (LIMITS_DEBUG) {
+        console.log('[getRefillEligibility] Resultat:', {
+            productName: product.name,
+            totalPurchases,
+            refillPurchases,
+            hasInitialPurchase,
+            withinRefillLimit,
+            maxRefills,
+            eligible,
+            cutoffTime: cutoffTime.toISOString()
+        });
+    }
 
     return {
         eligible,
