@@ -38,12 +38,22 @@ export async function fetchInstitutions(forceRefresh = false) {
                 show_admins_in_user_list, admins_purchase_free, shift_timer_enabled
             `)
             .order('name');
-        if (error) throw error;
+        if (error) {
+            console.error('[institution-store] Supabase fejl:', error);
+            throw error;
+        }
         const result = data || [];
         institutionsCache = result;
+        console.log(`[institution-store] Hentet ${result.length} institutioner`);
         return result;
     } catch (err) {
-        console.error('Kunne ikke hente institutioner:', err);
+        console.error('[institution-store] Kunne ikke hente institutioner:', err);
+        console.error('[institution-store] Fejl detaljer:', {
+            message: err?.message,
+            code: err?.code,
+            details: err?.details,
+            hint: err?.hint
+        });
         if (forceRefresh) institutionsCache = [];
         return [];
     }
