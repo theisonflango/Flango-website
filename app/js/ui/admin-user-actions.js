@@ -1,6 +1,30 @@
 import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
 import { refetchUserBalance } from '../core/data-refetch.js';
 
+function extractBalanceFromRpcData(data) {
+    if (data == null) return null;
+    if (typeof data === 'number' && Number.isFinite(data)) return data;
+    if (typeof data === 'string') {
+        const n = Number(data.replace(',', '.'));
+        return Number.isFinite(n) ? n : null;
+    }
+    if (Array.isArray(data) && data.length === 1) return extractBalanceFromRpcData(data[0]);
+    if (typeof data === 'object') {
+        const candidates = ['new_balance', 'balance', 'customer_balance', 'updated_balance', 'result_balance'];
+        for (const key of candidates) {
+            if (Object.prototype.hasOwnProperty.call(data, key)) {
+                const v = data[key];
+                if (typeof v === 'number' && Number.isFinite(v)) return v;
+                if (typeof v === 'string') {
+                    const n = Number(v.replace(',', '.'));
+                    if (Number.isFinite(n)) return n;
+                }
+            }
+        }
+    }
+    return null;
+}
+
 export function createAdminUserActions(options = {}) {
     const {
         getAllUsers,
@@ -44,18 +68,21 @@ export function createAdminUserActions(options = {}) {
         }
         if (isNaN(amount) || amount <= 0) return showAlert("Ugyldigt beløb.");
 
-        const { error } = await supabaseClient.rpc('make_deposit', { p_target_user_id: userId, p_amount: amount });
+        const { data: rpcData, error } = await supabaseClient.rpc('make_deposit', { p_target_user_id: userId, p_amount: amount });
         if (error) return showAlert(`Fejl: ${error.message}`);
 
-        // REFETCH PATTERN: Hent faktisk balance fra database for garanteret nøjagtighed
-        console.log('[handleDeposit] Refetching balance from database...');
-        const newBalance = await refetchUserBalance(userId);
-        if (newBalance !== null) {
-            // Broadcast balance change event for UI listeners
-            updateCustomerBalanceGlobally(userId, newBalance, amount, 'admin-deposit');
+        // MIN DB calls: Brug balance fra RPC hvis den findes, ellers fallback til refetch.
+        const rpcBalance = extractBalanceFromRpcData(rpcData);
+        if (rpcBalance !== null) {
+            updateCustomerBalanceGlobally(userId, rpcBalance, amount, 'admin-deposit-rpc');
         } else {
-            // Fallback til beregnet værdi hvis refetch fejler
-            updateCustomerBalanceGlobally(userId, user.balance + amount, amount, 'admin-deposit');
+            console.log('[handleDeposit] Refetching balance from database (RPC gav ingen balance)...');
+            const newBalance = await refetchUserBalance(userId);
+            if (newBalance !== null) {
+                updateCustomerBalanceGlobally(userId, newBalance, amount, 'admin-deposit');
+            } else {
+                updateCustomerBalanceGlobally(userId, user.balance + amount, amount, 'admin-deposit');
+            }
         }
 
         renderAdminUserList();
@@ -92,13 +119,17 @@ export function createAdminUserActions(options = {}) {
         }
         if (isNaN(newBalance)) return showAlert("Ugyldigt beløb.");
 
-        const { error } = await supabaseClient.rpc('edit_balance', { p_target_user_id: userId, p_new_balance: newBalance });
+        const { data: rpcData, error } = await supabaseClient.rpc('edit_balance', { p_target_user_id: userId, p_new_balance: newBalance });
         if (error) return showAlert(`Fejl ved opdatering af saldo: ${error.message}`);
 
-        // REFETCH PATTERN: Hent faktisk balance fra database for garanteret nøjagtighed
-        console.log('[handleEditBalance] Refetching balance from database...');
-        const confirmedBalance = await refetchUserBalance(userId);
-        const actualBalance = confirmedBalance !== null ? confirmedBalance : newBalance;
+        // MIN DB calls: Brug balance fra RPC hvis den findes, ellers fallback til refetch.
+        const rpcBalance = extractBalanceFromRpcData(rpcData);
+        let actualBalance = rpcBalance !== null ? rpcBalance : newBalance;
+        if (rpcBalance === null) {
+            console.log('[handleEditBalance] Refetching balance from database (RPC gav ingen balance)...');
+            const confirmedBalance = await refetchUserBalance(userId);
+            actualBalance = confirmedBalance !== null ? confirmedBalance : newBalance;
+        }
         const delta = actualBalance - user.balance;
 
         updateCustomerBalanceGlobally(userId, actualBalance, delta, 'admin-balance-edit');

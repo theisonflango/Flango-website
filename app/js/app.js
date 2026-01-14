@@ -19,6 +19,33 @@ document.addEventListener('DOMContentLoaded', () => {
     initFlangoTheme();
     setupThemePickerUI();
 
+    // Add BETA ribbon on /app-beta only
+    if (location.pathname.includes('/app-beta')) {
+        const logoBtn = document.getElementById('flango-logo-button');
+        if (logoBtn) {
+            const ribbon = document.createElement('span');
+            ribbon.className = 'beta-ribbon';
+            ribbon.textContent = 'BETA';
+            logoBtn.appendChild(ribbon);
+        }
+
+        // Add BETA sticker on login screens (under logo, above icon/title)
+        const addBetaStickersToLoginScreens = () => {
+            const loginContainers = document.querySelectorAll('.login-container');
+            loginContainers.forEach((container) => {
+                const logo = container.querySelector('.login-logo');
+                if (!logo) return;
+                if (container.querySelector('.beta-login-sticker')) return;
+
+                const sticker = document.createElement('div');
+                sticker.className = 'beta-login-sticker';
+                sticker.textContent = 'BETA';
+                logo.insertAdjacentElement('afterend', sticker);
+            });
+        };
+        addBetaStickersToLoginScreens();
+    }
+
     // =================================================================
     // KONFIGURATION
     // =================================================================

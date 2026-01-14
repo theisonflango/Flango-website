@@ -11,6 +11,30 @@ import { showAlert, showCustomAlert } from './sound-and-alerts.js';
 import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
 import { refetchUserBalance } from '../core/data-refetch.js';
 
+function extractBalanceFromRpcData(data) {
+    if (data == null) return null;
+    if (typeof data === 'number' && Number.isFinite(data)) return data;
+    if (typeof data === 'string') {
+        const n = Number(data.replace(',', '.'));
+        return Number.isFinite(n) ? n : null;
+    }
+    if (Array.isArray(data) && data.length === 1) return extractBalanceFromRpcData(data[0]);
+    if (typeof data === 'object') {
+        const candidates = ['new_balance', 'balance', 'customer_balance', 'updated_balance', 'result_balance'];
+        for (const key of candidates) {
+            if (Object.prototype.hasOwnProperty.call(data, key)) {
+                const v = data[key];
+                if (typeof v === 'number' && Number.isFinite(v)) return v;
+                if (typeof v === 'string') {
+                    const n = Number(v.replace(',', '.'));
+                    if (Number.isFinite(n)) return n;
+                }
+            }
+        }
+    }
+    return null;
+}
+
 export function setupAdminUserManagerFromModule(config = {}) {
     const {
         allUsers,
@@ -396,16 +420,20 @@ export function setupAdminUserManagerFromModule(config = {}) {
         }
 
         if (!isNaN(depositVal) && depositVal > 0) {
-            const { error } = await depositToUser(user.id, depositVal);
+            const { data: rpcData, error } = await depositToUser(user.id, depositVal);
             if (error) return showAlert(`Fejl ved indbetaling: ${error.message}`);
 
-            // REFETCH fra DB for garanteret nøjagtighed
-            const newBalance = await refetchUserBalance(user.id);
-            if (newBalance !== null) {
-                updateCustomerBalanceGlobally(user.id, newBalance, depositVal, 'admin-manager-deposit');
+            // MIN DB calls: Brug balance fra RPC hvis den findes, ellers fallback til refetch.
+            const rpcBalance = extractBalanceFromRpcData(rpcData);
+            if (rpcBalance !== null) {
+                updateCustomerBalanceGlobally(user.id, rpcBalance, depositVal, 'admin-manager-deposit-rpc');
             } else {
-                // Fallback hvis refetch fejler
-                updateCustomerBalanceGlobally(user.id, user.balance + depositVal, depositVal, 'admin-manager-deposit');
+                const newBalance = await refetchUserBalance(user.id);
+                if (newBalance !== null) {
+                    updateCustomerBalanceGlobally(user.id, newBalance, depositVal, 'admin-manager-deposit');
+                } else {
+                    updateCustomerBalanceGlobally(user.id, user.balance + depositVal, depositVal, 'admin-manager-deposit');
+                }
             }
         }
 
@@ -414,10 +442,12 @@ export function setupAdminUserManagerFromModule(config = {}) {
             if (isNaN(parsedBalance)) {
                 return showAlert('Ugyldig ny saldo.');
             }
-            const { error } = await setUserBalanceDirectly(user.id, parsedBalance);
+            const { data: rpcData, error } = await setUserBalanceDirectly(user.id, parsedBalance);
             if (error) return showAlert(`Fejl ved opdatering af saldo: ${error.message}`);
-            const delta = parsedBalance - user.balance;
-            updateCustomerBalanceGlobally(user.id, parsedBalance, delta, 'admin-manager-set-balance');
+            const rpcBalance = extractBalanceFromRpcData(rpcData);
+            const actualBalance = rpcBalance !== null ? rpcBalance : parsedBalance;
+            const delta = actualBalance - user.balance;
+            updateCustomerBalanceGlobally(user.id, actualBalance, delta, 'admin-manager-set-balance');
         }
 
         if (pinVal) {

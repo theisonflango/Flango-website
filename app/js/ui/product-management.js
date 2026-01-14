@@ -1310,7 +1310,9 @@ export function createProductManagementUI(options = {}) {
             refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
             refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
             institution_id: adminProfile.institution_id,
-            sort_order: products.length
+            sort_order: products.length,
+            is_visible: true,  // FIX: Sæt is_visible til true som standard, så nye produkter er synlige
+            is_enabled: true   // FIX: Sæt is_enabled til true som standard, så nye produkter er aktive
         }]).select().single();
         if (error) return showAlert(`Fejl: ${error.message}`);
         await saveProductAllergens(data.id, allergens);

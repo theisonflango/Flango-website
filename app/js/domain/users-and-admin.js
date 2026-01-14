@@ -75,11 +75,10 @@ export async function fetchAdminsForInstitution(instId) {
     if (!instId) return [];
     if (adminCacheByInstitutionUsers?.[instId]) return adminCacheByInstitutionUsers[instId];
     try {
-        const { data, error } = await supabaseClient
-            .from('admin_directory')
-            .select('id,name,email')
-            .eq('institution_id', instId)
-            .order('name');
+        // SIKKERHED: Brug RPC der kun returnerer {id,name} (ingen email-læk før login)
+        const { data, error } = await supabaseClient.rpc('get_admin_directory_public', {
+            p_institution_id: instId,
+        });
         if (error) throw error;
         adminCacheByInstitutionUsers[instId] = data || [];
     } catch (err) {

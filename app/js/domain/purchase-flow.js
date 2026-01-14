@@ -10,7 +10,7 @@ import {
 } from './cafe-session-store.js';
 import { renderOrder } from './order-ui.js';
 import { getProductIconInfo } from './products-and-cart.js';
-import { canChildPurchase, invalidateAllLimitCaches } from './purchase-limits.js';
+import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild } from './purchase-limits.js';
 import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
 import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
 import { escapeHtml } from '../core/escape-html.js';
@@ -18,6 +18,36 @@ import { escapeHtml } from '../core/escape-html.js';
 // ============================================================================
 // HELPER FUNKTIONER FOR handleCompletePurchase (OPT-6)
 // ============================================================================
+
+function extractBalanceFromRpcData(data) {
+    if (data == null) return null;
+    if (typeof data === 'number' && Number.isFinite(data)) return data;
+    if (typeof data === 'string') {
+        const n = Number(data.replace(',', '.'));
+        return Number.isFinite(n) ? n : null;
+    }
+    if (Array.isArray(data) && data.length === 1) return extractBalanceFromRpcData(data[0]);
+    if (typeof data === 'object') {
+        const candidates = [
+            'new_balance',
+            'balance',
+            'customer_balance',
+            'updated_balance',
+            'result_balance',
+        ];
+        for (const key of candidates) {
+            if (Object.prototype.hasOwnProperty.call(data, key)) {
+                const val = data[key];
+                if (typeof val === 'number' && Number.isFinite(val)) return val;
+                if (typeof val === 'string') {
+                    const n = Number(val.replace(',', '.'));
+                    if (Number.isFinite(n)) return n;
+                }
+            }
+        }
+    }
+    return null;
+}
 
 /**
  * Beriger ordrelinjer med allergeninformation
@@ -528,19 +558,43 @@ export async function handleCompletePurchase({
         const childId = customer.id;
 
         // Parallel validation checks for all items (much faster than sequential)
+        // FIX: Wrap each canChildPurchase call with retry logic for transient errors
         const checkPromises = currentOrder.map(async (line) => {
             const productId = line.product_id || line.productId || line.id;
             const product = allProducts.find(p => p.id === productId);
             if (!productId) return { allowed: true };
 
-            return await canChildPurchase(
-                productId,
-                childId,
-                currentOrder,
-                customer.institution_id,
-                product?.name,
-                true // final checkout: undgå dobbelt-tælling af kurven
-            );
+            // FIX: Retry logic for transient errors (fx network timeouts)
+            let lastError = null;
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    const result = await canChildPurchase(
+                        productId,
+                        childId,
+                        currentOrder,
+                        customer.institution_id,
+                        product?.name,
+                        true // final checkout: undgå dobbelt-tælling af kurven
+                    );
+                    return result;
+                } catch (err) {
+                    lastError = err;
+                    // FIX: Hvis det er første forsøg og fejlen ser ud til at være transient
+                    // (fx network error, timeout), prøv igen. Ellers throw videre.
+                    const isTransientError = err?.message?.includes('network') || 
+                                           err?.message?.includes('timeout') ||
+                                           err?.message?.includes('fetch');
+                    if (attempt === 0 && isTransientError) {
+                        console.warn('[canChildPurchase] Transient fejl, prøver igen:', productId, err);
+                        await new Promise(resolve => setTimeout(resolve, 100)); // Kort delay før retry
+                        continue;
+                    }
+                    // Hvis det ikke er transient eller andet forsøg fejlede, throw videre
+                    throw err;
+                }
+            }
+            // Dette skulle ikke nås, men hvis det gør, throw den sidste fejl
+            throw lastError;
         });
 
         const results = await Promise.all(checkPromises);
@@ -549,13 +603,18 @@ export async function handleCompletePurchase({
         const failedCheck = results.find(result => result && result.allowed === false);
         if (failedCheck) {
             const message = failedCheck.message || 'Det her køb er ikke tilladt lige nu. Tal med en voksen i caféen.';
+            // FIX: Kun spil fejlyd når købet faktisk blokeres pga. validering
+            try { 
+                playSound?.('error'); 
+            } catch {}
             await showCustomAlert('Køb ikke tilladt', message);
             return;
         }
     } catch (err) {
-        console.warn('[canChildPurchase] Validering fejlede – afviser køb (fail-closed):', err);
+        // FIX: Kun spil fejlyd og blokér hvis det er en strukturel fejl der ikke kunne retries
+        console.error('[canChildPurchase] Strukturel fejl ved validering – afviser køb:', err);
         
-        // Giv bruger feedback (lyd/alert)
+        // Giv bruger feedback (lyd/alert) - kun når købet faktisk blokeres
         try { 
             playSound?.('error'); 
         } catch {}
@@ -653,15 +712,10 @@ export async function handleCompletePurchase({
                               (isTestUser && institutionSettings.spending_limit_applies_to_test_users);
 
         if (appliesToUser) {
-            const today = new Date().toISOString().split('T')[0];
-            const { data: todayPurchases } = await supabaseClient
-                .from('sales')
-                .select('total_price')
-                .eq('customer_id', customer.id)
-                .gte('created_at', `${today}T00:00:00`)
-                .lte('created_at', `${today}T23:59:59`);
-
-            const spentToday = (todayPurchases || []).reduce((sum, sale) => sum + (sale.total_price || 0), 0);
+            // OPTIMERING: genbrug sales-cache (undgår per-køb query i checkout).
+            // getTodaysTotalSpendForChild bruger getTodaysSalesForChild med TTL + in-flight dedup
+            // og er allerede preloadet ved selectUser i normale flows.
+            const spentToday = await getTodaysTotalSpendForChild(customer.id, customer.institution_id);
             const spendingLimit = institutionSettings.spending_limit_amount || 40;
             const wouldSpend = spentToday + finalTotal;
 
@@ -730,7 +784,7 @@ export async function handleCompletePurchase({
     }
     const balanceUpdateNonce = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-    const { error } = await supabaseClient.rpc('process_sale', salePayload);
+    const { data: rpcData, error } = await supabaseClient.rpc('process_sale', salePayload);
     if (error) {
         showAlert('Database Fejl: ' + error.message);
         setButtonLoadingState(completePurchaseBtn, 'normal');
@@ -750,20 +804,37 @@ export async function handleCompletePurchase({
             status: 'provisional',
             nonce: balanceUpdateNonce,
         });
-        // 2) Confirm against server state and correct if needed
-        const confirmedBalance = await refreshCustomerBalanceFromDB(customer.id, {
-            status: 'confirmed',
-            nonce: balanceUpdateNonce,
-            retry: 1,
-        });
-        if (confirmedBalance !== null && Math.abs(confirmedBalance - appliedBalance) > 0.009) {
-            console.warn('[purchase-flow] Balance mismatch after confirm', {
-                provisional: appliedBalance,
-                confirmed: confirmedBalance,
+        // 2) Confirm against server state with MIN DB calls:
+        // - Prefer balance returned from RPC (0 ekstra DB queries)
+        // - Fallback: refetch balance from DB
+        const rpcBalance = extractBalanceFromRpcData(rpcData);
+        if (rpcBalance !== null) {
+            updateCustomerBalanceGlobally(customer.id, rpcBalance, -finalTotal, 'purchase-confirmed-rpc', {
+                status: 'confirmed',
                 nonce: balanceUpdateNonce,
             });
-        } else if (confirmedBalance === null) {
-            console.warn('[purchase-flow] Balance confirmation failed; UI remains on provisional', { nonce: balanceUpdateNonce });
+            if (Math.abs(rpcBalance - appliedBalance) > 0.009) {
+                console.warn('[purchase-flow] Balance mismatch (rpc vs provisional)', {
+                    provisional: appliedBalance,
+                    rpcBalance,
+                    nonce: balanceUpdateNonce,
+                });
+            }
+        } else {
+            const confirmedBalance = await refreshCustomerBalanceFromDB(customer.id, {
+                status: 'confirmed',
+                nonce: balanceUpdateNonce,
+                retry: 1,
+            });
+            if (confirmedBalance !== null && Math.abs(confirmedBalance - appliedBalance) > 0.009) {
+                console.warn('[purchase-flow] Balance mismatch after confirm', {
+                    provisional: appliedBalance,
+                    confirmed: confirmedBalance,
+                    nonce: balanceUpdateNonce,
+                });
+            } else if (confirmedBalance === null) {
+                console.warn('[purchase-flow] Balance confirmation failed; UI remains on provisional', { nonce: balanceUpdateNonce });
+            }
         }
         let nextOrder = clearOrder();
         try {
@@ -790,7 +861,7 @@ export async function handleCompletePurchase({
     }
 }
 
-export async function handleUndoLastSale() {
+export async function handleUndoLastSale({ setCurrentOrder, orderList, totalPriceEl, updateSelectedUserInfo } = {}) {
     const confirmed = await showCustomAlert('Fortryd Sidste Køb', 'Er du sikker på, du vil fortryde det seneste salg? Handlingen kan ikke omgøres.', 'confirm');
     if (!confirmed) return false;
     const { data, error } = await supabaseClient.rpc('undo_last_sale');
@@ -798,22 +869,26 @@ export async function handleUndoLastSale() {
         showAlert('Fejl ved fortrydelse: ' + error.message);
         return false;
     } else {
-        const result = data[0];
+        const result = Array.isArray(data) ? data[0] : data;
         await showCustomAlert('Success!', `Salget for ${escapeHtml(result.customer_name)} på ${result.refunded_amount.toFixed(2)} kr. er blevet fortrudt.`);
 
-        // Refresh balance from DB instead of full reload
-        await refreshCustomerBalanceFromDB(result.customer_id);
+        // Prefer any returned balance; fallback to DB refetch.
+        const maybeBalance = extractBalanceFromRpcData(result);
+        if (maybeBalance !== null) {
+            updateCustomerBalanceGlobally(result.customer_id, maybeBalance, 0, 'undo-last-sale-rpc', { status: 'confirmed' });
+        } else {
+            await refreshCustomerBalanceFromDB(result.customer_id);
+        }
 
         // Invalidate ALL caches and refresh order UI
         invalidateAllLimitCaches(result.customer_id);
-        if (typeof setCurrentOrder === 'function') {
-            setCurrentOrder([]);
-        }
-        const orderList = document.querySelector('.order-list');
-        const totalPriceEl = document.getElementById('total-price');
-        const updateSelectedUserInfo = window.updateSelectedUserInfo;
-        if (orderList && totalPriceEl) {
-            renderOrder(orderList, [], totalPriceEl, updateSelectedUserInfo);
+        try { setOrder([]); } catch {}
+        if (typeof setCurrentOrder === 'function') setCurrentOrder([]);
+        const listEl = orderList || document.querySelector('.order-list');
+        const totalEl = totalPriceEl || document.getElementById('total-price');
+        const updateFn = updateSelectedUserInfo || window.updateSelectedUserInfo;
+        if (listEl && totalEl) {
+            renderOrder(listEl, [], totalEl, updateFn);
         }
     }
     return true;

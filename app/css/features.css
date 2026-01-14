@@ -111,6 +111,61 @@ h3 {
 }
 
 /* ============================================================
+   BETA RIBBON (only visible on /app-beta)
+   ============================================================ */
+
+#flango-logo-button {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+#flango-logo-button .beta-ribbon {
+    position: absolute !important;
+    display: block !important;
+    top: -2px !important;
+    right: -8px !important;
+    background: linear-gradient(135deg, #ff9f43 0%, #f7b731 50%, #ff9f43 100%) !important;
+    color: #5d4037 !important;
+    font-size: 7px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+    padding: 2px 12px !important;
+    border-radius: 2px !important;
+    transform: rotate(35deg) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+    z-index: 999 !important;
+    pointer-events: none !important;
+    text-transform: uppercase !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+}
+
+/* Beta sticker on login screens (only on /app-beta) */
+.login-container .beta-login-sticker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    /* Pull up under the logo (reduce actual layout spacing) */
+    margin: -90px auto 10px !important;
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    color: #5d4037;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    width: fit-content;
+    transform: rotate(-2deg);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    pointer-events: none;
+}
+
+/* ============================================================
    CURRENT ORDER / CART
    ============================================================ */
 
@@ -1645,4 +1700,118 @@ body:not([data-theme="pastel-pop"]) .cafe-icon {
 .shift-swap-btn.secondary:hover {
     background: #e2e8f0;
     border-color: #cbd5e1;
+}
+
+/* ============================================================
+   DB-HISTORIK MODAL
+   ============================================================ */
+
+#db-history-modal .modal-content {
+    max-width: 600px;
+    height: auto;
+    max-height: 85vh;
+}
+
+.db-history-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px 0;
+}
+
+.db-history-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.db-history-metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    font-size: 15px;
+    color: #334155;
+}
+
+.db-history-metric-values {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 14px;
+    color: #64748b;
+}
+
+.db-history-metric-used {
+    font-weight: 700;
+    font-size: 18px;
+    color: #1e293b;
+}
+
+.db-history-metric-limit {
+    color: #64748b;
+}
+
+.db-history-progress-container {
+    width: 100%;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.db-history-progress-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.db-history-progress-bar.low {
+    background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.db-history-progress-bar.medium {
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.db-history-progress-bar.high {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.db-history-metric-note {
+    font-size: 12px;
+    color: #94a3b8;
+    font-style: italic;
+    margin-top: 4px;
+}
+
+.db-history-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+    margin-top: 8px;
+}
+
+.db-history-refresh-btn {
+    padding: 8px 16px;
+    background: var(--primary-color, #4682b4);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.db-history-refresh-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
