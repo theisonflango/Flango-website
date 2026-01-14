@@ -2,6 +2,7 @@
 import { getProductIconInfo, PRODUCT_ICON_CLASS_MAP } from '../domain/products-and-cart.js';
 import { getOrder } from '../domain/order-store.js';
 import { refetchAllProducts } from '../core/data-refetch.js';
+import { runWithAuthRetry } from '../core/auth-retry.js';
 import {
     STANDARD_ICONS,
     uploadProductIcon,
@@ -1297,7 +1298,9 @@ export function createProductManagementUI(options = {}) {
         if (isNaN(price)) return showAlert("Ugyldig pris.");
         const products = getProducts();
         const refillEnabledValue = refillEnabled === true;
-        const { data, error } = await supabaseClient.from("products").insert([{
+        const { data, error } = await runWithAuthRetry(
+            'addProduct',
+            () => supabaseClient.from("products").insert([{
             name,
             price,
             emoji,
@@ -1313,7 +1316,8 @@ export function createProductManagementUI(options = {}) {
             sort_order: products.length,
             is_visible: true,  // FIX: Sæt is_visible til true som standard, så nye produkter er synlige
             is_enabled: true   // FIX: Sæt is_enabled til true som standard, så nye produkter er aktive
-        }]).select().single();
+            }]).select().single()
+        );
         if (error) return showAlert(`Fejl: ${error.message}`);
         await saveProductAllergens(data.id, allergens);
         if (institutionId) {
@@ -1352,7 +1356,9 @@ export function createProductManagementUI(options = {}) {
         const price = parseFloat(priceStr.replace(",", "."));
         if (isNaN(price)) return showAlert("Ugyldig pris.");
         const refillEnabledValue = refillEnabled === true;
-        const { error } = await supabaseClient.from("products").update({
+        const { error } = await runWithAuthRetry(
+            'editProduct',
+            () => supabaseClient.from("products").update({
             name,
             price,
             emoji,
@@ -1364,7 +1370,8 @@ export function createProductManagementUI(options = {}) {
             refill_price: refillEnabledValue ? refillPrice : null,
             refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
             refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
-        }).eq("id", productId);
+            }).eq("id", productId)
+        );
         if (error) return showAlert(`Fejl: ${error.message}`);
         Object.assign(product, {
             name,
@@ -1397,10 +1404,13 @@ export function createProductManagementUI(options = {}) {
         if (!product) return;
         const currentlyEnabled = product.is_enabled !== false;
         const nextEnabled = !currentlyEnabled;
-        const { error } = await supabaseClient
-            .from("products")
-            .update({ is_enabled: nextEnabled })
-            .eq("id", productId);
+        const { error } = await runWithAuthRetry(
+            'toggleProductStatus',
+            () => supabaseClient
+                .from("products")
+                .update({ is_enabled: nextEnabled })
+                .eq("id", productId)
+        );
         if (error) return showAlert(`Fejl: ${error.message}`);
 
         // REFETCH PATTERN: Hent fresh data fra database for at sikre UI er synkroniseret
@@ -1418,7 +1428,10 @@ export function createProductManagementUI(options = {}) {
         if (!product) return;
         const confirmed = await showCustomAlert('Bekræft Sletning', `Er du sikker på, du vil slette <strong>${product.name}</strong> permanent?`, 'confirm');
         if (!confirmed) return;
-        const { error } = await supabaseClient.from("products").delete().eq("id", productId);
+        const { error } = await runWithAuthRetry(
+            'deleteProduct',
+            () => supabaseClient.from("products").delete().eq("id", productId)
+        );
         if (error) return showAlert(`Fejl: ${error.message}`);
 
         // REFETCH PATTERN: Hent fresh data fra database for at sikre UI er synkroniseret

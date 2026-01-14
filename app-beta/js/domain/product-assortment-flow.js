@@ -1,4 +1,5 @@
 import { getCurrentCustomer } from './cafe-session-store.js';
+import { runWithAuthRetry } from '../core/auth-retry.js';
 import { applyProductLimitsToButtons, getProductIconInfo } from './products-and-cart.js';
 let flangoReorderMode = false;
 let flangoLongPressTimer = null;
@@ -271,11 +272,14 @@ export function setupProductAssortmentFlow({
     }
 
     async function fetchAndRenderProducts() {
-        const { data, error } = await supabaseClient
-            .from('products')
-            .select('*')
-            .eq('institution_id', adminProfile.institution_id)
-            .order('sort_order');
+        const { data, error } = await runWithAuthRetry(
+            'fetchProducts',
+            () => supabaseClient
+                .from('products')
+                .select('*')
+                .eq('institution_id', adminProfile.institution_id)
+                .order('sort_order')
+        );
         if (error) {
             showAlert('Fejl ved hentning af produkter: ' + error.message);
             return;

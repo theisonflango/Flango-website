@@ -5,6 +5,7 @@ import { createAdminUserActions } from '../ui/admin-user-actions.js';
 import { setupAdminUserManagerFromModule } from '../ui/admin-user-manager.js';
 import { createParentPortalAdminUI } from '../ui/parent-portal-admin.js';
 import { mergeUsersWithParentNotifications } from './users-and-admin.js';
+import { runWithAuthRetry } from '../core/auth-retry.js';
 
 export async function loadUsersAndNotifications({
     adminProfile,
@@ -73,29 +74,33 @@ export async function loadUsersAndNotifications({
         shiftTimerEnabled: shiftTimerEnabled
     };
 
-    // Byg bruger-query baseret på settings
-    let usersQuery = supabaseClient
-        .from('users')
-        .select('*, last_parent_login_at, parent_pin_is_custom')
+    const buildUsersQuery = () => {
+        // Byg bruger-query baseret på settings
+        let usersQuery = supabaseClient
+            .from('users')
+            .select('*, last_parent_login_at, parent_pin_is_custom')
+            .eq('institution_id', institutionId);
+
+        // Hvis admins IKKE skal vises, filtrer kun til børn/kunder
+        // VIGTIGT: Kun filtrer hvis settings eksplicit er sat til false
+        if (showAdminsInList === false) {
+            usersQuery = usersQuery.eq('role', 'kunde');
+            console.log('[admin-flow] Filtrerer bruger-liste til kun kunder (role = kunde)');
+        } else {
+            console.log('[admin-flow] Viser alle brugere i bruger-liste');
+        }
+
+        return usersQuery.order('name');
+    };
+
+    const buildNotificationsQuery = () => supabaseClient
+        .from('parent_notifications')
+        .select('user_id, notify_at_zero, notify_at_ten')
         .eq('institution_id', institutionId);
 
-    // Hvis admins IKKE skal vises, filtrer kun til børn/kunder
-    // VIGTIGT: Kun filtrer hvis settings eksplicit er sat til false
-    if (showAdminsInList === false) {
-        usersQuery = usersQuery.eq('role', 'kunde');
-        console.log('[admin-flow] Filtrerer bruger-liste til kun kunder (role = kunde)');
-    } else {
-        console.log('[admin-flow] Viser alle brugere i bruger-liste');
-    }
-
-    usersQuery = usersQuery.order('name');
-
     const [usersResponse, notificationsResponse] = await Promise.all([
-        usersQuery,
-        supabaseClient
-            .from('parent_notifications')
-            .select('user_id, notify_at_zero, notify_at_ten')
-            .eq('institution_id', institutionId)
+        runWithAuthRetry('loadUsers', buildUsersQuery),
+        runWithAuthRetry('loadParentNotifications', buildNotificationsQuery)
     ]);
 
     const { data: usersData, error: usersError } = usersResponse;

@@ -1,5 +1,6 @@
 import { showAlert, showCustomAlert, playSound } from '../ui/sound-and-alerts.js';
 import { supabaseClient } from '../core/config-and-supabase.js';
+import { runWithAuthRetry } from '../core/auth-retry.js';
 import { OVERDRAFT_LIMIT } from '../core/constants.js';
 import { setOrder, getOrder, clearOrder, getOrderTotal } from './order-store.js';
 import { evaluatePurchase } from './cafe-session.js';
@@ -298,20 +299,11 @@ async function fetchAllergyPolicyForChild(childId, institutionId) {
 // PRODUCT ALLERGENS CACHE - undgår gentagne DB-kald (ændres sjældent)
 // ============================================================================
 const productAllergensCache = new Map(); // productId → allergens[]
-let productAllergensCacheTimestamp = 0;
-const PRODUCT_ALLERGENS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutter
 
 async function fetchProductAllergensMap(productIds) {
     if (!Array.isArray(productIds) || productIds.length === 0) return {};
     const uniqueIds = Array.from(new Set(productIds.filter(Boolean)));
     if (uniqueIds.length === 0) return {};
-
-    // Check cache TTL
-    const now = Date.now();
-    if (now - productAllergensCacheTimestamp > PRODUCT_ALLERGENS_CACHE_TTL_MS) {
-        productAllergensCache.clear();
-        productAllergensCacheTimestamp = now;
-    }
 
     // OPTIMERING: Check hvilke produkter vi allerede har cached
     const cachedResults = {};
@@ -713,7 +705,7 @@ export async function handleCompletePurchase({
 
         if (appliesToUser) {
             // OPTIMERING: genbrug sales-cache (undgår per-køb query i checkout).
-            // getTodaysTotalSpendForChild bruger getTodaysSalesForChild med TTL + in-flight dedup
+            // getTodaysTotalSpendForChild bruger getTodaysSalesForChild med in-flight dedup
             // og er allerede preloadet ved selectUser i normale flows.
             const spentToday = await getTodaysTotalSpendForChild(customer.id, customer.institution_id);
             const spendingLimit = institutionSettings.spending_limit_amount || 40;
@@ -784,7 +776,10 @@ export async function handleCompletePurchase({
     }
     const balanceUpdateNonce = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-    const { data: rpcData, error } = await supabaseClient.rpc('process_sale', salePayload);
+    const { data: rpcData, error } = await runWithAuthRetry(
+        'process_sale',
+        () => supabaseClient.rpc('process_sale', salePayload)
+    );
     if (error) {
         showAlert('Database Fejl: ' + error.message);
         setButtonLoadingState(completePurchaseBtn, 'normal');
@@ -864,7 +859,10 @@ export async function handleCompletePurchase({
 export async function handleUndoLastSale({ setCurrentOrder, orderList, totalPriceEl, updateSelectedUserInfo } = {}) {
     const confirmed = await showCustomAlert('Fortryd Sidste Køb', 'Er du sikker på, du vil fortryde det seneste salg? Handlingen kan ikke omgøres.', 'confirm');
     if (!confirmed) return false;
-    const { data, error } = await supabaseClient.rpc('undo_last_sale');
+    const { data, error } = await runWithAuthRetry(
+        'undo_last_sale',
+        () => supabaseClient.rpc('undo_last_sale')
+    );
     if (error) {
         showAlert('Fejl ved fortrydelse: ' + error.message);
         return false;

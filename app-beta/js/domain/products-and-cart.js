@@ -269,7 +269,7 @@ export function invalidateChildLimitSnapshot() {
     currentChildLimitSnapshot = null;
     currentChildLimitSnapshotChildId = null;
     // VIGTIGT: Vi invaliderer ikke de globale limits/sales caches her.
-    // Caches er allerede keyed pr. childId og har TTL + explicit invalidation efter køb/undo.
+    // Caches er keyed pr. childId og invalideres eksplicit efter køb/undo.
     // Global invalidation ved hvert bruger-skift skaber unødige DB-kald og giver "cache thrash".
 }
 
