@@ -49,10 +49,26 @@ export async function setupClubLoginScreen() {
             return;
         }
         const inst = institutions.find(i => String(i.id) === String(chosenId));
-        if (!inst || inst.login_code !== code) {
-            errorEl.textContent = 'Forkert klubkode. Prøv igen, eller spørg en voksen i klubben.';
+        if (!inst) {
+            errorEl.textContent = 'Vælg institution først.';
             return;
         }
+
+        // SIKKERHED: login_code må ikke ligge i klienten. Verificér via RPC.
+        try {
+            const { data: ok, error } = await supabaseClient.rpc('verify_club_login', {
+                p_institution_id: inst.id,
+                p_code: code,
+            });
+            if (error || ok !== true) {
+                errorEl.textContent = 'Forkert klubkode. Prøv igen, eller spørg en voksen i klubben.';
+                return;
+            }
+        } catch (e) {
+            errorEl.textContent = 'Kunne ikke bekræfte klubkoden. Prøv igen.';
+            return;
+        }
+
         rememberInstitution(inst);
         await setupLockedScreen();
     };
@@ -102,15 +118,17 @@ export async function setupLockedScreen() {
             adminSelect.innerHTML = '<option value="">— Vælg administrator —</option>';
             admins.forEach(admin => {
                 const opt = document.createElement('option');
-                opt.value = admin.email || '';
-                opt.textContent = admin.name || admin.email || 'Admin';
+                // SIKKERHED: Vi viser kun navn (ingen email-læk).
+                opt.value = admin.id || '';
+                opt.textContent = admin.name || 'Admin';
                 adminSelect.appendChild(opt);
             });
             adminSelect.onchange = () => {
-                const selectedEmail = adminSelect.value;
-                if (selectedEmail) {
-                    emailInput.value = selectedEmail;
-                    passwordInput.focus();
+                // Vi autofylder ikke email længere (skal indtastes manuelt).
+                const selectedId = adminSelect.value;
+                if (selectedId) {
+                    emailInput.value = '';
+                    emailInput.focus();
                 } else {
                     emailInput.value = '';
                     emailInput.focus();

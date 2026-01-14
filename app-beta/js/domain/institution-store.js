@@ -23,10 +23,17 @@ export async function fetchInstitutions(forceRefresh = false) {
     }
 
     try {
+        // VIGTIGT SIKKERHED:
+        // - login_code må ikke hentes til klienten.
+        // - For "klub login" (ingen auth session) henter vi kun id/name/is_active.
+        // - Efter admin-login (auth session) henter vi institutions settings (stadig uden login_code).
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const isAuthed = !!session;
+
         const { data, error } = await supabaseClient
             .from('institutions')
-            .select(`
-                id, name, login_code,
+            .select(isAuthed ? `
+                id, name, is_active,
                 sugar_policy_enabled, sugar_policy_max_unhealthy_per_day,
                 sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled,
                 sugar_policy_max_per_product_enabled,
@@ -36,6 +43,8 @@ export async function fetchInstitutions(forceRefresh = false) {
                 spending_limit_applies_to_regular_users, spending_limit_applies_to_admins,
                 spending_limit_applies_to_test_users,
                 show_admins_in_user_list, admins_purchase_free, shift_timer_enabled
+            ` : `
+                id, name, is_active
             `)
             .order('name');
         if (error) {
