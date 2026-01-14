@@ -29,14 +29,21 @@ document.addEventListener('DOMContentLoaded', () => {
             logoBtn.appendChild(ribbon);
         }
 
-        // Add BETA sticker on login screen (under logo, above lock)
-        const lockedLogo = document.querySelector('#screen-locked .login-logo');
-        if (lockedLogo && !document.querySelector('#screen-locked .beta-login-sticker')) {
-            const sticker = document.createElement('div');
-            sticker.className = 'beta-login-sticker';
-            sticker.textContent = 'BETA';
-            lockedLogo.insertAdjacentElement('afterend', sticker);
-        }
+        // Add BETA sticker on login screens (under logo, above icon/title)
+        const addBetaStickersToLoginScreens = () => {
+            const loginContainers = document.querySelectorAll('.login-container');
+            loginContainers.forEach((container) => {
+                const logo = container.querySelector('.login-logo');
+                if (!logo) return;
+                if (container.querySelector('.beta-login-sticker')) return;
+
+                const sticker = document.createElement('div');
+                sticker.className = 'beta-login-sticker';
+                sticker.textContent = 'BETA';
+                logo.insertAdjacentElement('afterend', sticker);
+            });
+        };
+        addBetaStickersToLoginScreens();
     }
 
     // =================================================================

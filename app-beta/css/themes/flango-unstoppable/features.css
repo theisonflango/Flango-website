@@ -174,24 +174,27 @@ h3 {
     line-height: 1 !important;
 }
 
-/* Beta sticker on login screen (only on /app-beta) */
-#screen-locked .beta-login-sticker {
+/* Beta sticker on login screens (only on /app-beta) */
+.login-container .beta-login-sticker {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 6px 12px;
-    margin: 10px auto 6px;
+    padding: 8px 16px;
+    /* Pull closer to logo (logo already has margin-bottom: 20px) */
+    margin: -8px auto 10px;
     background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
     color: #5d4037;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 800;
     letter-spacing: 0.6px;
-    border-radius: 10px;
+    border-radius: 12px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.5);
     text-transform: uppercase;
     width: fit-content;
-    transform: rotate(-3deg);
+    transform: rotate(-2deg);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    pointer-events: none;
 }
 
 /* ============================================================
