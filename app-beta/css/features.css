@@ -149,8 +149,8 @@ h3 {
     justify-content: center;
     gap: 6px;
     padding: 8px 16px;
-    /* Pull closer to logo (logo already has margin-bottom: 20px) */
-    margin: -8px auto 10px;
+    /* Visually attach to logo (logo already has margin-bottom: 20px) */
+    margin: -18px auto 18px;
     background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
     color: #5d4037;
     font-size: 14px;
