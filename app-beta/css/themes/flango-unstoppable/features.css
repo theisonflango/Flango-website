@@ -143,6 +143,38 @@ h3 {
 }
 
 /* ============================================================
+   BETA RIBBON (only visible on /app-beta)
+   ============================================================ */
+
+#flango-logo-button {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+#flango-logo-button .beta-ribbon {
+    position: absolute !important;
+    display: block !important;
+    top: -2px !important;
+    right: -8px !important;
+    background: linear-gradient(135deg, #ff9f43 0%, #f7b731 50%, #ff9f43 100%) !important;
+    color: #5d4037 !important;
+    font-size: 7px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+    padding: 2px 12px !important;
+    border-radius: 2px !important;
+    transform: rotate(35deg) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+    z-index: 999 !important;
+    pointer-events: none !important;
+    text-transform: uppercase !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+}
+
+/* ============================================================
    CURRENT ORDER / CART - STICKY NOTE SHOPPING LIST STYLE
    ============================================================ */
 
