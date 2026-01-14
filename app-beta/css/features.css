@@ -115,32 +115,31 @@ h3 {
    ============================================================ */
 
 #flango-logo-button {
-    position: relative;
-    overflow: visible;
+    position: relative !important;
+    overflow: visible !important;
 }
 
 #flango-logo-button .beta-ribbon {
-    position: absolute;
-    top: 6px;
-    right: -12px;
-    background: linear-gradient(135deg, #ff9f43 0%, #f7b731 50%, #ff9f43 100%);
-    color: #5d4037;
-    font-size: 7px;
-    font-weight: 800;
-    letter-spacing: 0.5px;
-    padding: 2px 14px;
-    border-radius: 2px;
-    transform: rotate(35deg);
-    transform-origin: center center;
-    box-shadow:
-        0 1px 2px rgba(0, 0, 0, 0.25),
-        inset 0 1px 0 rgba(255, 255, 255, 0.4);
-    z-index: 10;
-    pointer-events: none;
-    text-transform: uppercase;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    font-family: system-ui, -apple-system, sans-serif;
-    white-space: nowrap;
+    position: absolute !important;
+    display: block !important;
+    top: -2px !important;
+    right: -8px !important;
+    background: linear-gradient(135deg, #ff9f43 0%, #f7b731 50%, #ff9f43 100%) !important;
+    color: #5d4037 !important;
+    font-size: 7px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+    padding: 2px 12px !important;
+    border-radius: 2px !important;
+    transform: rotate(35deg) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+    z-index: 999 !important;
+    pointer-events: none !important;
+    text-transform: uppercase !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
 }
 
 /* ============================================================
