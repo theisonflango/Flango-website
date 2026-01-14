@@ -268,8 +268,9 @@ async function ensureChildLimitSnapshot(childId, institutionId = null) {
 export function invalidateChildLimitSnapshot() {
     currentChildLimitSnapshot = null;
     currentChildLimitSnapshotChildId = null;
-    // Invalidate ALL caches to ensure consistency
-    invalidateAllLimitCaches();
+    // VIGTIGT: Vi invaliderer ikke de globale limits/sales caches her.
+    // Caches er allerede keyed pr. childId og har TTL + explicit invalidation efter køb/undo.
+    // Global invalidation ved hvert bruger-skift skaber unødige DB-kald og giver "cache thrash".
 }
 
 // Bruges til at sikre, at kun seneste apply-call opdaterer UI (undgår race på tværs af async fetches).

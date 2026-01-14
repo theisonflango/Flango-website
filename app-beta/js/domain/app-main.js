@@ -34,6 +34,7 @@ import { onBalanceChange } from '../core/balance-manager.js';
 import { setupCustomerPickerFlow } from './customer-picker-flow.js';
 import { setupAdminFlow, loadUsersAndNotifications } from './admin-flow.js';
 import { setupProductAssortmentFlow } from './product-assortment-flow.js';
+import { isAuthAdminUser, openDbHistoryModal } from '../ui/db-history.js';
 import {
     setCurrentAdmin,
     getCurrentAdmin,
@@ -342,6 +343,21 @@ export async function startApp() {
     // Update logged-in user display (refactored to app-ui-updates.js)
     updateLoggedInUserDisplay(clerkProfile, avatarCache, { AVATAR_STORAGE_PREFIX, DEFAULT_AVATAR_URL });
 
+    // 3.5) DB-Historik button (superadmin only)
+    const dbHistoryBtn = document.getElementById('toolbar-db-history-btn');
+    function updateDbHistoryButtonVisibility() {
+        if (dbHistoryBtn) {
+            const isAuthAdmin = isAuthAdminUser();
+            dbHistoryBtn.style.display = isAuthAdmin ? 'flex' : 'none';
+        }
+    }
+    updateDbHistoryButtonVisibility();
+    if (dbHistoryBtn) {
+        dbHistoryBtn.addEventListener('click', () => {
+            openDbHistoryModal();
+        });
+    }
+
     // 4) Basis event wiring (logout + modal luk)
     setupLogoutFlow({
         clerkProfile,
@@ -445,7 +461,12 @@ export async function startApp() {
         });
 
         undoLastSaleBtn.addEventListener('click', async () => {
-            const ok = await handleUndoLastSale();
+            const ok = await handleUndoLastSale({
+                setCurrentOrder: (next) => { currentOrder = next; },
+                orderList,
+                totalPriceEl,
+                updateSelectedUserInfo,
+            });
             if (ok) {
                 // MUST-RUN: Ensure locks are refreshed after DB write.
                 await refreshProductLocks({ force: true });
@@ -782,6 +803,9 @@ export async function startApp() {
         }
     });
 
+    // Update DB-Historik button visibility when admin/clerk changes
+    updateDbHistoryButtonVisibility();
+
     // Admin-handlinger i brugerlisten
     userModal.addEventListener('click', (event) => {
         const clickedActionIcon = event.target.closest('.action-icon');
@@ -791,7 +815,12 @@ export async function startApp() {
     });
 
     window.__flangoUndoLastSale = async () => {
-        const ok = await handleUndoLastSale();
+        const ok = await handleUndoLastSale({
+            setCurrentOrder: (next) => { currentOrder = next; },
+            orderList,
+            totalPriceEl,
+            updateSelectedUserInfo,
+        });
         if (ok) {
             await refreshProductLocks({ force: true });
         }
