@@ -111,6 +111,37 @@ h3 {
 }
 
 /* ============================================================
+   BETA RIBBON (only visible on /app-beta)
+   ============================================================ */
+
+#flango-logo-button {
+    position: relative;
+    overflow: visible;
+}
+
+#flango-logo-button .beta-ribbon {
+    position: absolute;
+    top: 2px;
+    right: -6px;
+    background: linear-gradient(135deg, #ff9f43 0%, #f7b731 50%, #ff9f43 100%);
+    color: #5d4037;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    padding: 2px 10px;
+    border-radius: 3px;
+    transform: rotate(32deg);
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    z-index: 10;
+    pointer-events: none;
+    text-transform: uppercase;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================================
    CURRENT ORDER / CART
    ============================================================ */
 

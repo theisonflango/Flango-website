@@ -19,6 +19,17 @@ document.addEventListener('DOMContentLoaded', () => {
     initFlangoTheme();
     setupThemePickerUI();
 
+    // Add BETA ribbon on /app-beta only
+    if (location.pathname.includes('/app-beta')) {
+        const logoBtn = document.getElementById('flango-logo-button');
+        if (logoBtn) {
+            const ribbon = document.createElement('span');
+            ribbon.className = 'beta-ribbon';
+            ribbon.textContent = 'BETA';
+            logoBtn.appendChild(ribbon);
+        }
+    }
+
     // =================================================================
     // KONFIGURATION
     // =================================================================
