@@ -28,6 +28,15 @@ document.addEventListener('DOMContentLoaded', () => {
             ribbon.textContent = 'BETA';
             logoBtn.appendChild(ribbon);
         }
+
+        // Add BETA sticker on login screen (under logo, above lock)
+        const lockedLogo = document.querySelector('#screen-locked .login-logo');
+        if (lockedLogo && !document.querySelector('#screen-locked .beta-login-sticker')) {
+            const sticker = document.createElement('div');
+            sticker.className = 'beta-login-sticker';
+            sticker.textContent = 'BETA';
+            lockedLogo.insertAdjacentElement('afterend', sticker);
+        }
     }
 
     // =================================================================
