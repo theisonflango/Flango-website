@@ -150,7 +150,7 @@ h3 {
     gap: 6px;
     padding: 8px 16px;
     /* Pull up under the logo (reduce actual layout spacing) */
-    margin: -70px auto 10px !important;
+    margin: -90px auto 10px !important;
     background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
     color: #5d4037;
     font-size: 14px;
