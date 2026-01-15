@@ -1,4 +1,5 @@
 // Simpelt state-modul for indkøbskurven (ingen UI/Supabase). Kan udvides senere.
+import { calculateOrderTotal } from './products-and-cart.js';
 
 let currentOrder = [];
 
@@ -66,9 +67,5 @@ export function clearOrder() {
  * @returns {number} totalbeløb
  */
 export function getOrderTotal() {
-    return currentOrder.reduce((sum, line) => {
-        const qty = Number.isFinite(line?.quantity) ? line.quantity : 1;
-        const price = Number.isFinite(line?.price) ? line.price : 0;
-        return sum + qty * price;
-    }, 0);
+    return calculateOrderTotal(currentOrder);
 }

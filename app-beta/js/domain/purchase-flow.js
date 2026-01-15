@@ -10,11 +10,12 @@ import {
     clearCurrentCustomer,
 } from './cafe-session-store.js';
 import { renderOrder } from './order-ui.js';
-import { getProductIconInfo } from './products-and-cart.js';
+import { getProductIconInfo, getBulkDiscountedUnitPrice, getBulkDiscountSummary } from './products-and-cart.js';
 import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild } from './purchase-limits.js';
 import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
 import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
 import { escapeHtml } from '../core/escape-html.js';
+import { formatKr } from '../ui/confirm-modals.js';
 
 // ============================================================================
 // HELPER FUNKTIONER FOR handleCompletePurchase (OPT-6)
@@ -89,8 +90,12 @@ function groupOrderItems(order) {
         const productId = item?.product_id || item?.productId || item?.id;
         if (productId == null) return acc;
         const key = String(productId);
-        acc[key] = acc[key] || { ...item, id: productId, count: 0 };
-        acc[key].count++;
+        acc[key] = acc[key] || { ...item, id: productId, count: 0, bulkDiscountDisabled: false };
+        const qty = Number.isFinite(item?.quantity) ? item.quantity : 1;
+        acc[key].count += qty;
+        if (item?._bulkDiscountDisabled === true) {
+            acc[key].bulkDiscountDisabled = true;
+        }
         return acc;
     }, {});
 }
@@ -139,6 +144,21 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance) {
         line.appendChild(text);
 
         root.appendChild(line);
+
+        const summary = getBulkDiscountSummary(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
+        if (summary.discountAmount > 0) {
+            const discountLine = document.createElement('div');
+            discountLine.className = 'confirm-product-line';
+            discountLine.style.color = '#64748b';
+            const bundleLabel = summary.bundlePrice != null
+                ? formatKr(summary.bundlePrice).replace(' kr', '')
+                : '';
+            const label = bundleLabel
+                ? `🏷️ Rabat (${summary.qtyRule} for ${bundleLabel})`
+                : '🏷️ Rabat';
+            discountLine.textContent = `${label}: -${formatKr(summary.discountAmount)}`;
+            root.appendChild(discountLine);
+        }
     });
 
     // Byg negativ balance advarsel hvis relevant
@@ -152,7 +172,7 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance) {
     }
 
     // Append totals section (as HTML string for formatting; names are escaped)
-    const totalsHtml = `<br>for <strong>${Number(finalTotal).toFixed(2)} kr.</strong><hr style="margin: 15px 0; border: 1px solid #eee;">${escapeHtml(customer?.name || 'Ukendt')} har <strong>${Number(newBalance).toFixed(2)} kr.</strong> tilbage.${negativeBalanceWarning}`;
+    const totalsHtml = `<br>for <strong>${formatKr(finalTotal)}</strong><hr style="margin: 15px 0; border: 1px solid #eee;">${escapeHtml(customer?.name || 'Ukendt')} har <strong>${formatKr(newBalance)}</strong> tilbage.${negativeBalanceWarning}`;
     root.insertAdjacentHTML('beforeend', totalsHtml);
 
     return root.innerHTML;
@@ -746,14 +766,19 @@ export async function handleCompletePurchase({
 
     // Grupper items til database payload (bruger shouldBeFreePurchase fra tidligere)
     const itemCounts = groupOrderItems(currentOrder);
-    const cartItemsForDB = Object.values(itemCounts).map(item => ({
-        product_id: item.id,
-        quantity: item.count,
-        // Hvis admin skal købe gratis, sæt pris til 0. Ellers brug effektiv pris eller normal pris.
-        price: shouldBeFreePurchase ? 0 : (item._effectivePrice ?? item.price),
-        is_refill: item._isRefill || false, // Marker hvis det er et refill-køb
-        product_name: item._effectiveName || item.name // Gem effektivt navn (fx "Saft Refill")
-    }));
+    const cartItemsForDB = Object.values(itemCounts).map(item => {
+        const effectiveUnitPrice = shouldBeFreePurchase
+            ? 0
+            : getBulkDiscountedUnitPrice(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
+        return {
+            product_id: item.id,
+            quantity: item.count,
+            // Hvis admin skal købe gratis, sæt pris til 0. Ellers brug mængderabat (hvis aktiv).
+            price: effectiveUnitPrice,
+            is_refill: item._isRefill || false, // Marker hvis det er et refill-køb
+            product_name: item._effectiveName || item.name // Gem effektivt navn (fx "Saft Refill")
+        };
+    });
 
     // OPTIMERING: Brug helper funktion til at resolve admin og clerk IDs
     const sessionAdmin = getCurrentSessionAdmin?.() || null;

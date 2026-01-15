@@ -248,6 +248,14 @@ h3 {
     margin-left: 8px;
 }
 
+.total-product-summary .discount-tag-icon {
+    font-size: 48px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .total-text {
     white-space: nowrap;
 }

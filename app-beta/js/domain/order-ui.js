@@ -1,10 +1,11 @@
 // js/domain/order-ui.js
 import { getOrderTotal, setOrder, getOrder } from './order-store.js';
-import { getProductIconInfo, addProductToOrder, removeProductFromOrder } from './products-and-cart.js';
+import { getProductIconInfo, addProductToOrder, removeProductFromOrder, getBulkDiscountSummary } from './products-and-cart.js';
 import { canChildPurchase } from './purchase-limits.js';
 import { playSound } from '../ui/sound-and-alerts.js';
 import { getCurrentCustomer, clearEvaluation } from './cafe-session-store.js';
 import { MAX_ITEMS_PER_ORDER } from '../core/constants.js';
+import { formatKr } from '../ui/confirm-modals.js';
 
 /**
  * Genererer mini-kvittering med chips til mobil
@@ -105,6 +106,31 @@ function buildProductIconSummaryNode(currentOrder) {
         return null;
     }
 
+    let hasBulkDiscount = false;
+    const productCounts = new Map();
+    const sampleById = new Map();
+    const bulkDisabledById = new Map();
+    currentOrder.forEach((item) => {
+        const productId = item?.product_id || item?.productId || item?.id;
+        if (productId == null) return;
+        const qty = Number.isFinite(item?.quantity) ? item.quantity : 1;
+        const key = String(productId);
+        productCounts.set(key, (productCounts.get(key) || 0) + qty);
+        if (!sampleById.has(key)) {
+            sampleById.set(key, item);
+        }
+        if (item?._bulkDiscountDisabled === true) {
+            bulkDisabledById.set(key, true);
+        }
+    });
+    productCounts.forEach((count, key) => {
+        const product = sampleById.get(key);
+        const summary = getBulkDiscountSummary(product, count, { disableDiscount: bulkDisabledById.get(key) === true });
+        if (summary.discountAmount > 0) {
+            hasBulkDiscount = true;
+        }
+    });
+
     const wrap = document.createElement('div');
     wrap.className = 'total-product-summary';
 
@@ -130,6 +156,18 @@ function buildProductIconSummaryNode(currentOrder) {
         }
     });
 
+    if (hasBulkDiscount) {
+        const plus = document.createElement('span');
+        plus.className = 'plus-sign';
+        plus.textContent = '+';
+        wrap.appendChild(plus);
+
+        const tag = document.createElement('span');
+        tag.className = 'discount-tag-icon';
+        tag.textContent = '🏷️';
+        wrap.appendChild(tag);
+    }
+
     const eq = document.createElement('span');
     eq.className = 'equals-sign';
     eq.textContent = '=';
@@ -151,6 +189,25 @@ export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelec
 
     // Use DocumentFragment for batched DOM insertion (reduces reflows)
     const fragment = document.createDocumentFragment();
+    const productCounts = new Map();
+    const remainingById = new Map();
+    const sampleById = new Map();
+    const bulkDisabledById = new Map();
+    currentOrder.forEach((item) => {
+        const productId = item?.product_id || item?.productId || item?.id;
+        if (productId == null) return;
+        const qty = Number.isFinite(item?.quantity) ? item.quantity : 1;
+        const key = String(productId);
+        productCounts.set(key, (productCounts.get(key) || 0) + qty);
+        remainingById.set(key, (remainingById.get(key) || 0) + qty);
+        if (!sampleById.has(key)) {
+            sampleById.set(key, item);
+        }
+        if (item?._bulkDiscountDisabled === true) {
+            bulkDisabledById.set(key, true);
+        }
+    });
+
     currentOrder.forEach((item, index) => {
         const listItem = document.createElement('li');
 
@@ -189,6 +246,52 @@ export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelec
         listItem.appendChild(line);
         listItem.appendChild(removeBtn);
         fragment.appendChild(listItem);
+
+        const productId = item?.product_id || item?.productId || item?.id;
+        if (productId != null) {
+            const key = String(productId);
+            if (remainingById.has(key)) {
+                const qty = Number.isFinite(item?.quantity) ? item.quantity : 1;
+                const remaining = (remainingById.get(key) || 0) - qty;
+                remainingById.set(key, remaining);
+                if (remaining <= 0) {
+                    const count = productCounts.get(key) || 0;
+                    const product = sampleById.get(key) || item;
+                    const summary = getBulkDiscountSummary(product, count, { disableDiscount: bulkDisabledById.get(key) === true });
+                    if (summary.discountAmount > 0) {
+                        const discountItem = document.createElement('li');
+                        const discountLine = document.createElement('span');
+                        discountLine.className = 'cart-product-line';
+                        const bundleLabel = summary.bundlePrice != null
+                            ? formatKr(summary.bundlePrice).replace(' kr', '')
+                            : '';
+                        const label = bundleLabel
+                            ? `🏷️ Rabat (${summary.qtyRule} for ${bundleLabel})`
+                            : `🏷️ Rabat`;
+                        const discountText = document.createElement('span');
+                        discountText.textContent = `${label}: -${formatKr(summary.discountAmount)}`;
+                        discountLine.appendChild(discountText);
+
+                        const discountRemoveBtn = document.createElement('span');
+                        discountRemoveBtn.className = 'remove-item-btn';
+                        discountRemoveBtn.dataset.index = String(index);
+                        discountRemoveBtn.dataset.action = 'disable-bulk';
+                        discountRemoveBtn.dataset.productId = key;
+                        discountRemoveBtn.title = 'Fjern vare';
+
+                        const discountTrash = document.createElement('img');
+                        discountTrash.src = 'Icons/webp/Function/Papirkurv.webp';
+                        discountTrash.alt = 'Fjern';
+                        discountTrash.className = 'cart-remove-icon';
+                        discountRemoveBtn.appendChild(discountTrash);
+
+                        discountItem.appendChild(discountLine);
+                        discountItem.appendChild(discountRemoveBtn);
+                        fragment.appendChild(discountItem);
+                    }
+                }
+            }
+        }
     });
     // OPTIMERING: replaceChildren(fragment) i stedet for innerHTML = '' + appendChild
     orderListEl.replaceChildren(fragment);
@@ -202,6 +305,37 @@ export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelec
 export function handleOrderListClick(event, currentOrder, rerender, onOrderChanged) {
     const removeBtn = event.target.closest('.remove-item-btn');
     if (!removeBtn) return;
+
+    const action = removeBtn.dataset.action || '';
+    if (action === 'disable-bulk') {
+        const productId = removeBtn.dataset.productId;
+        if (!productId) return;
+        let changed = false;
+        currentOrder.forEach((item) => {
+            const itemId = item?.product_id || item?.productId || item?.id;
+            if (itemId != null && String(itemId) === String(productId)) {
+                if (item._bulkDiscountDisabled !== true) {
+                    item._bulkDiscountDisabled = true;
+                    changed = true;
+                }
+            }
+        });
+        if (changed) {
+            try {
+                setOrder([...currentOrder]);
+            } catch (err) {
+                console.warn('[order-store] sync failed after bulk discount disable:', err);
+            }
+            clearEvaluation();
+            if (typeof rerender === 'function') {
+                rerender();
+            }
+            if (typeof onOrderChanged === 'function') {
+                onOrderChanged({ skipSnapshotRefresh: true });
+            }
+        }
+        return;
+    }
 
     const indexToRemove = parseInt(removeBtn.dataset.index, 10);
     if (isNaN(indexToRemove)) return;

@@ -28,6 +28,7 @@
     flex-direction: column;
     gap: 6px;
     height: 100%;
+    position: relative;
 }
 
 /* Sidebar Regions */

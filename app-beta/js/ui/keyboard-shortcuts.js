@@ -13,10 +13,19 @@ export function setupKeyboardShortcuts({
     onOrderChanged,
 }) {
     document.addEventListener('keydown', (event) => {
-        if (document.querySelector('.modal[style*="display: flex"]') || event.target.tagName === 'INPUT') {
+        // Deaktiver shortcuts hvis man er i reorder-mode eller redigerer i et felt
+        const isInReorderMode = document.body.classList.contains('reorder-mode');
+        const isEditing = event.target.tagName === 'INPUT' || 
+                         event.target.tagName === 'TEXTAREA' ||
+                         event.target.isContentEditable ||
+                         event.target.closest('[contenteditable="true"]');
+        
+        if (document.querySelector('.modal[style*="display: flex"]') || isEditing || isInReorderMode) {
             return;
         }
+        
         if (event.key >= '0' && event.key <= '9') {
+            if (event.repeat) return;
             event.preventDefault();
             const productIndex = event.key === '0' ? 9 : parseInt(event.key, 10) - 1;
             const visibleProducts = getAllProducts().filter(p => p.is_visible !== false && p.is_enabled !== false);
@@ -32,9 +41,6 @@ export function setupKeyboardShortcuts({
             }
         } else if (event.key === 'Enter') {
             event.preventDefault();
-            if (document.body.classList.contains('reorder-mode')) {
-                return;
-            }
             if (completePurchaseButton && !completePurchaseButton.disabled) {
                 completePurchaseButton.click();
             }
@@ -56,15 +62,29 @@ export function setupKeyboardShortcuts({
     });
 
     document.addEventListener('keydown', (event) => {
+        // Tillad Escape selv i edit mode (for at lukke modals/overlays)
         if (event.key === 'Escape') {
-            closeTopMostOverlay();
+            // Men ikke hvis man er i midten af at redigere navn/pris
+            const isEditing = event.target.isContentEditable || 
+                             event.target.tagName === 'INPUT' ||
+                             event.target.closest('.product-edit-name, .product-edit-price-input');
+            if (!isEditing) {
+                closeTopMostOverlay();
+            }
         }
     });
 
     // Generelle keyboard shortcuts (for alle brugere)
     document.addEventListener('keydown', (event) => {
         const key = event.key.toLowerCase();
-        const isTyping = event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA';
+        const isInReorderMode = document.body.classList.contains('reorder-mode');
+        const isTyping = event.target.tagName === 'INPUT' || 
+                        event.target.tagName === 'TEXTAREA' ||
+                        event.target.isContentEditable ||
+                        event.target.closest('[contenteditable="true"]');
+        
+        // Deaktiver shortcuts i reorder-mode
+        if (isInReorderMode) return;
 
         // H: Åbn/luk historik
         if (key === 'h') {
@@ -145,10 +165,14 @@ export function setupKeyboardShortcuts({
 
     // Admin-only keyboard shortcuts
     document.addEventListener('keydown', (event) => {
-        // Skip if typing in input or modal is open
-        if (event.target.tagName === 'INPUT' ||
-            event.target.tagName === 'TEXTAREA' ||
-            document.querySelector('.modal[style*="display: flex"]')) {
+        // Skip if typing in input, contenteditable, reorder-mode or modal is open
+        const isInReorderMode = document.body.classList.contains('reorder-mode');
+        const isEditing = event.target.tagName === 'INPUT' ||
+                         event.target.tagName === 'TEXTAREA' ||
+                         event.target.isContentEditable ||
+                         event.target.closest('[contenteditable="true"]');
+        
+        if (isEditing || isInReorderMode || document.querySelector('.modal[style*="display: flex"]')) {
             return;
         }
 
