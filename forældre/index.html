@@ -2260,6 +2260,9 @@
                           </div>
                         </div>
                       </div>
+                      <p id="club-limitations-fallback" class="club-limitations-description" style="display: none; margin-bottom: 0;">
+                        Ingen klubbegrænsninger er sat lige nu.
+                      </p>
                     </section>
                   </div>
                 </div>
@@ -2751,6 +2754,32 @@
         const portalEnabled = safeBool(prefs && prefs.topup_portal_enabled);
 
         const anyEnabled = cashEnabled || qrEnabled || portalEnabled;
+        const prefsHasTopupKeys =
+          prefs &&
+          ("topup_cash_enabled" in prefs ||
+            "topup_qr_enabled" in prefs ||
+            "topup_portal_enabled" in prefs);
+
+        if (!prefsHasTopupKeys) {
+          if (paymentCollapsible) {
+            paymentCollapsible.style.display = "block";
+          }
+          if (paymentStatusBadge) {
+            paymentStatusBadge.textContent = "Kunne ikke hente";
+          }
+          paymentGrid.innerHTML = `
+            <div class="payment-option">
+              <div class="payment-option-title">
+                <div class="left"><span class="emoji">⚠️</span><span>Optankning midlertidigt utilgængelig</span></div>
+                <span class="payment-badge">Info</span>
+              </div>
+              <div class="payment-body">
+                Vi kunne ikke hente betalingsmuligheder lige nu. Prøv igen om lidt.
+              </div>
+            </div>
+          `;
+          return;
+        }
 
         // Vis/skjul collapsible sektionen baseret på om der er betalingsmuligheder
         if (paymentCollapsible) {
@@ -3582,6 +3611,7 @@
         const dailyLimitValue = document.getElementById("club-daily-limit");
         const productLimitsItem = document.getElementById("club-product-limits-item");
         const productLimitsContainer = document.getElementById("club-product-limits");
+        const clubLimitationsFallback = document.getElementById("club-limitations-fallback");
 
         if (!clubLimitationsCard || !clubLimitationsCollapsible) return;
 
@@ -3655,10 +3685,15 @@
           productLimitsItem.style.display = "none";
         }
 
-        // Vis collapsible sektionen hvis der er begrænsninger, ellers skjul den
-        const hasAnyLimitations = (dailyLimitItem.style.display !== "none") || (productLimitsItem.style.display !== "none");
+        // Vis collapsible sektionen også hvis der ikke er begrænsninger
+        const hasAnyLimitations =
+          (dailyLimitItem.style.display !== "none") ||
+          (productLimitsItem.style.display !== "none");
+        if (clubLimitationsFallback) {
+          clubLimitationsFallback.style.display = hasAnyLimitations ? "none" : "block";
+        }
         if (clubLimitationsCollapsible) {
-          clubLimitationsCollapsible.style.display = hasAnyLimitations ? "block" : "none";
+          clubLimitationsCollapsible.style.display = "block";
         }
       }
 
