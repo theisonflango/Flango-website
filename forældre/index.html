@@ -276,6 +276,291 @@
       color: #111827;
     }
 
+    .club-limitations-card {
+      background: linear-gradient(135deg, rgba(255, 122, 60, 0.06), rgba(255, 255, 255, 0.98));
+      border-radius: 18px;
+      padding: 16px 18px;
+      border: 1px solid rgba(255, 122, 60, 0.2);
+      box-shadow: 0 12px 25px rgba(15, 23, 42, 0.12);
+      margin-top: 12px;
+    }
+
+    .club-limitations-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .club-limitations-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      background: rgba(255, 122, 60, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .club-limitations-title {
+      font-family: var(--font-heading);
+      font-size: 17px;
+      font-weight: 700;
+      color: #111827;
+      line-height: 1.3;
+    }
+
+    .club-limitations-description {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    .club-limitations-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .club-limitation-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 12px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+    }
+
+    .club-limitation-item-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #111827;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .club-limitation-item-title::before {
+      content: "•";
+      color: var(--primary-color);
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .club-limitation-item-content {
+      font-size: 12px;
+      color: #4b5563;
+      margin-left: 16px;
+      line-height: 1.5;
+    }
+
+    .club-limitation-item-content .product-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .club-limitation-item-content .product-name {
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .parent-settings-note {
+      font-size: 12px;
+      color: #6b7280;
+      padding: 12px 14px;
+      background: rgba(249, 250, 251, 0.8);
+      border-radius: 12px;
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      margin-top: 16px;
+    }
+
+    .parent-settings-note strong {
+      display: block;
+      font-size: 13px;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+
+    /* Collapsible accordion sections */
+    .collapsible-section-container {
+      margin-top: 12px;
+    }
+
+    .collapsible-section-header {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(249, 250, 251, 0.95));
+      border-radius: 14px;
+      padding: 14px 16px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .collapsible-section-header:hover {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(249, 250, 251, 1));
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .collapsible-section-header.active {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      border-bottom: none;
+    }
+
+    .collapsible-section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-heading);
+      font-size: 15px;
+      font-weight: 600;
+      color: #111827;
+      flex: 1;
+    }
+
+    .collapsible-section-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: rgba(59, 130, 246, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .collapsible-section-arrow {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .collapsible-section-header.active .collapsible-section-arrow {
+      transform: rotate(180deg);
+    }
+
+    .collapsible-section-content {
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 0 0 14px 14px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      border-top: none;
+      padding: 16px 18px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
+      display: none;
+      overflow: hidden;
+    }
+
+    .collapsible-section-content.active {
+      display: block;
+    }
+
+    .daily-assortment-card {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(255, 255, 255, 0.98));
+      border-radius: 18px;
+      padding: 16px 18px;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      box-shadow: 0 12px 25px rgba(15, 23, 42, 0.12);
+      margin-top: 12px;
+    }
+
+    .daily-assortment-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .daily-assortment-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      background: rgba(59, 130, 246, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .daily-assortment-title {
+      font-family: var(--font-heading);
+      font-size: 17px;
+      font-weight: 700;
+      color: #111827;
+      line-height: 1.3;
+    }
+
+    .daily-assortment-description {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    .daily-assortment-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .daily-assortment-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 10px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      font-size: 13px;
+      color: #374151;
+    }
+
+    .daily-assortment-item .product-emoji {
+      font-size: 18px;
+      width: 28px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .daily-assortment-item .product-name {
+      flex: 1;
+      font-weight: 500;
+      color: #111827;
+    }
+
+    .daily-assortment-item .product-price {
+      font-weight: 600;
+      color: var(--primary-color);
+      font-size: 13px;
+    }
+
+    .daily-assortment-empty {
+      text-align: center;
+      padding: 20px;
+      color: #9ca3af;
+      font-size: 12px;
+      font-style: italic;
+    }
+
     .login-section {
       background: rgba(255, 255, 255, 0.95);
       border-radius: 20px;
@@ -1828,121 +2113,355 @@
                 </button>
               </div>
 
-              <div class="history-card">
-                <div class="history-header">
-                  <div class="history-title">
-                    Historik
-                    <span class="badge">Sidste 30 dage</span>
+              <!-- Collapsible Sections Container -->
+              <div id="collapsible-sections-container">
+                <!-- 1. E-mail, når saldoen er lav -->
+                <div class="collapsible-section-container" id="email-notification-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">📧</div>
+                      <span>E-mail, når saldoen er lav</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
                   </div>
-                  <div class="history-summary" id="history-summary">
-                    Viser køb og optankninger på kontoen.
-                  </div>
-                </div>
-                <ul id="history-list" class="history-list"></ul>
-              </div>
-
-              <section class="payment-card" id="payment-card" style="display: none;">
-                <div class="payment-header">
-                  <div class="payment-title">
-                    <div class="icon">💳</div>
-                    Optank saldo
-                  </div>
-                  <span class="payment-badge" id="payment-status-badge">Institutionen bestemmer</span>
-                </div>
-                <p class="payment-subtitle" id="payment-subtitle">
-                  Portalen viser kun de betalingsmuligheder, som din klub/SFO har slået til.
-                </p>
-
-                <div class="payment-grid" id="payment-grid"></div>
-
-                <div class="payment-qr" id="payment-qr">
-                  <img id="payment-qr-img" alt="MobilePay QR" />
-                  <div class="payment-qr-note" id="payment-qr-note">
-                    Betal via MobilePay QR. Saldoen opdateres efter godkendelse af personalet.
-                  </div>
-                </div>
-
-                <div class="payment-feedback" id="payment-feedback"></div>
-              </section>
-
-              <section id="spending-limit-section" class="card" style="margin-top: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(255, 255, 255, 0.98)); border-radius: 16px; padding: 10px 12px 11px; border: 1px solid rgba(199, 210, 254, 0.9); box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);">
-                <h2 class="section-title" style="font-size: 13px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 7px;">
-                  <div class="icon" style="width: 24px; height: 24px; border-radius: 999px; background: rgba(59, 130, 246, 0.12); display: flex; align-items: center; justify-content: center; font-size: 14px;">💰</div>
-                  Daglig beløbsgrænse
-                </h2>
-                <p class="section-subtitle" style="font-size: 11px; color: #6b7280; margin-bottom: 6px;">
-                  Sæt en maksimal grænse for, hvor meget der må bruges i caféen pr. dag. Du kan vælge et forslag eller skrive et andet beløb.
-                </p>
-
-                <div class="spend-limit-chips">
-                  <button type="button" class="spend-limit-chip daily-limit-chip" data-amount="20">20 kr.</button>
-                  <button type="button" class="spend-limit-chip daily-limit-chip" data-amount="30">30 kr.</button>
-                  <button type="button" class="spend-limit-chip daily-limit-chip" data-amount="40">40 kr.</button>
-                  <button type="button" class="spend-limit-chip daily-limit-chip" data-amount="50">50 kr.</button>
-                </div>
-
-                <div class="spend-limit-row">
-                  <input
-                    type="number"
-                    id="daily-limit-input"
-                    min="0"
-                    step="1"
-                    placeholder="Beløbsgrænse i kr. pr. dag (fx 20)"
-                  />
-                  <button type="button" id="save-daily-limit-btn">Gem beløbsgrænse</button>
-                </div>
-                <p id="daily-limit-feedback" class="spend-limit-feedback"></p>
-              </section>
-              <div id="email-notification-section" class="notify-card">
-                <div class="notify-header">
-                  <div class="notify-title">
-                    <div class="icon">📧</div>
-                    E-mail, når saldoen er lav
-                  </div>
-                  <span class="notify-badge">Valgfrit</span>
-                </div>
-                <div class="notify-body">
-                  <div class="field">
-                    <label for="parent-email-input">E-mailadresse til besked</label>
-                    <input
-                      type="email"
-                      id="parent-email-input"
-                      placeholder="fx mor@eksempel.dk"
-                    />
-                    <div class="notify-options">
-                      <label class="notify-option">
-                        <input type="checkbox" id="notify-zero-checkbox" />
-                        <span>Når saldoen er 0 kr.</span>
-                      </label>
-                      <label class="notify-option">
-                        <input type="checkbox" id="notify-ten-checkbox" />
-                        <span>Når saldoen er 10 kr. eller derunder</span>
-                      </label>
+                  <div class="collapsible-section-content">
+                    <div id="email-notification-section" class="notify-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <div class="notify-header" style="display: none;">
+                        <div class="notify-title">
+                          <div class="icon">📧</div>
+                          E-mail, når saldoen er lav
+                        </div>
+                        <span class="notify-badge">Valgfrit</span>
+                      </div>
+                      <div class="notify-body">
+                        <div class="field">
+                          <label for="parent-email-input">E-mailadresse til besked</label>
+                          <input
+                            type="email"
+                            id="parent-email-input"
+                            placeholder="fx mor@eksempel.dk"
+                          />
+                          <div class="notify-options">
+                            <label class="notify-option">
+                              <input type="checkbox" id="notify-zero-checkbox" />
+                              <span>Når saldoen er 0 kr.</span>
+                            </label>
+                            <label class="notify-option">
+                              <input type="checkbox" id="notify-ten-checkbox" />
+                              <span>Når saldoen er 10 kr. eller derunder</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div class="field">
+                          <div class="notify-save-row">
+                            <button id="save-notify-btn" type="button">
+                              Gem e-mail-beskeder
+                            </button>
+                            <div id="notify-feedback" class="notify-feedback"></div>
+                          </div>
+                          <p style="font-size: 11px; color: #6b7280; margin-top: 4px;">
+                            Du kan altid ændre eller slå beskeder fra igen.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div class="field">
-                    <div class="notify-save-row">
-                      <button id="save-notify-btn" type="button">
-                        Gem e-mail-beskeder
-                      </button>
-                      <div id="notify-feedback" class="notify-feedback"></div>
-                    </div>
-                    <p style="font-size: 11px; color: #6b7280; margin-top: 4px;">
-                      Du kan altid ændre eller slå beskeder fra igen.
-                    </p>
-                  </div>
                 </div>
-              </div>
 
-              <section id="allergens-section" class="allergy-card">
-                <div class="allergy-header">
-                  <div class="allergy-title">
-                    <div class="icon">🥜</div>
-                    Allergier & madbegrænsninger
+                <!-- 2. Historik -->
+                <div class="collapsible-section-container" id="history-collapsible" style="display: block;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">📜</div>
+                      <span>Historik</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
                   </div>
-                  <span class="allergy-badge">Valgfrit</span>
+                  <div class="collapsible-section-content">
+                    <div class="history-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <div class="history-header" style="display: none;">
+                        <div class="history-title">
+                          Historik
+                          <span class="badge">Sidste 30 dage</span>
+                        </div>
+                        <div class="history-summary" id="history-summary">
+                          Viser køb og optankninger på kontoen.
+                        </div>
+                      </div>
+                      <ul id="history-list" class="history-list"></ul>
+                    </div>
+                  </div>
                 </div>
-                <p class="allergy-description">
+
+                <!-- 3. Optank saldo -->
+                <div class="collapsible-section-container" id="payment-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">💳</div>
+                      <span>Optank saldo</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <section class="payment-card" id="payment-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <div class="payment-header" style="display: none;">
+                        <div class="payment-title">
+                          <div class="icon">💳</div>
+                          Optank saldo
+                        </div>
+                        <span class="payment-badge" id="payment-status-badge">Institutionen bestemmer</span>
+                      </div>
+                      <p class="payment-subtitle" id="payment-subtitle" style="margin-bottom: 12px;">
+                        Portalen viser kun de betalingsmuligheder, som din klub/SFO har slået til.
+                      </p>
+                      <div class="payment-grid" id="payment-grid"></div>
+                      <div class="payment-qr" id="payment-qr">
+                        <img id="payment-qr-img" alt="MobilePay QR" />
+                        <div class="payment-qr-note" id="payment-qr-note">
+                          Betal via MobilePay QR. Saldoen opdateres efter godkendelse af personalet.
+                        </div>
+                      </div>
+                      <div class="payment-feedback" id="payment-feedback"></div>
+                    </section>
+                  </div>
+                </div>
+
+                <!-- 4. Sådan passer klubben på børnenes forbrug -->
+                <div class="collapsible-section-container" id="club-limitations-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">🛡️</div>
+                      <span>Sådan passer klubben på børnenes forbrug</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <section id="club-limitations-card" class="club-limitations-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <div class="club-limitations-header" style="display: none;">
+                        <div class="club-limitations-icon">🛡️</div>
+                        <div class="club-limitations-title">
+                          Sådan passer klubben på børnenes forbrug
+                        </div>
+                      </div>
+                      <p class="club-limitations-description" style="margin-bottom: 14px;">
+                        Klubben har opsat klare og pædagogiske rammer for caféen, så børnene kan handle trygt og uden overraskelser.
+                      </p>
+                      <div class="club-limitations-list">
+                        <div class="club-limitation-item" id="club-daily-limit-item" style="display: none;">
+                          <div class="club-limitation-item-title">Daglig grænse</div>
+                          <div class="club-limitation-item-content">
+                            Maks. forbrug pr. dag: <strong id="club-daily-limit">x kr.</strong>
+                          </div>
+                        </div>
+                        <div class="club-limitation-item" id="club-product-limits-item" style="display: none;">
+                          <div class="club-limitation-item-title">Produkter i det faste sortiment med begrænsning</div>
+                          <div class="club-limitation-item-content" id="club-product-limits">
+                            <!-- Produkter indsættes dynamisk her -->
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+
+                <!-- 5. Dagens Sortiment -->
+                <div class="collapsible-section-container" id="daily-assortment-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">📋</div>
+                      <span>Dagens Sortiment</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <section id="daily-assortment-card" class="daily-assortment-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <div class="daily-assortment-header" style="display: none;">
+                        <div class="daily-assortment-icon">📋</div>
+                        <div class="daily-assortment-title">Dagens Sortiment</div>
+                      </div>
+                      <p class="daily-assortment-description" style="margin-bottom: 14px;">
+                        Her er de produkter, der er tilgængelige i dagens sortiment lige nu:
+                      </p>
+                      <div class="daily-assortment-list" id="daily-assortment-list">
+                        <!-- Produkter indsættes dynamisk her -->
+                      </div>
+                    </section>
+                  </div>
+                </div>
+
+                <!-- 6. Daglig beløbsgrænse -->
+                <div class="collapsible-section-container" id="spending-limit-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">💰</div>
+                      <span>Daglig beløbsgrænse</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <section id="spending-limit-section" class="card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <h2 class="section-title" style="display: none; font-size: 13px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 7px;">
+                        <div class="icon" style="width: 24px; height: 24px; border-radius: 999px; background: rgba(59, 130, 246, 0.12); display: flex; align-items: center; justify-content: center; font-size: 14px;">💰</div>
+                        Daglig beløbsgrænse
+                      </h2>
+                      <p class="section-subtitle" style="font-size: 11px; color: #6b7280; margin-bottom: 12px;">
+                        Sæt en maksimal grænse for, hvor meget der må bruges i caféen pr. dag. Du kan vælge et forslag eller skrive et andet beløb.
+                      </p>
+                      <div class="spend-limit-chips">
+                        <button type="button" class="spend-limit-chip daily-limit-chip" data-amount="20">20 kr.</button>
+                        <button type="button" class="spend-limit-chip daily-limit-chip" data-amount="30">30 kr.</button>
+                        <button type="button" class="spend-limit-chip daily-limit-chip" data-amount="40">40 kr.</button>
+                        <button type="button" class="spend-limit-chip daily-limit-chip" data-amount="50">50 kr.</button>
+                      </div>
+                      <div class="spend-limit-row">
+                        <input
+                          type="number"
+                          id="daily-limit-input"
+                          min="0"
+                          step="1"
+                          placeholder="Beløbsgrænse i kr. pr. dag (fx 20)"
+                        />
+                        <button type="button" id="save-daily-limit-btn">Gem beløbsgrænse</button>
+                      </div>
+                      <p id="daily-limit-feedback" class="spend-limit-feedback"></p>
+                    </section>
+                  </div>
+                </div>
+
+                <!-- 7. Købsgrænser pr. produkt -->
+                <div class="collapsible-section-container" id="product-limit-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">🛒</div>
+                      <span>Købsgrænser pr. produkt</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <section id="product-limit-section" class="product-limit-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <div class="product-limit-header" style="display: none;">
+                        <div class="product-limit-title">
+                          <div class="icon">🛒</div>
+                          Købsgrænser pr. produkt
+                        </div>
+                        <span class="product-limit-badge">Valgfrit</span>
+                      </div>
+                      <p class="product-limit-description" style="margin-bottom: 12px;">
+                        Sæt en grænse for, hvor mange stk. af hvert produkt dit barn må købe per dag.
+                        Efterlad som "Ubegrænset" hvis du ikke ønsker en grænse.
+                      </p>
+                      <div class="product-limit-info">
+                        <span>💡</span>
+                        <span>Hvis klubben har sat en grænse, gælder den strengeste. Dit barns køb må aldrig overstige hverken din eller klubbens grænse.</span>
+                      </div>
+                      <div class="product-limit-controls">
+                        <input type="text" class="product-limit-search" id="product-limit-search" placeholder="Søg efter produkt..." />
+                        <label class="product-limit-filter-toggle" id="product-limit-filter-toggle">
+                          <input type="checkbox" id="product-limit-show-modified" style="display: none;" />
+                          <span>Vis kun ændrede</span>
+                        </label>
+                      </div>
+                      <div class="product-limit-list" id="product-limit-list">
+                        <div class="product-limit-empty">Indlæser produkter...</div>
+                      </div>
+                      <div class="product-limit-save-row">
+                        <button type="button" id="save-product-limits-btn">Gem produktgrænser</button>
+                        <div id="product-limit-feedback" class="product-limit-feedback"></div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+
+                <!-- 8. Sukkerpolitik -->
+                <div class="collapsible-section-container" id="sugar-policy-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">🍬</div>
+                      <span>Sukkerpolitik</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <section id="sugar-policy-section" class="product-limit-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <div class="product-limit-header" style="display: none;">
+                        <div class="product-limit-title">
+                          <div class="icon">🍬</div>
+                          Sukkerpolitik
+                        </div>
+                        <span class="product-limit-badge">Valgfrit</span>
+                      </div>
+                      <p class="product-limit-description" style="margin-bottom: 16px;">
+                        Her kan du vælge, hvordan dit barn må købe sukkerholdige/usunde produkter i caféen.
+                      </p>
+                      <div style="padding: 0;">
+                        <label style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; cursor: pointer; padding: 14px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(167, 139, 250, 0.08)); border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.2);">
+                          <input type="checkbox" id="sugar-policy-enabled" style="width: 22px; height: 22px; cursor: pointer; accent-color: #8b5cf6;">
+                          <div>
+                            <strong style="color: #7c3aed;">Aktiver sukkerpolitik</strong>
+                            <div style="font-size: 12px; color: #666; margin-top: 2px;">Slå til for at begrænse usunde køb</div>
+                          </div>
+                        </label>
+                        <div id="sugar-policy-controls" style="display: none;">
+                          <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; cursor: pointer; padding: 12px; background: rgba(239, 68, 68, 0.08); border-radius: 10px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                            <input type="checkbox" id="sugar-block-unhealthy" style="width: 20px; height: 20px; cursor: pointer;">
+                            <div>
+                              <strong style="color: #dc2626;">Mit barn må ikke købe usunde produkter</strong>
+                              <div style="font-size: 12px; color: #666; margin-top: 2px;">Barnet kan stadig se produkterne, men de kan ikke købes.</div>
+                            </div>
+                          </label>
+                          <div id="sugar-limits-container" style="display: flex; flex-direction: column; gap: 12px;">
+                            <div>
+                              <label for="sugar-max-per-day" style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #374151;">
+                                Maks antal usunde produkter pr. dag
+                              </label>
+                              <div style="position: relative;">
+                                <input type="number" id="sugar-max-per-day" max="10" placeholder="Ingen grænse"
+                                       style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                                <span id="sugar-max-per-day-label" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #9ca3af; pointer-events: none;"></span>
+                              </div>
+                              <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">Gælder samlet for alle usunde produkter. Tom = ingen grænse.</div>
+                            </div>
+                            <div>
+                              <label for="sugar-max-per-product" style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #374151;">
+                                Maks antal af hvert usundt produkt pr. dag
+                              </label>
+                              <div style="position: relative;">
+                                <input type="number" id="sugar-max-per-product" max="10" placeholder="Ingen grænse"
+                                       style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                                <span id="sugar-max-per-product-label" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #9ca3af; pointer-events: none;"></span>
+                              </div>
+                              <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">Gælder pr. produkt (fx sodavand eller slik). Tom = ingen grænse.</div>
+                            </div>
+                          </div>
+                        </div>
+                        <button type="button" id="save-sugar-policy-btn" style="margin-top: 16px; width: 100%; padding: 12px; background: linear-gradient(135deg, #8b5cf6, #a78bfa); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);">
+                          Gem sukkerpolitik
+                        </button>
+                        <div id="sugar-policy-feedback" style="margin-top: 8px; font-size: 12px; text-align: center;"></div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+
+                <!-- 9. Allergier & madbegrænsninger -->
+                <div class="collapsible-section-container" id="allergens-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">🥜</div>
+                      <span>Allergier & madbegrænsninger</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <section id="allergens-section" class="allergy-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <div class="allergy-header" style="display: none;">
+                        <div class="allergy-title">
+                          <div class="icon">🥜</div>
+                          Allergier & madbegrænsninger
+                        </div>
+                        <span class="allergy-badge">Valgfrit</span>
+                      </div>
+                      <p class="allergy-description">
                   Her kan du som forælder hjælpe med at markere, hvad dit barn <strong>ikke</strong> bør købe.
                   Personalet kan altid hjælpe, hvis der er tale om læge-diagnosticerede allergier.
                 </p>
@@ -2060,128 +2579,34 @@
                     </div>
                   </div>
                 </div>
-                <div class="allergy-save-row">
-                  <button type="button" id="save-allergy-btn">Gem allergi-indstillinger</button>
-                  <div id="allergy-feedback" class="allergy-feedback"></div>
-                </div>
-              </section>
-
-              <!-- Købsgrænser pr. produkt -->
-              <section id="product-limit-section" class="product-limit-card" style="display: none;">
-                <div class="product-limit-header">
-                  <div class="product-limit-title">
-                    <div class="icon">🛒</div>
-                    Købsgrænser pr. produkt
+                      <div class="allergy-save-row">
+                        <button type="button" id="save-allergy-btn">Gem allergi-indstillinger</button>
+                        <div id="allergy-feedback" class="allergy-feedback"></div>
+                      </div>
+                    </section>
                   </div>
-                  <span class="product-limit-badge">Valgfrit</span>
-                </div>
-                <p class="product-limit-description">
-                  Sæt en grænse for, hvor mange stk. af hvert produkt dit barn må købe per dag.
-                  Efterlad som "Ubegrænset" hvis du ikke ønsker en grænse.
-                </p>
-                <div class="product-limit-info">
-                  <span>💡</span>
-                  <span>Hvis klubben har sat en grænse, gælder den strengeste. Dit barns køb må aldrig overstige hverken din eller klubbens grænse.</span>
                 </div>
 
-                <div class="product-limit-controls">
-                  <input type="text" class="product-limit-search" id="product-limit-search" placeholder="Søg efter produkt..." />
-                  <label class="product-limit-filter-toggle" id="product-limit-filter-toggle">
-                    <input type="checkbox" id="product-limit-show-modified" style="display: none;" />
-                    <span>Vis kun ændrede</span>
-                  </label>
-                </div>
-
-                <div class="product-limit-list" id="product-limit-list">
-                  <div class="product-limit-empty">Indlæser produkter...</div>
-                </div>
-
-                <div class="product-limit-save-row">
-                  <button type="button" id="save-product-limits-btn">Gem produktgrænser</button>
-                  <div id="product-limit-feedback" class="product-limit-feedback"></div>
-                </div>
-              </section>
-
-              <!-- Sukkerpolitik -->
-              <section id="sugar-policy-section" class="product-limit-card" style="display: none;">
-                <div class="product-limit-header">
-                  <div class="product-limit-title">
-                    <div class="icon">🍬</div>
-                    Sukkerpolitik
-                  </div>
-                  <span class="product-limit-badge">Valgfrit</span>
-                </div>
-                <p class="product-limit-description">
-                  Her kan du vælge, hvordan dit barn må købe sukkerholdige/usunde produkter i caféen.
-                </p>
-
-                <div style="padding: 0 16px 16px;">
-                  <!-- Aktiver/deaktiver toggle -->
-                  <label style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; cursor: pointer; padding: 14px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(167, 139, 250, 0.08)); border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.2);">
-                    <input type="checkbox" id="sugar-policy-enabled" style="width: 22px; height: 22px; cursor: pointer; accent-color: #8b5cf6;">
-                    <div>
-                      <strong style="color: #7c3aed;">Aktiver sukkerpolitik</strong>
-                      <div style="font-size: 12px; color: #666; margin-top: 2px;">Slå til for at begrænse usunde køb</div>
+                <!-- 10. Skift kode til forældre-login -->
+                <div class="collapsible-section-container" id="change-pin-collapsible">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">🔑</div>
+                      <span>Skift kode til forældre-login</span>
                     </div>
-                  </label>
-
-                  <!-- Sugar policy controls (skjult når deaktiveret) -->
-                  <div id="sugar-policy-controls" style="display: none;">
-                    <!-- Block unhealthy checkbox -->
-                    <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; cursor: pointer; padding: 12px; background: rgba(239, 68, 68, 0.08); border-radius: 10px; border: 1px solid rgba(239, 68, 68, 0.2);">
-                      <input type="checkbox" id="sugar-block-unhealthy" style="width: 20px; height: 20px; cursor: pointer;">
-                      <div>
-                        <strong style="color: #dc2626;">Mit barn må ikke købe usunde produkter</strong>
-                        <div style="font-size: 12px; color: #666; margin-top: 2px;">Barnet kan stadig se produkterne, men de kan ikke købes.</div>
-                      </div>
-                    </label>
-
-                    <!-- Limit inputs container -->
-                    <div id="sugar-limits-container" style="display: flex; flex-direction: column; gap: 12px;">
-                      <div>
-                        <label for="sugar-max-per-day" style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #374151;">
-                          Maks antal usunde produkter pr. dag
-                        </label>
-                        <div style="position: relative;">
-                          <input type="number" id="sugar-max-per-day" max="10" placeholder="Ingen grænse"
-                                 style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
-                          <span id="sugar-max-per-day-label" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #9ca3af; pointer-events: none;"></span>
-                        </div>
-                        <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">Gælder samlet for alle usunde produkter. Tom = ingen grænse.</div>
-                      </div>
-
-                      <div>
-                        <label for="sugar-max-per-product" style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #374151;">
-                          Maks antal af hvert usundt produkt pr. dag
-                        </label>
-                        <div style="position: relative;">
-                          <input type="number" id="sugar-max-per-product" max="10" placeholder="Ingen grænse"
-                                 style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
-                          <span id="sugar-max-per-product-label" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #9ca3af; pointer-events: none;"></span>
-                        </div>
-                        <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">Gælder pr. produkt (fx sodavand eller slik). Tom = ingen grænse.</div>
-                      </div>
-                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
                   </div>
+                  <div class="collapsible-section-content">
+                    <section class="card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <h2 class="section-title" style="display: none; font-size: 13px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 7px;">
+                        <div class="icon" style="width: 24px; height: 24px; border-radius: 999px; background: rgba(255, 122, 60, 0.12); display: flex; align-items: center; justify-content: center; font-size: 14px;">🔑</div>
+                        Skift kode til forældre-login
+                      </h2>
+                      <p class="section-subtitle" style="font-size: 11px; color: #6b7280; margin-bottom: 12px;">
+                        Her kan du ændre den kode, du bruger til Flango Forældre-portal.
+                      </p>
 
-                  <button type="button" id="save-sugar-policy-btn" style="margin-top: 16px; width: 100%; padding: 12px; background: linear-gradient(135deg, #8b5cf6, #a78bfa); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);">
-                    Gem sukkerpolitik
-                  </button>
-                  <div id="sugar-policy-feedback" style="margin-top: 8px; font-size: 12px; text-align: center;"></div>
-                </div>
-              </section>
-
-              <!-- Skift kode-kort -->
-              <section class="card" style="margin-top: 12px; background: rgba(255, 255, 255, 0.98); border-radius: 16px; padding: 10px 12px 11px; border: 1px solid rgba(220, 220, 220, 0.95); box-shadow: 0 12px 24px rgba(148, 163, 184, 0.2);">
-                <h2 class="section-title" style="font-size: 13px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 7px;">
-                  <div class="icon" style="width: 24px; height: 24px; border-radius: 999px; background: rgba(255, 122, 60, 0.12); display: flex; align-items: center; justify-content: center; font-size: 14px;">🔑</div>
-                  Skift kode til forældre-login
-                </h2>
-                <p class="section-subtitle" style="font-size: 11px; color: #6b7280; margin-bottom: 8px;">
-                  Her kan du ændre den kode, du bruger til Flango Forældre-portal.
-                </p>
-
-                <form id="change-pin-form" class="login-form" style="gap: 6px;">
+                      <form id="change-pin-form" class="login-form" style="gap: 6px;">
                   <div class="form-group">
                     <input
                       type="password"
@@ -2205,10 +2630,13 @@
                       style="padding: 7px 12px; font-size: 12px;"
                     />
                   </div>
-                  <button type="submit" class="primary-btn" style="padding: 6px 11px; font-size: 11px; font-weight: 600; background: linear-gradient(135deg, #ff7a3c, #ffb100); box-shadow: 0 10px 22px rgba(248, 113, 22, 0.4);">Gem ny kode</button>
-                  <p id="change-pin-message" style="margin-top: 6px; font-size: 11px; display: none;"></p>
-                </form>
-              </section>
+                        <button type="submit" class="primary-btn" style="padding: 6px 11px; font-size: 11px; font-weight: 600; background: linear-gradient(135deg, #ff7a3c, #ffb100); box-shadow: 0 10px 22px rgba(248, 113, 22, 0.4);">Gem ny kode</button>
+                        <p id="change-pin-message" style="margin-top: 6px; font-size: 11px; display: none;"></p>
+                      </form>
+                    </section>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -2310,6 +2738,7 @@
       }
 
       function renderPaymentSection(prefs) {
+        const paymentCollapsible = document.getElementById("payment-collapsible");
         if (!paymentCard || !paymentGrid) return;
 
         // Standard: intet
@@ -2323,8 +2752,12 @@
 
         const anyEnabled = cashEnabled || qrEnabled || portalEnabled;
 
+        // Vis/skjul collapsible sektionen baseret på om der er betalingsmuligheder
+        if (paymentCollapsible) {
+          paymentCollapsible.style.display = anyEnabled ? "block" : "none";
+        }
+
         if (!anyEnabled) {
-          paymentCard.style.display = "block";
           if (paymentStatusBadge) {
             paymentStatusBadge.textContent = "Ingen online optankning";
           }
@@ -2343,7 +2776,7 @@
           return;
         }
 
-        paymentCard.style.display = "block";
+        // Payment card vises nu via collapsible sektionen
 
         // Badge
         if (paymentStatusBadge) {
@@ -2508,47 +2941,199 @@
 
       // Vis/skjul funktionssektioner baseret på institutionens indstillinger
       function renderFeatureSections(prefs) {
-        const emailSection = document.getElementById("email-notification-section");
-        const spendingSection = document.getElementById("spending-limit-section");
-        const allergensSection = document.getElementById("allergens-section");
-        const productLimitSection = document.getElementById("product-limit-section");
-
         // E-mail notifikationer (default true hvis ikke sat)
         const emailEnabled = prefs && prefs.parent_portal_email_notifications !== false;
-        if (emailSection) {
-          emailSection.style.display = emailEnabled ? "block" : "none";
+        const emailCollapsible = document.getElementById("email-notification-collapsible");
+        if (emailCollapsible) {
+          emailCollapsible.style.display = emailEnabled ? "block" : "none";
         }
+
+        // Historik - altid synlig, men lukket fra start
+        const historyCollapsible = document.getElementById("history-collapsible");
+        if (historyCollapsible) {
+          historyCollapsible.style.display = "block";
+          // Historik skal være lukket fra start
+          const historyHeader = historyCollapsible.querySelector(".collapsible-section-header");
+          const historyContent = historyCollapsible.querySelector(".collapsible-section-content");
+          if (historyHeader && historyContent) {
+            // Fjern active class hvis den er sat, så historik starter lukket
+            historyHeader.classList.remove("active");
+            historyContent.classList.remove("active");
+            const arrow = historyHeader.querySelector(".collapsible-section-arrow");
+            if (arrow) arrow.textContent = "▼";
+          }
+        }
+
+        // Optank saldo - vises/skjules i renderPaymentSection baseret på prefs
+
+        // Club Limitations - vis hvis der er begrænsninger
+        const clubLimitationsCollapsible = document.getElementById("club-limitations-collapsible");
+        // Vil blive sat til block i loadAndRenderClubLimitations hvis der er data
+
+        // Daily Assortment - vil blive sat til block i loadAndRenderDailyAssortment hvis der er produkter
 
         // Daglig beløbsgrænse (default true hvis ikke sat)
         const spendingEnabled = prefs && prefs.parent_portal_spending_limit !== false;
-        if (spendingSection) {
-          spendingSection.style.display = spendingEnabled ? "block" : "none";
-        }
-
-        // Allergener (default true hvis ikke sat)
-        const allergensEnabled = prefs && prefs.parent_portal_allergens !== false;
-        if (allergensSection) {
-          allergensSection.style.display = allergensEnabled ? "block" : "none";
+        const spendingCollapsible = document.getElementById("spending-limit-collapsible");
+        if (spendingCollapsible) {
+          spendingCollapsible.style.display = spendingEnabled ? "block" : "none";
         }
 
         // Købsgrænser pr. produkt (default false - institution må aktivere)
         const productLimitEnabled = prefs && prefs.parent_portal_product_limit === true;
-        if (productLimitSection) {
-          productLimitSection.style.display = productLimitEnabled ? "block" : "none";
+        const productLimitCollapsible = document.getElementById("product-limit-collapsible");
+        if (productLimitCollapsible) {
+          productLimitCollapsible.style.display = productLimitEnabled ? "block" : "none";
           if (productLimitEnabled && currentChildId && currentInstitutionId) {
             loadProductLimits(currentInstitutionId, currentChildId);
           }
         }
 
         // Sukkerpolitik (default false - institution må aktivere)
-        const sugarPolicySection = document.getElementById("sugar-policy-section");
         const sugarPolicyEnabled = prefs && prefs.parent_portal_sugar_policy === true;
-        if (sugarPolicySection) {
-          sugarPolicySection.style.display = sugarPolicyEnabled ? "block" : "none";
+        const sugarPolicyCollapsible = document.getElementById("sugar-policy-collapsible");
+        if (sugarPolicyCollapsible) {
+          sugarPolicyCollapsible.style.display = sugarPolicyEnabled ? "block" : "none";
           if (sugarPolicyEnabled && currentChildId) {
             loadSugarPolicy();
           }
         }
+
+        // Allergener (default true hvis ikke sat)
+        const allergensEnabled = prefs && prefs.parent_portal_allergens !== false;
+        const allergensCollapsible = document.getElementById("allergens-collapsible");
+        if (allergensCollapsible) {
+          allergensCollapsible.style.display = allergensEnabled ? "block" : "none";
+        }
+
+        // Skift kode - altid synlig
+        const changePinCollapsible = document.getElementById("change-pin-collapsible");
+        if (changePinCollapsible) {
+          changePinCollapsible.style.display = "block";
+        }
+      }
+
+      // Collapsible section toggle functionality with accordion behavior
+      function setupCollapsibleSections() {
+        // List of all collapsible section IDs - iterate through each one individually
+        const sectionIds = [
+          "email-notification-collapsible",
+          "history-collapsible",
+          "payment-collapsible",
+          "club-limitations-collapsible",
+          "daily-assortment-collapsible",
+          "spending-limit-collapsible",
+          "product-limit-collapsible",
+          "sugar-policy-collapsible",
+          "allergens-collapsible",
+          "change-pin-collapsible"
+        ];
+        
+        // Track if we've already set up listeners to avoid duplicate setup
+        if (window.collapsibleSectionsSetup) {
+          // Already set up, just return
+          return;
+        }
+        window.collapsibleSectionsSetup = true;
+        
+        // Set up each section individually with its specific ID stored in closure
+        sectionIds.forEach((sectionId) => {
+          const container = document.getElementById(sectionId);
+          if (!container) return;
+          
+          const header = container.querySelector(".collapsible-section-header");
+          if (!header) return;
+          
+          // Remove any existing listener by cloning
+          const newHeader = header.cloneNode(true);
+          header.parentNode.replaceChild(newHeader, header);
+          
+          // Get fresh references after clone
+          const freshContainer = document.getElementById(sectionId);
+          if (!freshContainer) return;
+          
+          const freshHeader = freshContainer.querySelector(".collapsible-section-header");
+          if (!freshHeader) return;
+          
+          // Store the section ID in the closure - CRITICAL to ensure isolation
+          const thisSectionId = sectionId;
+          
+          // Add event listener to THIS specific header only
+          // Use a flag to prevent multiple rapid clicks from causing issues
+          let isToggling = false;
+          
+          freshHeader.addEventListener("click", function(e) {
+            // Prevent event bubbling and multiple triggers
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            // Prevent multiple rapid clicks
+            if (isToggling) {
+              return;
+            }
+            isToggling = true;
+            
+            // CRITICAL: Use the specific section ID from the closure
+            const thisContainer = document.getElementById(thisSectionId);
+            if (!thisContainer || thisContainer.id !== thisSectionId) {
+              isToggling = false;
+              return;
+            }
+            
+            const thisHeader = thisContainer.querySelector(".collapsible-section-header");
+            const thisContent = thisContainer.querySelector(".collapsible-section-content");
+            const thisArrow = thisHeader?.querySelector(".collapsible-section-arrow");
+            
+            if (!thisHeader || !thisContent) {
+              isToggling = false;
+              return;
+            }
+
+            // Check if this section is currently active BEFORE doing anything
+            const isActive = thisHeader.classList.contains("active");
+            
+            // ACCORDION BEHAVIOR: Close all other sections before opening this one
+            if (!isActive) {
+              // Step 1: Close all other sections first
+              sectionIds.forEach((otherSectionId) => {
+                if (otherSectionId === thisSectionId) return; // Skip current section
+                
+                const otherContainer = document.getElementById(otherSectionId);
+                if (!otherContainer) return;
+                
+                const otherHeader = otherContainer.querySelector(".collapsible-section-header");
+                const otherContent = otherContainer.querySelector(".collapsible-section-content");
+                const otherArrow = otherHeader?.querySelector(".collapsible-section-arrow");
+                
+                if (otherHeader && otherContent && otherHeader.classList.contains("active")) {
+                  // Only close if they are currently active
+                  otherHeader.classList.remove("active");
+                  otherContent.classList.remove("active");
+                  if (otherArrow) otherArrow.textContent = "▼";
+                }
+              });
+              
+              // Step 2: Now open this section
+              // Double-check it's still not active (shouldn't be, but be safe)
+              if (!thisHeader.classList.contains("active")) {
+                thisHeader.classList.add("active");
+                thisContent.classList.add("active");
+                if (thisArrow) thisArrow.textContent = "▲";
+              }
+            } else {
+              // This section is active, so close it
+              thisHeader.classList.remove("active");
+              thisContent.classList.remove("active");
+              if (thisArrow) thisArrow.textContent = "▼";
+            }
+            
+            // Reset flag after a short delay to allow the DOM to update
+            setTimeout(() => {
+              isToggling = false;
+            }, 50);
+          }, false);
+        });
       }
 
       // ===== PRODUKTGRÆNSER FUNKTIONER =====
@@ -2989,6 +3574,151 @@
         }
       }
 
+      // Hent og vis klubbens begrænsninger (daglig grænse og produkter med købsgrænse)
+      async function loadAndRenderClubLimitations(institutionId, prefs) {
+        const clubLimitationsCollapsible = document.getElementById("club-limitations-collapsible");
+        const clubLimitationsCard = document.getElementById("club-limitations-card");
+        const dailyLimitItem = document.getElementById("club-daily-limit-item");
+        const dailyLimitValue = document.getElementById("club-daily-limit");
+        const productLimitsItem = document.getElementById("club-product-limits-item");
+        const productLimitsContainer = document.getElementById("club-product-limits");
+
+        if (!clubLimitationsCard || !clubLimitationsCollapsible) return;
+
+        // Hent daglig grænse fra institutionens prefs
+        const spendingLimitEnabled = prefs && (prefs.spending_limit_enabled === true || prefs.spending_limit_enabled === "true" || prefs.spending_limit_enabled === 1 || prefs.spending_limit_enabled === "1");
+        const spendingLimitAmount = prefs && prefs.spending_limit_amount ? Number(prefs.spending_limit_amount) : null;
+
+        if (spendingLimitEnabled && spendingLimitAmount && spendingLimitAmount > 0) {
+          dailyLimitItem.style.display = "block";
+          dailyLimitValue.textContent = `${spendingLimitAmount} kr.`;
+        } else {
+          dailyLimitItem.style.display = "none";
+        }
+
+        // Hent produkter med købsgrænse fra product_limits tabellen
+        try {
+          // Først: Hent product_limits
+          const { data: productLimits, error: productLimitsError } = await supabase
+            .from("product_limits")
+            .select("product_id, max_per_day")
+            .eq("institution_id", institutionId)
+            .gt("max_per_day", 0);
+
+          if (productLimitsError) {
+            console.warn("Kunne ikke hente produkter med købsgrænse:", productLimitsError);
+            productLimitsItem.style.display = "none";
+          } else if (productLimits && productLimits.length > 0) {
+            // Derefter: Hent produkter for de fundne product_ids
+            const productIds = productLimits.map((pl) => pl.product_id);
+            const { data: products, error: productsError } = await supabase
+              .from("products")
+              .select("id, name, price")
+              .in("id", productIds)
+              .eq("is_enabled", true)
+              .order("name", { ascending: true });
+
+            if (productsError) {
+              console.warn("Kunne ikke hente produktdetaljer:", productsError);
+              productLimitsItem.style.display = "none";
+            } else if (products && products.length > 0) {
+              // Match products med deres limits
+              const limitMap = new Map();
+              productLimits.forEach((pl) => {
+                limitMap.set(pl.product_id, pl.max_per_day);
+              });
+
+              productLimitsItem.style.display = "block";
+              productLimitsContainer.innerHTML = "";
+
+              products.forEach((product) => {
+                const maxPerDay = limitMap.get(product.id);
+                if (!maxPerDay) return;
+
+                const productItem = document.createElement("div");
+                productItem.className = "product-item";
+                const price = product.price ? Number(product.price).toFixed(0) : "0";
+                const productName = escapeHtml(product.name);
+                productItem.innerHTML = `
+                  <span class="product-name">${productName}</span> – ${price} kr. Maks. <strong>${maxPerDay} stk.</strong> pr. dag
+                `;
+                productLimitsContainer.appendChild(productItem);
+              });
+            } else {
+              productLimitsItem.style.display = "none";
+            }
+          } else {
+            productLimitsItem.style.display = "none";
+          }
+        } catch (e) {
+          console.warn("Uventet fejl ved hentning af produkter med købsgrænse:", e);
+          productLimitsItem.style.display = "none";
+        }
+
+        // Vis collapsible sektionen hvis der er begrænsninger, ellers skjul den
+        const hasAnyLimitations = (dailyLimitItem.style.display !== "none") || (productLimitsItem.style.display !== "none");
+        if (clubLimitationsCollapsible) {
+          clubLimitationsCollapsible.style.display = hasAnyLimitations ? "block" : "none";
+        }
+      }
+
+      // Hent og vis dagens sortiment (produkter med is_visible = true)
+      async function loadAndRenderDailyAssortment(institutionId) {
+        const dailyAssortmentCollapsible = document.getElementById("daily-assortment-collapsible");
+        const dailyAssortmentCard = document.getElementById("daily-assortment-card");
+        const dailyAssortmentList = document.getElementById("daily-assortment-list");
+
+        if (!dailyAssortmentCard || !dailyAssortmentList || !dailyAssortmentCollapsible) return;
+
+        try {
+          // Hent produkter der er synlige og aktive i dagens sortiment
+          const { data: products, error: productsError } = await supabase
+            .from("products")
+            .select("id, name, price, emoji, sort_order")
+            .eq("institution_id", institutionId)
+            .eq("is_enabled", true)
+            .neq("is_visible", false)
+            .order("sort_order", { ascending: true });
+
+          if (productsError) {
+            console.warn("Kunne ikke hente dagens sortiment:", productsError);
+            dailyAssortmentCollapsible.style.display = "none";
+          } else if (products && products.length > 0) {
+            dailyAssortmentCollapsible.style.display = "block";
+            dailyAssortmentList.innerHTML = "";
+
+            products.forEach((product) => {
+              const productItem = document.createElement("div");
+              productItem.className = "daily-assortment-item";
+              const price = product.price ? Number(product.price).toFixed(0) : "0";
+              const productName = escapeHtml(product.name);
+              const emoji = product.emoji || "❓";
+              
+              productItem.innerHTML = `
+                <span class="product-emoji">${emoji}</span>
+                <span class="product-name">${productName}</span>
+                <span class="product-price">${price} kr.</span>
+              `;
+              dailyAssortmentList.appendChild(productItem);
+            });
+          } else {
+            // Vis kortet selv om der ingen produkter er
+            dailyAssortmentCollapsible.style.display = "block";
+            dailyAssortmentList.innerHTML = '<div class="daily-assortment-empty">Ingen produkter i dagens sortiment i øjeblikket.</div>';
+          }
+        } catch (e) {
+          console.warn("Uventet fejl ved hentning af dagens sortiment:", e);
+          dailyAssortmentCollapsible.style.display = "none";
+        }
+      }
+
+      // Hjælpefunktion til at escape HTML
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
       const balanceStatusLabel = document.getElementById("balance-status-label");
       const balanceDisplay = document.getElementById("balance-display");
 
@@ -3394,6 +4124,12 @@
           currentInstitutionPrefs = await loadInstitutionPreferences(institutionId);
           renderPaymentSection(currentInstitutionPrefs || {});
           renderFeatureSections(currentInstitutionPrefs || {});
+          // Hent og vis klubbens begrænsninger
+          await loadAndRenderClubLimitations(institutionId, currentInstitutionPrefs);
+          // Hent og vis dagens sortiment
+          await loadAndRenderDailyAssortment(institutionId);
+          // Setup collapsible functionality - kald efter en lille delay for at sikre DOM er klar
+          setTimeout(() => setupCollapsibleSections(), 100);
         } catch (err) {
           console.error("Fetch-fejl:", err);
           loginError.textContent =
@@ -3594,11 +4330,23 @@
         if (currentInstitutionPrefs) {
           renderPaymentSection(currentInstitutionPrefs || {});
           renderFeatureSections(currentInstitutionPrefs || {});
+          // Hent og vis klubbens begrænsninger
+          loadAndRenderClubLimitations(currentInstitutionId, currentInstitutionPrefs);
+          // Hent og vis dagens sortiment
+          loadAndRenderDailyAssortment(currentInstitutionId);
+          // Setup collapsible functionality - kald efter en lille delay for at sikre DOM er klar
+          setTimeout(() => setupCollapsibleSections(), 100);
         } else if (currentInstitutionId) {
           loadInstitutionPreferences(currentInstitutionId).then((prefs) => {
             currentInstitutionPrefs = prefs || {};
             renderPaymentSection(currentInstitutionPrefs || {});
             renderFeatureSections(currentInstitutionPrefs || {});
+            // Hent og vis klubbens begrænsninger
+            loadAndRenderClubLimitations(currentInstitutionId, currentInstitutionPrefs);
+            // Hent og vis dagens sortiment
+            loadAndRenderDailyAssortment(currentInstitutionId);
+            // Setup collapsible functionality - kald efter en lille delay for at sikre DOM er klar
+            setTimeout(() => setupCollapsibleSections(), 100);
           });
         }
 
