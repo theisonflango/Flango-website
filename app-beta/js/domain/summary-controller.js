@@ -11,15 +11,29 @@ import {
     setOnlyTestUsers,
     setEmployeeRole
 } from './summary-store.js';
+import { setupPurchaseProfilesUI, openPurchaseProfilesView, closePurchaseProfilesView } from '../ui/purchase-profiles-ui.js';
 
 let institutionId = null;
+let getAllUsersAccessor = null;
 
 /**
  * Setup summary modal and event listeners
  * @param {string} currentInstitutionId - Current institution UUID
+ * @param {object} options - Optional configuration
+ * @param {function} options.getAllUsers - Function to get all users (for purchase profiles)
  */
-export function setupSummaryModal(currentInstitutionId) {
+export function setupSummaryModal(currentInstitutionId, options = {}) {
     institutionId = currentInstitutionId;
+    
+    // Store getAllUsers accessor for purchase profiles
+    if (options.getAllUsers) {
+        getAllUsersAccessor = options.getAllUsers;
+        // Initialize purchase profiles UI
+        setupPurchaseProfilesUI({
+            getAllUsers: getAllUsersAccessor,
+            institutionId: currentInstitutionId
+        });
+    }
 
     const viewButtons = document.querySelectorAll('.summary-view-btn');
     const roleButtons = document.querySelectorAll('.summary-role-btn');
@@ -47,16 +61,18 @@ export function setupSummaryModal(currentInstitutionId) {
                 roleSelector.style.display = viewMode === 'employee' ? 'flex' : 'none';
             }
 
-            // Switch between overview, transactions and summary table views
+            // Switch between overview, transactions, purchase-profiles and summary table views
             const overviewContainer = document.getElementById('overview-view-container');
             const transactionsContainer = document.getElementById('transactions-view-container');
             const summaryTableContainer = document.getElementById('summary-table-view-container');
+            const purchaseProfilesContainer = document.getElementById('purchase-profiles-view-container');
             const sharedControls = document.getElementById('shared-history-controls');
 
             // Skjul alle containers først
             if (overviewContainer) overviewContainer.style.display = 'none';
             if (transactionsContainer) transactionsContainer.style.display = 'none';
             if (summaryTableContainer) summaryTableContainer.style.display = 'none';
+            if (purchaseProfilesContainer) purchaseProfilesContainer.style.display = 'none';
 
             // Vis/skjul delte kontroller baseret på view mode
             if (sharedControls) {
@@ -79,6 +95,9 @@ export function setupSummaryModal(currentInstitutionId) {
                 if (typeof window.__flangoLoadTransactionsInSummary === 'function') {
                     window.__flangoLoadTransactionsInSummary();
                 }
+            } else if (viewMode === 'purchase-profiles') {
+                // Vis købsprofiler-view
+                openPurchaseProfilesView();
             } else {
                 // Vis summary table (dag, uge, måned, år, personale)
                 if (summaryTableContainer) summaryTableContainer.style.display = 'block';
@@ -231,12 +250,14 @@ export async function openSummaryModal(currentInstitutionId, initialView = 'over
 
     // Hent alle view containers
     const overviewContainer = document.getElementById('overview-view-container');
+    const purchaseProfilesContainer = document.getElementById('purchase-profiles-view-container');
     const sharedControls = document.getElementById('shared-history-controls');
 
     // Skjul alle containers først
     if (overviewContainer) overviewContainer.style.display = 'none';
     if (transactionsContainer) transactionsContainer.style.display = 'none';
     if (summaryTableContainer) summaryTableContainer.style.display = 'none';
+    if (purchaseProfilesContainer) purchaseProfilesContainer.style.display = 'none';
 
     // Vis/skjul delte kontroller baseret på initial view
     if (sharedControls) {
@@ -260,6 +281,9 @@ export async function openSummaryModal(currentInstitutionId, initialView = 'over
         if (typeof window.__flangoLoadTransactionsInSummary === 'function') {
             window.__flangoLoadTransactionsInSummary();
         }
+    } else if (initialView === 'purchase-profiles') {
+        // Vis købsprofiler-view
+        openPurchaseProfilesView();
     } else {
         // Vis summary table view (dag, uge, måned, år, personale)
         if (summaryTableContainer) summaryTableContainer.style.display = 'block';
@@ -283,6 +307,9 @@ export function closeSummaryModal() {
     if (modal) {
         modal.style.display = 'none';
     }
+
+    // Close purchase profiles view if open
+    closePurchaseProfilesView();
 
     // Reset shared history controls for next opening
     if (typeof window.__flangoResetSharedHistoryControls === 'function') {

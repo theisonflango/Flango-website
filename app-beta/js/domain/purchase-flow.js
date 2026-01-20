@@ -571,6 +571,10 @@ export async function handleCompletePurchase({
 
         // Parallel validation checks for all items (much faster than sequential)
         // FIX: Wrap each canChildPurchase call with retry logic for transient errors
+        const missingProductIdCount = currentOrder.reduce((count, line) => {
+            const productId = line?.product_id || line?.productId || line?.id;
+            return productId == null ? count + 1 : count;
+        }, 0);
         const checkPromises = currentOrder.map(async (line) => {
             const productId = line.product_id || line.productId || line.id;
             const product = allProducts.find(p => p.id === productId);
@@ -615,22 +619,15 @@ export async function handleCompletePurchase({
         const failedCheck = results.find(result => result && result.allowed === false);
         if (failedCheck) {
             const message = failedCheck.message || 'Det her køb er ikke tilladt lige nu. Tal med en voksen i caféen.';
-            // FIX: Kun spil fejlyd når købet faktisk blokeres pga. validering
-            try { 
-                playSound?.('error'); 
-            } catch {}
+            // showCustomAlert viser fejlbeskeden uden at spille lyd
             await showCustomAlert('Køb ikke tilladt', message);
             return;
         }
     } catch (err) {
-        // FIX: Kun spil fejlyd og blokér hvis det er en strukturel fejl der ikke kunne retries
+        // Strukturel fejl ved validering – afviser køb
         console.error('[canChildPurchase] Strukturel fejl ved validering – afviser køb:', err);
-        
-        // Giv bruger feedback (lyd/alert) - kun når købet faktisk blokeres
-        try { 
-            playSound?.('error'); 
-        } catch {}
-        
+
+        // showCustomAlert viser fejlbeskeden uden at spille lyd
         await showCustomAlert(
             'Kan ikke bekræfte regler', 
             'Vi kan ikke bekræfte grænserne lige nu. Prøv igen om 5 sekunder eller tjek din forbindelse.'

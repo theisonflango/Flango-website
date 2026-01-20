@@ -448,7 +448,10 @@ export async function startApp() {
             renderProductsInModal,
             renderProductsGrid,
             fetchAndRenderProducts: async () => {
-                await productAssortment.fetchAndRenderProducts();
+                // KRITISK FIX: Brug renderFromCache i stedet for fetchAndRenderProducts
+                // Dette sikrer at produkter vises med det samme efter oprettelse/redigering
+                // fordi refetchAllProducts() allerede har opdateret cache'en
+                await productAssortment.renderFromCache();
                 // Sørg for at alle knapper har et låse-overlay, så CSS kan virke
                 productsContainer.querySelectorAll('.product-btn').forEach(btn => {
                     if (!btn.querySelector('.product-lock-overlay')) {
@@ -581,6 +584,9 @@ export async function startApp() {
         addToOrder: addToOrderWithLocks,
     });
 
+    // Eksponér renderFromCache til window så andre moduler kan opdatere produkt-visningen
+    window.__flangoRenderProductsFromCache = () => productAssortment.renderFromCache();
+
     // 10) UI-events og helpers
     setupRuntimeUIEvents({
         salesHistoryBtn,
@@ -602,7 +608,7 @@ export async function startApp() {
 
     // Setup summary/opsummering modal
     const institutionId = getInstitutionId();
-    setupSummaryModal(institutionId);
+    setupSummaryModal(institutionId, { getAllUsers });
 
     // Setup global functions for loading views in summary modal
     window.__flangoLoadTransactionsInSummary = () => {
@@ -799,7 +805,11 @@ export async function startApp() {
         const currentCustomer = getCurrentCustomer();
         if (currentCustomer && currentCustomer.id === userId) {
             console.log(`[app-main] Balance changed for selected customer: ${newBalance} kr (${source})`);
-            updateSelectedUserInfo();
+            // KRITISK: Brug requestAnimationFrame for at sikre DOM er klar til opdatering
+            // Dette løser timing-issues hvor state er opdateret men UI ikke reflekterer det
+            requestAnimationFrame(() => {
+                updateSelectedUserInfo();
+            });
         }
     });
 

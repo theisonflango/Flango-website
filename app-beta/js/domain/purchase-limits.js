@@ -717,9 +717,11 @@ export async function canChildPurchase(productId, childId, orderItems = [], inst
     // 1) Slå produktet op
     const { product, error: productError } = await getProductById(productId);
     if (productError || !product) {
+        logLimitBlock('product_missing','H3',{productFound:!!product,productError:!!productError});
         return { allowed: false, message: 'Produktet findes ikke.' };
     }
     if (product.is_enabled === false) {
+        logLimitBlock('product_disabled','H3',{});
         return { allowed: false, message: 'Produktet er ikke aktivt i øjeblikket.' };
     }
 
@@ -744,12 +746,15 @@ export async function canChildPurchase(productId, childId, orderItems = [], inst
     // 5) Antals-regel
     if (effectiveMaxPerDay !== null && effectiveMaxPerDay !== undefined) {
         if (effectiveMaxPerDay === 0) {
+            logLimitBlock('limit_blocked','H1',{effectiveMaxPerDay,todaysQty,qtyInCartEffective,hasParentLimit:!!parentLimit});
             return { allowed: false, message: 'Denne vare er spærret for dig – det er en aftale med dine forældre.' };
         }
         if (todaysQty + qtyInCartEffective >= effectiveMaxPerDay) {
             if (parentLimit) {
+                logLimitBlock('limit_reached_parent','H1',{effectiveMaxPerDay,todaysQty,qtyInCartEffective,hasParentLimit:true});
                 return { allowed: false, message: 'Du har nået grænsen for, hvor mange du må købe af denne vare i dag. Det er aftalt med dine forældre.' };
             }
+            logLimitBlock('limit_reached_club','H1',{effectiveMaxPerDay,todaysQty,qtyInCartEffective,hasParentLimit:false});
             return {
                 allowed: false,
                 message: `I dag må man højst købe ${effectiveMaxPerDay} stk. af ${productName}. Barnet har allerede nået grænsen.`,
@@ -774,6 +779,7 @@ export async function canChildPurchase(productId, childId, orderItems = [], inst
         }
         // Dagligt beløb tjek
         if (todaysTotalSpend + price > safeNumber(dailyBudget, 0)) {
+            logLimitBlock('daily_budget_exceeded','H1',{dailyBudget,todaysTotalSpend,price});
             return { allowed: false, message: 'Du har nået dit daglige max-beløb i caféen. Tal med en voksen, hvis der er noget, du er i tvivl om.' };
         }
     }

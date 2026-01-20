@@ -147,7 +147,7 @@ export function updateSelectedUserInfo() {
             console.log('[app-main] No user selected - showing empty state');
             // Vis boks med "Ingen kunde valgt" i stedet for at skjule
             userInfoEl.replaceChildren();
-            const box = createInfoBox('Ingen kunde valgt', 'Vælg en kunde for at se saldo', {
+            const box = createInfoBox('Ingen kunde valgt', 'Vælg en kunde for at se saldo..', {
                 boxStyle: 'grid-column: 1 / -1;'
             });
             userInfoEl.appendChild(box);

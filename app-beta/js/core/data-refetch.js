@@ -7,12 +7,19 @@ import { runWithAuthRetry } from './auth-retry.js';
 import { safeDbCall } from './safe-db-call.js';
 import { getCurrentCustomer, setCustomerBalance } from '../domain/cafe-session-store.js';
 
+// Race condition protection: Track in-flight requests
+let usersRefetchToken = 0;
+let productsRefetchToken = 0;
+
 /**
  * Refetch all users for current institution from database
  * Updates window.__flangoAllUsers cache
+ * Race-safe: Newer requests invalidate older ones
  * @returns {Promise<Array|null>} Array of users or null on error
  */
 export async function refetchAllUsers() {
+    // Race protection: Increment token, capture for this request
+    const myToken = ++usersRefetchToken;
     const adminProfile = window.__flangoCurrentAdminProfile;
     const institutionId = adminProfile?.institution_id;
 
@@ -37,6 +44,13 @@ export async function refetchAllUsers() {
         console.error('[data-refetch] Error loading users:', result.error);
         return null;
     }
+
+    // Race protection: Check if a newer request was started while we were fetching
+    if (myToken !== usersRefetchToken) {
+        console.log('[data-refetch] Users refetch superseded by newer request, discarding');
+        return null;
+    }
+
     const data = result.data;
 
     // Update global cache via setter if available
@@ -55,9 +69,12 @@ export async function refetchAllUsers() {
 /**
  * Refetch all products for current institution from database
  * Updates allProducts cache via window.__flangoSetAllProducts
+ * Race-safe: Newer requests invalidate older ones
  * @returns {Promise<Array|null>} Array of products or null on error
  */
 export async function refetchAllProducts() {
+    // Race protection: Increment token, capture for this request
+    const myToken = ++productsRefetchToken;
     const adminProfile = window.__flangoCurrentAdminProfile;
     const institutionId = adminProfile?.institution_id;
 
@@ -82,6 +99,13 @@ export async function refetchAllProducts() {
         console.error('[data-refetch] Error loading products:', result.error);
         return null;
     }
+
+    // Race protection: Check if a newer request was started while we were fetching
+    if (myToken !== productsRefetchToken) {
+        console.log('[data-refetch] Products refetch superseded by newer request, discarding');
+        return null;
+    }
+
     const data = result.data;
 
     // Update cache via setter if available

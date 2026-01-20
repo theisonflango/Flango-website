@@ -288,57 +288,72 @@
         </div>
     </div>
 
+    <!-- Sukkerpolitik Modal (separat) -->
+    <div id="sugar-policy-settings-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px; width: 95%;">
+            <div class="modal-header">
+                <h2>🍬 Sukkerpolitik</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-user-list" style="padding: 20px;">
+                <div class="toggle-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px;">
+                    <input type="checkbox" id="sugar-policy-enabled-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                    <span id="sugar-policy-enabled-label" style="font-weight: 600; font-size: 16px;">Sukkerpolitik er slået FRA</span>
+                </div>
+                <div id="sugar-policy-settings" style="display: none; padding-top: 15px; border-top: 1px solid #eee;">
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <!-- Maks antal af hver slags -->
+                        <label style="display: block; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                <input type="checkbox" id="sugar-policy-max-per-product-enabled" style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px;">
+                                <strong style="cursor: pointer; font-size: 14px;">Maks af hver usund vare/dag</strong>
+                            </div>
+                            <input type="number" id="sugar-policy-max-per-product" min="0" step="1" placeholder="1" style="width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
+                        </label>
+                        <!-- Maks antal usunde produkter totalt -->
+                        <label style="display: block; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                <input type="checkbox" id="sugar-policy-max-unhealthy-enabled" style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px;">
+                                <strong style="cursor: pointer; font-size: 14px;">Maks usunde produkter/dag</strong>
+                            </div>
+                            <input type="number" id="sugar-policy-max-unhealthy" min="0" step="1" placeholder="2" style="width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: space-between;">
+                <button id="back-to-preferences-sugar-settings-btn" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">← Tilbage</button>
+                <button id="apply-sugar-settings-btn" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Gem indstillinger</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Regler for produkter Modal (uden sukkerpolitik) -->
     <div id="sugar-policy-modal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 900px; width: 95%;">
             <div class="modal-header">
-                <h2>Regler for produkter</h2>
+                <h2>Produktoversigt</h2>
                 <span class="close-btn">&times;</span>
             </div>
             <div class="modal-user-list" style="padding: 15px;">
-                <!-- Sukkerpolitik Settings Section -->
-                <div class="settings-section" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, rgba(244, 67, 54, 0.06), rgba(255, 255, 255, 0.98)); border: 1px solid rgba(244, 67, 54, 0.2); border-radius: 12px;">
-                    <h3 style="margin: 0 0 12px 0; font-size: 15px; color: #c62828;">🍬 Sukkerpolitik</h3>
-                    <div class="toggle-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                        <input type="checkbox" id="sugar-policy-enabled-toggle" style="width: 18px; height: 18px; cursor: pointer;">
-                        <span id="sugar-policy-enabled-label" style="font-weight: 500;">Sukkerpolitik er slået FRA</span>
-                    </div>
-                    <div id="sugar-policy-settings" style="display: none; padding-top: 12px; border-top: 1px solid rgba(244, 67, 54, 0.15);">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <!-- Maks antal af hver slags -->
-                            <label style="display: block; padding: 10px; background: rgba(255,255,255,0.7); border-radius: 8px;">
-                                <div style="display: flex; align-items: center; margin-bottom: 6px;">
-                                    <input type="checkbox" id="sugar-policy-max-per-product-enabled" style="margin-right: 8px; cursor: pointer;">
-                                    <strong style="cursor: pointer; font-size: 13px;">Maks af hver usund vare/dag</strong>
-                                </div>
-                                <input type="number" id="sugar-policy-max-per-product" min="0" step="1" placeholder="1" style="width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-                            </label>
-                            <!-- Maks antal usunde produkter totalt -->
-                            <label style="display: block; padding: 10px; background: rgba(255,255,255,0.7); border-radius: 8px;">
-                                <div style="display: flex; align-items: center; margin-bottom: 6px;">
-                                    <input type="checkbox" id="sugar-policy-max-unhealthy-enabled" style="margin-right: 8px; cursor: pointer;">
-                                    <strong style="cursor: pointer; font-size: 13px;">Maks usunde produkter/dag</strong>
-                                </div>
-                                <input type="number" id="sugar-policy-max-unhealthy" min="0" step="1" placeholder="2" style="width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Product Rules Table -->
                 <div class="settings-section">
-                    <h3 style="margin: 0 0 12px 0; font-size: 15px;">📋 Produktoversigt</h3>
-                    <div id="product-rules-table-container" style="overflow-x: auto;">
+                    <h3 id="product-overview-subtitle" style="margin: 0 0 12px 0; font-size: 15px;">Tilføj/Rediger produkter</h3>
+                    <div id="product-rules-table-container" style="overflow-x: auto; max-height: 60vh; overflow-y: auto;">
                         <table id="product-rules-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                            <thead>
+                            <thead style="position: sticky; top: 0; z-index: 10;">
                                 <tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
-                                    <th style="padding: 10px 8px; text-align: left; font-weight: 600;">Ikon</th>
-                                    <th style="padding: 10px 8px; text-align: left; font-weight: 600;">Navn</th>
-                                    <th style="padding: 10px 8px; text-align: right; font-weight: 600;">Pris</th>
-                                    <th style="padding: 10px 8px; text-align: center; font-weight: 600;" id="col-refill">Genopfyldning</th>
-                                    <th style="padding: 10px 8px; text-align: center; font-weight: 600;">Købsgrænse</th>
-                                    <th style="padding: 10px 8px; text-align: center; font-weight: 600;" id="col-unhealthy">Usund</th>
-                                    <th style="padding: 10px 8px; text-align: center; font-weight: 600;">Aktiv</th>
-                                    <th style="padding: 10px 8px; text-align: center; font-weight: 600;">Rediger</th>
+                                    <th style="padding: 10px 8px; text-align: left; font-weight: 600; background: #f5f5f5;">Ikon</th>
+                                    <th class="sortable-col" data-sort="name" style="padding: 10px 8px; text-align: left; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Navn <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col" data-sort="price" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Pris <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col" data-sort="limit" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Grænse <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col" data-sort="daily_special" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Dagens ret <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col" data-sort="core_assortment" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Fast sort. <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col" data-sort="in_assortment" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Dagens sort. <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col" data-sort="unhealthy" id="col-unhealthy" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Usund <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col" data-sort="active" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Aktiv <span class="sort-indicator"></span></th>
+                                    <th style="padding: 10px 8px; text-align: center; font-weight: 600; background: #f5f5f5;">Slet</th>
+                                    <th style="padding: 10px 8px; text-align: center; font-weight: 600; background: #f5f5f5;">Rediger</th>
                                 </tr>
                             </thead>
                             <tbody id="product-rules-tbody">
@@ -351,8 +366,12 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: space-between;">
+            <div class="modal-footer" style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: space-between; align-items: center;">
                 <button id="back-to-preferences-sugar-policy-btn" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">← Tilbage</button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="toggle-inactive-products-btn" style="padding: 10px 16px; background: #f5f5f5; color: #666; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-weight: 500;">Vis deaktiverede</button>
+                    <button id="add-product-from-rules-btn" style="padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">+ Tilføj nyt produkt</button>
+                </div>
                 <button id="apply-sugar-policy-btn" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Anvend ændringer</button>
             </div>
         </div>
@@ -663,6 +682,7 @@
                 <button class="summary-view-btn" data-view="month">🗓️ Måned</button>
                 <button class="summary-view-btn" data-view="year">📊 År</button>
                 <button class="summary-view-btn" data-view="employee">👥 Personale</button>
+                <button class="summary-view-btn" data-view="purchase-profiles">📈 Købsprofiler</button>
             </div>
 
             <!-- Employee Role Selector (only visible in employee view) -->
@@ -770,6 +790,69 @@
                     <button id="summary-export-csv" class="action-button">📄 Eksporter til CSV</button>
                     <button id="summary-export-pdf" class="action-button secondary-action" style="display: none;">📑 Eksporter til PDF</button>
                 </div>
+            </div>
+
+            <!-- Purchase Profiles View (Købsprofiler) -->
+            <div id="purchase-profiles-view-container" class="summary-view-content" style="display: none;">
+                <div class="purchase-profiles-content">
+                    <!-- Compact Top Bar with User Dropdown -->
+                    <div class="purchase-profiles-top-bar">
+                        <div class="purchase-profiles-user-select-wrapper">
+                            <select id="purchase-profiles-user-select" class="purchase-profiles-user-select">
+                                <option value="">Vælg bruger...</option>
+                            </select>
+                        </div>
+                        <div class="purchase-profiles-period-wrapper">
+                            <label for="purchase-profiles-period-select">Periode:</label>
+                            <select id="purchase-profiles-period-select" class="purchase-profiles-period-select">
+                                <option value="all" selected>Alle</option>
+                                <option value="30">30 dage</option>
+                                <option value="7">7 dage</option>
+                            </select>
+                        </div>
+                        <div class="purchase-profiles-total-wrapper">
+                            <span class="purchase-profiles-total-label">Totalforbrug:</span>
+                            <span id="purchase-profiles-total-amount" class="purchase-profiles-total-amount">0,00 kr</span>
+                        </div>
+                    </div>
+
+                    <!-- Chart Section (always visible, shows empty state or chart) -->
+                    <div id="purchase-profiles-chart-section" class="purchase-profiles-chart-section">
+                        <!-- Chart Title with Sort Toggle -->
+                        <div class="purchase-profiles-chart-header">
+                            <h4>Mest købte produkter</h4>
+                            <div class="purchase-profiles-sort-toggle">
+                                <span>Sorter efter:</span>
+                                <button id="purchase-profiles-sort-antal" class="purchase-profiles-sort-btn active" data-sort="antal">ANTAL</button>
+                                <span>/</span>
+                                <button id="purchase-profiles-sort-kr" class="purchase-profiles-sort-btn" data-sort="kr">KR</button>
+                            </div>
+                        </div>
+
+                        <!-- The 3D Bar Chart -->
+                        <div id="purchase-profiles-chart" class="purchase-profiles-chart">
+                            <!-- Bars will be rendered here -->
+                        </div>
+
+                        <!-- Empty/Initial State -->
+                        <div id="purchase-profiles-empty" class="purchase-profiles-empty">
+                            <p>Vælg en bruger for at se købsprofil</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Andre varer Modal (for Purchase Profiles) -->
+    <div id="andre-varer-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px; height: auto;">
+            <div class="modal-header">
+                <h2>Andre varer</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div id="andre-varer-list" class="andre-varer-list">
+                <!-- Products will be listed here -->
             </div>
         </div>
     </div>

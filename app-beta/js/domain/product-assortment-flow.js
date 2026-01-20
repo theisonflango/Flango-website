@@ -411,6 +411,20 @@ export function setupProductAssortmentFlow({
         if (!productsContainer) return;
         const cards = productsContainer.querySelectorAll('.product-btn');
         cards.forEach(card => {
+            // KRITISK FIX: Fjern eksisterende listeners før nye tilføjes
+            // Dette forhindrer memory leak ved gentagne renderinger
+            card.removeEventListener('mousedown', handleLongPressStart);
+            card.removeEventListener('touchstart', handleLongPressStart);
+            card.removeEventListener('mouseup', handleLongPressEnd);
+            card.removeEventListener('mouseleave', handleLongPressEnd);
+            card.removeEventListener('touchend', handleLongPressEnd);
+            card.removeEventListener('touchcancel', handleLongPressEnd);
+            card.removeEventListener('dragstart', handleDragStart);
+            card.removeEventListener('dragover', handleDragOver);
+            card.removeEventListener('drop', handleDrop);
+            card.removeEventListener('dragend', handleDragEnd);
+
+            // Tilføj nye listeners
             card.addEventListener('mousedown', handleLongPressStart);
             card.addEventListener('touchstart', handleLongPressStart, { passive: true });
             card.addEventListener('mouseup', handleLongPressEnd);
