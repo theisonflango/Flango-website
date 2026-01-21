@@ -676,13 +676,33 @@
             <!-- View Mode Selector -->
             <div class="summary-view-selector">
                 <button class="summary-view-btn active" data-view="overview">📊 Oversigt</button>
-                <button class="summary-view-btn" data-view="transactions">📜 Transaktioner</button>
-                <button class="summary-view-btn" data-view="day">📅 Dag</button>
-                <button class="summary-view-btn" data-view="week">📆 Uge</button>
-                <button class="summary-view-btn" data-view="month">🗓️ Måned</button>
-                <button class="summary-view-btn" data-view="year">📊 År</button>
+                <button class="summary-view-btn" data-view="transactions">📦 Transaktioner</button>
+                <button class="summary-view-btn" data-view="period">📅 Periodevisning</button>
                 <button class="summary-view-btn" data-view="employee">👥 Personale</button>
                 <button class="summary-view-btn" data-view="purchase-profiles">📈 Købsprofiler</button>
+                <button class="summary-view-btn admin-only-view" data-view="statistics">📋 Statistik</button>
+            </div>
+
+            <!-- Period Segmented Control (only visible in period view) -->
+            <div id="period-segment-control" class="period-segment-control" style="display: none;">
+                <div class="segment-group">
+                    <button class="segment-btn active" data-period="day">
+                        <span class="segment-icon">📅</span>
+                        <span class="segment-label">Dag</span>
+                    </button>
+                    <button class="segment-btn" data-period="week">
+                        <span class="segment-icon">📆</span>
+                        <span class="segment-label">Uge</span>
+                    </button>
+                    <button class="segment-btn" data-period="month">
+                        <span class="segment-icon">🗓️</span>
+                        <span class="segment-label">Måned</span>
+                    </button>
+                    <button class="segment-btn" data-period="year">
+                        <span class="segment-icon">📊</span>
+                        <span class="segment-label">År</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Employee Role Selector (only visible in employee view) -->
@@ -840,6 +860,11 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Statistics View (Statistik - Admin Only) -->
+            <div id="statistics-view-container" class="summary-view-content" style="display: none;">
+                <!-- Content rendered by statistics-ui.js -->
             </div>
         </div>
     </div>

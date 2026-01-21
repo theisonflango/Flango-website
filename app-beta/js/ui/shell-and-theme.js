@@ -2348,6 +2348,16 @@ export function openSettingsModal() {
     addItem('Hjælp', () => {
         openHelpManually();
     }, 'settings-help-btn');
+
+    // Bug report button - visible for both admin and clerk
+    addItem('🐛 Der er en fejl', () => {
+        if (window.FLANGO_DEBUG?.showBugReportPrompt) {
+            window.FLANGO_DEBUG.showBugReportPrompt();
+        } else {
+            notifyToolbarUser('Fejlrapport-funktionen er ikke klar. Prøv at genindlæse siden.');
+        }
+    }, 'settings-bug-report-btn');
+
     addItem('Log ud', () => {
         callButtonById('logout-btn') || notifyToolbarUser('Log ud-knappen er ikke tilgængelig.');
     }, 'settings-logout-btn');
