@@ -157,7 +157,13 @@ export function setupSummaryModal(currentInstitutionId, options = {}) {
                 openPurchaseProfilesView();
             } else if (viewMode === 'statistics') {
                 // Vis statistik-view (admin-only)
-                if (statisticsContainer) statisticsContainer.style.display = 'block';
+                if (statisticsContainer) {
+                    statisticsContainer.style.display = 'flex';
+                    statisticsContainer.style.flex = '1';
+                    statisticsContainer.style.minHeight = '0';
+                    statisticsContainer.style.flexDirection = 'column';
+                    statisticsContainer.style.overflow = 'hidden';
+                }
                 await renderStatisticsView();
             } else {
                 // Vis summary table (dag, uge, måned, år, personale)

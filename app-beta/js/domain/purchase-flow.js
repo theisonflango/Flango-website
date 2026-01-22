@@ -413,7 +413,7 @@ export async function enforceSugarPolicy({ customer, currentOrder, allProducts }
     // Query today's purchases for this customer
     const today = new Date().toISOString().split('T')[0];
     const { data: todaySales } = await supabaseClient
-        .from('sales_items')
+        .from('sale_items')
         .select(`
             product_id,
             quantity,

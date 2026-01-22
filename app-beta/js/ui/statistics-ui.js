@@ -22,7 +22,8 @@ import {
     fetchPersonaleData,
     formatAmount,
     formatMinutes,
-    invalidateStatisticsCache
+    invalidateStatisticsCache,
+    sortStatisticsRows
 } from '../domain/statistics-data.js';
 
 // ============================================================
@@ -31,6 +32,11 @@ import {
 let _container = null;
 let _institutionId = null;
 let _onOpenPurchaseProfile = null;
+let _lastResultsByMode = {
+    kunder: null,
+    ekspedienter: null,
+    personale: null
+};
 
 // Current state
 let _currentMode = 'kunder'; // 'kunder' | 'ekspedienter' | 'personale'
@@ -60,13 +66,19 @@ export function initStatisticsUI(containerId, institutionId, onOpenPurchaseProfi
 export async function renderStatisticsView() {
     if (!_container) return;
 
+    _container.style.display = 'flex';
+    _container.style.flex = '1';
+    _container.style.minHeight = '0';
+    _container.style.flexDirection = 'column';
+    _container.style.overflow = 'hidden';
+
     const period = getPeriod();
     const showChildren = getShowChildren();
     const showStaff = getShowStaff();
     const showAll = getShowAll();
 
     _container.innerHTML = `
-        <div class="statistics-view">
+        <div class="statistics-view" style="display: flex; flex-direction: column; height: 100%; min-height: 0;">
             <!-- Compact Controls Row (like Produktoversigt) -->
             <div class="stat-controls-row">
                 <!-- Mode Buttons -->
@@ -98,7 +110,7 @@ export async function renderStatisticsView() {
             </div>
 
             <!-- Table Container -->
-            <div class="statistics-table-container" id="statistics-table-container">
+            <div class="statistics-table-container" id="statistics-table-container" style="flex: 1; min-height: 0; overflow-y: auto; overflow-x: auto;">
                 <div class="statistics-loading">Indlæser...</div>
             </div>
         </div>
@@ -295,6 +307,7 @@ async function loadAndRenderTable() {
             infoRow.innerHTML = `${result.rows.length} ${modeLabel} <span style="color: #888; margin-left: 10px;">Klik på kolonneoverskrift for at sortere</span>`;
         }
 
+        _lastResultsByMode[_currentMode] = result;
         renderTable(tableContainer, result.rows, result.columns, result.totals);
 
     } catch (err) {
@@ -310,13 +323,15 @@ function renderTable(container, rows, columns, totals) {
     const sortCol = getSortColumn();
     const sortDir = getSortDirection();
 
-    // Build table with inline styles (like Produktoversigt)
+    // Build table with CSS classes (match Produktoversigt)
     const table = document.createElement('table');
+    table.classList.add('statistics-table');
     table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 14px;';
 
     // Header
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
+    headerRow.classList.add('statistics-header-row');
     headerRow.style.cssText = 'background: #f5f5f5; border-bottom: 2px solid #ddd;';
 
     columns.forEach(col => {
@@ -324,11 +339,12 @@ function renderTable(container, rows, columns, totals) {
         const isSorted = col.key === sortCol;
         const sortIndicator = isSorted ? (sortDir === 'asc' ? '↑' : '↓') : '↕';
 
-        th.style.cssText = 'padding: 10px 8px; text-align: left; font-weight: 600; font-size: 13px; color: #333; white-space: nowrap;';
+        th.classList.add('statistics-header-cell');
+        th.style.cssText = 'padding: 12px 10px; text-align: left; font-weight: 600; font-size: 13px; color: #333; white-space: nowrap;';
 
         if (col.sortable) {
             th.style.cursor = 'pointer';
-            th.innerHTML = `${col.label}<span style="margin-left: 4px; opacity: ${isSorted ? '1' : '0.4'}; color: ${isSorted ? '#6366f1' : '#666'};">${sortIndicator}</span>`;
+            th.innerHTML = `${col.label}<span class="statistics-sort-indicator ${isSorted ? 'active' : ''}">${sortIndicator}</span>`;
             th.dataset.column = col.key;
             th.classList.add('sortable');
         } else {
@@ -343,20 +359,22 @@ function renderTable(container, rows, columns, totals) {
 
     // Body
     const tbody = document.createElement('tbody');
+    tbody.classList.add('statistics-body');
 
     rows.forEach((row, idx) => {
         const tr = document.createElement('tr');
         const isEven = idx % 2 === 1;
-        tr.style.cssText = `border-bottom: 1px solid #eee; background: ${isEven ? '#fafafa' : 'white'};`;
+        tr.classList.add('statistics-row');
         tr.dataset.userId = row.id;
+        tr.style.cssText = `border-bottom: 1px solid #eee; background: ${isEven ? '#fafafa' : 'white'};`;
 
-        // Hover effect
         tr.addEventListener('mouseenter', () => { tr.style.background = '#f0f7ff'; });
         tr.addEventListener('mouseleave', () => { tr.style.background = isEven ? '#fafafa' : 'white'; });
 
+        // Hover effect
         // Click handler for Kunder mode
         if (row.isChild && _currentMode === 'kunder') {
-            tr.style.cursor = 'pointer';
+            tr.classList.add('clickable');
             tr.addEventListener('click', () => {
                 if (_onOpenPurchaseProfile) {
                     _onOpenPurchaseProfile(row.id);
@@ -366,7 +384,8 @@ function renderTable(container, rows, columns, totals) {
 
         columns.forEach(col => {
             const td = document.createElement('td');
-            td.style.cssText = 'padding: 8px; vertical-align: middle;';
+            td.classList.add('statistics-cell');
+            td.style.cssText = 'padding: 10px; vertical-align: middle;';
             td.innerHTML = formatCell(row, col.key);
             tr.appendChild(td);
         });
@@ -375,6 +394,29 @@ function renderTable(container, rows, columns, totals) {
     });
 
     table.appendChild(tbody);
+
+    if (totals) {
+        const tfoot = document.createElement('tfoot');
+        const totalRow = document.createElement('tr');
+        totalRow.classList.add('statistics-total-row');
+        totalRow.style.cssText = 'background: #f5f5f5; border-top: 2px solid #ddd; font-weight: 700; position: sticky; bottom: 0; z-index: 1;';
+
+        columns.forEach((col, index) => {
+            const td = document.createElement('td');
+            td.classList.add('statistics-cell', 'statistics-total-cell');
+            td.style.cssText = 'padding: 10px; vertical-align: middle; background: #f5f5f5;';
+
+            if (index === 0) {
+                td.innerHTML = '<span class="statistics-total-label">Total</span>';
+            } else {
+                td.innerHTML = formatTotalCell(col.key, totals);
+            }
+            totalRow.appendChild(td);
+        });
+
+        tfoot.appendChild(totalRow);
+        table.appendChild(tfoot);
+    }
 
     // Clear and append
     container.innerHTML = '';
@@ -387,7 +429,14 @@ function renderTable(container, rows, columns, totals) {
             const currentDir = getSortDirection();
             const newDir = (column === getSortColumn() && currentDir === 'asc') ? 'desc' : 'asc';
             setSort(column, newDir);
-            await loadAndRenderTable();
+            const cached = _lastResultsByMode[_currentMode];
+            if (cached && Array.isArray(cached.rows)) {
+                const sortedRows = sortStatisticsRows(cached.rows, column, newDir);
+                cached.rows = sortedRows;
+                renderTable(container, sortedRows, cached.columns, cached.totals);
+            } else {
+                await loadAndRenderTable();
+            }
         });
     });
 }
@@ -440,6 +489,39 @@ function formatCell(row, key) {
                 return '<span class="stat-empty">-</span>';
             }
             return escapeHtml(String(value));
+    }
+}
+
+function formatTotalCell(key, totals) {
+    if (!totals || totals[key] === undefined || totals[key] === null) {
+        return '<span class="stat-empty">-</span>';
+    }
+    const value = totals[key];
+
+    switch (key) {
+        case 'balance': {
+            const balanceClass = value < 0 ? 'negative' : '';
+            return `<span class="stat-amount ${balanceClass}">${formatAmount(value)}</span>`;
+        }
+        case 'purchaseAmount':
+        case 'salesAmount':
+        case 'selfSalesAmount':
+        case 'assistedSalesAmount':
+        case 'totalSalesAmount':
+            return `<span class="stat-amount">${formatAmount(value)}</span>`;
+
+        case 'purchaseCount':
+        case 'salesCount':
+        case 'itemsSold':
+            return `<span class="stat-number">${value || 0}</span>`;
+
+        case 'clerkTime':
+        case 'supervisorTime':
+        case 'totalTime':
+            return `<span class="stat-time">${formatMinutes(value)}</span>`;
+
+        default:
+            return '<span class="stat-empty">-</span>';
     }
 }
 

@@ -58,8 +58,8 @@ let _sortDirection = 'asc'; // 'asc' | 'desc'
 // DATA CACHE
 // ============================================================
 let _dataCache = {
-    mode: null,
     period: null,
+    institutionId: null,
     kunderData: null,
     ekspedienterData: null,
     personaleData: null
@@ -120,8 +120,8 @@ export function setSort(column, direction) {
 // ============================================================
 export function invalidateStatisticsCache() {
     _dataCache = {
-        mode: null,
         period: null,
+        institutionId: null,
         kunderData: null,
         ekspedienterData: null,
         personaleData: null
@@ -130,8 +130,8 @@ export function invalidateStatisticsCache() {
 }
 
 function isCacheValid(mode) {
-    return _dataCache.mode === mode && 
-           _dataCache.period === _currentPeriod &&
+    return _dataCache.period === _currentPeriod &&
+           _dataCache.institutionId === _institutionId &&
            _dataCache[`${mode}Data`] !== null;
 }
 
@@ -227,6 +227,10 @@ function sortRows(rows, column, direction) {
     });
 }
 
+export function sortStatisticsRows(rows, column, direction) {
+    return sortRows(rows || [], column, direction);
+}
+
 /**
  * Filter rows based on toggles
  */
@@ -243,6 +247,22 @@ function filterRows(rows) {
     });
 }
 
+function setCache(mode, baseRows) {
+    _dataCache.period = _currentPeriod;
+    _dataCache.institutionId = _institutionId;
+    _dataCache[`${mode}Data`] = { baseRows };
+}
+
+function finalizeResult(baseRows, columns, totalsBuilder, { filter = true } = {}) {
+    let rows = baseRows || [];
+    if (filter) {
+        rows = filterRows(rows);
+    }
+    rows = sortRows(rows, _sortColumn, _sortDirection);
+    const totals = totalsBuilder ? totalsBuilder(rows) : null;
+    return { rows, columns, totals, error: null };
+}
+
 // ============================================================
 // MODE 1: KUNDER (Customers)
 // ============================================================
@@ -257,6 +277,22 @@ export async function fetchKunderData() {
     }
 
     try {
+        const columns = [
+            { key: 'name', label: 'Navn', sortable: true },
+            { key: 'balance', label: 'Saldo', sortable: true },
+            { key: 'purchaseAmount', label: 'Køb beløb', sortable: true },
+            { key: 'purchaseCount', label: 'Antal varer', sortable: true }
+        ];
+        const buildTotals = (rows) => ({
+            balance: rows.reduce((sum, r) => sum + r.balance, 0),
+            purchaseAmount: rows.reduce((sum, r) => sum + r.purchaseAmount, 0),
+            purchaseCount: rows.reduce((sum, r) => sum + r.purchaseCount, 0)
+        });
+
+        if (isCacheValid('kunder')) {
+            return finalizeResult(_dataCache.kunderData.baseRows, columns, buildTotals, { filter: true });
+        }
+
         const fromDate = getDateFilter(_currentPeriod);
 
         // Single aggregated query: fetch all users with their purchase data
@@ -325,8 +361,8 @@ export async function fetchKunderData() {
             });
         }
 
-        // Build rows
-        let rows = (users || []).map(user => {
+        // Build base rows (before filters/sort)
+        const baseRows = (users || []).map(user => {
             const purchases = purchaseAggregates[user.id] || { amount: 0, itemCount: 0 };
             return {
                 id: user.id,
@@ -338,28 +374,8 @@ export async function fetchKunderData() {
             };
         });
 
-        // Filter based on toggles
-        rows = filterRows(rows);
-
-        // Sort
-        rows = sortRows(rows, _sortColumn, _sortDirection);
-
-        // Calculate totals
-        const totals = {
-            balance: rows.reduce((sum, r) => sum + r.balance, 0),
-            purchaseAmount: rows.reduce((sum, r) => sum + r.purchaseAmount, 0),
-            purchaseCount: rows.reduce((sum, r) => sum + r.purchaseCount, 0)
-        };
-
-        // Column definitions
-        const columns = [
-            { key: 'name', label: 'Navn', sortable: true },
-            { key: 'balance', label: 'Saldo', sortable: true },
-            { key: 'purchaseAmount', label: 'Køb beløb', sortable: true },
-            { key: 'purchaseCount', label: 'Antal varer', sortable: true }
-        ];
-
-        return { rows, columns, totals, error: null };
+        setCache('kunder', baseRows);
+        return finalizeResult(baseRows, columns, buildTotals, { filter: true });
 
     } catch (err) {
         console.error('[statistics-data] Error fetching Kunder data:', err);
@@ -382,6 +398,34 @@ export async function fetchEkspedienterData() {
     }
 
     try {
+        const buildColumns = () => {
+            const cols = [
+                { key: 'name', label: 'Navn', sortable: true },
+                { key: 'balance', label: 'Saldo', sortable: true },
+                { key: 'salesAmount', label: 'Salg beløb', sortable: true },
+                { key: 'salesCount', label: 'Antal salg', sortable: true },
+                { key: 'itemsSold', label: 'Produkter solgt', sortable: true },
+                { key: 'clerkTime', label: 'Tid som ekspedient', sortable: true },
+                { key: 'level', label: 'Flango Level', sortable: true }
+            ];
+
+            if (_showStaff || _showAll) {
+                cols.splice(1, 0, { key: 'role', label: 'Rolle', sortable: false });
+            }
+            return cols;
+        };
+        const buildTotals = (rows) => ({
+            balance: rows.reduce((sum, r) => sum + r.balance, 0),
+            salesAmount: rows.reduce((sum, r) => sum + r.salesAmount, 0),
+            salesCount: rows.reduce((sum, r) => sum + r.salesCount, 0),
+            itemsSold: rows.reduce((sum, r) => sum + r.itemsSold, 0),
+            clerkTime: rows.reduce((sum, r) => sum + r.clerkTime, 0)
+        });
+
+        if (isCacheValid('ekspedienter')) {
+            return finalizeResult(_dataCache.ekspedienterData.baseRows, buildColumns(), buildTotals, { filter: true });
+        }
+
         const fromDate = getDateFilter(_currentPeriod);
 
         // Fetch users with clerk stats
@@ -443,8 +487,8 @@ export async function fetchEkspedienterData() {
             });
         }
 
-        // Build rows
-        let rows = (users || []).map(user => {
+        // Build base rows (before filters/sort)
+        let baseRows = (users || []).map(user => {
             const sales = clerkSalesAggregates[user.id] || { salesCount: 0, amount: 0, itemCount: 0 };
             const level = calculateLevel(user.total_minutes_worked, user.total_sales_count);
             
@@ -464,40 +508,10 @@ export async function fetchEkspedienterData() {
         });
 
         // Filter out users with 0 clerk time (never worked as clerk)
-        rows = rows.filter(r => r.clerkTime > 0);
+        baseRows = baseRows.filter(r => r.clerkTime > 0);
 
-        // Filter based on toggles
-        rows = filterRows(rows);
-
-        // Sort
-        rows = sortRows(rows, _sortColumn, _sortDirection);
-
-        // Calculate totals
-        const totals = {
-            balance: rows.reduce((sum, r) => sum + r.balance, 0),
-            salesAmount: rows.reduce((sum, r) => sum + r.salesAmount, 0),
-            salesCount: rows.reduce((sum, r) => sum + r.salesCount, 0),
-            itemsSold: rows.reduce((sum, r) => sum + r.itemsSold, 0),
-            clerkTime: rows.reduce((sum, r) => sum + r.clerkTime, 0)
-        };
-
-        // Column definitions - include Rolle when staff is shown
-        const columns = [
-            { key: 'name', label: 'Navn', sortable: true },
-            { key: 'balance', label: 'Saldo', sortable: true },
-            { key: 'salesAmount', label: 'Salg beløb', sortable: true },
-            { key: 'salesCount', label: 'Antal salg', sortable: true },
-            { key: 'itemsSold', label: 'Produkter solgt', sortable: true },
-            { key: 'clerkTime', label: 'Tid som ekspedient', sortable: true },
-            { key: 'level', label: 'Flango Level', sortable: true }
-        ];
-
-        // Add Rolle column if staff is visible
-        if (_showStaff || _showAll) {
-            columns.splice(1, 0, { key: 'role', label: 'Rolle', sortable: false });
-        }
-
-        return { rows, columns, totals, error: null };
+        setCache('ekspedienter', baseRows);
+        return finalizeResult(baseRows, buildColumns(), buildTotals, { filter: true });
 
     } catch (err) {
         console.error('[statistics-data] Error fetching Ekspedienter data:', err);
@@ -549,6 +563,28 @@ export async function fetchPersonaleData() {
     }
 
     try {
+        const columns = [
+            { key: 'name', label: 'Navn', sortable: true },
+            { key: 'clerkTime', label: 'Tid som ekspedient', sortable: true },
+            { key: 'supervisorTime', label: 'Tid som voksen ansvarlig', sortable: true },
+            { key: 'totalTime', label: 'Tid i caféen', sortable: true },
+            { key: 'selfSalesAmount', label: 'Selv salg', sortable: true },
+            { key: 'assistedSalesAmount', label: 'Assisteret salg', sortable: true },
+            { key: 'totalSalesAmount', label: 'Salg i alt', sortable: true }
+        ];
+        const buildTotals = (rows) => ({
+            clerkTime: rows.reduce((sum, r) => sum + r.clerkTime, 0),
+            supervisorTime: rows.reduce((sum, r) => sum + r.supervisorTime, 0),
+            totalTime: rows.reduce((sum, r) => sum + r.totalTime, 0),
+            selfSalesAmount: rows.reduce((sum, r) => sum + r.selfSalesAmount, 0),
+            assistedSalesAmount: rows.reduce((sum, r) => sum + r.assistedSalesAmount, 0),
+            totalSalesAmount: rows.reduce((sum, r) => sum + r.totalSalesAmount, 0)
+        });
+
+        if (isCacheValid('personale')) {
+            return finalizeResult(_dataCache.personaleData.baseRows, columns, buildTotals, { filter: false });
+        }
+
         const fromDate = getDateFilter(_currentPeriod);
 
         // Fetch admin users only
@@ -690,8 +726,8 @@ export async function fetchPersonaleData() {
             }
         }
 
-        // Build rows
-        let rows = (admins || []).map(admin => {
+        // Build base rows (before sort)
+        const baseRows = (admins || []).map(admin => {
             const selfSales = selfSalesAggregates[admin.id] || 0;
             const assistedSales = assistedSalesAggregates[admin.id] || 0;
             const clerkTime = admin.total_minutes_worked || 0;
@@ -716,33 +752,8 @@ export async function fetchPersonaleData() {
             };
         });
 
-        // No toggle filtering for Personale mode (only shows admins)
-        
-        // Sort
-        rows = sortRows(rows, _sortColumn, _sortDirection);
-
-        // Calculate totals
-        const totals = {
-            clerkTime: rows.reduce((sum, r) => sum + r.clerkTime, 0),
-            supervisorTime: rows.reduce((sum, r) => sum + r.supervisorTime, 0),
-            totalTime: rows.reduce((sum, r) => sum + r.totalTime, 0),
-            selfSalesAmount: rows.reduce((sum, r) => sum + r.selfSalesAmount, 0),
-            assistedSalesAmount: rows.reduce((sum, r) => sum + r.assistedSalesAmount, 0),
-            totalSalesAmount: rows.reduce((sum, r) => sum + r.totalSalesAmount, 0)
-        };
-
-        // Column definitions
-        const columns = [
-            { key: 'name', label: 'Navn', sortable: true },
-            { key: 'clerkTime', label: 'Tid som ekspedient', sortable: true },
-            { key: 'supervisorTime', label: 'Tid som voksen ansvarlig', sortable: true },
-            { key: 'totalTime', label: 'Tid i caféen', sortable: true },
-            { key: 'selfSalesAmount', label: 'Selv salg', sortable: true },
-            { key: 'assistedSalesAmount', label: 'Assisteret salg', sortable: true },
-            { key: 'totalSalesAmount', label: 'Salg i alt', sortable: true }
-        ];
-
-        return { rows, columns, totals, error: null };
+        setCache('personale', baseRows);
+        return finalizeResult(baseRows, columns, buildTotals, { filter: false });
 
     } catch (err) {
         console.error('[statistics-data] Error fetching Personale data:', err);

@@ -1,9 +1,11 @@
 // Tema og shell-funktioner
 import { getCurrentClerk } from '../domain/session-store.js';
-import { getProductIconInfo } from '../domain/products-and-cart.js';
+import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js';
 import { setupHelpModule, openHelpManually } from './help.js';
 import { supabaseClient } from '../core/config-and-supabase.js';
 import { getInstitutionId } from '../domain/session-store.js';
+import { getCurrentCustomer } from '../domain/cafe-session-store.js';
+import { getOrder } from '../domain/order-store.js';
 import {
     initThemeLoader,
     switchTheme as themePackSwitchTheme,
@@ -15,6 +17,7 @@ import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../d
 import { updateInstitutionCache } from '../domain/institution-store.js';
 import { showCustomAlert } from './sound-and-alerts.js';
 import { refetchAllProducts } from '../core/data-refetch.js';
+import { invalidateAllLimitCaches } from '../domain/purchase-limits.js';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 const sugarPolicyState = {
@@ -1164,14 +1167,24 @@ async function openSugarPolicyModal() {
 
             try {
                 await saveAllDraftChanges();
+                // Invalider limit-caches og opdater produktvælger UI
+                const selectedCustomer = typeof getCurrentCustomer === 'function' ? getCurrentCustomer() : null;
+                invalidateAllLimitCaches(selectedCustomer?.id || null);
+                invalidateChildLimitSnapshot();
+
+                if (typeof window.__flangoRefreshSugarPolicy === 'function') {
+                    await window.__flangoRefreshSugarPolicy();
+                } else {
+                    const allProducts = typeof window.__flangoGetAllProducts === 'function' ? window.__flangoGetAllProducts() : [];
+                    const sugarData = typeof window.__flangoGetSugarData === 'function' ? window.__flangoGetSugarData() : null;
+                    const productsEl = document.getElementById('products');
+                    const currentOrder = typeof getOrder === 'function' ? getOrder() : [];
+                    await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, selectedCustomer?.id || null, sugarData);
+                }
+
                 newApplyBtn.textContent = '✓ Gemt!';
                 newApplyBtn.style.background = '#2e7d32';
                 newApplyBtn.style.opacity = '1';
-
-                // Refresh sugarPolicy for den valgte bruger
-                if (typeof window.__flangoRefreshSugarPolicy === 'function') {
-                    await window.__flangoRefreshSugarPolicy();
-                }
 
                 setTimeout(() => {
                     newApplyBtn.textContent = 'Anvend ændringer';

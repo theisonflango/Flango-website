@@ -281,8 +281,10 @@ function getEventAmount(event) {
     const details = event.details || {};
 
     if (event.event_type === 'SALE') {
-        const explicitAmount = safeNumber(details.amount);
+        const explicitAmount = safeNumber(details.total_amount);
         if (explicitAmount > 0) return explicitAmount;
+        const legacyAmount = safeNumber(details.amount);
+        if (legacyAmount > 0) return legacyAmount;
 
         if (Array.isArray(event.items)) {
             return event.items.reduce((sum, item) => {
