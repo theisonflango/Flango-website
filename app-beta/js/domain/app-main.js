@@ -50,6 +50,12 @@ import {
 } from './session-store.js';
 
 export async function startApp() {
+    // Guard: undgå dobbelt initialisering (kan give multiple click-handlers)
+    if (window.__flangoAppStarted) {
+        console.warn('[app-main] startApp already initialized - skipping re-init');
+        return;
+    }
+    window.__flangoAppStarted = true;
     const adminProfile = getCurrentAdmin();
     const clerkProfile = getCurrentClerk();
 
@@ -737,6 +743,9 @@ export async function startApp() {
             cartLengthBefore: currentOrder?.length,
             cartItemsBefore: currentOrder?.slice(0, 3).map(i => i.name),
         });
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app-main.js:740',message:'selectUser before clear',data:{hadPrevCustomer:!!prevCustomer?.id,isSameUser:!!(prevCustomer && prevCustomer.id === userId),cartLenBefore:currentOrder?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'bugs-1',hypothesisId:'H6'})}).catch(()=>{});
+        // #endregion
         // Tjek om samme bruger allerede er valgt
         const currentCustomer = getCurrentCustomer();
         if (currentCustomer && currentCustomer.id === userId) {

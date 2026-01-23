@@ -307,6 +307,9 @@ export function handleOrderListClick(event, currentOrder, rerender, onOrderChang
     if (!removeBtn) return;
 
     const action = removeBtn.dataset.action || '';
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'order-ui.js:309',message:'handleOrderListClick remove requested',data:{action,indexRaw:removeBtn.dataset.index,currentOrderLen:currentOrder?.length,orderStoreLen:getOrder()?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'bugs-1',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
     if (action === 'disable-bulk') {
         const productId = removeBtn.dataset.productId;
         if (!productId) return;
@@ -349,6 +352,9 @@ export function handleOrderListClick(event, currentOrder, rerender, onOrderChang
     } catch (err) {
         console.warn('[order-store] sync failed after currentOrder mutation:', err);
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'order-ui.js:352',message:'handleOrderListClick remove applied',data:{indexRemoved:indexToRemove,currentOrderLen:currentOrder?.length,orderStoreLen:getOrder()?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'bugs-1',hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion
 
     if (typeof rerender === 'function') {
         rerender();
@@ -383,6 +389,9 @@ export async function addToOrder(product, currentOrder, orderListEl, totalPriceE
     const childId = customer?.id || null;
     const institutionId = customer?.institution_id || null;
     const productId = product?.id ?? null;
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'order-ui.js:386',message:'addToOrder entry',data:{currentOrderLen:currentOrder?.length,orderStoreLen:getOrder()?.length,hasCustomer:!!childId,productId:productId != null},timestamp:Date.now(),sessionId:'debug-session',runId:'bugs-1',hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion
 
     if (childId && productId != null) {
         try {
