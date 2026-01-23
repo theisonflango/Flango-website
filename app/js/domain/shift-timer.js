@@ -147,21 +147,12 @@ function updatePillDisplay() {
     if (!pillElement) return;
 
     if (!state.active) {
-        // Inactive state: Vis preview med 00:00 og 0/0 i dæmpede farver, + i midten
-        pillElement.innerHTML = `
-            <span style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#f3f4f6,#e5e7eb);padding:6px 12px;border-radius:20px;border:2px dashed #d1d5db;opacity:0.7;">
-                <span style="font-size:16px;filter:grayscale(50%);">⏱️</span>
-                <span style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:#9ca3af;">00:00</span>
-            </span>
-            <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background:linear-gradient(135deg,#a78bfa,#8b5cf6);color:white;border-radius:50%;font-size:16px;font-weight:700;box-shadow:0 2px 8px rgba(139,92,246,0.3);">+</span>
-            <span style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#f3f4f6,#e5e7eb);padding:6px 12px;border-radius:20px;border:2px dashed #d1d5db;opacity:0.7;">
-                <span style="font-size:16px;filter:grayscale(50%);">🛒</span>
-                <span style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:#9ca3af;">0/0</span>
-            </span>
-        `;
-        pillElement.style.background = 'linear-gradient(135deg, #faf5ff, #f3e8ff)';
-        pillElement.style.borderColor = '#d8b4fe';
-        pillElement.style.boxShadow = '0 2px 8px rgba(168,139,250,0.15)';
+        // Inactive state: Vis kun et ur-ikon som kan klikkes for at åbne settings
+        pillElement.innerHTML = `<span style="font-size:22px;">🕐</span>`;
+        pillElement.style.background = 'linear-gradient(135deg, #f8fafc, #f1f5f9)';
+        pillElement.style.borderColor = '#e2e8f0';
+        pillElement.style.boxShadow = '0 2px 6px rgba(0,0,0,0.08)';
+        pillElement.style.padding = '8px 12px';
         pillElement.classList.remove('shift-timer-active');
     } else {
         // Active state: Farverige bobler til tid og salg

@@ -4,6 +4,9 @@ import { performLogin } from './auth-and-session.js';
 import { fetchAdminsForInstitution } from './users-and-admin.js';
 import { showScreen } from '../ui/shell-and-theme.js';
 
+const CLUB_LOGIN_CODE_KEY = 'flango_club_login_code';
+let lastClubLoginCode = null;
+
 export async function setupClubLoginScreen() {
     const institutions = await fetchInstitutions();
     showScreen('screen-club-login');
@@ -14,6 +17,10 @@ export async function setupClubLoginScreen() {
     if (!selectEl || !codeInput || !loginBtn || !errorEl) return;
 
     errorEl.textContent = '';
+    lastClubLoginCode = null;
+    try {
+        sessionStorage.removeItem(CLUB_LOGIN_CODE_KEY);
+    } catch {}
     codeInput.value = '';
     loginBtn.disabled = true;
     loginBtn.textContent = 'Fortsæt';
@@ -69,12 +76,17 @@ export async function setupClubLoginScreen() {
             return;
         }
 
+        // Gem kode til admin-email autofill og send den videre til locked screen
+        lastClubLoginCode = code;
+        try {
+            sessionStorage.setItem(CLUB_LOGIN_CODE_KEY, code);
+        } catch {}
         rememberInstitution(inst);
-        await setupLockedScreen();
+        await setupLockedScreen(code);
     };
 }
 
-export async function setupLockedScreen() {
+export async function setupLockedScreen(clubLoginCode = null) {
     const club = await ensureActiveInstitution();
     if (!club) {
         await supabaseClient.auth.signOut();
@@ -97,6 +109,9 @@ export async function setupLockedScreen() {
         switchClubBtn.style.display = 'inline-block';
         switchClubBtn.onclick = async () => {
             clearSavedInstitution();
+            try {
+                sessionStorage.removeItem(CLUB_LOGIN_CODE_KEY);
+            } catch {}
             await supabaseClient.auth.signOut();
             await fetchInstitutions(true);
             await setupClubLoginScreen();
@@ -106,7 +121,17 @@ export async function setupLockedScreen() {
     if (adminSelect) {
         adminSelect.disabled = true;
         adminSelect.innerHTML = '<option value="">Henter administratorer...</option>';
-        fetchAdminsForInstitution(club.id).then(admins => {
+        if (clubLoginCode) {
+            lastClubLoginCode = clubLoginCode;
+            try {
+                sessionStorage.setItem(CLUB_LOGIN_CODE_KEY, clubLoginCode);
+            } catch {}
+        } else if (!lastClubLoginCode) {
+            try {
+                lastClubLoginCode = sessionStorage.getItem(CLUB_LOGIN_CODE_KEY);
+            } catch {}
+        }
+        fetchAdminsForInstitution(club.id, { loginCode: lastClubLoginCode }).then(admins => {
             if (!adminSelect) return;
             if (!admins.length) {
                 adminSelect.innerHTML = '<option value="">Ingen administratorer fundet</option>';
@@ -118,17 +143,22 @@ export async function setupLockedScreen() {
             adminSelect.innerHTML = '<option value="">— Vælg administrator —</option>';
             admins.forEach(admin => {
                 const opt = document.createElement('option');
-                // SIKKERHED: Vi viser kun navn (ingen email-læk).
-                opt.value = admin.id || '';
-                opt.textContent = admin.name || 'Admin';
+                opt.value = admin.email || admin.id || '';
+                opt.textContent = admin.name || admin.email || 'Admin';
                 adminSelect.appendChild(opt);
             });
             adminSelect.onchange = () => {
                 // Vi autofylder ikke email længere (skal indtastes manuelt).
                 const selectedId = adminSelect.value;
                 if (selectedId) {
-                    emailInput.value = '';
-                    emailInput.focus();
+                    // Hvis vi fik email fra RPC, brug den; ellers tom og fokus.
+                    if (selectedId.includes('@')) {
+                        emailInput.value = selectedId;
+                        passwordInput.focus();
+                    } else {
+                        emailInput.value = '';
+                        emailInput.focus();
+                    }
                 } else {
                     emailInput.value = '';
                     emailInput.focus();

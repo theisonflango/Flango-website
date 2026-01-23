@@ -1,5 +1,7 @@
 import { showAlert, showCustomAlert, playSound } from '../ui/sound-and-alerts.js';
+import { logDebugEvent } from '../core/debug-flight-recorder.js';
 import { supabaseClient } from '../core/config-and-supabase.js';
+import { runWithAuthRetry } from '../core/auth-retry.js';
 import { OVERDRAFT_LIMIT } from '../core/constants.js';
 import { setOrder, getOrder, clearOrder, getOrderTotal } from './order-store.js';
 import { evaluatePurchase } from './cafe-session.js';
@@ -9,11 +11,12 @@ import {
     clearCurrentCustomer,
 } from './cafe-session-store.js';
 import { renderOrder } from './order-ui.js';
-import { getProductIconInfo } from './products-and-cart.js';
+import { getProductIconInfo, getBulkDiscountedUnitPrice, getBulkDiscountSummary } from './products-and-cart.js';
 import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild } from './purchase-limits.js';
 import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
 import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
 import { escapeHtml } from '../core/escape-html.js';
+import { formatKr } from '../ui/confirm-modals.js';
 
 // ============================================================================
 // HELPER FUNKTIONER FOR handleCompletePurchase (OPT-6)
@@ -88,8 +91,12 @@ function groupOrderItems(order) {
         const productId = item?.product_id || item?.productId || item?.id;
         if (productId == null) return acc;
         const key = String(productId);
-        acc[key] = acc[key] || { ...item, id: productId, count: 0 };
-        acc[key].count++;
+        acc[key] = acc[key] || { ...item, id: productId, count: 0, bulkDiscountDisabled: false };
+        const qty = Number.isFinite(item?.quantity) ? item.quantity : 1;
+        acc[key].count += qty;
+        if (item?._bulkDiscountDisabled === true) {
+            acc[key].bulkDiscountDisabled = true;
+        }
         return acc;
     }, {});
 }
@@ -138,6 +145,21 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance) {
         line.appendChild(text);
 
         root.appendChild(line);
+
+        const summary = getBulkDiscountSummary(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
+        if (summary.discountAmount > 0) {
+            const discountLine = document.createElement('div');
+            discountLine.className = 'confirm-product-line';
+            discountLine.style.color = '#64748b';
+            const bundleLabel = summary.bundlePrice != null
+                ? formatKr(summary.bundlePrice).replace(' kr', '')
+                : '';
+            const label = bundleLabel
+                ? `🏷️ Rabat (${summary.qtyRule} for ${bundleLabel})`
+                : '🏷️ Rabat';
+            discountLine.textContent = `${label}: -${formatKr(summary.discountAmount)}`;
+            root.appendChild(discountLine);
+        }
     });
 
     // Byg negativ balance advarsel hvis relevant
@@ -151,7 +173,7 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance) {
     }
 
     // Append totals section (as HTML string for formatting; names are escaped)
-    const totalsHtml = `<br>for <strong>${Number(finalTotal).toFixed(2)} kr.</strong><hr style="margin: 15px 0; border: 1px solid #eee;">${escapeHtml(customer?.name || 'Ukendt')} har <strong>${Number(newBalance).toFixed(2)} kr.</strong> tilbage.${negativeBalanceWarning}`;
+    const totalsHtml = `<br>for <strong>${formatKr(finalTotal)}</strong><hr style="margin: 15px 0; border: 1px solid #eee;">${escapeHtml(customer?.name || 'Ukendt')} har <strong>${formatKr(newBalance)}</strong> tilbage.${negativeBalanceWarning}`;
     root.insertAdjacentHTML('beforeend', totalsHtml);
 
     return root.innerHTML;
@@ -298,20 +320,11 @@ async function fetchAllergyPolicyForChild(childId, institutionId) {
 // PRODUCT ALLERGENS CACHE - undgår gentagne DB-kald (ændres sjældent)
 // ============================================================================
 const productAllergensCache = new Map(); // productId → allergens[]
-let productAllergensCacheTimestamp = 0;
-const PRODUCT_ALLERGENS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutter
 
 async function fetchProductAllergensMap(productIds) {
     if (!Array.isArray(productIds) || productIds.length === 0) return {};
     const uniqueIds = Array.from(new Set(productIds.filter(Boolean)));
     if (uniqueIds.length === 0) return {};
-
-    // Check cache TTL
-    const now = Date.now();
-    if (now - productAllergensCacheTimestamp > PRODUCT_ALLERGENS_CACHE_TTL_MS) {
-        productAllergensCache.clear();
-        productAllergensCacheTimestamp = now;
-    }
 
     // OPTIMERING: Check hvilke produkter vi allerede har cached
     const cachedResults = {};
@@ -400,7 +413,7 @@ export async function enforceSugarPolicy({ customer, currentOrder, allProducts }
     // Query today's purchases for this customer
     const today = new Date().toISOString().split('T')[0];
     const { data: todaySales } = await supabaseClient
-        .from('sales_items')
+        .from('sale_items')
         .select(`
             product_id,
             quantity,
@@ -457,6 +470,8 @@ export async function enforceSugarPolicy({ customer, currentOrder, allProducts }
     return true; // All checks passed
 }
 
+let purchaseInFlight = false;
+
 export async function handleCompletePurchase({
     customer,
     currentOrder,
@@ -472,8 +487,23 @@ export async function handleCompletePurchase({
     refreshProductLocks,
     renderProductsFromCache,
 }) {
+    const orderSnapshot = Array.isArray(currentOrder) ? [...currentOrder] : [];
+    // Flight recorder: log purchase flow start
+    logDebugEvent('purchase_flow_started', {
+        customerId: customer?.id,
+        customerName: customer?.name,
+        cartLength: orderSnapshot?.length,
+        cartItems: orderSnapshot?.slice(0, 5).map(i => ({ name: i.name, id: i.id, price: i.price })),
+        orderStoreLength: typeof getOrder === 'function' ? getOrder()?.length : 'N/A',
+    });
     if (!customer) return showAlert("Fejl: Vælg venligst en kunde!");
-    if (currentOrder.length === 0) return showAlert("Fejl: Indkøbskurven er tom!");
+    if (orderSnapshot.length === 0) return showAlert("Fejl: Indkøbskurven er tom!");
+    if (purchaseInFlight) {
+        logDebugEvent('purchase_inflight_blocked', { customerId: customer?.id });
+        return;
+    }
+    purchaseInFlight = true;
+    try {
     // === ALLERGI-CHECK ===
     let allergyPolicy = customer?.allergyPolicy;
 
@@ -483,7 +513,7 @@ export async function handleCompletePurchase({
         (typeof allergyPolicy === 'object' && Object.keys(allergyPolicy).length === 0);
 
     // OPTIMERING: Parallelize allergi-checks for 100-200ms speedup
-    const productIdsInOrder = currentOrder.map(item => item.product_id || item.productId || item.id).filter(Boolean);
+    const productIdsInOrder = orderSnapshot.map(item => item.product_id || item.productId || item.id).filter(Boolean);
 
     const [fetchedAllergyPolicy, productAllergenMap] = await Promise.all([
         isEmptyPolicy ? fetchAllergyPolicyForChild(customer.id, customer.institution_id) : Promise.resolve(allergyPolicy),
@@ -498,7 +528,7 @@ export async function handleCompletePurchase({
     console.log('[allergies] effective allergyPolicy for', customer.name, allergyPolicy);
 
     // OPTIMERING: Brug helper funktion til at berige ordrelinjer med allergener
-    const orderWithAllergens = enrichOrderWithAllergens(currentOrder, allProducts, productAllergenMap);
+    const orderWithAllergens = enrichOrderWithAllergens(orderSnapshot, allProducts, productAllergenMap);
 
     console.log('[allergies] policy for', customer.name, allergyPolicy);
     console.log('[allergies] orderWithAllergens', orderWithAllergens);
@@ -530,10 +560,10 @@ export async function handleCompletePurchase({
     let evaluation = null;
     try {
         // Deterministic sync: avoid sharing mutable array reference
-        setOrder(Array.isArray(currentOrder) ? [...currentOrder] : []);
+        setOrder(Array.isArray(orderSnapshot) ? [...orderSnapshot] : []);
         const shadowOrder = getOrder();
         console.log('[order-store] shadow sync:', {
-            currentOrderLength: currentOrder.length,
+            currentOrderLength: orderSnapshot.length,
             shadowOrderLength: Array.isArray(shadowOrder) ? shadowOrder.length : 'n/a',
         });
     } catch (err) {
@@ -543,7 +573,7 @@ export async function handleCompletePurchase({
         const purchaseInput = {
             customer,
             currentBalance: customer?.balance ?? null,
-            orderItems: currentOrder,
+            orderItems: orderSnapshot,
             products: allProducts,
             maxOverdraft: OVERDRAFT_LIMIT,
         };
@@ -551,7 +581,7 @@ export async function handleCompletePurchase({
         console.log('[cafe-session] evaluatePurchase result:', evaluation);
     }
 
-    const sugarOk = await enforceSugarPolicy({ customer, currentOrder, allProducts });
+    const sugarOk = await enforceSugarPolicy({ customer, currentOrder: orderSnapshot, allProducts });
     if (!sugarOk) return;
 
     try {
@@ -559,7 +589,11 @@ export async function handleCompletePurchase({
 
         // Parallel validation checks for all items (much faster than sequential)
         // FIX: Wrap each canChildPurchase call with retry logic for transient errors
-        const checkPromises = currentOrder.map(async (line) => {
+        const missingProductIdCount = orderSnapshot.reduce((count, line) => {
+            const productId = line?.product_id || line?.productId || line?.id;
+            return productId == null ? count + 1 : count;
+        }, 0);
+        const checkPromises = orderSnapshot.map(async (line) => {
             const productId = line.product_id || line.productId || line.id;
             const product = allProducts.find(p => p.id === productId);
             if (!productId) return { allowed: true };
@@ -571,7 +605,7 @@ export async function handleCompletePurchase({
                     const result = await canChildPurchase(
                         productId,
                         childId,
-                        currentOrder,
+                        orderSnapshot,
                         customer.institution_id,
                         product?.name,
                         true // final checkout: undgå dobbelt-tælling af kurven
@@ -603,22 +637,15 @@ export async function handleCompletePurchase({
         const failedCheck = results.find(result => result && result.allowed === false);
         if (failedCheck) {
             const message = failedCheck.message || 'Det her køb er ikke tilladt lige nu. Tal med en voksen i caféen.';
-            // FIX: Kun spil fejlyd når købet faktisk blokeres pga. validering
-            try { 
-                playSound?.('error'); 
-            } catch {}
+            // showCustomAlert viser fejlbeskeden uden at spille lyd
             await showCustomAlert('Køb ikke tilladt', message);
             return;
         }
     } catch (err) {
-        // FIX: Kun spil fejlyd og blokér hvis det er en strukturel fejl der ikke kunne retries
+        // Strukturel fejl ved validering – afviser køb
         console.error('[canChildPurchase] Strukturel fejl ved validering – afviser køb:', err);
-        
-        // Giv bruger feedback (lyd/alert) - kun når købet faktisk blokeres
-        try { 
-            playSound?.('error'); 
-        } catch {}
-        
+
+        // showCustomAlert viser fejlbeskeden uden at spille lyd
         await showCustomAlert(
             'Kan ikke bekræfte regler', 
             'Vi kan ikke bekræfte grænserne lige nu. Prøv igen om 5 sekunder eller tjek din forbindelse.'
@@ -713,7 +740,7 @@ export async function handleCompletePurchase({
 
         if (appliesToUser) {
             // OPTIMERING: genbrug sales-cache (undgår per-køb query i checkout).
-            // getTodaysTotalSpendForChild bruger getTodaysSalesForChild med TTL + in-flight dedup
+            // getTodaysTotalSpendForChild bruger getTodaysSalesForChild med in-flight dedup
             // og er allerede preloadet ved selectUser i normale flows.
             const spentToday = await getTodaysTotalSpendForChild(customer.id, customer.institution_id);
             const spendingLimit = institutionSettings.spending_limit_amount || 40;
@@ -722,7 +749,8 @@ export async function handleCompletePurchase({
             if (wouldSpend > spendingLimit) {
                 const remaining = Math.max(0, spendingLimit - spentToday);
                 const errorMessage = `Du har nået din daglige forbrugsgrænse!<br>Grænse: <strong>${spendingLimit.toFixed(2)} kr.</strong><br>Brugt i dag: <strong>${spentToday.toFixed(2)} kr.</strong><br>Tilbage: <strong>${remaining.toFixed(2)} kr.</strong><br><br>Prøv igen i morgen!`;
-                return showCustomAlert('Køb Afvist', errorMessage);
+                await showCustomAlert('Køb Afvist', errorMessage);
+                return;
             }
         }
     }
@@ -739,29 +767,45 @@ export async function handleCompletePurchase({
             if (newBalance < balanceLimit) {
                 const available = customer.balance - balanceLimit;
                 const errorMessage = `Der er ikke penge nok på kontoen til dette køb!<br>Du har <strong>${available.toFixed(2)} kr.</strong> tilbage, før du rammer ${balanceLimit} kr. grænsen.<br><br>Husk at bede dine forældre pænt om at overføre.`;
-                return showCustomAlert('Køb Afvist', errorMessage);
+                await showCustomAlert('Køb Afvist', errorMessage);
+                return;
             }
         }
     }
 
     // OPTIMERING: Brug helper funktion til at bygge bekræftelsesdialog
-    const confirmationBody = buildConfirmationUI(customer, currentOrder, finalTotal, newBalance);
+    // Flight recorder: log modal build
+    logDebugEvent('confirmation_modal_building', {
+        cartLength: orderSnapshot?.length,
+        cartItemNames: orderSnapshot?.slice(0, 5).map(i => i.name),
+        orderStoreLength: typeof getOrder === 'function' ? getOrder()?.length : 'N/A',
+        finalTotal,
+        newBalance,
+    });
+    const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance);
+    logDebugEvent('confirmation_modal_showing', { bodyLength: confirmationBody?.length });
     const confirmed = await showCustomAlert('Bekræft Køb', confirmationBody, 'confirm');
+    logDebugEvent('confirmation_modal_closed', { confirmed, cartLengthAfter: orderSnapshot?.length });
     if (!confirmed) return;
 
     // OPTIMERING: Brug helper funktion til at sætte knap state
     setButtonLoadingState(completePurchaseBtn, 'loading');
 
     // Grupper items til database payload (bruger shouldBeFreePurchase fra tidligere)
-    const itemCounts = groupOrderItems(currentOrder);
-    const cartItemsForDB = Object.values(itemCounts).map(item => ({
-        product_id: item.id,
-        quantity: item.count,
-        // Hvis admin skal købe gratis, sæt pris til 0. Ellers brug effektiv pris eller normal pris.
-        price: shouldBeFreePurchase ? 0 : (item._effectivePrice ?? item.price),
-        is_refill: item._isRefill || false, // Marker hvis det er et refill-køb
-        product_name: item._effectiveName || item.name // Gem effektivt navn (fx "Saft Refill")
-    }));
+    const itemCounts = groupOrderItems(orderSnapshot);
+    const cartItemsForDB = Object.values(itemCounts).map(item => {
+        const effectiveUnitPrice = shouldBeFreePurchase
+            ? 0
+            : getBulkDiscountedUnitPrice(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
+        return {
+            product_id: item.id,
+            quantity: item.count,
+            // Hvis admin skal købe gratis, sæt pris til 0. Ellers brug mængderabat (hvis aktiv).
+            price: effectiveUnitPrice,
+            is_refill: item._isRefill || false, // Marker hvis det er et refill-køb
+            product_name: item._effectiveName || item.name // Gem effektivt navn (fx "Saft Refill")
+        };
+    });
 
     // OPTIMERING: Brug helper funktion til at resolve admin og clerk IDs
     const sessionAdmin = getCurrentSessionAdmin?.() || null;
@@ -784,7 +828,10 @@ export async function handleCompletePurchase({
     }
     const balanceUpdateNonce = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-    const { data: rpcData, error } = await supabaseClient.rpc('process_sale', salePayload);
+    const { data: rpcData, error } = await runWithAuthRetry(
+        'process_sale',
+        () => supabaseClient.rpc('process_sale', salePayload)
+    );
     if (error) {
         showAlert('Database Fejl: ' + error.message);
         setButtonLoadingState(completePurchaseBtn, 'normal');
@@ -797,6 +844,8 @@ export async function handleCompletePurchase({
         }
         // Dispatch event for shift-timer (bytte-timer) salgstælling
         window.dispatchEvent(new CustomEvent('flango:saleCompleted'));
+        // Flight recorder: log purchase success
+        logDebugEvent('purchase_success', { customerId: customer?.id, finalTotal });
         playSound('purchase');
         const appliedBalance = Number.isFinite(newBalance) ? newBalance : customer.balance - finalTotal;
         // 1) Provisional optimistic update for snappy POS feel
@@ -859,12 +908,18 @@ export async function handleCompletePurchase({
         // NOTE: Don't hide selected-user-info here - updateSelectedUserInfo() handles display state
         setButtonLoadingState(completePurchaseBtn, 'normal');
     }
+    } finally {
+        purchaseInFlight = false;
+    }
 }
 
 export async function handleUndoLastSale({ setCurrentOrder, orderList, totalPriceEl, updateSelectedUserInfo } = {}) {
     const confirmed = await showCustomAlert('Fortryd Sidste Køb', 'Er du sikker på, du vil fortryde det seneste salg? Handlingen kan ikke omgøres.', 'confirm');
     if (!confirmed) return false;
-    const { data, error } = await supabaseClient.rpc('undo_last_sale');
+    const { data, error } = await runWithAuthRetry(
+        'undo_last_sale',
+        () => supabaseClient.rpc('undo_last_sale')
+    );
     if (error) {
         showAlert('Fejl ved fortrydelse: ' + error.message);
         return false;

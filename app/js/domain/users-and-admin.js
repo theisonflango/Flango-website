@@ -71,14 +71,18 @@ export function buildCustomerSelectionEntryElement(user, index, isHighlighted) {
     return userElement;
 }
 
-export async function fetchAdminsForInstitution(instId) {
+export async function fetchAdminsForInstitution(instId, options = {}) {
     if (!instId) return [];
     if (adminCacheByInstitutionUsers?.[instId]) return adminCacheByInstitutionUsers[instId];
     try {
-        // SIKKERHED: Brug RPC der kun returnerer {id,name} (ingen email-læk før login)
-        const { data, error } = await supabaseClient.rpc('get_admin_directory_public', {
-            p_institution_id: instId,
-        });
+        const { loginCode } = options || {};
+        // Hvis vi har verificeret klubkode i denne session, kan vi hente emails via secure RPC.
+        const rpcName = loginCode ? 'get_admin_directory_for_login' : 'get_admin_directory_public';
+        const params = loginCode
+            ? { p_institution_id: instId, p_code: loginCode }
+            : { p_institution_id: instId };
+
+        const { data, error } = await supabaseClient.rpc(rpcName, params);
         if (error) throw error;
         adminCacheByInstitutionUsers[instId] = data || [];
     } catch (err) {

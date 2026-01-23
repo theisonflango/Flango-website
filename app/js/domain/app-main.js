@@ -1,5 +1,6 @@
 import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '../ui/sound-and-alerts.js';
 import { initializeSoundSettings } from '../core/sound-manager.js';
+import { initDebugRecorder, logDebugEvent } from '../core/debug-flight-recorder.js';
 import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen } from '../ui/shell-and-theme.js';
 import { getCurrentTheme } from '../ui/theme-loader.js';
 import { configureHistoryModule, showTransactionsInSummary, showOverviewInSummary, resetSharedHistoryControls } from './history-and-reports.js';
@@ -156,6 +157,15 @@ export async function startApp() {
     let sessionSalesCount = 0;
 
     console.log('Starter applikationen...');
+
+    // 1.5) Initialiser debug flight recorder FØRST (før alt andet)
+    initDebugRecorder();
+    logDebugEvent('app_started', {
+        adminId: adminProfile?.id,
+        adminName: adminProfile?.name,
+        clerkId: clerkProfile?.id,
+        clerkName: clerkProfile?.name,
+    });
 
     // 2) Initialiser lydindstillinger fra localStorage (før lyde afspilles)
     initializeSoundSettings();
@@ -408,7 +418,18 @@ export async function startApp() {
     });
 
     // Købshåndtering
-    completePurchaseBtn.addEventListener('click', async () => {
+    if (completePurchaseBtn._flangoPurchaseHandler) {
+        completePurchaseBtn.removeEventListener('click', completePurchaseBtn._flangoPurchaseHandler);
+    }
+    const purchaseHandler = async () => {
+        // Flight recorder: log purchase button click
+        logDebugEvent('purchase_btn_clicked', {
+            customerId: getCurrentCustomer()?.id,
+            customerName: getCurrentCustomer()?.name,
+            cartLength: currentOrder?.length,
+            cartItems: currentOrder?.slice(0, 5).map(i => ({ name: i.name, id: i.id })),
+            btnDisabled: completePurchaseBtn?.disabled,
+        });
         await handleCompletePurchase({
             customer: getCurrentCustomer(),
             currentOrder,
@@ -426,7 +447,9 @@ export async function startApp() {
         });
         // MUST-RUN: After any purchase attempt, force refresh so locks can't be dropped by debounce.
         await refreshProductLocks({ force: true });
-    });
+    };
+    completePurchaseBtn._flangoPurchaseHandler = purchaseHandler;
+    completePurchaseBtn.addEventListener('click', purchaseHandler);
 
     // 5) Produktstyring
     createProductManagementUI({
@@ -448,7 +471,10 @@ export async function startApp() {
             renderProductsInModal,
             renderProductsGrid,
             fetchAndRenderProducts: async () => {
-                await productAssortment.fetchAndRenderProducts();
+                // KRITISK FIX: Brug renderFromCache i stedet for fetchAndRenderProducts
+                // Dette sikrer at produkter vises med det samme efter oprettelse/redigering
+                // fordi refetchAllProducts() allerede har opdateret cache'en
+                await productAssortment.renderFromCache();
                 // Sørg for at alle knapper har et låse-overlay, så CSS kan virke
                 productsContainer.querySelectorAll('.product-btn').forEach(btn => {
                     if (!btn.querySelector('.product-lock-overlay')) {
@@ -581,6 +607,9 @@ export async function startApp() {
         addToOrder: addToOrderWithLocks,
     });
 
+    // Eksponér renderFromCache til window så andre moduler kan opdatere produkt-visningen
+    window.__flangoRenderProductsFromCache = () => productAssortment.renderFromCache();
+
     // 10) UI-events og helpers
     setupRuntimeUIEvents({
         salesHistoryBtn,
@@ -602,7 +631,7 @@ export async function startApp() {
 
     // Setup summary/opsummering modal
     const institutionId = getInstitutionId();
-    setupSummaryModal(institutionId);
+    setupSummaryModal(institutionId, { getAllUsers });
 
     // Setup global functions for loading views in summary modal
     window.__flangoLoadTransactionsInSummary = () => {
@@ -669,6 +698,15 @@ export async function startApp() {
     await productAssortment.fetchAndRenderProducts();
 
     async function selectUser(userId) {
+        // Flight recorder: log user selection
+        const prevCustomer = getCurrentCustomer();
+        logDebugEvent('user_select_started', {
+            newUserId: userId,
+            prevUserId: prevCustomer?.id,
+            prevUserName: prevCustomer?.name,
+            cartLengthBefore: currentOrder?.length,
+            cartItemsBefore: currentOrder?.slice(0, 3).map(i => i.name),
+        });
         // Tjek om samme bruger allerede er valgt
         const currentCustomer = getCurrentCustomer();
         if (currentCustomer && currentCustomer.id === userId) {
@@ -682,6 +720,7 @@ export async function startApp() {
         currentOrder = [];
         currentSugarData = null;
         setOrder([]); // KRITISK: Sync order-store module state så getOrderTotal() returnerer 0
+        logDebugEvent('cart_cleared_on_user_switch', { newUserId: userId });
         clearEvaluation(); // Ryd evaluation cache så "Ny Saldo" vises korrekt
         renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
 
@@ -799,7 +838,11 @@ export async function startApp() {
         const currentCustomer = getCurrentCustomer();
         if (currentCustomer && currentCustomer.id === userId) {
             console.log(`[app-main] Balance changed for selected customer: ${newBalance} kr (${source})`);
-            updateSelectedUserInfo();
+            // KRITISK: Brug requestAnimationFrame for at sikre DOM er klar til opdatering
+            // Dette løser timing-issues hvor state er opdateret men UI ikke reflekterer det
+            requestAnimationFrame(() => {
+                updateSelectedUserInfo();
+            });
         }
     });
 

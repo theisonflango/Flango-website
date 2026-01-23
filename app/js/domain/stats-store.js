@@ -29,9 +29,13 @@ const aggregateSalesForClerk = (rows, clerkProfile) => {
         if (!isMySale) return;
 
         const details = event.details || {};
-        let amount = safeNumber(details.amount);
+        let amount = safeNumber(details.total_amount);
 
-        // I dine events ligger beløbet typisk i items/price_at_purchase, ikke i details.amount
+        if (!amount) {
+            amount = safeNumber(details.amount);
+        }
+
+        // I dine events ligger beløbet typisk i items/price_at_purchase
         if (!amount && Array.isArray(event.items)) {
             amount = event.items.reduce((sum, item) => {
                 const qty = safeNumber(item.quantity);

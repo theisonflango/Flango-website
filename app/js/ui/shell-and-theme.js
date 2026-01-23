@@ -1,9 +1,11 @@
 // Tema og shell-funktioner
 import { getCurrentClerk } from '../domain/session-store.js';
-import { getProductIconInfo } from '../domain/products-and-cart.js';
+import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js';
 import { setupHelpModule, openHelpManually } from './help.js';
 import { supabaseClient } from '../core/config-and-supabase.js';
 import { getInstitutionId } from '../domain/session-store.js';
+import { getCurrentCustomer } from '../domain/cafe-session-store.js';
+import { getOrder } from '../domain/order-store.js';
 import {
     initThemeLoader,
     switchTheme as themePackSwitchTheme,
@@ -13,6 +15,9 @@ import {
 } from './theme-loader.js';
 import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js';
 import { updateInstitutionCache } from '../domain/institution-store.js';
+import { showCustomAlert } from './sound-and-alerts.js';
+import { refetchAllProducts } from '../core/data-refetch.js';
+import { invalidateAllLimitCaches } from '../domain/purchase-limits.js';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 const sugarPolicyState = {
@@ -181,8 +186,75 @@ let productRulesState = {
     sugarPolicyEnabled: false,
     parentPortalAllowsUnhealthy: true, // Om forældreportal tillader at bruge usund-funktionen
     productLimits: new Map(), // productId -> max_per_day
-    institutionId: null
+    institutionId: null,
+    sortColumn: 'core_assortment',
+    sortDirection: 'desc',
+    showInactiveProducts: false, // Vis deaktiverede produkter (is_enabled=false)
+    // Draft state for pending changes (kun lokale ændringer, ikke gemt endnu)
+    draft: new Map(), // productId -> { field: newValue, ... }
+    originalValues: new Map() // productId -> { field: originalValue, ... } for at kunne sammenligne
 };
+
+// Hjælpefunktioner til draft state
+function setDraftValue(productId, field, value) {
+    if (!productRulesState.draft.has(productId)) {
+        productRulesState.draft.set(productId, {});
+    }
+    productRulesState.draft.get(productId)[field] = value;
+    updateApplyButtonState();
+}
+
+function getDraftValue(productId, field, fallback) {
+    const draft = productRulesState.draft.get(productId);
+    if (draft && field in draft) {
+        return draft[field];
+    }
+    return fallback;
+}
+
+function setOriginalValue(productId, field, value) {
+    if (!productRulesState.originalValues.has(productId)) {
+        productRulesState.originalValues.set(productId, {});
+    }
+    productRulesState.originalValues.get(productId)[field] = value;
+}
+
+function getOriginalValue(productId, field, fallback) {
+    const orig = productRulesState.originalValues.get(productId);
+    if (orig && field in orig) {
+        return orig[field];
+    }
+    return fallback;
+}
+
+function hasUnsavedChanges() {
+    for (const [productId, changes] of productRulesState.draft) {
+        const originals = productRulesState.originalValues.get(productId) || {};
+        for (const [field, newValue] of Object.entries(changes)) {
+            const originalValue = originals[field];
+            if (newValue !== originalValue) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function clearDraftState() {
+    productRulesState.draft.clear();
+    productRulesState.originalValues.clear();
+    updateApplyButtonState();
+}
+
+function updateApplyButtonState() {
+    const applyBtn = document.getElementById('apply-sugar-policy-btn');
+    if (applyBtn) {
+        const hasChanges = hasUnsavedChanges();
+        applyBtn.disabled = !hasChanges;
+        applyBtn.style.opacity = hasChanges ? '1' : '0.5';
+        applyBtn.style.cursor = hasChanges ? 'pointer' : 'not-allowed';
+    }
+}
 
 async function fetchProductLimits(institutionId) {
     if (!institutionId) return new Map();
@@ -224,16 +296,197 @@ async function saveProductActive(productId, isActive) {
     }
 }
 
+async function saveProductDailySpecial(productId, isDailySpecial) {
+    const { error } = await supabaseClient
+        .from('products')
+        .update({ is_daily_special: isDailySpecial })
+        .eq('id', productId);
+    if (error) {
+        console.error('[product-rules] Error saving daily special status:', error);
+    }
+}
+
+async function saveProductCoreAssortment(productId, isCoreAssortment) {
+    const { error } = await supabaseClient
+        .from('products')
+        .update({ is_core_assortment: isCoreAssortment })
+        .eq('id', productId);
+    if (error) {
+        console.error('[product-rules] Error saving core assortment status:', error);
+    }
+}
+
+async function saveProductPrice(productId, price) {
+    const { error } = await supabaseClient
+        .from('products')
+        .update({ price: price })
+        .eq('id', productId);
+    if (error) {
+        console.error('[product-rules] Error saving price:', error);
+    }
+}
+
+async function saveProductName(productId, name) {
+    const { error } = await supabaseClient
+        .from('products')
+        .update({ name: name })
+        .eq('id', productId);
+    if (error) {
+        console.error('[product-rules] Error saving name:', error);
+    }
+}
+
+async function saveProductVisible(productId, isVisible) {
+    const { error } = await supabaseClient
+        .from('products')
+        .update({ is_visible: isVisible })
+        .eq('id', productId);
+    if (error) {
+        console.error('[product-rules] Error saving is_visible status:', error);
+    }
+}
+
+async function saveProductLimit(productId, maxPerDay) {
+    const institutionId = productRulesState.institutionId;
+    if (!institutionId) return;
+
+    if (maxPerDay === null || maxPerDay <= 0) {
+        // Delete the limit
+        await supabaseClient
+            .from('product_limits')
+            .delete()
+            .eq('institution_id', institutionId)
+            .eq('product_id', productId);
+        productRulesState.productLimits.delete(productId);
+    } else {
+        // Upsert the limit
+        const { error } = await supabaseClient
+            .from('product_limits')
+            .upsert({
+                institution_id: institutionId,
+                product_id: productId,
+                max_per_day: maxPerDay
+            }, { onConflict: 'institution_id,product_id' });
+        if (error) {
+            console.error('[product-rules] Error saving limit:', error);
+        } else {
+            productRulesState.productLimits.set(productId, maxPerDay);
+        }
+    }
+}
+
+async function deleteProduct(productId) {
+    const { error } = await supabaseClient
+        .from('products')
+        .delete()
+        .eq('id', productId);
+    if (error) {
+        console.error('[product-rules] Error deleting product:', error);
+        return false;
+    }
+    return true;
+}
+
+function sortProducts(products) {
+    const { sortColumn, sortDirection } = productRulesState;
+    const dir = sortDirection === 'asc' ? 1 : -1;
+
+    return [...products].sort((a, b) => {
+        let aVal, bVal;
+        const aLimit = productRulesState.productLimits.get(a.id) || 0;
+        const bLimit = productRulesState.productLimits.get(b.id) || 0;
+
+        switch (sortColumn) {
+            case 'name':
+                aVal = (a.name || '').toLowerCase();
+                bVal = (b.name || '').toLowerCase();
+                return dir * aVal.localeCompare(bVal, 'da');
+            case 'price':
+                aVal = a.price || 0;
+                bVal = b.price || 0;
+                return dir * (aVal - bVal);
+            case 'limit':
+                return dir * (aLimit - bLimit);
+            case 'daily_special':
+                aVal = a.is_daily_special ? 1 : 0;
+                bVal = b.is_daily_special ? 1 : 0;
+                return dir * (aVal - bVal);
+            case 'core_assortment':
+                aVal = a.is_core_assortment ? 1 : 0;
+                bVal = b.is_core_assortment ? 1 : 0;
+                return dir * (aVal - bVal);
+            case 'in_assortment':
+                aVal = a.is_visible !== false ? 1 : 0;
+                bVal = b.is_visible !== false ? 1 : 0;
+                return dir * (aVal - bVal);
+            case 'unhealthy':
+                aVal = a.unhealthy ? 1 : 0;
+                bVal = b.unhealthy ? 1 : 0;
+                return dir * (aVal - bVal);
+            case 'active':
+                aVal = a.is_enabled !== false ? 1 : 0;
+                bVal = b.is_enabled !== false ? 1 : 0;
+                return dir * (aVal - bVal);
+            default:
+                return (a.sort_order || 0) - (b.sort_order || 0);
+        }
+    });
+}
+
+function updateSortIndicators() {
+    const headers = document.querySelectorAll('#product-rules-table .sortable-col');
+    headers.forEach(th => {
+        const indicator = th.querySelector('.sort-indicator');
+        if (!indicator) return;
+        if (th.dataset.sort === productRulesState.sortColumn) {
+            indicator.textContent = productRulesState.sortDirection === 'asc' ? ' ▲' : ' ▼';
+        } else {
+            indicator.textContent = '';
+        }
+    });
+}
+
+function setupSortableHeaders() {
+    const headers = document.querySelectorAll('#product-rules-table .sortable-col');
+    headers.forEach(th => {
+        if (th.dataset.sortBound) return;
+        th.dataset.sortBound = 'true';
+        th.addEventListener('click', () => {
+            const col = th.dataset.sort;
+            if (productRulesState.sortColumn === col) {
+                productRulesState.sortDirection = productRulesState.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                productRulesState.sortColumn = col;
+                productRulesState.sortDirection = 'asc';
+            }
+            updateSortIndicators();
+            renderProductRulesTable();
+        });
+    });
+}
+
 function renderProductRulesTable() {
     const tbody = document.getElementById('product-rules-tbody');
     const emptyEl = document.getElementById('product-rules-empty');
     const tableContainer = document.getElementById('product-rules-table-container');
     const unhealthyColHeader = document.getElementById('col-unhealthy');
+    const subtitleEl = document.getElementById('product-overview-subtitle');
 
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    const products = getAllProductsForSugarPolicy();
+    let products = getAllProductsForSugarPolicy();
+    const totalProductCount = products.length;
+
+    // Filter: Skjul deaktiverede produkter som default (medmindre showInactiveProducts er true)
+    if (!productRulesState.showInactiveProducts) {
+        products = products.filter(p => p.is_enabled !== false);
+    }
+
+    // Opdater undertitel med antal produkter
+    if (subtitleEl) {
+        subtitleEl.textContent = `Tilføj/Rediger produkter (${totalProductCount} produkter)`;
+    }
 
     // Show/hide empty message
     if (!products || products.length === 0) {
@@ -245,7 +498,6 @@ function renderProductRulesTable() {
     if (emptyEl) emptyEl.style.display = 'none';
 
     // Determine if Usund column should be visible
-    // Hide if: sugar policy is OFF OR parent portal doesn't allow it
     const showUnhealthyCol = productRulesState.sugarPolicyEnabled && productRulesState.parentPortalAllowsUnhealthy;
 
     // Update column header visibility
@@ -253,7 +505,7 @@ function renderProductRulesTable() {
         unhealthyColHeader.style.display = showUnhealthyCol ? '' : 'none';
     }
 
-    const sortedProducts = [...products].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    const sortedProducts = sortProducts(products);
 
     sortedProducts.forEach((product) => {
         const tr = document.createElement('tr');
@@ -262,8 +514,10 @@ function renderProductRulesTable() {
 
         const isActive = product.is_enabled !== false;
         const isUnhealthy = product.unhealthy === true;
-        const hasRefill = product.refill_enabled === true;
-        const purchaseLimit = productRulesState.productLimits.get(product.id);
+        const isDailySpecial = product.is_daily_special === true;
+        const isCoreAssortment = product.is_core_assortment === true;
+        let purchaseLimit = productRulesState.productLimits.get(product.id) || 0;
+        let currentPrice = product.price || 0;
 
         // 1. Ikon
         const tdIcon = document.createElement('td');
@@ -276,40 +530,181 @@ function renderProductRulesTable() {
         }
         tr.appendChild(tdIcon);
 
-        // 2. Navn
+        // 2. Navn (klikbart for inline redigering)
         const tdName = document.createElement('td');
-        tdName.style.cssText = 'padding: 8px; vertical-align: middle; font-weight: 500;';
-        tdName.textContent = product.name || 'Produkt';
+        tdName.style.cssText = 'padding: 8px; vertical-align: middle; font-weight: 500; cursor: pointer;';
+        tdName.title = 'Klik for at redigere navn';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = product.name || 'Produkt';
+        tdName.appendChild(nameSpan);
+
+        // Gem original værdi for sammenligning
+        setOriginalValue(product.id, 'name', product.name || 'Produkt');
+
+        tdName.addEventListener('click', (e) => {
+            // Ignorer klik hvis input allerede er aktivt
+            if (e.target.tagName === 'INPUT') return;
+
+            // Replace name cell with input field
+            const currentName = getDraftValue(product.id, 'name', product.name || 'Produkt');
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = currentName;
+            input.style.cssText = 'width: 100%; padding: 4px 8px; font-size: 13px; font-weight: 500; border: 2px solid #1976d2; border-radius: 4px; outline: none;';
+
+            // Stop click events fra input fra at boble op til tdName
+            input.addEventListener('click', (ev) => ev.stopPropagation());
+
+            const applyNewName = () => {
+                const newName = input.value.trim();
+                if (newName) {
+                    setDraftValue(product.id, 'name', newName);
+                    nameSpan.textContent = newName;
+                } else {
+                    nameSpan.textContent = currentName;
+                }
+                tdName.innerHTML = '';
+                tdName.appendChild(nameSpan);
+            };
+
+            input.addEventListener('blur', applyNewName);
+            input.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    applyNewName();
+                } else if (ev.key === 'Escape') {
+                    tdName.innerHTML = '';
+                    tdName.appendChild(nameSpan);
+                }
+            });
+
+            tdName.innerHTML = '';
+            tdName.appendChild(input);
+            input.focus();
+            input.select();
+        });
         tr.appendChild(tdName);
 
-        // 3. Pris
+        // 3. Pris med +/- controls
+        setOriginalValue(product.id, 'price', currentPrice);
         const tdPrice = document.createElement('td');
-        tdPrice.style.cssText = 'padding: 8px; vertical-align: middle; text-align: right;';
-        tdPrice.textContent = product.price ? `${product.price.toFixed(2)} kr.` : '-';
+        tdPrice.style.cssText = 'padding: 4px 8px; vertical-align: middle; text-align: center; white-space: nowrap;';
+        const priceDisplay = document.createElement('span');
+        priceDisplay.style.cssText = 'display: inline-block; min-width: 50px; font-weight: 500;';
+        priceDisplay.textContent = currentPrice.toFixed(2);
+
+        const minusPriceBtn = document.createElement('button');
+        minusPriceBtn.textContent = '−';
+        minusPriceBtn.title = 'Sænk pris med 1 kr';
+        minusPriceBtn.style.cssText = 'background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 14px; margin-right: 4px;';
+        minusPriceBtn.addEventListener('click', () => {
+            if (currentPrice > 0) {
+                currentPrice = Math.max(0, currentPrice - 1);
+                priceDisplay.textContent = currentPrice.toFixed(2);
+                setDraftValue(product.id, 'price', currentPrice);
+            }
+        });
+
+        const plusPriceBtn = document.createElement('button');
+        plusPriceBtn.textContent = '+';
+        plusPriceBtn.title = 'Hæv pris med 1 kr';
+        plusPriceBtn.style.cssText = 'background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 14px; margin-left: 4px;';
+        plusPriceBtn.addEventListener('click', () => {
+            currentPrice = currentPrice + 1;
+            priceDisplay.textContent = currentPrice.toFixed(2);
+            setDraftValue(product.id, 'price', currentPrice);
+        });
+
+        tdPrice.appendChild(minusPriceBtn);
+        tdPrice.appendChild(priceDisplay);
+        tdPrice.appendChild(plusPriceBtn);
         tr.appendChild(tdPrice);
 
-        // 4. Genopfyldning (refill status - readonly indicator)
-        const tdRefill = document.createElement('td');
-        tdRefill.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
-        if (hasRefill) {
-            const refillPrice = product.refill_price != null ? `${product.refill_price} kr.` : 'Gratis';
-            tdRefill.innerHTML = `<span style="color: #2e7d32; font-size: 12px;" title="Refill pris: ${refillPrice}">✅ ${refillPrice}</span>`;
-        } else {
-            tdRefill.innerHTML = `<span style="color: #999; font-size: 12px;">—</span>`;
-        }
-        tr.appendChild(tdRefill);
-
-        // 5. Købsgrænse (readonly indicator)
+        // 4. Købsgrænse med +/- controls
+        setOriginalValue(product.id, 'limit', purchaseLimit);
         const tdLimit = document.createElement('td');
-        tdLimit.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
-        if (purchaseLimit != null && purchaseLimit > 0) {
-            tdLimit.innerHTML = `<span style="color: #1565c0; font-weight: 500;">${purchaseLimit}/dag</span>`;
-        } else {
-            tdLimit.innerHTML = `<span style="color: #999; font-size: 12px;">∞</span>`;
-        }
+        tdLimit.style.cssText = 'padding: 4px 8px; vertical-align: middle; text-align: center; white-space: nowrap;';
+        const limitDisplay = document.createElement('span');
+        limitDisplay.style.cssText = 'display: inline-block; min-width: 30px; font-weight: 500; color: #1565c0;';
+        limitDisplay.textContent = purchaseLimit > 0 ? purchaseLimit : '∞';
+
+        const minusLimitBtn = document.createElement('button');
+        minusLimitBtn.textContent = '−';
+        minusLimitBtn.title = 'Sænk grænse med 1';
+        minusLimitBtn.style.cssText = 'background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 14px; margin-right: 4px;';
+        minusLimitBtn.addEventListener('click', () => {
+            if (purchaseLimit > 0) {
+                purchaseLimit = purchaseLimit - 1;
+                limitDisplay.textContent = purchaseLimit > 0 ? purchaseLimit : '∞';
+                setDraftValue(product.id, 'limit', purchaseLimit);
+            }
+        });
+
+        const plusLimitBtn = document.createElement('button');
+        plusLimitBtn.textContent = '+';
+        plusLimitBtn.title = 'Hæv grænse med 1';
+        plusLimitBtn.style.cssText = 'background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 14px; margin-left: 4px;';
+        plusLimitBtn.addEventListener('click', () => {
+            purchaseLimit = purchaseLimit + 1;
+            limitDisplay.textContent = purchaseLimit;
+            setDraftValue(product.id, 'limit', purchaseLimit);
+        });
+
+        tdLimit.appendChild(minusLimitBtn);
+        tdLimit.appendChild(limitDisplay);
+        tdLimit.appendChild(plusLimitBtn);
         tr.appendChild(tdLimit);
 
-        // 6. Usund (toggle - conditional visibility)
+        // 5. Dagens ret (toggle)
+        setOriginalValue(product.id, 'is_daily_special', isDailySpecial);
+        const tdDailySpecial = document.createElement('td');
+        tdDailySpecial.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+        const dailySpecialToggle = document.createElement('input');
+        dailySpecialToggle.type = 'checkbox';
+        dailySpecialToggle.checked = isDailySpecial;
+        dailySpecialToggle.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
+        dailySpecialToggle.title = isDailySpecial ? 'Er dagens ret' : 'Klik for at markere som dagens ret';
+        dailySpecialToggle.addEventListener('change', () => {
+            setDraftValue(product.id, 'is_daily_special', dailySpecialToggle.checked);
+        });
+        tdDailySpecial.appendChild(dailySpecialToggle);
+        tr.appendChild(tdDailySpecial);
+
+        // 6. Fast sortiment (toggle)
+        setOriginalValue(product.id, 'is_core_assortment', isCoreAssortment);
+        const tdCoreAssortment = document.createElement('td');
+        tdCoreAssortment.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+        const coreAssortmentToggle = document.createElement('input');
+        coreAssortmentToggle.type = 'checkbox';
+        coreAssortmentToggle.checked = isCoreAssortment;
+        coreAssortmentToggle.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
+        coreAssortmentToggle.title = isCoreAssortment ? 'Er fast sortiment' : 'Klik for at markere som fast sortiment';
+        coreAssortmentToggle.addEventListener('change', () => {
+            setDraftValue(product.id, 'is_core_assortment', coreAssortmentToggle.checked);
+        });
+        tdCoreAssortment.appendChild(coreAssortmentToggle);
+        tr.appendChild(tdCoreAssortment);
+
+        // 6b. Dagens sortiment (toggle for visibility in cafe - uses is_visible)
+        const isVisible = product.is_visible !== false; // Default true if undefined
+        setOriginalValue(product.id, 'is_visible', isVisible);
+        const tdInAssortment = document.createElement('td');
+        tdInAssortment.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+        const inAssortmentToggle = document.createElement('input');
+        inAssortmentToggle.type = 'checkbox';
+        inAssortmentToggle.checked = isVisible;
+        inAssortmentToggle.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
+        inAssortmentToggle.title = isVisible ? 'Vises i caféen' : 'Skjult fra caféen';
+        inAssortmentToggle.addEventListener('change', () => {
+            setDraftValue(product.id, 'is_visible', inAssortmentToggle.checked);
+            inAssortmentToggle.title = inAssortmentToggle.checked ? 'Vises i caféen' : 'Skjult fra caféen';
+        });
+        tdInAssortment.appendChild(inAssortmentToggle);
+        tr.appendChild(tdInAssortment);
+
+        // 7. Usund (toggle - conditional visibility)
+        setOriginalValue(product.id, 'unhealthy', isUnhealthy);
         const tdUnhealthy = document.createElement('td');
         tdUnhealthy.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
         tdUnhealthy.style.display = showUnhealthyCol ? '' : 'none';
@@ -320,15 +715,14 @@ function renderProductRulesTable() {
         unhealthyToggle.checked = isUnhealthy;
         unhealthyToggle.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
         unhealthyToggle.title = isUnhealthy ? 'Markeret som usund' : 'Klik for at markere som usund';
-        unhealthyToggle.addEventListener('change', async () => {
-            await saveProductUnhealthy(product.id, unhealthyToggle.checked);
-            // Update local product state
-            product.unhealthy = unhealthyToggle.checked;
+        unhealthyToggle.addEventListener('change', () => {
+            setDraftValue(product.id, 'unhealthy', unhealthyToggle.checked);
         });
         tdUnhealthy.appendChild(unhealthyToggle);
         tr.appendChild(tdUnhealthy);
 
-        // 7. Aktiv (toggle)
+        // 8. Aktiv (toggle)
+        setOriginalValue(product.id, 'is_enabled', isActive);
         const tdActive = document.createElement('td');
         tdActive.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
 
@@ -337,11 +731,8 @@ function renderProductRulesTable() {
         activeToggle.checked = isActive;
         activeToggle.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
         activeToggle.title = isActive ? 'Produktet er aktivt' : 'Produktet er deaktiveret';
-        activeToggle.addEventListener('change', async () => {
-            await saveProductActive(product.id, activeToggle.checked);
-            // Update local product state
-            product.is_enabled = activeToggle.checked;
-            // Update row styling
+        activeToggle.addEventListener('change', () => {
+            setDraftValue(product.id, 'is_enabled', activeToggle.checked);
             tr.style.opacity = activeToggle.checked ? '1' : '0.5';
         });
         tdActive.appendChild(activeToggle);
@@ -352,25 +743,92 @@ function renderProductRulesTable() {
             tr.style.opacity = '0.5';
         }
 
-        // 8. Rediger (edit button)
+        // 9. Slet (delete button)
+        const tdDelete = document.createElement('td');
+        tdDelete.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.innerHTML = '🗑️';
+        deleteBtn.title = 'Slet produkt';
+        deleteBtn.style.cssText = 'background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;';
+        deleteBtn.addEventListener('mouseenter', () => deleteBtn.style.background = '#ffebee');
+        deleteBtn.addEventListener('mouseleave', () => deleteBtn.style.background = 'none');
+        deleteBtn.addEventListener('click', async () => {
+            const confirmed = await showCustomAlert(
+                'Slet produkt',
+                `<p>Er du sikker på, at du vil slette <strong>${product.name}</strong> permanent?</p>
+                <p style="margin-top: 12px; color: #666;">Når et produkt slettes, fjernes det fra sortimentet og kan ikke længere bruges til nye køb.<br>Tidligere salg bevares fortsat i historikken og i klubbens statistik.</p>
+                <p style="margin-top: 12px; background: #fff8e1; padding: 10px; border-radius: 6px; font-size: 13px;">💡 <strong>Tip:</strong> Hvis produktet kun skal fjernes midlertidigt, kan du i stedet deaktivere det ved at fjerne hakket i "Aktiv".</p>`,
+                {
+                    type: 'confirm',
+                    okText: 'Slet',
+                    cancelText: 'Fortryd',
+                    focus: 'cancel'
+                }
+            );
+            if (confirmed) {
+                const success = await deleteProduct(product.id);
+                if (success) {
+                    tr.remove();
+                    // Also remove from local products array if possible
+                    const products = getAllProductsForSugarPolicy();
+                    const idx = products.findIndex(p => p.id === product.id);
+                    if (idx !== -1) products.splice(idx, 1);
+                }
+            }
+        });
+        tdDelete.appendChild(deleteBtn);
+        tr.appendChild(tdDelete);
+
+        // 10. Rediger (åbner produkt-modal)
         const tdEdit = document.createElement('td');
         tdEdit.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
-
         const editBtn = document.createElement('button');
-        editBtn.innerHTML = '✍️';
+        editBtn.innerHTML = '✏️';
         editBtn.title = 'Rediger produkt';
-        editBtn.style.cssText = 'background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;';
-        editBtn.addEventListener('mouseenter', () => editBtn.style.background = '#f0f0f0');
+        editBtn.style.cssText = 'background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background 0.2s;';
+        editBtn.addEventListener('mouseenter', () => editBtn.style.background = '#e3f2fd');
         editBtn.addEventListener('mouseleave', () => editBtn.style.background = 'none');
-        editBtn.addEventListener('click', () => {
-            // Close current modal and open edit product modal
+        editBtn.addEventListener('click', async () => {
+            // Check for unsaved changes før vi lukker
+            if (hasUnsavedChanges()) {
+                const result = await showCustomAlert(
+                    'Ugemte ændringer',
+                    `<p>Du har ændringer der ikke er gemt.</p>
+                    <p style="margin-top: 12px;">Vil du gemme før du redigerer produktet?</p>`,
+                    {
+                        type: 'confirm',
+                        okText: 'Gem først',
+                        cancelText: 'Kassér ændringer',
+                        showCancel: true,
+                        focus: 'ok'
+                    }
+                );
+
+                if (result === true) {
+                    // Gem først
+                    try {
+                        await saveAllDraftChanges();
+                    } catch (err) {
+                        console.error('[product-rules] Fejl ved gemning:', err);
+                        await showCustomAlert('Fejl', 'Der opstod en fejl ved gemning: ' + err.message);
+                        return;
+                    }
+                } else if (result === false) {
+                    // Kassér ændringer
+                    clearDraftState();
+                } else {
+                    // X lukket - bliv på siden
+                    return;
+                }
+            }
+
+            // Luk produktoversigt-modal og åbn produkt-redigerings-modal
             const modal = document.getElementById('sugar-policy-modal');
             if (modal) modal.style.display = 'none';
-            // Trigger product edit via global function if available
-            if (typeof window.__flangoEditProduct === 'function') {
-                window.__flangoEditProduct(product.id);
-            } else {
-                console.warn('[product-rules] __flangoEditProduct function not available');
+            // Kald openEditProductModal via window global
+            if (typeof window.__flangoOpenEditProductModal === 'function') {
+                window.__flangoOpenEditProductModal(product);
             }
         });
         tdEdit.appendChild(editBtn);
@@ -378,6 +836,52 @@ function renderProductRulesTable() {
 
         tbody.appendChild(tr);
     });
+
+    // Setup sortable headers after render
+    setupSortableHeaders();
+    updateSortIndicators();
+}
+
+/**
+ * Håndterer lukning af produktoversigt modal med check for ugemte ændringer
+ * @param {Function} onClose - Callback der kaldes ved lukning
+ */
+async function handleProductOverviewClose(onClose) {
+    if (!hasUnsavedChanges()) {
+        clearDraftState();
+        onClose();
+        return;
+    }
+
+    // Vis dialog med 3 muligheder
+    const result = await showCustomAlert(
+        'Ugemte ændringer',
+        `<p>Du har ændringer der ikke er gemt.</p>
+        <p style="margin-top: 12px;">Hvad vil du gøre?</p>`,
+        {
+            type: 'confirm',
+            okText: 'Gem og luk',
+            cancelText: 'Kassér ændringer',
+            showCancel: true,
+            focus: 'ok'
+        }
+    );
+
+    if (result === true) {
+        // Gem og luk
+        try {
+            await saveAllDraftChanges();
+            onClose();
+        } catch (err) {
+            console.error('[product-rules] Fejl ved gemning:', err);
+            await showCustomAlert('Fejl', 'Der opstod en fejl ved gemning: ' + err.message);
+        }
+    } else if (result === false) {
+        // Kassér ændringer og luk
+        clearDraftState();
+        onClose();
+    }
+    // Hvis result er undefined (X lukket), gør ingenting (bliv på siden)
 }
 
 function ensureSugarPolicyModal() {
@@ -386,8 +890,10 @@ function ensureSugarPolicyModal() {
 
     const closeBtn = modal.querySelector('.close-btn');
     if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
+        closeBtn.addEventListener('click', async () => {
+            await handleProductOverviewClose(() => {
+                modal.style.display = 'none';
+            });
         });
     }
     modal.dataset.bindings = 'true';
@@ -592,57 +1098,393 @@ async function openSugarPolicyModal() {
     if (backBtn) {
         const newBackBtn = backBtn.cloneNode(true);
         backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+        newBackBtn.onclick = async () => {
+            await handleProductOverviewClose(() => {
+                modal.style.display = 'none';
+                openInstitutionPreferences();
+            });
+        };
+    }
+
+    // Tilføj nyt produkt knap
+    const addProductBtn = document.getElementById('add-product-from-rules-btn');
+    if (addProductBtn) {
+        const newAddBtn = addProductBtn.cloneNode(true);
+        addProductBtn.parentNode.replaceChild(newAddBtn, addProductBtn);
+        newAddBtn.onclick = async () => {
+            await handleProductOverviewClose(() => {
+                modal.style.display = 'none';
+                // Åbn "Tilføj Produkt" modal
+                if (typeof window.__flangoOpenEditProductModal === 'function') {
+                    window.__flangoOpenEditProductModal(null); // null = nyt produkt
+                }
+            });
+        };
+    }
+
+    // Toggle vis/skjul deaktiverede produkter
+    const toggleInactiveBtn = document.getElementById('toggle-inactive-products-btn');
+    if (toggleInactiveBtn) {
+        const newToggleBtn = toggleInactiveBtn.cloneNode(true);
+        toggleInactiveBtn.parentNode.replaceChild(newToggleBtn, toggleInactiveBtn);
+
+        // Tæl antal deaktiverede produkter
+        const allProducts = getAllProductsForSugarPolicy();
+        const inactiveCount = allProducts.filter(p => p.is_enabled === false).length;
+
+        // Opdater knap-tekst baseret på nuværende state (med antal)
+        const updateToggleBtnText = () => {
+            if (productRulesState.showInactiveProducts) {
+                newToggleBtn.textContent = 'Skjul deaktiverede';
+            } else {
+                newToggleBtn.textContent = inactiveCount > 0 ? `Vis (${inactiveCount}) deaktiverede` : 'Vis deaktiverede';
+            }
+        };
+        updateToggleBtnText();
+
+        newToggleBtn.onclick = () => {
+            productRulesState.showInactiveProducts = !productRulesState.showInactiveProducts;
+            updateToggleBtnText();
+            renderProductRulesTable();
+        };
+    }
+
+    // Anvend ændringer knap - batch-gem alle ændringer
+    const applyBtn = document.getElementById('apply-sugar-policy-btn');
+    if (applyBtn) {
+        const newApplyBtn = applyBtn.cloneNode(true);
+        applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+        // Start disabled (ingen ændringer endnu)
+        newApplyBtn.disabled = true;
+        newApplyBtn.style.opacity = '0.5';
+        newApplyBtn.style.cursor = 'not-allowed';
+
+        newApplyBtn.onclick = async () => {
+            if (!hasUnsavedChanges()) return;
+
+            newApplyBtn.disabled = true;
+            newApplyBtn.textContent = 'Gemmer...';
+
+            try {
+                await saveAllDraftChanges();
+                // Invalider limit-caches og opdater produktvælger UI
+                const selectedCustomer = typeof getCurrentCustomer === 'function' ? getCurrentCustomer() : null;
+                invalidateAllLimitCaches(selectedCustomer?.id || null);
+                invalidateChildLimitSnapshot();
+
+                if (typeof window.__flangoRefreshSugarPolicy === 'function') {
+                    await window.__flangoRefreshSugarPolicy();
+                } else {
+                    const allProducts = typeof window.__flangoGetAllProducts === 'function' ? window.__flangoGetAllProducts() : [];
+                    const sugarData = typeof window.__flangoGetSugarData === 'function' ? window.__flangoGetSugarData() : null;
+                    const productsEl = document.getElementById('products');
+                    const currentOrder = typeof getOrder === 'function' ? getOrder() : [];
+                    await applyProductLimitsToButtons(allProducts, productsEl, currentOrder, selectedCustomer?.id || null, sugarData);
+                }
+
+                newApplyBtn.textContent = '✓ Gemt!';
+                newApplyBtn.style.background = '#2e7d32';
+                newApplyBtn.style.opacity = '1';
+
+                setTimeout(() => {
+                    newApplyBtn.textContent = 'Anvend ændringer';
+                    newApplyBtn.style.background = '#4CAF50';
+                    updateApplyButtonState();
+                }, 1500);
+            } catch (err) {
+                console.error('[product-rules] Fejl ved gemning:', err);
+                newApplyBtn.textContent = 'Fejl ved gemning';
+                newApplyBtn.style.background = '#f44336';
+                setTimeout(() => {
+                    newApplyBtn.textContent = 'Anvend ændringer';
+                    newApplyBtn.style.background = '#4CAF50';
+                    newApplyBtn.disabled = false;
+                    newApplyBtn.style.opacity = '1';
+                    newApplyBtn.style.cursor = 'pointer';
+                }, 2000);
+            }
+        };
+    }
+
+    // Clear draft state ved åbning og initialiser knap-state
+    clearDraftState();
+    renderProductRulesTable();
+    updateApplyButtonState();
+    modal.style.display = 'flex';
+}
+
+/**
+ * Gem alle draft-ændringer til databasen i én batch
+ */
+async function saveAllDraftChanges() {
+    const products = getAllProductsForSugarPolicy();
+    const errors = [];
+
+    for (const [productId, changes] of productRulesState.draft) {
+        const originals = productRulesState.originalValues.get(productId) || {};
+        const product = products.find(p => p.id === productId);
+
+        // Samle produkt-felter der skal opdateres
+        const productUpdates = {};
+        let hasProductUpdates = false;
+
+        for (const [field, newValue] of Object.entries(changes)) {
+            const originalValue = originals[field];
+            if (newValue === originalValue) continue; // Ingen ændring
+
+            if (field === 'limit') {
+                // Limit gemmes i product_limits tabellen
+                try {
+                    await saveProductLimit(productId, newValue > 0 ? newValue : null);
+                } catch (err) {
+                    errors.push(`Grænse for ${product?.name || productId}: ${err.message}`);
+                }
+            } else {
+                // Produkt-felter samles til én opdatering
+                productUpdates[field] = newValue;
+                hasProductUpdates = true;
+            }
+        }
+
+        // Gem produkt-opdateringer i én query
+        if (hasProductUpdates) {
+            const { error } = await supabaseClient
+                .from('products')
+                .update(productUpdates)
+                .eq('id', productId);
+
+            if (error) {
+                errors.push(`${product?.name || productId}: ${error.message}`);
+            } else {
+                // Opdater lokal cache
+                if (product) {
+                    Object.assign(product, productUpdates);
+                }
+            }
+        }
+    }
+
+    if (errors.length > 0) {
+        console.error('[product-rules] Fejl ved gemning:', errors);
+        throw new Error(errors.join(', '));
+    }
+
+    // Ryd draft state efter succesfuld gemning
+    clearDraftState();
+
+    // Opdater produkter i hovedvisningen:
+    // 1. Refetch fra database for at opdatere cache
+    await refetchAllProducts();
+    // 2. Render produkter fra cache så UI opdateres med det samme
+    if (typeof window.__flangoRenderProductsFromCache === 'function') {
+        await window.__flangoRenderProductsFromCache();
+    }
+
+    console.log('[product-rules] Alle ændringer gemt');
+}
+
+/**
+ * Åbner det separate Sukkerpolitik indstillinger modal
+ */
+async function openSugarPolicySettingsModal() {
+    const modal = document.getElementById('sugar-policy-settings-modal');
+    if (!modal) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) {
+        console.error('[sugar-policy-settings] No institution ID found');
+        return;
+    }
+
+    // Load current settings from database
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('sugar_policy_enabled, sugar_policy_max_unhealthy_per_day, sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled, sugar_policy_max_per_product_enabled')
+        .eq('id', institutionId)
+        .single();
+
+    if (error) {
+        console.error('[sugar-policy-settings] Error loading settings:', error);
+    }
+
+    const toggle = document.getElementById('sugar-policy-enabled-toggle');
+    const label = document.getElementById('sugar-policy-enabled-label');
+    const settings = document.getElementById('sugar-policy-settings');
+    const maxUnhealthyInput = document.getElementById('sugar-policy-max-unhealthy');
+    const maxPerProductInput = document.getElementById('sugar-policy-max-per-product');
+    const maxUnhealthyEnabledCheckbox = document.getElementById('sugar-policy-max-unhealthy-enabled');
+    const maxPerProductEnabledCheckbox = document.getElementById('sugar-policy-max-per-product-enabled');
+
+    // Set values from database
+    if (data) {
+        const enabled = data.sugar_policy_enabled || false;
+        sugarPolicyState.enabled = enabled;
+        productRulesState.sugarPolicyEnabled = enabled;
+        toggle.checked = enabled;
+        maxUnhealthyInput.value = data.sugar_policy_max_unhealthy_per_day || 2;
+        maxPerProductInput.value = data.sugar_policy_max_per_product_per_day || 1;
+        maxUnhealthyEnabledCheckbox.checked = data.sugar_policy_max_unhealthy_enabled || false;
+        maxPerProductEnabledCheckbox.checked = data.sugar_policy_max_per_product_enabled !== false;
+
+        if (settings) {
+            settings.style.display = enabled ? 'block' : 'none';
+        }
+    }
+
+    // Update UI
+    const updateFieldStates = () => {
+        const currentToggle = document.getElementById('sugar-policy-enabled-toggle');
+        const currentMaxUnhealthyInput = document.getElementById('sugar-policy-max-unhealthy');
+        const currentMaxPerProductInput = document.getElementById('sugar-policy-max-per-product');
+        const currentMaxUnhealthyEnabledCheckbox = document.getElementById('sugar-policy-max-unhealthy-enabled');
+        const currentMaxPerProductEnabledCheckbox = document.getElementById('sugar-policy-max-per-product-enabled');
+        const currentLabel = document.getElementById('sugar-policy-enabled-label');
+        const currentSettings = document.getElementById('sugar-policy-settings');
+
+        if (!currentToggle || !currentMaxUnhealthyInput || !currentMaxPerProductInput) return;
+
+        const mainEnabled = currentToggle.checked;
+        const maxUnhealthyEnabled = currentMaxUnhealthyEnabledCheckbox?.checked;
+        const maxPerProductEnabled = currentMaxPerProductEnabledCheckbox?.checked;
+
+        if (currentLabel) currentLabel.textContent = mainEnabled ? 'Sukkerpolitik er slået TIL' : 'Sukkerpolitik er slået FRA';
+        if (currentSettings) currentSettings.style.display = mainEnabled ? 'block' : 'none';
+
+        if (!mainEnabled) {
+            currentMaxUnhealthyInput.disabled = true;
+            currentMaxPerProductInput.disabled = true;
+            currentMaxUnhealthyInput.style.opacity = '0.5';
+            currentMaxPerProductInput.style.opacity = '0.5';
+            if (currentMaxUnhealthyEnabledCheckbox) currentMaxUnhealthyEnabledCheckbox.disabled = true;
+            if (currentMaxPerProductEnabledCheckbox) currentMaxPerProductEnabledCheckbox.disabled = true;
+        } else {
+            if (currentMaxUnhealthyEnabledCheckbox) currentMaxUnhealthyEnabledCheckbox.disabled = false;
+            if (currentMaxPerProductEnabledCheckbox) currentMaxPerProductEnabledCheckbox.disabled = false;
+
+            currentMaxUnhealthyInput.disabled = !maxUnhealthyEnabled;
+            currentMaxUnhealthyInput.style.opacity = maxUnhealthyEnabled ? '1' : '0.5';
+
+            currentMaxPerProductInput.disabled = !maxPerProductEnabled;
+            currentMaxPerProductInput.style.opacity = maxPerProductEnabled ? '1' : '0.5';
+        }
+
+        productRulesState.sugarPolicyEnabled = mainEnabled;
+        sugarPolicyState.enabled = mainEnabled;
+    };
+
+    updateFieldStates();
+
+    // Save function
+    const saveSettings = async (updates) => {
+        const { error } = await supabaseClient
+            .from('institutions')
+            .update(updates)
+            .eq('id', institutionId);
+        if (error) {
+            console.error('[sugar-policy-settings] Error saving settings:', error);
+        }
+    };
+
+    // Event listeners
+    const newToggle = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(newToggle, toggle);
+    newToggle.addEventListener('change', () => {
+        sugarPolicyState.enabled = newToggle.checked;
+        updateFieldStates();
+        saveSettings({ sugar_policy_enabled: newToggle.checked });
+    });
+
+    const newMaxUnhealthyEnabledCheckbox = maxUnhealthyEnabledCheckbox.cloneNode(true);
+    maxUnhealthyEnabledCheckbox.parentNode.replaceChild(newMaxUnhealthyEnabledCheckbox, maxUnhealthyEnabledCheckbox);
+    newMaxUnhealthyEnabledCheckbox.addEventListener('change', () => {
+        const isEnabled = newMaxUnhealthyEnabledCheckbox.checked;
+        if (isEnabled) {
+            const perProductCheckbox = document.getElementById('sugar-policy-max-per-product-enabled');
+            if (perProductCheckbox) {
+                perProductCheckbox.checked = false;
+                saveSettings({ sugar_policy_max_unhealthy_enabled: true, sugar_policy_max_per_product_enabled: false });
+            }
+        } else {
+            saveSettings({ sugar_policy_max_unhealthy_enabled: false });
+        }
+        updateFieldStates();
+    });
+
+    const newMaxPerProductEnabledCheckbox = maxPerProductEnabledCheckbox.cloneNode(true);
+    maxPerProductEnabledCheckbox.parentNode.replaceChild(newMaxPerProductEnabledCheckbox, maxPerProductEnabledCheckbox);
+    newMaxPerProductEnabledCheckbox.addEventListener('change', () => {
+        const isEnabled = newMaxPerProductEnabledCheckbox.checked;
+        if (isEnabled) {
+            const unhealthyCheckbox = document.getElementById('sugar-policy-max-unhealthy-enabled');
+            if (unhealthyCheckbox) {
+                unhealthyCheckbox.checked = false;
+                saveSettings({ sugar_policy_max_per_product_enabled: true, sugar_policy_max_unhealthy_enabled: false });
+            }
+        } else {
+            saveSettings({ sugar_policy_max_per_product_enabled: false });
+        }
+        updateFieldStates();
+    });
+
+    maxUnhealthyInput.addEventListener('change', () => {
+        const value = parseInt(maxUnhealthyInput.value, 10);
+        if (!isNaN(value) && value >= 0) {
+            saveSettings({ sugar_policy_max_unhealthy_per_day: value });
+        }
+    });
+
+    maxPerProductInput.addEventListener('change', () => {
+        const value = parseInt(maxPerProductInput.value, 10);
+        if (!isNaN(value) && value >= 0) {
+            saveSettings({ sugar_policy_max_per_product_per_day: value });
+        }
+    });
+
+    // Close button
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) {
+        const newCloseBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        newCloseBtn.onclick = () => modal.style.display = 'none';
+    }
+
+    // Back button
+    const backBtn = document.getElementById('back-to-preferences-sugar-settings-btn');
+    if (backBtn) {
+        const newBackBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBackBtn, backBtn);
         newBackBtn.onclick = () => {
             modal.style.display = 'none';
             openInstitutionPreferences();
         };
     }
 
-    // Anvend ændringer knap - genindlæser sukkerpolitik for valgt bruger
-    const applyBtn = document.getElementById('apply-sugar-policy-btn');
+    // Apply button
+    const applyBtn = document.getElementById('apply-sugar-settings-btn');
     if (applyBtn) {
         const newApplyBtn = applyBtn.cloneNode(true);
         applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
         newApplyBtn.onclick = async () => {
             newApplyBtn.disabled = true;
-            newApplyBtn.textContent = 'Anvender...';
+            newApplyBtn.textContent = 'Gemmer...';
 
             try {
                 if (typeof window.__flangoRefreshSugarPolicy === 'function') {
-                    const success = await window.__flangoRefreshSugarPolicy();
-                    if (success) {
-                        newApplyBtn.textContent = '✓ Anvendt!';
-                        newApplyBtn.style.background = '#2e7d32';
-                        setTimeout(() => {
-                            newApplyBtn.textContent = 'Anvend ændringer';
-                            newApplyBtn.style.background = '#4CAF50';
-                            newApplyBtn.disabled = false;
-                        }, 2000);
-                    } else {
-                        newApplyBtn.textContent = 'Ingen bruger valgt';
-                        newApplyBtn.style.background = '#ff9800';
-                        setTimeout(() => {
-                            newApplyBtn.textContent = 'Anvend ændringer';
-                            newApplyBtn.style.background = '#4CAF50';
-                            newApplyBtn.disabled = false;
-                        }, 2000);
-                    }
-                } else {
-                    console.warn('[sugar-policy] __flangoRefreshSugarPolicy ikke tilgængelig');
-                    newApplyBtn.textContent = 'Fejl';
-                    newApplyBtn.style.background = '#f44336';
-                    setTimeout(() => {
-                        newApplyBtn.textContent = 'Anvend ændringer';
-                        newApplyBtn.style.background = '#4CAF50';
-                        newApplyBtn.disabled = false;
-                    }, 2000);
+                    await window.__flangoRefreshSugarPolicy();
                 }
+                newApplyBtn.textContent = '✓ Gemt!';
+                newApplyBtn.style.background = '#2e7d32';
+                setTimeout(() => {
+                    newApplyBtn.textContent = 'Gem indstillinger';
+                    newApplyBtn.style.background = '#4CAF50';
+                    newApplyBtn.disabled = false;
+                }, 1500);
             } catch (err) {
-                console.error('[sugar-policy] Fejl ved anvendelse:', err);
+                console.error('[sugar-policy-settings] Fejl:', err);
                 newApplyBtn.textContent = 'Fejl';
                 newApplyBtn.style.background = '#f44336';
                 setTimeout(() => {
-                    newApplyBtn.textContent = 'Anvend ændringer';
+                    newApplyBtn.textContent = 'Gem indstillinger';
                     newApplyBtn.style.background = '#4CAF50';
                     newApplyBtn.disabled = false;
                 }, 2000);
@@ -650,7 +1492,6 @@ async function openSugarPolicyModal() {
         };
     }
 
-    renderProductRulesTable();
     modal.style.display = 'flex';
 }
 
@@ -864,13 +1705,22 @@ async function openInstitutionPreferences() {
     titleEl.textContent = 'Indstillinger – Institutionens Præferencer';
     contentEl.innerHTML = '';
 
-    // Regler for produkter knap (tidligere Sukkerpolitik)
-    const sugarPolicyBtn = document.createElement('button');
-    sugarPolicyBtn.className = 'settings-item-btn';
-    sugarPolicyBtn.innerHTML = `<strong>Regler for produkter</strong><div style="font-size: 12px; margin-top: 2px;">Administrer sukkerpolitik, købsgrænser og produktindstillinger.</div>`;
-    sugarPolicyBtn.addEventListener('click', () => {
+    // Regler for produkter knap
+    const productRulesBtn = document.createElement('button');
+    productRulesBtn.className = 'settings-item-btn';
+    productRulesBtn.innerHTML = `<strong>Produktoversigt</strong><div style="font-size: 12px; margin-top: 2px;">Tilføj/rediger produkter, pris, købsgrænser og indstillinger.</div>`;
+    productRulesBtn.addEventListener('click', () => {
         backdrop.style.display = 'none';
         openSugarPolicyModal();
+    });
+
+    // Sukkerpolitik knap (separat)
+    const sugarPolicyBtn = document.createElement('button');
+    sugarPolicyBtn.className = 'settings-item-btn';
+    sugarPolicyBtn.innerHTML = `<strong>🍬 Sukkerpolitik</strong><div style="font-size: 12px; margin-top: 2px;">Konfigurer begrænsninger for usunde produkter.</div>`;
+    sugarPolicyBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openSugarPolicySettingsModal();
     });
 
     // Beløbsgrænse knap
@@ -927,6 +1777,7 @@ async function openInstitutionPreferences() {
         openShiftTimerSettingsModal();
     });
 
+    contentEl.appendChild(productRulesBtn);
     contentEl.appendChild(sugarPolicyBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(parentPortalBtn);
@@ -1466,6 +2317,10 @@ export function openSettingsModal() {
         action?.();
     };
 
+    if (isAdmin) {
+        addItem('Produktoversigt', () => openSugarPolicyModal());
+    }
+
     addItem('Dagens Sortiment', () => {
         if (window.__flangoOpenAssortmentModal) {
             openViaSettings('assortment-modal', () => window.__flangoOpenAssortmentModal());
@@ -1506,6 +2361,16 @@ export function openSettingsModal() {
     addItem('Hjælp', () => {
         openHelpManually();
     }, 'settings-help-btn');
+
+    // Bug report button - visible for both admin and clerk
+    addItem('🐛 Der er en fejl', () => {
+        if (window.FLANGO_DEBUG?.showBugReportPrompt) {
+            window.FLANGO_DEBUG.showBugReportPrompt();
+        } else {
+            notifyToolbarUser('Fejlrapport-funktionen er ikke klar. Prøv at genindlæse siden.');
+        }
+    }, 'settings-bug-report-btn');
+
     addItem('Log ud', () => {
         callButtonById('logout-btn') || notifyToolbarUser('Log ud-knappen er ikke tilgængelig.');
     }, 'settings-logout-btn');

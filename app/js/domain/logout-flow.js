@@ -1,4 +1,5 @@
 import { playSound, showAlert, showCustomAlert } from '../ui/sound-and-alerts.js';
+import { logDebugEvent } from '../core/debug-flight-recorder.js';
 import { supabaseClient } from '../core/config-and-supabase.js';
 import {
     calculateCurrentStats,
@@ -16,6 +17,12 @@ export function setupLogoutFlow({ clerkProfile, sessionStartTime, getSessionSale
     if (logoutBtn) logoutBtn.onclick = async () => {
         let shouldFinalizeLogout = false;
         try {
+            // Flight recorder: log logout attempt
+            logDebugEvent('logout_started', {
+                clerkId: clerkProfile?.id,
+                clerkName: clerkProfile?.name,
+                role: clerkProfile?.role,
+            });
             playSound('logout');
 
             const sessionEndTime = new Date();
@@ -232,8 +239,10 @@ export function setupLogoutFlow({ clerkProfile, sessionStartTime, getSessionSale
 
             const confirmedLogout = await alertPromise;
             if (!confirmedLogout) {
+                logDebugEvent('logout_cancelled', { clerkId: clerkProfile?.id });
                 return; // Brugeren vil tilbage til caféen
             }
+            logDebugEvent('logout_confirmed', { clerkId: clerkProfile?.id });
 
             await addWorkMinutesForToday(sessionDurationMinutes);
 

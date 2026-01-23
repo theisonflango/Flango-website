@@ -3,15 +3,23 @@
 // Part of "Refetch After Write" pattern for failsafe data consistency
 
 import { supabaseClient } from './config-and-supabase.js';
+import { runWithAuthRetry } from './auth-retry.js';
 import { safeDbCall } from './safe-db-call.js';
 import { getCurrentCustomer, setCustomerBalance } from '../domain/cafe-session-store.js';
+
+// Race condition protection: Track in-flight requests
+let usersRefetchToken = 0;
+let productsRefetchToken = 0;
 
 /**
  * Refetch all users for current institution from database
  * Updates window.__flangoAllUsers cache
+ * Race-safe: Newer requests invalidate older ones
  * @returns {Promise<Array|null>} Array of users or null on error
  */
 export async function refetchAllUsers() {
+    // Race protection: Increment token, capture for this request
+    const myToken = ++usersRefetchToken;
     const adminProfile = window.__flangoCurrentAdminProfile;
     const institutionId = adminProfile?.institution_id;
 
@@ -22,16 +30,27 @@ export async function refetchAllUsers() {
 
     console.log('[data-refetch] Refetching all users for institution:', institutionId);
 
-    const result = await safeDbCall('refetchAllUsers', () => supabaseClient
-        .from('users')
-        .select('*, last_parent_login_at, parent_pin_is_custom')
-        .eq('institution_id', institutionId)
-        .order('name'), { retry: 1, critical: true });
+    const result = await safeDbCall(
+        'refetchAllUsers',
+        () => runWithAuthRetry('refetchAllUsers', () => supabaseClient
+            .from('users')
+            .select('*, last_parent_login_at, parent_pin_is_custom')
+            .eq('institution_id', institutionId)
+            .order('name')),
+        { retry: 1, critical: true }
+    );
 
     if (!result.ok) {
         console.error('[data-refetch] Error loading users:', result.error);
         return null;
     }
+
+    // Race protection: Check if a newer request was started while we were fetching
+    if (myToken !== usersRefetchToken) {
+        console.log('[data-refetch] Users refetch superseded by newer request, discarding');
+        return null;
+    }
+
     const data = result.data;
 
     // Update global cache via setter if available
@@ -50,9 +69,12 @@ export async function refetchAllUsers() {
 /**
  * Refetch all products for current institution from database
  * Updates allProducts cache via window.__flangoSetAllProducts
+ * Race-safe: Newer requests invalidate older ones
  * @returns {Promise<Array|null>} Array of products or null on error
  */
 export async function refetchAllProducts() {
+    // Race protection: Increment token, capture for this request
+    const myToken = ++productsRefetchToken;
     const adminProfile = window.__flangoCurrentAdminProfile;
     const institutionId = adminProfile?.institution_id;
 
@@ -63,16 +85,27 @@ export async function refetchAllProducts() {
 
     console.log('[data-refetch] Refetching all products for institution:', institutionId);
 
-    const result = await safeDbCall('refetchAllProducts', () => supabaseClient
-        .from('products')
-        .select('*')
-        .eq('institution_id', institutionId)
-        .order('sort_order'), { retry: 1, critical: true });
+    const result = await safeDbCall(
+        'refetchAllProducts',
+        () => runWithAuthRetry('refetchAllProducts', () => supabaseClient
+            .from('products')
+            .select('*')
+            .eq('institution_id', institutionId)
+            .order('sort_order')),
+        { retry: 1, critical: true }
+    );
 
     if (!result.ok) {
         console.error('[data-refetch] Error loading products:', result.error);
         return null;
     }
+
+    // Race protection: Check if a newer request was started while we were fetching
+    if (myToken !== productsRefetchToken) {
+        console.log('[data-refetch] Products refetch superseded by newer request, discarding');
+        return null;
+    }
+
     const data = result.data;
 
     // Update cache via setter if available
@@ -100,11 +133,15 @@ export async function refetchUserBalance(userId) {
 
     console.log('[data-refetch] Refetching balance for user:', userId);
 
-    const result = await safeDbCall('refetchUserBalance', () => supabaseClient
-        .from('users')
-        .select('balance')
-        .eq('id', userId)
-        .single(), { retry: 1, critical: true });
+    const result = await safeDbCall(
+        'refetchUserBalance',
+        () => runWithAuthRetry('refetchUserBalance', () => supabaseClient
+            .from('users')
+            .select('balance')
+            .eq('id', userId)
+            .single()),
+        { retry: 1, critical: true }
+    );
 
     if (!result.ok) {
         console.error('[data-refetch] Error loading balance:', result.error);
@@ -151,11 +188,15 @@ export async function refetchSingleProduct(productId) {
 
     console.log('[data-refetch] Refetching product:', productId);
 
-    const result = await safeDbCall('refetchSingleProduct', () => supabaseClient
-        .from('products')
-        .select('*')
-        .eq('id', productId)
-        .single(), { retry: 1 });
+    const result = await safeDbCall(
+        'refetchSingleProduct',
+        () => runWithAuthRetry('refetchSingleProduct', () => supabaseClient
+            .from('products')
+            .select('*')
+            .eq('id', productId)
+            .single()),
+        { retry: 1 }
+    );
 
     if (!result.ok) {
         console.error('[data-refetch] Error loading product:', result.error);

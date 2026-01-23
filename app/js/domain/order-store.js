@@ -1,4 +1,6 @@
 // Simpelt state-modul for indkøbskurven (ingen UI/Supabase). Kan udvides senere.
+import { calculateOrderTotal } from './products-and-cart.js';
+import { logDebugEvent } from '../core/debug-flight-recorder.js';
 
 let currentOrder = [];
 
@@ -26,6 +28,12 @@ export function getOrder() {
  * @returns {Array} Den nye ordre (array)
  */
 export function setOrder(items) {
+    const prevLen = currentOrder?.length || 0;
+    const newLen = Array.isArray(items) ? items.length : 0;
+    // Flight recorder: only log significant changes
+    if (prevLen !== newLen) {
+        logDebugEvent('order_store_set', { prevLen, newLen });
+    }
     currentOrder = Array.isArray(items) ? [...items] : [];
     return currentOrder;
 }
@@ -57,6 +65,10 @@ export function removeItemAt(index) {
  * @returns {Array} Tom ordre (array)
  */
 export function clearOrder() {
+    const prevLen = currentOrder?.length || 0;
+    if (prevLen > 0) {
+        logDebugEvent('order_store_cleared', { prevLen });
+    }
     currentOrder = [];
     return currentOrder;
 }
@@ -66,9 +78,5 @@ export function clearOrder() {
  * @returns {number} totalbeløb
  */
 export function getOrderTotal() {
-    return currentOrder.reduce((sum, line) => {
-        const qty = Number.isFinite(line?.quantity) ? line.quantity : 1;
-        const price = Number.isFinite(line?.price) ? line.price : 0;
-        return sum + qty * price;
-    }, 0);
+    return calculateOrderTotal(currentOrder);
 }

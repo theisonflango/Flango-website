@@ -9,12 +9,9 @@ const LIMITS_DEBUG = false;
 // Add-to-cart må ALDRIG trigge sales fetch.
 const todaysSalesCache = new Map();
 const salesInflight = new Map(); // In-flight dedup: cacheKey → Promise
-const SALES_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutter session-niveau TTL
-let salesCacheTimestamp = 0;
 
 // CHECK-SUGAR-POLICY CACHE - deklareret her så den kan invalideres sammen med sales
-const checkSugarPolicyCache = new Map(); // childId → { data, timestamp }
-const CHECK_SUGAR_POLICY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutter
+const checkSugarPolicyCache = new Map(); // childId → data
 
 // ============================================================================
 // MEMORY CACHE FOR LIMITS (eliminerer per-product queries)
@@ -24,20 +21,12 @@ const CHECK_SUGAR_POLICY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutter
 //       childId: string,
 //       institutionId: string,
 //       clubMaxByProductId: { [productId]: maxPerDay },
-//       parentMaxByProductId: { [productId]: maxPerDay },
-//       timestamp: number
+//       parentMaxByProductId: { [productId]: maxPerDay }
 //   }
-const LIMITS_CACHE_TTL_MS = 60000; // 1 minut TTL for limits cache
-
 function getLimitsCache() {
     if (typeof window === 'undefined') return null;
     const cache = window.__flangoLimitsCache;
     if (!cache) return null;
-    // Check TTL
-    if (Date.now() - cache.timestamp > LIMITS_CACHE_TTL_MS) {
-        window.__flangoLimitsCache = null;
-        return null;
-    }
     return cache;
 }
 
@@ -48,7 +37,6 @@ function setLimitsCache(childId, institutionId, clubMaxByProductId, parentMaxByP
         institutionId: institutionId ? String(institutionId) : null,
         clubMaxByProductId,
         parentMaxByProductId,
-        timestamp: Date.now()
     };
     if (LIMITS_DEBUG) console.log('[limits] Limits cache sat for child:', childId);
 }
@@ -67,7 +55,6 @@ function getCacheKey(childId, institutionId) {
 export function invalidateTodaysSalesCache() {
     todaysSalesCache.clear();
     salesInflight.clear();
-    salesCacheTimestamp = Date.now();
     // VIGTIGT: Også invalidér check-sugar-policy cache da den afhænger af dagens køb
     checkSugarPolicyCache.clear();
     if (LIMITS_DEBUG) console.log('[limits] Sales + check-sugar-policy cache invalidated');
@@ -79,7 +66,7 @@ export function invalidateTodaysSalesCache() {
  * @param {string|null} childId - Specifikt barn eller null for at rydde alt
  */
 export function invalidateAllLimitCaches(childId = null) {
-    // 1. Sales cache (5-min TTL)
+    // 1. Sales cache
     if (childId) {
         // Ryd kun for specifikt barn (baseret på cacheKey pattern)
         for (const key of todaysSalesCache.keys()) {
@@ -91,23 +78,22 @@ export function invalidateAllLimitCaches(childId = null) {
         todaysSalesCache.clear();
     }
     salesInflight.clear();
-    salesCacheTimestamp = Date.now();
 
-    // 2. Check-sugar-policy cache (5-min TTL)
+    // 2. Check-sugar-policy cache
     if (childId) {
         checkSugarPolicyCache.delete(childId);
     } else {
         checkSugarPolicyCache.clear();
     }
 
-    // 3. Sugar policy cache (5-min TTL)
+    // 3. Sugar policy cache
     if (childId) {
         sugarPolicyCache.delete(childId);
     } else {
         sugarPolicyCache.clear();
     }
 
-    // 4. Limits memory cache (1-min TTL)
+    // 4. Limits memory cache
     if (typeof window !== 'undefined') {
         window.__flangoLimitsCache = null;
     }
@@ -212,28 +198,19 @@ async function getTodaysSalesForChild(childId, institutionIdOverride = null) {
 
     const cacheKey = getCacheKey(childId, institutionId);
 
-    // 1) Check TTL - kun invalidér hvis VIRKELIG udløbet (5 min session-niveau)
-    const now = Date.now();
-    if (now - salesCacheTimestamp > SALES_CACHE_TTL_MS) {
-        todaysSalesCache.clear();
-        salesInflight.clear();
-        salesCacheTimestamp = now;
-        if (LIMITS_DEBUG) console.log('[limits] Sales cache TTL expired, cleared');
-    }
-
-    // 2) Check cache HIT
+    // 1) Check cache HIT
     if (todaysSalesCache.has(cacheKey)) {
         if (LIMITS_DEBUG) console.log('[limits] CACHE HIT for getTodaysSalesForChild', { childId, institutionId });
         return todaysSalesCache.get(cacheKey);
     }
 
-    // 3) In-flight dedup: hvis der allerede er en fetch i gang, vent på den
+    // 2) In-flight dedup: hvis der allerede er en fetch i gang, vent på den
     if (salesInflight.has(cacheKey)) {
         if (LIMITS_DEBUG) console.log('[limits] IN-FLIGHT DEDUP for getTodaysSalesForChild', { childId, institutionId });
         return salesInflight.get(cacheKey);
     }
 
-    // 4) Cache miss - fetch from database med in-flight dedup
+    // 3) Cache miss - fetch from database med in-flight dedup
     if (LIMITS_DEBUG) console.log('[limits] CACHE MISS - fetching getTodaysSalesForChild', { childId, institutionId });
 
     const fetchPromise = (async () => {
@@ -325,12 +302,6 @@ async function getTodaysSalesForChild(childId, institutionIdOverride = null) {
  */
 export function peekTodaysSalesCache(childId, institutionId = null) {
     if (!childId) return null;
-
-    // Respect TTL semantics used by getTodaysSalesForChild (do not serve stale)
-    const now = Date.now();
-    if (now - salesCacheTimestamp > SALES_CACHE_TTL_MS) {
-        return null;
-    }
 
     const cacheKey = getCacheKey(childId, institutionId);
     if (!todaysSalesCache.has(cacheKey)) {
@@ -424,9 +395,9 @@ export async function getCachedCheckSugarPolicy(childId, policyOverride = null) 
 
     // OPTIMERING: Check cache først (Edge Functions er dyre)
     const cached = checkSugarPolicyCache.get(childId);
-    if (cached && Date.now() - cached.timestamp < CHECK_SUGAR_POLICY_CACHE_TTL_MS) {
+    if (cached) {
         if (LIMITS_DEBUG) console.log('[getCachedCheckSugarPolicy] Cache hit for child:', childId);
-        return cached.data;
+        return cached;
     }
 
     try {
@@ -451,7 +422,7 @@ export async function getCachedCheckSugarPolicy(childId, policyOverride = null) 
         };
 
         // Gem i cache
-        checkSugarPolicyCache.set(childId, { data: result, timestamp: Date.now() });
+    checkSugarPolicyCache.set(childId, result);
 
         return result;
     } catch (err) {
@@ -540,8 +511,7 @@ export function invalidateCheckSugarPolicyCache(childId = null) {
 // ============================================================================
 // SUGAR POLICY CACHE - undgår gentagne Edge Function kald (dyre!)
 // ============================================================================
-const sugarPolicyCache = new Map(); // childId → { data, timestamp }
-const SUGAR_POLICY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutter (policy ændres sjældent)
+const sugarPolicyCache = new Map(); // childId → data
 
 /**
  * Henter barnets sukkerpolitik og snapshot via Edge Function.
@@ -554,9 +524,9 @@ export async function getChildSugarPolicySnapshot(childId) {
 
     // OPTIMERING: Check cache først (Edge Functions er dyre)
     const cached = sugarPolicyCache.get(childId);
-    if (cached && Date.now() - cached.timestamp < SUGAR_POLICY_CACHE_TTL_MS) {
+    if (cached) {
         if (LIMITS_DEBUG) console.log('[getChildSugarPolicySnapshot] Cache hit for child:', childId);
-        return cached.data;
+        return cached;
     }
 
     try {
@@ -575,7 +545,7 @@ export async function getChildSugarPolicySnapshot(childId) {
         };
 
         // Gem i cache
-        sugarPolicyCache.set(childId, { data: result, timestamp: Date.now() });
+        sugarPolicyCache.set(childId, result);
 
         if (LIMITS_DEBUG) {
             console.log('[getChildSugarPolicySnapshot] Hentet og cached policy for barn:', {
@@ -747,9 +717,11 @@ export async function canChildPurchase(productId, childId, orderItems = [], inst
     // 1) Slå produktet op
     const { product, error: productError } = await getProductById(productId);
     if (productError || !product) {
+        logLimitBlock('product_missing','H3',{productFound:!!product,productError:!!productError});
         return { allowed: false, message: 'Produktet findes ikke.' };
     }
     if (product.is_enabled === false) {
+        logLimitBlock('product_disabled','H3',{});
         return { allowed: false, message: 'Produktet er ikke aktivt i øjeblikket.' };
     }
 
@@ -774,12 +746,15 @@ export async function canChildPurchase(productId, childId, orderItems = [], inst
     // 5) Antals-regel
     if (effectiveMaxPerDay !== null && effectiveMaxPerDay !== undefined) {
         if (effectiveMaxPerDay === 0) {
+            logLimitBlock('limit_blocked','H1',{effectiveMaxPerDay,todaysQty,qtyInCartEffective,hasParentLimit:!!parentLimit});
             return { allowed: false, message: 'Denne vare er spærret for dig – det er en aftale med dine forældre.' };
         }
         if (todaysQty + qtyInCartEffective >= effectiveMaxPerDay) {
             if (parentLimit) {
+                logLimitBlock('limit_reached_parent','H1',{effectiveMaxPerDay,todaysQty,qtyInCartEffective,hasParentLimit:true});
                 return { allowed: false, message: 'Du har nået grænsen for, hvor mange du må købe af denne vare i dag. Det er aftalt med dine forældre.' };
             }
+            logLimitBlock('limit_reached_club','H1',{effectiveMaxPerDay,todaysQty,qtyInCartEffective,hasParentLimit:false});
             return {
                 allowed: false,
                 message: `I dag må man højst købe ${effectiveMaxPerDay} stk. af ${productName}. Barnet har allerede nået grænsen.`,
@@ -804,6 +779,7 @@ export async function canChildPurchase(productId, childId, orderItems = [], inst
         }
         // Dagligt beløb tjek
         if (todaysTotalSpend + price > safeNumber(dailyBudget, 0)) {
+            logLimitBlock('daily_budget_exceeded','H1',{dailyBudget,todaysTotalSpend,price});
             return { allowed: false, message: 'Du har nået dit daglige max-beløb i caféen. Tal med en voksen, hvis der er noget, du er i tvivl om.' };
         }
     }
