@@ -829,6 +829,8 @@ export async function startApp() {
     }
 
     // updateSelectedUserInfo moved to app-ui-updates.js
+    // Expose updateSelectedUserInfo on window for use in other modules
+    window.updateSelectedUserInfo = updateSelectedUserInfo;
 
     // Register listener for balance changes to update UI
     onBalanceChange('main-ui-updater', (event) => {

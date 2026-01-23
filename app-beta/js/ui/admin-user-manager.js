@@ -435,6 +435,12 @@ export function setupAdminUserManagerFromModule(config = {}) {
                     updateCustomerBalanceGlobally(user.id, user.balance + depositVal, depositVal, 'admin-manager-deposit');
                 }
             }
+            // Opdater UI med lille forsinkelse for at sikre alle state-opdateringer er anvendt
+            if (typeof window.updateSelectedUserInfo === 'function') {
+                requestAnimationFrame(() => {
+                    window.updateSelectedUserInfo();
+                });
+            }
         }
 
         if (newBalanceVal) {

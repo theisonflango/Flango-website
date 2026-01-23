@@ -141,21 +141,31 @@ export async function setupLockedScreen(clubLoginCode = null) {
             }
             adminSelect.disabled = false;
             adminSelect.innerHTML = '<option value="">— Vælg administrator —</option>';
+            // Gem admin-objekter i et map for nem adgang til email
+            const adminMap = new Map();
             admins.forEach(admin => {
                 const opt = document.createElement('option');
-                opt.value = admin.email || admin.id || '';
+                const email = admin.email || '';
+                opt.value = email || admin.id || '';
                 opt.textContent = admin.name || admin.email || 'Admin';
                 adminSelect.appendChild(opt);
+                // Gem admin-objektet med email som nøgle (eller id hvis ingen email)
+                adminMap.set(opt.value, admin);
             });
             adminSelect.onchange = () => {
-                // Vi autofylder ikke email længere (skal indtastes manuelt).
-                const selectedId = adminSelect.value;
-                if (selectedId) {
-                    // Hvis vi fik email fra RPC, brug den; ellers tom og fokus.
-                    if (selectedId.includes('@')) {
-                        emailInput.value = selectedId;
+                const selectedValue = adminSelect.value;
+                if (selectedValue) {
+                    // Find admin-objektet og udfyld e-mail automatisk hvis den findes
+                    const selectedAdmin = adminMap.get(selectedValue);
+                    if (selectedAdmin && selectedAdmin.email) {
+                        emailInput.value = selectedAdmin.email;
+                        passwordInput.focus();
+                    } else if (selectedValue.includes('@')) {
+                        // Fallback: hvis værdien er en e-mail, brug den
+                        emailInput.value = selectedValue;
                         passwordInput.focus();
                     } else {
+                        // Ingen e-mail fundet, ryd feltet og fokuser
                         emailInput.value = '';
                         emailInput.focus();
                     }

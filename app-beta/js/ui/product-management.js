@@ -224,19 +224,53 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
             </div>`;
 
         if (typeof onProductClick === 'function') {
-            productBtn.addEventListener('click', (evt) => {
+            // Debounce state per produkt-knap for at forhindre dobbeltklik og repeat-klik
+            let isProcessing = false;
+            let lastClickTime = 0;
+            const CLICK_DEBOUNCE_MS = 300; // Minimum tid mellem klik (300ms = ~3 klik/sekund max)
+            
+            productBtn.addEventListener('click', async (evt) => {
                 if (evt.target.closest('.product-remove-overlay')) {
                     evt.preventDefault();
                     return;
                 }
-                // Hvis det er et refill-køb, skal vi sende den effektive data med
-                const productToAdd = isRefill && effectiveData ? {
-                    ...product,
-                    _effectivePrice: displayPrice,
-                    _effectiveName: displayName,
-                    _isRefill: true
-                } : product;
-                onProductClick(productToAdd, evt);
+                
+                // Forhindre dobbeltklik og repeat-klik
+                const now = Date.now();
+                const timeSinceLastClick = now - lastClickTime;
+                
+                if (isProcessing) {
+                    evt.preventDefault();
+                    evt.stopPropagation();
+                    return;
+                }
+                
+                if (timeSinceLastClick < CLICK_DEBOUNCE_MS) {
+                    evt.preventDefault();
+                    evt.stopPropagation();
+                    return;
+                }
+                
+                // Marker som processing og opdater tid
+                isProcessing = true;
+                lastClickTime = now;
+                
+                try {
+                    // Hvis det er et refill-køb, skal vi sende den effektive data med
+                    const productToAdd = isRefill && effectiveData ? {
+                        ...product,
+                        _effectivePrice: displayPrice,
+                        _effectiveName: displayName,
+                        _isRefill: true
+                    } : product;
+                    
+                    await onProductClick(productToAdd, evt);
+                } finally {
+                    // Reset processing flag efter en kort forsinkelse
+                    setTimeout(() => {
+                        isProcessing = false;
+                    }, CLICK_DEBOUNCE_MS);
+                }
             });
         }
 
