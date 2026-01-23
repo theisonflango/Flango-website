@@ -255,7 +255,7 @@
                 <input type="date" id="history-end-date" autocomplete="off" spellcheck="false" autocapitalize="off">
             </div>
             <div class="modal-controls" style="padding-top: 15px;">
-                <input type="text" id="search-history-input" placeholder="Søg efter kunde..." autocomplete="off" spellcheck="false" autocapitalize="off">
+                <input type="text" id="search-history-input" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off">
             </div>
             <div class="history-scroll-container">
                 <div id="sales-summary"></div>
@@ -713,9 +713,14 @@
 
             <!-- Delt Filter/Dato sektion for Oversigt og Transaktioner -->
             <div id="shared-history-controls" style="display: none;">
-                <div class="report-buttons">
+                <div class="report-buttons" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
                     <button id="history-filter-btn-shared" class="action-button btn-filter" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Filter</button>
                     <button id="filter-deposits-btn-shared" class="action-button" style="background-color: var(--secondary-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Vis Kun Indbetalinger</button>
+                    <button id="select-user-history-btn-shared" class="action-button" style="background-color: var(--primary-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0; white-space: nowrap;">👤 Vælg Bruger</button>
+                    <span id="selected-user-badge-shared" style="display: none; padding: 8px 12px; font-size: 14px; background-color: #e0e7ff; color: #3730a3; border-radius: 6px; white-space: nowrap;">
+                        <span id="selected-user-name-shared"></span>
+                        <button id="clear-user-filter-btn-shared" style="margin-left: 8px; background: none; border: none; color: #3730a3; cursor: pointer; font-size: 16px; font-weight: bold; padding: 0;">×</button>
+                    </span>
                     <button id="print-negative-balance-btn-shared" class="action-button" style="background-color: var(--warning-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem Negativ Saldo</button>
                     <button id="print-report-btn-shared" class="action-button" style="background-color: var(--success-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem Rapport</button>
                     <button id="print-all-balances-btn-shared" class="action-button btn-all-balances" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem liste med alle saldoer</button>
@@ -742,7 +747,7 @@
                     <input type="date" id="history-end-date-shared" autocomplete="off" spellcheck="false" autocapitalize="off">
                 </div>
                 <div class="modal-controls" style="padding-top: 15px;">
-                    <input type="text" id="search-history-input-shared" placeholder="Søg efter kunde..." autocomplete="off" spellcheck="false" autocapitalize="off">
+                    <input type="text" id="search-history-input-shared" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off">
                 </div>
             </div>
 

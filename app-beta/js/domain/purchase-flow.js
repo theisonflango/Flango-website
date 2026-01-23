@@ -487,7 +487,23 @@ export async function handleCompletePurchase({
     refreshProductLocks,
     renderProductsFromCache,
 }) {
-    const orderSnapshot = Array.isArray(currentOrder) ? [...currentOrder] : [];
+    // KRITISK FIX: Hvis currentOrder er tom men order-store har varer, brug order-store
+    // Dette løser synkroniseringsfejl hvor lokal variabel ikke er opdateret
+    // KRITISK FIX: Hvis currentOrder er tom men order-store har varer, brug order-store
+    // Dette løser synkroniseringsfejl hvor lokal variabel ikke er opdateret
+    const orderFromStore = typeof getOrder === 'function' ? getOrder() : [];
+    const effectiveOrder = (Array.isArray(currentOrder) && currentOrder.length > 0) ? currentOrder : orderFromStore;
+    const orderSnapshot = Array.isArray(effectiveOrder) ? [...effectiveOrder] : [];
+    
+    // Opdater lokal variabel hvis den var tom men order-store har varer
+    if (typeof setCurrentOrder === 'function' && (!Array.isArray(currentOrder) || currentOrder.length === 0) && orderFromStore.length > 0) {
+        setCurrentOrder([...orderFromStore]);
+        currentOrder = [...orderFromStore];
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'purchase-flow.js:493',message:'Fixed sync: updated currentOrder from order-store in handleCompletePurchase',data:{localWasEmpty:true,orderStoreLength:orderFromStore.length,effectiveOrderLength:effectiveOrder.length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+    }
+    
     // Flight recorder: log purchase flow start
     logDebugEvent('purchase_flow_started', {
         customerId: customer?.id,
@@ -496,8 +512,16 @@ export async function handleCompletePurchase({
         cartItems: orderSnapshot?.slice(0, 5).map(i => ({ name: i.name, id: i.id, price: i.price })),
         orderStoreLength: typeof getOrder === 'function' ? getOrder()?.length : 'N/A',
     });
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'purchase-flow.js:500',message:'handleCompletePurchase: before empty check',data:{currentOrderLength:currentOrder?.length,orderStoreLength:orderFromStore.length,effectiveOrderLength:effectiveOrder.length,orderSnapshotLength:orderSnapshot.length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     if (!customer) return showAlert("Fejl: Vælg venligst en kunde!");
-    if (orderSnapshot.length === 0) return showAlert("Fejl: Indkøbskurven er tom!");
+    if (orderSnapshot.length === 0) {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'purchase-flow.js:500',message:'ERROR: Cart empty check failed',data:{currentOrderLength:currentOrder?.length,orderStoreLength:orderFromStore.length,effectiveOrderLength:effectiveOrder.length,orderSnapshotLength:orderSnapshot.length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        return showAlert("Fejl: Indkøbskurven er tom!");
+    }
     if (purchaseInFlight) {
         logDebugEvent('purchase_inflight_blocked', { customerId: customer?.id });
         return;

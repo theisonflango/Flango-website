@@ -7,7 +7,7 @@ import { configureHistoryModule, showTransactionsInSummary, showOverviewInSummar
 import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js';
 import { setupLogoutFlow } from './logout-flow.js';
 import { getFinancialState, setCurrentCustomer, getCurrentCustomer, clearEvaluation, getSelectionToken, clearCurrentCustomer } from './cafe-session-store.js';
-import { getOrderTotal, setOrder } from './order-store.js';
+import { getOrderTotal, setOrder, getOrder } from './order-store.js';
 import { updateLoggedInUserDisplay, updateAvatarStorage, updateSelectedUserInfo } from './app-ui-updates.js';
 import { updateTotalPrice, renderOrder, handleOrderListClick, addToOrder, removeLastItemFromOrder, removeOneItemByName } from './order-ui.js';
 import { renderProductsInModal, renderProductsGrid, createProductManagementUI, updateProductQuantityBadges } from '../ui/product-management.js';
@@ -334,8 +334,22 @@ export async function startApp() {
 
         return refreshPending;
     };
-    const addToOrderWithLocks = (product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, optionsArg = {}) =>
-        addToOrder(product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, { ...optionsArg, onOrderChanged: refreshProductLocks });
+    const addToOrderWithLocks = async (product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, optionsArg = {}) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app-main.js:337',message:'addToOrderWithLocks: before addToOrder',data:{localCurrentOrderLength:currentOrder?.length,argCurrentOrderLength:currentOrderArg?.length,orderStoreLength:typeof getOrder === 'function' ? getOrder()?.length : 'N/A',productName:product?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        const result = await addToOrder(product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, { ...optionsArg, onOrderChanged: refreshProductLocks });
+        // KRITISK FIX: Opdater lokal currentOrder variabel efter addToOrder for at undgå synkroniseringsfejl
+        // Læs fra order-store for at sikre vi har den seneste state
+        const updatedOrder = typeof getOrder === 'function' ? getOrder() : currentOrderArg;
+        if (updatedOrder.length > 0) {
+            currentOrder = [...updatedOrder];
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app-main.js:342',message:'addToOrderWithLocks: updated local currentOrder from order-store',data:{oldLength:currentOrderArg?.length,newLength:updatedOrder.length,orderStoreLength:updatedOrder.length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
+        }
+        return result;
+    };
 
     const resetUserModalView = () => {
         delete userModal.dataset.mode;
@@ -422,17 +436,33 @@ export async function startApp() {
         completePurchaseBtn.removeEventListener('click', completePurchaseBtn._flangoPurchaseHandler);
     }
     const purchaseHandler = async () => {
+        // KRITISK FIX: Læs fra order-store i stedet for lokal variabel for at undgå synkroniseringsfejl
+        // Hvis lokal currentOrder er tom men order-store har varer, brug order-store
+        const orderFromStore = typeof getOrder === 'function' ? getOrder() : [];
+        const effectiveOrder = (currentOrder?.length > 0) ? currentOrder : orderFromStore;
+        
+        // Opdater lokal variabel hvis den var tom men order-store har varer
+        if (currentOrder?.length === 0 && orderFromStore.length > 0) {
+            currentOrder = [...orderFromStore];
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app-main.js:429',message:'Fixed sync: updated local currentOrder from order-store',data:{localWasEmpty:true,orderStoreLength:orderFromStore.length,effectiveOrderLength:effectiveOrder.length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+        }
+        
         // Flight recorder: log purchase button click
         logDebugEvent('purchase_btn_clicked', {
             customerId: getCurrentCustomer()?.id,
             customerName: getCurrentCustomer()?.name,
-            cartLength: currentOrder?.length,
-            cartItems: currentOrder?.slice(0, 5).map(i => ({ name: i.name, id: i.id })),
+            cartLength: effectiveOrder?.length,
+            cartItems: effectiveOrder?.slice(0, 5).map(i => ({ name: i.name, id: i.id })),
             btnDisabled: completePurchaseBtn?.disabled,
         });
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app-main.js:433',message:'purchaseHandler: before handleCompletePurchase',data:{localCurrentOrderLength:currentOrder?.length,orderStoreLength:orderFromStore.length,effectiveOrderLength:effectiveOrder.length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         await handleCompletePurchase({
             customer: getCurrentCustomer(),
-            currentOrder,
+            currentOrder: effectiveOrder,
             setCurrentOrder: (next) => { currentOrder = next; },
             allProducts,
             updateSelectedUserInfo,

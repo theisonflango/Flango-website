@@ -8,12 +8,20 @@ import { initHistoryStore, loadSalesHistory } from './history-store.js';
 import { formatKr, buildAdjustmentTexts, showConfirmModal } from '../ui/confirm-modals.js';
 import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
 import { invalidateTodaysSalesCache } from './purchase-limits.js';
+import { 
+    openCustomerSelectionModalUI, 
+    renderCustomerListUI, 
+    setupCustomerSearchKeyboardNavigation,
+    setupUserFilterButtons,
+    resetUserFilters
+} from '../ui/customer-picker.js';
 
 const HISTORY_DEBUG = false;
 
 let fullSalesHistory = [];
 let getAllUsersAccessor = () => [];
 let sharedControlsInitialized = false;
+let selectedUserForHistory = null; // Gem valgt bruger for filtrering
 
 const safeNumber = (value) => {
     const num = Number(value);
@@ -89,6 +97,22 @@ export async function showSalesHistory() {
 
     filterDepositsBtn.onclick = () => {
         const isActive = filterDepositsBtn.classList.toggle('active');
+        console.log('[HISTORY DEBUG] filterDepositsBtn clicked:', { isActive, fullSalesHistoryLength: fullSalesHistory.length });
+        // KRITISK FIX: Hvis fullSalesHistory er tom, hent data først
+        if (fullSalesHistory.length === 0) {
+            console.log('[HISTORY DEBUG] fullSalesHistory is empty, fetching history first...');
+            fetchHistory().then(() => {
+                // Efter data er hentet, anvend filteret
+                if (isActive) {
+                    filterDepositsBtn.textContent = 'Vis Alle Hændelser';
+                    renderSalesHistory(fullSalesHistory, null, 'DEPOSIT');
+                } else {
+                    filterDepositsBtn.textContent = 'Vis Kun Indbetalinger';
+                    renderSalesHistory(fullSalesHistory);
+                }
+            });
+            return;
+        }
         if (isActive) {
             filterDepositsBtn.textContent = 'Vis Alle Hændelser';
             renderSalesHistory(fullSalesHistory, null, 'DEPOSIT');
@@ -311,7 +335,7 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
     const searchInput = salesHistoryModal.querySelector('#search-history-input');
     if (!salesList || !salesSummaryEl || !searchInput) return;
 
-    const searchTerm = searchInput.value.toLowerCase();
+    const searchTerm = (searchInput.value || '').toLowerCase().trim();
     if (errorMessage) {
         salesList.innerHTML = `<p style="color:var(--danger-color); text-align:center; padding: 20px;">${errorMessage}</p>`;
         salesSummaryEl.replaceChildren();
@@ -319,12 +343,16 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
     }
 
     let preFilteredData = salesData;
+    // KRITISK FIX: Hvis eventTypeFilter er sat (fx 'DEPOSIT'), skal det have forrang over checkbox-filtre
     if (eventTypeFilter === 'DEPOSIT') {
+        const beforeFilter = salesData.length;
         preFilteredData = salesData.filter(e => e.event_type === 'DEPOSIT' || e.event_type === 'BALANCE_EDIT');
+        const afterFilter = preFilteredData.length;
+        console.log('[HISTORY DEBUG] DEPOSIT filter applied:', { beforeFilter, afterFilter, eventTypes: preFilteredData.map(e => e.event_type) });
     } else if (eventTypeFilter) {
         preFilteredData = salesData.filter(e => e.event_type === eventTypeFilter);
     } else {
-        // Anvend checkbox-filteret hvis der ikke er et specifikt eventTypeFilter
+        // Anvend checkbox-filteret kun hvis der ikke er et specifikt eventTypeFilter
         const filterCheckboxes = Array.from(salesHistoryModal.querySelectorAll('.history-filter-checkbox'));
         if (filterCheckboxes.length > 0) {
             const checkedEventTypes = filterCheckboxes
@@ -358,11 +386,63 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
         }
     }
 
+    // Smart søgning: søg efter navn, nummer og admin navn med forbedret matching
     const filteredEvents = preFilteredData.filter(sale => {
-        const targetName = (sale.target_user_name || '').toLowerCase();
-        const adminName = (sale.admin_name || '').toLowerCase();
+        if (!searchTerm) return true;
+        
+        const targetName = (sale.target_user_name || '').toLowerCase().trim();
+        const adminName = (sale.admin_name || '').toLowerCase().trim();
         const detailsString = JSON.stringify(sale.details).toLowerCase();
-        return targetName.includes(searchTerm) || adminName.includes(searchTerm) || detailsString.includes(searchTerm);
+        
+        // Direkte navn-match (inkluderer delvise matches)
+        if (targetName.includes(searchTerm) || adminName.includes(searchTerm)) {
+            return true;
+        }
+        
+        // Søg efter nummer: slå op i getAllUsers baseret på navn
+        try {
+            const allUsers = typeof getAllUsersAccessor === 'function' ? getAllUsersAccessor() : [];
+            const matchingUser = allUsers.find(u => 
+                (u.name || '').toLowerCase().trim() === targetName
+            );
+            if (matchingUser && matchingUser.number) {
+                const userNumber = String(matchingUser.number).toLowerCase().trim();
+                if (userNumber.includes(searchTerm)) {
+                    return true;
+                }
+            }
+        } catch (err) {
+            // Ignorer fejl ved opslag
+        }
+        
+        // Søg i details (produkter, etc.)
+        if (detailsString.includes(searchTerm)) {
+            return true;
+        }
+        
+        // Smart navne-match: del ord op og tjek om alle ord findes i navnet
+        const searchWords = searchTerm.split(/\s+/).filter(w => w.length > 0);
+        if (searchWords.length > 1) {
+            // Hvis flere ord, tjek om alle ord findes i navnet (i hvilken som helst rækkefølge)
+            const allWordsMatch = searchWords.every(word => targetName.includes(word));
+            if (allWordsMatch) {
+                return true;
+            }
+        }
+        
+        // Fuzzy match: tjek om søgetermen matcher starten af ord i navnet
+        const targetWords = targetName.split(/\s+/);
+        const searchWordsForFuzzy = searchTerm.split(/\s+/);
+        for (const searchWord of searchWordsForFuzzy) {
+            if (searchWord.length < 2) continue;
+            for (const targetWord of targetWords) {
+                if (targetWord.startsWith(searchWord) || searchWord.startsWith(targetWord)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     });
     if (filteredEvents.length === 0) {
         const message = searchTerm ? 'Ingen salg matcher din søgning.' : 'Der er ingen salg i den valgte periode.';
@@ -746,9 +826,12 @@ function buildSalesHistoryEntryElement(event, options = {}) {
         customerName = event.target_user_name || event.details?.customer_name || 'Ukendt';
     }
 
-    // Felt 2: Produkter (SALE og SALE_UNDO)
+    // Felt 2: Produkter (SALE og SALE_UNDO) eller Indbetaling (DEPOSIT)
     let itemsText = '—';
-    if (event.event_type === 'SALE' && event.items && Array.isArray(event.items) && event.items.length > 0) {
+    if (event.event_type === 'DEPOSIT' || event.event_type === 'BALANCE_EDIT') {
+        // Vis "Indbetaling" for DEPOSIT og BALANCE_EDIT events i stedet for "Produkter: —"
+        itemsText = 'Indbetaling';
+    } else if (event.event_type === 'SALE' && event.items && Array.isArray(event.items) && event.items.length > 0) {
         itemsText = event.items.map(item => {
             const iconInfo = getProductIconInfo(item);
             let visualMarkup = iconInfo ? `<img src="${iconInfo.path}" alt="${item.product_name}" class="product-icon-small" style="height: 1em; vertical-align: -0.1em;"> ` : (item.emoji ? `${item.emoji} ` : '');
@@ -1675,12 +1758,64 @@ function handlePrintReport() {
         preFilteredData = fullSalesHistory.filter(e => e.event_type === 'DEPOSIT' || e.event_type === 'BALANCE_EDIT');
     }
 
-    const searchTerm = searchInput.value.toLowerCase();
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    // Smart søgning: søg efter navn, nummer og admin navn med forbedret matching
     const filteredEvents = preFilteredData.filter(sale => {
-        const targetName = (sale.target_user_name || '').toLowerCase();
-        const adminName = (sale.admin_name || '').toLowerCase();
+        if (!searchTerm) return true;
+        
+        const targetName = (sale.target_user_name || '').toLowerCase().trim();
+        const adminName = (sale.admin_name || '').toLowerCase().trim();
         const detailsString = JSON.stringify(sale.details).toLowerCase();
-        return targetName.includes(searchTerm) || adminName.includes(searchTerm) || detailsString.includes(searchTerm);
+        
+        // Direkte navn-match (inkluderer delvise matches)
+        if (targetName.includes(searchTerm) || adminName.includes(searchTerm)) {
+            return true;
+        }
+        
+        // Søg efter nummer: slå op i getAllUsers baseret på navn
+        try {
+            const allUsers = typeof getAllUsersAccessor === 'function' ? getAllUsersAccessor() : [];
+            const matchingUser = allUsers.find(u => 
+                (u.name || '').toLowerCase().trim() === targetName
+            );
+            if (matchingUser && matchingUser.number) {
+                const userNumber = String(matchingUser.number).toLowerCase().trim();
+                if (userNumber.includes(searchTerm)) {
+                    return true;
+                }
+            }
+        } catch (err) {
+            // Ignorer fejl ved opslag
+        }
+        
+        // Søg i details (produkter, etc.)
+        if (detailsString.includes(searchTerm)) {
+            return true;
+        }
+        
+        // Smart navne-match: del ord op og tjek om alle ord findes i navnet
+        const searchWords = searchTerm.split(/\s+/).filter(w => w.length > 0);
+        if (searchWords.length > 1) {
+            // Hvis flere ord, tjek om alle ord findes i navnet (i hvilken som helst rækkefølge)
+            const allWordsMatch = searchWords.every(word => targetName.includes(word));
+            if (allWordsMatch) {
+                return true;
+            }
+        }
+        
+        // Fuzzy match: tjek om søgetermen matcher starten af ord i navnet
+        const targetWords = targetName.split(/\s+/);
+        const searchWordsForFuzzy = searchTerm.split(/\s+/);
+        for (const searchWord of searchWordsForFuzzy) {
+            if (searchWord.length < 2) continue;
+            for (const targetWord of targetWords) {
+                if (targetWord.startsWith(searchWord) || searchWord.startsWith(targetWord)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     });
 
     if (filteredEvents.length === 0) return showAlert('Der er intet at printe.');
@@ -1825,6 +1960,207 @@ function initSharedHistoryControls() {
         };
     }
 
+    // Setup "Vælg Bruger" button - bruger samme modal som "Vælg en kunde"
+    const selectUserBtn = document.getElementById('select-user-history-btn-shared');
+    const selectedUserBadge = document.getElementById('selected-user-badge-shared');
+    const selectedUserName = document.getElementById('selected-user-name-shared');
+    const clearUserFilterBtn = document.getElementById('clear-user-filter-btn-shared');
+    
+    console.log('[history-and-reports] Setting up user picker:', { 
+        selectUserBtn: !!selectUserBtn, 
+        selectedUserBadge: !!selectedUserBadge,
+        selectedUserName: !!selectedUserName,
+        clearUserFilterBtn: !!clearUserFilterBtn
+    });
+    
+    if (selectUserBtn) {
+        selectUserBtn.onclick = () => {
+            console.log('[history-and-reports] Vælg Bruger button clicked');
+            // Åbn "Vælg en kunde" modalet
+            const userModal = document.getElementById('user-modal');
+            if (!userModal) {
+                showAlert('Kunde-modal ikke fundet');
+                return;
+            }
+            
+            // Brug eksisterende funktionalitet til at åbne modalet
+            // Vi skal bruge getAllUsers funktionen
+            const getAllUsers = typeof getAllUsersAccessor === 'function' ? getAllUsersAccessor : null;
+            if (!getAllUsers || typeof getAllUsers !== 'function') {
+                // Prøv at få det fra window
+                const getAllUsersFromWindow = window.__flangoGetAllUsers || window.getAllUsers;
+                if (typeof getAllUsersFromWindow === 'function') {
+                    // Opret en midlertidig wrapper
+                    const tempGetAllUsers = () => getAllUsersFromWindow();
+                    setupHistoryUserPicker(userModal, tempGetAllUsers);
+                } else {
+                    showAlert('Kunne ikke hente brugerliste');
+                }
+            } else {
+                setupHistoryUserPicker(userModal, getAllUsers);
+            }
+        };
+    }
+    
+    // Setup clear user filter button
+    if (clearUserFilterBtn) {
+        clearUserFilterBtn.onclick = () => {
+            selectedUserForHistory = null;
+            updateSelectedUserBadge();
+            reloadCurrentHistoryView();
+        };
+    }
+    
+    // Opdater badge når modal åbnes
+    updateSelectedUserBadge();
+    
+    function updateSelectedUserBadge() {
+        if (selectedUserBadge && selectedUserName) {
+            if (selectedUserForHistory) {
+                selectedUserBadge.style.display = 'inline-block';
+                selectedUserName.textContent = selectedUserForHistory.name || 'Ukendt';
+            } else {
+                selectedUserBadge.style.display = 'none';
+            }
+        }
+    }
+    
+    function setupHistoryUserPicker(userModal, getAllUsersFunc) {
+        console.log('[history-and-reports] setupHistoryUserPicker called', { userModal: !!userModal, getAllUsersFunc: typeof getAllUsersFunc });
+        
+        const searchInput = document.getElementById('search-user-input');
+        const sortByNameBtn = document.getElementById('sort-by-name-btn');
+        const sortByNumberBtn = document.getElementById('sort-by-number-btn');
+        const sortByBalanceBtn = document.getElementById('sort-by-balance-btn');
+        
+        if (!searchInput || !userModal) {
+            console.error('[history-and-reports] Missing required elements:', { searchInput: !!searchInput, userModal: !!userModal });
+            showAlert('Kunne ikke åbne kunde-modal - manglende elementer');
+            return;
+        }
+        
+        // Reset filters
+        resetUserFilters();
+        
+        // Render customer list
+        const renderList = () => {
+            const allUsers = getAllUsersFunc();
+            console.log('[history-and-reports] Rendering customer list:', { userCount: allUsers.length });
+            renderCustomerListUI({
+                allUsers,
+                searchInput,
+                currentSortKey: 'name',
+                nameSortOrder: 'asc',
+                numberSortOrder: 'asc',
+                balanceSortOrder: 'desc',
+                sortByNameBtn,
+                sortByNumberBtn,
+                sortByBalanceBtn,
+            });
+        };
+        
+        // Setup click handler for user selection
+        const handleUserClick = async (event) => {
+            const clickedActionIcon = event.target.closest('.action-icon');
+            if (clickedActionIcon) return;
+            const clickedUserInfo = event.target.closest('.modal-entry-info');
+            if (clickedUserInfo) {
+                const userId = clickedUserInfo.dataset.userId;
+                const allUsers = getAllUsersFunc();
+                const selectedUser = allUsers.find(u => u.id === userId);
+                if (selectedUser) {
+                    console.log('[history-and-reports] User selected:', selectedUser.name);
+                    selectedUserForHistory = selectedUser;
+                    updateSelectedUserBadge();
+                    userModal.style.display = 'none';
+                    // Reset z-index når modal lukkes
+                    userModal.classList.remove('modal-override-z-index');
+                    reloadCurrentHistoryView();
+                }
+            }
+        };
+        
+        // Remove existing listener if any (to avoid duplicates)
+        const existingHandler = userModal.__flangoHistoryUserClickHandler;
+        if (existingHandler) {
+            userModal.removeEventListener('click', existingHandler);
+        }
+        userModal.__flangoHistoryUserClickHandler = handleUserClick;
+        userModal.addEventListener('click', handleUserClick);
+        
+        // Open modal - sæt højere z-index så den vises over historik modal
+        console.log('[history-and-reports] Opening customer selection modal');
+        
+        // Sæt højere z-index på user-modal så den vises over summary-modal
+        // Brug en meget høj z-index værdi (10000) for at sikre den vises over alle andre modaler
+        userModal.style.zIndex = '10000';
+        userModal.style.setProperty('z-index', '10000', 'important');
+        
+        // Sæt også z-index på modal-content hvis den findes
+        const modalContent = userModal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.style.zIndex = '10001';
+            modalContent.style.setProperty('z-index', '10001', 'important');
+        }
+        
+        console.log('[history-and-reports] Set user-modal z-index to 10000 (with !important)');
+        
+        openCustomerSelectionModalUI({
+            userModal,
+            searchInput,
+            renderList,
+            resetView: () => {
+                const modalTitle = document.getElementById('user-modal-title');
+                if (modalTitle) modalTitle.textContent = 'Vælg en kunde';
+                if (searchInput) searchInput.value = '';
+            },
+        });
+        
+        setupCustomerSearchKeyboardNavigation(userModal, searchInput);
+        setupUserFilterButtons(renderList);
+        
+        // Tilføj klasse for højere z-index
+        userModal.classList.add('modal-override-z-index');
+        
+        // Inject CSS for højere z-index hvis den ikke allerede findes
+        if (!document.getElementById('user-modal-z-index-override')) {
+            const style = document.createElement('style');
+            style.id = 'user-modal-z-index-override';
+            style.textContent = `
+                .modal-override-z-index {
+                    z-index: 10000 !important;
+                }
+                .modal-override-z-index .modal-content {
+                    z-index: 10001 !important;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Setup close button handler to reset z-index
+        const closeBtn = userModal.querySelector('.close-btn');
+        if (closeBtn) {
+            const originalCloseHandler = closeBtn.onclick;
+            closeBtn.onclick = (e) => {
+                if (originalCloseHandler) originalCloseHandler(e);
+                userModal.style.display = 'none';
+                userModal.classList.remove('modal-override-z-index');
+            };
+        }
+        
+        // Also handle ESC key to close modal and reset z-index
+        const handleEscape = (e) => {
+            if (e.key === 'Escape' && userModal.style.display === 'flex') {
+                userModal.style.display = 'none';
+                userModal.classList.remove('modal-override-z-index');
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+        
+        console.log('[history-and-reports] Customer selection modal setup complete');
+    }
+
     // Setup other buttons
     if (printReportBtn) printReportBtn.onclick = handlePrintReport;
     if (printNegativeBtn) printNegativeBtn.onclick = handlePrintNegativeBalance;
@@ -1964,6 +2300,11 @@ export function resetSharedHistoryControls() {
         filterDepositsBtn.textContent = 'Vis Kun Indbetalinger';
     }
 
+    // Reset selected user filter
+    selectedUserForHistory = null;
+    const selectedUserBadge = document.getElementById('selected-user-badge-shared');
+    if (selectedUserBadge) selectedUserBadge.style.display = 'none';
+
     // Reset search input
     const searchInput = document.getElementById('search-history-input-shared');
     if (searchInput) searchInput.value = '';
@@ -2008,12 +2349,15 @@ async function fetchHistoryInSummary() {
     const testUsersCheckbox = document.getElementById('show-test-users-checkbox-shared');
     const onlyTestUsersBtn = document.getElementById('only-test-users-btn-shared');
     const filterCheckboxes = Array.from(document.querySelectorAll('.history-filter-checkbox-shared'));
+    const filterDepositsBtn = document.getElementById('filter-deposits-btn-shared');
 
     if (!historyStartDate || !historyEndDate) return;
     const startDateStr = historyStartDate.value;
     const endDateStr = historyEndDate.value;
     const includeTestUsers = testUsersCheckbox ? testUsersCheckbox.checked : false;
     const onlyTestUsers = onlyTestUsersBtn ? onlyTestUsersBtn.classList.contains('active') : false;
+    // KRITISK FIX: Tjek om "Vis kun indbetalinger" knappen er aktiv
+    const isDepositsOnly = filterDepositsBtn?.classList.contains('active');
     const selectedEventTypes = filterCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
 
     // Load history from database
@@ -2027,7 +2371,7 @@ async function fetchHistoryInSummary() {
     if (error) {
         console.error('[history-and-reports] Error fetching history in summary:', error);
         fullSalesHistory = [];
-        renderSalesHistoryInSummary(fullSalesHistory);
+        renderSalesHistoryInSummary(fullSalesHistory, null, isDepositsOnly ? 'DEPOSIT' : null);
         showAlert('Fejl ved hentning af historik');
         return;
     }
@@ -2037,22 +2381,33 @@ async function fetchHistoryInSummary() {
     console.log('[HISTORY SUMMARY DEBUG] Raw SALE_ADJUSTMENT events from DB:', rawAdjustments.length,
         rawAdjustments.length > 0 ? rawAdjustments : '(none)');
 
-    // Filter by event types client-side (med mapping for specielle typer)
-    fullSalesHistory = rows.filter(event => {
-        const eventType = event.event_type;
-        // Map event types til checkbox values (samme som i renderSalesHistory)
-        if (eventType === 'BALANCE_EDIT') return selectedEventTypes.includes('BALANCE_ADJUSTMENT');
-        if (eventType === 'SALE_ADJUSTMENT') return selectedEventTypes.includes('SALE_EDIT');
-        return selectedEventTypes.includes(eventType);
-    });
+    // KRITISK FIX: Hvis DEPOSIT filteret er aktivt, brug det i stedet for checkbox-filtre
+    if (isDepositsOnly) {
+        // Vis kun indbetalinger - DEPOSIT filteret har forrang
+        fullSalesHistory = rows.filter(e => e.event_type === 'DEPOSIT' || e.event_type === 'BALANCE_EDIT');
+        console.log('[HISTORY SUMMARY DEBUG] DEPOSIT filter applied:', { 
+            beforeFilter: rows.length, 
+            afterFilter: fullSalesHistory.length 
+        });
+    } else {
+        // Filter by event types client-side (med mapping for specielle typer)
+        fullSalesHistory = rows.filter(event => {
+            const eventType = event.event_type;
+            // Map event types til checkbox values (samme som i renderSalesHistory)
+            if (eventType === 'BALANCE_EDIT') return selectedEventTypes.includes('BALANCE_ADJUSTMENT');
+            if (eventType === 'SALE_ADJUSTMENT') return selectedEventTypes.includes('SALE_EDIT');
+            return selectedEventTypes.includes(eventType);
+        });
 
-    // DEBUG: Log SALE_ADJUSTMENT events
-    const adjustmentEvents = fullSalesHistory.filter(e => e.event_type === 'SALE_ADJUSTMENT');
-    console.log('[HISTORY SUMMARY DEBUG] SALE_ADJUSTMENT events after filter:', adjustmentEvents.length,
-        'selectedEventTypes:', selectedEventTypes,
-        'includes SALE_EDIT:', selectedEventTypes.includes('SALE_EDIT'));
+        // DEBUG: Log SALE_ADJUSTMENT events
+        const adjustmentEvents = fullSalesHistory.filter(e => e.event_type === 'SALE_ADJUSTMENT');
+        console.log('[HISTORY SUMMARY DEBUG] SALE_ADJUSTMENT events after filter:', adjustmentEvents.length,
+            'selectedEventTypes:', selectedEventTypes,
+            'includes SALE_EDIT:', selectedEventTypes.includes('SALE_EDIT'));
+    }
 
-    renderSalesHistoryInSummary(fullSalesHistory);
+    // KRITISK FIX: Send eventTypeFilter til renderSalesHistoryInSummary så den kan anvende filteret korrekt
+    renderSalesHistoryInSummary(fullSalesHistory, null, isDepositsOnly ? 'DEPOSIT' : null);
 }
 
 /**
@@ -2116,6 +2471,19 @@ async function fetchOverviewData() {
         if (eventType === 'SALE_ADJUSTMENT') return selectedEventTypes.includes('SALE_EDIT');
         return selectedEventTypes.includes(eventType);
     });
+
+    // KRITISK FIX: Anvend bruger-filter hvis en bruger er valgt
+    if (selectedUserForHistory) {
+        const selectedUserId = selectedUserForHistory.id;
+        const selectedUserName = (selectedUserForHistory.name || '').toLowerCase().trim();
+        filteredRows = filteredRows.filter(sale => {
+            // Match på target_user_id hvis det findes, ellers match på target_user_name
+            const saleUserId = sale.target_user_id || sale.customer_id;
+            const saleUserName = (sale.target_user_name || '').toLowerCase().trim();
+            return saleUserId === selectedUserId || 
+                   saleUserName === selectedUserName;
+        });
+    }
 
     // Render only the summary (no list)
     renderOverviewSummary(filteredRows);
@@ -2187,12 +2555,77 @@ function renderSalesHistoryInSummary(history, searchQuery = null, eventTypeFilte
         }
     }
 
-    // Apply search filter
-    const filteredEvents = preFilteredData.filter(sale => {
-        const targetName = (sale.target_user_name || '').toLowerCase();
-        const adminName = (sale.admin_name || '').toLowerCase();
+    // Apply user filter if a user is selected
+    let userFilteredData = preFilteredData;
+    if (selectedUserForHistory) {
+        const selectedUserId = selectedUserForHistory.id;
+        const selectedUserName = (selectedUserForHistory.name || '').toLowerCase().trim();
+        userFilteredData = preFilteredData.filter(sale => {
+            // Match på target_user_id hvis det findes, ellers match på target_user_name
+            const saleUserId = sale.target_user_id || sale.customer_id;
+            const saleUserName = (sale.target_user_name || '').toLowerCase().trim();
+            return saleUserId === selectedUserId || 
+                   saleUserName === selectedUserName;
+        });
+    }
+    
+    // Apply search filter - Smart søgning: søg efter navn, nummer og admin navn med forbedret matching
+    const filteredEvents = userFilteredData.filter(sale => {
+        if (!searchTerm) return true;
+        
+        const targetName = (sale.target_user_name || '').toLowerCase().trim();
+        const adminName = (sale.admin_name || '').toLowerCase().trim();
         const detailsString = JSON.stringify(sale.details).toLowerCase();
-        return targetName.includes(searchTerm) || adminName.includes(searchTerm) || detailsString.includes(searchTerm);
+        
+        // Direkte navn-match (inkluderer delvise matches)
+        if (targetName.includes(searchTerm) || adminName.includes(searchTerm)) {
+            return true;
+        }
+        
+        // Søg efter nummer: slå op i getAllUsers baseret på navn
+        try {
+            const allUsers = typeof getAllUsersAccessor === 'function' ? getAllUsersAccessor() : [];
+            const matchingUser = allUsers.find(u => 
+                (u.name || '').toLowerCase().trim() === targetName
+            );
+            if (matchingUser && matchingUser.number) {
+                const userNumber = String(matchingUser.number).toLowerCase().trim();
+                if (userNumber.includes(searchTerm)) {
+                    return true;
+                }
+            }
+        } catch (err) {
+            // Ignorer fejl ved opslag
+        }
+        
+        // Søg i details (produkter, etc.)
+        if (detailsString.includes(searchTerm)) {
+            return true;
+        }
+        
+        // Smart navne-match: del ord op og tjek om alle ord findes i navnet
+        const searchWords = searchTerm.split(/\s+/).filter(w => w.length > 0);
+        if (searchWords.length > 1) {
+            // Hvis flere ord, tjek om alle ord findes i navnet (i hvilken som helst rækkefølge)
+            const allWordsMatch = searchWords.every(word => targetName.includes(word));
+            if (allWordsMatch) {
+                return true;
+            }
+        }
+        
+        // Fuzzy match: tjek om søgetermen matcher starten af ord i navnet
+        const targetWords = targetName.split(/\s+/);
+        const searchWordsForFuzzy = searchTerm.split(/\s+/);
+        for (const searchWord of searchWordsForFuzzy) {
+            if (searchWord.length < 2) continue;
+            for (const targetWord of targetWords) {
+                if (targetWord.startsWith(searchWord) || searchWord.startsWith(targetWord)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     });
 
     if (filteredEvents.length === 0) {

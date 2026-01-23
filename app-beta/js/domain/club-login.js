@@ -152,7 +152,24 @@ export async function setupLockedScreen(clubLoginCode = null) {
                 // Gem admin-objektet med email som nøgle (eller id hvis ingen email)
                 adminMap.set(opt.value, admin);
             });
-            adminSelect.onchange = () => {
+            
+            // KRITISK FIX: Hvis der kun er én admin, vælg den automatisk og udfyld email
+            if (admins.length === 1 && admins[0].email) {
+                const singleAdmin = admins[0];
+                const singleAdminEmail = singleAdmin.email || '';
+                if (singleAdminEmail) {
+                    adminSelect.value = singleAdminEmail || singleAdmin.id || '';
+                    emailInput.value = singleAdminEmail;
+                    // Trigger onchange for at sikre konsistens
+                    if (adminSelect.onchange) {
+                        adminSelect.onchange();
+                    }
+                    passwordInput.focus();
+                }
+            }
+            
+            // Funktion til at udfylde email baseret på valgt admin
+            const fillEmailFromSelectedAdmin = () => {
                 const selectedValue = adminSelect.value;
                 if (selectedValue) {
                     // Find admin-objektet og udfyld e-mail automatisk hvis den findes
@@ -160,20 +177,46 @@ export async function setupLockedScreen(clubLoginCode = null) {
                     if (selectedAdmin && selectedAdmin.email) {
                         emailInput.value = selectedAdmin.email;
                         passwordInput.focus();
+                        return true;
                     } else if (selectedValue.includes('@')) {
                         // Fallback: hvis værdien er en e-mail, brug den
                         emailInput.value = selectedValue;
                         passwordInput.focus();
+                        return true;
                     } else {
                         // Ingen e-mail fundet, ryd feltet og fokuser
                         emailInput.value = '';
                         emailInput.focus();
+                        return false;
                     }
                 } else {
                     emailInput.value = '';
                     emailInput.focus();
+                    return false;
                 }
             };
+            
+            adminSelect.onchange = fillEmailFromSelectedAdmin;
+            
+            // KRITISK FIX: Hvis der er flere admins, men én har samme email som tidligere valgt, vælg den automatisk
+            // Dette hjælper hvis brugeren har valgt en admin før og kommer tilbage til login skærmen
+            try {
+                const lastSelectedEmail = sessionStorage.getItem('flango_last_selected_admin_email');
+                if (lastSelectedEmail) {
+                    const matchingAdmin = admins.find(a => a.email === lastSelectedEmail);
+                    if (matchingAdmin) {
+                        const matchingValue = matchingAdmin.email || matchingAdmin.id || '';
+                        if (matchingValue) {
+                            adminSelect.value = matchingValue;
+                            fillEmailFromSelectedAdmin();
+                            // Gem ikke længere efter første brug, så brugeren kan vælge en anden
+                            sessionStorage.removeItem('flango_last_selected_admin_email');
+                        }
+                    }
+                }
+            } catch (e) {
+                // Ignorer fejl ved sessionStorage
+            }
         });
     }
 
@@ -186,6 +229,13 @@ export async function setupLockedScreen(clubLoginCode = null) {
         if (!email.trim() || !password.trim()) {
             errorEl.textContent = 'Indtast venligst både e-mail og adgangskode.';
             return;
+        }
+
+        // Gem valgt email til næste gang
+        try {
+            sessionStorage.setItem('flango_last_selected_admin_email', email);
+        } catch (e) {
+            // Ignorer fejl ved sessionStorage
         }
 
         loginBtn.disabled = true;
