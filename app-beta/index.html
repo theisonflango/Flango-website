@@ -48,6 +48,12 @@
             gap: 8px;
             margin-bottom: 12px;
         }
+        .settings-modal-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+        }
         .settings-item-btn {
             width: 100%;
             padding: 8px 12px;
@@ -55,6 +61,244 @@
             border: none;
             text-align: left;
             cursor: pointer;
+        }
+        /* Payment Method Cards */
+        .payment-method-card {
+            background: #ffffff;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            transition: all 0.2s ease;
+        }
+        .payment-method-card.enabled {
+            border-color: var(--primary-color, #2196F3);
+            background: #f8f9ff;
+        }
+        .payment-method-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .payment-method-toggle {
+            width: 48px;
+            height: 28px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .payment-method-toggle input[type="checkbox"] {
+            width: 100%;
+            height: 100%;
+            appearance: none;
+            background: #ccc;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+            position: relative;
+        }
+        .payment-method-toggle input[type="checkbox"]:checked {
+            background: #4CAF50;
+        }
+        .payment-method-toggle input[type="checkbox"]::after {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: white;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .payment-method-toggle input[type="checkbox"]:checked::after {
+            transform: translateX(20px);
+        }
+        .payment-method-info {
+            flex: 1;
+        }
+        .payment-method-title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .payment-method-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+        }
+        .payment-method-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .badge-green {
+            background: #4CAF50;
+            color: white;
+        }
+        .badge-dark-green {
+            background: #2E7D32;
+            color: white;
+        }
+        .badge-blue {
+            background: #2196F3;
+            color: white;
+        }
+        .badge-orange {
+            background: #FF9800;
+            color: white;
+        }
+        .badge-red {
+            background: #f44336;
+            color: white;
+        }
+        .badge-gray {
+            background: #757575;
+            color: white;
+        }
+        .payment-method-badges {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .payment-method-summary {
+            font-size: 15px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        .payment-method-expand {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary-color, #2196F3);
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 12px;
+            display: none; /* Skjult indtil "more" tekst tilføjes */
+        }
+        .payment-method-expand.visible {
+            display: block !important;
+        }
+        .payment-method-details {
+            display: block;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            font-size: 13px;
+            color: #555;
+            line-height: 1.6;
+        }
+        .payment-method-more {
+            display: none;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            font-size: 13px;
+            color: #555;
+            line-height: 1.6;
+        }
+        .payment-method-more.expanded {
+            display: block;
+        }
+        .payment-method-fee-policy {
+            display: block;
+            margin-top: 12px;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            opacity: 0.6;
+            transition: opacity 0.2s ease;
+        }
+        .payment-method-card.enabled .payment-method-fee-policy {
+            opacity: 1;
+        }
+        .payment-method-fee-policy input[type="radio"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .payment-method-fee-policy label:has(input[type="radio"]:disabled) {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .fee-policy-radio {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .fee-policy-radio label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .fee-policy-tooltip {
+            position: relative;
+            display: inline-block;
+            margin-left: 6px;
+        }
+        .fee-policy-tooltip-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #2196F3;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            cursor: help;
+        }
+        .fee-policy-tooltip-content {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            padding: 10px;
+            background: #333;
+            color: white;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: normal;
+            width: 250px;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            line-height: 1.6;
+        }
+        .fee-policy-tooltip:hover .fee-policy-tooltip-content,
+        .payment-method-more .fee-policy-tooltip:hover .fee-policy-tooltip-content {
+            display: block;
+        }
+        .payment-method-config-btn {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: var(--primary-color, #2196F3);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .payment-method-config-btn:hover {
+            opacity: 0.9;
+        }
+        .payment-warning {
+            padding: 12px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #856404;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -449,15 +693,61 @@
         </div>
     </div>
 
-    <div id="parent-portal-settings-modal" class="modal" style="display: none;">
-        <div class="modal-content">
+    <!-- Parent Portal Settings Menu (3-button menu) -->
+    <div id="parent-portal-settings-modal" class="settings-modal-backdrop" style="display: none;">
+        <div class="settings-modal" style="max-width: 600px;">
+            <h2 id="parent-portal-settings-title">Forældreportalen</h2>
+            <div id="parent-portal-settings-content" class="settings-modal-content">
+                <button id="parent-portal-payment-methods-btn" class="settings-item-btn">
+                    <strong>Optankning / Betalingsmetoder</strong>
+                    <div style="font-size: 12px; margin-top: 2px;">Konfigurer hvordan forældre kan indbetale</div>
+                </button>
+                <button id="parent-portal-features-btn" class="settings-item-btn">
+                    <strong>Aktive funktioner på forældreportalen</strong>
+                    <div style="font-size: 12px; margin-top: 2px;">Vælg hvilke funktioner forældre kan bruge</div>
+                </button>
+                <button id="parent-portal-codes-menu-btn" class="settings-item-btn">
+                    <strong>Forældreportal-koder</strong>
+                    <div style="font-size: 12px; margin-top: 2px;">Administrer adgangskoder til forældreportalen</div>
+                </button>
+            </div>
+            <div class="settings-modal-actions">
+                <button id="back-to-preferences-parent-portal-btn" class="settings-button">← Tilbage</button>
+                <button id="parent-portal-settings-close" class="settings-button">Luk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal #1: Optankning / Betalingsmetoder -->
+    <div id="parent-portal-payment-methods-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px; max-height: 90vh;">
             <div class="modal-header">
-                <h2>Forældreportalen</h2>
+                <h2>Optankning / Betalingsmetoder</h2>
                 <span class="close-btn">&times;</span>
             </div>
-            <div class="modal-user-list">
+            <div class="modal-user-list" style="padding: 20px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 20px; line-height: 1.5;">
+                    Kommuner og institutioner har forskellige aftaler med betalingsudbydere. Her kan I vælge de metoder, der passer bedst til jeres institution. Kontakt skolens sekretær eller kommunens økonomiafdeling, hvis I er i tvivl om, hvilke aftaler I har adgang til.
+                </p>
+                <div id="payment-methods-list"></div>
+                <div id="payment-methods-warnings" style="margin-top: 20px;"></div>
+                <div style="padding: 20px 0 0 0; display: flex; justify-content: space-between; gap: 10px;">
+                    <button id="back-to-parent-portal-menu-btn" style="padding: 12px 40px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">← Tilbage</button>
+                    <button id="save-payment-methods-btn" class="btn-primary" style="padding: 12px 40px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">GEM</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal #2: Aktive funktioner på forældreportalen -->
+    <div id="parent-portal-features-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Aktive funktioner på forældreportalen</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-user-list" style="padding: 20px;">
                 <div class="settings-section">
-                    <h3>Aktive funktioner på forældreportalen</h3>
                     <div style="padding: 15px;">
                         <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
                             <input type="checkbox" id="parent-portal-email-notifications" style="margin-right: 12px; cursor: pointer;" checked>
@@ -527,65 +817,33 @@
                         </label>
                     </div>
                 </div>
-
-                <div class="settings-section" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
-                    <h3>Optankning / Betalingsmetoder</h3>
-                    <p style="font-size: 12px; color: #666; margin-top: 4px; margin-bottom: 15px;">Vælg hvordan forældre kan fylde penge på barnets saldo. Kun de valgte muligheder vises i forældreportalen.</p>
-                    <div style="padding: 0 15px 15px 15px;">
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="topup-cash-enabled" style="margin-right: 12px; cursor: pointer;">
-                            <div>
-                                <strong>Kontant indbetaling</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre afleverer kontanter til personalet. Saldoen opdateres manuelt.</div>
-                            </div>
-                        </label>
-
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="topup-qr-enabled" style="margin-right: 12px; cursor: pointer;">
-                            <div>
-                                <strong>MobilePay QR</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre betaler via MobilePay QR. Saldoen opdateres efter godkendelse af personalet.</div>
-                            </div>
-                        </label>
-
-                        <div id="topup-qr-image-section" style="display: none; margin-left: 32px; margin-bottom: 15px; padding: 12px; background: #f5f5f5; border-radius: 8px;">
-                            <label style="display: block; margin-bottom: 8px;">
-                                <strong style="font-size: 13px;">MobilePay QR-billede</strong>
-                                <div style="font-size: 11px; color: #666; margin-top: 2px;">Upload eller indsæt URL til jeres MobilePay QR-kode</div>
-                            </label>
-                            <input type="text" id="topup-qr-image-url" placeholder="https://... eller vælg fil nedenfor" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 8px;">
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <label style="padding: 8px 16px; background: #e0e0e0; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                                    Vælg billede...
-                                    <input type="file" id="topup-qr-image-file" accept="image/*" style="display: none;">
-                                </label>
-                                <img id="topup-qr-image-preview" src="" alt="QR Preview" style="max-width: 60px; max-height: 60px; border-radius: 4px; display: none;">
-                            </div>
-                        </div>
-
-                        <label style="display: flex; align-items: flex-start; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="topup-portal-enabled" style="margin-right: 12px; cursor: pointer; margin-top: 3px;">
-                            <div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <strong>Tank op i portalen (automatisk)</strong>
-                                    <span style="background: linear-gradient(135deg, #4CAF50, #45a049); color: white; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600;">ANBEFALET</span>
-                                </div>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan tanke op direkte i forældreportalen. Saldoen opdateres med det samme.</div>
-                            </div>
-                        </label>
-                    </div>
+                <div style="padding: 20px 0 0 0; display: flex; justify-content: space-between; gap: 10px;">
+                    <button id="back-to-parent-portal-menu-features-btn" style="padding: 12px 40px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">← Tilbage</button>
+                    <button id="save-parent-portal-features-btn" class="btn-primary" style="padding: 12px 40px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">GEM</button>
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <div class="settings-section" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
-                    <button id="parent-portal-codes-btn-inside" class="settings-item-btn" style="margin-bottom: 15px;">
-                        <strong>Forældre Portal Koder</strong>
-                        <div style="font-size: 12px; margin-top: 2px;">Administrer adgangskoder til forældreportalen</div>
+    <!-- Modal #3: Forældreportal-koder -->
+    <div id="parent-portal-codes-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Forældreportal-koder</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-user-list" style="padding: 20px;">
+                <div id="parent-portal-codes-content">
+                    <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                        Her kan I administrere adgangskoder til forældreportalen. Hver familie får en unik kode, som de bruger til at logge ind.
+                    </p>
+                    <button id="parent-portal-codes-admin-btn" class="settings-item-btn" style="width: 100%; margin-bottom: 15px;">
+                        <strong>Administrer Forældreportal-koder</strong>
+                        <div style="font-size: 12px; margin-top: 2px;">Åbn administrationsvinduet for at se og administrere alle koder</div>
                     </button>
                 </div>
-
-                <div style="padding: 20px; display: flex; justify-content: space-between; gap: 10px;">
-                    <button id="back-to-preferences-parent-portal-btn" style="padding: 12px 40px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">← Tilbage</button>
-                    <button id="save-parent-portal-settings-btn" class="btn-primary" style="padding: 12px 40px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">GEM</button>
+                <div style="padding: 20px 0 0 0; display: flex; justify-content: flex-start;">
+                    <button id="back-to-parent-portal-menu-codes-btn" style="padding: 12px 40px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">← Tilbage</button>
                 </div>
             </div>
         </div>

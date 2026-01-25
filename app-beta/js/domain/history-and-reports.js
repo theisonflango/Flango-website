@@ -271,15 +271,6 @@ async function fetchHistory() {
         return;
     }
     fullSalesHistory = rows;
-    const maxCreatedAtTs = rows.reduce((max, row) => {
-        const ts = row?.created_at ? Date.parse(row.created_at) : NaN;
-        if (!Number.isFinite(ts)) return max;
-        return max == null || ts > max ? ts : max;
-    }, null);
-    const maxCreatedAtIso = maxCreatedAtTs != null ? new Date(maxCreatedAtTs).toISOString() : null;
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'history-and-reports.js:274',message:'fetchHistory result',data:{startDate:startDateStr,endDate:endDateStr,includeTestUsers,onlyTestUsers,rowCount:rows.length,maxCreatedAt:maxCreatedAtIso},timestamp:Date.now(),sessionId:'debug-session',runId:'bugs-1',hypothesisId:'H4'})}).catch(()=>{});
-    // #endregion
     // DEBUG: Log SALE_ADJUSTMENT events for troubleshooting
     const adjustmentEvents = rows.filter(e => e.event_type === 'SALE_ADJUSTMENT');
     if (adjustmentEvents.length > 0) {

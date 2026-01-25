@@ -1941,196 +1941,594 @@ function openMobilePayImportModal() {
     backdrop.style.display = 'flex';
 }
 
-async function openParentPortalSettingsModal() {
-    const modal = document.getElementById('parent-portal-settings-modal');
+// Helper function to setup modal accessibility (focus trap, ESC, overlay click)
+function setupModalAccessibility(modal) {
     if (!modal) return;
 
-    const institutionId = getInstitutionId();
-    if (!institutionId) {
-        console.error('[parent-portal] No institution ID found');
-        return;
-    }
-
-    // Load current settings from database
-    const { data, error } = await supabaseClient
-        .from('institutions')
-        .select(`
-            parent_portal_email_notifications,
-            parent_portal_spending_limit,
-            parent_portal_allergens,
-            parent_portal_product_limit,
-            parent_portal_sugar_policy,
-            topup_cash_enabled,
-            topup_qr_enabled,
-            topup_portal_enabled,
-            topup_qr_image_url
-        `)
-        .eq('id', institutionId)
-        .single();
-
-    if (error) {
-        console.error('[parent-portal] Error loading settings:', error);
-    }
-
-    // Get implemented feature checkboxes (4 active features)
-    const emailNotifications = document.getElementById('parent-portal-email-notifications');
-    const spendingLimit = document.getElementById('parent-portal-spending-limit');
-    const allergens = document.getElementById('parent-portal-allergens');
-    const productLimit = document.getElementById('parent-portal-product-limit');
-    const sugarPolicy = document.getElementById('parent-portal-sugar-policy');
-    const saveBtn = document.getElementById('save-parent-portal-settings-btn');
-    const codesBtn = document.getElementById('parent-portal-codes-btn-inside');
-
-    // Topup/payment method elements
-    const topupCash = document.getElementById('topup-cash-enabled');
-    const topupQr = document.getElementById('topup-qr-enabled');
-    const topupPortal = document.getElementById('topup-portal-enabled');
-    const topupQrImageSection = document.getElementById('topup-qr-image-section');
-    const topupQrImageUrl = document.getElementById('topup-qr-image-url');
-    const topupQrImageFile = document.getElementById('topup-qr-image-file');
-    const topupQrImagePreview = document.getElementById('topup-qr-image-preview');
-
-    // Set values from database (default all to true for parent portal features, false for topup)
-    if (data) {
-        emailNotifications.checked = data.parent_portal_email_notifications !== false;
-        spendingLimit.checked = data.parent_portal_spending_limit !== false;
-        allergens.checked = data.parent_portal_allergens !== false;
-        productLimit.checked = data.parent_portal_product_limit === true; // Default to false
-        if (sugarPolicy) sugarPolicy.checked = data.parent_portal_sugar_policy === true; // Default false
-
-        // Topup settings (default to false - institution must explicitly enable)
-        topupCash.checked = data.topup_cash_enabled === true;
-        topupQr.checked = data.topup_qr_enabled === true;
-        topupPortal.checked = data.topup_portal_enabled === true;
-
-        // QR image URL
-        if (data.topup_qr_image_url) {
-            topupQrImageUrl.value = data.topup_qr_image_url;
-            topupQrImagePreview.src = data.topup_qr_image_url;
-            topupQrImagePreview.style.display = 'block';
-        }
-
-        // Show/hide QR image section based on checkbox
-        topupQrImageSection.style.display = topupQr.checked ? 'block' : 'none';
-    }
-
-    // Toggle QR image section when checkbox changes
-    topupQr.addEventListener('change', () => {
-        topupQrImageSection.style.display = topupQr.checked ? 'block' : 'none';
-    });
-
-    // Handle file upload for QR image
-    topupQrImageFile.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        // Convert to base64 data URL for preview and storage
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const dataUrl = event.target.result;
-            topupQrImageUrl.value = dataUrl;
-            topupQrImagePreview.src = dataUrl;
-            topupQrImagePreview.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    });
-
-    // Update preview when URL is manually entered
-    topupQrImageUrl.addEventListener('input', () => {
-        const url = topupQrImageUrl.value.trim();
-        if (url) {
-            topupQrImagePreview.src = url;
-            topupQrImagePreview.style.display = 'block';
-        } else {
-            topupQrImagePreview.style.display = 'none';
-        }
-    });
-
-    // Save button handler
-    const newSaveBtn = saveBtn.cloneNode(true);
-    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
-
-    newSaveBtn.addEventListener('click', async () => {
-        // Core parent portal settings (4 implemented features + sugar policy)
-        const coreUpdates = {
-            parent_portal_email_notifications: emailNotifications.checked,
-            parent_portal_spending_limit: spendingLimit.checked,
-            parent_portal_allergens: allergens.checked,
-            parent_portal_product_limit: productLimit.checked,
-            parent_portal_sugar_policy: sugarPolicy ? sugarPolicy.checked : false
-        };
-
-        // Topup/payment method settings (may not exist in older databases)
-        const topupUpdates = {
-            topup_cash_enabled: topupCash.checked,
-            topup_qr_enabled: topupQr.checked,
-            topup_portal_enabled: topupPortal.checked,
-            topup_qr_image_url: topupQr.checked ? topupQrImageUrl.value.trim() : null
-        };
-
-        // Try saving all settings first
-        let { error: saveError } = await supabaseClient
-            .from('institutions')
-            .update({ ...coreUpdates, ...topupUpdates })
-            .eq('id', institutionId);
-
-        // If error (likely missing topup columns), try saving just core settings
-        if (saveError) {
-            console.warn('[parent-portal] Full save failed, trying core settings only:', saveError.message);
-            const { error: coreError } = await supabaseClient
-                .from('institutions')
-                .update(coreUpdates)
-                .eq('id', institutionId);
-
-            if (coreError) {
-                console.error('[parent-portal] Error saving settings:', coreError);
-                alert('Fejl ved gemning af indstillinger');
-                return;
-            } else {
-                // Core saved, but topup columns missing
-                alert('Indstillinger gemt!\n\nBemærk: Optanknings-indstillinger kræver database-opdatering.\nKontakt support eller kør SQL-migrering.');
-            }
-        }
-
-        modal.style.display = 'none';
-        // Reload products if allergens/vegetarian/pork settings changed
-        if (typeof window.__flangoFetchAndRenderProducts === 'function') {
-            window.__flangoFetchAndRenderProducts();
-        }
-    });
-
-    // Parent portal codes button handler
-    const newCodesBtn = codesBtn.cloneNode(true);
-    codesBtn.parentNode.replaceChild(newCodesBtn, codesBtn);
-
-    newCodesBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-        // Call existing parent portal codes function
-        if (typeof window.__flangoOpenParentPortalAdmin === 'function') {
-            window.__flangoOpenParentPortalAdmin();
-        }
-    });
-
-    // Back button
-    const backBtn = document.getElementById('back-to-preferences-parent-portal-btn');
-    if (backBtn) {
-        const newBackBtn = backBtn.cloneNode(true);
-        backBtn.parentNode.replaceChild(newBackBtn, backBtn);
-        newBackBtn.onclick = () => {
+    // Close button
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) {
+        const newCloseBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        newCloseBtn.onclick = () => {
             modal.style.display = 'none';
+        };
+    }
+
+    // ESC key to close
+    const escHandler = (e) => {
+        if (e.key === 'Escape' && modal.style.display !== 'none') {
+            modal.style.display = 'none';
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
+
+    // Overlay click to close
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+
+    // Focus trap: focus first focusable element
+    const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusableElements.length > 0) {
+        focusableElements[0].focus();
+    }
+}
+
+async function openParentPortalSettingsModal() {
+    const backdrop = document.getElementById('parent-portal-settings-modal');
+    if (!backdrop) return;
+
+    // Button handlers for 3-button menu
+    const paymentMethodsBtn = document.getElementById('parent-portal-payment-methods-btn');
+    const featuresBtn = document.getElementById('parent-portal-features-btn');
+    const codesBtn = document.getElementById('parent-portal-codes-menu-btn');
+    const backBtn = document.getElementById('back-to-preferences-parent-portal-btn');
+
+    // Clone and replace to avoid duplicate handlers
+    if (paymentMethodsBtn) {
+        const newBtn = paymentMethodsBtn.cloneNode(true);
+        paymentMethodsBtn.parentNode.replaceChild(newBtn, paymentMethodsBtn);
+        newBtn.onclick = () => {
+            backdrop.style.display = 'none';
+            openPaymentMethodsModal();
+        };
+    }
+
+    if (featuresBtn) {
+        const newBtn = featuresBtn.cloneNode(true);
+        featuresBtn.parentNode.replaceChild(newBtn, featuresBtn);
+        newBtn.onclick = () => {
+            backdrop.style.display = 'none';
+            openParentPortalFeaturesModal();
+        };
+    }
+
+    if (codesBtn) {
+        const newBtn = codesBtn.cloneNode(true);
+        codesBtn.parentNode.replaceChild(newBtn, codesBtn);
+        newBtn.onclick = () => {
+            backdrop.style.display = 'none';
+            openParentPortalCodesModal();
+        };
+    }
+
+    if (backBtn) {
+        const newBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBtn, backBtn);
+        newBtn.onclick = () => {
+            backdrop.style.display = 'none';
             openInstitutionPreferences();
         };
     }
 
     // Close button
-    const closeBtn = modal.querySelector('.close-btn');
+    const closeBtn = document.getElementById('parent-portal-settings-close');
     if (closeBtn) {
-        closeBtn.onclick = () => {
-            modal.style.display = 'none';
+        const newCloseBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        newCloseBtn.onclick = () => {
+            backdrop.style.display = 'none';
         };
     }
 
-    // Show modal
+    // Close on backdrop click
+    const backdropClickHandler = (e) => {
+        if (e.target === backdrop) {
+            backdrop.style.display = 'none';
+            backdrop.removeEventListener('click', backdropClickHandler);
+        }
+    };
+    backdrop.addEventListener('click', backdropClickHandler);
+
+    backdrop.style.display = 'flex';
+}
+
+async function openPaymentMethodsModal() {
+    const modal = document.getElementById('parent-portal-payment-methods-modal');
+    if (!modal) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) {
+        console.error('[payment-methods] No institution ID found');
+        return;
+    }
+
+    setupModalAccessibility(modal);
+
+    // Load current settings
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('parent_portal_payment, topup_cash_enabled, topup_qr_enabled, topup_portal_enabled, topup_qr_image_url')
+        .eq('id', institutionId)
+        .single();
+
+    if (error) {
+        console.error('[payment-methods] Error loading settings:', error);
+    }
+
+    // Parse payment settings (new structured format or legacy format)
+    let paymentSettings = {};
+    if (data?.parent_portal_payment) {
+        try {
+            paymentSettings = typeof data.parent_portal_payment === 'string' 
+                ? JSON.parse(data.parent_portal_payment) 
+                : data.parent_portal_payment;
+        } catch (e) {
+            console.warn('[payment-methods] Failed to parse payment settings:', e);
+        }
+    }
+
+    // Backward compatibility: map old keys to new structure
+    if (!paymentSettings.stripe_connect && data?.topup_portal_enabled !== undefined) {
+        paymentSettings.stripe_connect = { enabled: data.topup_portal_enabled === true };
+    }
+    if (!paymentSettings.mobilepay_qr && data?.topup_qr_enabled !== undefined) {
+        paymentSettings.mobilepay_qr = { enabled: data.topup_qr_enabled === true };
+    }
+    if (!paymentSettings.cash && data?.topup_cash_enabled !== undefined) {
+        paymentSettings.cash = { enabled: data.topup_cash_enabled === true };
+    }
+
+    // Payment methods configuration
+    const paymentMethods = [
+        {
+            id: 'stripe_connect',
+            title: 'Stripe Connect',
+            badges: [
+                { text: 'Anbefalet', class: 'badge-green' },
+                { text: 'Automatisk saldo-opdatering', class: 'badge-dark-green' }
+            ],
+            short: 'Med Stripe Connect kan I hurtigt komme i gang med automatisk indbetaling. Betalingen sendes direkte til institutionens bankkonto, og barnets Flango-saldo opdateres automatisk.',
+            long: 'Forældre indbetaler via Flango forældreportalen eller via personlig QR-kode. Barnets saldo opdateres automatisk. Mindre administration – mere tid til nærvær.',
+            more: `<strong>Administrationsomkostning</strong><br>
+1,5 % + 1,80 kr pr. indbetaling <span class="fee-policy-tooltip" style="margin-left: 4px; display: inline-block;">
+    <span class="fee-policy-tooltip-icon">?</span>
+    <div class="fee-policy-tooltip-content">
+        Eksempel på årlig administrationsomkostning:<br>
+        10 indbetalinger pr. uge á 100 kr i 40 skoleuger<br>
+        = ca. 1.320 kr pr. år i administrationsomkostninger<br>
+        (afhænger af betalingsmetode og korttype)
+    </div>
+</span><br><br>
+I vælger selv, hvem der betaler administrationsomkostningen:<br>
+• Institutionen betaler administrationsomkostningen <span class="fee-policy-tooltip" style="margin-left: 4px; display: inline-block;">
+    <span class="fee-policy-tooltip-icon">?</span>
+    <div class="fee-policy-tooltip-content">
+        Forældre sender: 100,00 kr<br>
+        Barnets saldo: 100,00 kr<br>
+        Institutionen modtager: 96,70 kr
+    </div>
+</span><br>
+• Forældre betaler administrationsomkostningen (vises tydeligt ved betaling) <span class="fee-policy-tooltip" style="margin-left: 4px; display: inline-block;">
+    <span class="fee-policy-tooltip-icon">?</span>
+    <div class="fee-policy-tooltip-content">
+        Forældre sender: ca. 103,35 kr<br>
+        Barnets saldo: 100,00 kr<br>
+        Institutionen modtager: 100,00 kr
+    </div>
+</span><br><br>
+<strong>Oprettelse</strong><br>
+Oprettelse af jeres Stripe Connect-konto sker via en enkel, selvbetjent onboarding herunder.<br>
+I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetalingskonto som del af Stripe's lovpligtige identitetskontrol (KYC).<br><br>
+<button class="payment-method-config-btn" id="config-stripe_connect-btn-more" style="margin-top: 12px;">Opret Stripe Connect Account</button>`,
+            hasFeePolicy: true,
+            configBtn: 'Opret Stripe Connect Account'
+        },
+        {
+            id: 'mobilepay_api',
+            title: 'MobilePay API',
+            badges: [
+                { text: 'Automatisk saldo-opdatering', class: 'badge-dark-green' },
+                { text: 'Kræver opsætning', class: 'badge-blue' }
+            ],
+            short: 'Forældre indbetaler via MobilePay. Saldo opdateres automatisk.',
+            long: 'Denne løsning forudsætter, at institutionen (eller kommunen) har en MobilePay API-aftale. Når en forælder indbetaler via MobilePay, registreres betalingen automatisk i Flango, og barnets saldo opdateres uden manuelt arbejde.',
+            hasFeePolicy: true,
+            configBtn: 'Konfigurer MobilePay API'
+        },
+        {
+            id: 'mobilepay_csv',
+            title: 'MobilePay CSV',
+            badges: [{ text: 'Semi-automatisk', class: 'badge-orange' }],
+            short: 'Sekretær/leder uploader en MobilePay-oversigt. Nye betalinger registreres automatisk i Flango.',
+            long: 'Typisk logger skolens sekretær eller SFO-leder ind i MobilePay-portalen, downloader en oversigt over indbetalinger (CSV) og uploader den i Flango. Flango registrerer automatisk alle nye betalinger på de relevante børn. Det anbefales at gøre dette i et fast interval, som meldes ud til forældrene, fx: \'Indbetalinger opdateres hver dag inden kl. 13:00\' eller \'hver mandag inden kl. 13:00\'.',
+            hasFeePolicy: false,
+            configBtn: 'Åbn CSV-import'
+        },
+        {
+            id: 'mobilepay_qr',
+            title: 'MobilePay QR',
+            badges: [{ text: 'Manuel', class: 'badge-orange' }],
+            short: 'Forældre scanner en QR-kode. Personalet registrerer indbetalingen manuelt i Flango.',
+            long: 'Denne metode forudsætter, at institutionen har en MobilePay-aftale, og at klubben er logget ind på den mobil, som modtager indbetalinger. Institutionens QR-kode vises i forældreportalen og evt. i Aula. Når forældre sender penge, skal personalet manuelt registrere indbetalingen på det enkelte barn i Flango (fx via \'Opdater saldo\' i brugerlisten).',
+            hasFeePolicy: false,
+            configBtn: null
+        },
+        {
+            id: 'mobilepay_qr_screenshot',
+            title: 'MobilePay QR + Screenshot',
+            badges: [{ text: 'Nødløsning', class: 'badge-red' }],
+            short: 'Forældre sender et skærmbillede som betalingsbevis. Personalet registrerer manuelt i Flango.',
+            long: 'Denne metode er til institutioner, hvor MobilePay-aftalen administreres eksternt (fx hos skolens sekretær). Personalet kan derfor ikke se, når en forælder har indbetalt. Forældre skal sende et skærmbillede af betalingen som dokumentation til klubbens mobil, hvorefter personalet registrerer indbetalingen manuelt. Anbefales kun, hvis ingen andre løsninger er mulige.',
+            hasFeePolicy: false,
+            configBtn: null
+        },
+        {
+            id: 'cash',
+            title: 'Kontant',
+            badges: [{ text: 'Offline', class: 'badge-gray' }],
+            short: 'Personalet tager imod kontanter og registrerer indbetalingen manuelt i Flango.',
+            long: 'Kontant indbetaling kræver ingen teknisk opsætning og medfører ingen transaktionsomkostninger. De fleste forældre foretrækker digitale indbetalinger, men kontant kan bruges som en alternativ eller nød-løsning for familier, der ikke ønsker digitale betalinger.',
+            hasFeePolicy: false,
+            configBtn: null
+        }
+    ];
+
+    // Render payment methods
+    const methodsList = document.getElementById('payment-methods-list');
+    methodsList.innerHTML = '';
+
+    paymentMethods.forEach(method => {
+        const methodData = paymentSettings[method.id] || { enabled: false };
+        const isEnabled = methodData.enabled === true;
+
+        const card = document.createElement('div');
+        card.className = `payment-method-card ${isEnabled ? 'enabled' : ''}`;
+        card.innerHTML = `
+            <div class="payment-method-header">
+                <div class="payment-method-toggle">
+                    <input type="checkbox" id="payment-${method.id}-enabled" ${isEnabled ? 'checked' : ''}>
+                </div>
+                <div class="payment-method-info">
+                    <div class="payment-method-title-row">
+                        <span class="payment-method-title">${method.title}</span>
+                        <div class="payment-method-badges">
+                            ${method.badges.map(badge => `<span class="payment-method-badge ${badge.class}">${badge.text}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="payment-method-summary">${method.short}</div>
+                    <div class="payment-method-details" id="details-${method.id}">${method.long}</div>
+                    ${method.more ? `
+                        <div class="payment-method-expand visible" data-method="${method.id}">VIS MERE</div>
+                        <div class="payment-method-more" id="more-${method.id}">${method.more}</div>
+                    ` : `
+                        <div class="payment-method-expand" data-method="${method.id}" style="display: none;">Læs mere</div>
+                        <div class="payment-method-more" id="more-${method.id}" style="display: none;"></div>
+                    `}
+                    ${method.hasFeePolicy && method.id !== 'stripe_connect' ? `
+                        <div class="payment-method-fee-policy" id="fee-policy-${method.id}">
+                            <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">
+                                Administrationsomkostning ved indbetaling:
+                            </div>
+                            <div class="fee-policy-radio">
+                                <label>
+                                    <input type="radio" name="fee-${method.id}" value="institution" ${methodData.fee_policy === 'parent' ? '' : 'checked'} ${!isEnabled ? 'disabled' : ''}>
+                                    <span>Institutionen betaler administrationsomkostningen</span>
+                                    <span class="fee-policy-tooltip">
+                                        <span class="fee-policy-tooltip-icon">?</span>
+                                        <div class="fee-policy-tooltip-content">
+                                            Forældre sender: 100,00 kr<br>
+                                            Barnets saldo: 100,00 kr<br>
+                                            Institutionen modtager: 96,70 kr
+                                        </div>
+                                    </span>
+                                </label>
+                                <label>
+                                    <input type="radio" name="fee-${method.id}" value="parent" ${methodData.fee_policy === 'parent' ? 'checked' : ''} ${!isEnabled ? 'disabled' : ''}>
+                                    <span>Forældre betaler administrationsomkostningen</span>
+                                    <span class="fee-policy-tooltip">
+                                        <span class="fee-policy-tooltip-icon">?</span>
+                                        <div class="fee-policy-tooltip-content">
+                                            Forældre sender: ca. 103,35 kr<br>
+                                            Barnets saldo: 100,00 kr<br>
+                                            Institutionen modtager: 100,00 kr
+                                        </div>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${method.configBtn && method.id !== 'stripe_connect' ? `
+                        <button class="payment-method-config-btn" id="config-${method.id}-btn" style="display: ${isEnabled ? 'block' : 'none'};">
+                            ${method.configBtn}
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        methodsList.appendChild(card);
+
+        // Toggle handler
+        const toggle = card.querySelector(`#payment-${method.id}-enabled`);
+        toggle.addEventListener('change', () => {
+            const enabled = toggle.checked;
+            card.classList.toggle('enabled', enabled);
+            const configBtn = card.querySelector(`#config-${method.id}-btn`);
+            if (configBtn) {
+                configBtn.style.display = enabled ? 'block' : 'none';
+            }
+            // Enable/disable fee policy radio buttons (only for non-stripe methods)
+            if (method.hasFeePolicy && method.id !== 'stripe_connect') {
+                const feeRadios = card.querySelectorAll(`input[name="fee-${method.id}"]`);
+                feeRadios.forEach(radio => {
+                    radio.disabled = !enabled;
+                });
+            }
+            updatePaymentWarnings();
+        });
+
+        // Expand/collapse handler for "more" tekst
+        const expandLink = card.querySelector('.payment-method-expand');
+        const moreDetails = card.querySelector(`#more-${method.id}`);
+        if (expandLink && moreDetails && method.more) {
+            expandLink.addEventListener('click', () => {
+                const isExpanded = moreDetails.classList.contains('expanded');
+                moreDetails.classList.toggle('expanded', !isExpanded);
+                expandLink.textContent = isExpanded ? 'VIS MERE' : 'VIS MINDRE';
+                
+                // Attach event handler to button in "more" section if it's Stripe Connect
+                if (method.id === 'stripe_connect' && !isExpanded) {
+                    const configBtnMore = moreDetails.querySelector(`#config-${method.id}-btn-more`);
+                    if (configBtnMore && !configBtnMore.hasAttribute('data-handler-attached')) {
+                        configBtnMore.setAttribute('data-handler-attached', 'true');
+                        configBtnMore.addEventListener('click', () => {
+                            // TODO: Implement Stripe Connect onboarding
+                            alert('Stripe Connect onboarding kommer snart.');
+                        });
+                    }
+                }
+            });
+        }
+
+        // Config button handler
+        if (method.configBtn) {
+            // Handle button in main card (for non-Stripe methods)
+            const configBtn = card.querySelector(`#config-${method.id}-btn`);
+            if (configBtn) {
+                configBtn.addEventListener('click', () => {
+                    if (method.id === 'mobilepay_api') {
+                        // TODO: Implement MobilePay API configuration
+                        alert('MobilePay API konfiguration kommer snart.');
+                    } else if (method.id === 'mobilepay_csv') {
+                        // Open existing CSV import modal
+                        if (typeof openMobilePayImportModal === 'function') {
+                            modal.style.display = 'none';
+                            openMobilePayImportModal();
+                        } else {
+                            alert('CSV-import funktion findes ikke.');
+                        }
+                    }
+                });
+            }
+            
+            // Handle button in "more" section (for Stripe Connect) - handler attached when "more" section is expanded
+        }
+    });
+
+    // Update warnings
+    updatePaymentWarnings();
+
+    // Save button
+    const saveBtn = document.getElementById('save-payment-methods-btn');
+    if (saveBtn) {
+        const newSaveBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+        newSaveBtn.addEventListener('click', async () => {
+            const newPaymentSettings = {};
+            paymentMethods.forEach(method => {
+                const toggle = document.getElementById(`payment-${method.id}-enabled`);
+                if (toggle) {
+                    const enabled = toggle.checked;
+                    newPaymentSettings[method.id] = { enabled };
+                    if (method.hasFeePolicy && enabled) {
+                        const feeRadio = document.querySelector(`input[name="fee-${method.id}"]:checked`);
+                        if (feeRadio) {
+                            newPaymentSettings[method.id].fee_policy = feeRadio.value;
+                        }
+                    }
+                }
+            });
+
+            // Save to database
+            const { error } = await supabaseClient
+                .from('institutions')
+                .update({ parent_portal_payment: newPaymentSettings })
+                .eq('id', institutionId);
+
+            if (error) {
+                console.error('[payment-methods] Error saving:', error);
+                alert('Fejl ved gemning af indstillinger');
+            } else {
+                modal.style.display = 'none';
+            }
+        });
+    }
+
+    // Back button
+    const backBtn = document.getElementById('back-to-parent-portal-menu-btn');
+    if (backBtn) {
+        const newBackBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+        newBackBtn.onclick = () => {
+            modal.style.display = 'none';
+            openParentPortalSettingsModal();
+        };
+    }
+
+    modal.style.display = 'flex';
+}
+
+function updatePaymentWarnings() {
+    const warningsContainer = document.getElementById('payment-methods-warnings');
+    if (!warningsContainer) return;
+
+    warningsContainer.innerHTML = '';
+
+    const stripeEnabled = document.getElementById('payment-stripe_connect-enabled')?.checked;
+    const mobilepayApiEnabled = document.getElementById('payment-mobilepay_api-enabled')?.checked;
+    const csvEnabled = document.getElementById('payment-mobilepay_csv-enabled')?.checked;
+    const qrEnabled = document.getElementById('payment-mobilepay_qr-enabled')?.checked;
+    const qrScreenshotEnabled = document.getElementById('payment-mobilepay_qr_screenshot-enabled')?.checked;
+
+    if (stripeEnabled && mobilepayApiEnabled) {
+        const warning = document.createElement('div');
+        warning.className = 'payment-warning';
+        warning.textContent = 'Vælg én automatisk metode som primær for at undgå forvirring for forældre.';
+        warningsContainer.appendChild(warning);
+    }
+
+    if (csvEnabled && (qrEnabled || qrScreenshotEnabled)) {
+        const warning = document.createElement('div');
+        warning.className = 'payment-warning';
+        warning.textContent = 'Risiko for dobbeltregistrering. Brug CSV som primær og behold QR kun som nødløsning.';
+        warningsContainer.appendChild(warning);
+    }
+
+    if (qrScreenshotEnabled) {
+        const warning = document.createElement('div');
+        warning.className = 'payment-warning';
+        warning.textContent = 'Nødløsning: kan give ekstra administration.';
+        warningsContainer.appendChild(warning);
+    }
+}
+
+async function openParentPortalFeaturesModal() {
+    const modal = document.getElementById('parent-portal-features-modal');
+    if (!modal) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) {
+        console.error('[parent-portal-features] No institution ID found');
+        return;
+    }
+
+    setupModalAccessibility(modal);
+
+    // Load current settings
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('parent_portal_email_notifications, parent_portal_spending_limit, parent_portal_allergens, parent_portal_product_limit, parent_portal_sugar_policy')
+        .eq('id', institutionId)
+        .single();
+
+    if (error) {
+        console.error('[parent-portal-features] Error loading settings:', error);
+    }
+
+    // Set checkbox values
+    const emailNotifications = document.getElementById('parent-portal-email-notifications');
+    const spendingLimit = document.getElementById('parent-portal-spending-limit');
+    const allergens = document.getElementById('parent-portal-allergens');
+    const productLimit = document.getElementById('parent-portal-product-limit');
+    const sugarPolicy = document.getElementById('parent-portal-sugar-policy');
+
+    if (data) {
+        if (emailNotifications) emailNotifications.checked = data.parent_portal_email_notifications !== false;
+        if (spendingLimit) spendingLimit.checked = data.parent_portal_spending_limit !== false;
+        if (allergens) allergens.checked = data.parent_portal_allergens !== false;
+        if (productLimit) productLimit.checked = data.parent_portal_product_limit === true;
+        if (sugarPolicy) sugarPolicy.checked = data.parent_portal_sugar_policy === true;
+    }
+
+    // Save button
+    const saveBtn = document.getElementById('save-parent-portal-features-btn');
+    if (saveBtn) {
+        const newSaveBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+        newSaveBtn.addEventListener('click', async () => {
+            const updates = {
+                parent_portal_email_notifications: emailNotifications?.checked !== false,
+                parent_portal_spending_limit: spendingLimit?.checked !== false,
+                parent_portal_allergens: allergens?.checked !== false,
+                parent_portal_product_limit: productLimit?.checked === true,
+                parent_portal_sugar_policy: sugarPolicy?.checked === true
+            };
+
+            const { error } = await supabaseClient
+                .from('institutions')
+                .update(updates)
+                .eq('id', institutionId);
+
+            if (error) {
+                console.error('[parent-portal-features] Error saving:', error);
+                alert('Fejl ved gemning af indstillinger');
+            } else {
+                modal.style.display = 'none';
+                if (typeof window.__flangoFetchAndRenderProducts === 'function') {
+                    window.__flangoFetchAndRenderProducts();
+                }
+            }
+        });
+    }
+
+    // Back button
+    const backBtn = document.getElementById('back-to-parent-portal-menu-features-btn');
+    if (backBtn) {
+        const newBackBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+        newBackBtn.onclick = () => {
+            modal.style.display = 'none';
+            openParentPortalSettingsModal();
+        };
+    }
+
+    modal.style.display = 'flex';
+}
+
+function openParentPortalCodesModal() {
+    const modal = document.getElementById('parent-portal-codes-modal');
+    if (!modal) return;
+
+    setupModalAccessibility(modal);
+
+    // Admin button
+    const adminBtn = document.getElementById('parent-portal-codes-admin-btn');
+    if (adminBtn) {
+        const newBtn = adminBtn.cloneNode(true);
+        adminBtn.parentNode.replaceChild(newBtn, adminBtn);
+        newBtn.onclick = () => {
+            modal.style.display = 'none';
+            if (typeof window.__flangoOpenParentPortalAdmin === 'function') {
+                window.__flangoOpenParentPortalAdmin();
+            }
+        };
+    }
+
+    // Back button
+    const backBtn = document.getElementById('back-to-parent-portal-menu-codes-btn');
+    if (backBtn) {
+        const newBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBtn, backBtn);
+        newBtn.onclick = () => {
+            modal.style.display = 'none';
+            openParentPortalSettingsModal();
+        };
+    }
+
     modal.style.display = 'flex';
 }
 
