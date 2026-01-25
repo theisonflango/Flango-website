@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <title>Priser – Flango</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Flango-priser: Basic, Plus, Pro og Kommune. Find den plan der passer til jeres SFO eller fritidsklub." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5f5fb;
+      --bg-soft: #ffffff;
+      --accent: #ff7a3c;
+      --accent-soft: #fff1e8;
+      --accent-dark: #e0521f;
+      --text-main: #111827;
+      --text-muted: #4b5563;
+      --border-soft: #e5e7eb;
+      --shadow-soft: 0 22px 45px rgba(15, 23, 42, 0.12);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: 'Nunito', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at top, #ffe8d6 0, #f5f5fb 38%, #f9fafb 100%);
+      color: var(--text-main);
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .page {
+      min-height: 100vh;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 40px;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 0;
+      margin: 0 -16px 0;
+      padding-left: 16px;
+      padding-right: 16px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-soft);
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .logo-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 14px;
+      background: radial-gradient(circle at 30% 20%, #ffe8d6 0, #ff7a3c 42%, #ff4b73 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 12px 25px rgba(248, 113, 113, 0.55);
+    }
+    .logo-mark span { font-family: 'Baloo 2', cursive; font-size: 20px; color: #fff; transform: translateY(-1px); }
+    .logo-text-main { font-family: 'Baloo 2', cursive; font-size: 22px; line-height: 1; }
+    .logo-sub { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      flex-wrap: wrap;
+    }
+
+    .nav-link {
+      padding: 6px 12px;
+      border-radius: 999px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      transition: color 0.15s ease, background 0.15s ease;
+    }
+    .nav-link:hover { color: var(--text-main); background: rgba(0, 0, 0, 0.04); }
+    .nav-link.here { color: var(--accent-dark); }
+    .nav-cta {
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: #111827;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.45);
+      white-space: nowrap;
+    }
+    .nav-cta:hover { background: #1f2937; }
+    @media (max-width: 830px) {
+      header { flex-direction: column; align-items: flex-start; }
+      nav { gap: 8px; }
+    }
+    @media (max-width: 640px) {
+      .nav-link { padding: 5px 10px; font-size: 12px; }
+      .nav-cta { padding: 6px 12px; font-size: 12px; }
+    }
+
+    .page-title { margin: 0; font-size: clamp(24px, 4vw, 30px); font-family: 'Baloo 2', cursive; }
+    .page-intro { font-size: 15px; color: var(--text-muted); max-width: 60ch; margin: 0 0 8px; }
+    .back-link { font-size: 14px; font-weight: 600; color: var(--accent); display: inline-flex; align-items: center; gap: 6px; margin-bottom: 24px; }
+    .back-link:hover { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
+
+    /* Pricing cards – same as index */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+    @media (max-width: 960px) { .pricing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 560px) { .pricing-grid { grid-template-columns: minmax(0, 1fr); } }
+
+    .pricing-card {
+      background: var(--bg-soft);
+      border-radius: var(--radius-xl);
+      padding: 20px 18px 22px;
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .pricing-card:hover { transform: translateY(-2px); box-shadow: 0 22px 44px rgba(15, 23, 42, 0.1); }
+    .pricing-card.popular {
+      border-color: var(--accent);
+      box-shadow: 0 18px 40px rgba(255, 122, 60, 0.15);
+      background: linear-gradient(180deg, #fffbf8 0, var(--bg-soft) 24%);
+    }
+    .pricing-card.popular:hover { box-shadow: 0 22px 48px rgba(255, 122, 60, 0.2); }
+
+    .pricing-badge {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), #ff4b73);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      box-shadow: 0 6px 16px rgba(255, 122, 60, 0.4);
+    }
+
+    .pricing-card h3 { margin: 0 0 4px; font-size: 17px; font-weight: 700; }
+    .pricing-card .plan-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; min-height: 2.4em; }
+    .pricing-card .price-main { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
+    .pricing-card .price-alt { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+    .pricing-card .price-alt .save { color: #16a34a; font-weight: 600; }
+    .pricing-card .price-setup { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+
+    .pricing-features { list-style: none; padding: 0; margin: 0 0 auto 16px; font-size: 13px; }
+    .pricing-features li { display: flex; align-items: flex-start; gap: 6px; padding: 4px 0; }
+    .pricing-features .check {
+      width: 16px; height: 16px; border-radius: 999px;
+      background: #22c55e; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: #fff; margin-top: 2px;
+    }
+
+    .pricing-cta {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 10px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;
+      margin-top: auto; transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .pricing-cta.primary {
+      background: linear-gradient(135deg, #ff7a3c, #ff4b73);
+      color: #fff; border: none;
+      box-shadow: 0 10px 24px rgba(248, 113, 113, 0.4);
+    }
+    .pricing-cta.primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(248, 113, 113, 0.5); }
+    .pricing-cta.secondary { background: #f3f4f6; color: var(--text-main); border: 1px solid var(--border-soft); }
+    .pricing-cta.secondary:hover { background: #e5e7eb; }
+
+    /* Feature matrix */
+    .section-heading { margin: 0 0 16px; font-size: 20px; font-family: 'Baloo 2', cursive; }
+    .matrix-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .feature-matrix {
+      width: 100%;
+      min-width: 520px;
+      border-collapse: collapse;
+      font-size: 14px;
+      background: var(--bg-soft);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
+      border: 1px solid var(--border-soft);
+    }
+    .feature-matrix th,
+    .feature-matrix td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .feature-matrix thead th {
+      background: #f9fafb;
+      font-weight: 600;
+      color: var(--text-main);
+      font-size: 13px;
+    }
+    .feature-matrix thead th:first-child { width: 36%; }
+    .feature-matrix thead th:not(:first-child) { text-align: center; }
+    .feature-matrix tbody td:not(:first-child) { text-align: center; }
+    .feature-matrix tbody tr:last-child td { border-bottom: none; }
+    .feature-matrix .tick { color: #16a34a; font-weight: 700; }
+    .feature-matrix .nope { color: #9ca3af; font-size: 12px; }
+
+    /* FAQ */
+    .faq-list { list-style: none; padding: 0; margin: 0; }
+    .faq-list li {
+      background: var(--bg-soft);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+    }
+    .faq-list li:last-child { margin-bottom: 0; }
+    .faq-list strong { display: block; margin-bottom: 6px; font-size: 15px; }
+    .faq-list p { margin: 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+
+    /* Moduler + Event Mode */
+    .block-intro {
+      margin: 0 0 20px;
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 50ch;
+    }
+    .module-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+      max-width: 400px;
+    }
+    .event-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 4px;
+    }
+    @media (max-width: 640px) {
+      .event-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+    .pricing-badge.addon {
+      background: var(--accent-soft);
+      color: #b45309;
+      border: 1px solid rgba(255, 122, 60, 0.35);
+      box-shadow: 0 2px 10px rgba(255, 122, 60, 0.15);
+    }
+    .pricing-card.has-badge { padding-top: 36px; }
+    .card-note {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 12px 0 0;
+      line-height: 1.4;
+    }
+    .event-callout {
+      margin-top: 20px;
+      padding: 14px 18px;
+      border-radius: var(--radius-lg);
+      background: var(--accent-soft);
+      border: 1px solid rgba(255, 122, 60, 0.2);
+      font-size: 14px;
+      color: var(--text-main);
+      line-height: 1.45;
+    }
+    .event-callout a {
+      font-weight: 600;
+      color: var(--accent-dark);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .event-callout a:hover { color: var(--accent); }
+
+    footer {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-soft);
+      font-size: 12px;
+      color: #9ca3af;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <a href="/" class="logo" aria-label="Flango – forsiden">
+        <div class="logo-mark"><span>F</span></div>
+        <div>
+          <div class="logo-text-main">Flango</div>
+          <div class="logo-sub">SFO’ernes cafésystem</div>
+        </div>
+      </a>
+      <nav>
+        <a class="nav-link" href="/">FORSIDE</a>
+        <a class="nav-link here" href="/pris/">PRISER</a>
+        <a class="nav-link" href="/gaming/">GAMING</a>
+        <a class="nav-link" href="/event/">EVENT</a>
+        <a class="nav-link" href="/prov-flango/">PRØV FLANGO</a>
+        <a class="nav-link" href="/om-flango/">OM FLANGO</a>
+        <a class="nav-link" href="/forældre/">FORÆLDRE PORTAL</a>
+        <a class="nav-cta" href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango">Book en snak</a>
+      </nav>
+    </header>
+
+    <section>
+      <a href="/" class="back-link">← Tilbage til forsiden</a>
+      <h1 class="page-title">Priser</h1>
+      <p class="page-intro">
+        Vælg den plan, der passer til jeres institution. Årlig betaling giver rabat – og hos Pro er oprettelsen gratis.
+      </p>
+
+      <div class="pricing-grid">
+        <article class="pricing-card">
+          <h3>Flango Basic</h3>
+          <p class="plan-desc">Simpel café – få brugere</p>
+          <div class="price-main">299 kr./md.</div>
+          <div class="price-alt">eller 3.000 kr./år <span class="save">(spar 588 kr.)</span></div>
+          <div class="price-setup">Oprettelse 2.500 kr.</div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> Max 100 brugere</li>
+          </ul>
+          <a class="pricing-cta secondary" href="mailto:kontakt@flango.dk?subject=Flango%20Basic">Kontakt os</a>
+        </article>
+        <article class="pricing-card">
+          <h3>Flango Plus</h3>
+          <p class="plan-desc">Event Mode til fester og arrangementer</p>
+          <div class="price-main">399 kr./md.</div>
+          <div class="price-alt">eller 4.800 kr./år <span class="save">(spar 1.000 kr.)</span></div>
+          <div class="price-setup">Oprettelse 2.500 kr.</div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> Event Mode</li>
+            <li><span class="check">✓</span> Max 200 brugere</li>
+          </ul>
+          <a class="pricing-cta secondary" href="mailto:kontakt@flango.dk?subject=Flango%20Plus">Kontakt os</a>
+        </article>
+        <article class="pricing-card popular">
+          <span class="pricing-badge">Mest populær</span>
+          <h3>Flango Pro</h3>
+          <p class="plan-desc">Alt inkluderet – ubegrænset brugere</p>
+          <div class="price-main">599 kr./md.</div>
+          <div class="price-alt">eller 5.500 kr./år <span class="save">(spar 1.688 kr.)</span></div>
+          <div class="price-setup">Oprettelse gratis</div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> Event Mode</li>
+            <li><span class="check">✓</span> Skærmtid</li>
+            <li><span class="check">✓</span> Ubegrænset brugere</li>
+            <li><span class="check">✓</span> Fri support</li>
+          </ul>
+          <a class="pricing-cta primary" href="mailto:kontakt@flango.dk?subject=Flango%20Pro">Book en uforpligtende snak</a>
+        </article>
+        <article class="pricing-card">
+          <h3>Flango Kommune</h3>
+          <p class="plan-desc">Op til 5 institutioner</p>
+          <div class="price-main">9.000 kr./år</div>
+          <div class="price-alt">&nbsp;</div>
+          <div class="price-setup">Gratis oprettelse</div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> Event Mode + Skærmtid</li>
+            <li><span class="check">✓</span> Ubegrænset brugere</li>
+            <li><span class="check">✓</span> Fri support</li>
+          </ul>
+          <a class="pricing-cta primary" href="mailto:kontakt@flango.dk?subject=Flango%20Kommune">Kontakt os</a>
+        </article>
+      </div>
+    </section>
+
+    <section id="sammenligning" aria-labelledby="matrix-heading">
+      <h2 id="matrix-heading" class="section-heading">Sammenligning af planer</h2>
+      <div class="matrix-wrap">
+        <table class="feature-matrix">
+          <thead>
+            <tr>
+              <th scope="col">Funktion</th>
+              <th scope="col">Basic</th>
+              <th scope="col">Plus</th>
+              <th scope="col">Pro</th>
+              <th scope="col">Kommune</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Max. brugere</td>
+              <td>100</td>
+              <td>200</td>
+              <td>Ubegrænset</td>
+              <td>Ubegrænset</td>
+            </tr>
+            <tr>
+              <td>Institutioner</td>
+              <td>1</td>
+              <td>1</td>
+              <td>1</td>
+              <td>Op til 5</td>
+            </tr>
+            <tr>
+              <td>Event Mode</td>
+              <td class="nope">—</td>
+              <td class="tick">✓</td>
+              <td class="tick">✓</td>
+              <td class="tick">✓</td>
+            </tr>
+            <tr>
+              <td>Skærmtid</td>
+              <td class="nope">—</td>
+              <td class="nope">—</td>
+              <td class="tick">✓</td>
+              <td class="tick">✓</td>
+            </tr>
+            <tr>
+              <td>Fri support</td>
+              <td class="nope">—</td>
+              <td class="nope">—</td>
+              <td class="tick">✓</td>
+              <td class="tick">✓</td>
+            </tr>
+            <tr>
+              <td>Oprettelse</td>
+              <td>2.500 kr.</td>
+              <td>2.500 kr.</td>
+              <td>Gratis</td>
+              <td>Gratis</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="moduler" aria-labelledby="moduler-heading">
+      <h2 id="moduler-heading" class="section-heading">Moduler</h2>
+      <div class="module-grid">
+        <article class="pricing-card">
+          <h3>Flango Skærmtid (standalone)</h3>
+          <p class="plan-desc">Køsystem og storskærm til gaming og aktiviteter</p>
+          <div class="price-main">249 kr / måned</div>
+          <div class="price-alt">eller 2.700 kr / år</div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> Køsystem til PC/PlayStation m.m.</li>
+            <li><span class="check">✓</span> Storskærmsvisning (live)</li>
+            <li><span class="check">✓</span> Adminstyring og oversigt</li>
+          </ul>
+          <a class="pricing-cta secondary" href="mailto:kontakt@flango.dk?subject=Flango%20Sk%C3%A6rmtid%20standalone">Kontakt os</a>
+        </article>
+        <p class="card-note">Har du allerede Flango Basic/Plus? Tilføj Skærmtid: +149 kr / måned.</p>
+      </div>
+    </section>
+
+    <section id="event-mode" aria-labelledby="event-mode-heading">
+      <h2 id="event-mode-heading" class="section-heading">Event Mode</h2>
+      <p class="block-intro">Til fester, koncerter, temadage og særlige arrangementer, perfekt til f.eks &#8216;Børn Hjælper Børn&#8217;.</p>
+      <div class="event-grid">
+        <article class="pricing-card has-badge">
+          <span class="pricing-badge addon">Kun for eksisterende Flango-kunder</span>
+          <h3>Event Mode (Add-on)</h3>
+          <p class="plan-desc">14 dages adgang til event-opsætning</p>
+          <div class="price-main">14 dages adgang fra 349 kr</div>
+          <div class="price-alt">&nbsp;</div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> Hurtig event-opsætning</li>
+            <li><span class="check">✓</span> Event-produkter og priser</li>
+            <li><span class="check">✓</span> Event-statistik / opsummering</li>
+          </ul>
+          <a class="pricing-cta secondary" href="mailto:kontakt@flango.dk?subject=Event%20Mode%20Add-on">Aktivér / Kontakt os</a>
+        </article>
+        <article class="pricing-card">
+          <h3>Event Kickstart</h3>
+          <p class="plan-desc">Til nye kunder – inkl. opsætning og onboarding</p>
+          <div class="price-main">Fra 4.999 kr</div>
+          <div class="price-alt">&nbsp;</div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> Oprettelse + opsætning</li>
+            <li><span class="check">✓</span> Onboarding af personale</li>
+            <li><span class="check">✓</span> 14 dages Event Mode</li>
+          </ul>
+          <a class="pricing-cta secondary" href="mailto:kontakt@flango.dk?subject=Event%20Kickstart">Kontakt os</a>
+        </article>
+      </div>
+      <div class="event-callout">
+        Vil du have Event Mode + Skærmtid samlet med gratis oprettelse og fri support? <a href="/#pricing">Se Flango Pro</a>.
+      </div>
+    </section>
+
+    <section id="faq" aria-labelledby="faq-heading">
+      <h2 id="faq-heading" class="section-heading">Ofte stillede spørgsmål</h2>
+      <ul class="faq-list">
+        <li>
+          <strong>Hvad indebærer oprettelsen?</strong>
+          <p>Oprettelsen dækker opsætning af Flango til jeres institution, introduktion til personalet og hjælp til at komme i gang. Ved Basic og Plus betales 2.500 kr. engangs; Pro og Kommune har gratis oprettelse.</p>
+        </li>
+        <li>
+          <strong>Hvad betyder fri support (Pro og Kommune)?</strong>
+          <p>I kan kontakte os ved spørgsmål, fejlmeldinger eller ønske om tilpasninger uden ekstra gebyr. Vi svarer hurtigt og hjælper jer videre, så I får mest muligt ud af Flango.</p>
+        </li>
+        <li>
+          <strong>Hvordan fungerer opsigelse?</strong>
+          <p>I opsiger med én måneds varsel til månedens udgang. Årlige abonnementer kan opsiges til udløb; restbeløb refunderes ikke. Ved spørgsmål, skriv til kontakt@flango.dk.</p>
+        </li>
+      </ul>
+    </section>
+
+    <footer>
+      <div>© <span id="year"></span> Flango – SFO’ernes cafésystem</div>
+      <div>
+        <a href="/forældre/">Forældre Portal</a> ·
+        <a href="/pris/">Priser</a> ·
+        <a href="mailto:kontakt@flango.dk">Kontakt</a>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
