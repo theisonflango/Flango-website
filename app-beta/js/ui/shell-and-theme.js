@@ -2,7 +2,7 @@
 import { getCurrentClerk } from '../domain/session-store.js';
 import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js';
 import { setupHelpModule, openHelpManually } from './help.js';
-import { supabaseClient } from '../core/config-and-supabase.js';
+import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js';
 import { getInstitutionId } from '../domain/session-store.js';
 import { getCurrentCustomer } from '../domain/cafe-session-store.js';
 import { getOrder } from '../domain/order-store.js';
@@ -1978,6 +1978,41 @@ function setupModalAccessibility(modal) {
     }
 }
 
+// Handle Stripe return from onboarding
+function handleStripeReturn() {
+    const hash = window.location.hash;
+    if (hash === '#stripe-return' || hash === '#stripe-refresh') {
+        // Clear hash to avoid reopening on refresh
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        
+        // Wait a bit for app to be ready, then open Payment Methods modal
+        setTimeout(() => {
+            // Open Payment Methods modal directly
+            openPaymentMethodsModal();
+            
+            // Auto-sync status after a short delay
+            setTimeout(async () => {
+                const institutionId = getInstitutionId();
+                if (institutionId) {
+                    await syncStripeStatus(institutionId);
+                }
+            }, 1500);
+        }, 500);
+    }
+}
+
+// Listen for hash changes and initial load
+window.addEventListener('hashchange', handleStripeReturn);
+if (window.location.hash === '#stripe-return' || window.location.hash === '#stripe-refresh') {
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', handleStripeReturn);
+    } else {
+        // Wait a bit more for app initialization
+        setTimeout(handleStripeReturn, 1000);
+    }
+}
+
 async function openParentPortalSettingsModal() {
     const backdrop = document.getElementById('parent-portal-settings-modal');
     if (!backdrop) return;
@@ -2047,6 +2082,43 @@ async function openParentPortalSettingsModal() {
     backdrop.style.display = 'flex';
 }
 
+// Helper functions for Stripe status (global scope)
+function getStripeStatusText(status) {
+    const statusMap = {
+        'not_configured': 'Ikke konfigureret',
+        'onboarding': 'Opsætning i gang',
+        'pending': 'Afventer',
+        'enabled': 'Klar',
+        'in_progress': 'Opsætning i gang', // Legacy support
+        'ready': 'Klar' // Legacy support
+    };
+    return statusMap[status] || 'Ikke konfigureret';
+}
+
+function getStripeStatusClass(status) {
+    const classMap = {
+        'not_configured': 'badge-gray',
+        'onboarding': 'badge-orange',
+        'pending': 'badge-orange',
+        'enabled': 'badge-green',
+        'in_progress': 'badge-orange', // Legacy support
+        'ready': 'badge-green' // Legacy support
+    };
+    return classMap[status] || 'badge-gray';
+}
+
+function getStripeOnboardingButtonText(status) {
+    const textMap = {
+        'not_configured': 'Start opsætning',
+        'onboarding': 'Fortsæt opsætning',
+        'pending': 'Fortsæt opsætning',
+        'enabled': 'Opsætning fuldført',
+        'in_progress': 'Fortsæt opsætning', // Legacy support
+        'ready': 'Opsætning fuldført' // Legacy support
+    };
+    return textMap[status] || 'Start opsætning';
+}
+
 async function openPaymentMethodsModal() {
     const modal = document.getElementById('parent-portal-payment-methods-modal');
     if (!modal) return;
@@ -2062,7 +2134,7 @@ async function openPaymentMethodsModal() {
     // Load current settings
     const { data, error } = await supabaseClient
         .from('institutions')
-        .select('parent_portal_payment, topup_cash_enabled, topup_qr_enabled, topup_portal_enabled, topup_qr_image_url')
+        .select('parent_portal_payment, topup_cash_enabled, topup_qr_enabled, topup_portal_enabled, topup_qr_image_url, stripe_enabled, stripe_mode, stripe_account_id, stripe_account_status, stripe_last_error, stripe_updated_at')
         .eq('id', institutionId)
         .single();
 
@@ -2134,6 +2206,9 @@ I vælger selv, hvem der betaler administrationsomkostningen:<br>
 <strong>Oprettelse</strong><br>
 Oprettelse af jeres Stripe Connect-konto sker via en enkel, selvbetjent onboarding herunder.<br>
 I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetalingskonto som del af Stripe's lovpligtige identitetskontrol (KYC).<br><br>
+<a href="docs/stripe-onboarding-guide.pdf.pdf" download="Flango – Stripe Onboarding Guide til Kommunale SFO'er.pdf" class="payment-method-config-btn" style="margin-top: 12px; text-decoration: none; display: inline-block; text-align: center; color: inherit;">
+    📥 Download Flango Stripe Connect Onboarding Guide
+</a><br><br>
 <button class="payment-method-config-btn" id="config-stripe_connect-btn-more" style="margin-top: 12px;">Opret Stripe Connect Account</button>`,
             hasFeePolicy: true,
             configBtn: 'Opret Stripe Connect Account'
@@ -2194,7 +2269,19 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
 
     paymentMethods.forEach(method => {
         const methodData = paymentSettings[method.id] || { enabled: false };
-        const isEnabled = methodData.enabled === true;
+        // For Stripe Connect, check both parent_portal_payment and new stripe_enabled field
+        let isEnabled = methodData.enabled === true;
+        if (method.id === 'stripe_connect') {
+            isEnabled = data?.stripe_enabled === true || methodData.enabled === true;
+            // Use stripe_mode from database if available
+            if (data?.stripe_mode && !methodData.mode) {
+                methodData.mode = data.stripe_mode;
+            }
+            // Use stripe_account_status from database if available
+            if (data?.stripe_account_status && !methodData.status) {
+                methodData.status = data.stripe_account_status;
+            }
+        }
 
         const card = document.createElement('div');
         card.className = `payment-method-card ${isEnabled ? 'enabled' : ''}`;
@@ -2252,6 +2339,66 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
                             </div>
                         </div>
                     ` : ''}
+                    ${method.id === 'stripe_connect' ? `
+                        <div class="stripe-status-section" id="stripe-status-section">
+                            <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; margin-top: 12px;">
+                                Stripe status:
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span class="payment-method-badge ${getStripeStatusClass(data?.stripe_account_status || methodData.status || 'not_configured')}" id="stripe-status-chip" data-status="${data?.stripe_account_status || methodData.status || 'not_configured'}">
+                                    ${getStripeStatusText(data?.stripe_account_status || methodData.status || 'not_configured')}
+                                </span>
+                                ${(data?.stripe_mode || methodData.mode) ? `
+                                    <span class="stripe-mode-label" id="stripe-mode-label" style="font-size: 13px; color: #666;">
+                                        Mode: <strong>${(data?.stripe_mode || methodData.mode) === 'live' ? 'Live' : 'Test'}</strong>
+                                    </span>
+                                ` : ''}
+                            </div>
+                            ${data?.stripe_last_error ? `
+                                <div style="font-size: 12px; color: #f44336; margin-bottom: 8px; padding: 8px; background: #ffebee; border-radius: 4px;">
+                                    <strong>Fejl:</strong> ${data.stripe_last_error}
+                                </div>
+                            ` : ''}
+                            ${data?.stripe_updated_at ? `
+                                <div style="font-size: 11px; color: #999; margin-bottom: 8px;">
+                                    Sidst opdateret: ${new Date(data.stripe_updated_at).toLocaleString('da-DK')}
+                                </div>
+                            ` : ''}
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button class="payment-method-config-btn" id="stripe-onboarding-btn" 
+                                    style="flex: 1; min-width: 150px; ${(data?.stripe_account_status || methodData.status) === 'enabled' ? 'opacity: 0.5; cursor: not-allowed;' : ''}"
+                                    ${(data?.stripe_account_status || methodData.status) === 'enabled' ? 'disabled' : ''}>
+                                    ${getStripeOnboardingButtonText(data?.stripe_account_status || methodData.status || 'not_configured')}
+                                </button>
+                                <button class="payment-method-config-btn" id="stripe-status-sync-btn" 
+                                    style="flex: 1; min-width: 150px; background: #666;">
+                                    Opdater status
+                                </button>
+                            </div>
+                        </div>
+                        <div class="stripe-onboarding-link-section" id="stripe-onboarding-link-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                            <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">
+                                Stripe onboarding-link:
+                            </div>
+                            <div style="font-size: 12px; color: #666; margin-bottom: 12px;">
+                                Linket kan udløbe – generér et nyt hvis nødvendigt.
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <button class="payment-method-config-btn" id="generate-onboarding-link-btn" 
+                                    style="flex: 1; min-width: 150px;">
+                                    Generér onboarding-link
+                                </button>
+                                <button class="payment-method-config-btn" id="copy-onboarding-link-btn" 
+                                    style="flex: 1; min-width: 150px; background: #666; display: none;">
+                                    Kopiér link
+                                </button>
+                            </div>
+                            <input type="text" id="onboarding-link-input" 
+                                readonly 
+                                placeholder="Klik 'Generér onboarding-link' for at oprette et link"
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; background: #f9f9f9; display: none;">
+                        </div>
+                    ` : ''}
                     ${method.configBtn && method.id !== 'stripe_connect' ? `
                         <button class="payment-method-config-btn" id="config-${method.id}-btn" style="display: ${isEnabled ? 'block' : 'none'};">
                             ${method.configBtn}
@@ -2264,13 +2411,26 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
 
         // Toggle handler
         const toggle = card.querySelector(`#payment-${method.id}-enabled`);
-        toggle.addEventListener('change', () => {
+        toggle.addEventListener('change', async () => {
             const enabled = toggle.checked;
             card.classList.toggle('enabled', enabled);
             const configBtn = card.querySelector(`#config-${method.id}-btn`);
             if (configBtn) {
                 configBtn.style.display = enabled ? 'block' : 'none';
             }
+            
+            // For Stripe Connect, also update stripe_enabled field immediately
+            if (method.id === 'stripe_connect') {
+                try {
+                    await supabaseClient
+                        .from('institutions')
+                        .update({ stripe_enabled: enabled })
+                        .eq('id', institutionId);
+                } catch (err) {
+                    console.error('[payment-methods] Error updating stripe_enabled:', err);
+                }
+            }
+            
             // Enable/disable fee policy radio buttons (only for non-stripe methods)
             if (method.hasFeePolicy && method.id !== 'stripe_connect') {
                 const feeRadios = card.querySelectorAll(`input[name="fee-${method.id}"]`);
@@ -2295,9 +2455,20 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
                     const configBtnMore = moreDetails.querySelector(`#config-${method.id}-btn-more`);
                     if (configBtnMore && !configBtnMore.hasAttribute('data-handler-attached')) {
                         configBtnMore.setAttribute('data-handler-attached', 'true');
-                        configBtnMore.addEventListener('click', () => {
-                            // TODO: Implement Stripe Connect onboarding
-                            alert('Stripe Connect onboarding kommer snart.');
+                        configBtnMore.addEventListener('click', async () => {
+                            const currentStatus = data?.stripe_account_status || methodData.status || 'not_configured';
+                            const hasMode = data?.stripe_mode || methodData.mode;
+                            
+                            // If not configured or no mode, open mode selection modal first
+                            if (currentStatus === 'not_configured' || !hasMode) {
+                                openStripeOnboardingModal(methodData, institutionId, async () => {
+                                    // After mode is selected, start onboarding
+                                    await startStripeOnboarding(institutionId);
+                                });
+                            } else {
+                                // Already configured, start/continue onboarding
+                                await startStripeOnboarding(institutionId);
+                            }
                         });
                     }
                 }
@@ -2327,6 +2498,53 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
             
             // Handle button in "more" section (for Stripe Connect) - handler attached when "more" section is expanded
         }
+
+        // Handle Stripe onboarding button (in status section)
+        if (method.id === 'stripe_connect') {
+            const onboardingBtn = card.querySelector('#stripe-onboarding-btn');
+            if (onboardingBtn) {
+                onboardingBtn.addEventListener('click', async () => {
+                    const currentStatus = data?.stripe_account_status || methodData.status || 'not_configured';
+                    
+                    // If not configured, open mode selection modal first
+                    if (currentStatus === 'not_configured') {
+                        openStripeOnboardingModal(methodData, institutionId, async () => {
+                            // After mode is selected, start onboarding
+                            await startStripeOnboarding(institutionId);
+                        });
+                    } else {
+                        // Already configured, start/continue onboarding
+                        await startStripeOnboarding(institutionId);
+                    }
+                });
+            }
+
+            // Handle status sync button
+            const statusSyncBtn = card.querySelector('#stripe-status-sync-btn');
+            if (statusSyncBtn) {
+                statusSyncBtn.addEventListener('click', async () => {
+                    await syncStripeStatus(institutionId);
+                });
+            }
+
+            // Handle generate onboarding link button
+            const generateLinkBtn = card.querySelector('#generate-onboarding-link-btn');
+            if (generateLinkBtn) {
+                generateLinkBtn.addEventListener('click', async () => {
+                    await generateStripeOnboardingLink(institutionId);
+                });
+            }
+
+            // Handle copy link button
+            const copyLinkBtn = card.querySelector('#copy-onboarding-link-btn');
+            const linkInput = card.querySelector('#onboarding-link-input');
+            if (copyLinkBtn && linkInput) {
+                copyLinkBtn.addEventListener('click', async () => {
+                    await copyToClipboard(linkInput.value);
+                    showToast('Link kopieret', 'success');
+                });
+            }
+        }
     });
 
     // Update warnings
@@ -2335,37 +2553,155 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
     // Save button
     const saveBtn = document.getElementById('save-payment-methods-btn');
     if (saveBtn) {
+        // Remove existing listeners by cloning
         const newSaveBtn = saveBtn.cloneNode(true);
         saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+        
         newSaveBtn.addEventListener('click', async () => {
-            const newPaymentSettings = {};
-            paymentMethods.forEach(method => {
-                const toggle = document.getElementById(`payment-${method.id}-enabled`);
-                if (toggle) {
-                    const enabled = toggle.checked;
-                    newPaymentSettings[method.id] = { enabled };
-                    if (method.hasFeePolicy && enabled) {
-                        const feeRadio = document.querySelector(`input[name="fee-${method.id}"]:checked`);
-                        if (feeRadio) {
-                            newPaymentSettings[method.id].fee_policy = feeRadio.value;
-                        }
+            try {
+                newSaveBtn.disabled = true;
+                const originalText = newSaveBtn.textContent;
+                newSaveBtn.textContent = 'Gemmer...';
+                
+                // Load existing settings first to preserve Stripe Connect mode, status, account_id
+                const { data: existingData } = await supabaseClient
+                    .from('institutions')
+                    .select('parent_portal_payment')
+                    .eq('id', institutionId)
+                    .single();
+
+                let existingPaymentSettings = {};
+                if (existingData?.parent_portal_payment) {
+                    try {
+                        existingPaymentSettings = typeof existingData.parent_portal_payment === 'string' 
+                            ? JSON.parse(existingData.parent_portal_payment) 
+                            : existingData.parent_portal_payment;
+                    } catch (e) {
+                        console.warn('[payment-methods] Failed to parse existing settings:', e);
                     }
                 }
-            });
 
-            // Save to database
-            const { error } = await supabaseClient
-                .from('institutions')
-                .update({ parent_portal_payment: newPaymentSettings })
-                .eq('id', institutionId);
+                const newPaymentSettings = {};
+                let stripeEnabled = false;
+                let stripeMode = null;
+                
+                paymentMethods.forEach(method => {
+                    const toggle = document.getElementById(`payment-${method.id}-enabled`);
+                    if (toggle) {
+                        const enabled = toggle.checked;
+                        newPaymentSettings[method.id] = { enabled };
+                        
+                        // For Stripe Connect, also save to new database fields
+                        if (method.id === 'stripe_connect') {
+                            stripeEnabled = enabled;
+                            // Get mode from existing data or default to test
+                            stripeMode = data?.stripe_mode || existingPaymentSettings.stripe_connect?.mode || 'test';
+                            
+                            // Preserve mode, status, and account_id in JSON for backward compatibility
+                            const existingStripe = existingPaymentSettings.stripe_connect || {};
+                            if (existingStripe.mode) {
+                                newPaymentSettings[method.id].mode = existingStripe.mode;
+                            }
+                            if (existingStripe.status) {
+                                newPaymentSettings[method.id].status = existingStripe.status;
+                            }
+                            if (existingStripe.account_id) {
+                                newPaymentSettings[method.id].account_id = existingStripe.account_id;
+                            }
+                        }
+                        
+                        // For Stripe Connect and MobilePay API, fee_policy is always visible (even when disabled)
+                        // So we should save it if it exists, regardless of enabled state
+                        if (method.hasFeePolicy) {
+                            // Find checked radio (works even if disabled)
+                            const feeRadios = document.querySelectorAll(`input[name="fee-${method.id}"]`);
+                            let selectedFeePolicy = 'institution'; // default
+                            
+                            feeRadios.forEach(radio => {
+                                if (radio.checked) {
+                                    selectedFeePolicy = radio.value;
+                                }
+                            });
+                            
+                            newPaymentSettings[method.id].fee_policy = selectedFeePolicy;
+                        }
+                    }
+                });
 
-            if (error) {
-                console.error('[payment-methods] Error saving:', error);
-                alert('Fejl ved gemning af indstillinger');
-            } else {
-                modal.style.display = 'none';
+                console.log('[payment-methods] Saving settings:', newPaymentSettings);
+                console.log('[payment-methods] Stripe enabled:', stripeEnabled, 'mode:', stripeMode);
+                console.log('[payment-methods] Institution ID:', institutionId);
+
+                if (!institutionId) {
+                    throw new Error('Institution ID mangler');
+                }
+
+                // Try to save to new parent_portal_payment column and Stripe fields
+                let updateData = { parent_portal_payment: newPaymentSettings };
+                
+                // Also save Stripe fields if Stripe Connect is being configured
+                if (stripeMode !== null) {
+                    updateData.stripe_enabled = stripeEnabled;
+                    updateData.stripe_mode = stripeMode;
+                }
+                let { data, error } = await supabaseClient
+                    .from('institutions')
+                    .update(updateData)
+                    .eq('id', institutionId)
+                    .select();
+
+                // If error (column doesn't exist), fall back to old columns
+                if (error && error.message && error.message.includes('parent_portal_payment')) {
+                    console.warn('[payment-methods] parent_portal_payment column not found, using legacy columns');
+                    
+                    // Map to old column structure for backward compatibility
+                    const legacyUpdate = {
+                        topup_cash_enabled: newPaymentSettings.cash?.enabled === true,
+                        topup_qr_enabled: newPaymentSettings.mobilepay_qr?.enabled === true,
+                        topup_portal_enabled: newPaymentSettings.stripe_connect?.enabled === true
+                    };
+                    
+                    const { data: legacyData, error: legacyError } = await supabaseClient
+                        .from('institutions')
+                        .update(legacyUpdate)
+                        .eq('id', institutionId)
+                        .select();
+                    
+                    if (legacyError) {
+                        console.error('[payment-methods] Error saving to legacy columns:', legacyError);
+                        alert('Fejl ved gemning af indstillinger. Kolonnen parent_portal_payment findes ikke. Kør migration: supabase migration up');
+                        newSaveBtn.disabled = false;
+                        newSaveBtn.textContent = originalText;
+                        return;
+                    }
+                    
+                    data = legacyData;
+                    error = null;
+                    console.log('[payment-methods] Settings saved to legacy columns:', legacyData);
+                }
+
+                if (error) {
+                    console.error('[payment-methods] Error saving:', error);
+                    alert('Fejl ved gemning af indstillinger: ' + (error.message || 'Ukendt fejl'));
+                    newSaveBtn.disabled = false;
+                    newSaveBtn.textContent = originalText;
+                } else {
+                    console.log('[payment-methods] Settings saved successfully:', data);
+                    modal.style.display = 'none';
+                    // Optionally show success feedback
+                    if (typeof showCustomAlert === 'function') {
+                        showCustomAlert('Indstillinger gemt', 'Betalingsmetoder er nu opdateret.');
+                    }
+                }
+            } catch (err) {
+                console.error('[payment-methods] Unexpected error:', err);
+                alert('Uventet fejl ved gemning: ' + (err.message || 'Ukendt fejl'));
+                newSaveBtn.disabled = false;
+                newSaveBtn.textContent = 'GEM';
             }
         });
+    } else {
+        console.error('[payment-methods] Save button not found!');
     }
 
     // Back button
@@ -2493,6 +2829,338 @@ async function openParentPortalFeaturesModal() {
         newBackBtn.onclick = () => {
             modal.style.display = 'none';
             openParentPortalSettingsModal();
+        };
+    }
+
+    modal.style.display = 'flex';
+}
+
+// Start Stripe Connect onboarding
+async function startStripeOnboarding(institutionId) {
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session?.access_token) {
+            throw new Error('Ikke logget ind');
+        }
+
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/start-stripe-onboarding`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({})
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Kunne ikke starte onboarding');
+        }
+
+        if (result.onboarding_url) {
+            // Open onboarding URL in new tab
+            window.open(result.onboarding_url, '_blank');
+            
+            // Show success message
+            if (typeof showCustomAlert === 'function') {
+                showCustomAlert('Onboarding startet', 'Stripe onboarding er åbnet i nyt vindue. Efterfuldførelse, klik "Opdater status" for at opdatere status.');
+            } else {
+                alert('Onboarding startet! Efterfuldførelse, klik "Opdater status" for at opdatere status.');
+            }
+
+            // Reload modal to show updated status
+            setTimeout(() => {
+                openPaymentMethodsModal();
+            }, 1000);
+        }
+    } catch (err) {
+        console.error('[stripe-onboarding] Error starting onboarding:', err);
+        alert('Fejl ved start af onboarding: ' + (err.message || 'Ukendt fejl'));
+    }
+}
+
+// Simple toast notification function
+function showToast(message, type = 'success') {
+    // Remove existing toast if any
+    const existingToast = document.getElementById('flango-toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.id = 'flango-toast';
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#4caf50' : '#f44336'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        font-size: 14px;
+        font-weight: 500;
+        animation: slideIn 0.3s ease-out;
+    `;
+    toast.textContent = message;
+
+    // Add animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    `;
+    if (!document.getElementById('toast-animations')) {
+        style.id = 'toast-animations';
+        document.head.appendChild(style);
+    }
+
+    document.body.appendChild(toast);
+
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        toast.style.animation = 'slideIn 0.3s ease-out reverse';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Copy to clipboard helper
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch (err) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            return true;
+        } catch (e) {
+            document.body.removeChild(textArea);
+            return false;
+        }
+    }
+}
+
+// Generate Stripe onboarding link
+async function generateStripeOnboardingLink(institutionId) {
+    try {
+        const generateBtn = document.getElementById('generate-onboarding-link-btn');
+        const copyBtn = document.getElementById('copy-onboarding-link-btn');
+        const linkInput = document.getElementById('onboarding-link-input');
+        
+        if (generateBtn) {
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Genererer...';
+        }
+
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session?.access_token) {
+            throw new Error('Ikke logget ind');
+        }
+
+        // Get current origin for return/refresh URLs
+        const origin = window.location.origin;
+
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/create-stripe-onboarding-link`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({
+                institution_id: institutionId,
+                origin: origin
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Kunne ikke generere onboarding link');
+        }
+
+        if (result.url) {
+            // Show link input
+            if (linkInput) {
+                linkInput.value = result.url;
+                linkInput.style.display = 'block';
+            }
+            if (copyBtn) {
+                copyBtn.style.display = 'block';
+            }
+
+            // Auto copy to clipboard
+            const copied = await copyToClipboard(result.url);
+            if (copied) {
+                showToast('Onboarding-link kopieret', 'success');
+            } else {
+                showToast('Link genereret (kopier manuelt)', 'success');
+            }
+
+            // Reload modal to show updated stripe_account_id if it was created
+            if (result.stripe_account_id) {
+                setTimeout(() => {
+                    openPaymentMethodsModal();
+                }, 1000);
+            }
+        }
+    } catch (err) {
+        console.error('[stripe-onboarding-link] Error:', err);
+        showToast('Fejl: ' + (err.message || 'Ukendt fejl'), 'error');
+    } finally {
+        const generateBtn = document.getElementById('generate-onboarding-link-btn');
+        if (generateBtn) {
+            generateBtn.disabled = false;
+            generateBtn.textContent = 'Generér onboarding-link';
+        }
+    }
+}
+
+// Sync Stripe status
+async function syncStripeStatus(institutionId) {
+    try {
+        const syncBtn = document.getElementById('stripe-status-sync-btn');
+        if (syncBtn) {
+            syncBtn.disabled = true;
+            syncBtn.textContent = 'Opdaterer...';
+        }
+
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session?.access_token) {
+            throw new Error('Ikke logget ind');
+        }
+
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/stripe-status-sync`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({})
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Kunne ikke synkronisere status');
+        }
+
+        // Reload modal to show updated status
+        openPaymentMethodsModal();
+
+        if (typeof showCustomAlert === 'function') {
+            showCustomAlert('Status opdateret', `Stripe status er nu: ${getStripeStatusText(result.status)}`);
+        }
+    } catch (err) {
+        console.error('[stripe-status-sync] Error:', err);
+        alert('Fejl ved opdatering af status: ' + (err.message || 'Ukendt fejl'));
+        
+        const syncBtn = document.getElementById('stripe-status-sync-btn');
+        if (syncBtn) {
+            syncBtn.disabled = false;
+            syncBtn.textContent = 'Opdater status';
+        }
+    }
+}
+
+async function openStripeOnboardingModal(currentStripeData, institutionId, onSaveCallback) {
+    const modal = document.getElementById('stripe-onboarding-modal');
+    if (!modal) {
+        console.error('[stripe-onboarding] Modal not found');
+        return;
+    }
+
+    setupModalAccessibility(modal);
+
+    // Set current mode if exists
+    const currentMode = currentStripeData?.mode || 'test';
+    const modeRadios = modal.querySelectorAll('input[name="stripe-mode"]');
+    modeRadios.forEach(radio => {
+        radio.checked = radio.value === currentMode;
+    });
+
+    // Close button
+    const closeBtn = modal.querySelector('#stripe-onboarding-close');
+    if (closeBtn) {
+        const newCloseBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        newCloseBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+    }
+
+    // Cancel button
+    const cancelBtn = document.getElementById('stripe-onboarding-cancel');
+    if (cancelBtn) {
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        newCancelBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+    }
+
+    // Save button
+    const saveBtn = document.getElementById('stripe-onboarding-save');
+    if (saveBtn) {
+        const newSaveBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+        newSaveBtn.onclick = async () => {
+            const selectedMode = modal.querySelector('input[name="stripe-mode"]:checked')?.value || 'test';
+            
+            try {
+                newSaveBtn.disabled = true;
+                newSaveBtn.textContent = 'Gemmer...';
+
+                // Save stripe_enabled and stripe_mode to new database fields
+                const { error: saveError } = await supabaseClient
+                    .from('institutions')
+                    .update({ 
+                        stripe_enabled: true,
+                        stripe_mode: selectedMode
+                    })
+                    .eq('id', institutionId);
+
+                if (saveError) {
+                    throw new Error('Kunne ikke gemme indstillinger: ' + saveError.message);
+                }
+
+                console.log('[stripe-onboarding] Settings saved successfully');
+                modal.style.display = 'none';
+                
+                // Call callback to start onboarding
+                if (onSaveCallback) {
+                    await onSaveCallback();
+                } else {
+                    // Reload modal after save
+                    openPaymentMethodsModal();
+                }
+            } catch (err) {
+                console.error('[stripe-onboarding] Error:', err);
+                alert('Fejl ved gemning: ' + (err.message || 'Ukendt fejl'));
+                newSaveBtn.disabled = false;
+                newSaveBtn.textContent = 'Start opsætning';
+            }
         };
     }
 

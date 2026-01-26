@@ -277,6 +277,28 @@
         .payment-method-more .fee-policy-tooltip:hover .fee-policy-tooltip-content {
             display: block;
         }
+        .stripe-status-section {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        .stripe-mode-label {
+            font-size: 13px;
+            color: #666;
+        }
+        .stripe-mode-label strong {
+            color: #333;
+            font-weight: 600;
+        }
+        .stripe-mode-option:has(input[name="stripe-mode"]:checked) {
+            border-color: var(--primary-color, #2196F3);
+            background: #f0f7ff;
+        }
+        .stripe-mode-option:has(input[name="stripe-mode"]:checked) .font-weight-600 {
+            color: var(--primary-color, #2196F3);
+        }
         .payment-method-config-btn {
             margin-top: 12px;
             padding: 8px 16px;
@@ -820,6 +842,46 @@
                 <div style="padding: 20px 0 0 0; display: flex; justify-content: space-between; gap: 10px;">
                     <button id="back-to-parent-portal-menu-features-btn" style="padding: 12px 40px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">← Tilbage</button>
                     <button id="save-parent-portal-features-btn" class="btn-primary" style="padding: 12px 40px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">GEM</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stripe Onboarding Modal -->
+    <div id="stripe-onboarding-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Stripe Connect Opsætning</h2>
+                <span class="close-btn" id="stripe-onboarding-close">&times;</span>
+            </div>
+            <div class="modal-user-list" style="padding: 20px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 20px; line-height: 1.5;">
+                    Vælg om I vil bruge test- eller live-mode til Stripe Connect. Test-mode anbefales til at starte med.
+                </p>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">
+                        Vælg mode:
+                    </label>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label class="stripe-mode-option" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; transition: all 0.2s;">
+                            <input type="radio" name="stripe-mode" value="test" checked style="cursor: pointer;">
+                            <div>
+                                <div class="font-weight-600" style="font-weight: 600;">Test mode</div>
+                                <div style="font-size: 12px; color: #666;">Anbefalet til at starte med. Ingen rigtige betalinger.</div>
+                            </div>
+                        </label>
+                        <label class="stripe-mode-option" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; transition: all 0.2s;">
+                            <input type="radio" name="stripe-mode" value="live" style="cursor: pointer;">
+                            <div>
+                                <div class="font-weight-600" style="font-weight: 600;">Live mode</div>
+                                <div style="font-size: 12px; color: #666;">Rigtige betalinger. Kræver fuld verifikation.</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 20px;">
+                    <button id="stripe-onboarding-cancel" style="padding: 12px 24px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Annuller</button>
+                    <button id="stripe-onboarding-save" class="btn-primary" style="padding: 12px 24px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">Start opsætning</button>
                 </div>
             </div>
         </div>
