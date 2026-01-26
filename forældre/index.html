@@ -2741,31 +2741,79 @@
       }
 
       function renderPaymentSection(prefs) {
+        console.log('[renderPaymentSection] START med prefs:', prefs);
         const paymentCollapsible = document.getElementById("payment-collapsible");
-        if (!paymentCard || !paymentGrid) return;
+        if (!paymentCard || !paymentGrid) {
+          console.warn('[renderPaymentSection] paymentCard eller paymentGrid mangler!');
+          return;
+        }
 
         // Standard: intet
         paymentGrid.innerHTML = "";
         if (paymentFeedback) paymentFeedback.textContent = "";
         if (paymentQrWrap) paymentQrWrap.style.display = "none";
 
-        const cashEnabled = safeBool(prefs && prefs.topup_cash_enabled);
-        const qrEnabled = safeBool(prefs && prefs.topup_qr_enabled);
-        const portalEnabled = safeBool(prefs && prefs.topup_portal_enabled);
+        // Parse new parent_portal_payment structure or fall back to old keys
+        let paymentSettings = {};
+        if (prefs && prefs.parent_portal_payment) {
+          try {
+            paymentSettings = typeof prefs.parent_portal_payment === 'string' 
+              ? JSON.parse(prefs.parent_portal_payment) 
+              : prefs.parent_portal_payment;
+            console.log('[renderPaymentSection] Parsed paymentSettings:', paymentSettings);
+          } catch (e) {
+            console.warn('[parent-portal] Failed to parse payment settings:', e);
+          }
+        } else {
+          console.warn('[renderPaymentSection] Ingen parent_portal_payment i prefs:', prefs);
+        }
 
-        const anyEnabled = cashEnabled || qrEnabled || portalEnabled;
-        const prefsHasTopupKeys =
+        // Use new parent_portal_payment structure (only use old keys if new structure doesn't exist)
+        const hasNewStructure = prefs && prefs.parent_portal_payment;
+        const cashEnabled = hasNewStructure 
+          ? paymentSettings.cash?.enabled === true 
+          : safeBool(prefs && prefs.topup_cash_enabled);
+        const qrEnabled = hasNewStructure 
+          ? paymentSettings.mobilepay_qr?.enabled === true 
+          : safeBool(prefs && prefs.topup_qr_enabled);
+        const portalEnabled = hasNewStructure 
+          ? paymentSettings.stripe_connect?.enabled === true 
+          : safeBool(prefs && prefs.topup_portal_enabled);
+        const mobilepayApiEnabled = paymentSettings.mobilepay_api?.enabled === true;
+        const qrScreenshotEnabled = paymentSettings.mobilepay_qr_screenshot?.enabled === true;
+
+        const anyEnabled = cashEnabled || qrEnabled || portalEnabled || mobilepayApiEnabled || qrScreenshotEnabled;
+        console.log('[renderPaymentSection] anyEnabled:', anyEnabled, {
+          cashEnabled, qrEnabled, portalEnabled, mobilepayApiEnabled, qrScreenshotEnabled
+        });
+        
+        const prefsHasTopupKeys = !!(
           prefs &&
-          ("topup_cash_enabled" in prefs ||
+          (prefs.parent_portal_payment ||
+            "topup_cash_enabled" in prefs ||
             "topup_qr_enabled" in prefs ||
-            "topup_portal_enabled" in prefs);
+            "topup_portal_enabled" in prefs)
+        );
+
+        console.log('[renderPaymentSection] prefsHasTopupKeys:', prefsHasTopupKeys, {
+          has_parent_portal_payment: !!prefs?.parent_portal_payment,
+          has_topup_cash: "topup_cash_enabled" in (prefs || {}),
+          has_topup_qr: "topup_qr_enabled" in (prefs || {}),
+          has_topup_portal: "topup_portal_enabled" in (prefs || {}),
+        });
 
         if (!prefsHasTopupKeys) {
+          console.warn('[renderPaymentSection] prefsHasTopupKeys er false - viser fejlbesked');
           if (paymentCollapsible) {
             paymentCollapsible.style.display = "block";
           }
           if (paymentStatusBadge) {
-            paymentStatusBadge.textContent = "Kunne ikke hente";
+            // Hvis prefs er tomt objekt (pga RLS fejl), vis bedre besked
+            if (prefs && Object.keys(prefs).length === 0) {
+              paymentStatusBadge.textContent = "Indlæser...";
+            } else {
+              paymentStatusBadge.textContent = "Kunne ikke hente";
+            }
           }
           paymentGrid.innerHTML = `
             <div class="payment-option">
@@ -2807,65 +2855,58 @@
 
         // Payment card vises nu via collapsible sektionen
 
+        // Count enabled methods for badge (in correct order: Stripe, MobilePay API, CSV, QR, QR+Screenshot, Cash)
+        const enabledCount = [portalEnabled, mobilepayApiEnabled, qrEnabled, qrScreenshotEnabled, cashEnabled].filter(Boolean).length;
+        
         // Badge
         if (paymentStatusBadge) {
-          if (portalEnabled && qrEnabled) {
-            paymentStatusBadge.textContent = "Flere muligheder";
-          } else if (portalEnabled) {
+          if (enabledCount > 1) {
+            paymentStatusBadge.textContent = `${enabledCount} muligheder`;
+          } else if (portalEnabled || mobilepayApiEnabled) {
             paymentStatusBadge.textContent = "Automatisk optankning";
-          } else if (qrEnabled) {
-            paymentStatusBadge.textContent = "MobilePay QR";
-          } else {
+          } else if (qrEnabled || qrScreenshotEnabled) {
+            paymentStatusBadge.textContent = "MobilePay";
+          } else if (cashEnabled) {
             paymentStatusBadge.textContent = "Kontant";
+          } else {
+            paymentStatusBadge.textContent = "Ingen muligheder";
           }
         }
 
-        // Kontant
-        if (cashEnabled) {
-          const cashText =
-            (prefs && (prefs.topup_cash_message || prefs.cash_topup_message)) ||
-            "Forældre afleverer kontanter til personalet. Saldoen opdateres manuelt.";
-          paymentGrid.insertAdjacentHTML(
-            "beforeend",
-            `
-            <div class="payment-option">
-              <div class="payment-option-title">
-                <div class="left"><span class="emoji">💵</span><span>Kontant indbetaling</span></div>
-                <span class="payment-badge">Manuel</span>
-              </div>
-              <div class="payment-body">${cashText}</div>
-            </div>
-            `
-          );
-        }
+        // Render methods in correct order (matching admin panel):
+        // 1. Stripe Connect
+        // 2. MobilePay API
+        // 3. MobilePay QR
+        // 4. MobilePay QR + Screenshot
+        // 5. Kontant
 
-        // Portal optankning (kaldes "Tank op i portalen (automatisk)" – ikke "API")
+        // 1. Stripe Connect (Portal optankning)
         if (portalEnabled) {
           const portalText =
             (prefs && (prefs.topup_portal_message || prefs.portal_topup_message)) ||
-            "Tank op direkte i portalen. Saldoen opdateres med det samme.";
-          const recommendedClass = qrEnabled ? "recommended" : "";
-          const recommendedBadge = qrEnabled ? `<span class="payment-badge good">Anbefalet</span>` : `<span class="payment-badge good">Aktiv</span>`;
+            "Forældre indbetaler direkte i forældreportalen. Saldo opdateres automatisk med det samme.";
+          const recommendedClass = enabledCount > 1 ? "recommended" : "";
+          const recommendedBadge = enabledCount > 1 ? `<span class="payment-badge good">Anbefalet</span>` : `<span class="payment-badge good">Aktiv</span>`;
 
           paymentGrid.insertAdjacentHTML(
             "beforeend",
             `
-            <div class="payment-option ${recommendedClass}" id="portal-topup-option">
+            <div class="payment-option ${recommendedClass}" id="stripe-connect-option">
               <div class="payment-option-title">
-                <div class="left"><span class="emoji">🟢</span><span>Tank op i portalen (automatisk)</span></div>
+                <div class="left"><span class="emoji">🟢</span><span>Stripe Connect</span></div>
                 ${recommendedBadge}
               </div>
               <div class="payment-body">${portalText}</div>
 
-              <div class="payment-actions" id="topup-amounts">
-                <button type="button" class="payment-amount" data-amount="50">50 kr.</button>
-                <button type="button" class="payment-amount" data-amount="100">100 kr.</button>
-                <button type="button" class="payment-amount" data-amount="150">150 kr.</button>
+              <div class="payment-actions" id="stripe-topup-amounts">
+                <button type="button" class="payment-amount" data-amount="50" data-method="stripe">50 kr.</button>
+                <button type="button" class="payment-amount" data-amount="100" data-method="stripe">100 kr.</button>
+                <button type="button" class="payment-amount" data-amount="150" data-method="stripe">150 kr.</button>
               </div>
 
               <div class="payment-row">
-                <input type="number" id="topup-amount-input" min="0" step="1" placeholder="Andet beløb i kr." />
-                <button type="button" id="topup-now-btn">Tank op</button>
+                <input type="number" id="stripe-topup-amount-input" min="0" step="1" placeholder="Andet beløb i kr." />
+                <button type="button" id="stripe-topup-now-btn">Tank op</button>
               </div>
               <div class="payment-qr-note" style="margin-top: 6px;">
                 Optankning kræver at institutionen har slået online-betaling til. Hvis knappen ikke virker, kontakt personalet.
@@ -2875,13 +2916,36 @@
           );
         }
 
-        // QR
+        // 2. MobilePay API
+        if (mobilepayApiEnabled) {
+          const apiText = "Forældre indbetaler via MobilePay. Saldo opdateres automatisk, når betalingen er gennemført.";
+          const apiClass = portalEnabled ? "secondary" : "";
+          const apiBadge = portalEnabled ? `<span class="payment-badge warn">Kræver opsætning</span>` : `<span class="payment-badge good">Aktiv</span>`;
+
+          paymentGrid.insertAdjacentHTML(
+            "beforeend",
+            `
+            <div class="payment-option ${apiClass}" id="mobilepay-api-option">
+              <div class="payment-option-title">
+                <div class="left"><span class="emoji">🔵</span><span>MobilePay API</span></div>
+                ${apiBadge}
+              </div>
+              <div class="payment-body">${apiText}</div>
+              <div class="payment-qr-note" style="margin-top: 6px;">
+                Denne metode kræver at institutionen har en MobilePay API-aftale. Kontakt personalet for at få adgang.
+              </div>
+            </div>
+            `
+          );
+        }
+
+        // 3. MobilePay QR
         if (qrEnabled) {
           const qrText =
             (prefs && (prefs.topup_qr_message || prefs.qr_topup_message)) ||
-            "Betal via MobilePay QR. Saldoen opdateres efter godkendelse af personalet.";
-          const secondaryClass = portalEnabled ? "secondary" : "";
-          const badge = portalEnabled ? `<span class="payment-badge warn">Kræver godkendelse</span>` : `<span class="payment-badge warn">Aktiv</span>`;
+            "Forældre scanner en QR-kode. Personalet registrerer indbetalingen manuelt i Flango.";
+          const secondaryClass = (portalEnabled || mobilepayApiEnabled) ? "secondary" : "";
+          const badge = (portalEnabled || mobilepayApiEnabled) ? `<span class="payment-badge warn">Manuel</span>` : `<span class="payment-badge warn">Aktiv</span>`;
 
           paymentGrid.insertAdjacentHTML(
             "beforeend",
@@ -2910,6 +2974,47 @@
           if (paymentQrNote) paymentQrNote.textContent = qrText;
         }
 
+        // 4. MobilePay QR + Screenshot
+        if (qrScreenshotEnabled) {
+          const screenshotText = "Forældre sender et skærmbillede som betalingsbevis. Personalet registrerer manuelt i Flango.";
+          const screenshotBadge = `<span class="payment-badge" style="background: #f44336; color: white;">Nødløsning</span>`;
+
+          paymentGrid.insertAdjacentHTML(
+            "beforeend",
+            `
+            <div class="payment-option" id="qr-screenshot-option">
+              <div class="payment-option-title">
+                <div class="left"><span class="emoji">📸</span><span>MobilePay QR + Screenshot</span></div>
+                ${screenshotBadge}
+              </div>
+              <div class="payment-body">${screenshotText}</div>
+              <div class="payment-qr-note" style="margin-top: 6px; color: #856404;">
+                Nødløsning: kan give ekstra administration. Send skærmbillede af betalingen til klubbens mobil.
+              </div>
+            </div>
+            `
+          );
+        }
+
+        // 5. Kontant
+        if (cashEnabled) {
+          const cashText =
+            (prefs && (prefs.topup_cash_message || prefs.cash_topup_message)) ||
+            "Personalet tager imod kontanter og registrerer indbetalingen manuelt i Flango.";
+          paymentGrid.insertAdjacentHTML(
+            "beforeend",
+            `
+            <div class="payment-option" id="cash-option">
+              <div class="payment-option-title">
+                <div class="left"><span class="emoji">💵</span><span>Kontant indbetaling</span></div>
+                <span class="payment-badge" style="background: #757575; color: white;">Offline</span>
+              </div>
+              <div class="payment-body">${cashText}</div>
+            </div>
+            `
+          );
+        }
+
         // Wire events (amount chips + show QR + portal topup)
         wirePaymentEvents();
       }
@@ -2917,25 +3022,35 @@
       function wirePaymentEvents() {
         if (!paymentCard) return;
 
+        // Handle all amount buttons (both old and new IDs)
         const amountButtons = paymentCard.querySelectorAll(".payment-amount[data-amount]");
-        const amountInput = document.getElementById("topup-amount-input");
-        const topupNowBtn = document.getElementById("topup-now-btn");
+        const amountInput = document.getElementById("topup-amount-input") || document.getElementById("stripe-topup-amount-input");
+        const topupNowBtn = document.getElementById("topup-now-btn") || document.getElementById("stripe-topup-now-btn");
         const showQrBtn = document.getElementById("show-qr-btn");
 
         // Amount buttons
         if (amountButtons && amountButtons.length) {
           amountButtons.forEach((btn) => {
-            btn.addEventListener("click", () => {
-              const amt = Number(btn.dataset.amount);
+            // Remove existing listeners by cloning
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener("click", () => {
+              const amt = Number(newBtn.dataset.amount);
               if (!Number.isFinite(amt)) return;
 
               selectedTopupAmount = amt;
-              amountButtons.forEach((b) => b.classList.remove("is-active"));
-              btn.classList.add("is-active");
+              // Remove active from all buttons in the same container
+              const container = newBtn.closest('.payment-option');
+              if (container) {
+                container.querySelectorAll(".payment-amount[data-amount]").forEach((b) => b.classList.remove("is-active"));
+              }
+              newBtn.classList.add("is-active");
 
-              if (amountInput) {
-                amountInput.value = String(amt);
-                amountInput.focus();
+              const currentInput = document.getElementById("topup-amount-input") || document.getElementById("stripe-topup-amount-input");
+              if (currentInput) {
+                currentInput.value = String(amt);
+                currentInput.focus();
               }
               if (paymentFeedback) paymentFeedback.textContent = "";
             });
@@ -2944,7 +3059,10 @@
 
         // Show QR
         if (showQrBtn) {
-          showQrBtn.addEventListener("click", () => {
+          const newShowQrBtn = showQrBtn.cloneNode(true);
+          showQrBtn.parentNode.replaceChild(newShowQrBtn, showQrBtn);
+          
+          newShowQrBtn.addEventListener("click", () => {
             if (!paymentQrWrap) return;
             const hasSrc = paymentQrImg && paymentQrImg.getAttribute("src");
             paymentQrWrap.style.display = "block";
@@ -2956,9 +3074,23 @@
           });
         }
 
-        // Portal topup button (UI-klar; backend kan kobles på senere)
+        // Stripe Connect / Portal topup button
         if (topupNowBtn) {
-          topupNowBtn.addEventListener("click", () => {
+          const newTopupBtn = topupNowBtn.cloneNode(true);
+          topupNowBtn.parentNode.replaceChild(newTopupBtn, topupNowBtn);
+          
+          newTopupBtn.addEventListener("click", () => {
+            const currentInput = document.getElementById("topup-amount-input") || document.getElementById("stripe-topup-amount-input");
+            const amount = currentInput ? Number(currentInput.value) : selectedTopupAmount;
+            
+            if (!amount || amount <= 0) {
+              if (paymentFeedback) {
+                paymentFeedback.textContent = "Indtast et beløb først.";
+                paymentFeedback.style.color = "#dc3545";
+              }
+              return;
+            }
+
             if (paymentFeedback) {
               paymentFeedback.textContent =
                 "Optankning i portalen er endnu ikke koblet til betaling her i demoen. Kontakt personalet, eller brug institutionens valgte metode.";
@@ -3586,6 +3718,10 @@
       async function loadInstitutionPreferences(institutionId) {
         if (!institutionId) return null;
         try {
+          // Brug Edge Function i stedet for direkte Supabase query (løser RLS-problemer)
+          // OBS: Dette kræver at get-parent-view Edge Function returnerer institutions data
+          // eller at der oprettes en separat Edge Function til at hente institutions preferences
+          // For nu prøver vi direkte query med bedre fejlhåndtering
           const { data, error } = await supabase
             .from("institutions")
             .select("*")
@@ -3594,12 +3730,14 @@
 
           if (error) {
             console.warn("Kunne ikke hente institutions-præferencer:", error);
-            return null;
+            // Hvis RLS blokerer, returner tomt objekt så UI stadig virker
+            // (betalingssektionen vil vise "midlertidigt utilgængelig")
+            return {};
           }
           return data || null;
         } catch (e) {
           console.warn("Uventet fejl ved hentning af institutions-præferencer:", e);
-          return null;
+          return {};
         }
       }
 
@@ -4156,7 +4294,17 @@
           displayResults(data);
           currentParentPin = parentPin; // Gem PIN til senere brug (produktgrænser)
           // Hent institutions-præferencer og render betalingsmuligheder + funktioner
-          currentInstitutionPrefs = await loadInstitutionPreferences(institutionId);
+          // Prøv først at bruge institutions data fra get-parent-view response
+          if (data.institution) {
+            currentInstitutionPrefs = data.institution;
+            console.log('[parent-portal] Institutions data fra get-parent-view:', data.institution);
+            console.log('[parent-portal] parent_portal_payment:', data.institution.parent_portal_payment);
+          } else {
+            console.warn('[parent-portal] Ingen institutions data i response, henter via fallback');
+            // Fallback: hent via loadInstitutionPreferences
+            currentInstitutionPrefs = await loadInstitutionPreferences(institutionId);
+          }
+          console.log('[parent-portal] Rendering payment section med prefs:', currentInstitutionPrefs);
           renderPaymentSection(currentInstitutionPrefs || {});
           renderFeatureSections(currentInstitutionPrefs || {});
           // Hent og vis klubbens begrænsninger
@@ -4361,10 +4509,23 @@
         currentChildId = data.child_id || null;
         // Gem sukkerpolitik fra response
         currentSugarPolicy = data.sugar_policy ?? null;
-        // Hvis vi allerede har institutionspræferencer, så render betalingsmuligheder + funktioner
-        if (currentInstitutionPrefs) {
-          renderPaymentSection(currentInstitutionPrefs || {});
-          renderFeatureSections(currentInstitutionPrefs || {});
+        // Hvis vi har institutions data fra get-parent-view response, brug det
+        if (data.institution) {
+          currentInstitutionPrefs = data.institution;
+          console.log('[displayResults] Bruger institutions data fra get-parent-view response');
+          renderPaymentSection(currentInstitutionPrefs);
+          renderFeatureSections(currentInstitutionPrefs);
+          // Hent og vis klubbens begrænsninger
+          loadAndRenderClubLimitations(currentInstitutionId, currentInstitutionPrefs);
+          // Hent og vis dagens sortiment
+          loadAndRenderDailyAssortment(currentInstitutionId);
+          // Setup collapsible functionality - kald efter en lille delay for at sikre DOM er klar
+          setTimeout(() => setupCollapsibleSections(), 100);
+        } else if (currentInstitutionPrefs) {
+          // Hvis vi allerede har institutionspræferencer (fra tidligere kald), så brug dem
+          console.log('[displayResults] Bruger eksisterende currentInstitutionPrefs');
+          renderPaymentSection(currentInstitutionPrefs);
+          renderFeatureSections(currentInstitutionPrefs);
           // Hent og vis klubbens begrænsninger
           loadAndRenderClubLimitations(currentInstitutionId, currentInstitutionPrefs);
           // Hent og vis dagens sortiment
@@ -4372,16 +4533,22 @@
           // Setup collapsible functionality - kald efter en lille delay for at sikre DOM er klar
           setTimeout(() => setupCollapsibleSections(), 100);
         } else if (currentInstitutionId) {
+          // Fallback: hent via loadInstitutionPreferences (kan fejle pga RLS)
+          console.warn('[displayResults] Ingen institutions data i response, prøver fallback');
           loadInstitutionPreferences(currentInstitutionId).then((prefs) => {
-            currentInstitutionPrefs = prefs || {};
-            renderPaymentSection(currentInstitutionPrefs || {});
-            renderFeatureSections(currentInstitutionPrefs || {});
-            // Hent og vis klubbens begrænsninger
-            loadAndRenderClubLimitations(currentInstitutionId, currentInstitutionPrefs);
-            // Hent og vis dagens sortiment
-            loadAndRenderDailyAssortment(currentInstitutionId);
-            // Setup collapsible functionality - kald efter en lille delay for at sikre DOM er klar
-            setTimeout(() => setupCollapsibleSections(), 100);
+            if (prefs && Object.keys(prefs).length > 0) {
+              currentInstitutionPrefs = prefs;
+              renderPaymentSection(currentInstitutionPrefs);
+              renderFeatureSections(currentInstitutionPrefs);
+              // Hent og vis klubbens begrænsninger
+              loadAndRenderClubLimitations(currentInstitutionId, currentInstitutionPrefs);
+              // Hent og vis dagens sortiment
+              loadAndRenderDailyAssortment(currentInstitutionId);
+              // Setup collapsible functionality - kald efter en lille delay for at sikre DOM er klar
+              setTimeout(() => setupCollapsibleSections(), 100);
+            } else {
+              console.warn('[displayResults] Fallback returnerede tomt objekt, ignorerer');
+            }
           });
         }
 
