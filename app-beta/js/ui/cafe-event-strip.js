@@ -268,12 +268,8 @@ export async function processEventItemsInCheckout(eventItems, customer) {
         await showCustomAlert('Tilmeldt', `${escapeHtml(customer.name)} er ${statusText} til "${escapeHtml(item.name)}".`);
     }
 
-    // Invalidér cache og refresh
+    // Invalidér cache (strip skjules af purchaseHandler, så refresh er unødvendig her)
     invalidateCafeEventsCache(customer.id);
-
-    if (onEventRegistered) {
-        onEventRegistered();
-    }
 
     return { processed, errors };
 }
