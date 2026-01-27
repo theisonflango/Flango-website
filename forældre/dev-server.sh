@@ -13,28 +13,30 @@ echo ""
 # Prøv Deno først (hvis tilgængelig)
 if command -v deno >/dev/null 2>&1; then
     echo "✅ Brug Deno server"
-    deno run --allow-net --allow-read --watch -A <<'DENO_SCRIPT'
+    TMP="$(mktemp -t foraeldre-server.XXXXXX.ts)"
+    trap 'rm -f "$TMP"' EXIT
+    cat <<'DENO_SCRIPT' > "$TMP"
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { serveFile } from "https://deno.land/std@0.224.0/http/file_server.ts";
 
-const PORT = parseInt(Deno.args[0] || "3001");
+const PORT = parseInt(Deno.env.get("PORT") || "3001");
 const HOST = "127.0.0.1";
 
-async function handler(req: Request): Promise<Response> {
+async function handler(req) {
   const url = new URL(req.url);
   const pathname = url.pathname;
-  const filePath = pathname === "/" ? "./index.html" : `.${pathname}`;
-  
+  const filePath = pathname === "/" ? "./index.html" : "." + pathname;
   try {
     return await serveFile(req, filePath);
-  } catch (error) {
+  } catch (_) {
     return new Response(`File not found: ${pathname}`, { status: 404 });
   }
 }
 
-console.log(`🌐 Server kører på http://${HOST}:${PORT}\n`);
+console.log(`Server kører på http://${HOST}:${PORT}\n`);
 await Deno.serve({ hostname: HOST, port: PORT }, handler);
 DENO_SCRIPT
+    PORT="$PORT" deno run --allow-net --allow-read --watch "$TMP"
     exit 0
 fi
 

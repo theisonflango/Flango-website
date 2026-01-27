@@ -1972,6 +1972,218 @@
         font-size: 11px;
       }
     }
+
+    /* ── Event cards ── */
+    .event-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      transition: border-color 0.2s;
+    }
+    .event-card.registered {
+      border-left: 4px solid #22c55e;
+    }
+    .event-card-title {
+      font-weight: 700;
+      font-size: 15px;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+    .event-card-desc {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    .event-card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 12px;
+      color: #374151;
+      margin-bottom: 10px;
+    }
+    .event-card-meta span {
+      background: #f3f4f6;
+      padding: 3px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+    .event-card-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+    }
+    .event-card-badge.badge-registered {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .event-card-badge.badge-paid {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .event-card-badge.badge-pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .event-card-badge.badge-full {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .event-card-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .event-register-btn,
+    .event-cancel-btn,
+    .event-pay-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .event-register-btn {
+      background: #2563eb;
+      color: #fff;
+    }
+    .event-register-btn:disabled {
+      background: #93c5fd;
+      cursor: not-allowed;
+    }
+    .event-pay-btn {
+      background: #16a34a;
+      color: #fff;
+    }
+    .event-cancel-btn {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    /* ── Event payment overlay ── */
+    .event-payment-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 16px;
+    }
+    .event-payment-modal {
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .event-payment-modal h3 {
+      font-size: 17px;
+      font-weight: 700;
+      margin: 0 0 4px;
+      color: #111827;
+    }
+    .event-payment-modal .modal-subtitle {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 16px;
+    }
+    .event-payment-option {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .event-payment-option:hover {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+    .event-payment-option.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .event-payment-option .opt-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: #111827;
+      margin-bottom: 2px;
+    }
+    .event-payment-option .opt-desc {
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .event-payment-close {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+      padding: 10px;
+      background: #f3f4f6;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      cursor: pointer;
+    }
+    .event-stripe-container {
+      margin-top: 12px;
+      padding: 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      background: #f9fafb;
+    }
+    .event-stripe-container #event-payment-element {
+      margin-bottom: 12px;
+    }
+    .event-stripe-submit {
+      width: 100%;
+      padding: 12px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .event-stripe-submit:disabled {
+      background: #93c5fd;
+      cursor: not-allowed;
+    }
+    .event-stripe-error {
+      color: #dc2626;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    .event-feedback {
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+    .event-feedback.success {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .event-feedback.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
   </style>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
@@ -2193,7 +2405,25 @@
                   </div>
                 </div>
 
-                <!-- 3. Optank saldo -->
+                <!-- 3. Kommende arrangementer -->
+                <div class="collapsible-section-container" id="events-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">📅</div>
+                      <span>Kommende arrangementer</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <div id="events-list"></div>
+                    <div id="events-empty" style="display:none;">
+                      <p style="font-size:14px;color:#6b7280;padding:6px 2px;">Ingen kommende arrangementer for dit barn.</p>
+                    </div>
+                    <div id="events-feedback"></div>
+                  </div>
+                </div>
+
+                <!-- 4. Optank saldo -->
                 <div class="collapsible-section-container" id="payment-collapsible" style="display: none;">
                   <div class="collapsible-section-header">
                     <div class="collapsible-section-title">
@@ -2663,6 +2893,16 @@
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-products-for-parent";
       const SAVE_SUGAR_POLICY_URL =
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/save-parent-sugar-policy";
+      const GET_PARENT_EVENTS_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-parent-events";
+      const PARENT_EVENT_REGISTER_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/parent-event-register";
+      const PARENT_EVENT_CANCEL_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/parent-event-cancel";
+      const CREATE_EVENT_PAYMENT_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/create-event-payment";
+      const CONFIRM_EVENT_PAYMENT_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/confirm-event-payment";
 
       const SUPABASE_URL = "https://jbknjgbpghrbrstqwoxj.supabase.co";
       const SUPABASE_ANON_KEY =
@@ -3174,12 +3414,509 @@
         }
       }
 
+      // ── Kommende arrangementer ──
+      let eventsChildBalance = 0;
+
+      async function loadAndRenderEvents(childId, parentPin) {
+        const eventsCollapsible = document.getElementById("events-collapsible");
+        const eventsList = document.getElementById("events-list");
+        const eventsEmpty = document.getElementById("events-empty");
+        const eventsFeedback = document.getElementById("events-feedback");
+        if (!eventsList) return;
+
+        eventsList.innerHTML = '<p style="font-size:13px;color:#6b7280;padding:8px 0;">Henter arrangementer...</p>';
+        eventsEmpty.style.display = "none";
+        eventsFeedback.innerHTML = "";
+
+        try {
+          const res = await fetch(GET_PARENT_EVENTS_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ child_id: childId, parent_pin: parentPin }),
+          });
+          const data = await res.json();
+
+          if (!res.ok || data.error) {
+            eventsList.innerHTML = "";
+            eventsEmpty.style.display = "block";
+            eventsEmpty.querySelector("p").textContent = data.error || "Kunne ikke hente arrangementer.";
+            if (eventsCollapsible) eventsCollapsible.style.display = "block";
+            return;
+          }
+
+          const events = data.events || [];
+          eventsChildBalance = typeof data.child_balance === "number" ? data.child_balance : Number(data.child_balance || 0);
+
+          if (events.length === 0) {
+            eventsList.innerHTML = "";
+            eventsEmpty.style.display = "block";
+            if (eventsCollapsible) eventsCollapsible.style.display = "block";
+            return;
+          }
+
+          eventsEmpty.style.display = "none";
+          eventsList.innerHTML = "";
+
+          let stripeAvailable = false;
+          if (currentInstitutionPrefs) {
+            try {
+              const pp = typeof currentInstitutionPrefs.parent_portal_payment === "string"
+                ? JSON.parse(currentInstitutionPrefs.parent_portal_payment)
+                : currentInstitutionPrefs.parent_portal_payment;
+              stripeAvailable = !!(pp && pp.stripe_connect && pp.stripe_connect.enabled);
+            } catch (_) {}
+          }
+
+          events.forEach((ev) => {
+            const card = document.createElement("div");
+            card.className = "event-card" + (ev.registration ? " registered" : "");
+
+            const dateStr = ev.event_date ? new Date(ev.event_date).toLocaleDateString("da-DK", { weekday: "short", day: "numeric", month: "short" }) : "";
+            const timeStr = (ev.start_time || "").slice(0, 5) + (ev.end_time ? " – " + (ev.end_time || "").slice(0, 5) : "");
+            const priceStr = ev.price > 0 ? ev.price + " kr." : "Gratis";
+            const spotsStr = ev.remaining !== null && ev.remaining !== undefined ? ev.remaining + " plads" + (ev.remaining !== 1 ? "er" : "") : "";
+
+            let badgeHtml = "";
+            let actionsHtml = "";
+
+            if (ev.registration) {
+              const reg = ev.registration;
+              if (reg.payment_status === "paid") {
+                badgeHtml = '<span class="event-card-badge badge-paid">Betalt</span>';
+              } else if (reg.payment_status === "not_paid") {
+                badgeHtml = '<span class="event-card-badge badge-pending">Afventer betaling</span>';
+              } else if (reg.payment_status === "not_required") {
+                badgeHtml = '<span class="event-card-badge badge-registered">Tilmeldt</span>';
+              } else {
+                badgeHtml = '<span class="event-card-badge badge-registered">Tilmeldt</span>';
+              }
+
+              actionsHtml += '<button class="event-cancel-btn" data-event-id="' + ev.id + '">Frameld</button>';
+
+              if (reg.payment_status === "not_paid" && ev.price > 0) {
+                actionsHtml += '<button class="event-pay-btn" data-event-id="' + ev.id + '">Betal nu</button>';
+              }
+            } else {
+              if (ev.remaining !== null && ev.remaining !== undefined && ev.remaining <= 0) {
+                badgeHtml = '<span class="event-card-badge badge-full">Fuldt booket</span>';
+                actionsHtml += '<button class="event-register-btn" disabled>Fuldt booket</button>';
+              } else {
+                actionsHtml += '<button class="event-register-btn" data-event-id="' + ev.id + '">Tilmeld</button>';
+              }
+            }
+
+            card.innerHTML =
+              '<div class="event-card-title">' + escapeHtml(ev.title) + '</div>' +
+              (ev.description ? '<div class="event-card-desc">' + escapeHtml(ev.description) + '</div>' : '') +
+              '<div class="event-card-meta">' +
+                (dateStr ? '<span>' + dateStr + '</span>' : '') +
+                (timeStr ? '<span>' + timeStr + '</span>' : '') +
+                '<span>' + priceStr + '</span>' +
+                (spotsStr ? '<span>' + spotsStr + '</span>' : '') +
+              '</div>' +
+              badgeHtml +
+              '<div class="event-card-actions">' + actionsHtml + '</div>' +
+              '<div class="event-card-feedback" id="event-fb-' + ev.id + '"></div>';
+
+            // Wire register button
+            const regBtn = card.querySelector(".event-register-btn[data-event-id]");
+            if (regBtn) {
+              regBtn.addEventListener("click", () => handleEventRegister(ev, eventsChildBalance, stripeAvailable));
+            }
+
+            // Wire cancel button
+            const cancelBtn = card.querySelector(".event-cancel-btn[data-event-id]");
+            if (cancelBtn) {
+              cancelBtn.addEventListener("click", () => handleEventCancel(ev, childId, parentPin));
+            }
+
+            // Wire pay button
+            const payBtn = card.querySelector(".event-pay-btn[data-event-id]");
+            if (payBtn) {
+              payBtn.addEventListener("click", () => handleEventPayNow(ev, eventsChildBalance, stripeAvailable));
+            }
+
+            eventsList.appendChild(card);
+          });
+
+          if (eventsCollapsible) eventsCollapsible.style.display = "block";
+        } catch (err) {
+          console.error("loadAndRenderEvents fejl:", err);
+          eventsList.innerHTML = "";
+          eventsEmpty.style.display = "block";
+          eventsEmpty.querySelector("p").textContent = "Fejl ved hentning af arrangementer.";
+          if (eventsCollapsible) eventsCollapsible.style.display = "block";
+        }
+      }
+
+      function showEventFeedback(eventId, msg, type) {
+        const fb = document.getElementById("event-fb-" + eventId);
+        if (!fb) return;
+        fb.className = "event-feedback " + type;
+        fb.textContent = msg;
+        setTimeout(() => { fb.textContent = ""; fb.className = ""; }, 5000);
+      }
+
+      function handleEventRegister(ev, childBalance, stripeAvailable) {
+        if (ev.price <= 0) {
+          // Gratis — direkte registrering
+          doEventRegister(ev.id, false, "balance");
+          return;
+        }
+        // Betalt — vis betalingsvalg overlay
+        showEventPaymentOverlay(ev, childBalance, stripeAvailable, false);
+      }
+
+      function handleEventPayNow(ev, childBalance, stripeAvailable) {
+        showEventPaymentOverlay(ev, childBalance, stripeAvailable, true);
+      }
+
+      function showEventPaymentOverlay(ev, childBalance, stripeAvailable, isPayOnly) {
+        const existing = document.querySelector(".event-payment-overlay");
+        if (existing) existing.remove();
+
+        const overlay = document.createElement("div");
+        overlay.className = "event-payment-overlay";
+
+        const balanceDisabled = childBalance < ev.price;
+        const balanceClass = balanceDisabled ? " disabled" : "";
+
+        let optionsHtml = "";
+
+        // Option 1: Betal med saldo
+        optionsHtml += '<div class="event-payment-option' + balanceClass + '" data-action="balance">' +
+          '<div class="opt-title">Betal med saldo (' + childBalance.toFixed(2) + ' kr.)</div>' +
+          '<div class="opt-desc">' + (balanceDisabled ? 'Ikke nok saldo (pris: ' + ev.price + ' kr.)' : 'Beløbet trækkes fra barnets konto') + '</div>' +
+          '</div>';
+
+        // Option 2: Betal med kort (kun hvis Stripe)
+        if (stripeAvailable) {
+          optionsHtml += '<div class="event-payment-option" data-action="stripe">' +
+            '<div class="opt-title">Betal med kort</div>' +
+            '<div class="opt-desc">Betaling via Stripe (' + ev.price + ' kr.)</div>' +
+            '</div>';
+        }
+
+        // Option 3: Betal senere (kun ved tilmelding, ikke ved efterbetaling)
+        if (!isPayOnly) {
+          optionsHtml += '<div class="event-payment-option" data-action="later">' +
+            '<div class="opt-title">Betal senere</div>' +
+            '<div class="opt-desc">Tilmeld nu, betal inden arrangementet</div>' +
+            '</div>';
+        }
+
+        overlay.innerHTML =
+          '<div class="event-payment-modal">' +
+          '<h3>' + escapeHtml(ev.title) + '</h3>' +
+          '<div class="modal-subtitle">Pris: ' + ev.price + ' kr.</div>' +
+          optionsHtml +
+          '<div id="event-stripe-mount"></div>' +
+          '<button class="event-payment-close">Annuller</button>' +
+          '</div>';
+
+        document.body.appendChild(overlay);
+
+        // Close button
+        overlay.querySelector(".event-payment-close").addEventListener("click", () => overlay.remove());
+
+        // Click outside
+        overlay.addEventListener("click", (e) => {
+          if (e.target === overlay) overlay.remove();
+        });
+
+        // Option handlers
+        overlay.querySelectorAll(".event-payment-option").forEach((opt) => {
+          opt.addEventListener("click", async () => {
+            const action = opt.dataset.action;
+            if (opt.classList.contains("disabled")) return;
+
+            if (action === "balance") {
+              overlay.remove();
+              if (isPayOnly) {
+                // Efterbetaling: registrer med pay_now=true, balance
+                await doEventRegister(ev.id, true, "balance");
+              } else {
+                await doEventRegister(ev.id, true, "balance");
+              }
+            } else if (action === "stripe") {
+              // Disable alle options mens Stripe loader
+              overlay.querySelectorAll(".event-payment-option").forEach(o => o.classList.add("disabled"));
+              const closeBtn = overlay.querySelector(".event-payment-close");
+              closeBtn.textContent = "Vent venligst...";
+
+              if (!isPayOnly) {
+                // Registrér først med pay_now=false
+                const regResult = await doEventRegisterRaw(ev.id, false, "balance");
+                if (!regResult || !regResult.success) {
+                  overlay.remove();
+                  return;
+                }
+              }
+              // Start Stripe flow
+              await handleEventStripePayment(ev.id, overlay);
+            } else if (action === "later") {
+              overlay.remove();
+              await doEventRegister(ev.id, false, "balance");
+            }
+          });
+        });
+      }
+
+      async function doEventRegisterRaw(eventId, payNow, paymentType) {
+        try {
+          const res = await fetch(PARENT_EVENT_REGISTER_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              child_id: currentChildId,
+              parent_pin: currentParentPin,
+              event_id: eventId,
+              pay_now: payNow,
+              payment_type: paymentType,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || data.error) {
+            showEventFeedback(eventId, data.error || "Tilmelding mislykkedes.", "error");
+            return null;
+          }
+          return data;
+        } catch (err) {
+          console.error("doEventRegisterRaw fejl:", err);
+          showEventFeedback(eventId, "Netværksfejl ved tilmelding.", "error");
+          return null;
+        }
+      }
+
+      async function doEventRegister(eventId, payNow, paymentType) {
+        const result = await doEventRegisterRaw(eventId, payNow, paymentType);
+        if (result && result.success) {
+          showEventFeedback(eventId, payNow ? "Tilmeldt og betalt!" : "Tilmeldt!", "success");
+          // Opdatér saldo i UI hvis betalt med saldo
+          if (payNow && paymentType === "balance" && result.price_at_signup) {
+            const balanceEl = document.getElementById("balance-display") || document.querySelector(".balance-amount");
+            if (balanceEl) {
+              eventsChildBalance -= Number(result.price_at_signup);
+              balanceEl.textContent = eventsChildBalance.toFixed(2) + " kr";
+              updateBalanceStatus(eventsChildBalance);
+            }
+          }
+          // Genindlæs events
+          await loadAndRenderEvents(currentChildId, currentParentPin);
+        }
+      }
+
+      async function handleEventCancel(ev, childId, parentPin) {
+        const now = new Date();
+        const eventStart = new Date(ev.event_date + "T" + (ev.start_time || "00:00:00"));
+        const hasStarted = eventStart <= now;
+        const isPaid = ev.registration && ev.registration.payment_status === "paid";
+
+        let confirmMsg = "Er du sikker på, at du vil framelde dit barn fra \"" + ev.title + "\"?";
+        if (isPaid && !hasStarted) {
+          confirmMsg += "\n\nBeløbet (" + ev.registration.price_at_signup + " kr.) refunderes til barnets saldo.\n\nBemærk: Kortbetalinger refunderes til barnets saldo, ikke til kortet.";
+        } else if (isPaid && hasStarted) {
+          confirmMsg += "\n\nIngen refusion efter arrangementets start.";
+        }
+
+        if (!confirm(confirmMsg)) return;
+
+        try {
+          const res = await fetch(PARENT_EVENT_CANCEL_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              child_id: childId,
+              parent_pin: parentPin,
+              event_id: ev.id,
+            }),
+          });
+          const data = await res.json();
+
+          if (!res.ok || !data.success) {
+            showEventFeedback(ev.id, data.error || "Framelding mislykkedes.", "error");
+            return;
+          }
+
+          let msg = "Frameldt!";
+          if (data.refunded && data.refund_amount > 0) {
+            msg = "Frameldt! " + Number(data.refund_amount).toFixed(2) + " kr. refunderet til saldo.";
+            eventsChildBalance += Number(data.refund_amount);
+            const balanceEl = document.getElementById("balance-display") || document.querySelector(".balance-amount");
+            if (balanceEl) {
+              balanceEl.textContent = eventsChildBalance.toFixed(2) + " kr";
+              updateBalanceStatus(eventsChildBalance);
+            }
+          }
+          showEventFeedback(ev.id, msg, "success");
+          await loadAndRenderEvents(childId, parentPin);
+        } catch (err) {
+          console.error("handleEventCancel fejl:", err);
+          showEventFeedback(ev.id, "Netværksfejl ved framelding.", "error");
+        }
+      }
+
+      async function handleEventStripePayment(eventId, overlay) {
+        const mountPoint = overlay.querySelector("#event-stripe-mount");
+        if (!mountPoint) return;
+
+        mountPoint.innerHTML = '<p style="font-size:13px;color:#6b7280;">Opretter betaling...</p>';
+
+        try {
+          // 1. Create PaymentIntent
+          const res = await fetch(CREATE_EVENT_PAYMENT_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              child_id: currentChildId,
+              parent_pin: currentParentPin,
+              event_id: eventId,
+            }),
+          });
+          const data = await res.json();
+
+          if (!res.ok || data.error) {
+            mountPoint.innerHTML = '<p class="event-stripe-error">' + escapeHtml(data.error || "Kunne ikke oprette betaling.") + '</p>';
+            const closeBtn = overlay.querySelector(".event-payment-close");
+            closeBtn.textContent = "Luk";
+            overlay.querySelectorAll(".event-payment-option").forEach(o => o.classList.remove("disabled"));
+            return;
+          }
+
+          const { clientSecret, registration_id, stripe_publishable_key, stripe_account_id } = data;
+
+          if (!stripe_publishable_key) {
+            mountPoint.innerHTML = '<p class="event-stripe-error">Stripe er ikke konfigureret korrekt. Kontakt personalet.</p>';
+            const closeBtn = overlay.querySelector(".event-payment-close");
+            closeBtn.textContent = "Luk";
+            return;
+          }
+
+          // 2. Load Stripe.js dynamically
+          if (!window.Stripe) {
+            await new Promise((resolve, reject) => {
+              const script = document.createElement("script");
+              script.src = "https://js.stripe.com/v3/";
+              script.onload = resolve;
+              script.onerror = reject;
+              document.head.appendChild(script);
+            });
+          }
+
+          // 3. Init Stripe + Elements
+          const stripe = window.Stripe(stripe_publishable_key, {
+            stripeAccount: stripe_account_id,
+          });
+          const elements = stripe.elements({
+            clientSecret: clientSecret,
+            appearance: { theme: "stripe" },
+          });
+          const paymentElement = elements.create("payment");
+
+          mountPoint.innerHTML =
+            '<div class="event-stripe-container">' +
+            '<div id="event-payment-element"></div>' +
+            '<button class="event-stripe-submit">Betal nu</button>' +
+            '<div class="event-stripe-error" id="event-stripe-error-msg"></div>' +
+            '</div>';
+
+          paymentElement.mount("#event-payment-element");
+
+          const closeBtn = overlay.querySelector(".event-payment-close");
+          closeBtn.textContent = "Annuller";
+          closeBtn.addEventListener("click", () => overlay.remove());
+
+          // 4. Handle submit
+          const submitBtn = mountPoint.querySelector(".event-stripe-submit");
+          submitBtn.addEventListener("click", async () => {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Behandler...";
+            const errEl = document.getElementById("event-stripe-error-msg");
+            errEl.textContent = "";
+
+            const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+              elements,
+              confirmParams: {},
+              redirect: "if_required",
+            });
+
+            if (stripeError) {
+              errEl.textContent = stripeError.message || "Betaling mislykkedes.";
+              submitBtn.disabled = false;
+              submitBtn.textContent = "Betal nu";
+              return;
+            }
+
+            if (paymentIntent && paymentIntent.status === "succeeded") {
+              // 5. Confirm payment on backend
+              submitBtn.textContent = "Bekræfter...";
+              try {
+                const confirmRes = await fetch(CONFIRM_EVENT_PAYMENT_URL, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    apikey: SUPABASE_ANON_KEY,
+                    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                  },
+                  body: JSON.stringify({
+                    child_id: currentChildId,
+                    parent_pin: currentParentPin,
+                    registration_id: registration_id,
+                    payment_intent_id: paymentIntent.id,
+                  }),
+                });
+                const confirmData = await confirmRes.json();
+
+                if (confirmRes.ok && confirmData.success) {
+                  overlay.remove();
+                  showEventFeedback(eventId, "Betaling gennemført!", "success");
+                  await loadAndRenderEvents(currentChildId, currentParentPin);
+                } else {
+                  errEl.textContent = confirmData.error || "Kunne ikke bekræfte betaling.";
+                  submitBtn.disabled = false;
+                  submitBtn.textContent = "Prøv igen";
+                }
+              } catch (confirmErr) {
+                console.error("confirm-event-payment fejl:", confirmErr);
+                errEl.textContent = "Netværksfejl ved bekræftelse. Betalingen er gennemført — kontakt personalet.";
+              }
+            } else {
+              errEl.textContent = "Betaling blev ikke gennemført.";
+              submitBtn.disabled = false;
+              submitBtn.textContent = "Betal nu";
+            }
+          });
+        } catch (err) {
+          console.error("handleEventStripePayment fejl:", err);
+          mountPoint.innerHTML = '<p class="event-stripe-error">Fejl ved indlæsning af betaling. Prøv igen.</p>';
+          const closeBtn = overlay.querySelector(".event-payment-close");
+          closeBtn.textContent = "Luk";
+        }
+      }
+
       // Collapsible section toggle functionality with accordion behavior
       function setupCollapsibleSections() {
         // List of all collapsible section IDs - iterate through each one individually
         const sectionIds = [
           "email-notification-collapsible",
           "history-collapsible",
+          "events-collapsible",
           "payment-collapsible",
           "club-limitations-collapsible",
           "daily-assortment-collapsible",
@@ -4311,6 +5048,8 @@
           await loadAndRenderClubLimitations(institutionId, currentInstitutionPrefs);
           // Hent og vis dagens sortiment
           await loadAndRenderDailyAssortment(institutionId);
+          // Hent og vis kommende arrangementer
+          loadAndRenderEvents(currentChildId, currentParentPin);
           // Setup collapsible functionality - kald efter en lille delay for at sikre DOM er klar
           setTimeout(() => setupCollapsibleSections(), 100);
         } catch (err) {
@@ -4350,6 +5089,15 @@
         if (paymentQrWrap) paymentQrWrap.style.display = "none";
         if (paymentGrid) paymentGrid.innerHTML = "";
         if (paymentCard) paymentCard.style.display = "none";
+        // Nulstil events
+        const eventsCollapsible = document.getElementById("events-collapsible");
+        const eventsList = document.getElementById("events-list");
+        const eventsFeedback = document.getElementById("events-feedback");
+        if (eventsCollapsible) eventsCollapsible.style.display = "none";
+        if (eventsList) eventsList.innerHTML = "";
+        if (eventsFeedback) eventsFeedback.innerHTML = "";
+        eventsChildBalance = 0;
+
         currentChildId = null;
         currentParentPin = null;
       });
