@@ -316,7 +316,7 @@
 }
 
 .modal.admin-mode .modal-entry-info {
-    grid-template-columns: 2fr 1fr 1fr 1.2fr;
+    grid-template-columns: 2fr 1fr 0.7fr 1fr 1.2fr;
 }
 
 .modal-product-list .action-icons {
@@ -424,7 +424,8 @@
     color: #6b7280;
 }
 
-.edit-user-form input {
+.edit-user-form input,
+.edit-user-form select {
     padding: 12px 14px;
     border-radius: var(--unstoppable-radius-sm);
     border: 2px solid rgba(168, 85, 247, 0.2);
@@ -433,7 +434,8 @@
     transition: all 0.2s ease;
 }
 
-.edit-user-form input:focus {
+.edit-user-form input:focus,
+.edit-user-form select:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.15);
@@ -494,7 +496,7 @@
 }
 
 .modal.admin-mode .user-list-header {
-    grid-template-columns: 2fr 1fr 1fr 1.2fr;
+    grid-template-columns: 2fr 1fr 0.7fr 1fr 1.2fr;
 }
 
 .sort-header {

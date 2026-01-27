@@ -35,6 +35,8 @@ import { onBalanceChange } from '../core/balance-manager.js';
 import { setupCustomerPickerFlow } from './customer-picker-flow.js';
 import { setupAdminFlow, loadUsersAndNotifications } from './admin-flow.js';
 import { setupProductAssortmentFlow } from './product-assortment-flow.js';
+import { initCafeEventStrip, refreshCafeEventStrip, hideCafeEventStrip } from '../ui/cafe-event-strip.js';
+import { invalidateCafeEventsCache } from './cafe-events.js';
 import { isAuthAdminUser, openDbHistoryModal } from '../ui/db-history.js';
 import {
     setCurrentAdmin,
@@ -471,6 +473,8 @@ export async function startApp() {
         });
         // MUST-RUN: After any purchase attempt, force refresh so locks can't be dropped by debounce.
         await refreshProductLocks({ force: true });
+        // Skjul event strip efter køb (bruger er ryddet)
+        hideCafeEventStrip();
     };
     completePurchaseBtn._flangoPurchaseHandler = purchaseHandler;
     completePurchaseBtn.addEventListener('click', purchaseHandler);
@@ -633,6 +637,41 @@ export async function startApp() {
 
     // Eksponér renderFromCache til window så andre moduler kan opdatere produkt-visningen
     window.__flangoRenderProductsFromCache = () => productAssortment.renderFromCache();
+
+    // Café Event Strip: Initialisér mini-kort visning over produktgrid
+    initCafeEventStrip({
+        onEventAddedToCart: (eventItem) => {
+            // Tjek for duplikat: samme event må kun ligge i kurven én gang
+            const eventKey = `event-${eventItem.eventId}`;
+            const alreadyInCart = currentOrder.some(i => i.id === eventKey);
+            if (alreadyInCart) {
+                showAlert('Dette arrangement er allerede i kurven.');
+                return;
+            }
+            // Tilføj event som item i kurven (med emoji og type markering)
+            const item = {
+                ...eventItem,
+                id: eventKey,
+                product_id: eventKey,
+                emoji: '🎪',
+                quantity: 1,
+            };
+            currentOrder.push(item);
+            setOrder([...currentOrder]);
+            renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
+        },
+        onEventRegistered: async () => {
+            // Refresh strip efter registrering
+            const customer = getCurrentCustomer();
+            if (customer) {
+                await refreshCafeEventStrip({
+                    institutionId: customer.institution_id,
+                    childId: customer.id,
+                    childGradeLevel: customer.grade_level,
+                });
+            }
+        },
+    });
 
     // 10) UI-events og helpers
     setupRuntimeUIEvents({
@@ -832,6 +871,13 @@ export async function startApp() {
         await productAssortment.renderFromCache();
         console.log('[selectUser] Produkter genrenderet');
 
+        // Refresh café event strip for det valgte barn
+        refreshCafeEventStrip({
+            institutionId: selectedUser.institution_id,
+            childId: selectedUser.id,
+            childGradeLevel: selectedUser.grade_level,
+        }).catch(err => console.warn('[selectUser] Event strip fejl:', err));
+
         // Guard: If user switched during render, skip remaining updates
         if (getSelectionToken() !== token) {
             console.log('[selectUser] User switched during render, skipping remaining updates');
@@ -912,18 +958,21 @@ export async function startApp() {
         // Clear customer and evaluation
         clearCurrentCustomer();
         clearEvaluation();
-        
+
         // Clear order
         currentOrder = [];
         setOrder([]);
         renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
-        
+
         // Clear sugar data
         currentSugarData = null;
-        
+
+        // Skjul event strip
+        hideCafeEventStrip();
+
         // Refresh product locks (remove locks when no user selected)
         await refreshProductLocks({ force: true });
-        
+
         // Update UI
         updateSelectedUserInfo();
     };

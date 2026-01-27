@@ -265,7 +265,7 @@ body[data-theme="pastel-pop"] .settings-modal {
 }
 
 .modal.admin-mode .modal-entry-info {
-    grid-template-columns: 2fr 1fr 1fr 1.2fr;
+    grid-template-columns: 2fr 1fr 0.7fr 1fr 1.2fr;
 }
 
 .modal-product-list .action-icons {
@@ -363,7 +363,8 @@ body[data-theme="pastel-pop"] .settings-modal {
     color: #4b5563;
 }
 
-.edit-user-form input {
+.edit-user-form input,
+.edit-user-form select {
     padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid #d1d5db;
@@ -420,7 +421,7 @@ body[data-theme="pastel-pop"] .settings-modal {
 }
 
 .modal.admin-mode .user-list-header {
-    grid-template-columns: 2fr 1fr 1fr 1.2fr;
+    grid-template-columns: 2fr 1fr 0.7fr 1fr 1.2fr;
 }
 
 .sort-header {
@@ -438,8 +439,19 @@ body[data-theme="pastel-pop"] .settings-modal {
     text-align: center;
 }
 
-.user-list-header > div:nth-child(3),
+.user-list-header > div:nth-child(3) {
+    text-align: right;
+}
+
 .user-list-header > div.static-header {
+    text-align: right;
+}
+
+/* Admin mode: 5 columns (Navn, Nummer, Klasse, Saldo, Handlinger) */
+.modal.admin-mode .user-list-header > div:nth-child(3) {
+    text-align: center;
+}
+.modal.admin-mode .user-list-header > div:nth-child(4) {
     text-align: right;
 }
 
@@ -489,6 +501,12 @@ body[data-theme="pastel-pop"] .settings-modal {
     text-align: center;
     color: #666;
     font-size: 0.9em;
+}
+
+.user-list-grade {
+    text-align: center;
+    color: #666;
+    font-size: 0.85em;
 }
 
 .user-list-balance {

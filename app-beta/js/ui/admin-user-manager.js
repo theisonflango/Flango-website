@@ -102,6 +102,7 @@ export function setupAdminUserManagerFromModule(config = {}) {
     const searchInput = modal.querySelector('#admin-search-user-input');
     const sortName = modal.querySelector('#admin-sort-by-name-btn');
     const sortNumber = modal.querySelector('#admin-sort-by-number-btn');
+    const sortGrade = modal.querySelector('#admin-sort-by-grade-btn');
     const sortBalance = modal.querySelector('#admin-sort-by-balance-btn');
     const addUserBtn = modal.querySelector('#add-user-btn-modal');
     const userListContainer = modal.querySelector('#admin-modal-user-list');
@@ -112,6 +113,7 @@ export function setupAdminUserManagerFromModule(config = {}) {
     const editUserDepositInput = detailModal?.querySelector('#edit-user-deposit-input');
     const editUserBalanceInput = detailModal?.querySelector('#edit-user-balance-input');
     const editUserPinInput = detailModal?.querySelector('#edit-user-pin-input');
+    const editUserGradeLevelSelect = detailModal?.querySelector('#edit-user-grade-level');
     const editUserBalanceDisplay = detailModal?.querySelector('#edit-user-balance-display');
     const presetButtons = detailModal ? detailModal.querySelectorAll('.preset-btn') : [];
     const assignBadgeBtn = detailModal?.querySelector('#assign-badge-btn');
@@ -142,6 +144,13 @@ export function setupAdminUserManagerFromModule(config = {}) {
         adminUserSelectionIndex = 0;
         renderAdminUserListFromModule();
     };
+    if (sortGrade) {
+        sortGrade.onclick = () => {
+            writeSortKey('grade');
+            adminUserSelectionIndex = 0;
+            renderAdminUserListFromModule();
+        };
+    }
     sortBalance.onclick = () => {
         if (readSortKey() === 'balance') {
             writeBalanceOrder(readBalanceOrder() === 'desc' ? 'asc' : 'desc');
@@ -370,6 +379,9 @@ export function setupAdminUserManagerFromModule(config = {}) {
         detailModal.querySelector('#edit-user-detail-title').textContent = `Rediger ${user.name}`;
         editUserNameInput.value = user.name || '';
         editUserNumberInput.value = user.number || '';
+        if (editUserGradeLevelSelect) {
+            editUserGradeLevelSelect.value = user.grade_level != null ? String(user.grade_level) : '';
+        }
         editUserDepositInput.value = '';
         editUserBalanceInput.value = '';
         editUserPinInput.value = '';
@@ -409,9 +421,12 @@ export function setupAdminUserManagerFromModule(config = {}) {
         const depositVal = parseFloat((editUserDepositInput.value || '').replace(',', '.'));
         const newBalanceVal = editUserBalanceInput.value.trim();
         const pinVal = editUserPinInput.value.trim();
+        const gradeLevelVal = editUserGradeLevelSelect ? editUserGradeLevelSelect.value : '';
+        const parsedGradeLevel = gradeLevelVal !== '' ? parseInt(gradeLevelVal, 10) : null;
         const updates = {};
         if (nameVal && nameVal !== user.name) updates.name = nameVal;
         if (numberVal !== (user.number || '')) updates.number = numberVal || null;
+        if (parsedGradeLevel !== (user.grade_level ?? null)) updates.grade_level = parsedGradeLevel;
 
         if (Object.keys(updates).length > 0) {
             const { data, error } = await updateUserCoreFields(user.id, updates);
@@ -538,6 +553,7 @@ export function setupAdminUserManagerFromModule(config = {}) {
         const sortButtons = [
             modalEl.querySelector('#admin-sort-by-name-btn'),
             modalEl.querySelector('#admin-sort-by-number-btn'),
+            modalEl.querySelector('#admin-sort-by-grade-btn'),
             modalEl.querySelector('#admin-sort-by-balance-btn'),
         ].filter(Boolean);
 
@@ -555,6 +571,12 @@ export function setupAdminUserManagerFromModule(config = {}) {
         const balanceOrder = readBalanceOrder();
         if (sortKey === 'balance') {
             filteredUsers.sort((a, b) => (balanceOrder === 'desc' ? b.balance - a.balance : a.balance - b.balance));
+        } else if (sortKey === 'grade') {
+            filteredUsers.sort((a, b) => {
+                const ga = a.grade_level != null ? a.grade_level : 999;
+                const gb = b.grade_level != null ? b.grade_level : 999;
+                return ga - gb || a.name.localeCompare(b.name);
+            });
         } else if (sortKey === 'number') {
             filteredUsers.sort((a, b) => (a.number || '').localeCompare(b.number || ''));
         } else {

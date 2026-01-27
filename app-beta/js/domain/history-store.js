@@ -51,5 +51,42 @@ export async function loadSalesHistory({ from, to, includeTestUsers = false, onl
     if (error) {
         return { rows: [], error };
     }
-    return { rows: data || [], error: null };
+    const rows = data || [];
+    // Enrich rows with clerk/admin IDs from events table (events_view doesn't include them)
+    const eventIds = rows.map(row => row.id).filter(Boolean);
+    if (eventIds.length > 0) {
+        const chunkSize = 200;
+        const chunks = [];
+        for (let i = 0; i < eventIds.length; i += chunkSize) {
+            chunks.push(eventIds.slice(i, i + chunkSize));
+        }
+
+        const byId = new Map();
+        for (const chunk of chunks) {
+            const { data: eventRows, error: eventsError } = await runWithAuthRetry('loadSalesHistoryEvents', () => {
+                let query = _supabaseClient
+                    .from('events')
+                    .select('id, clerk_user_id, admin_user_id, session_admin_id')
+                    .in('id', chunk);
+                return query;
+            });
+
+            if (eventsError) {
+                continue;
+            }
+            if (Array.isArray(eventRows)) {
+                eventRows.forEach(evt => byId.set(evt.id, evt));
+            }
+        }
+
+        rows.forEach(row => {
+            const evt = byId.get(row.id);
+            if (!evt) return;
+            row.clerk_user_id = row.clerk_user_id || evt.clerk_user_id || null;
+            row.admin_user_id = row.admin_user_id || evt.admin_user_id || null;
+            row.session_admin_id = row.session_admin_id || evt.session_admin_id || null;
+        });
+    }
+
+    return { rows, error: null };
 }

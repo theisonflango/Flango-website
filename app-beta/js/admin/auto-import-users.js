@@ -12,6 +12,7 @@ import { getInstitutionId } from '../domain/session-store.js';
     const mappingNumber = document.getElementById('auto-import-field-number');
     const mappingName = document.getElementById('auto-import-field-name');
     const mappingBalance = document.getElementById('auto-import-field-balance');
+    const mappingGrade = document.getElementById('auto-import-field-grade');
     const previewEl = document.getElementById('auto-import-preview');
     const cancelBtn = document.getElementById('auto-import-cancel-btn');
     const continueBtn = document.getElementById('auto-import-continue-btn');
@@ -131,6 +132,7 @@ import { getInstitutionId } from '../domain/session-store.js';
         if (mappingNumber) mappingNumber.innerHTML = '';
         if (mappingName) mappingName.innerHTML = '';
         if (mappingBalance) mappingBalance.innerHTML = '';
+        if (mappingGrade) mappingGrade.innerHTML = '<option value="">(Ingen)</option>';
         if (previewEl) previewEl.innerHTML = '';
         if (fileInput) fileInput.value = '';
         showError('');
@@ -149,6 +151,7 @@ import { getInstitutionId } from '../domain/session-store.js';
         if (mappingNumber) mappingNumber.innerHTML = '';
         if (mappingName) mappingName.innerHTML = '';
         if (mappingBalance) mappingBalance.innerHTML = '';
+        if (mappingGrade) mappingGrade.innerHTML = '<option value="">(Ingen)</option>';
         if (previewEl) previewEl.innerHTML = '';
         if (fileInput) fileInput.value = '';
         showError('');
@@ -159,6 +162,7 @@ import { getInstitutionId } from '../domain/session-store.js';
             number: ['konto', 'kontonummer', 'number', 'nr', 'id'],
             name: ['navn', 'name', 'elev', 'barn'],
             balance: ['saldo', 'balance', 'beløb', 'amount'],
+            grade_level: ['klasse', 'klassetrin', 'grade', 'class', 'årgang'],
         };
         const patterns = checks[type] || [];
         const lower = fields.map(f => (f || '').toLowerCase());
@@ -176,6 +180,10 @@ import { getInstitutionId } from '../domain/session-store.js';
         selects.forEach(sel => {
             if (sel) sel.innerHTML = '';
         });
+        // Grade select: behold default "(Ingen)" option
+        if (mappingGrade) {
+            mappingGrade.innerHTML = '<option value="">(Ingen)</option>';
+        }
         parsedFields.forEach(field => {
             selects.forEach(sel => {
                 if (sel) {
@@ -185,13 +193,21 @@ import { getInstitutionId } from '../domain/session-store.js';
                     sel.appendChild(opt);
                 }
             });
+            if (mappingGrade) {
+                const opt = document.createElement('option');
+                opt.value = field;
+                opt.textContent = field;
+                mappingGrade.appendChild(opt);
+            }
         });
         const guessedNumber = guessField(parsedFields, 'number');
         const guessedName = guessField(parsedFields, 'name');
         const guessedBalance = guessField(parsedFields, 'balance');
+        const guessedGrade = guessField(parsedFields, 'grade_level');
         if (mappingNumber && guessedNumber) mappingNumber.value = guessedNumber;
         if (mappingName && guessedName) mappingName.value = guessedName;
         if (mappingBalance && guessedBalance) mappingBalance.value = guessedBalance;
+        if (mappingGrade && guessedGrade) mappingGrade.value = guessedGrade;
     };
 
     const buildMappedRows = () => {
@@ -200,6 +216,7 @@ import { getInstitutionId } from '../domain/session-store.js';
         const numberField = mappingNumber.value;
         const nameField = mappingName ? mappingName.value : null;
         const balanceField = mappingBalance.value;
+        const gradeField = mappingGrade ? mappingGrade.value : '';
         if (!numberField || !balanceField) return [];
 
         const rows = [];
@@ -211,7 +228,15 @@ import { getInstitutionId } from '../domain/session-store.js';
             balanceRaw = balanceRaw.replace(',', '.');
             const balance = Number.parseFloat(balanceRaw);
             if (Number.isNaN(balance)) continue;
-            rows.push({ number, name, new_balance: balance });
+            let grade_level = null;
+            if (gradeField) {
+                const gradeRaw = (raw[gradeField] ?? '').toString().trim().replace(/\D/g, '');
+                const parsed = parseInt(gradeRaw, 10);
+                if (!isNaN(parsed) && parsed >= 0 && parsed <= 9) {
+                    grade_level = parsed;
+                }
+            }
+            rows.push({ number, name, new_balance: balance, grade_level });
         }
         return rows;
     };
@@ -228,7 +253,7 @@ import { getInstitutionId } from '../domain/session-store.js';
         table.className = 'auto-import-preview-table';
         const thead = document.createElement('thead');
         const headRow = document.createElement('tr');
-        ['Kontonummer', 'Navn', 'Ny saldo'].forEach(label => {
+        ['Kontonummer', 'Navn', 'Klasse', 'Ny saldo'].forEach(label => {
             const th = document.createElement('th');
             th.textContent = label;
             headRow.appendChild(th);
@@ -243,10 +268,13 @@ import { getInstitutionId } from '../domain/session-store.js';
             tdNumber.textContent = r.number;
             const tdName = document.createElement('td');
             tdName.textContent = r.name || '';
+            const tdGrade = document.createElement('td');
+            tdGrade.textContent = r.grade_level != null ? r.grade_level + '. kl.' : '—';
             const tdBalance = document.createElement('td');
             tdBalance.textContent = r.new_balance.toFixed(2).replace('.', ',');
             tr.appendChild(tdNumber);
             tr.appendChild(tdName);
+            tr.appendChild(tdGrade);
             tr.appendChild(tdBalance);
             tbody.appendChild(tr);
         }
@@ -273,13 +301,19 @@ import { getInstitutionId } from '../domain/session-store.js';
         }
 
         // Byg payload til users-tabellen med institution_id og rolle 'kunde'
-        const payload = mappedRows.map((r) => ({
-            institution_id: institutionId,
-            number: r.number,
-            name: r.name || null,
-            balance: r.new_balance,
-            role: 'kunde',
-        }));
+        const payload = mappedRows.map((r) => {
+            const row = {
+                institution_id: institutionId,
+                number: r.number,
+                name: r.name || null,
+                balance: r.new_balance,
+                role: 'kunde',
+            };
+            if (r.grade_level != null) {
+                row.grade_level = r.grade_level;
+            }
+            return row;
+        });
 
         if (!payload.length) {
             showError('Der blev ikke fundet nogen gyldige rækker til import.');

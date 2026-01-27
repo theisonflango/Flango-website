@@ -18,6 +18,7 @@ import { updateInstitutionCache } from '../domain/institution-store.js';
 import { showCustomAlert } from './sound-and-alerts.js';
 import { refetchAllProducts } from '../core/data-refetch.js';
 import { invalidateAllLimitCaches } from '../domain/purchase-limits.js';
+import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 const sugarPolicyState = {
@@ -1777,6 +1778,24 @@ async function openInstitutionPreferences() {
         openShiftTimerSettingsModal();
     });
 
+    // Tilmelding (Arrangementer) knap
+    const eventAdminBtn = document.createElement('button');
+    eventAdminBtn.className = 'settings-item-btn';
+    eventAdminBtn.innerHTML = `<strong>Tilmelding (Arrangementer)</strong><div style="font-size: 12px; margin-top: 2px;">Opret og administrer arrangementer, tilmeldinger og betalinger.</div>`;
+    eventAdminBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        window.__flangoOpenEventAdmin?.();
+    });
+
+    // Café Event Visning knap
+    const cafeEventSettingsBtn = document.createElement('button');
+    cafeEventSettingsBtn.className = 'settings-item-btn';
+    cafeEventSettingsBtn.innerHTML = `<strong>Arrangementer i Café</strong><div style="font-size: 12px; margin-top: 2px;">Vis arrangementer som mini-kort i caféens produktvisning.</div>`;
+    cafeEventSettingsBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openCafeEventSettingsModal();
+    });
+
     contentEl.appendChild(productRulesBtn);
     contentEl.appendChild(sugarPolicyBtn);
     contentEl.appendChild(spendingLimitBtn);
@@ -1784,8 +1803,132 @@ async function openInstitutionPreferences() {
     contentEl.appendChild(editAdminsBtn);
     contentEl.appendChild(mobilePayImportBtn);
     contentEl.appendChild(shiftTimerBtn);
+    contentEl.appendChild(eventAdminBtn);
+    contentEl.appendChild(cafeEventSettingsBtn);
     contentEl.appendChild(updatesBtn);
     backdrop.style.display = 'flex';
+}
+
+/**
+ * Åbner Café Event Visning indstillinger modal
+ */
+async function openCafeEventSettingsModal() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+
+    titleEl.textContent = 'Arrangementer i Café – Indstillinger';
+    contentEl.innerHTML = '<p style="text-align: center; color: #999;">Henter indstillinger...</p>';
+    backdrop.style.display = 'flex';
+
+    const settings = await getCafeEventSettings(institutionId);
+
+    contentEl.innerHTML = '';
+
+    const desc = document.createElement('p');
+    desc.style.cssText = 'font-size: 13px; color: #555; margin-bottom: 12px; line-height: 1.5;';
+    desc.textContent = 'Når aktiveret vises kommende arrangementer som mini-kort over produktgrid i caféen. Kort vises kun for børn med matchende klassetrin.';
+    contentEl.appendChild(desc);
+
+    const group = document.createElement('div');
+    group.className = 'cafe-event-settings-group';
+
+    // Toggle: Aktiver/deaktiver
+    const toggleRow = document.createElement('div');
+    toggleRow.className = 'cafe-event-settings-row';
+    const toggleLabel = document.createElement('label');
+    toggleLabel.textContent = 'Vis arrangementer i café';
+    toggleLabel.htmlFor = 'cafe-events-toggle';
+    const toggleCheckbox = document.createElement('input');
+    toggleCheckbox.type = 'checkbox';
+    toggleCheckbox.id = 'cafe-events-toggle';
+    toggleCheckbox.checked = settings.cafe_events_enabled;
+    toggleCheckbox.style.cssText = 'width: 20px; height: 20px; cursor: pointer;';
+    toggleRow.appendChild(toggleLabel);
+    toggleRow.appendChild(toggleCheckbox);
+    group.appendChild(toggleRow);
+
+    // Status label
+    const statusLabel = document.createElement('span');
+    statusLabel.style.cssText = 'padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700;';
+    const updateStatus = (enabled) => {
+        statusLabel.textContent = enabled ? '✓ Aktiv' : '✗ Inaktiv';
+        statusLabel.style.background = enabled
+            ? 'linear-gradient(135deg, #dcfce7, #bbf7d0)' : 'linear-gradient(135deg, #fee2e2, #fecaca)';
+        statusLabel.style.color = enabled ? '#166534' : '#991b1b';
+    };
+    updateStatus(settings.cafe_events_enabled);
+    toggleRow.insertBefore(statusLabel, toggleCheckbox);
+
+    toggleCheckbox.addEventListener('change', () => updateStatus(toggleCheckbox.checked));
+
+    // Dage frem
+    const daysRow = document.createElement('div');
+    daysRow.className = 'cafe-event-settings-row';
+    const daysLabel = document.createElement('label');
+    daysLabel.textContent = 'Vis events indenfor N dage';
+    daysLabel.htmlFor = 'cafe-events-days';
+    const daysInput = document.createElement('input');
+    daysInput.type = 'number';
+    daysInput.id = 'cafe-events-days';
+    daysInput.min = '1';
+    daysInput.max = '90';
+    daysInput.value = settings.cafe_events_days_ahead;
+    daysRow.appendChild(daysLabel);
+    daysRow.appendChild(daysInput);
+    group.appendChild(daysRow);
+
+    contentEl.appendChild(group);
+
+    // Gem knap
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'event-save-btn';
+    saveBtn.textContent = 'Gem';
+    saveBtn.style.cssText = 'margin-top: 16px; width: 100%;';
+    contentEl.appendChild(saveBtn);
+
+    // Tilbage knap
+    const backBtn = document.createElement('button');
+    backBtn.className = 'event-cancel-btn';
+    backBtn.textContent = '← Tilbage til Institutionens Præferencer';
+    backBtn.style.cssText = 'margin-top: 8px; width: 100%;';
+    contentEl.appendChild(backBtn);
+
+    saveBtn.addEventListener('click', async () => {
+        const enabled = toggleCheckbox.checked;
+        const days = Math.max(1, Math.min(90, parseInt(daysInput.value, 10) || 14));
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Gemmer...';
+
+        const { error } = await saveCafeEventSettings(institutionId, {
+            cafe_events_enabled: enabled,
+            cafe_events_days_ahead: days,
+        });
+
+        if (error) {
+            console.error('[cafe-event-settings] Error saving:', error);
+            alert('Kunne ikke gemme indstillingen. Prøv igen.');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Gem';
+            return;
+        }
+
+        // Opdater global settings
+        if (window.__flangoInstitutionSettings) {
+            window.__flangoInstitutionSettings.cafeEventsEnabled = enabled;
+            window.__flangoInstitutionSettings.cafeEventsDaysAhead = days;
+        }
+
+        openInstitutionPreferences();
+    });
+
+    backBtn.addEventListener('click', () => {
+        openInstitutionPreferences();
+    });
 }
 
 /**
@@ -2206,7 +2349,7 @@ I vælger selv, hvem der betaler administrationsomkostningen:<br>
 <strong>Oprettelse</strong><br>
 Oprettelse af jeres Stripe Connect-konto sker via en enkel, selvbetjent onboarding herunder.<br>
 I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetalingskonto som del af Stripe's lovpligtige identitetskontrol (KYC).<br><br>
-<a href="docs/stripe-onboarding-guide.pdf.pdf" download="Flango – Stripe Onboarding Guide til Kommunale SFO'er.pdf" class="payment-method-config-btn" style="margin-top: 12px; text-decoration: none; display: inline-block; text-align: center; color: inherit;">
+<a href="${SUPABASE_URL}/storage/v1/object/public/docs/stripe-onboarding-guide.pdf" download="Flango – Stripe Onboarding Guide til Kommunale SFO'er.pdf" class="payment-method-config-btn" style="margin-top: 12px; text-decoration: none; display: inline-block; text-align: center; color: inherit;">
     📥 Download Flango Stripe Connect Onboarding Guide
 </a><br><br>
 <button class="payment-method-config-btn" id="config-stripe_connect-btn-more" style="margin-top: 12px;">Opret Stripe Connect Account</button>`,

@@ -69,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     copyFromTemplate('balance-modal', 'balance-modal-template');
     copyFromTemplate('edit-user-detail-modal', 'edit-user-detail-modal-template');
     copyFromTemplate('assign-badge-modal', 'assign-badge-modal-template');
+    copyFromTemplate('event-admin-modal', 'event-admin-modal-template');
 
     const customAlertModal = document.getElementById('custom-alert-modal');
     // Ensure custom alert modal is always on top
