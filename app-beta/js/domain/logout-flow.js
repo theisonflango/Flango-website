@@ -248,10 +248,6 @@ export function setupLogoutFlow({ clerkProfile, sessionStartTime, getSessionSale
 
             await addWorkMinutesForToday(sessionDurationMinutes);
 
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'logout-flow.js:251',message:'Before increment_user_stats RPC',data:{userId:clerkProfile.id,minutes:sessionDurationMinutes,sales:sessionSalesCount,hasSession:!!supabaseClient.auth.getSession()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
-
             // Atomisk opdatering af stats via RPC
             const { error } = await supabaseClient.rpc(
                 'increment_user_stats',
@@ -261,10 +257,6 @@ export function setupLogoutFlow({ clerkProfile, sessionStartTime, getSessionSale
                     p_add_sales: sessionSalesCount
                 }
             );
-
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'logout-flow.js:262',message:'After increment_user_stats RPC',data:{error:error?.message,errorCode:error?.code,errorDetails:error?.details,hasError:!!error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
 
             if (error) throw error;
             shouldFinalizeLogout = true;

@@ -99,10 +99,6 @@ export async function loadUsersAndNotifications({
         .select('user_id, notify_at_zero, notify_at_ten')
         .eq('institution_id', institutionId);
 
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-flow.js:102',message:'Before Promise.all users query',data:{institutionId,hasSupabaseClient:!!supabaseClient},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-
     const [usersResponse, notificationsResponse] = await Promise.all([
         runWithAuthRetry('loadUsers', buildUsersQuery),
         runWithAuthRetry('loadParentNotifications', buildNotificationsQuery)
@@ -110,10 +106,6 @@ export async function loadUsersAndNotifications({
 
     const { data: usersData, error: usersError } = usersResponse;
     const { data: parentNotifications, error: notifError } = notificationsResponse;
-
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-flow.js:108',message:'After Promise.all users query',data:{usersCount:usersData?.length,error:usersError?.message,errorCode:usersError?.code,errorDetails:usersError?.details,hasError:!!usersError},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
 
     if (usersError) {
         showAlert('Fejl ved hentning af brugerliste: ' + usersError.message);
