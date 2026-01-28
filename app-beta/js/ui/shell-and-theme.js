@@ -2845,7 +2845,7 @@ async function openParentPortalFeaturesModal() {
     // Load current settings
     const { data, error } = await supabaseClient
         .from('institutions')
-        .select('parent_portal_email_notifications, parent_portal_spending_limit, parent_portal_allergens, parent_portal_product_limit, parent_portal_sugar_policy')
+        .select('parent_portal_email_notifications, parent_portal_spending_limit, parent_portal_allergens, parent_portal_product_limit, parent_portal_sugar_policy, parent_contact_phone, parent_contact_phone_enabled')
         .eq('id', institutionId)
         .single();
 
@@ -2859,6 +2859,8 @@ async function openParentPortalFeaturesModal() {
     const allergens = document.getElementById('parent-portal-allergens');
     const productLimit = document.getElementById('parent-portal-product-limit');
     const sugarPolicy = document.getElementById('parent-portal-sugar-policy');
+    const contactPhoneInput = document.getElementById('parent-contact-phone-input');
+    const contactPhoneEnabled = document.getElementById('parent-contact-phone-enabled');
 
     if (data) {
         if (emailNotifications) emailNotifications.checked = data.parent_portal_email_notifications !== false;
@@ -2866,6 +2868,8 @@ async function openParentPortalFeaturesModal() {
         if (allergens) allergens.checked = data.parent_portal_allergens !== false;
         if (productLimit) productLimit.checked = data.parent_portal_product_limit === true;
         if (sugarPolicy) sugarPolicy.checked = data.parent_portal_sugar_policy === true;
+        if (contactPhoneInput) contactPhoneInput.value = data.parent_contact_phone || '';
+        if (contactPhoneEnabled) contactPhoneEnabled.checked = data.parent_contact_phone_enabled === true;
     }
 
     // Save button
@@ -2879,7 +2883,9 @@ async function openParentPortalFeaturesModal() {
                 parent_portal_spending_limit: spendingLimit?.checked !== false,
                 parent_portal_allergens: allergens?.checked !== false,
                 parent_portal_product_limit: productLimit?.checked === true,
-                parent_portal_sugar_policy: sugarPolicy?.checked === true
+                parent_portal_sugar_policy: sugarPolicy?.checked === true,
+                parent_contact_phone: contactPhoneInput?.value.trim() || null,
+                parent_contact_phone_enabled: contactPhoneEnabled?.checked === true
             };
 
             const { error } = await supabaseClient

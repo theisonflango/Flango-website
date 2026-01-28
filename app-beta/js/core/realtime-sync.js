@@ -13,6 +13,8 @@ let eventsChannel = null;
 let visibilityBound = false;
 let lastRealtimeStatus = { users: null, products: null, events: null };
 let pendingDepositEvents = new Map(); // userId -> { event, retryAt }
+let subscribedInstitutionId = null;
+let eventsResubscribeTimer = null;
 
 function getInstitutionId() {
     const p = typeof window !== 'undefined' && window.__flangoCurrentAdminProfile;
@@ -40,6 +42,17 @@ function onUsersStatus(status) {
 function onEventsStatus(status) {
     lastRealtimeStatus.events = status;
     console.log('[realtime-sync] events channel status:', status);
+
+    // Events-channel påvirker kun UI-toasts (ingen DB kald), så vi kan trygt forsøge resubscribe.
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        if (eventsResubscribeTimer) return;
+        eventsResubscribeTimer = setTimeout(() => {
+            eventsResubscribeTimer = null;
+            if (!subscribedInstitutionId) return;
+            console.warn('[realtime-sync] events channel unhealthy → resubscribing');
+            subscribeEvents(subscribedInstitutionId);
+        }, 1500);
+    }
 }
 
 function onProductsStatus(status) {
@@ -142,7 +155,16 @@ function processDepositEvent(eventRow) {
 
     const details = eventRow.details || {};
     const amount = details.amount != null ? details.amount : eventRow.amount;
-    if (amount == null || Number(amount) <= 0) return;
+    const amountNum = Number(amount);
+    if (amount == null || !Number.isFinite(amountNum) || amountNum <= 0) {
+        console.warn('[realtime-sync] Ignoring deposit event with invalid amount:', {
+            eventId: eventRow.id,
+            eventType,
+            userId,
+            amount,
+        });
+        return;
+    }
 
     const source = details.source || '';
     const variant = source === 'stripe_portal' ? 'parent' : 'admin';
@@ -170,11 +192,11 @@ function processDepositEvent(eventRow) {
     const userName = user.name || 'Barn';
     const newBalance = typeof user.balance === 'number' ? user.balance : null;
 
-    console.log('[realtime-sync] DEPOSIT event processed:', { userId, userName, amount, variant, newBalance });
+    console.log('[realtime-sync] DEPOSIT event processed:', { userId, userName, amount: amountNum, variant, newBalance });
     showBalanceToast({
         userId,
         userName,
-        delta: Math.abs(Number(amount)),
+        delta: Math.abs(amountNum),
         newBalance,
         variant,
     });
@@ -222,6 +244,7 @@ export function startRealtimeSync(opts = {}) {
         console.warn('[realtime-sync] startRealtimeSync: No institution ID, skipping');
         return;
     }
+    subscribedInstitutionId = institutionId;
     subscribeUsers(institutionId);
     subscribeProducts(institutionId);
     subscribeEvents(institutionId);
@@ -229,6 +252,8 @@ export function startRealtimeSync(opts = {}) {
         visibilityBound = true;
         document.addEventListener('visibilitychange', onVisibilityChange);
     }
+    // Debug helpers (safe in prod; used only from console)
+    window.__flangoGetRealtimeStatus = getRealtimeStatus;
     console.log('[realtime-sync] Subscribed to users + products + events for institution', institutionId);
 }
 
@@ -248,12 +273,20 @@ export function stopRealtimeSync() {
         supabaseClient.removeChannel(eventsChannel);
         eventsChannel = null;
     }
+    if (eventsResubscribeTimer) {
+        clearTimeout(eventsResubscribeTimer);
+        eventsResubscribeTimer = null;
+    }
     if (visibilityBound) {
         document.removeEventListener('visibilitychange', onVisibilityChange);
         visibilityBound = false;
     }
     pendingDepositEvents.clear();
+    subscribedInstitutionId = null;
     lastRealtimeStatus = { users: null, products: null, events: null };
+    if (typeof window !== 'undefined') {
+        window.__flangoGetRealtimeStatus = null;
+    }
     console.log('[realtime-sync] Stopped');
 }
 

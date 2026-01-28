@@ -2,7 +2,7 @@
 // Toast notification system for live balance deposits (stack/queue, auto-dismiss).
 
 const MAX_VISIBLE_TOASTS = 3;
-const AUTO_DISMISS_MS = 6000; // 6 sekunder
+const AUTO_DISMISS_MS = 10000; // 10 sekunder
 
 let toastQueue = [];
 let visibleToasts = [];
