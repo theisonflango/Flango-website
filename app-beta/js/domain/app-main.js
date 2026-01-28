@@ -32,6 +32,8 @@ import {
     handleUndoPreviousSale,
 } from './purchase-flow.js';
 import { onBalanceChange } from '../core/balance-manager.js';
+import { startRealtimeSync } from '../core/realtime-sync.js';
+import { initToastNotifications, clearAllToasts } from '../ui/toast-notifications.js';
 import { setupCustomerPickerFlow } from './customer-picker-flow.js';
 import { setupAdminFlow, loadUsersAndNotifications } from './admin-flow.js';
 import { setupProductAssortmentFlow } from './product-assortment-flow.js';
@@ -771,6 +773,12 @@ export async function startApp() {
 
     // 12) Første produkt-load
     await productAssortment.fetchAndRenderProducts();
+
+    // 12.5) Toast notifications system
+    initToastNotifications();
+
+    // 12.6) Realtime sync: balance (forældre topup) + produkter/sortiment (create/toggle) + events (toast)
+    startRealtimeSync();
 
     async function selectUser(userId) {
         // Flight recorder: log user selection

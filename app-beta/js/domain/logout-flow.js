@@ -12,6 +12,8 @@ import { clearCurrentCustomer } from './cafe-session-store.js';
 import { showScreen } from '../ui/shell-and-theme.js';
 import { handlePrintAllBalances } from './history-and-reports.js';
 import { resetShiftTimer } from './shift-timer.js';
+import { stopRealtimeSync } from '../core/realtime-sync.js';
+import { clearAllToasts } from '../ui/toast-notifications.js';
 
 export function setupLogoutFlow({ clerkProfile, sessionStartTime, getSessionSalesCount, logoutBtn, settingsLogoutBtn }) {
     if (logoutBtn) logoutBtn.onclick = async () => {
@@ -277,8 +279,10 @@ export function setupLogoutFlow({ clerkProfile, sessionStartTime, getSessionSale
                 window.__flangoCurrentClerkProfile = null;
                 window.__flangoCurrentAdminProfile = null;
                 window.currentUserIsAdmin = false;
-                // Nulstil bytte-timer ved logout
+                // Nulstil bytte-timer, realtime-kanaler og toast-notifikationer ved logout
                 resetShiftTimer();
+                stopRealtimeSync();
+                clearAllToasts();
                 showScreen('screen-admin-login');
             }
         }
