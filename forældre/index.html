@@ -5331,15 +5331,23 @@
           emailLoginBtn.textContent = "Sender...";
 
           try {
+            // Brug den aktuelle URL som redirect (inkl. hash for SPA routing hvis nødvendigt)
+            const redirectUrl = window.location.origin + window.location.pathname;
+            
             const { error } = await supabase.auth.signInWithOtp({
               email: email,
               options: {
-                emailRedirectTo: window.location.origin + window.location.pathname,
+                emailRedirectTo: redirectUrl,
               },
             });
 
             if (error) {
-              emailLoginError.textContent = error.message || "Kunne ikke sende magic link.";
+              let errorMessage = error.message || "Kunne ikke sende magic link.";
+              // Håndter rate limit fejl specifikt
+              if (error.message && error.message.includes("rate limit") || error.message.includes("too many")) {
+                errorMessage = "For mange emails sendt. Vent venligst lidt før du prøver igen, eller brug kode-login i stedet.";
+              }
+              emailLoginError.textContent = errorMessage;
               emailLoginError.style.display = "block";
             } else {
               emailLoginSuccess.style.display = "block";
@@ -5356,67 +5364,141 @@
         });
       }
 
+      // Håndter magic link redirect (hash fragments)
+      async function handleMagicLinkRedirect() {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const error = hashParams.get('error');
+        
+        if (error) {
+          console.error('[magic-link] Error:', error, hashParams.get('error_description'));
+          loginError.textContent = hashParams.get('error_description') || 'Magic link fejl. Prøv igen.';
+          loginError.style.display = 'block';
+          // Ryd hash
+          window.history.replaceState(null, '', window.location.pathname);
+          return;
+        }
+        
+        if (accessToken) {
+          console.log('[magic-link] Access token fundet, logger ind...');
+          // Supabase SDK håndterer automatisk hash fragments, men vi kan også manuelt sætte session
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError || !session) {
+            console.error('[magic-link] Kunne ikke hente session:', sessionError);
+            loginError.textContent = 'Kunne ikke logge ind. Prøv igen.';
+            loginError.style.display = 'block';
+            // Ryd hash
+            window.history.replaceState(null, '', window.location.pathname);
+            return;
+          }
+          
+          // Ryd hash fra URL
+          window.history.replaceState(null, '', window.location.pathname);
+          
+          // Fortsæt med email login flow
+          await handleEmailLoginSuccess(session.user.email);
+        }
+      }
+      
+      // Håndter successful email login
+      async function handleEmailLoginSuccess(email) {
+        try {
+          // Find alle børn hvor denne email er registreret i parent_notifications
+          const { data: notifications, error } = await supabase
+            .from("parent_notifications")
+            .select("user_id, email")
+            .eq("email", email);
+
+          if (error) {
+            console.error("Fejl ved hentning af børn:", error);
+            alert("Kunne ikke finde børn for denne e-mail. Kontakt klubben.");
+            await supabase.auth.signOut();
+            return;
+          }
+
+          if (!notifications || notifications.length === 0) {
+            alert("Ingen børn fundet for denne e-mail. Kontakt klubben.");
+            await supabase.auth.signOut();
+            return;
+          }
+
+          // Hvis flere børn, vis picker
+          if (notifications.length > 1) {
+            // TODO: Implementér child picker for email login
+            alert(`Flere børn fundet (${notifications.length}). Email login med flere børn er ikke fuldt implementeret endnu. Brug kode-login i stedet.`);
+            await supabase.auth.signOut();
+            return;
+          } else {
+            // Ét barn: log ind automatisk
+            const childId = notifications[0].user_id;
+            await switchToChildViaEmail(childId, email);
+          }
+        } catch (err) {
+          console.error("Fejl ved email login flow:", err);
+          alert("Der opstod en fejl ved email login. Prøv kode-login i stedet.");
+          await supabase.auth.signOut();
+        }
+      }
+
       // Tjek om bruger er logget ind via email (magic link)
       supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('[auth] State change:', event, session?.user?.email);
+        
         if (event === "SIGNED_IN" && session?.user?.email) {
-          // Find alle børn hvor denne email er registreret i parent_notifications
-          try {
-            const { data: notifications, error } = await supabase
-              .from("parent_notifications")
-              .select("user_id, email")
-              .eq("email", session.user.email);
-
-            if (error) {
-              console.error("Fejl ved hentning af børn:", error);
-              return;
-            }
-
-            if (!notifications || notifications.length === 0) {
-              alert("Ingen børn fundet for denne e-mail. Kontakt klubben.");
-              await supabase.auth.signOut();
-              return;
-            }
-
-            // Hvis flere børn, vis picker
-            if (notifications.length > 1) {
-              // TODO: Implementér child picker for email login
-              alert("Flere børn fundet. Vælg barn:");
-              // For nu: brug første barn
-              const firstChildId = notifications[0].user_id;
-              await switchToChildViaEmail(firstChildId, session.user.email);
-            } else {
-              // Ét barn: log ind automatisk
-              const childId = notifications[0].user_id;
-              await switchToChildViaEmail(childId, session.user.email);
-            }
-          } catch (err) {
-            console.error("Fejl ved email login flow:", err);
+          // Hvis vi kommer fra magic link redirect, håndter det
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          if (hashParams.has('access_token')) {
+            // Håndter magic link redirect
+            await handleMagicLinkRedirect();
+          } else {
+            // Normal auth state change
+            await handleEmailLoginSuccess(session.user.email);
           }
+        } else if (event === "SIGNED_OUT") {
+          // Ryd op ved logout
+          console.log('[auth] Signed out');
         }
       });
+      
+      // Tjek ved page load om der er magic link tokens i URL
+      if (window.location.hash.includes('access_token')) {
+        handleMagicLinkRedirect();
+      }
 
       async function switchToChildViaEmail(childId, email) {
         // Hent child data og institution
         try {
           const { data: child, error: childError } = await supabase
             .from("users")
-            .select("id, name, institution_id, balance, daily_spend_limit")
+            .select("id, name, institution_id, balance, daily_spend_limit, parent_pin_hash")
             .eq("id", childId)
             .maybeSingle();
 
           if (childError || !child) {
             alert("Kunne ikke finde barn.");
+            await supabase.auth.signOut();
             return;
           }
 
-          // Hent PIN fra parent_notifications (hvis gemt) eller prompt bruger
-          // For nu: brug en placeholder - i produktion skal PIN hentes eller promptes
-          // Dette er en begrænsning: email login kræver stadig PIN for at få adgang til allowed_children
-          // Vi kan ikke bruge email login direkte til at få adgang uden PIN
-          // Så vi logger brugeren ind på første barn, men de skal stadig indtaste PIN for at få fuld adgang
-          alert("Email login er delvist implementeret. Brug kode-login for fuld adgang.");
+          // Email login giver adgang, men vi mangler PIN for at kalde get-parent-view
+          // Vi kan ikke hente PIN fra parent_pin_hash (det er hashed)
+          // Så vi skal prompte brugeren for PIN eller bruge en alternativ metode
+          
+          // For nu: Vis en besked om at bruge kode-login for fuld adgang
+          // I fremtiden kan vi implementere PIN prompt eller alternativ autentificering
+          alert(`Email login virker! Men for at få fuld adgang til ${child.name}, skal du også indtaste PIN-koden.\n\nBrug kode-login for at se saldo og historik.`);
+          
+          // Log ud igen så brugeren kan bruge kode-login
+          await supabase.auth.signOut();
+          
+          // Vis login view
+          loginView.style.display = "block";
+          resultsView.style.display = "none";
         } catch (err) {
           console.error("Fejl ved switchToChildViaEmail:", err);
+          alert("Der opstod en fejl. Prøv kode-login i stedet.");
+          await supabase.auth.signOut();
         }
       }
 
