@@ -447,22 +447,39 @@ export async function fetchEkspedienterData() {
         // Note: We use COALESCE logic - if clerk_user_id is null, admin_user_id is the clerk
         let clerkSalesAggregates = {};
         if (userIds.length > 0) {
-            const { data: saleEvents, error: salesError } = await runWithAuthRetry('fetchClerkSalesFromEvents', () => {
-                let query = supabaseClient
-                    .from('events')
-                    .select('clerk_user_id, admin_user_id, details')
-                    .eq('institution_id', _institutionId)
-                    .eq('event_type', 'SALE');
+            const pageSize = 1000;
+            let offset = 0;
+            let pagesFetched = 0;
+            let saleEvents = [];
 
-                if (fromDate) {
-                    query = query.gte('created_at', fromDate);
-                }
-                return query;
-            });
+            while (true) {
+                const { data: pageEvents, error: salesError } = await runWithAuthRetry('fetchClerkSalesFromEvents', () => {
+                    let query = supabaseClient
+                        .from('events')
+                        .select('clerk_user_id, admin_user_id, details, created_at')
+                        .eq('institution_id', _institutionId)
+                        .eq('event_type', 'SALE');
 
-            if (salesError) throw salesError;
+                    if (fromDate) {
+                        query = query.gte('created_at', fromDate);
+                    }
+
+                    return query
+                        .order('created_at', { ascending: false })
+                        .range(offset, offset + pageSize - 1);
+                });
+
+                if (salesError) throw salesError;
+
+                saleEvents = saleEvents.concat(pageEvents || []);
+                pagesFetched += 1;
+
+                if (!pageEvents || pageEvents.length < pageSize) break;
+                offset += pageSize;
+            }
 
             // Aggregate by clerk (clerk_user_id, fallback to admin_user_id)
+            let totalEventsProcessed = 0;
             (saleEvents || []).forEach(event => {
                 // The actual clerk is clerk_user_id, or admin_user_id if no clerk
                 const clerkId = event.clerk_user_id || event.admin_user_id;
@@ -484,7 +501,9 @@ export async function fetchEkspedienterData() {
                 // For now, estimate from amount or set to salesCount as placeholder
                 // TODO: If accurate item count is needed, join with sale_items
                 clerkSalesAggregates[clerkId].itemCount += 1; // 1 sale = at least 1 item
+                totalEventsProcessed++;
             });
+
         }
 
         // Build base rows (before filters/sort)
@@ -492,7 +511,7 @@ export async function fetchEkspedienterData() {
             const sales = clerkSalesAggregates[user.id] || { salesCount: 0, amount: 0, itemCount: 0 };
             const level = calculateLevel(user.total_minutes_worked, user.total_sales_count);
             
-            return {
+            const row = {
                 id: user.id,
                 name: user.name || 'Ukendt',
                 isChild: user.role === 'kunde',
@@ -505,6 +524,8 @@ export async function fetchEkspedienterData() {
                 level: level.name,
                 stars: level.stars
             };
+
+            return row;
         });
 
         // Filter out users with 0 clerk time (never worked as clerk)

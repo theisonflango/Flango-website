@@ -17,6 +17,7 @@ import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
 import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
 import { escapeHtml } from '../core/escape-html.js';
 import { formatKr } from '../ui/confirm-modals.js';
+import { processEventItemsInCheckout } from '../ui/cafe-event-strip.js';
 
 // ============================================================================
 // HELPER FUNKTIONER FOR handleCompletePurchase (OPT-6)
@@ -487,7 +488,20 @@ export async function handleCompletePurchase({
     refreshProductLocks,
     renderProductsFromCache,
 }) {
-    const orderSnapshot = Array.isArray(currentOrder) ? [...currentOrder] : [];
+    // KRITISK FIX: Hvis currentOrder er tom men order-store har varer, brug order-store
+    // Dette løser synkroniseringsfejl hvor lokal variabel ikke er opdateret
+    // KRITISK FIX: Hvis currentOrder er tom men order-store har varer, brug order-store
+    // Dette løser synkroniseringsfejl hvor lokal variabel ikke er opdateret
+    const orderFromStore = typeof getOrder === 'function' ? getOrder() : [];
+    const effectiveOrder = (Array.isArray(currentOrder) && currentOrder.length > 0) ? currentOrder : orderFromStore;
+    let orderSnapshot = Array.isArray(effectiveOrder) ? [...effectiveOrder] : [];
+    
+    // Opdater lokal variabel hvis den var tom men order-store har varer
+    if (typeof setCurrentOrder === 'function' && (!Array.isArray(currentOrder) || currentOrder.length === 0) && orderFromStore.length > 0) {
+        setCurrentOrder([...orderFromStore]);
+        currentOrder = [...orderFromStore];
+    }
+    
     // Flight recorder: log purchase flow start
     logDebugEvent('purchase_flow_started', {
         customerId: customer?.id,
@@ -497,13 +511,45 @@ export async function handleCompletePurchase({
         orderStoreLength: typeof getOrder === 'function' ? getOrder()?.length : 'N/A',
     });
     if (!customer) return showAlert("Fejl: Vælg venligst en kunde!");
-    if (orderSnapshot.length === 0) return showAlert("Fejl: Indkøbskurven er tom!");
+    if (orderSnapshot.length === 0) {
+        return showAlert("Fejl: Indkøbskurven er tom!");
+    }
     if (purchaseInFlight) {
         logDebugEvent('purchase_inflight_blocked', { customerId: customer?.id });
         return;
     }
     purchaseInFlight = true;
     try {
+    // === EVENT ITEMS SPLIT ===
+    // Separér event-items fra normalvarer. Events håndteres IKKE via process_sale.
+    const eventItems = orderSnapshot.filter(item => item.type === 'event');
+    const normalItems = orderSnapshot.filter(item => item.type !== 'event');
+
+    // Hvis KUN event-items: skip al normalvare-validering og processér direkte
+    if (normalItems.length === 0 && eventItems.length > 0) {
+        logDebugEvent('purchase_event_only', { eventCount: eventItems.length, customerId: customer?.id });
+        await processEventItemsInCheckout(eventItems, customer);
+        // Opdater saldo-visning uden log ud (balance-manager har allerede opdateret, sikr synk UI)
+        if (typeof updateSelectedUserInfo === 'function') updateSelectedUserInfo();
+        // Ryd kurv
+        let nextOrder = clearOrder();
+        setOrder([...nextOrder]);
+        if (typeof setCurrentOrder === 'function') setCurrentOrder(nextOrder);
+        renderOrder(orderList, nextOrder, totalPriceEl, updateSelectedUserInfo);
+        if (typeof refreshProductLocks === 'function') await refreshProductLocks({ force: true });
+        if (typeof renderProductsFromCache === 'function') renderProductsFromCache();
+        setButtonLoadingState(completePurchaseBtn, 'normal');
+        return;
+    }
+
+    // Brug normalItems til al validering herunder (event-items springer over)
+    // Erstat orderSnapshot med normalItems i resten af flowet
+    if (eventItems.length > 0) {
+        orderSnapshot = normalItems;
+        setOrder([...normalItems]); // Sync order-store
+    }
+    // === SLUT EVENT ITEMS SPLIT ===
+
     // === ALLERGI-CHECK ===
     let allergyPolicy = customer?.allergyPolicy;
 
@@ -885,6 +931,12 @@ export async function handleCompletePurchase({
                 console.warn('[purchase-flow] Balance confirmation failed; UI remains on provisional', { nonce: balanceUpdateNonce });
             }
         }
+        // Processér event-items EFTER normalvare-køb er gennemført
+        if (eventItems.length > 0) {
+            logDebugEvent('purchase_event_items_after_normal', { eventCount: eventItems.length });
+            await processEventItemsInCheckout(eventItems, customer);
+        }
+
         let nextOrder = clearOrder();
         try {
             // State-consistency: always use spread to avoid sharing mutable array reference

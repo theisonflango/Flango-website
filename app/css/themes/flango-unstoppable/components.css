@@ -178,6 +178,42 @@
     color: #374151;
     transition: all 0.2s ease;
 }
+.settings-modal-content .settings-item-btn:has(.settings-item-icon) {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.settings-modal-content .settings-item-btn .settings-item-icon {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: linear-gradient(145deg, rgba(168, 85, 247, 0.12) 0%, rgba(6, 182, 212, 0.08) 100%);
+}
+.settings-modal-content .settings-item-btn .settings-item-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.settings-modal-content .settings-item-btn .settings-item-icon .settings-item-icon-emoji {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+.settings-modal-content .settings-item-btn .settings-item-text {
+    flex: 1;
+    min-width: 0;
+}
+.settings-modal-content .settings-item-btn .settings-item-text .settings-item-desc {
+    font-size: 12px;
+    margin-top: 2px;
+    font-weight: normal;
+    opacity: 0.85;
+}
 
 .settings-modal-content .settings-item-btn:hover {
     border-color: rgba(168, 85, 247, 0.3);
@@ -316,7 +352,7 @@
 }
 
 .modal.admin-mode .modal-entry-info {
-    grid-template-columns: 2fr 1fr 1fr 1.2fr;
+    grid-template-columns: 2fr 1fr 0.7fr 1fr 1.2fr;
 }
 
 .modal-product-list .action-icons {
@@ -424,7 +460,8 @@
     color: #6b7280;
 }
 
-.edit-user-form input {
+.edit-user-form input,
+.edit-user-form select {
     padding: 12px 14px;
     border-radius: var(--unstoppable-radius-sm);
     border: 2px solid rgba(168, 85, 247, 0.2);
@@ -433,7 +470,8 @@
     transition: all 0.2s ease;
 }
 
-.edit-user-form input:focus {
+.edit-user-form input:focus,
+.edit-user-form select:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.15);
@@ -494,7 +532,7 @@
 }
 
 .modal.admin-mode .user-list-header {
-    grid-template-columns: 2fr 1fr 1fr 1.2fr;
+    grid-template-columns: 2fr 1fr 0.7fr 1fr 1.2fr;
 }
 
 .sort-header {

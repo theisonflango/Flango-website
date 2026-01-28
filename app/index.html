@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="css/products.css">
     <link rel="stylesheet" href="css/users.css">
     <link rel="stylesheet" href="css/features.css">
+    <link rel="stylesheet" href="css/events.css">
     <link rel="stylesheet" href="mobile.css">
     <!-- Theme: flango-unstoppable (only active theme - CSS loaded dynamically by theme-loader.js) -->
     <!-- DISABLED: pos-pro.css not in use -->
@@ -42,11 +43,65 @@
             width: 90%;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
+        .settings-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .settings-modal-title {
+            flex: 1;
+            margin: 0;
+            font-size: 1.25rem;
+            text-align: center;
+        }
+        .modal-back-btn-universal {
+            flex-shrink: 0;
+            min-width: 80px;
+            display: inline-flex;
+            align-items: center;
+            background: none;
+            border: none;
+            color: var(--primary-color, #4a90d9);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 6px 8px;
+            text-align: left;
+            border-radius: 8px;
+            transition: background 0.15s, color 0.15s;
+        }
+        .modal-back-btn-universal:hover {
+            background: rgba(74, 144, 217, 0.08);
+        }
+        .settings-modal-close-btn {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .settings-modal-close-btn:hover {
+            background: #f3f4f6;
+        }
+        .sugar-policy-settings-disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
         .settings-modal-content {
             display: flex;
             flex-direction: column;
             gap: 8px;
             margin-bottom: 12px;
+        }
+        .settings-modal-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
         }
         .settings-item-btn {
             width: 100%;
@@ -55,6 +110,266 @@
             border: none;
             text-align: left;
             cursor: pointer;
+        }
+        /* Payment Method Cards */
+        .payment-method-card {
+            background: #ffffff;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            transition: all 0.2s ease;
+        }
+        .payment-method-card.enabled {
+            border-color: var(--primary-color, #2196F3);
+            background: #f8f9ff;
+        }
+        .payment-method-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .payment-method-toggle {
+            width: 48px;
+            height: 28px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .payment-method-toggle input[type="checkbox"] {
+            width: 100%;
+            height: 100%;
+            appearance: none;
+            background: #ccc;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+            position: relative;
+        }
+        .payment-method-toggle input[type="checkbox"]:checked {
+            background: #4CAF50;
+        }
+        .payment-method-toggle input[type="checkbox"]::after {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: white;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .payment-method-toggle input[type="checkbox"]:checked::after {
+            transform: translateX(20px);
+        }
+        .payment-method-info {
+            flex: 1;
+        }
+        .payment-method-title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .payment-method-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+        }
+        .payment-method-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .badge-green {
+            background: #4CAF50;
+            color: white;
+        }
+        .badge-dark-green {
+            background: #2E7D32;
+            color: white;
+        }
+        .badge-blue {
+            background: #2196F3;
+            color: white;
+        }
+        .badge-orange {
+            background: #FF9800;
+            color: white;
+        }
+        .badge-red {
+            background: #f44336;
+            color: white;
+        }
+        .badge-gray {
+            background: #757575;
+            color: white;
+        }
+        .payment-method-badges {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .payment-method-summary {
+            font-size: 15px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        .payment-method-expand {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary-color, #2196F3);
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 12px;
+            display: none; /* Skjult indtil "more" tekst tilføjes */
+        }
+        .payment-method-expand.visible {
+            display: block !important;
+        }
+        .payment-method-details {
+            display: block;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            font-size: 13px;
+            color: #555;
+            line-height: 1.6;
+        }
+        .payment-method-more {
+            display: none;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            font-size: 13px;
+            color: #555;
+            line-height: 1.6;
+        }
+        .payment-method-more.expanded {
+            display: block;
+        }
+        .payment-method-fee-policy {
+            display: block;
+            margin-top: 12px;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            opacity: 0.6;
+            transition: opacity 0.2s ease;
+        }
+        .payment-method-card.enabled .payment-method-fee-policy {
+            opacity: 1;
+        }
+        .payment-method-fee-policy input[type="radio"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .payment-method-fee-policy label:has(input[type="radio"]:disabled) {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .fee-policy-radio {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .fee-policy-radio label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .fee-policy-tooltip {
+            position: relative;
+            display: inline-block;
+            margin-left: 6px;
+        }
+        .fee-policy-tooltip-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #2196F3;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            cursor: help;
+        }
+        .fee-policy-tooltip-content {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            padding: 10px;
+            background: #333;
+            color: white;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: normal;
+            width: 250px;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            line-height: 1.6;
+        }
+        .fee-policy-tooltip:hover .fee-policy-tooltip-content,
+        .payment-method-more .fee-policy-tooltip:hover .fee-policy-tooltip-content {
+            display: block;
+        }
+        .stripe-status-section {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        .stripe-mode-label {
+            font-size: 13px;
+            color: #666;
+        }
+        .stripe-mode-label strong {
+            color: #333;
+            font-weight: 600;
+        }
+        .stripe-mode-option:has(input[name="stripe-mode"]:checked) {
+            border-color: var(--primary-color, #2196F3);
+            background: #f0f7ff;
+        }
+        .stripe-mode-option:has(input[name="stripe-mode"]:checked) .font-weight-600 {
+            color: var(--primary-color, #2196F3);
+        }
+        .payment-method-config-btn {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: var(--primary-color, #2196F3);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .payment-method-config-btn:hover {
+            opacity: 0.9;
+        }
+        .payment-warning {
+            padding: 12px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #856404;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -120,6 +435,7 @@
             <div id="logged-in-user"></div>
         </div>
         <div id="products-area">
+            <div id="cafe-event-strip"></div>
             <div id="product-reorder-hint" class="product-reorder-hint">
               Træk i produkter for at ændre placering. Tryk ENTER for at fortsætte.
             </div>
@@ -175,6 +491,7 @@
     <div id="balance-modal" class="modal"></div>
     <div id="edit-user-detail-modal" class="modal"></div>
     <div id="assign-badge-modal" class="modal"></div>
+    <div id="event-admin-modal" class="modal"></div>
     <div id="db-history-modal" class="modal"></div>
     <div id="auto-import-modal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 520px;">
@@ -208,6 +525,10 @@
                     <div class="auto-import-mapping-row">
                         <label for="auto-import-field-balance">Saldo</label>
                         <select id="auto-import-field-balance"></select>
+                    </div>
+                    <div class="auto-import-mapping-row">
+                        <label for="auto-import-field-grade">Klasse (valgfrit)</label>
+                        <select id="auto-import-field-grade"><option value="">(Ingen)</option></select>
                     </div>
                     <div id="auto-import-preview" class="auto-import-preview"></div>
                 </div>
@@ -255,7 +576,7 @@
                 <input type="date" id="history-end-date" autocomplete="off" spellcheck="false" autocapitalize="off">
             </div>
             <div class="modal-controls" style="padding-top: 15px;">
-                <input type="text" id="search-history-input" placeholder="Søg efter kunde..." autocomplete="off" spellcheck="false" autocapitalize="off">
+                <input type="text" id="search-history-input" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off">
             </div>
             <div class="history-scroll-container">
                 <div id="sales-summary"></div>
@@ -300,18 +621,16 @@
                     <input type="checkbox" id="sugar-policy-enabled-toggle" style="width: 20px; height: 20px; cursor: pointer;">
                     <span id="sugar-policy-enabled-label" style="font-weight: 600; font-size: 16px;">Sukkerpolitik er slået FRA</span>
                 </div>
-                <div id="sugar-policy-settings" style="display: none; padding-top: 15px; border-top: 1px solid #eee;">
+                <div id="sugar-policy-settings" class="sugar-policy-settings-row" style="padding-top: 15px; border-top: 1px solid #eee;">
                     <div style="display: flex; flex-direction: column; gap: 15px;">
-                        <!-- Maks antal af hver slags -->
-                        <label style="display: block; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                        <label class="sugar-policy-max-row" style="display: block; padding: 12px; background: #f8f9fa; border-radius: 8px;">
                             <div style="display: flex; align-items: center; margin-bottom: 8px;">
                                 <input type="checkbox" id="sugar-policy-max-per-product-enabled" style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px;">
                                 <strong style="cursor: pointer; font-size: 14px;">Maks af hver usund vare/dag</strong>
                             </div>
                             <input type="number" id="sugar-policy-max-per-product" min="0" step="1" placeholder="1" style="width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
                         </label>
-                        <!-- Maks antal usunde produkter totalt -->
-                        <label style="display: block; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                        <label class="sugar-policy-max-row" style="display: block; padding: 12px; background: #f8f9fa; border-radius: 8px;">
                             <div style="display: flex; align-items: center; margin-bottom: 8px;">
                                 <input type="checkbox" id="sugar-policy-max-unhealthy-enabled" style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px;">
                                 <strong style="cursor: pointer; font-size: 14px;">Maks usunde produkter/dag</strong>
@@ -449,15 +768,75 @@
         </div>
     </div>
 
-    <div id="parent-portal-settings-modal" class="modal" style="display: none;">
-        <div class="modal-content">
+    <!-- Parent Portal Settings Menu (3-button menu) -->
+    <div id="parent-portal-settings-modal" class="settings-modal-backdrop" style="display: none;">
+        <div class="settings-modal" style="max-width: 600px;">
+            <h2 id="parent-portal-settings-title">Forældreportalen</h2>
+            <div id="parent-portal-settings-content" class="settings-modal-content">
+                <button id="parent-portal-payment-methods-btn" class="settings-item-btn">
+                    <strong>Optankning / Betalingsmetoder</strong>
+                    <div style="font-size: 12px; margin-top: 2px;">Konfigurer hvordan forældre kan indbetale</div>
+                </button>
+                <button id="parent-portal-features-btn" class="settings-item-btn">
+                    <strong>Aktive funktioner på forældreportalen</strong>
+                    <div style="font-size: 12px; margin-top: 2px;">Vælg hvilke funktioner forældre kan bruge</div>
+                </button>
+                <button id="parent-portal-codes-menu-btn" class="settings-item-btn">
+                    <strong>Forældreportal-koder</strong>
+                    <div style="font-size: 12px; margin-top: 2px;">Administrer adgangskoder til forældreportalen</div>
+                </button>
+            </div>
+            <div class="settings-modal-actions">
+                <button id="back-to-preferences-parent-portal-btn" class="settings-button">← Tilbage</button>
+                <button id="parent-portal-settings-close" class="settings-button">Luk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal #1: Optankning / Betalingsmetoder -->
+    <div id="parent-portal-payment-methods-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px; max-height: 90vh;">
             <div class="modal-header">
-                <h2>Forældreportalen</h2>
+                <h2>Optankning / Betalingsmetoder</h2>
                 <span class="close-btn">&times;</span>
             </div>
-            <div class="modal-user-list">
+            <div class="modal-user-list" style="padding: 20px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 20px; line-height: 1.5;">
+                    Kommuner og institutioner har forskellige aftaler med betalingsudbydere. Her kan I vælge de metoder, der passer bedst til jeres institution. Kontakt skolens sekretær eller kommunens økonomiafdeling, hvis I er i tvivl om, hvilke aftaler I har adgang til.
+                </p>
+                <div id="payment-admin-fee-section" style="margin-bottom: 24px; padding: 16px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 6px;">Administrationsomkostning ved indbetaling</div>
+                    <div style="font-size: 12px; color: #666; margin-bottom: 12px;">Den valgte bestemmer, hvordan priser beregnes på forældreportalen ved indbetalinger.</div>
+                    <div class="fee-policy-radio" style="display: flex; flex-direction: column; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                            <input type="radio" name="admin-fee-payer" value="institution" style="width: 18px; height: 18px; cursor: pointer;">
+                            <span>Institutionen betaler administrationsomkostningen</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                            <input type="radio" name="admin-fee-payer" value="parent" style="width: 18px; height: 18px; cursor: pointer;">
+                            <span>Forældre betaler administrationsomkostningen (vises tydeligt ved betaling)</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="payment-methods-list"></div>
+                <div id="payment-methods-warnings" style="margin-top: 20px;"></div>
+                <div style="padding: 20px 0 0 0; display: flex; justify-content: space-between; gap: 10px;">
+                    <button id="back-to-parent-portal-menu-btn" style="padding: 12px 40px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">← Tilbage</button>
+                    <button id="save-payment-methods-btn" class="btn-primary" style="padding: 12px 40px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">GEM</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal #2: Aktive funktioner på forældreportalen -->
+    <div id="parent-portal-features-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Aktive funktioner på forældreportalen</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-user-list" style="padding: 20px;">
                 <div class="settings-section">
-                    <h3>Aktive funktioner på forældreportalen</h3>
                     <div style="padding: 15px;">
                         <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
                             <input type="checkbox" id="parent-portal-email-notifications" style="margin-right: 12px; cursor: pointer;" checked>
@@ -527,65 +906,73 @@
                         </label>
                     </div>
                 </div>
+                <div style="padding: 20px 0 0 0; display: flex; justify-content: space-between; gap: 10px;">
+                    <button id="back-to-parent-portal-menu-features-btn" style="padding: 12px 40px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">← Tilbage</button>
+                    <button id="save-parent-portal-features-btn" class="btn-primary" style="padding: 12px 40px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">GEM</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                <div class="settings-section" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
-                    <h3>Optankning / Betalingsmetoder</h3>
-                    <p style="font-size: 12px; color: #666; margin-top: 4px; margin-bottom: 15px;">Vælg hvordan forældre kan fylde penge på barnets saldo. Kun de valgte muligheder vises i forældreportalen.</p>
-                    <div style="padding: 0 15px 15px 15px;">
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="topup-cash-enabled" style="margin-right: 12px; cursor: pointer;">
+    <!-- Stripe Onboarding Modal -->
+    <div id="stripe-onboarding-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Stripe Connect Opsætning</h2>
+                <span class="close-btn" id="stripe-onboarding-close">&times;</span>
+            </div>
+            <div class="modal-user-list" style="padding: 20px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 20px; line-height: 1.5;">
+                    Vælg om I vil bruge test- eller live-mode til Stripe Connect. Test-mode anbefales til at starte med.
+                </p>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">
+                        Vælg mode:
+                    </label>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label class="stripe-mode-option" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; transition: all 0.2s;">
+                            <input type="radio" name="stripe-mode" value="test" checked style="cursor: pointer;">
                             <div>
-                                <strong>Kontant indbetaling</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre afleverer kontanter til personalet. Saldoen opdateres manuelt.</div>
+                                <div class="font-weight-600" style="font-weight: 600;">Test mode</div>
+                                <div style="font-size: 12px; color: #666;">Anbefalet til at starte med. Ingen rigtige betalinger.</div>
                             </div>
                         </label>
-
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="topup-qr-enabled" style="margin-right: 12px; cursor: pointer;">
+                        <label class="stripe-mode-option" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; transition: all 0.2s;">
+                            <input type="radio" name="stripe-mode" value="live" style="cursor: pointer;">
                             <div>
-                                <strong>MobilePay QR</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre betaler via MobilePay QR. Saldoen opdateres efter godkendelse af personalet.</div>
-                            </div>
-                        </label>
-
-                        <div id="topup-qr-image-section" style="display: none; margin-left: 32px; margin-bottom: 15px; padding: 12px; background: #f5f5f5; border-radius: 8px;">
-                            <label style="display: block; margin-bottom: 8px;">
-                                <strong style="font-size: 13px;">MobilePay QR-billede</strong>
-                                <div style="font-size: 11px; color: #666; margin-top: 2px;">Upload eller indsæt URL til jeres MobilePay QR-kode</div>
-                            </label>
-                            <input type="text" id="topup-qr-image-url" placeholder="https://... eller vælg fil nedenfor" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 8px;">
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <label style="padding: 8px 16px; background: #e0e0e0; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                                    Vælg billede...
-                                    <input type="file" id="topup-qr-image-file" accept="image/*" style="display: none;">
-                                </label>
-                                <img id="topup-qr-image-preview" src="" alt="QR Preview" style="max-width: 60px; max-height: 60px; border-radius: 4px; display: none;">
-                            </div>
-                        </div>
-
-                        <label style="display: flex; align-items: flex-start; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="topup-portal-enabled" style="margin-right: 12px; cursor: pointer; margin-top: 3px;">
-                            <div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <strong>Tank op i portalen (automatisk)</strong>
-                                    <span style="background: linear-gradient(135deg, #4CAF50, #45a049); color: white; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600;">ANBEFALET</span>
-                                </div>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan tanke op direkte i forældreportalen. Saldoen opdateres med det samme.</div>
+                                <div class="font-weight-600" style="font-weight: 600;">Live mode</div>
+                                <div style="font-size: 12px; color: #666;">Rigtige betalinger. Kræver fuld verifikation.</div>
                             </div>
                         </label>
                     </div>
                 </div>
+                <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 20px;">
+                    <button id="stripe-onboarding-cancel" style="padding: 12px 24px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Annuller</button>
+                    <button id="stripe-onboarding-save" class="btn-primary" style="padding: 12px 24px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">Start opsætning</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                <div class="settings-section" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
-                    <button id="parent-portal-codes-btn-inside" class="settings-item-btn" style="margin-bottom: 15px;">
-                        <strong>Forældre Portal Koder</strong>
-                        <div style="font-size: 12px; margin-top: 2px;">Administrer adgangskoder til forældreportalen</div>
+    <!-- Modal #3: Forældreportal-koder -->
+    <div id="parent-portal-codes-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Forældreportal-koder</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-user-list" style="padding: 20px;">
+                <div id="parent-portal-codes-content">
+                    <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                        Her kan I administrere adgangskoder til forældreportalen. Hver familie får en unik kode, som de bruger til at logge ind.
+                    </p>
+                    <button id="parent-portal-codes-admin-btn" class="settings-item-btn" style="width: 100%; margin-bottom: 15px;">
+                        <strong>Administrer Forældreportal-koder</strong>
+                        <div style="font-size: 12px; margin-top: 2px;">Åbn administrationsvinduet for at se og administrere alle koder</div>
                     </button>
                 </div>
-
-                <div style="padding: 20px; display: flex; justify-content: space-between; gap: 10px;">
-                    <button id="back-to-preferences-parent-portal-btn" style="padding: 12px 40px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">← Tilbage</button>
-                    <button id="save-parent-portal-settings-btn" class="btn-primary" style="padding: 12px 40px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">GEM</button>
+                <div style="padding: 20px 0 0 0; display: flex; justify-content: flex-start;">
+                    <button id="back-to-parent-portal-menu-codes-btn" style="padding: 12px 40px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">← Tilbage</button>
                 </div>
             </div>
         </div>
@@ -713,9 +1100,14 @@
 
             <!-- Delt Filter/Dato sektion for Oversigt og Transaktioner -->
             <div id="shared-history-controls" style="display: none;">
-                <div class="report-buttons">
+                <div class="report-buttons" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
                     <button id="history-filter-btn-shared" class="action-button btn-filter" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Filter</button>
                     <button id="filter-deposits-btn-shared" class="action-button" style="background-color: var(--secondary-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Vis Kun Indbetalinger</button>
+                    <button id="select-user-history-btn-shared" class="action-button" style="background-color: var(--primary-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0; white-space: nowrap;">👤 Vælg Bruger</button>
+                    <span id="selected-user-badge-shared" style="display: none; padding: 8px 12px; font-size: 14px; background-color: #e0e7ff; color: #3730a3; border-radius: 6px; white-space: nowrap;">
+                        <span id="selected-user-name-shared"></span>
+                        <button id="clear-user-filter-btn-shared" style="margin-left: 8px; background: none; border: none; color: #3730a3; cursor: pointer; font-size: 16px; font-weight: bold; padding: 0;">×</button>
+                    </span>
                     <button id="print-negative-balance-btn-shared" class="action-button" style="background-color: var(--warning-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem Negativ Saldo</button>
                     <button id="print-report-btn-shared" class="action-button" style="background-color: var(--success-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem Rapport</button>
                     <button id="print-all-balances-btn-shared" class="action-button btn-all-balances" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem liste med alle saldoer</button>
@@ -742,7 +1134,7 @@
                     <input type="date" id="history-end-date-shared" autocomplete="off" spellcheck="false" autocapitalize="off">
                 </div>
                 <div class="modal-controls" style="padding-top: 15px;">
-                    <input type="text" id="search-history-input-shared" placeholder="Søg efter kunde..." autocomplete="off" spellcheck="false" autocapitalize="off">
+                    <input type="text" id="search-history-input-shared" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off">
                 </div>
             </div>
 
@@ -884,7 +1276,7 @@
 
     <template id="login-modal-template"><div class="modal-content"><div class="modal-header"><h2>Login</h2><span class="close-btn">&times;</span></div><div class="modal-controls" style="flex-direction: column; gap: 10px;"><input type="email" id="login-email-input" placeholder="E-mail" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" autocomplete="off"><input type="password" id="login-password-input" placeholder="Adgangskode" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" autocomplete="new-password"><button id="perform-login-btn" class="action-button" style="background-color: var(--success-color); margin-top: 10px; margin-bottom: 0;">Log ind</button><button id="developer-login-btn" class="action-button" style="background-color: var(--warning-color); margin-top: 10px; margin-bottom: 0;">Developer Login</button><p id="login-error-msg" style="color: var(--danger-color); text-align: center; display: none; margin-top: 10px;"></p></div></div></template>
     <template id="user-modal-template"><div class="modal-content"><div class="modal-header"><h2 id="user-modal-title">Vælg en kunde</h2><div id="user-filter-buttons" class="user-filter-buttons" style="display: none;"><button id="filter-all-btn" class="filter-btn active">Vis Alle</button><button id="filter-children-btn" class="filter-btn">Vis Børn</button><button id="filter-adults-btn" class="filter-btn">Vis Voksne</button></div><span class="close-btn">&times;</span></div><div id="admin-controls-modal"></div><div class="modal-controls"><input type="text" id="search-user-input" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="user-list-header"><div id="sort-by-name-btn" class="sort-header active">Navn</div><div id="sort-by-number-btn" class="sort-header">Nummer</div><div id="sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handling</div></div><div id="modal-user-list" class="modal-user-list"></div></div></template>
-    <template id="admin-user-manager-modal-template"><div class="modal-content"><div class="modal-header"><h2>Rediger Brugere</h2><span class="close-btn">&times;</span></div><div id="admin-rules-inline" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.06), rgba(255, 255, 255, 0.98)); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 12px 15px; margin-bottom: 12px;"><div style="font-weight: 600; font-size: 13px; color: #6b21a8; margin-bottom: 10px;">Admin Regler</div><label style="display: flex; align-items: center; margin-bottom: 10px; cursor: pointer; font-size: 13px;"><input type="checkbox" id="admin-rules-show-admins-inline" style="margin-right: 10px; cursor: pointer;"><div><strong>Vis Admins i 'Vælg Bruger' listen</strong><div style="font-size: 11px; color: #666; margin-top: 2px;">Voksne kan vælges som kunder i caféen</div></div></label><label style="display: flex; align-items: center; cursor: pointer; font-size: 13px;"><input type="checkbox" id="admin-rules-admins-free-inline" style="margin-right: 10px; cursor: pointer;"><div><strong>Admins skal ikke betale</strong><div style="font-size: 11px; color: #666; margin-top: 2px;">Voksne køber for 0 kr (registreres stadig i historik)</div></div></label></div><div id="admin-controls-modal"><button id="add-user-btn-modal" class="action-button admin-btn" style="margin-bottom: 10px;">➕ Tilføj Ny Bruger</button><button id="auto-import-open-btn" class="action-button admin-btn" style="margin-bottom: 10px;">Opret/Opdater automatisk</button></div><div class="modal-controls"><input type="text" id="admin-search-user-input" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="user-list-header"><div id="admin-sort-by-name-btn" class="sort-header active">Navn</div><div id="admin-sort-by-number-btn" class="sort-header">Nummer</div><div id="admin-sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handlinger</div></div><div id="admin-modal-user-list" class="modal-user-list"></div></div></template>
+    <template id="admin-user-manager-modal-template"><div class="modal-content"><div class="modal-header"><h2>Rediger Brugere</h2><span class="close-btn">&times;</span></div><div id="admin-rules-inline" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.06), rgba(255, 255, 255, 0.98)); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 12px 15px; margin-bottom: 12px;"><div style="font-weight: 600; font-size: 13px; color: #6b21a8; margin-bottom: 10px;">Admin Regler</div><label style="display: flex; align-items: center; margin-bottom: 10px; cursor: pointer; font-size: 13px;"><input type="checkbox" id="admin-rules-show-admins-inline" style="margin-right: 10px; cursor: pointer;"><div><strong>Vis Admins i 'Vælg Bruger' listen</strong><div style="font-size: 11px; color: #666; margin-top: 2px;">Voksne kan vælges som kunder i caféen</div></div></label><label style="display: flex; align-items: center; cursor: pointer; font-size: 13px;"><input type="checkbox" id="admin-rules-admins-free-inline" style="margin-right: 10px; cursor: pointer;"><div><strong>Admins skal ikke betale</strong><div style="font-size: 11px; color: #666; margin-top: 2px;">Voksne køber for 0 kr (registreres stadig i historik)</div></div></label></div><div id="admin-controls-modal"><button id="add-user-btn-modal" class="action-button admin-btn" style="margin-bottom: 10px;">➕ Tilføj Ny Bruger</button><button id="auto-import-open-btn" class="action-button admin-btn" style="margin-bottom: 10px;">Opret/Opdater automatisk</button></div><div class="modal-controls"><input type="text" id="admin-search-user-input" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="user-list-header"><div id="admin-sort-by-name-btn" class="sort-header active">Navn</div><div id="admin-sort-by-number-btn" class="sort-header">Nummer</div><div id="admin-sort-by-grade-btn" class="sort-header">Klasse</div><div id="admin-sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handlinger</div></div><div id="admin-modal-user-list" class="modal-user-list"></div></div></template>
     <template id="avatar-picker-modal-template"><div class="modal-content"><div class="modal-header"><h2>Min Flango Status</h2><span class="close-btn">&times;</span></div><div id="avatar-picker-scroll-wrapper">
         <div id="avatar-picker-summary"></div>
         <hr style="margin: 15px 0; border-color: #eee;">
@@ -893,7 +1285,7 @@
     <template id="add-edit-product-modal-template"><div class="modal-content" style="height: auto; max-height: 90%; display: flex; flex-direction: column;"><div class="modal-header"><h2 id="product-form-title">Tilføj Produkt</h2><span class="close-btn">&times;</span></div><div id="product-form-fields" style="overflow-y: auto; flex: 1; padding-right: 10px;"></div><button id="save-product-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0; flex-shrink: 0;">Gem Produkt</button></div></template>
     <template id="quick-login-modal-template"><div class="modal-content"><div class="modal-header"><h2>Hvem er du?</h2><span class="close-btn">&times;</span></div><div id="quick-login-user-list" class="modal-user-list"></div><p id="quick-login-error-msg" style="color: var(--danger-color); text-align: center; display: none; margin-top: 10px;"></p></div></template>
     <template id="add-edit-user-modal-template"><div class="modal-content" style="height: auto; max-height: 90%;"><div class="modal-header"><h2 id="user-form-title">Tilføj Ny Bruger</h2><span class="close-btn">&times;</span></div><div id="user-form-fields"></div><button id="save-user-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0;">Gem Bruger</button></div></template><template id="balance-modal-template"><div class="modal-content" style="height: auto; max-width: 400px;"><div class="modal-header"><h2 id="balance-form-title">Rediger Saldo</h2><span class="close-btn">&times;</span></div><div id="balance-form-fields"></div><button id="save-balance-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0;">Gem</button></div></template>
-    <template id="edit-user-detail-modal-template"><div class="modal-content edit-user-modal"><div class="modal-header"><h2 id="edit-user-detail-title">Rediger Bruger</h2><span class="close-btn">&times;</span></div><div class="edit-user-form"><p id="edit-user-balance-display" class="balance-display"></p><div class="form-group"><label for="edit-user-name-input">Brugernavn</label><input type="text" id="edit-user-name-input" placeholder="Fx. Sofie Hansen" autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="form-group"><label for="edit-user-number-input">Brugernummer</label><input type="text" id="edit-user-number-input" placeholder="Fx. 1234" autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="form-group"><label for="edit-user-deposit-input">Indbetal Penge</label><div class="inline-input-row"><input type="number" id="edit-user-deposit-input" placeholder="Beløb" step="0.01" autocomplete="off" spellcheck="false" autocapitalize="off"><div class="preset-buttons"><button type="button" class="preset-btn" data-amount="50">+50</button><button type="button" class="preset-btn" data-amount="100">+100</button><button type="button" class="preset-btn" data-amount="150">+150</button><button type="button" class="preset-btn" data-amount="200">+200</button></div></div></div><div class="form-row"><div class="form-group half"><label for="edit-user-balance-input">Sæt Ny Saldo</label><input type="number" id="edit-user-balance-input" placeholder="Fx. 250" step="0.01" autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="form-group half"><label for="edit-user-pin-input">Ny PIN (4 cifre)</label><input type="text" id="edit-user-pin-input" placeholder="1234" maxlength="4" autocomplete="off" spellcheck="false" autocapitalize="off"></div></div><div class="form-group"><label>Badge</label><div class="badge-row"><span id="current-badge-label">Ingen badge</span><button type="button" id="assign-badge-btn" class="action-button secondary-action">Tildel Badge</button></div><p id="assign-badge-note" class="assign-badge-note" style="display:none;"></p><div id="edit-user-badge-display" class="simple-badge-row compact"></div></div></div><div class="modal-actions"><button id="save-edit-user-btn" class="action-button" style="width:100%;">Gem</button><button id="delete-edit-user-btn" class="action-button" style="width:100%; background-color: var(--danger-color); margin-top: 10px;">Slet Bruger</button></div></div></template>
+    <template id="edit-user-detail-modal-template"><div class="modal-content edit-user-modal"><div class="modal-header"><h2 id="edit-user-detail-title">Rediger Bruger</h2><span class="close-btn">&times;</span></div><div class="edit-user-form"><p id="edit-user-balance-display" class="balance-display"></p><div class="form-group"><label for="edit-user-name-input">Brugernavn</label><input type="text" id="edit-user-name-input" placeholder="Fx. Sofie Hansen" autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="form-group"><label for="edit-user-number-input">Brugernummer</label><input type="text" id="edit-user-number-input" placeholder="Fx. 1234" autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="form-group"><label for="edit-user-grade-level">Klasse</label><select id="edit-user-grade-level"><option value="">Ikke angivet</option><option value="0">0. klasse</option><option value="1">1. klasse</option><option value="2">2. klasse</option><option value="3">3. klasse</option><option value="4">4. klasse</option><option value="5">5. klasse</option><option value="6">6. klasse</option><option value="7">7. klasse</option><option value="8">8. klasse</option><option value="9">9. klasse</option></select></div><div class="form-group"><label for="edit-user-deposit-input">Indbetal Penge</label><div class="inline-input-row"><input type="number" id="edit-user-deposit-input" placeholder="Beløb" step="0.01" autocomplete="off" spellcheck="false" autocapitalize="off"><div class="preset-buttons"><button type="button" class="preset-btn" data-amount="50">+50</button><button type="button" class="preset-btn" data-amount="100">+100</button><button type="button" class="preset-btn" data-amount="150">+150</button><button type="button" class="preset-btn" data-amount="200">+200</button></div></div></div><div class="form-row"><div class="form-group half"><label for="edit-user-balance-input">Sæt Ny Saldo</label><input type="number" id="edit-user-balance-input" placeholder="Fx. 250" step="0.01" autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="form-group half"><label for="edit-user-pin-input">Ny PIN (4 cifre)</label><input type="text" id="edit-user-pin-input" placeholder="1234" maxlength="4" autocomplete="off" spellcheck="false" autocapitalize="off"></div></div><div class="form-group"><label>Badge</label><div class="badge-row"><span id="current-badge-label">Ingen badge</span><button type="button" id="assign-badge-btn" class="action-button secondary-action">Tildel Badge</button></div><p id="assign-badge-note" class="assign-badge-note" style="display:none;"></p><div id="edit-user-badge-display" class="simple-badge-row compact"></div></div></div><div class="modal-actions"><button id="save-edit-user-btn" class="action-button" style="width:100%;">Gem</button><button id="delete-edit-user-btn" class="action-button" style="width:100%; background-color: var(--danger-color); margin-top: 10px;">Slet Bruger</button></div></div></template>
     <template id="assign-badge-modal-template"><div class="modal-content assign-badge-modal"><div class="modal-header"><h2 id="assign-badge-title">Tildel Badge</h2><span class="close-btn">&times;</span></div><div class="badge-category-list">
         <details class="badge-section" open>
             <summary>Faglige &amp; praktiske kompetencer 🧠</summary>
@@ -972,6 +1364,7 @@
             </div>
         </details>
     </div></div></template>
+    <template id="event-admin-modal-template"><div class="modal-content event-admin-modal"><div class="modal-header event-admin-header"><button id="event-admin-back-btn" class="event-back-btn event-admin-back-hidden" type="button">← Tilbage</button><h2 id="event-admin-title" class="event-admin-title">Arrangementer</h2><span class="close-btn">&times;</span></div><div id="event-list-view" class="event-view"><div class="event-filter-bar"><button id="event-filter-active" class="event-filter-btn active" data-filter="active">Kommende</button><button id="event-filter-past" class="event-filter-btn" data-filter="past">Afsluttede</button><button id="event-filter-cancelled" class="event-filter-btn" data-filter="cancelled">Aflyste</button><button id="event-create-btn" class="event-create-btn">+ Opret Arrangement</button></div><div id="event-list-container" class="event-list-container"></div><div id="event-list-empty" class="event-list-empty" style="display:none;"><p>Ingen arrangementer fundet.</p></div></div><div id="event-detail-view" class="event-view" style="display:none;"><div id="event-detail-header" class="event-detail-header"></div><div id="event-detail-summary" class="event-detail-summary"></div><div id="event-detail-actions" class="event-detail-actions"></div><h4 class="event-reg-list-header">Tilmeldte brugere</h4><div id="event-reg-list" class="event-reg-list"></div></div><div id="event-form-view" class="event-view" style="display:none;"><h3 id="event-form-subtitle">Opret Arrangement</h3><div class="event-form"><input type="text" id="event-form-title" placeholder="Titel *" required><textarea id="event-form-description" placeholder="Beskrivelse (valgfrit)" rows="3"></textarea><input type="number" id="event-form-price" placeholder="Pris (kr.)" step="0.01" value="0.00"><input type="number" id="event-form-capacity" placeholder="Kapacitet (tom = ubegr&#230;nset)" min="1"><label style="font-size:13px;color:#666;">Startdato og -tid *</label><input type="datetime-local" id="event-form-start" required><label style="font-size:13px;color:#666;">Slutdato og -tid (valgfrit)</label><input type="datetime-local" id="event-form-end"><div class="event-class-section"><label style="font-size:13px;color:#666;">Tilladt klasse (ingen valgt = alle)</label><div id="event-form-classes" class="event-class-checkboxes"></div></div><div class="event-form-actions"><button id="event-form-save-btn" class="event-save-btn">Gem</button><button id="event-form-cancel-btn" class="event-cancel-btn">Annuller</button></div></div></div></div></template>
 
     <!-- DISABLED: Theme picker (flango-unstoppable is the only active theme) -->
     <!--
@@ -996,14 +1389,13 @@
     <!-- Indstillinger modal -->
     <div id="settings-modal-backdrop" class="settings-modal-backdrop" style="display:none;">
         <div class="settings-modal">
-            <h2 id="settings-modal-title">Indstillinger</h2>
-
+            <div class="settings-modal-header">
+                <button id="settings-modal-back-btn" class="modal-back-btn-universal" type="button" style="display:none;">← Tilbage</button>
+                <h2 id="settings-modal-title" class="settings-modal-title">Indstillinger</h2>
+                <button id="settings-modal-close" class="settings-modal-close-btn">Luk</button>
+            </div>
             <div id="settings-modal-content" class="settings-modal-content">
                 <!-- Dynamisk indhold -->
-            </div>
-
-            <div class="settings-modal-actions">
-                <button id="settings-modal-close" class="settings-button">Luk</button>
             </div>
         </div>
     </div>

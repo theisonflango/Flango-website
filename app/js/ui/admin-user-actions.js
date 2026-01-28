@@ -86,7 +86,10 @@ export function createAdminUserActions(options = {}) {
         }
 
         renderAdminUserList();
-        updateSelectedUserInfo(); // Opdater hvis brugeren er valgt
+        // Opdater UI med lille forsinkelse for at sikre alle state-opdateringer er anvendt
+        requestAnimationFrame(() => {
+            updateSelectedUserInfo(); // Opdater hvis brugeren er valgt
+        });
         playSound('balanceUpdate');
         console.log('[handleDeposit] Deposit completed, UI refreshed');
 
