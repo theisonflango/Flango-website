@@ -4702,11 +4702,25 @@
           // NOTE: Denne funktion er kun fallback - get-parent-view returnerer allerede institutions data
           // View'et public_institutions har kun id, name, parent_contact_phone - ikke alle preferences
           // Så denne query vil ikke returnere alle felter, men det er OK da get-parent-view bruges primært
-          const { data, error } = await supabase
+          let { data, error } = await supabase
             .from("public_institutions")
             .select("id, name, parent_contact_phone")
             .eq("id", institutionId)
             .maybeSingle();
+
+          // Fallback hvis view'et ikke findes endnu
+          if (error && (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation') || error.message?.includes('view'))) {
+            const fallbackResult = await supabase
+              .from("institutions")
+              .select("id, name")
+              .eq("id", institutionId)
+              .maybeSingle();
+            
+            if (!fallbackResult.error && fallbackResult.data) {
+              data = fallbackResult.data;
+              error = null;
+            }
+          }
 
           if (error) {
             console.warn("Kunne ikke hente institutions-præferencer:", error);
@@ -5148,18 +5162,59 @@
 
       async function loadInstitutions() {
         try {
-          const { data, error } = await supabase
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:5149',message:'loadInstitutions entry',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          
+          // Prøv først public_institutions view (ny sikker løsning)
+          let { data, error } = await supabase
             .from("public_institutions")
             .select("id, name, parent_contact_phone")
             .order("name", { ascending: true });
       
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:5155',message:'loadInstitutions query result (public_institutions)',data:{hasError:!!error,error:error?.message||null,errorCode:error?.code||null,dataLength:data?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+      
+          // Hvis view'et ikke findes endnu (fx hvis migration ikke er deployed), prøv fallback til institutions
+          if (error && (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation') || error.message?.includes('view'))) {
+            console.warn("public_institutions view findes ikke endnu, prøver fallback til institutions tabellen", error);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:5160',message:'loadInstitutions fallback to institutions',data:{originalError:error?.message||String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
+            
+            // Fallback: Prøv institutions tabellen direkte (hvis RLS tillader det)
+            const fallbackResult = await supabase
+              .from("institutions")
+              .select("id, name")
+              .order("name", { ascending: true });
+            
+            if (!fallbackResult.error && fallbackResult.data && fallbackResult.data.length > 0) {
+              data = fallbackResult.data;
+              error = null;
+              // #region agent log
+              fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:5168',message:'loadInstitutions fallback success',data:{dataLength:data?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+              // #endregion
+            } else {
+              // #region agent log
+              fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:5171',message:'loadInstitutions fallback also failed',data:{fallbackError:fallbackResult.error?.message||String(fallbackResult.error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+              // #endregion
+            }
+          }
+      
           if (error) {
             console.error("Fejl ved hentning af institutioner", error);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:5176',message:'loadInstitutions final error',data:{error:error?.message||String(error),code:error?.code||null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
             return;
           }
       
           // Ingen institutioner
           if (!data || data.length === 0) {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:5162',message:'loadInstitutions no data path',data:{dataLength:data?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
             institutionSelect.innerHTML =
               '<option value="">Ingen institutioner tilgængelige</option>';
             if (institutionRow) institutionRow.style.display = "block";
