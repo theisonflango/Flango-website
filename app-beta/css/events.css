@@ -884,6 +884,15 @@
     gap: 4px;
 }
 
+.cafe-event-days {
+    font-size: 10px;
+    color: #6b7280;
+    white-space: nowrap;
+}
+.cafe-event-card.registered .cafe-event-days {
+    color: #15803d;
+}
+
 .cafe-event-datetime {
     font-size: 10px;
     color: #6b7280;

@@ -154,6 +154,42 @@ body[data-theme="pastel-pop"] .toolbar-gear-menu {
     text-align: left;
     cursor: pointer;
 }
+.settings-modal-content .settings-item-btn:has(.settings-item-icon) {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.settings-modal-content .settings-item-btn .settings-item-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.04);
+}
+.settings-modal-content .settings-item-btn .settings-item-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.settings-modal-content .settings-item-btn .settings-item-icon .settings-item-icon-emoji {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+.settings-modal-content .settings-item-btn .settings-item-text {
+    flex: 1;
+    min-width: 0;
+}
+.settings-modal-content .settings-item-btn .settings-item-text .settings-item-desc {
+    font-size: 12px;
+    margin-top: 2px;
+    font-weight: normal;
+    opacity: 0.85;
+}
 
 .toggle-row {
     display: flex;

@@ -10,7 +10,7 @@ import {
     cafePayExistingRegistration,
     formatTime,
 } from '../domain/cafe-events.js';
-import { showCustomAlert } from './sound-and-alerts.js';
+import { showCustomAlert, playSound } from './sound-and-alerts.js';
 import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
 
 // ============================================================================
@@ -41,6 +41,20 @@ function formatPriceShort(price) {
     const p = parseFloat(price);
     if (!p || p === 0) return 'Gratis';
     return `${p.toFixed(0)} kr.`;
+}
+
+function formatDaysUntilEvent(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    d.setHours(0, 0, 0, 0);
+    const diffMs = d - today;
+    const days = Math.round(diffMs / (24 * 60 * 60 * 1000));
+    if (days < 0) return '';
+    if (days === 0) return 'I dag';
+    if (days === 1) return 'I morgen';
+    return `Om ${days} dage`;
 }
 
 function renderProgressBar(registered, capacity) {
@@ -104,6 +118,10 @@ function renderStrip(events, container) {
         const priceText = formatPriceShort(event.price);
         const dateText = formatDateShort(event.event_date);
         const timeText = formatTime(event.start_time);
+        const daysText = formatDaysUntilEvent(event.event_date);
+        const datetimeHtml = daysText
+            ? `<span class="cafe-event-days">${daysText}</span> · ${dateText} kl. ${timeText}`
+            : `${dateText} kl. ${timeText}`;
 
         card.innerHTML = `
             <div class="cafe-event-card-top">
@@ -111,7 +129,7 @@ function renderStrip(events, container) {
                 ${badgeHtml}
             </div>
             <div class="cafe-event-card-mid">
-                <span class="cafe-event-datetime">${dateText} kl. ${timeText}</span>
+                <span class="cafe-event-datetime">${datetimeHtml}</span>
                 <span class="cafe-event-price">${priceText}</span>
             </div>
             <div class="cafe-event-card-bottom">
@@ -220,7 +238,11 @@ export async function processEventItemsInCheckout(eventItems, customer) {
             }
 
             processed.push({ item, result: payResult });
-            await showCustomAlert('Betalt', `${escapeHtml(customer.name)} har betalt for "${escapeHtml(item.name)}".`);
+            if (payResult.new_balance !== undefined) playSound('purchase');
+            const balanceLine = payResult.new_balance !== undefined
+                ? `<br><br><strong>Saldo efter betaling: ${Number(payResult.new_balance).toFixed(2)} kr.</strong>`
+                : '';
+            await showCustomAlert('Betalt', `${escapeHtml(customer.name)} har betalt for "${escapeHtml(item.name)}".${balanceLine}`);
             continue;
         }
 
@@ -263,9 +285,13 @@ export async function processEventItemsInCheckout(eventItems, customer) {
 
         processed.push({ item, result });
 
-        // Vis bekræftelse
+        // Vis bekræftelse inkl. saldo når der er betalt; afspil gennemfør-køb-lyd ved betaling
+        if (result.payment_status === 'paid' && result.new_balance !== undefined) playSound('purchase');
         const statusText = isFree ? 'tilmeldt' : result.payment_status === 'paid' ? 'tilmeldt og betalt' : 'tilmeldt (betaling afventer)';
-        await showCustomAlert('Tilmeldt', `${escapeHtml(customer.name)} er ${statusText} til "${escapeHtml(item.name)}".`);
+        const balanceLine = (result.payment_status === 'paid' && result.new_balance !== undefined)
+            ? `<br><br><strong>Saldo efter betaling: ${Number(result.new_balance).toFixed(2)} kr.</strong>`
+            : '';
+        await showCustomAlert('Tilmeldt', `${escapeHtml(customer.name)} er ${statusText} til "${escapeHtml(item.name)}".${balanceLine}`);
     }
 
     // Invalidér cache (strip skjules af purchaseHandler, så refresh er unødvendig her)

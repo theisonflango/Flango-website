@@ -155,6 +155,21 @@ export function setupEventAdminModule(config) {
         loadEventList();
     });
 
+    // Indstil hvordan kommende begivenheder vises i caféen – nederst i modalet
+    const cafeSettingsBtn = document.createElement('button');
+    cafeSettingsBtn.type = 'button';
+    cafeSettingsBtn.className = 'event-create-btn';
+    cafeSettingsBtn.textContent = 'Indstil hvordan kommende begivenheder vises i caféen';
+    cafeSettingsBtn.title = 'Vis arrangementer som mini-kort i caféens produktvisning';
+    cafeSettingsBtn.style.marginTop = 'auto';
+    cafeSettingsBtn.style.marginLeft = '0';
+    cafeSettingsBtn.addEventListener('click', () => {
+        closeModal();
+        window.__flangoSettingsModalPushParent?.(() => window.__flangoOpenEventAdmin?.());
+        window.__flangoOpenCafeEventSettings?.();
+    });
+    listView.appendChild(cafeSettingsBtn);
+
     // ========================================================================
     // Load & render event list
     // ========================================================================

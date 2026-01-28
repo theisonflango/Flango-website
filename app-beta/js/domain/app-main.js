@@ -556,6 +556,18 @@ export async function startApp() {
         allUsers = next;
         window.__flangoAllUsers = next; // Keep window property in sync
         console.log(`[app-main] setAllUsers called: ${next.length} users, window.__flangoAllUsers.length=${window.__flangoAllUsers.length}`);
+
+        // Sync selectedCustomer from latest list so "valgt bruger" never shows stale balance.
+        const cur = getCurrentCustomer();
+        if (cur && Array.isArray(next)) {
+            const fresh = next.find((u) => u.id === cur.id);
+            if (fresh) {
+                setCurrentCustomer(fresh);
+            }
+        }
+        if (typeof updateSelectedUserInfo === 'function') {
+            updateSelectedUserInfo();
+        }
     };
     // Expose setter globally for data-refetch module
     window.__flangoSetAllUsers = setAllUsers;
@@ -787,7 +799,8 @@ export async function startApp() {
         clearEvaluation(); // Ryd evaluation cache så "Ny Saldo" vises korrekt
         renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
 
-        const selectedUser = allUsers.find(u => u.id === userId);
+        const users = window.__flangoAllUsers || allUsers;
+        const selectedUser = Array.isArray(users) ? users.find((u) => u.id === userId) : null;
         if (!selectedUser) return;
 
         setCurrentCustomer(selectedUser);

@@ -21,6 +21,22 @@ import { invalidateAllLimitCaches } from '../domain/purchase-limits.js';
 import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
+
+// Modal-stak: tilbage går altid til forrige visning
+let settingsModalBackStack = [];
+function settingsModalGoBack() {
+    if (settingsModalBackStack.length === 0) return;
+    const fn = settingsModalBackStack.pop();
+    fn();
+}
+function settingsModalPushParent(fn) {
+    settingsModalBackStack.push(fn);
+}
+function updateSettingsModalBackVisibility() {
+    const btn = document.getElementById('settings-modal-back-btn');
+    if (btn) btn.style.display = settingsModalBackStack.length > 0 ? '' : 'none';
+}
+
 const sugarPolicyState = {
     enabled: false,
     limitedProductIds: new Set(),
@@ -1094,7 +1110,7 @@ async function openSugarPolicyModal() {
         }
     });
 
-    // Back button
+    // Back button – Produktoversigt åbnes fra Indstillinger (hovedmenu), så Tilbage går tilbage til Indstillinger
     const backBtn = document.getElementById('back-to-preferences-sugar-policy-btn');
     if (backBtn) {
         const newBackBtn = backBtn.cloneNode(true);
@@ -1102,7 +1118,9 @@ async function openSugarPolicyModal() {
         newBackBtn.onclick = async () => {
             await handleProductOverviewClose(() => {
                 modal.style.display = 'none';
-                openInstitutionPreferences();
+                const backdrop = document.getElementById('settings-modal-backdrop');
+                if (backdrop) backdrop.style.display = 'flex';
+                openSettingsModal();
             });
         };
     }
@@ -1326,13 +1344,9 @@ async function openSugarPolicySettingsModal() {
         maxPerProductInput.value = data.sugar_policy_max_per_product_per_day || 1;
         maxUnhealthyEnabledCheckbox.checked = data.sugar_policy_max_unhealthy_enabled || false;
         maxPerProductEnabledCheckbox.checked = data.sugar_policy_max_per_product_enabled !== false;
-
-        if (settings) {
-            settings.style.display = enabled ? 'block' : 'none';
-        }
     }
 
-    // Update UI
+    // Opdater UI: maks-felter vises altid; greyed out når Sukkerpolitik er FRA
     const updateFieldStates = () => {
         const currentToggle = document.getElementById('sugar-policy-enabled-toggle');
         const currentMaxUnhealthyInput = document.getElementById('sugar-policy-max-unhealthy');
@@ -1349,7 +1363,11 @@ async function openSugarPolicySettingsModal() {
         const maxPerProductEnabled = currentMaxPerProductEnabledCheckbox?.checked;
 
         if (currentLabel) currentLabel.textContent = mainEnabled ? 'Sukkerpolitik er slået TIL' : 'Sukkerpolitik er slået FRA';
-        if (currentSettings) currentSettings.style.display = mainEnabled ? 'block' : 'none';
+        // Maks af hver usund vare/dag og Maks usunde produkter/dag vises altid; greyed out når slået FRA
+        if (currentSettings) {
+            currentSettings.style.display = 'block';
+            currentSettings.classList.toggle('sugar-policy-settings-disabled', !mainEnabled);
+        }
 
         if (!mainEnabled) {
             currentMaxUnhealthyInput.disabled = true;
@@ -1706,19 +1724,18 @@ async function openInstitutionPreferences() {
     titleEl.textContent = 'Indstillinger – Institutionens Præferencer';
     contentEl.innerHTML = '';
 
-    // Regler for produkter knap
-    const productRulesBtn = document.createElement('button');
-    productRulesBtn.className = 'settings-item-btn';
-    productRulesBtn.innerHTML = `<strong>Produktoversigt</strong><div style="font-size: 12px; margin-top: 2px;">Tilføj/rediger produkter, pris, købsgrænser og indstillinger.</div>`;
-    productRulesBtn.addEventListener('click', () => {
-        backdrop.style.display = 'none';
-        openSugarPolicyModal();
-    });
+    const prefIcon = (name) => `Icons/webp/Function/${name}`;
+    const prefRow = (icon, title, desc) => {
+        const iconHtml = icon.endsWith('.webp')
+            ? `<img src="${prefIcon(icon)}" alt="">`
+            : `<span class="settings-item-icon-emoji">${icon}</span>`;
+        return `<span class="settings-item-icon">${iconHtml}</span><span class="settings-item-text"><strong>${title}</strong><div class="settings-item-desc">${desc}</div></span>`;
+    };
 
-    // Sukkerpolitik knap (separat)
+    // Sukkerpolitik knap (separat) – Produktoversigt er flyttet til Indstillinger
     const sugarPolicyBtn = document.createElement('button');
     sugarPolicyBtn.className = 'settings-item-btn';
-    sugarPolicyBtn.innerHTML = `<strong>🍬 Sukkerpolitik</strong><div style="font-size: 12px; margin-top: 2px;">Konfigurer begrænsninger for usunde produkter.</div>`;
+    sugarPolicyBtn.innerHTML = prefRow('🍬', 'Sukkerpolitik', 'Konfigurer begrænsninger for usunde produkter.');
     sugarPolicyBtn.addEventListener('click', () => {
         backdrop.style.display = 'none';
         openSugarPolicySettingsModal();
@@ -1727,7 +1744,7 @@ async function openInstitutionPreferences() {
     // Beløbsgrænse knap
     const spendingLimitBtn = document.createElement('button');
     spendingLimitBtn.className = 'settings-item-btn';
-    spendingLimitBtn.innerHTML = `<strong>Beløbsgrænse</strong><div style="font-size: 12px; margin-top: 2px;">Konfigurer daglig forbrugsgrænse og saldogrænse.</div>`;
+    spendingLimitBtn.innerHTML = prefRow('Coin.webp', 'Beløbsgrænse', 'Konfigurer daglig forbrugsgrænse og saldogrænse.');
     spendingLimitBtn.addEventListener('click', () => {
         backdrop.style.display = 'none';
         openSpendingLimitModal();
@@ -1736,25 +1753,16 @@ async function openInstitutionPreferences() {
     // Forældreportalen knap
     const parentPortalBtn = document.createElement('button');
     parentPortalBtn.className = 'settings-item-btn';
-    parentPortalBtn.innerHTML = `<strong>Forældreportalen</strong><div style="font-size: 12px; margin-top: 2px;">Konfigurer funktioner tilgængelige i forældreportalen.</div>`;
+    parentPortalBtn.innerHTML = prefRow('Bruger.webp', 'Forældreportalen', 'Konfigurer funktioner tilgængelige i forældreportalen.');
     parentPortalBtn.addEventListener('click', () => {
         backdrop.style.display = 'none';
         openParentPortalSettingsModal();
     });
 
-    // Opdateringer knap
-    const updatesBtn = document.createElement('button');
-    updatesBtn.className = 'settings-item-btn';
-    updatesBtn.innerHTML = `<strong>Opdateringer</strong><div style="font-size: 12px; margin-top: 2px;">Tjek for opdateringer og genindlæs appen.</div>`;
-    updatesBtn.addEventListener('click', () => {
-        backdrop.style.display = 'none';
-        openUpdatesModal();
-    });
-
     // Rediger Admin (Voksen konto'er) knap
     const editAdminsBtn = document.createElement('button');
     editAdminsBtn.className = 'settings-item-btn';
-    editAdminsBtn.innerHTML = `<strong>Rediger Admin (Voksen konto'er)</strong><div style="font-size: 12px; margin-top: 2px;">Administrer voksne/admin-brugere for caféen.</div>`;
+    editAdminsBtn.innerHTML = prefRow('Key.webp', 'Rediger Admin (Voksen konto\'er)', 'Administrer voksne/admin-brugere for caféen.');
     editAdminsBtn.addEventListener('click', () => {
         backdrop.style.display = 'none';
         window.__flangoOpenAdminUserManager?.('admins');
@@ -1763,50 +1771,22 @@ async function openInstitutionPreferences() {
     // MobilePay Import knap
     const mobilePayImportBtn = document.createElement('button');
     mobilePayImportBtn.className = 'settings-item-btn';
-    mobilePayImportBtn.innerHTML = `<strong>MobilePay CSV Import</strong><div style="font-size: 12px; margin-top: 2px;">Importér indbetalinger fra MobilePay CSV-eksport og sæt dem på børnenes saldo.</div>`;
+    mobilePayImportBtn.innerHTML = prefRow('Kasseapparat.webp', 'MobilePay CSV Import', 'Importér indbetalinger fra MobilePay CSV-eksport og sæt dem på børnenes saldo.');
     mobilePayImportBtn.addEventListener('click', () => {
         backdrop.style.display = 'none';
         openMobilePayImportModal();
     });
 
-    // Bytte-timer knap
-    const shiftTimerBtn = document.createElement('button');
-    shiftTimerBtn.className = 'settings-item-btn';
-    shiftTimerBtn.innerHTML = `<strong>Bytte-timer</strong><div style="font-size: 12px; margin-top: 2px;">Aktivér eller deaktivér bytte-timer funktionen for ekspedienter.</div>`;
-    shiftTimerBtn.addEventListener('click', () => {
-        backdrop.style.display = 'none';
-        openShiftTimerSettingsModal();
-    });
+    // Bytte-timer og Tilmelding (Arrangementer) er flyttet til hovedmenuen (Indstillinger)
+    window.__flangoOpenCafeEventSettings = openCafeEventSettingsModal;
 
-    // Tilmelding (Arrangementer) knap
-    const eventAdminBtn = document.createElement('button');
-    eventAdminBtn.className = 'settings-item-btn';
-    eventAdminBtn.innerHTML = `<strong>Tilmelding (Arrangementer)</strong><div style="font-size: 12px; margin-top: 2px;">Opret og administrer arrangementer, tilmeldinger og betalinger.</div>`;
-    eventAdminBtn.addEventListener('click', () => {
-        backdrop.style.display = 'none';
-        window.__flangoOpenEventAdmin?.();
-    });
-
-    // Café Event Visning knap
-    const cafeEventSettingsBtn = document.createElement('button');
-    cafeEventSettingsBtn.className = 'settings-item-btn';
-    cafeEventSettingsBtn.innerHTML = `<strong>Arrangementer i Café</strong><div style="font-size: 12px; margin-top: 2px;">Vis arrangementer som mini-kort i caféens produktvisning.</div>`;
-    cafeEventSettingsBtn.addEventListener('click', () => {
-        backdrop.style.display = 'none';
-        openCafeEventSettingsModal();
-    });
-
-    contentEl.appendChild(productRulesBtn);
-    contentEl.appendChild(sugarPolicyBtn);
-    contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(parentPortalBtn);
+    contentEl.appendChild(spendingLimitBtn);
+    contentEl.appendChild(sugarPolicyBtn);
     contentEl.appendChild(editAdminsBtn);
     contentEl.appendChild(mobilePayImportBtn);
-    contentEl.appendChild(shiftTimerBtn);
-    contentEl.appendChild(eventAdminBtn);
-    contentEl.appendChild(cafeEventSettingsBtn);
-    contentEl.appendChild(updatesBtn);
     backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
 }
 
 /**
@@ -1821,7 +1801,7 @@ async function openCafeEventSettingsModal() {
     const institutionId = getInstitutionId();
     if (!institutionId) return;
 
-    titleEl.textContent = 'Arrangementer i Café – Indstillinger';
+    titleEl.textContent = 'Indstil hvordan kommende begivenheder vises i caféen';
     contentEl.innerHTML = '<p style="text-align: center; color: #999;">Henter indstillinger...</p>';
     backdrop.style.display = 'flex';
 
@@ -1891,13 +1871,6 @@ async function openCafeEventSettingsModal() {
     saveBtn.style.cssText = 'margin-top: 16px; width: 100%;';
     contentEl.appendChild(saveBtn);
 
-    // Tilbage knap
-    const backBtn = document.createElement('button');
-    backBtn.className = 'event-cancel-btn';
-    backBtn.textContent = '← Tilbage til Institutionens Præferencer';
-    backBtn.style.cssText = 'margin-top: 8px; width: 100%;';
-    contentEl.appendChild(backBtn);
-
     saveBtn.addEventListener('click', async () => {
         const enabled = toggleCheckbox.checked;
         const days = Math.max(1, Math.min(90, parseInt(daysInput.value, 10) || 14));
@@ -1923,12 +1896,11 @@ async function openCafeEventSettingsModal() {
             window.__flangoInstitutionSettings.cafeEventsDaysAhead = days;
         }
 
-        openInstitutionPreferences();
+        settingsModalGoBack();
     });
 
-    backBtn.addEventListener('click', () => {
-        openInstitutionPreferences();
-    });
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
 }
 
 /**
@@ -1976,14 +1948,12 @@ async function openShiftTimerSettingsModal() {
         </div>
         <div style="display: flex; gap: 12px;">
             <button id="shift-timer-save-btn" style="flex: 1; padding: 14px 20px; background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer;">Gem</button>
-            <button id="shift-timer-back-btn" style="padding: 14px 20px; background: #f3f4f6; color: #4b5563; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer;">Tilbage</button>
         </div>
     `;
     contentEl.appendChild(container);
 
     // Event listeners
     const saveBtn = container.querySelector('#shift-timer-save-btn');
-    const backBtn = container.querySelector('#shift-timer-back-btn');
     const checkbox = container.querySelector('#shift-timer-enabled-checkbox');
     const statusLabel = container.querySelector('#shift-timer-status-label');
 
@@ -2033,8 +2003,8 @@ async function openShiftTimerSettingsModal() {
                 shiftTimerPill.style.display = enabled ? 'inline-flex' : 'none';
             }
 
-            // Gå tilbage til præferencer
-            openInstitutionPreferences();
+            // Gå tilbage til forrige visning (Diverse)
+            settingsModalGoBack();
         } catch (err) {
             console.error('[shift-timer-settings] Unexpected error:', err);
             saveBtn.disabled = false;
@@ -2042,11 +2012,8 @@ async function openShiftTimerSettingsModal() {
         }
     });
 
-    backBtn.addEventListener('click', () => {
-        openInstitutionPreferences();
-    });
-
     backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
 }
 
 /**
@@ -2308,6 +2275,13 @@ async function openPaymentMethodsModal() {
         paymentSettings.cash = { enabled: data.topup_cash_enabled === true };
     }
 
+    // Global administrationsomkostning: kun én kan vælges; bestemmer prisberegning på forældreportalen
+    const adminFeePayer = paymentSettings.admin_fee_payer ?? paymentSettings.stripe_connect?.fee_policy ?? paymentSettings.mobilepay_api?.fee_policy ?? 'institution';
+    const instRadio = modal.querySelector('input[name="admin-fee-payer"][value="institution"]');
+    const parentRadio = modal.querySelector('input[name="admin-fee-payer"][value="parent"]');
+    if (instRadio) instRadio.checked = (adminFeePayer !== 'parent');
+    if (parentRadio) parentRadio.checked = (adminFeePayer === 'parent');
+
     // Payment methods configuration
     const paymentMethods = [
         {
@@ -2449,39 +2423,6 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
                         <div class="payment-method-expand" data-method="${method.id}" style="display: none;">Læs mere</div>
                         <div class="payment-method-more" id="more-${method.id}" style="display: none;"></div>
                     `}
-                    ${method.hasFeePolicy && method.id !== 'stripe_connect' ? `
-                        <div class="payment-method-fee-policy" id="fee-policy-${method.id}">
-                            <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">
-                                Administrationsomkostning ved indbetaling:
-                            </div>
-                            <div class="fee-policy-radio">
-                                <label>
-                                    <input type="radio" name="fee-${method.id}" value="institution" ${methodData.fee_policy === 'parent' ? '' : 'checked'} ${!isEnabled ? 'disabled' : ''}>
-                                    <span>Institutionen betaler administrationsomkostningen</span>
-                                    <span class="fee-policy-tooltip">
-                                        <span class="fee-policy-tooltip-icon">?</span>
-                                        <div class="fee-policy-tooltip-content">
-                                            Forældre sender: 100,00 kr<br>
-                                            Barnets saldo: 100,00 kr<br>
-                                            Institutionen modtager: 96,70 kr
-                                        </div>
-                                    </span>
-                                </label>
-                                <label>
-                                    <input type="radio" name="fee-${method.id}" value="parent" ${methodData.fee_policy === 'parent' ? 'checked' : ''} ${!isEnabled ? 'disabled' : ''}>
-                                    <span>Forældre betaler administrationsomkostningen</span>
-                                    <span class="fee-policy-tooltip">
-                                        <span class="fee-policy-tooltip-icon">?</span>
-                                        <div class="fee-policy-tooltip-content">
-                                            Forældre sender: ca. 103,35 kr<br>
-                                            Barnets saldo: 100,00 kr<br>
-                                            Institutionen modtager: 100,00 kr
-                                        </div>
-                                    </span>
-                                </label>
-                            </div>
-                        </div>
-                    ` : ''}
                     ${method.id === 'stripe_connect' ? `
                         <div class="stripe-status-section" id="stripe-status-section">
                             <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; margin-top: 12px;">
@@ -2727,6 +2668,11 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
                 const newPaymentSettings = {};
                 let stripeEnabled = false;
                 let stripeMode = null;
+
+                // Global administrationsomkostning: én valg for hele institutionen, styrer prisberegning på forældreportalen
+                const adminFeeEl = document.querySelector('#parent-portal-payment-methods-modal input[name="admin-fee-payer"]:checked');
+                const adminFeePayer = adminFeeEl?.value === 'parent' ? 'parent' : 'institution';
+                newPaymentSettings.admin_fee_payer = adminFeePayer;
                 
                 paymentMethods.forEach(method => {
                     const toggle = document.getElementById(`payment-${method.id}-enabled`);
@@ -2753,20 +2699,9 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
                             }
                         }
                         
-                        // For Stripe Connect and MobilePay API, fee_policy is always visible (even when disabled)
-                        // So we should save it if it exists, regardless of enabled state
+                        // Fee policy er nu global (admin_fee_payer); gem også per-metode for bagudkompatibilitet med forældreportalen
                         if (method.hasFeePolicy) {
-                            // Find checked radio (works even if disabled)
-                            const feeRadios = document.querySelectorAll(`input[name="fee-${method.id}"]`);
-                            let selectedFeePolicy = 'institution'; // default
-                            
-                            feeRadios.forEach(radio => {
-                                if (radio.checked) {
-                                    selectedFeePolicy = radio.value;
-                                }
-                            });
-                            
-                            newPaymentSettings[method.id].fee_policy = selectedFeePolicy;
+                            newPaymentSettings[method.id].fee_policy = adminFeePayer;
                         }
                     }
                 });
@@ -3447,17 +3382,8 @@ function openUpdatesModal() {
         contentEl.appendChild(fallbackInfo);
     }
 
-    // Tilføj tilbage-knap
-    const backBtn = document.createElement('button');
-    backBtn.className = 'settings-item-btn';
-    backBtn.style.marginTop = '16px';
-    backBtn.innerHTML = '← Tilbage til Institutionens Præferencer';
-    backBtn.addEventListener('click', () => {
-        openInstitutionPreferences();
-    });
-    contentEl.appendChild(backBtn);
-
     backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
 }
 
 const settingsReturnObservers = new WeakMap();
@@ -3492,7 +3418,6 @@ export function resumeSettingsReturn(modal) {
 }
 
 export function openSettingsModal() {
-    // Hent den aktive brugerprofil fra session-store for at få den korrekte rolle.
     const clerkProfile = getCurrentClerk();
     const isAdmin = clerkProfile?.role === 'admin';
     const backdrop = document.getElementById('settings-modal-backdrop');
@@ -3501,14 +3426,28 @@ export function openSettingsModal() {
 
     if (!backdrop || !titleEl || !contentEl) return;
 
+    // Ved indgang fra gear/luk: ryd stak. Ved tilbage fra under-visning: behold stak.
+    if (backdrop.style.display !== 'flex') {
+        settingsModalBackStack = [];
+    }
+    window.__flangoSettingsModalPushParent = settingsModalPushParent;
+
     titleEl.textContent = isAdmin ? 'Indstillinger (Admin)' : 'Indstillinger';
     contentEl.innerHTML = '';
 
-    function addItem(label, onClick, id = '', keepOpen = false) {
+    const ICON = (name) => `Icons/webp/Function/${name}`;
+
+    function addItem(label, onClick, id = '', keepOpen = false, description = '', icon = '') {
         const btn = document.createElement('button');
-        btn.textContent = label;
         btn.className = 'settings-item-btn';
         if (id) btn.id = id;
+        if (icon) {
+            btn.innerHTML = `<span class="settings-item-icon"><img src="${ICON(icon)}" alt=""></span><span class="settings-item-text"><strong>${label}</strong>${description ? `<div class="settings-item-desc">${description}</div>` : ''}</span>`;
+        } else if (description) {
+            btn.innerHTML = `<strong>${label}</strong><div style="font-size: 12px; margin-top: 2px;">${description}</div>`;
+        } else {
+            btn.textContent = label;
+        }
         btn.addEventListener('click', () => {
             backdrop.style.display = keepOpen ? 'flex' : 'none';
             onClick();
@@ -3526,73 +3465,115 @@ export function openSettingsModal() {
         action?.();
     };
 
-    if (isAdmin) {
-        addItem('Produktoversigt', () => openSugarPolicyModal());
-    }
+    function showDiverseView() {
+        titleEl.textContent = 'Diverse';
+        contentEl.innerHTML = '';
+        const addDiverseItem = (label, onClick, id = '', description = '', icon = '') => {
+            const btn = document.createElement('button');
+            btn.className = 'settings-item-btn';
+            if (id) btn.id = id;
+            const ICON = (name) => `Icons/webp/Function/${name}`;
+            if (icon) {
+                btn.innerHTML = `<span class="settings-item-icon"><img src="${ICON(icon)}" alt=""></span><span class="settings-item-text"><strong>${label}</strong>${description ? `<div class="settings-item-desc">${description}</div>` : ''}</span>`;
+            } else if (description) {
+                btn.innerHTML = `<strong>${label}</strong><div style="font-size: 12px; margin-top: 2px;">${description}</div>`;
+            } else {
+                btn.textContent = label;
+            }
+            btn.addEventListener('click', () => {
+                backdrop.style.display = 'none';
+                onClick();
+            });
+            contentEl.appendChild(btn);
+        };
 
-    addItem('Dagens Sortiment', () => {
-        if (window.__flangoOpenAssortmentModal) {
-            openViaSettings('assortment-modal', () => window.__flangoOpenAssortmentModal());
-        } else {
-            notifyToolbarUser('Indstillinger for sortiment er ikke klar. Prøv at genindlæse.');
+        addDiverseItem('Dagens Sortiment', () => {
+            if (window.__flangoOpenAssortmentModal) {
+                openViaSettings('assortment-modal', () => window.__flangoOpenAssortmentModal());
+            } else {
+                notifyToolbarUser('Indstillinger for sortiment er ikke klar. Prøv at genindlæse.');
+            }
+        }, '', 'Vælg hvilke produkter der vises i caféen.', 'Kurv.webp');
+        if (isAdmin) {
+            addDiverseItem('Rediger Produkter', () => openViaSettings('product-modal', () => callButtonById('edit-menu-original-btn')), '', 'Tilføj, rediger eller skjul produkter og priser.', 'Rediger.webp');
         }
-    });
-
-    if (isAdmin) {
-        addItem('Rediger Produkter', () => openViaSettings('product-modal', () => callButtonById('edit-menu-original-btn')));
-    }
-
-    addItem('Historik', () => {
-        window.__flangoOpenSalesHistory?.() || notifyToolbarUser('Historik-funktionen er ikke klar.');
-    }, 'settings-history-btn');
-
-    if (isAdmin) {
-        addItem('Rediger Brugere', () => openViaSettings('admin-user-manager-modal', () => window.__flangoOpenAdminUserManager?.('customers')));
-    }
-
-    addItem('Lydindstillinger', () => {
-        if (window.__flangoOpenSoundSettingsModal) {
-            openViaSettings('sound-settings-modal', () => window.__flangoOpenSoundSettingsModal());
-        } else {
-            notifyToolbarUser('Lydindstillinger kan ikke åbnes lige nu.');
+        addDiverseItem('Historik', () => {
+            window.__flangoOpenSalesHistory?.() || notifyToolbarUser('Historik-funktionen er ikke klar.');
+        }, 'settings-history-btn', 'Se salgshistorik og fortryd køb.', 'historik.webp');
+        addDiverseItem('Lydindstillinger', () => {
+            if (window.__flangoOpenSoundSettingsModal) {
+                openViaSettings('sound-settings-modal', () => window.__flangoOpenSoundSettingsModal());
+            } else {
+                notifyToolbarUser('Lydindstillinger kan ikke åbnes lige nu.');
+            }
+        }, '', 'Indstil lyde for køb, fejl og andre handlinger.', 'Mute.webp');
+        if (isAdmin) {
+            addDiverseItem('Bytte-timer', () => {
+                settingsModalPushParent(showDiverseView);
+                openShiftTimerSettingsModal();
+            }, '', 'Aktivér eller deaktivér bytte-timer for ekspedienter.', 'Kokkehue.webp');
         }
-    });
-
-    if (isAdmin) {
-        addItem('Institutionens Præferencer', () => openInstitutionPreferences(), '', true);
+        addDiverseItem('Udseende', () => openViaSettings('theme-picker-backdrop', () => callButtonById('open-theme-picker')), '', 'Vælg tema og udseende.', 'image.webp');
+        addDiverseItem('Min Flango', () => {
+            window.__flangoOpenAvatarPicker?.() || notifyToolbarUser('Status-visningen er ikke klar.');
+        }, 'settings-min-flango-status-btn', 'Skift avatar og visningsnavn.', 'Bruger.webp');
+        addDiverseItem('Hjælp', () => openHelpManually(), 'settings-help-btn', 'Vejledning og tastaturgenveje.', 'tastaturgenveje.webp');
+        addDiverseItem('Opdateringer', () => {
+            settingsModalPushParent(showDiverseView);
+            openUpdatesModal();
+        }, '', 'Tjek for opdateringer og genindlæs appen.', 'Print.webp');
+        addDiverseItem('🐛 Der er en fejl', () => {
+            if (window.FLANGO_DEBUG?.showBugReportPrompt) {
+                window.FLANGO_DEBUG.showBugReportPrompt();
+            } else {
+                notifyToolbarUser('Fejlrapport-funktionen er ikke klar. Prøv at genindlæse siden.');
+            }
+        }, 'settings-bug-report-btn', 'Rapporter en fejl eller uhensigtsmæssighed.', 'Flueben.webp');
+        addDiverseItem('Log ud', () => {
+            callButtonById('logout-btn') || notifyToolbarUser('Log ud-knappen er ikke tilgængelig.');
+        }, '', 'Afslut din session.', 'Logout.webp');
+        updateSettingsModalBackVisibility();
     }
 
-    addItem('Udseende', () => openViaSettings('theme-picker-backdrop', () => callButtonById('open-theme-picker')));
+    if (isAdmin) {
+        addItem('Produktoversigt', () => openSugarPolicyModal(), '', false, 'Tilføj/Rediger Produkter & Dagens Sortiment', 'Kurv.webp');
+    }
 
-    addItem('Min Flango', () => {
-        window.__flangoOpenAvatarPicker?.() || notifyToolbarUser('Status-visningen er ikke klar.');
-    }, 'settings-min-flango-status-btn');
-    addItem('Hjælp', () => {
-        openHelpManually();
-    }, 'settings-help-btn');
+    if (isAdmin) {
+        addItem('Indbetal penge & Rediger brugere', () => openViaSettings('admin-user-manager-modal', () => window.__flangoOpenAdminUserManager?.('customers')), '', false, 'Indbetal på børnenes saldo og administrer brugerlisten.', 'Coin.webp');
+    }
 
-    // Bug report button - visible for both admin and clerk
-    addItem('🐛 Der er en fejl', () => {
-        if (window.FLANGO_DEBUG?.showBugReportPrompt) {
-            window.FLANGO_DEBUG.showBugReportPrompt();
-        } else {
-            notifyToolbarUser('Fejlrapport-funktionen er ikke klar. Prøv at genindlæse siden.');
-        }
-    }, 'settings-bug-report-btn');
+    if (isAdmin) {
+        addItem('Tilmelding (Arrangementer)', () => {
+            backdrop.style.display = 'none';
+            window.__flangoOpenEventAdmin?.();
+        }, '', false, 'Opret og administrer kommende begivenheder, tilmeldinger og betalinger.', 'Star.webp');
+        addItem('Institutionens Præferencer', () => {
+            settingsModalPushParent(openSettingsModal);
+            openInstitutionPreferences();
+        }, '', true, 'Konfigurer sukkerpolitik, beløbsgrænse, forældreportal m.m.', 'Gear.webp');
+    }
 
-    addItem('Log ud', () => {
-        callButtonById('logout-btn') || notifyToolbarUser('Log ud-knappen er ikke tilgængelig.');
-    }, 'settings-logout-btn');
+    addItem('Diverse', () => {
+        backdrop.style.display = 'flex';
+        settingsModalPushParent(openSettingsModal);
+        showDiverseView();
+    }, '', true, 'Dagens sortiment, historik, lyd, udseende og mere.', 'Gear2.webp');
 
     backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
 }
 
 export function setupSettingsModal() {
     const backdrop = document.getElementById('settings-modal-backdrop');
     const closeBtn = document.getElementById('settings-modal-close');
+    const backBtn = document.getElementById('settings-modal-back-btn');
 
     if (!backdrop || !closeBtn) return;
 
+    if (backBtn) {
+        backBtn.addEventListener('click', () => settingsModalGoBack());
+    }
     closeBtn.addEventListener('click', () => {
         backdrop.style.display = 'none';
     });

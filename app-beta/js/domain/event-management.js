@@ -198,11 +198,15 @@ export async function cancelRegistration(eventId, userId) {
 
 /**
  * Betaler en eksisterende tilmelding via RPC.
+ * payment_type i event_payments tillader kun: balance, stripe, mobilepay, other.
+ * 'manual' (kontant/manuelt) mappes til 'other'.
  */
 export async function payRegistration(registrationId, paymentType = 'balance') {
+    const allowed = ['balance', 'stripe', 'mobilepay', 'other'];
+    const pType = allowed.includes(paymentType) ? paymentType : 'other';
     const { data, error } = await supabaseClient.rpc('pay_event_registration', {
         p_registration_id: registrationId,
-        p_payment_type: paymentType,
+        p_payment_type: pType,
     });
     if (error) return { success: false, error: error.message };
     return data;

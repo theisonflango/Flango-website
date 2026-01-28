@@ -529,6 +529,8 @@ export async function handleCompletePurchase({
     if (normalItems.length === 0 && eventItems.length > 0) {
         logDebugEvent('purchase_event_only', { eventCount: eventItems.length, customerId: customer?.id });
         await processEventItemsInCheckout(eventItems, customer);
+        // Opdater saldo-visning uden log ud (balance-manager har allerede opdateret, sikr synk UI)
+        if (typeof updateSelectedUserInfo === 'function') updateSelectedUserInfo();
         // Ryd kurv
         let nextOrder = clearOrder();
         setOrder([...nextOrder]);

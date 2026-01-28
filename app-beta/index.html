@@ -43,6 +43,54 @@
             width: 90%;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
+        .settings-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .settings-modal-title {
+            flex: 1;
+            margin: 0;
+            font-size: 1.25rem;
+            text-align: center;
+        }
+        .modal-back-btn-universal {
+            flex-shrink: 0;
+            min-width: 80px;
+            display: inline-flex;
+            align-items: center;
+            background: none;
+            border: none;
+            color: var(--primary-color, #4a90d9);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 6px 8px;
+            text-align: left;
+            border-radius: 8px;
+            transition: background 0.15s, color 0.15s;
+        }
+        .modal-back-btn-universal:hover {
+            background: rgba(74, 144, 217, 0.08);
+        }
+        .settings-modal-close-btn {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .settings-modal-close-btn:hover {
+            background: #f3f4f6;
+        }
+        .sugar-policy-settings-disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
         .settings-modal-content {
             display: flex;
             flex-direction: column;
@@ -573,18 +621,16 @@
                     <input type="checkbox" id="sugar-policy-enabled-toggle" style="width: 20px; height: 20px; cursor: pointer;">
                     <span id="sugar-policy-enabled-label" style="font-weight: 600; font-size: 16px;">Sukkerpolitik er slået FRA</span>
                 </div>
-                <div id="sugar-policy-settings" style="display: none; padding-top: 15px; border-top: 1px solid #eee;">
+                <div id="sugar-policy-settings" class="sugar-policy-settings-row" style="padding-top: 15px; border-top: 1px solid #eee;">
                     <div style="display: flex; flex-direction: column; gap: 15px;">
-                        <!-- Maks antal af hver slags -->
-                        <label style="display: block; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                        <label class="sugar-policy-max-row" style="display: block; padding: 12px; background: #f8f9fa; border-radius: 8px;">
                             <div style="display: flex; align-items: center; margin-bottom: 8px;">
                                 <input type="checkbox" id="sugar-policy-max-per-product-enabled" style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px;">
                                 <strong style="cursor: pointer; font-size: 14px;">Maks af hver usund vare/dag</strong>
                             </div>
                             <input type="number" id="sugar-policy-max-per-product" min="0" step="1" placeholder="1" style="width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
                         </label>
-                        <!-- Maks antal usunde produkter totalt -->
-                        <label style="display: block; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                        <label class="sugar-policy-max-row" style="display: block; padding: 12px; background: #f8f9fa; border-radius: 8px;">
                             <div style="display: flex; align-items: center; margin-bottom: 8px;">
                                 <input type="checkbox" id="sugar-policy-max-unhealthy-enabled" style="margin-right: 10px; cursor: pointer; width: 18px; height: 18px;">
                                 <strong style="cursor: pointer; font-size: 14px;">Maks usunde produkter/dag</strong>
@@ -758,6 +804,20 @@
                 <p style="font-size: 14px; color: #666; margin-bottom: 20px; line-height: 1.5;">
                     Kommuner og institutioner har forskellige aftaler med betalingsudbydere. Her kan I vælge de metoder, der passer bedst til jeres institution. Kontakt skolens sekretær eller kommunens økonomiafdeling, hvis I er i tvivl om, hvilke aftaler I har adgang til.
                 </p>
+                <div id="payment-admin-fee-section" style="margin-bottom: 24px; padding: 16px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 6px;">Administrationsomkostning ved indbetaling</div>
+                    <div style="font-size: 12px; color: #666; margin-bottom: 12px;">Den valgte bestemmer, hvordan priser beregnes på forældreportalen ved indbetalinger.</div>
+                    <div class="fee-policy-radio" style="display: flex; flex-direction: column; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                            <input type="radio" name="admin-fee-payer" value="institution" style="width: 18px; height: 18px; cursor: pointer;">
+                            <span>Institutionen betaler administrationsomkostningen</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                            <input type="radio" name="admin-fee-payer" value="parent" style="width: 18px; height: 18px; cursor: pointer;">
+                            <span>Forældre betaler administrationsomkostningen (vises tydeligt ved betaling)</span>
+                        </label>
+                    </div>
+                </div>
                 <div id="payment-methods-list"></div>
                 <div id="payment-methods-warnings" style="margin-top: 20px;"></div>
                 <div style="padding: 20px 0 0 0; display: flex; justify-content: space-between; gap: 10px;">
@@ -1329,14 +1389,13 @@
     <!-- Indstillinger modal -->
     <div id="settings-modal-backdrop" class="settings-modal-backdrop" style="display:none;">
         <div class="settings-modal">
-            <h2 id="settings-modal-title">Indstillinger</h2>
-
+            <div class="settings-modal-header">
+                <button id="settings-modal-back-btn" class="modal-back-btn-universal" type="button" style="display:none;">← Tilbage</button>
+                <h2 id="settings-modal-title" class="settings-modal-title">Indstillinger</h2>
+                <button id="settings-modal-close" class="settings-modal-close-btn">Luk</button>
+            </div>
             <div id="settings-modal-content" class="settings-modal-content">
                 <!-- Dynamisk indhold -->
-            </div>
-
-            <div class="settings-modal-actions">
-                <button id="settings-modal-close" class="settings-button">Luk</button>
             </div>
         </div>
     </div>
