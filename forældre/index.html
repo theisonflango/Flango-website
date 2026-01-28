@@ -2903,6 +2903,10 @@
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/create-event-payment";
       const CONFIRM_EVENT_PAYMENT_URL =
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/confirm-event-payment";
+      const CREATE_TOPUP_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/create-topup";
+      const CONFIRM_TOPUP_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/confirm-topup";
 
       const SUPABASE_URL = "https://jbknjgbpghrbrstqwoxj.supabase.co";
       const SUPABASE_ANON_KEY =
@@ -2916,6 +2920,7 @@
       let institutions = [];
       let currentChildId = null;
       let currentParentPin = null;
+      let currentChildName = null;
 
       const loginView = document.getElementById("login-view");
       const resultsView = document.getElementById("results-view");
@@ -3330,12 +3335,8 @@
               }
               return;
             }
-
-            if (paymentFeedback) {
-              paymentFeedback.textContent =
-                "Optankning i portalen er endnu ikke koblet til betaling her i demoen. Kontakt personalet, eller brug institutionens valgte metode.";
-              paymentFeedback.style.color = "#92400e";
-            }
+            if (paymentFeedback) paymentFeedback.textContent = "";
+            handleTopupStripePayment(amount);
           });
         }
       }
@@ -3907,6 +3908,180 @@
           mountPoint.innerHTML = '<p class="event-stripe-error">Fejl ved indlæsning af betaling. Prøv igen.</p>';
           const closeBtn = overlay.querySelector(".event-payment-close");
           closeBtn.textContent = "Luk";
+        }
+      }
+
+      async function refreshParentView() {
+        if (!currentInstitutionId || !currentChildName || !currentParentPin) return;
+        try {
+          const res = await fetch(FUNCTION_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              institution_id: currentInstitutionId,
+              name_input: currentChildName,
+              parent_pin: currentParentPin,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.child_id) {
+            displayResults(data);
+            if (currentChildId && currentParentPin) {
+              loadAndRenderEvents(currentChildId, currentParentPin);
+            }
+          }
+        } catch (e) {
+          console.error("refreshParentView fejl:", e);
+        }
+      }
+
+      async function handleTopupStripePayment(amountDkk) {
+        const overlay = document.createElement("div");
+        overlay.className = "modal-overlay";
+        overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;box-sizing:border-box;";
+        overlay.innerHTML =
+          '<div class="event-payment-modal" style="background:var(--card-bg);border-radius:16px;padding:24px;max-width:420px;width:100%;box-shadow:0 18px 45px rgba(15,23,42,0.18);box-sizing:border-box;">' +
+          '<h3 style="margin:0 0 8px 0;">Optank saldo – ' + (typeof amountDkk === "number" ? amountDkk : 0) + ' kr.</h3>' +
+          '<div id="topup-stripe-mount" style="margin-top:12px;"></div>' +
+          '<button type="button" class="event-payment-close" style="margin-top:16px;padding:10px 16px;cursor:pointer;">Annuller</button>' +
+          '</div>';
+        document.body.appendChild(overlay);
+
+        const mountPoint = overlay.querySelector("#topup-stripe-mount");
+        const closeBtn = overlay.querySelector(".event-payment-close");
+        closeBtn.addEventListener("click", () => overlay.remove());
+        overlay.addEventListener("click", (e) => {
+          if (e.target === overlay) overlay.remove();
+        });
+
+        mountPoint.innerHTML = '<p style="font-size:13px;color:#6b7280;">Opretter betaling...</p>';
+
+        try {
+          const res = await fetch(CREATE_TOPUP_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              child_id: currentChildId,
+              parent_pin: currentParentPin,
+              amount_dkk: amountDkk,
+            }),
+          });
+          const data = await res.json();
+
+          if (!res.ok || data.error) {
+            mountPoint.innerHTML = '<p class="event-stripe-error">' + escapeHtml(data.error || "Kunne ikke oprette betaling.") + '</p>';
+            return;
+          }
+
+          const { clientSecret, stripe_publishable_key } = data;
+          if (!stripe_publishable_key) {
+            mountPoint.innerHTML = '<p class="event-stripe-error">Stripe er ikke konfigureret korrekt. Kontakt personalet.</p>';
+            return;
+          }
+
+          if (!window.Stripe) {
+            await new Promise((resolve, reject) => {
+              const s = document.createElement("script");
+              s.src = "https://js.stripe.com/v3/";
+              s.onload = resolve;
+              s.onerror = reject;
+              document.head.appendChild(s);
+            });
+          }
+
+          const stripe = window.Stripe(stripe_publishable_key);
+          const elements = stripe.elements({
+            clientSecret: clientSecret,
+            appearance: { theme: "stripe" },
+          });
+          const paymentElement = elements.create("payment");
+
+          mountPoint.innerHTML =
+            '<div class="event-stripe-container">' +
+            '<div id="topup-payment-element"></div>' +
+            '<button class="event-stripe-submit" type="button">Betal nu</button>' +
+            '<div class="event-stripe-error" id="topup-stripe-error-msg"></div>' +
+            '</div>';
+          paymentElement.mount("#topup-payment-element");
+
+          const submitBtn = mountPoint.querySelector(".event-stripe-submit");
+          submitBtn.addEventListener("click", async () => {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Behandler...";
+            const errEl = document.getElementById("topup-stripe-error-msg");
+            if (errEl) errEl.textContent = "";
+
+            const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+              elements,
+              confirmParams: {},
+              redirect: "if_required",
+            });
+
+            if (stripeError) {
+              if (errEl) errEl.textContent = stripeError.message || "Betaling mislykkedes.";
+              submitBtn.disabled = false;
+              submitBtn.textContent = "Betal nu";
+              return;
+            }
+
+            if (paymentIntent && paymentIntent.status === "succeeded") {
+              submitBtn.textContent = "Bekræfter...";
+              try {
+                const confirmRes = await fetch(CONFIRM_TOPUP_URL, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    apikey: SUPABASE_ANON_KEY,
+                    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                  },
+                  body: JSON.stringify({
+                    child_id: currentChildId,
+                    parent_pin: currentParentPin,
+                    payment_intent_id: paymentIntent.id,
+                  }),
+                });
+                const confirmData = await confirmRes.json();
+
+                if (confirmRes.ok && confirmData.success) {
+                  overlay.remove();
+                  const nb = confirmData.new_balance;
+                  if (typeof nb === "number") {
+                    eventsChildBalance = nb;
+                    const balanceEl = document.getElementById("balance-display") || document.querySelector(".balance-amount");
+                    if (balanceEl) balanceEl.textContent = nb.toFixed(2) + " kr";
+                    updateBalanceStatus(nb);
+                  }
+                  await refreshParentView();
+                  if (paymentFeedback) {
+                    paymentFeedback.textContent = "Optankning gennemført!";
+                    paymentFeedback.style.color = "var(--success-color)";
+                  }
+                } else {
+                  if (errEl) errEl.textContent = confirmData.error || "Kunne ikke bekræfte optankning.";
+                  submitBtn.disabled = false;
+                  submitBtn.textContent = "Prøv igen";
+                }
+              } catch (confirmErr) {
+                console.error("confirm-topup fejl:", confirmErr);
+                if (errEl) errEl.textContent = "Netværksfejl ved bekræftelse. Betalingen er gennemført — kontakt personalet.";
+              }
+            } else {
+              if (errEl) errEl.textContent = "Betaling blev ikke gennemført.";
+              submitBtn.disabled = false;
+              submitBtn.textContent = "Betal nu";
+            }
+          });
+        } catch (err) {
+          console.error("handleTopupStripePayment fejl:", err);
+          mountPoint.innerHTML = '<p class="event-stripe-error">Fejl ved indlæsning af betaling. Prøv igen.</p>';
         }
       }
 
@@ -5084,6 +5259,7 @@
 
         currentInstitutionId = null;
         currentInstitutionPrefs = null;
+        currentChildName = null;
         selectedTopupAmount = null;
         if (paymentFeedback) paymentFeedback.textContent = "";
         if (paymentQrWrap) paymentQrWrap.style.display = "none";
@@ -5255,6 +5431,7 @@
 
       function displayResults(data) {
         currentChildId = data.child_id || null;
+        currentChildName = data.child_name || null;
         // Gem sukkerpolitik fra response
         currentSugarPolicy = data.sugar_policy ?? null;
         // Hvis vi har institutions data fra get-parent-view response, brug det
