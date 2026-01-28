@@ -2258,52 +2258,86 @@
             <!-- Login View -->
             <div id="login-view">
               <div class="login-card">
-                <form id="parent-login-form" class="login-form">
-                  <!-- Klub/SFO -->
-                  <div class="form-group" id="institution-row">
-                    <label for="institution-select" class="section-subtitle" id="institution-label">
-                      Vælg klub/SFO
-                    </label>
-                    <select id="institution-select" required>
-                      <option value="">Vælg klub/SFO…</option>
-                    </select>
-                  </div>
+                <!-- Kode-login sektion -->
+                <div id="code-login-section">
+                  <h3 style="margin-top: 0; margin-bottom: 12px;">Log ind med kode</h3>
+                  <form id="parent-login-form" class="login-form">
+                    <!-- Klub/SFO -->
+                    <div class="form-group" id="institution-row">
+                      <label for="institution-select" class="section-subtitle" id="institution-label">
+                        Vælg klub/SFO
+                      </label>
+                      <select id="institution-select" required>
+                        <option value="">Vælg klub/SFO…</option>
+                      </select>
+                    </div>
 
-                  <p
-                    id="institution-info"
-                    class="section-subtitle"
-                    style="display: none; margin-bottom: 10px;"
-                  >
-                    Institutioner i nærheden af dig:
-                    <strong id="institution-name-label"></strong>
+                    <p
+                      id="institution-info"
+                      class="section-subtitle"
+                      style="display: none; margin-bottom: 10px;"
+                    >
+                      Institutioner i nærheden af dig:
+                      <strong id="institution-name-label"></strong>
+                    </p>
+
+                    <!-- Barnets navn -->
+                    <input
+                      type="text"
+                      id="child-name-input"
+                      placeholder="Barnets fulde navn (fx Oliver Jensen)"
+                      required
+                    />
+
+                    <!-- Forældre-kode -->
+                    <input
+                      type="password"
+                      id="parent-pin-input"
+                      placeholder="Forældre-kode (fx 6 cifre eller kodeord)"
+                      inputmode="text"
+                      maxlength="32"
+                      required
+                    />
+
+                    <button type="submit" id="login-btn">Se saldo og historik</button>
+                    <p id="login-error" class="error-message" style="display: none;"></p>
+                  </form>
+
+                  <p class="login-help">
+                    <strong>Har du ikke fået en kode?</strong><br />
+                    Kontakt klubben/SFO’en – de kan oplyse eller nulstille jeres forældre-login.
                   </p>
+                </div>
 
-                  <!-- Barnets navn -->
-                  <input
-                    type="text"
-                    id="child-name-input"
-                    placeholder="Barnets fulde navn (fx Oliver Jensen)"
-                    required
-                  />
+                <!-- Divider -->
+                <div class="login-divider" style="margin: 24px 0; text-align: center; position: relative;">
+                  <span style="background: var(--card-bg, #fff); padding: 0 12px; color: #666;">eller</span>
+                  <hr style="position: absolute; top: 50%; left: 0; right: 0; margin: 0; border: none; border-top: 1px solid #ddd; z-index: -1;">
+                </div>
 
-                  <!-- Forældre-kode -->
-                  <input
-                    type="password"
-                    id="parent-pin-input"
-                    placeholder="Forældre-kode (fx 6 cifre eller kodeord)"
-                    inputmode="text"
-                    maxlength="32"
-                    required
-                  />
-
-                  <button type="submit" id="login-btn">Se saldo og historik</button>
-                  <p id="login-error" class="error-message" style="display: none;"></p>
-                </form>
-
-                <p class="login-help">
-                  <strong>Har du ikke fået en kode?</strong><br />
-                  Kontakt klubben/SFO’en – de kan oplyse eller nulstille jeres forældre-login.
-                </p>
+                <!-- Email login sektion -->
+                <div id="email-login-section">
+                  <h3 style="margin-top: 0; margin-bottom: 8px;">Opret forældre-login (valgfrit)</h3>
+                  <p class="microcopy" style="font-size: 13px; color: #666; margin-bottom: 12px;">
+                    Vil du kunne logge ind på nye enheder uden koden? Opret forældre-login.
+                  </p>
+                  <form id="email-login-form" class="login-form">
+                    <input
+                      type="email"
+                      id="parent-email-login-input"
+                      placeholder="Din e-mail"
+                      required
+                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                    />
+                    <button type="submit" id="email-login-btn" style="width: 100%; padding: 12px; background: #4a90e2; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
+                      Send magic link
+                    </button>
+                    <p id="email-login-error" class="error-message" style="display: none; margin-top: 8px;"></p>
+                    <p id="email-login-success" style="display: none; margin-top: 8px; color: #28a745; font-size: 14px;">
+                      Tjek din e-mail for login-link
+                    </p>
+                  </form>
+                </div>
               </div>
             </div>
 
@@ -2320,9 +2354,20 @@
                     </div>
                   </div>
                 </div>
-                <button id="logout-btn" class="logout-button">
-                  <span>Log ud</span> ⏏
-                </button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <!-- Child switcher -->
+                  <div id="child-switcher" style="display: none;">
+                    <select id="child-switcher-select" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: white; cursor: pointer;">
+                    </select>
+                  </div>
+                  <!-- Tilknyt barn knap -->
+                  <button id="link-sibling-btn" class="logout-button" style="background: #4a90e2; color: white;">
+                    <span>Tilknyt barn</span>
+                  </button>
+                  <button id="logout-btn" class="logout-button">
+                    <span>Log ud</span> ⏏
+                  </button>
+                </div>
               </div>
 
               <!-- Collapsible Sections Container -->
@@ -2911,6 +2956,8 @@
       const SUPABASE_URL = "https://jbknjgbpghrbrstqwoxj.supabase.co";
       const SUPABASE_ANON_KEY =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impia25qZ2JwZ2hyYnJzdHF3b3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MjIwNjMsImV4cCI6MjA3ODE5ODA2M30.ZMlxQyzmXuy43EcKIN6-eO8pJZs2F6kfDw_cfaks9qQ";
+      const LINK_SIBLING_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/link-sibling-by-code";
 
       const supabase = window.supabase.createClient(
         SUPABASE_URL,
@@ -2921,6 +2968,7 @@
       let currentChildId = null;
       let currentParentPin = null;
       let currentChildName = null;
+      let allowedChildren = []; // Liste over alle børn forælderen har adgang til
 
       const loginView = document.getElementById("login-view");
       const resultsView = document.getElementById("results-view");
@@ -2928,6 +2976,13 @@
       const loginBtn = document.getElementById("login-btn");
       const loginError = document.getElementById("login-error");
       const logoutBtn = document.getElementById("logout-btn");
+      const emailLoginForm = document.getElementById("email-login-form");
+      const emailLoginBtn = document.getElementById("email-login-btn");
+      const emailLoginError = document.getElementById("email-login-error");
+      const emailLoginSuccess = document.getElementById("email-login-success");
+      const linkSiblingBtn = document.getElementById("link-sibling-btn");
+      const childSwitcher = document.getElementById("child-switcher");
+      const childSwitcherSelect = document.getElementById("child-switcher-select");
       const institutionSelect = document.getElementById("institution-select");
       const institutionLabel = document.getElementById("institution-label");
 
@@ -3912,7 +3967,20 @@
       }
 
       async function refreshParentView() {
-        if (!currentInstitutionId || !currentChildName || !currentParentPin) return;
+        if (!currentInstitutionId || !currentParentPin) return;
+        // Brug child_id hvis tilgængelig, ellers name_input
+        const body = currentChildId
+          ? {
+              institution_id: currentInstitutionId,
+              child_id: currentChildId,
+              parent_pin: currentParentPin,
+            }
+          : {
+              institution_id: currentInstitutionId,
+              name_input: currentChildName,
+              parent_pin: currentParentPin,
+            };
+
         try {
           const res = await fetch(FUNCTION_URL, {
             method: "POST",
@@ -3921,15 +3989,16 @@
               apikey: SUPABASE_ANON_KEY,
               Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
             },
-            body: JSON.stringify({
-              institution_id: currentInstitutionId,
-              name_input: currentChildName,
-              parent_pin: currentParentPin,
-            }),
+            body: JSON.stringify(body),
           });
           const data = await res.json().catch(() => ({}));
           if (res.ok && data.child_id) {
             displayResults(data);
+            // Opdater allowed_children
+            if (data.allowed_children && Array.isArray(data.allowed_children)) {
+              allowedChildren = data.allowed_children;
+              renderChildSwitcher(allowedChildren);
+            }
             if (currentChildId && currentParentPin) {
               loadAndRenderEvents(currentChildId, currentParentPin);
             }
@@ -5205,6 +5274,11 @@
 
           displayResults(data);
           currentParentPin = parentPin; // Gem PIN til senere brug (produktgrænser)
+          // Gem allowed_children fra response
+          if (data.allowed_children && Array.isArray(data.allowed_children)) {
+            allowedChildren = data.allowed_children;
+            renderChildSwitcher(allowedChildren);
+          }
           // Hent institutions-præferencer og render betalingsmuligheder + funktioner
           // Prøv først at bruge institutions data fra get-parent-view response
           if (data.institution) {
@@ -5237,6 +5311,376 @@
           loginBtn.textContent = "Se saldo og historik";
         }
       });
+
+      // Email login handler
+      if (emailLoginForm) {
+        emailLoginForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          emailLoginError.style.display = "none";
+          emailLoginSuccess.style.display = "none";
+
+          const email = document.getElementById("parent-email-login-input").value.trim();
+
+          if (!email) {
+            emailLoginError.textContent = "Indtast din e-mail.";
+            emailLoginError.style.display = "block";
+            return;
+          }
+
+          emailLoginBtn.disabled = true;
+          emailLoginBtn.textContent = "Sender...";
+
+          try {
+            const { error } = await supabase.auth.signInWithOtp({
+              email: email,
+              options: {
+                emailRedirectTo: window.location.origin + window.location.pathname,
+              },
+            });
+
+            if (error) {
+              emailLoginError.textContent = error.message || "Kunne ikke sende magic link.";
+              emailLoginError.style.display = "block";
+            } else {
+              emailLoginSuccess.style.display = "block";
+              emailLoginForm.reset();
+            }
+          } catch (err) {
+            console.error("Email login fejl:", err);
+            emailLoginError.textContent = "Der opstod en fejl. Prøv igen.";
+            emailLoginError.style.display = "block";
+          } finally {
+            emailLoginBtn.disabled = false;
+            emailLoginBtn.textContent = "Send magic link";
+          }
+        });
+      }
+
+      // Tjek om bruger er logget ind via email (magic link)
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === "SIGNED_IN" && session?.user?.email) {
+          // Find alle børn hvor denne email er registreret i parent_notifications
+          try {
+            const { data: notifications, error } = await supabase
+              .from("parent_notifications")
+              .select("user_id, email")
+              .eq("email", session.user.email);
+
+            if (error) {
+              console.error("Fejl ved hentning af børn:", error);
+              return;
+            }
+
+            if (!notifications || notifications.length === 0) {
+              alert("Ingen børn fundet for denne e-mail. Kontakt klubben.");
+              await supabase.auth.signOut();
+              return;
+            }
+
+            // Hvis flere børn, vis picker
+            if (notifications.length > 1) {
+              // TODO: Implementér child picker for email login
+              alert("Flere børn fundet. Vælg barn:");
+              // For nu: brug første barn
+              const firstChildId = notifications[0].user_id;
+              await switchToChildViaEmail(firstChildId, session.user.email);
+            } else {
+              // Ét barn: log ind automatisk
+              const childId = notifications[0].user_id;
+              await switchToChildViaEmail(childId, session.user.email);
+            }
+          } catch (err) {
+            console.error("Fejl ved email login flow:", err);
+          }
+        }
+      });
+
+      async function switchToChildViaEmail(childId, email) {
+        // Hent child data og institution
+        try {
+          const { data: child, error: childError } = await supabase
+            .from("users")
+            .select("id, name, institution_id, balance, daily_spend_limit")
+            .eq("id", childId)
+            .maybeSingle();
+
+          if (childError || !child) {
+            alert("Kunne ikke finde barn.");
+            return;
+          }
+
+          // Hent PIN fra parent_notifications (hvis gemt) eller prompt bruger
+          // For nu: brug en placeholder - i produktion skal PIN hentes eller promptes
+          // Dette er en begrænsning: email login kræver stadig PIN for at få adgang til allowed_children
+          // Vi kan ikke bruge email login direkte til at få adgang uden PIN
+          // Så vi logger brugeren ind på første barn, men de skal stadig indtaste PIN for at få fuld adgang
+          alert("Email login er delvist implementeret. Brug kode-login for fuld adgang.");
+        } catch (err) {
+          console.error("Fejl ved switchToChildViaEmail:", err);
+        }
+      }
+
+      // Link sibling handler
+      if (linkSiblingBtn) {
+        linkSiblingBtn.addEventListener("click", () => {
+          openLinkSiblingModal();
+        });
+      }
+
+      function openLinkSiblingModal() {
+        const overlay = document.createElement("div");
+        overlay.className = "modal-overlay";
+        overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;box-sizing:border-box;";
+        
+        overlay.innerHTML = `
+          <div class="event-payment-modal" style="background:var(--card-bg, #fff);border-radius:16px;padding:24px;max-width:480px;width:100%;box-shadow:0 18px 45px rgba(15,23,42,0.18);box-sizing:border-box;">
+            <h3 style="margin:0 0 12px 0;">Tilknyt barn</h3>
+            <p style="font-size:14px;color:#666;margin:0 0 16px 0;">
+              Skriv den unikke kode til barnet, som du har modtaget på Aula – eller få den udleveret i klubbens café.
+            </p>
+            <input
+              type="text"
+              id="sibling-code-input"
+              placeholder="Indtast kode"
+              style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;margin-bottom:12px;text-transform:uppercase;"
+              maxlength="8"
+            />
+            <p id="link-sibling-error" class="error-message" style="display:none;margin-bottom:12px;"></p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button type="button" class="cancel-btn" id="link-sibling-cancel-btn">Annuller</button>
+              <button type="button" class="confirm-btn" id="link-sibling-preview-btn">Fortsæt</button>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const codeInput = overlay.querySelector("#sibling-code-input");
+        const errorEl = overlay.querySelector("#link-sibling-error");
+        const cancelBtn = overlay.querySelector("#link-sibling-cancel-btn");
+        const previewBtn = overlay.querySelector("#link-sibling-preview-btn");
+
+        const close = () => overlay.remove();
+
+        cancelBtn.addEventListener("click", close);
+        overlay.addEventListener("click", (e) => {
+          if (e.target === overlay) close();
+        });
+
+        previewBtn.addEventListener("click", async () => {
+          const code = codeInput.value.trim().toUpperCase();
+          if (!code) {
+            errorEl.textContent = "Indtast en kode.";
+            errorEl.style.display = "block";
+            return;
+          }
+
+          previewBtn.disabled = true;
+          previewBtn.textContent = "Tjekker...";
+          errorEl.style.display = "none";
+
+          try {
+            const res = await fetch(LINK_SIBLING_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({
+                action: "preview",
+                current_child_id: currentChildId,
+                parent_pin: currentParentPin,
+                sibling_code: code,
+              }),
+            });
+
+            const preview = await res.json();
+
+            if (!res.ok) {
+              errorEl.textContent = preview.error || "Kunne ikke finde barn med denne kode.";
+              errorEl.style.display = "block";
+              previewBtn.disabled = false;
+              previewBtn.textContent = "Fortsæt";
+              return;
+            }
+
+            // Vis bekræftdialog
+            const confirmed = await showLinkSiblingConfirmDialog(preview);
+            if (!confirmed) {
+              previewBtn.disabled = false;
+              previewBtn.textContent = "Fortsæt";
+              return;
+            }
+
+            // Bekræft linking
+            const confirmRes = await fetch(LINK_SIBLING_URL, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({
+                action: "confirm",
+                current_child_id: currentChildId,
+                parent_pin: currentParentPin,
+                sibling_child_id: preview.child_id,
+              }),
+            });
+
+            const confirmData = await confirmRes.json();
+
+            if (!confirmRes.ok) {
+              errorEl.textContent = confirmData.error || "Kunne ikke tilknytte barn.";
+              errorEl.style.display = "block";
+              previewBtn.disabled = false;
+              previewBtn.textContent = "Fortsæt";
+              return;
+            }
+
+            // Success - refresh view
+            close();
+            await refreshParentView();
+            alert("Barn tilknyttet!");
+          } catch (err) {
+            console.error("Link sibling fejl:", err);
+            errorEl.textContent = "Netværksfejl. Prøv igen.";
+            errorEl.style.display = "block";
+            previewBtn.disabled = false;
+            previewBtn.textContent = "Fortsæt";
+          }
+        });
+
+        // Enter key på input
+        codeInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            previewBtn.click();
+          }
+        });
+
+        setTimeout(() => codeInput.focus(), 100);
+      }
+
+      function showLinkSiblingConfirmDialog(preview) {
+        return new Promise((resolve) => {
+          const overlay = document.createElement("div");
+          overlay.className = "modal-overlay";
+          overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;padding:20px;box-sizing:border-box;";
+
+          const contactPhone = currentInstitutionPrefs?.parent_contact_phone_enabled
+            ? currentInstitutionPrefs?.parent_contact_phone
+            : null;
+
+          const gradeYearText = preview.grade_year ? ` (Årgang ${preview.grade_year})` : "";
+          const contactText = contactPhone
+            ? ` Hvis ikke, kontakt klubben på ${contactPhone}.`
+            : "";
+
+          overlay.innerHTML = `
+            <div class="event-payment-modal" style="background:var(--card-bg, #fff);border-radius:16px;padding:24px;max-width:480px;width:100%;box-shadow:0 18px 45px rgba(15,23,42,0.18);box-sizing:border-box;">
+              <h3 style="margin:0 0 12px 0;">Bekræft tilknytning</h3>
+              <p style="font-size:14px;color:#333;margin:0 0 16px 0;line-height:1.5;">
+                Bekræft at <strong>${preview.child_name}${gradeYearText}</strong> er dit barn.${contactText}
+              </p>
+              <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button type="button" class="cancel-btn" id="confirm-link-cancel-btn">Annuller</button>
+                <button type="button" class="confirm-btn" id="confirm-link-ok-btn">Bekræft</button>
+              </div>
+            </div>
+          `;
+
+          document.body.appendChild(overlay);
+
+          const cancelBtn = overlay.querySelector("#confirm-link-cancel-btn");
+          const okBtn = overlay.querySelector("#confirm-link-ok-btn");
+
+          const close = (value) => {
+            overlay.remove();
+            resolve(value);
+          };
+
+          cancelBtn.addEventListener("click", () => close(false));
+          okBtn.addEventListener("click", () => close(true));
+          overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) close(false);
+          });
+        });
+      }
+
+      // Child switcher functionality
+      function renderChildSwitcher(children) {
+        if (!childSwitcher || !Array.isArray(children) || children.length <= 1) {
+          if (childSwitcher) childSwitcher.style.display = "none";
+          return;
+        }
+
+        childSwitcher.style.display = "block";
+        childSwitcherSelect.innerHTML = children
+          .map(
+            (child) => `
+            <option value="${child.child_id}" ${child.child_id === currentChildId ? 'selected' : ''}>
+              ${child.child_name}${child.child_id === currentChildId ? ' (aktiv)' : ''} - ${(child.balance || 0).toFixed(2)} kr
+            </option>
+          `
+          )
+          .join("");
+
+        // Remove existing listener
+        const newSelect = childSwitcherSelect.cloneNode(true);
+        childSwitcherSelect.parentNode.replaceChild(newSelect, childSwitcherSelect);
+
+        newSelect.addEventListener("change", async (e) => {
+          const newChildId = e.target.value;
+          if (newChildId !== currentChildId) {
+            await switchToChild(newChildId);
+          }
+        });
+      }
+
+      async function switchToChild(childId) {
+        if (!currentInstitutionId || !currentParentPin) {
+          alert("Manglende login-information.");
+          return;
+        }
+
+        try {
+          const res = await fetch(FUNCTION_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              institution_id: currentInstitutionId,
+              child_id: childId, // Brug child_id i stedet for name_input
+              parent_pin: currentParentPin,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            alert(data.error || "Kunne ikke skifte barn.");
+            return;
+          }
+
+          displayResults(data);
+          // Opdater allowed_children
+          if (data.allowed_children && Array.isArray(data.allowed_children)) {
+            allowedChildren = data.allowed_children;
+            renderChildSwitcher(allowedChildren);
+          }
+          // Refresh events
+          if (currentChildId && currentParentPin) {
+            loadAndRenderEvents(currentChildId, currentParentPin);
+          }
+        } catch (err) {
+          console.error("Switch child fejl:", err);
+          alert("Netværksfejl ved skift af barn.");
+        }
+      }
 
       logoutBtn.addEventListener("click", () => {
         loginView.style.display = "block";
@@ -5276,6 +5720,8 @@
 
         currentChildId = null;
         currentParentPin = null;
+        allowedChildren = [];
+        if (childSwitcher) childSwitcher.style.display = "none";
       });
 
       if (changePinForm) {
@@ -5432,6 +5878,11 @@
       function displayResults(data) {
         currentChildId = data.child_id || null;
         currentChildName = data.child_name || null;
+        // Gem allowed_children fra response
+        if (data.allowed_children && Array.isArray(data.allowed_children)) {
+          allowedChildren = data.allowed_children;
+          renderChildSwitcher(allowedChildren);
+        }
         // Gem sukkerpolitik fra response
         currentSugarPolicy = data.sugar_policy ?? null;
         // Hvis vi har institutions data fra get-parent-view response, brug det
