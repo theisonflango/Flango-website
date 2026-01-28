@@ -4699,23 +4699,23 @@
       async function loadInstitutionPreferences(institutionId) {
         if (!institutionId) return null;
         try {
-          // Brug Edge Function i stedet for direkte Supabase query (løser RLS-problemer)
-          // OBS: Dette kræver at get-parent-view Edge Function returnerer institutions data
-          // eller at der oprettes en separat Edge Function til at hente institutions preferences
-          // For nu prøver vi direkte query med bedre fejlhåndtering
+          // NOTE: Denne funktion er kun fallback - get-parent-view returnerer allerede institutions data
+          // View'et public_institutions har kun id, name, parent_contact_phone - ikke alle preferences
+          // Så denne query vil ikke returnere alle felter, men det er OK da get-parent-view bruges primært
           const { data, error } = await supabase
-            .from("institutions")
-            .select("*")
+            .from("public_institutions")
+            .select("id, name, parent_contact_phone")
             .eq("id", institutionId)
-            .single();
+            .maybeSingle();
 
           if (error) {
             console.warn("Kunne ikke hente institutions-præferencer:", error);
-            // Hvis RLS blokerer, returner tomt objekt så UI stadig virker
-            // (betalingssektionen vil vise "midlertidigt utilgængelig")
+            // Returner tomt objekt så UI stadig virker
+            // (betalingssektionen vil vise "midlertidigt utilgængelig" hvis prefs mangler)
             return {};
           }
-          return data || null;
+          // Returner kun de felter view'et har - resten kommer fra get-parent-view response
+          return data || {};
         } catch (e) {
           console.warn("Uventet fejl ved hentning af institutions-præferencer:", e);
           return {};
@@ -5149,8 +5149,8 @@
       async function loadInstitutions() {
         try {
           const { data, error } = await supabase
-            .from("institutions")
-            .select("id, name")
+            .from("public_institutions")
+            .select("id, name, parent_contact_phone")
             .order("name", { ascending: true });
       
           if (error) {
