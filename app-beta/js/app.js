@@ -94,31 +94,40 @@ document.addEventListener('DOMContentLoaded', () => {
     // APP-OPSTART
     // =================================================================
     async function initializeApp() {
-        await fetchInstitutions();
-        const hasInstitution = await ensureActiveInstitution();
-        if (!hasInstitution) {
-            await supabaseClient.auth.signOut();
-            await setupClubLoginScreen();
-            return;
-        }
-
-        const { data: { session } } = await supabaseClient.auth.getSession();
-
-        if (session) {
-            // Der er en aktiv admin-session
-            const adminProfile = await getCurrentUserProfile(session);
-            if (adminProfile && adminProfile.role === 'admin') {
-                setupAdminLoginScreen(adminProfile);
-            } else {
-                // Sessionen er ugyldig eller ikke en admin, log ud
+        try {
+            await fetchInstitutions();
+            const hasInstitution = await ensureActiveInstitution();
+            if (!hasInstitution) {
                 await supabaseClient.auth.signOut();
+                await setupClubLoginScreen();
+                return;
+            }
+
+            const { data: { session } } = await supabaseClient.auth.getSession();
+
+            if (session) {
+                // Der er en aktiv admin-session
+                const adminProfile = await getCurrentUserProfile(session);
+                if (adminProfile && adminProfile.role === 'admin') {
+                    setupAdminLoginScreen(adminProfile);
+                } else {
+                    // Sessionen er ugyldig eller ikke en admin, log ud
+                    await supabaseClient.auth.signOut();
+                    setupLockedScreen();
+                }
+            } else {
+                // Ingen session, vis den låste skærm
                 setupLockedScreen();
             }
-        } else {
-            // Ingen session, vis den låste skærm
-            setupLockedScreen();
+        } catch (err) {
+            console.error('[app] initializeApp fejl – viser klub login:', err?.message || err);
+            await supabaseClient.auth.signOut().catch(() => {});
+            await setupClubLoginScreen();
         }
     }
 
-    initializeApp();
+    initializeApp().catch((err) => {
+        console.error('[app] initializeApp afvist:', err?.message || err);
+        setupClubLoginScreen();
+    });
 });

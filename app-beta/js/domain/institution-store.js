@@ -22,7 +22,7 @@ export async function fetchInstitutions(forceRefresh = false) {
         return institutionsCache;
     }
 
-    try {
+    const doFetch = async () => {
         // VIGTIGT SIKKERHED:
         // - login_code må ikke hentes til klienten.
         // - For "klub login" (ingen auth session) henter vi kun id/name/is_active.
@@ -47,26 +47,40 @@ export async function fetchInstitutions(forceRefresh = false) {
                 id, name, is_active
             `)
             .order('name');
-            
+
         if (error) {
             console.error('[institution-store] Supabase fejl:', error);
             throw error;
         }
-        const result = data || [];
-        institutionsCache = result;
-        console.log(`[institution-store] Hentet ${result.length} institutioner`);
-        return result;
-    } catch (err) {
-        console.error('[institution-store] Kunne ikke hente institutioner:', err);
-        console.error('[institution-store] Fejl detaljer:', {
-            message: err?.message,
-            code: err?.code,
-            details: err?.details,
-            hint: err?.hint
-        });
-        if (forceRefresh) institutionsCache = [];
-        return [];
+        return data ?? [];
+    };
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+            const result = await doFetch();
+            institutionsCache = result;
+            console.log(`[institution-store] Hentet ${result.length} institutioner`);
+            return result;
+        } catch (err) {
+            const isAbort = err?.name === 'AbortError' || (err?.message || '').includes('aborted');
+            console.error(`[institution-store] Hent institutioner forsøg ${attempt}/2:`, err?.message || err);
+            if (attempt === 1 && isAbort) {
+                console.warn('[institution-store] AbortError – prøver én gang til om 500 ms');
+                await new Promise(r => setTimeout(r, 500));
+                continue;
+            }
+            console.error('[institution-store] Fejl detaljer:', {
+                message: err?.message,
+                code: err?.code,
+                details: err?.details,
+                hint: err?.hint
+            });
+            if (forceRefresh) institutionsCache = [];
+            return [];
+        }
     }
+    if (forceRefresh) institutionsCache = [];
+    return [];
 }
 
 export function rememberInstitution(inst) {
