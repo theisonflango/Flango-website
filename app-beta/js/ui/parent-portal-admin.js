@@ -631,7 +631,9 @@ export function createParentPortalAdminUI(options = {}) {
 
             if (invokeError || !invokeData || invokeData.success !== true) {
                 console.error('Fejl ved update-parent-pin (settings):', invokeError, invokeData);
-                showAlert?.('Kunne ikke opdatere forældre-koden. Prøv igen, eller kontakt udvikleren.');
+                const errorDetails = invokeData?.details || invokeData?.error || invokeError?.message || 'Ukendt fejl';
+                console.error('Fejl detaljer:', errorDetails);
+                showAlert?.(`Kunne ikke opdatere forældre-koden: ${errorDetails}. Prøv igen, eller kontakt udvikleren.`);
                 return;
             }
 
