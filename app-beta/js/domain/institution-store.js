@@ -30,7 +30,7 @@ export async function fetchInstitutions(forceRefresh = false) {
         const { data: { session } } = await supabaseClient.auth.getSession();
         const isAuthed = !!session;
 
-        const { data, error } = await supabaseClient
+        const query = supabaseClient
             .from('institutions')
             .select(isAuthed ? `
                 id, name, is_active,
@@ -48,14 +48,24 @@ export async function fetchInstitutions(forceRefresh = false) {
             `)
             .order('name');
 
+        const { data, error } = await query;
+
         if (error) {
             console.error('[institution-store] Supabase fejl:', error);
+            console.error('[institution-store] Fejl detaljer:', {
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint,
+                status: error.status,
+                statusCode: error.statusCode
+            });
             throw error;
         }
         return data ?? [];
     };
 
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
         try {
             const result = await doFetch();
             institutionsCache = result;
@@ -63,20 +73,33 @@ export async function fetchInstitutions(forceRefresh = false) {
             return result;
         } catch (err) {
             const isAbort = err?.name === 'AbortError' || (err?.message || '').includes('aborted');
-            console.error(`[institution-store] Hent institutioner forsøg ${attempt}/2:`, err?.message || err);
-            if (attempt === 1 && isAbort) {
-                console.warn('[institution-store] AbortError – prøver én gang til om 500 ms');
-                await new Promise(r => setTimeout(r, 500));
+            console.error(`[institution-store] Hent institutioner forsøg ${attempt}/3:`, err?.message || err);
+            console.error('[institution-store] Fejl objekt:', err);
+            
+            // Hvis det er AbortError, prøv igen med længere delay
+            if (attempt < 3 && isAbort) {
+                const delay = attempt * 1000; // 1s, 2s
+                console.warn(`[institution-store] AbortError – prøver igen om ${delay} ms`);
+                await new Promise(r => setTimeout(r, delay));
                 continue;
             }
+            
+            // Hvis det ikke er AbortError, eller vi har prøvet 3 gange, log detaljeret fejl
             console.error('[institution-store] Fejl detaljer:', {
+                name: err?.name,
                 message: err?.message,
                 code: err?.code,
+                status: err?.status,
+                statusCode: err?.statusCode,
                 details: err?.details,
-                hint: err?.hint
+                hint: err?.hint,
+                stack: err?.stack
             });
-            if (forceRefresh) institutionsCache = [];
-            return [];
+            
+            // Hvis det ikke er AbortError, stop retry loop
+            if (!isAbort) {
+                break;
+            }
         }
     }
     if (forceRefresh) institutionsCache = [];
