@@ -30,9 +30,7 @@ export async function fetchInstitutions(forceRefresh = false) {
         const { data: { session } } = await supabaseClient.auth.getSession();
         const isAuthed = !!session;
 
-        const query = supabaseClient
-            .from('institutions')
-            .select(isAuthed ? `
+        const selectFields = isAuthed ? `
                 id, name, is_active,
                 sugar_policy_enabled, sugar_policy_max_unhealthy_per_day,
                 sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled,
@@ -45,7 +43,47 @@ export async function fetchInstitutions(forceRefresh = false) {
                 show_admins_in_user_list, admins_purchase_free, shift_timer_enabled
             ` : `
                 id, name, is_active
-            `)
+            `;
+
+        // Prøv direkte fetch først for at se den faktiske HTTP response
+        if (!isAuthed) {
+            try {
+                const SUPABASE_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impia25qZ2JwZ2hyYnJzdHF3b3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MjIwNjMsImV4cCI6MjA3ODE5ODA2M30.ZMlxQyzmXuy43EcKIN6-eO8pJZs2F6kfDw_cfaks9qQ';
+                const url = `${SUPABASE_URL}/rest/v1/institutions?select=id,name,is_active&order=name.asc`;
+                console.log('[institution-store] Prøver direkte fetch:', url);
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation'
+                    }
+                });
+                console.log('[institution-store] Direkte fetch response:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    ok: response.ok,
+                    headers: Object.fromEntries(response.headers.entries())
+                });
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('[institution-store] Direkte fetch fejl:', text);
+                    throw new Error(`HTTP ${response.status}: ${text}`);
+                }
+                const data = await response.json();
+                console.log('[institution-store] Direkte fetch succes:', data.length, 'institutioner');
+                return data;
+            } catch (directFetchErr) {
+                console.error('[institution-store] Direkte fetch fejlede, prøver Supabase client:', directFetchErr);
+                // Fortsæt til Supabase client som fallback
+            }
+        }
+
+        const query = supabaseClient
+            .from('institutions')
+            .select(selectFields)
             .order('name');
 
         const { data, error } = await query;
