@@ -631,8 +631,25 @@ export function createParentPortalAdminUI(options = {}) {
 
             if (invokeError || !invokeData || invokeData.success !== true) {
                 console.error('Fejl ved update-parent-pin (settings):', invokeError, invokeData);
-                const errorDetails = invokeData?.details || invokeData?.error || invokeError?.message || 'Ukendt fejl';
+                // Prøv at få den detaljerede fejlbesked fra response
+                let errorDetails = 'Ukendt fejl';
+                if (invokeData) {
+                    errorDetails = invokeData.details || invokeData.error || JSON.stringify(invokeData);
+                } else if (invokeError) {
+                    errorDetails = invokeError.message || invokeError.toString();
+                    // Hvis det er en HTTP fejl, prøv at få response body
+                    if (invokeError.context && invokeError.context.body) {
+                        try {
+                            const body = JSON.parse(invokeError.context.body);
+                            errorDetails = body.details || body.error || errorDetails;
+                        } catch (e) {
+                            // Ignorer parse fejl
+                        }
+                    }
+                }
                 console.error('Fejl detaljer:', errorDetails);
+                console.error('Fuld error objekt:', invokeError);
+                console.error('Fuld data objekt:', invokeData);
                 showAlert?.(`Kunne ikke opdatere forældre-koden: ${errorDetails}. Prøv igen, eller kontakt udvikleren.`);
                 return;
             }
