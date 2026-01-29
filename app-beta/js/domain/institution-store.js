@@ -23,20 +23,12 @@ export async function fetchInstitutions(forceRefresh = false) {
     }
 
     try {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'institution-store.js:19',message:'fetchInstitutions entry',data:{forceRefresh,hasCache:institutionsCache.length>0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        
         // VIGTIGT SIKKERHED:
         // - login_code må ikke hentes til klienten.
         // - For "klub login" (ingen auth session) henter vi kun id/name/is_active.
         // - Efter admin-login (auth session) henter vi institutions settings (stadig uden login_code).
         const { data: { session } } = await supabaseClient.auth.getSession();
         const isAuthed = !!session;
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'institution-store.js:32',message:'fetchInstitutions session check',data:{isAuthed,hasSession:!!session},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
 
         const { data, error } = await supabaseClient
             .from('institutions')
@@ -56,23 +48,13 @@ export async function fetchInstitutions(forceRefresh = false) {
             `)
             .order('name');
             
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'institution-store.js:49',message:'fetchInstitutions query result',data:{hasError:!!error,error:error?.message||null,errorCode:error?.code||null,dataLength:data?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-            
         if (error) {
             console.error('[institution-store] Supabase fejl:', error);
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'institution-store.js:51',message:'fetchInstitutions error path',data:{error:error?.message||String(error),code:error?.code||null,details:error?.details||null,hint:error?.hint||null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
             throw error;
         }
         const result = data || [];
         institutionsCache = result;
         console.log(`[institution-store] Hentet ${result.length} institutioner`);
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'institution-store.js:56',message:'fetchInstitutions success',data:{resultLength:result.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         return result;
     } catch (err) {
         console.error('[institution-store] Kunne ikke hente institutioner:', err);
@@ -82,9 +64,6 @@ export async function fetchInstitutions(forceRefresh = false) {
             details: err?.details,
             hint: err?.hint
         });
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'institution-store.js:59',message:'fetchInstitutions catch block',data:{error:err?.message||String(err),code:err?.code||null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         if (forceRefresh) institutionsCache = [];
         return [];
     }
