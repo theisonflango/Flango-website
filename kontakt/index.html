@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kontakt – Flango</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Kontakt Flango – send en besked eller ring. Åbningstider for telefonisk henvendelse." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5f5fb;
+      --bg-soft: #ffffff;
+      --accent: #ff7a3c;
+      --accent-dark: #e0521f;
+      --text-main: #111827;
+      --text-muted: #4b5563;
+      --border-soft: #e5e7eb;
+      --radius-lg: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: radial-gradient(circle at top, #ffe8d6 0, #f5f5fb 38%, #f9fafb 100%); color: var(--text-main); }
+    a { color: inherit; text-decoration: none; }
+    .page { min-height: 100vh; max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 40px; }
+    header {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 14px 16px; margin: 0 -16px 0;
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-soft); flex-wrap: wrap;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .logo-mark { width: 34px; height: 34px; border-radius: 14px; background: radial-gradient(circle at 30% 20%, #ffe8d6 0, #ff7a3c 42%, #ff4b73 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 25px rgba(248,113,113,0.55); }
+    .logo-mark span { font-family: 'Baloo 2', cursive; font-size: 20px; color: #fff; transform: translateY(-1px); }
+    .logo-text-main { font-family: 'Baloo 2', cursive; font-size: 22px; line-height: 1; }
+    .logo-sub { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+    nav { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; flex-wrap: wrap; }
+    .nav-link { padding: 6px 12px; border-radius: 999px; color: var(--text-muted); white-space: nowrap; transition: color 0.15s, background 0.15s; }
+    .nav-link:hover { color: var(--text-main); background: rgba(0,0,0,0.04); }
+    .nav-link.here { color: var(--accent-dark); }
+    .nav-cta { padding: 8px 14px; border-radius: 999px; background: #111827; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 12px 30px rgba(15,23,42,0.45); white-space: nowrap; }
+    .nav-cta:hover { background: #1f2937; }
+    @media (max-width: 830px) { header { flex-direction: column; align-items: flex-start; } nav { gap: 8px; } }
+    @media (max-width: 640px) { .nav-link { padding: 5px 10px; font-size: 12px; } .nav-cta { padding: 6px 12px; font-size: 12px; } }
+    .page-title { margin: 0 0 8px; font-size: clamp(24px,4vw,30px); font-family: 'Baloo 2', cursive; }
+    .page-intro { margin: 0; font-size: 15px; color: var(--text-muted); max-width: 55ch; line-height: 1.5; }
+    .section-heading { margin: 0 0 16px; font-size: 20px; font-family: 'Baloo 2', cursive; }
+    .contact-wrap { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 32px; align-items: start; }
+    @media (max-width: 720px) { .contact-wrap { grid-template-columns: minmax(0,1fr); } }
+    .contact-form { background: var(--bg-soft); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border-soft); box-shadow: 0 18px 36px rgba(15,23,42,0.06); }
+    .contact-form label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--text-main); }
+    .contact-form input, .contact-form textarea { width: 100%; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-soft); font-size: 15px; font-family: inherit; margin-bottom: 16px; }
+    .contact-form input:focus, .contact-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,122,60,0.15); }
+    .contact-form textarea { min-height: 120px; resize: vertical; }
+    .contact-form .btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 20px; border-radius: 999px; font-size: 15px; font-weight: 600; border: none; cursor: pointer; background: linear-gradient(135deg, #ff7a3c, #ff4b73); color: #fff; box-shadow: 0 10px 24px rgba(248,113,113,0.4); transition: transform 0.15s, box-shadow 0.15s; }
+    .contact-form .btn:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(248,113,113,0.5); }
+    .contact-hours { background: var(--bg-soft); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border-soft); box-shadow: 0 18px 36px rgba(15,23,42,0.06); }
+    .contact-hours h3 { margin: 0 0 8px; font-size: 16px; font-weight: 700; }
+    .contact-hours p { margin: 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+    .contact-hours .phone { font-size: 18px; font-weight: 700; color: var(--accent-dark); margin-top: 12px; }
+    .contact-hours .phone a { color: inherit; }
+    .contact-hours .phone a:hover { text-decoration: underline; }
+    .hours-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; margin-left: 10px; vertical-align: middle; }
+    .hours-badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
+    .hours-badge.open { background: rgba(34, 197, 94, 0.12); color: #15803d; }
+    .hours-badge.open::before { background: #22c55e; box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25); }
+    .hours-badge.closed { background: #f3f4f6; color: #6b7280; }
+    .hours-badge.closed::before { background: #9ca3af; }
+    .hours-next { font-size: 13px; color: var(--text-muted); margin: 8px 0 0; }
+    footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-soft); font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <a href="/" class="logo" aria-label="Flango – forsiden">
+        <div class="logo-mark"><span>F</span></div>
+        <div>
+          <div class="logo-text-main">Flango</div>
+          <div class="logo-sub">SFO’ernes cafésystem</div>
+        </div>
+      </a>
+      <nav>
+        <a class="nav-link" href="/">FORSIDE</a>
+        <a class="nav-link" href="/pris/">PRISER</a>
+        <a class="nav-link" href="/gaming/">GAMING</a>
+        <a class="nav-link" href="/event/">EVENT</a>
+        <a class="nav-link" href="/prov-flango/">PRØV FLANGO</a>
+        <a class="nav-link" href="/om-flango/">OM FLANGO</a>
+        <a class="nav-link" href="/forældre/">FORÆLDRE PORTAL</a>
+        <a class="nav-link here" href="/kontakt/">KONTAKT</a>
+        <a class="nav-cta" href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango">Book en snak</a>
+      </nav>
+    </header>
+
+    <section id="kontakt" aria-labelledby="kontakt-heading">
+      <h1 id="kontakt-heading" class="page-title">Kontakt</h1>
+      <p class="page-intro">Skriv til os eller ring – vi vender tilbage hurtigst muligt.</p>
+      <div class="contact-wrap">
+        <div class="contact-form">
+          <form id="kontakt-form" action="https://formspree.io/f/xeegjbaq" method="post">
+            <input type="hidden" name="_subject" value="Kontakt fra flango.dk" />
+            <label for="kontakt-navn">Navn</label>
+            <input type="text" id="kontakt-navn" name="name" required placeholder="Dit navn" autocomplete="name" />
+            <label for="kontakt-email">E-mail</label>
+            <input type="email" id="kontakt-email" name="_replyto" required placeholder="din@email.dk" autocomplete="email" />
+            <label for="kontakt-besked">Besked</label>
+            <textarea id="kontakt-besked" name="message" required placeholder="Skriv din besked her…"></textarea>
+            <button type="submit" class="btn">Send besked</button>
+          </form>
+        </div>
+        <div class="contact-hours">
+          <h3>Åbningstider for telefonisk henvendelse <span id="hours-badge" class="hours-badge" aria-live="polite"></span></h3>
+          <p id="hours-next" class="hours-next" style="display:none;"></p>
+          <p>Mandag til Fredag 12:00–21:00</p>
+          <p class="phone"><a href="tel:+4541610913">📞 +45 41 61 09 13</a></p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div>© <span id="year"></span> Flango – SFO’ernes cafésystem</div>
+      <div>
+        <a href="/forældre/">Forældre Portal</a> ·
+        <a href="/pris/">Priser</a> ·
+        <a href="/om-flango/">Om Flango</a> ·
+        <a href="/sikkerhed/">Sikkerhed</a> ·
+        <a href="/gdpr/">GDPR</a> ·
+        <a href="/kontakt/">Kontakt</a>
+      </div>
+    </footer>
+  </main>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    (function() {
+      var badge = document.getElementById('hours-badge');
+      var nextEl = document.getElementById('hours-next');
+      if (!badge) return;
+      var now = new Date();
+      var s = now.toLocaleString('en-CA', { timeZone: 'Europe/Copenhagen' });
+      var bits = s.split(', ');
+      var datePart = bits[0] || '';
+      var timePart = bits[1] || '0:0:0';
+      var dm = datePart.split('-').map(Number);
+      var tm = timePart.split(':').map(Number);
+      var y = dm[0], m = dm[1] - 1, d = dm[2];
+      var hour = tm[0] || 0, min = tm[1] || 0;
+      var day = new Date(y, m, d).getDay();
+      var weekdayOk = day >= 1 && day <= 5;
+      var mins = hour * 60 + min;
+      var open = weekdayOk && mins >= 12 * 60 && mins < 21 * 60;
+      badge.textContent = open ? 'Åbent' : 'Lukket';
+      badge.className = 'hours-badge ' + (open ? 'open' : 'closed');
+      if (nextEl) {
+        if (open) {
+          nextEl.style.display = 'none';
+          nextEl.textContent = '';
+        } else {
+          var msg = '';
+          if (day === 0) msg = 'Åbner igen mandag kl. 12:00';
+          else if (day === 6) msg = 'Åbner igen mandag kl. 12:00';
+          else if (mins < 12 * 60) msg = 'Åbner igen i dag kl. 12:00';
+          else {
+            if (day === 5) msg = 'Åbner igen mandag kl. 12:00';
+            else msg = 'Åbner igen i morgen kl. 12:00';
+          }
+          nextEl.textContent = msg;
+          nextEl.style.display = 'block';
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

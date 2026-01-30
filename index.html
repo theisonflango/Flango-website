@@ -1082,22 +1082,22 @@
         Vælg den plan, der passer til jeres institution. Årlig betaling giver rabat – og hos Pro er oprettelsen gratis.
       </p>
       <div class="pricing-grid">
-        <article class="pricing-card">
+        <article class="pricing-card" data-monthly="299" data-yearly="3000">
           <h3>Flango Basic</h3>
           <p class="plan-desc">Simpel café – få brugere</p>
-          <div class="price-main">299 kr./md.</div>
-          <div class="price-alt">eller 3.000 kr./år <span class="save">(spar 588 kr.)</span></div>
+          <div class="price-main"></div>
+          <div class="price-alt"></div>
           <div class="price-setup">Oprettelse 2.500 kr.</div>
           <ul class="pricing-features">
             <li><span class="check">✓</span> Max 100 brugere</li>
           </ul>
           <a class="pricing-cta secondary" href="mailto:kontakt@flango.dk?subject=Flango%20Basic">Kontakt os</a>
         </article>
-        <article class="pricing-card">
+        <article class="pricing-card" data-monthly="399" data-yearly="3788">
           <h3>Flango Plus</h3>
           <p class="plan-desc">Event Mode til fester og arrangementer</p>
-          <div class="price-main">399 kr./md.</div>
-          <div class="price-alt">eller 4.800 kr./år <span class="save">(spar 1.000 kr.)</span></div>
+          <div class="price-main"></div>
+          <div class="price-alt"></div>
           <div class="price-setup">Oprettelse 2.500 kr.</div>
           <ul class="pricing-features">
             <li><span class="check">✓</span> Event Mode</li>
@@ -1105,12 +1105,12 @@
           </ul>
           <a class="pricing-cta secondary" href="mailto:kontakt@flango.dk?subject=Flango%20Plus">Kontakt os</a>
         </article>
-        <article class="pricing-card popular">
+        <article class="pricing-card popular" data-monthly="599" data-yearly="5500">
           <span class="pricing-badge">Mest populær</span>
           <h3>Flango Pro</h3>
           <p class="plan-desc">Alt inkluderet – ubegrænset brugere</p>
-          <div class="price-main">599 kr./md.</div>
-          <div class="price-alt">eller 5.500 kr./år <span class="save">(spar 1.688 kr.)</span></div>
+          <div class="price-main"></div>
+          <div class="price-alt"></div>
           <div class="price-setup">Oprettelse gratis</div>
           <ul class="pricing-features">
             <li><span class="check">✓</span> Event Mode</li>
@@ -1224,7 +1224,10 @@
       <div>
         <a href="/forældre/">Forældre Portal</a> ·
         <a href="/pris/">Priser</a> ·
-        <a href="mailto:kontakt@flango.dk">Kontakt</a>
+        <a href="/om-flango/">Om Flango</a> ·
+        <a href="/sikkerhed/">Sikkerhed</a> ·
+        <a href="/gdpr/">GDPR</a> ·
+        <a href="/kontakt/">Kontakt</a>
       </div>
     </footer>
   </main>
@@ -1232,6 +1235,25 @@
   <script>
     // Sæt aktuelt år i footer
     document.getElementById('year').textContent = new Date().getFullYear();
+
+    (function () {
+      function formatKr(n) {
+        return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      }
+      document.querySelectorAll('.pricing-card[data-monthly][data-yearly]').forEach(function (card) {
+        var monthly = parseInt(card.dataset.monthly, 10);
+        var yearly = parseInt(card.dataset.yearly, 10);
+        var yearlyTotal = monthly * 12;
+        var discount = yearlyTotal - yearly;
+        var main = card.querySelector('.price-main');
+        var alt = card.querySelector('.price-alt');
+        if (main) main.textContent = formatKr(monthly) + ' kr./md.';
+        if (alt) {
+          var saveText = discount > 0 ? ' <span class="save">(spar ' + formatKr(discount) + ' kr.)</span>' : '';
+          alt.innerHTML = 'eller ' + formatKr(yearly) + ' kr./år' + saveText;
+        }
+      });
+    })();
   </script>
 </body>
 </html>

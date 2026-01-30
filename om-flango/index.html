@@ -68,6 +68,18 @@
     .hours-badge.closed { background: #f3f4f6; color: #6b7280; }
     .hours-badge.closed::before { background: #9ca3af; }
     .hours-next { font-size: 13px; color: var(--text-muted); margin: 8px 0 0; }
+    .divider { margin: 32px 0; border: none; height: 0; border-top: 1px solid var(--border-soft); }
+    .about-section { max-width: 65ch; }
+    .about-section p { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+    .about-section p:last-child { margin-bottom: 0; }
+    .about-section ul { margin: 12px 0 0; padding-left: 1.25em; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+    .about-section li { margin-bottom: 6px; }
+    .about-section a { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
+    .about-section a:hover { color: var(--accent); }
+    .module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 12px; }
+    .module-card { background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: 12px; padding: 16px; }
+    .module-card strong { font-size: 15px; color: var(--text-main); }
+    .module-card p { margin: 8px 0 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
     footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-soft); font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
     footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
   </style>
@@ -90,36 +102,124 @@
         <a class="nav-link" href="/prov-flango/">PRØV FLANGO</a>
         <a class="nav-link here" href="/om-flango/">OM FLANGO</a>
         <a class="nav-link" href="/forældre/">FORÆLDRE PORTAL</a>
+        <a class="nav-link" href="/kontakt/">KONTAKT</a>
         <a class="nav-cta" href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango">Book en snak</a>
       </nav>
     </header>
     <section>
       <h1 class="page-title">Om Flango</h1>
-      <p class="page-intro">Flango er udviklet i en levende SFO-hverdag af en pædagog med mange års erfaring. Målet er et enkelt, kontantløst cafésystem der giver børn ansvar, forældre overblik og personalet ro. Mere indhold kommer snart.</p>
+      <p class="page-intro">Flango er en digital platform udviklet til SFO'er og fritidsinstitutioner, der ønsker en enkel, sikker og børnevenlig måde at håndtere cafédrift, aktiviteter og digitale services.</p>
+      <p class="page-intro">Platformen er udviklet med udgangspunkt i pædagogisk praksis og daglig drift i danske SFO'er, med fokus på læring, ansvarlighed og reduktion af administrativt arbejde.</p>
     </section>
 
-    <section id="kontakt" aria-labelledby="kontakt-heading">
-      <h2 id="kontakt-heading" class="section-heading">Kontakt</h2>
-      <div class="contact-wrap">
-        <div class="contact-form">
-          <form id="kontakt-form" action="https://formspree.io/f/xeegjbaq" method="post">
-            <input type="hidden" name="_subject" value="Kontakt fra flango.dk" />
-            <label for="kontakt-navn">Navn</label>
-            <input type="text" id="kontakt-navn" name="name" required placeholder="Dit navn" autocomplete="name" />
-            <label for="kontakt-email">E-mail</label>
-            <input type="email" id="kontakt-email" name="_replyto" required placeholder="din@email.dk" autocomplete="email" />
-            <label for="kontakt-besked">Besked</label>
-            <textarea id="kontakt-besked" name="message" required placeholder="Skriv din besked her…"></textarea>
-            <button type="submit" class="btn">Send besked</button>
-          </form>
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="formaal-heading">
+      <h2 id="formaal-heading" class="section-heading">Formål og vision – Læring gennem ansvar</h2>
+      <p>Flangos formål er at gøre hverdagen lettere for børn, personale og forældre ved at samle centrale funktioner i én brugervenlig platform.</p>
+      <p>Visionen er at give børn en tryg og lærerig introduktion til ansvar, økonomi og fællesskab – samtidig med at institutionen får et robust og professionelt værktøj til drift og administration.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="hvad-er-flango-heading">
+      <h2 id="hvad-er-flango-heading" class="section-heading">Hvad er Flango?</h2>
+      <p>Flango består af flere moduler, der kan anvendes samlet eller enkeltvis:</p>
+      <div class="module-grid">
+        <div class="module-card">
+          <strong>Flango Café</strong>
+          <p>Et digitalt cafésystem, hvor børn kan købe varer kontantløst, og hvor personalet nemt kan administrere sortiment, priser og salgsstatistik.</p>
         </div>
-        <div class="contact-hours">
-          <h3>Åbningstider for telefonisk henvendelse <span id="hours-badge" class="hours-badge" aria-live="polite"></span></h3>
-          <p id="hours-next" class="hours-next" style="display:none;"></p>
-          <p>Mandag til Fredag 12:00–21:00</p>
-          <p class="phone"><a href="tel:+4541610913">📞 +45 41 61 09 13</a></p>
+        <div class="module-card">
+          <strong>Flango Forældre</strong>
+          <p>En forældreportal, hvor forældre kan følge barnets saldo, aktiviteter og indstillinger samt foretage indbetalinger digitalt.</p>
+        </div>
+        <div class="module-card">
+          <strong>Flango Skærmtid</strong>
+          <p>Et modul til styring af skærmtid i gamingrum og digitale aktiviteter, hvor børn kan bruge tid ansvarligt og i faste rammer.</p>
+        </div>
+        <div class="module-card">
+          <strong>Flango Event</strong>
+          <p>En løsning til skole- og SFO-arrangementer (fx sommerfester, temadage m.m.), hvor boder kan registrere salg digitalt og kontantløst.</p>
         </div>
       </div>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="paedagogisk-heading">
+      <h2 id="paedagogisk-heading" class="section-heading">Pædagogisk udgangspunkt</h2>
+      <p><strong>Cafédrift som pædagogisk aktivitet</strong></p>
+      <p>Flango er udviklet med fokus på pædagogiske principper:</p>
+      <ul>
+        <li>Træning i ansvar og økonomisk forståelse</li>
+        <li>Digitale kompetencer i trygge rammer</li>
+        <li>Fællesskab og deltagelse i institutionslivet</li>
+        <li>Børnevenlig og overskuelig brugerflade</li>
+      </ul>
+      <p>Systemet er designet til at kunne anvendes af børn som ekspedienter, hvilket understøtter læring gennem praksis.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="sikkerhed-heading">
+      <h2 id="sikkerhed-heading" class="section-heading">Sikkerhed og databeskyttelse</h2>
+      <p>Flango er udviklet med fokus på informationssikkerhed og databeskyttelse:</p>
+      <ul>
+        <li>Rollebaseret adgang (personale, børn, administratorer)</li>
+        <li>Krypteret kommunikation (HTTPS)</li>
+        <li>Adskillelse af institutioner i databasen</li>
+        <li>Mulighed for databehandleraftale (DPA)</li>
+        <li>Backup- og gendannelsesprocedurer</li>
+      </ul>
+      <p>Flango er designet i overensstemmelse med GDPR-principper og generelle danske kommunale retningslinjer for informationssikkerhed.</p>
+      <p>Der kan indgås databehandleraftale (DPA) mellem institutionen/kommunen og leverandøren.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="samarbejde-heading">
+      <h2 id="samarbejde-heading" class="section-heading">Samarbejde og implementering</h2>
+      <p>Flango tilbyder at understøtte dialogen mellem SFO'er, skoleledelse og kommunale instanser om digital cafédrift og relaterede digitale løsninger.</p>
+      <p>Formålet er at sikre en fælles forståelse af behov, databeskyttelse og driftsmæssige forhold, før en eventuel implementering.</p>
+      <p>Flango kan bidrage med:</p>
+      <ul>
+        <li>Teknisk og pædagogisk sparring om digital cafédrift</li>
+        <li>Gennemgang af datasikkerhed, GDPR og organisatoriske forhold</li>
+        <li>Dokumentation og materiale til brug i intern kommunal vurdering</li>
+        <li>Understøttelse af afprøvning og erfaringsopsamling i praksis</li>
+      </ul>
+      <p>Løsningen kan tilpasses lokale forhold og organisatoriske rammer og indgå som grundlag for en eventuel bredere vurdering i kommunen.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="udvikler-heading">
+      <h2 id="udvikler-heading" class="section-heading">Udvikler og organisation</h2>
+      <p>Flango er udviklet af Theison (CVR 34360642), en dansk enkeltmandsvirksomhed med fokus på digitale løsninger til undervisning og fritidspædagogik.</p>
+      <p>Udviklingen sker i tæt dialog med pædagogisk personale og med udgangspunkt i konkrete behov i daglig drift.</p>
+      <p>Udviklingen af Flango blev påbegyndt i 2021 og er løbende videreudviklet i tæt samarbejde med pædagogisk personale. Systemet blev taget i brug i institutionsdrift i 2025.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="governance-heading">
+      <h2 id="governance-heading" class="section-heading">Governance og videreudvikling</h2>
+      <p>Flango udvikles løbende med fokus på stabilitet, sikkerhed og brugervenlighed.</p>
+      <p>Arkitekturen er cloudbaseret og designet til skalerbar drift på institutions- og kommuneniveau.</p>
+      <p>Der arbejdes med:</p>
+      <ul>
+        <li>Versionsstyring og dokumenteret ændringshistorik</li>
+        <li>Backup- og beredskabsprocedurer</li>
+        <li>Rolle- og rettighedsstyring</li>
+        <li>Mulighed for integrationer via API, herunder automatiseret saldoopdatering, efter nærmere aftale og sikkerhedsgodkendelse</li>
+      </ul>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section">
+      <p>Vil du i dialog med os? <a href="/kontakt/">Kontakt</a>.</p>
     </section>
 
     <footer>
@@ -127,49 +227,15 @@
       <div>
         <a href="/forældre/">Forældre Portal</a> ·
         <a href="/pris/">Priser</a> ·
-        <a href="mailto:kontakt@flango.dk">Kontakt</a>
+        <a href="/om-flango/">Om Flango</a> ·
+        <a href="/sikkerhed/">Sikkerhed</a> ·
+        <a href="/gdpr/">GDPR</a> ·
+        <a href="/kontakt/">Kontakt</a>
       </div>
     </footer>
   </main>
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
-    (function() {
-      var badge = document.getElementById('hours-badge');
-      var nextEl = document.getElementById('hours-next');
-      if (!badge) return;
-      var now = new Date();
-      var s = now.toLocaleString('en-CA', { timeZone: 'Europe/Copenhagen' });
-      var bits = s.split(', ');
-      var datePart = bits[0] || '';
-      var timePart = bits[1] || '0:0:0';
-      var dm = datePart.split('-').map(Number);
-      var tm = timePart.split(':').map(Number);
-      var y = dm[0], m = dm[1] - 1, d = dm[2];
-      var hour = tm[0] || 0, min = tm[1] || 0;
-      var day = new Date(y, m, d).getDay();
-      var weekdayOk = day >= 1 && day <= 5;
-      var mins = hour * 60 + min;
-      var open = weekdayOk && mins >= 12 * 60 && mins < 21 * 60;
-      badge.textContent = open ? 'Åbent' : 'Lukket';
-      badge.className = 'hours-badge ' + (open ? 'open' : 'closed');
-      if (nextEl) {
-        if (open) {
-          nextEl.style.display = 'none';
-          nextEl.textContent = '';
-        } else {
-          var msg = '';
-          if (day === 0) msg = 'Åbner igen mandag kl. 12:00';
-          else if (day === 6) msg = 'Åbner igen mandag kl. 12:00';
-          else if (mins < 12 * 60) msg = 'Åbner igen i dag kl. 12:00';
-          else {
-            if (day === 5) msg = 'Åbner igen mandag kl. 12:00';
-            else msg = 'Åbner igen i morgen kl. 12:00';
-          }
-          nextEl.textContent = msg;
-          nextEl.style.display = 'block';
-        }
-      }
-    })();
   </script>
 </body>
 </html>
