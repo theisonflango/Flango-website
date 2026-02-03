@@ -6008,9 +6008,13 @@
           }
 
           try {
+            // Sæt FØR signInWithPassword - onAuthStateChange fyrer UNDER kaldet
+            emailLoginInProgress = true;
+
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
             if (error) {
+              emailLoginInProgress = false;
               let msg = "Forkert e-mail eller adgangskode.";
               if (error.message && error.message.includes("Email not confirmed")) {
                 msg = "Din e-mail er ikke bekræftet endnu. Tjek din indbakke.";
@@ -6022,7 +6026,6 @@
 
             authMode = 'email_password';
             authAccessToken = data.session.access_token;
-            emailLoginInProgress = true; // Forhindre onAuthStateChange fra at processere
 
             // "Husk mig": Hvis ikke valgt, marker at sessionen skal ryddes ved lukning
             if (!rememberMeCheckbox.checked) {
