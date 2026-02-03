@@ -3370,6 +3370,17 @@
         SUPABASE_ANON_KEY
       );
 
+      // VIGTIGT: Registrer tidlig auth state change handler med det samme
+      // så PASSWORD_RECOVERY event fanges ved page load med recovery token
+      // (DOM elements som resetSection er ikke klar endnu, så vi bruger en flag)
+      let __pendingPasswordRecovery = false;
+      supabase.auth.onAuthStateChange((event, session) => {
+        console.log('[auth-early] State change:', event, session?.user?.email);
+        if (event === "PASSWORD_RECOVERY") {
+          __pendingPasswordRecovery = true;
+        }
+      });
+
       let institutions = [];
       let currentChildId = null;
       let currentParentPin = null;
@@ -5879,6 +5890,14 @@
       if (gotoLogin) gotoLogin.addEventListener("click", (e) => { e.preventDefault(); showLoginForm(epLoginSection); });
       if (forgotLink) forgotLink.addEventListener("click", (e) => { e.preventDefault(); showLoginForm(forgotSection); });
       if (backToLogin) backToLogin.addEventListener("click", (e) => { e.preventDefault(); showLoginForm(epLoginSection); });
+
+      // Tjek om PASSWORD_RECOVERY event blev fanget af den tidlige handler
+      if (__pendingPasswordRecovery) {
+        console.log('[auth] Pending PASSWORD_RECOVERY detected - showing reset form');
+        showLoginForm(resetSection);
+        loginView.style.display = "block";
+        resultsView.style.display = "none";
+      }
 
       // loadChildrenAndEnterPortal: Henter børn for autentificeret forælder og viser portalen
       async function loadChildrenAndEnterPortal() {
