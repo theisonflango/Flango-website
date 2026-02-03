@@ -6181,6 +6181,9 @@
               return;
             }
 
+            // Vent kort på at sessionen stabiliserer sig (undgå AbortError fra race conditions)
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             const { error } = await supabase.auth.updateUser({ password: newPass });
             console.log('[reset] updateUser result:', error ? error.message : 'success');
             if (error) {
