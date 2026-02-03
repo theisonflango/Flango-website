@@ -5996,7 +5996,7 @@
           epLoginBtn.disabled = true;
           epLoginBtn.textContent = "Logger ind...";
 
-          const LOGIN_TIMEOUT_MS = 28000;
+          const LOGIN_TIMEOUT_MS = 15000;
           function loginWithTimeout(promise, ms, label) {
             return Promise.race([
               promise,
@@ -6035,7 +6035,7 @@
           } catch (err) {
             console.error("Login fejl:", err);
             if (err && err.message && err.message.startsWith("timeout:")) {
-              epLoginError.textContent = "Det tog for lang tid. Tjek din forbindelse og prøv igen.";
+              epLoginError.textContent = "Indloggningen tog for lang tid (serveren svarer ikke). Tjek din forbindelse eller prøv igen om lidt.";
             } else {
               epLoginError.textContent = err?.message || "Der opstod en fejl. Prøv igen.";
             }
