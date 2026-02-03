@@ -6059,15 +6059,30 @@
           signupBtn.disabled = true;
           signupBtn.textContent = "Opretter...";
 
+          const SIGNUP_TIMEOUT_MS = 28000;
+
+          function withTimeout(promise, ms, label) {
+            return Promise.race([
+              promise,
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("timeout:" + label)), ms)
+              ),
+            ]);
+          }
+
           try {
             // 1) Opret auth bruger
-            const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-              email,
-              password,
-              options: {
-                emailRedirectTo: window.location.origin + window.location.pathname,
-              },
-            });
+            const { data: signUpData, error: signUpErr } = await withTimeout(
+              supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                  emailRedirectTo: window.location.origin + window.location.pathname,
+                },
+              }),
+              SIGNUP_TIMEOUT_MS,
+              "signUp"
+            );
 
             if (signUpErr) {
               let msg = signUpErr.message;
@@ -6090,23 +6105,38 @@
             authMode = 'email_password';
             authAccessToken = signUpData.session.access_token;
 
-            const { data: linkResult, error: linkError } = await supabase.rpc(
-              'verify_parent_code_and_link_child',
-              { p_code: code }
+            const { data: linkResult, error: linkError } = await withTimeout(
+              supabase.rpc('verify_parent_code_and_link_child', { p_code: code }),
+              SIGNUP_TIMEOUT_MS,
+              "verify_code"
             );
 
-            if (linkError || (linkResult && linkResult.error)) {
-              const errMsg = linkResult?.error || "Kunne ikke verificere koden. Tjek koden og prøv igen.";
+            if (linkError) {
+              console.error("Signup verify_parent_code_and_link_child fejl:", linkError);
+              const errMsg = linkError.message || linkResult?.error || "Kunne ikke verificere koden. Tjek koden og prøv igen.";
               signupError.textContent = errMsg;
               signupError.style.display = "block";
               return;
             }
+            if (linkResult && linkResult.error) {
+              signupError.textContent = linkResult.error;
+              signupError.style.display = "block";
+              return;
+            }
 
-            // Succes – indlæs portalen
-            await loadChildrenAndEnterPortal();
+            // Succes – indlæs portalen (med timeout så vi ikke hænger hvis get-parent-view mangler)
+            await withTimeout(
+              loadChildrenAndEnterPortal(),
+              SIGNUP_TIMEOUT_MS,
+              "load_portal"
+            );
           } catch (err) {
             console.error("Signup fejl:", err);
-            signupError.textContent = "Der opstod en fejl. Prøv igen.";
+            if (err && err.message && err.message.startsWith("timeout:")) {
+              signupError.textContent = "Det tog for lang tid. Tjek din forbindelse og prøv igen, eller log ind nedenfor hvis kontoen allerede er oprettet.";
+            } else {
+              signupError.textContent = err?.message || "Der opstod en fejl. Prøv igen.";
+            }
             signupError.style.display = "block";
           } finally {
             signupBtn.disabled = false;
