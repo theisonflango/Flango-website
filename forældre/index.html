@@ -2184,6 +2184,191 @@
       background: #fee2e2;
       color: #991b1b;
     }
+
+    /* ── Købsprofil chart ── */
+    .purchase-profile-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .purchase-profile-period-btns,
+    .purchase-profile-sort-btns {
+      display: flex;
+      gap: 6px;
+    }
+    .pp-period-btn, .pp-sort-btn {
+      padding: 6px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fff;
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .pp-period-btn:hover, .pp-sort-btn:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+    .pp-period-btn.active, .pp-sort-btn.active {
+      background: var(--primary-color);
+      color: #fff;
+      border-color: var(--primary-color);
+    }
+    .purchase-profile-total {
+      font-size: 14px;
+      color: #475569;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .purchase-profile-total strong {
+      color: #1e293b;
+    }
+    .purchase-profile-chart {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      gap: 14px;
+      padding: 40px 20px 20px;
+      min-height: 320px;
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .purchase-profile-chart::before,
+    .purchase-profile-chart::after {
+      content: "";
+      flex: 1 0 0px;
+    }
+    .pp-bar-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      min-width: 52px;
+      flex: 0 0 auto;
+    }
+    .pp-bar-value {
+      font-size: 13px;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 6px;
+      white-space: nowrap;
+    }
+    .pp-bar {
+      position: relative;
+      width: 38px;
+      height: 0;
+      border-radius: 19px 19px 6px 6px;
+      transition: height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+    .pp-bar-cap {
+      position: absolute;
+      top: -7px;
+      left: 0;
+      width: 38px;
+      height: 14px;
+      border-radius: 50%;
+      z-index: 3;
+    }
+    .pp-bar-tooltip {
+      position: absolute;
+      bottom: calc(100% + 16px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: white;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: all 0.2s ease;
+      z-index: 100;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+    }
+    .pp-bar:hover .pp-bar-tooltip,
+    .pp-bar.tooltip-visible .pp-bar-tooltip {
+      opacity: 1;
+      visibility: visible;
+    }
+    .pp-bar-icon {
+      margin-top: 10px;
+      width: 32px;
+      height: 32px;
+      background: white;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+      border: 1px solid #e2e8f0;
+    }
+    .pp-bar-icon img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+    }
+    .pp-bar-icon span {
+      font-size: 18px;
+      line-height: 1;
+    }
+    .pp-bar-name {
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #475569;
+      text-align: center;
+      max-width: 62px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    @media (max-width: 600px) {
+      .purchase-profile-chart {
+        gap: 8px;
+        padding: 20px 10px 16px;
+        min-height: 260px;
+      }
+      .pp-bar-wrapper {
+        min-width: 42px;
+      }
+      .pp-bar {
+        width: 30px;
+        border-radius: 15px 15px 5px 5px;
+      }
+      .pp-bar-cap {
+        width: 30px;
+        height: 12px;
+        top: -6px;
+      }
+      .pp-bar-value {
+        font-size: 11px;
+      }
+      .pp-bar-icon {
+        width: 26px;
+        height: 26px;
+      }
+      .pp-bar-icon img { width: 18px; height: 18px; }
+      .pp-bar-icon span { font-size: 15px; }
+      .pp-bar-name {
+        font-size: 10px;
+        max-width: 48px;
+      }
+    }
   </style>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
@@ -2252,92 +2437,248 @@
               Log ind som forælder
             </div>
             <p class="section-subtitle">
-              Brug den kode, I har fået fra klubben/SFO’en. Er du i tvivl, så spørg personalet – de hjælper gerne.
+              Log ind med din e-mail og adgangskode, eller opret en konto.
             </p>
 
             <!-- Login View -->
             <div id="login-view">
               <div class="login-card">
-                <!-- Kode-login sektion -->
-                <div id="code-login-section">
-                  <h3 style="margin-top: 0; margin-bottom: 12px;">Log ind med kode</h3>
-                  <form id="parent-login-form" class="login-form">
-                    <!-- Klub/SFO -->
-                    <div class="form-group" id="institution-row">
-                      <label for="institution-select" class="section-subtitle" id="institution-label">
-                        Vælg klub/SFO
-                      </label>
-                      <select id="institution-select" required>
-                        <option value="">Vælg klub/SFO…</option>
-                      </select>
-                    </div>
 
-                    <p
-                      id="institution-info"
-                      class="section-subtitle"
-                      style="display: none; margin-bottom: 10px;"
-                    >
-                      Institutioner i nærheden af dig:
-                      <strong id="institution-name-label"></strong>
-                    </p>
-
-                    <!-- Barnets navn -->
-                    <input
-                      type="text"
-                      id="child-name-input"
-                      placeholder="Barnets fulde navn (fx Oliver Jensen)"
-                      required
-                    />
-
-                    <!-- Forældre-kode -->
-                    <input
-                      type="password"
-                      id="parent-pin-input"
-                      placeholder="Forældre-kode (fx 6 cifre eller kodeord)"
-                      inputmode="text"
-                      maxlength="32"
-                      required
-                    />
-
-                    <button type="submit" id="login-btn">Se saldo og historik</button>
-                    <p id="login-error" class="error-message" style="display: none;"></p>
-                  </form>
-
-                  <p class="login-help">
-                    <strong>Har du ikke fået en kode?</strong><br />
-                    Kontakt klubben/SFO’en – de kan oplyse eller nulstille jeres forældre-login.
-                  </p>
-                </div>
-
-                <!-- Divider -->
-                <div class="login-divider" style="margin: 24px 0; text-align: center; position: relative;">
-                  <span style="background: var(--card-bg, #fff); padding: 0 12px; color: #666;">eller</span>
-                  <hr style="position: absolute; top: 50%; left: 0; right: 0; margin: 0; border: none; border-top: 1px solid #ddd; z-index: -1;">
-                </div>
-
-                <!-- Email login sektion -->
-                <div id="email-login-section">
-                  <h3 style="margin-top: 0; margin-bottom: 8px;">Opret forældre-login (valgfrit)</h3>
-                  <p class="microcopy" style="font-size: 13px; color: #666; margin-bottom: 12px;">
-                    Vil du kunne logge ind på nye enheder uden koden? Opret forældre-login.
-                  </p>
-                  <form id="email-login-form" class="login-form">
+                <!-- PRIMARY: E-mail + adgangskode login -->
+                <div id="email-password-login-section">
+                  <h3 style="margin-top: 0; margin-bottom: 12px;">Log ind</h3>
+                  <form id="email-password-login-form" class="login-form">
                     <input
                       type="email"
-                      id="parent-email-login-input"
+                      id="ep-email-input"
                       placeholder="Din e-mail"
+                      autocomplete="email"
                       required
                       style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
                     />
-                    <button type="submit" id="email-login-btn" style="width: 100%; padding: 12px; background: #4a90e2; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
-                      Send magic link
+                    <input
+                      type="password"
+                      id="ep-password-input"
+                      placeholder="Adgangskode"
+                      autocomplete="current-password"
+                      required
+                      style="width: 100%; padding: 12px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                    />
+                    <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0 12px;">
+                      <input type="checkbox" id="remember-me-checkbox" checked style="width: 18px; height: 18px; cursor: pointer;" />
+                      <label for="remember-me-checkbox" style="font-size: 13px; color: #555; cursor: pointer;">
+                        Husk mig på denne enhed
+                        <span style="display: block; font-size: 11px; color: #999;">Anbefales kun på private enheder</span>
+                      </label>
+                    </div>
+                    <button type="submit" id="ep-login-btn" style="width: 100%; padding: 12px; background: var(--primary-color, #ff7a3c); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
+                      Log ind
                     </button>
-                    <p id="email-login-error" class="error-message" style="display: none; margin-top: 8px;"></p>
-                    <p id="email-login-success" style="display: none; margin-top: 8px; color: #28a745; font-size: 14px;">
-                      Tjek din e-mail for login-link
-                    </p>
+                    <p id="ep-login-error" class="error-message" style="display: none; margin-top: 8px;"></p>
+                  </form>
+                  <div style="display: flex; justify-content: space-between; margin-top: 12px;">
+                    <a href="#" id="forgot-password-link" style="font-size: 13px; color: #4a90e2; text-decoration: none;">
+                      Glemt adgangskode?
+                    </a>
+                    <a href="#" id="goto-signup-link" style="font-size: 13px; color: #4a90e2; text-decoration: none; font-weight: 600;">
+                      Opret konto
+                    </a>
+                  </div>
+                </div>
+
+                <!-- OPRET KONTO (skjult som default) -->
+                <div id="signup-section" style="display: none;">
+                  <h3 style="margin-top: 0; margin-bottom: 8px;">Opret forældrekonto</h3>
+                  <p style="font-size: 13px; color: #666; margin: 0 0 12px 0;">
+                    Brug barnets unikke forældrekode, som klubben har udleveret.
+                  </p>
+                  <form id="signup-form" class="login-form">
+                    <input
+                      type="email"
+                      id="signup-email-input"
+                      placeholder="Din e-mail"
+                      autocomplete="email"
+                      required
+                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                    />
+                    <input
+                      type="text"
+                      id="signup-code-input"
+                      placeholder="Barnets forældrekode (8 tegn)"
+                      maxlength="8"
+                      required
+                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;"
+                    />
+                    <input
+                      type="password"
+                      id="signup-password-input"
+                      placeholder="Vælg adgangskode (min. 6 tegn)"
+                      minlength="6"
+                      autocomplete="new-password"
+                      required
+                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                    />
+                    <input
+                      type="password"
+                      id="signup-password-confirm"
+                      placeholder="Bekræft adgangskode"
+                      minlength="6"
+                      autocomplete="new-password"
+                      required
+                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                    />
+                    <button type="submit" id="signup-btn" style="width: 100%; padding: 12px; background: var(--primary-color, #ff7a3c); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
+                      Opret konto
+                    </button>
+                    <p id="signup-error" class="error-message" style="display: none; margin-top: 8px;"></p>
+                    <p id="signup-success" style="display: none; margin-top: 8px; color: #28a745; font-size: 14px;"></p>
+                  </form>
+                  <a href="#" id="goto-login-link" style="font-size: 13px; color: #4a90e2; text-decoration: none; margin-top: 10px; display: inline-block;">
+                    Har du allerede en konto? Log ind
+                  </a>
+                </div>
+
+                <!-- GLEMT ADGANGSKODE (skjult) -->
+                <div id="forgot-password-section" style="display: none;">
+                  <h3 style="margin-top: 0; margin-bottom: 8px;">Nulstil adgangskode</h3>
+                  <p style="font-size: 13px; color: #666; margin: 0 0 12px 0;">
+                    Indtast din e-mail, så sender vi et link til at vælge en ny adgangskode.
+                  </p>
+                  <form id="forgot-password-form" class="login-form">
+                    <input
+                      type="email"
+                      id="forgot-email-input"
+                      placeholder="Din e-mail"
+                      autocomplete="email"
+                      required
+                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                    />
+                    <button type="submit" id="forgot-btn" style="width: 100%; padding: 12px; background: var(--primary-color, #ff7a3c); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
+                      Send nulstillings-link
+                    </button>
+                    <p id="forgot-error" class="error-message" style="display: none; margin-top: 8px;"></p>
+                    <p id="forgot-success" style="display: none; margin-top: 8px; color: #28a745; font-size: 14px;"></p>
+                  </form>
+                  <a href="#" id="back-to-login-link" style="font-size: 13px; color: #4a90e2; text-decoration: none; margin-top: 10px; display: inline-block;">
+                    Tilbage til login
+                  </a>
+                </div>
+
+                <!-- NULSTIL ADGANGSKODE (vises kun ved recovery-redirect) -->
+                <div id="reset-password-section" style="display: none;">
+                  <h3 style="margin-top: 0; margin-bottom: 8px;">Vælg ny adgangskode</h3>
+                  <form id="reset-password-form" class="login-form">
+                    <input
+                      type="password"
+                      id="reset-new-password"
+                      placeholder="Ny adgangskode (min. 6 tegn)"
+                      minlength="6"
+                      autocomplete="new-password"
+                      required
+                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                    />
+                    <input
+                      type="password"
+                      id="reset-confirm-password"
+                      placeholder="Bekræft ny adgangskode"
+                      minlength="6"
+                      autocomplete="new-password"
+                      required
+                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                    />
+                    <button type="submit" id="reset-btn" style="width: 100%; padding: 12px; background: var(--primary-color, #ff7a3c); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
+                      Gem ny adgangskode
+                    </button>
+                    <p id="reset-error" class="error-message" style="display: none; margin-top: 8px;"></p>
+                    <p id="reset-success" style="display: none; margin-top: 8px; color: #28a745; font-size: 14px;"></p>
                   </form>
                 </div>
+
+                <!-- ALTERNATIVE LOGINMETODER (fold-ud) -->
+                <details id="alternative-login-methods" style="margin-top: 24px;">
+                  <summary style="font-size: 14px; color: #666; cursor: pointer; padding: 8px 0; user-select: none;">
+                    Alternative loginmetoder
+                  </summary>
+                  <div style="padding-top: 16px;">
+                    <!-- Eksisterende kode-login (uændret) -->
+                    <div id="code-login-section">
+                      <h3 style="margin-top: 0; margin-bottom: 12px;">Log ind med kode</h3>
+                      <form id="parent-login-form" class="login-form">
+                        <div class="form-group" id="institution-row">
+                          <label for="institution-select" class="section-subtitle" id="institution-label">
+                            Vælg klub/SFO
+                          </label>
+                          <select id="institution-select" required>
+                            <option value="">Vælg klub/SFO…</option>
+                          </select>
+                        </div>
+
+                        <p
+                          id="institution-info"
+                          class="section-subtitle"
+                          style="display: none; margin-bottom: 10px;"
+                        >
+                          Institutioner i nærheden af dig:
+                          <strong id="institution-name-label"></strong>
+                        </p>
+
+                        <input
+                          type="text"
+                          id="child-name-input"
+                          placeholder="Barnets fulde navn (fx Oliver Jensen)"
+                          required
+                        />
+
+                        <input
+                          type="password"
+                          id="parent-pin-input"
+                          placeholder="Forældre-kode (fx 6 cifre eller kodeord)"
+                          inputmode="text"
+                          maxlength="32"
+                          required
+                        />
+
+                        <button type="submit" id="login-btn">Se saldo og historik</button>
+                        <p id="login-error" class="error-message" style="display: none;"></p>
+                      </form>
+
+                      <p class="login-help">
+                        <strong>Har du ikke fået en kode?</strong><br />
+                        Kontakt klubben/SFO'en – de kan oplyse eller nulstille jeres forældre-login.
+                      </p>
+                    </div>
+
+                    <div class="login-divider" style="margin: 16px 0; text-align: center; position: relative;">
+                      <span style="background: var(--card-bg, #fff); padding: 0 12px; color: #666;">eller</span>
+                      <hr style="position: absolute; top: 50%; left: 0; right: 0; margin: 0; border: none; border-top: 1px solid #ddd; z-index: -1;">
+                    </div>
+
+                    <!-- Eksisterende magic link (uændret) -->
+                    <div id="email-login-section">
+                      <h3 style="margin-top: 0; margin-bottom: 8px;">Log ind med magic link</h3>
+                      <p class="microcopy" style="font-size: 13px; color: #666; margin-bottom: 12px;">
+                        Modtag et login-link på din e-mail.
+                      </p>
+                      <form id="email-login-form" class="login-form">
+                        <input
+                          type="email"
+                          id="parent-email-login-input"
+                          placeholder="Din e-mail"
+                          required
+                          style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
+                        />
+                        <button type="submit" id="email-login-btn" style="width: 100%; padding: 12px; background: #4a90e2; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
+                          Send magic link
+                        </button>
+                        <p id="email-login-error" class="error-message" style="display: none; margin-top: 8px;"></p>
+                        <p id="email-login-success" style="display: none; margin-top: 8px; color: #28a745; font-size: 14px;">
+                          Tjek din e-mail for login-link
+                        </p>
+                      </form>
+                    </div>
+                  </div>
+                </details>
+
               </div>
             </div>
 
@@ -2370,9 +2711,130 @@
                 </div>
               </div>
 
+              <!-- Ingen børn koblet (magic-link logget ind, men 0 barn) -->
+              <div id="no-children-state" style="display: none; padding: 24px; text-align: center; max-width: 400px; margin: 24px auto;">
+                <p style="font-size: 18px; font-weight: 600; margin: 0 0 12px 0;">Ingen børn koblet endnu</p>
+                <p style="font-size: 14px; color: #666; margin: 0 0 20px 0;">
+                  Kontakt klubben for at linke dit barn, eller indtast forældre-koden nedenfor for at knytte barnet.
+                </p>
+                <button type="button" id="no-children-goto-code-login" style="padding: 12px 20px; background: #4a90e2; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">
+                  Indtast forældre-kode
+                </button>
+              </div>
+
               <!-- Collapsible Sections Container -->
               <div id="collapsible-sections-container">
-                <!-- 1. E-mail, når saldoen er lav -->
+                <!-- 1. Optank saldo -->
+                <div class="collapsible-section-container" id="payment-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">💳</div>
+                      <span>Optank saldo</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <section class="payment-card" id="payment-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <div class="payment-header" style="display: none;">
+                        <div class="payment-title">
+                          <div class="icon">💳</div>
+                          Optank saldo
+                        </div>
+                        <span class="payment-badge" id="payment-status-badge">Institutionen bestemmer</span>
+                      </div>
+                      <p class="payment-subtitle" id="payment-subtitle" style="margin-bottom: 12px;">
+                        Portalen viser kun de betalingsmuligheder, som din klub/SFO har slået til.
+                      </p>
+                      <div class="payment-grid" id="payment-grid"></div>
+                      <div class="payment-qr" id="payment-qr">
+                        <img id="payment-qr-img" alt="MobilePay QR" />
+                        <div class="payment-qr-note" id="payment-qr-note">
+                          Betal via MobilePay QR. Saldoen opdateres efter godkendelse af personalet.
+                        </div>
+                      </div>
+                      <div class="payment-feedback" id="payment-feedback"></div>
+                    </section>
+                  </div>
+                </div>
+
+                <!-- 2. Kommende arrangementer -->
+                <div class="collapsible-section-container" id="events-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">📅</div>
+                      <span>Kommende arrangementer</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <div id="events-list"></div>
+                    <div id="events-empty" style="display:none;">
+                      <p style="font-size:14px;color:#6b7280;padding:6px 2px;">Ingen kommende arrangementer for dit barn.</p>
+                    </div>
+                    <div id="events-feedback"></div>
+                  </div>
+                </div>
+
+                <!-- 3. Købsprofil -->
+                <div class="collapsible-section-container" id="purchase-profile-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">📊</div>
+                      <span>Købsprofil</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <div class="purchase-profile-controls">
+                      <div class="purchase-profile-period-btns">
+                        <button class="pp-period-btn active" data-period="all">Alt</button>
+                        <button class="pp-period-btn" data-period="30">30 dage</button>
+                        <button class="pp-period-btn" data-period="7">7 dage</button>
+                      </div>
+                      <div class="purchase-profile-sort-btns">
+                        <button class="pp-sort-btn active" data-sort="antal">Antal</button>
+                        <button class="pp-sort-btn" data-sort="kr">Beløb</button>
+                      </div>
+                    </div>
+                    <div class="purchase-profile-total" id="pp-total" style="display:none;">
+                      Samlet forbrug: <strong id="pp-total-amount">0,00 kr</strong>
+                    </div>
+                    <div id="pp-chart" class="purchase-profile-chart"></div>
+                    <div id="pp-empty" style="display:none;">
+                      <p style="font-size:14px;color:#6b7280;padding:12px 2px;text-align:center;">Ingen køb registreret i den valgte periode.</p>
+                    </div>
+                    <div id="pp-loading" style="display:none;text-align:center;padding:20px;">
+                      <p style="font-size:14px;color:#6b7280;">Henter købsprofil...</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 4. Historik -->
+                <div class="collapsible-section-container" id="history-collapsible" style="display: block;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">📜</div>
+                      <span>Historik</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <div class="history-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <div class="history-header" style="display: none;">
+                        <div class="history-title">
+                          Historik
+                          <span class="badge">Sidste 30 dage</span>
+                        </div>
+                        <div class="history-summary" id="history-summary">
+                          Viser køb og optankninger på kontoen.
+                        </div>
+                      </div>
+                      <ul id="history-list" class="history-list"></ul>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 5. E-mail, når saldoen er lav -->
                 <div class="collapsible-section-container" id="email-notification-collapsible" style="display: none;">
                   <div class="collapsible-section-header">
                     <div class="collapsible-section-title">
@@ -2425,123 +2887,7 @@
                   </div>
                 </div>
 
-                <!-- 2. Historik -->
-                <div class="collapsible-section-container" id="history-collapsible" style="display: block;">
-                  <div class="collapsible-section-header">
-                    <div class="collapsible-section-title">
-                      <div class="collapsible-section-icon">📜</div>
-                      <span>Historik</span>
-                    </div>
-                    <div class="collapsible-section-arrow">▼</div>
-                  </div>
-                  <div class="collapsible-section-content">
-                    <div class="history-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
-                      <div class="history-header" style="display: none;">
-                        <div class="history-title">
-                          Historik
-                          <span class="badge">Sidste 30 dage</span>
-                        </div>
-                        <div class="history-summary" id="history-summary">
-                          Viser køb og optankninger på kontoen.
-                        </div>
-                      </div>
-                      <ul id="history-list" class="history-list"></ul>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 3. Kommende arrangementer -->
-                <div class="collapsible-section-container" id="events-collapsible" style="display: none;">
-                  <div class="collapsible-section-header">
-                    <div class="collapsible-section-title">
-                      <div class="collapsible-section-icon">📅</div>
-                      <span>Kommende arrangementer</span>
-                    </div>
-                    <div class="collapsible-section-arrow">▼</div>
-                  </div>
-                  <div class="collapsible-section-content">
-                    <div id="events-list"></div>
-                    <div id="events-empty" style="display:none;">
-                      <p style="font-size:14px;color:#6b7280;padding:6px 2px;">Ingen kommende arrangementer for dit barn.</p>
-                    </div>
-                    <div id="events-feedback"></div>
-                  </div>
-                </div>
-
-                <!-- 4. Optank saldo -->
-                <div class="collapsible-section-container" id="payment-collapsible" style="display: none;">
-                  <div class="collapsible-section-header">
-                    <div class="collapsible-section-title">
-                      <div class="collapsible-section-icon">💳</div>
-                      <span>Optank saldo</span>
-                    </div>
-                    <div class="collapsible-section-arrow">▼</div>
-                  </div>
-                  <div class="collapsible-section-content">
-                    <section class="payment-card" id="payment-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
-                      <div class="payment-header" style="display: none;">
-                        <div class="payment-title">
-                          <div class="icon">💳</div>
-                          Optank saldo
-                        </div>
-                        <span class="payment-badge" id="payment-status-badge">Institutionen bestemmer</span>
-                      </div>
-                      <p class="payment-subtitle" id="payment-subtitle" style="margin-bottom: 12px;">
-                        Portalen viser kun de betalingsmuligheder, som din klub/SFO har slået til.
-                      </p>
-                      <div class="payment-grid" id="payment-grid"></div>
-                      <div class="payment-qr" id="payment-qr">
-                        <img id="payment-qr-img" alt="MobilePay QR" />
-                        <div class="payment-qr-note" id="payment-qr-note">
-                          Betal via MobilePay QR. Saldoen opdateres efter godkendelse af personalet.
-                        </div>
-                      </div>
-                      <div class="payment-feedback" id="payment-feedback"></div>
-                    </section>
-                  </div>
-                </div>
-
-                <!-- 4. Sådan passer klubben på børnenes forbrug -->
-                <div class="collapsible-section-container" id="club-limitations-collapsible" style="display: none;">
-                  <div class="collapsible-section-header">
-                    <div class="collapsible-section-title">
-                      <div class="collapsible-section-icon">🛡️</div>
-                      <span>Sådan passer klubben på børnenes forbrug</span>
-                    </div>
-                    <div class="collapsible-section-arrow">▼</div>
-                  </div>
-                  <div class="collapsible-section-content">
-                    <section id="club-limitations-card" class="club-limitations-card" style="margin: 0; border: none; box-shadow: none; padding: 0;">
-                      <div class="club-limitations-header" style="display: none;">
-                        <div class="club-limitations-icon">🛡️</div>
-                        <div class="club-limitations-title">
-                          Sådan passer klubben på børnenes forbrug
-                        </div>
-                      </div>
-                      <p class="club-limitations-description" style="margin-bottom: 14px;">
-                        Klubben har opsat klare og pædagogiske rammer for caféen, så børnene kan handle trygt og uden overraskelser.
-                      </p>
-                      <div class="club-limitations-list">
-                        <div class="club-limitation-item" id="club-daily-limit-item" style="display: none;">
-                          <div class="club-limitation-item-title">Daglig grænse</div>
-                          <div class="club-limitation-item-content">
-                            Maks. forbrug pr. dag: <strong id="club-daily-limit">x kr.</strong>
-                          </div>
-                        </div>
-                        <div class="club-limitation-item" id="club-product-limits-item" style="display: none;">
-                          <div class="club-limitation-item-title">Produkter i det faste sortiment med begrænsning</div>
-                          <div class="club-limitation-item-content" id="club-product-limits">
-                            <!-- Produkter indsættes dynamisk her -->
-                          </div>
-                        </div>
-                      </div>
-                      <p id="club-limitations-fallback" class="club-limitations-description" style="display: none; margin-bottom: 0;">
-                        Ingen klubbegrænsninger er sat lige nu.
-                      </p>
-                    </section>
-                  </div>
-                </div>
-
+                <!-- Sådan passer klubben på børnenes forbrug -->
                 <!-- 5. Dagens Sortiment -->
                 <div class="collapsible-section-container" id="daily-assortment-collapsible" style="display: none;">
                   <div class="collapsible-section-header">
@@ -2582,6 +2928,12 @@
                         <div class="icon" style="width: 24px; height: 24px; border-radius: 999px; background: rgba(59, 130, 246, 0.12); display: flex; align-items: center; justify-content: center; font-size: 14px;">💰</div>
                         Daglig beløbsgrænse
                       </h2>
+                      <div id="club-daily-limit-info" style="display:none; padding:10px 14px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; margin-bottom:8px; font-size:13px; color:#0c4a6e;">
+                        Klubbens daglige grænse: <strong id="club-daily-limit-amount"></strong>
+                      </div>
+                      <div id="child-daily-limit-info" style="padding:10px 14px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; margin-bottom:12px; font-size:13px; color:#14532d;">
+                        Din daglige grænse: <strong id="child-daily-limit-display">ingen grænse</strong>
+                      </div>
                       <p class="section-subtitle" style="font-size: 11px; color: #6b7280; margin-bottom: 12px;">
                         Sæt en maksimal grænse for, hvor meget der må bruges i caféen pr. dag. Du kan vælge et forslag eller skrive et andet beløb.
                       </p>
@@ -2625,21 +2977,29 @@
                         <span class="product-limit-badge">Valgfrit</span>
                       </div>
                       <p class="product-limit-description" style="margin-bottom: 12px;">
-                        Sæt en grænse for, hvor mange stk. af hvert produkt dit barn må købe per dag.
-                        Efterlad som "Ubegrænset" hvis du ikke ønsker en grænse.
+                        Sæt grænser for dit barns køb af fast sortiment og dagens ret.
                       </p>
                       <div class="product-limit-info">
                         <span>💡</span>
                         <span>Hvis klubben har sat en grænse, gælder den strengeste. Dit barns køb må aldrig overstige hverken din eller klubbens grænse.</span>
                       </div>
-                      <div class="product-limit-controls">
-                        <input type="text" class="product-limit-search" id="product-limit-search" placeholder="Søg efter produkt..." />
-                        <label class="product-limit-filter-toggle" id="product-limit-filter-toggle">
-                          <input type="checkbox" id="product-limit-show-modified" style="display: none;" />
-                          <span>Vis kun ændrede</span>
-                        </label>
-                      </div>
+
                       <div class="product-limit-list" id="product-limit-list">
+                        <!-- Dagens Ret (som product-limit-item) -->
+                        <div class="product-limit-item" id="daily-special-stepper-container">
+                          <div class="product-limit-item-info">
+                            <div class="product-limit-item-icon">🍽️</div>
+                            <div class="product-limit-item-details">
+                              <div class="product-limit-item-name">Dagens Ret</div>
+                              <div class="product-limit-item-price">Samlet grænse for alle dagens ret-produkter</div>
+                            </div>
+                          </div>
+                          <div class="product-limit-stepper" id="daily-special-stepper">
+                            <button type="button" class="ds-stepper-dec" title="Mindre">−</button>
+                            <span class="product-limit-stepper-value" id="daily-special-stepper-value">Ubegrænset</span>
+                            <button type="button" class="ds-stepper-inc" title="Mere">+</button>
+                          </div>
+                        </div>
                         <div class="product-limit-empty">Indlæser produkter...</div>
                       </div>
                       <div class="product-limit-save-row">
@@ -2668,9 +3028,7 @@
                         </div>
                         <span class="product-limit-badge">Valgfrit</span>
                       </div>
-                      <p class="product-limit-description" style="margin-bottom: 16px;">
-                        Her kan du vælge, hvordan dit barn må købe sukkerholdige/usunde produkter i caféen.
-                      </p>
+                      <div id="sugar-policy-info-box" style="display: none; margin-bottom: 16px; padding: 14px 16px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.06), rgba(167, 139, 250, 0.06)); border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.15); font-size: 13px; line-height: 1.5; color: #4b5563; white-space: pre-line;"></div>
                       <div style="padding: 0;">
                         <label style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; cursor: pointer; padding: 14px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(167, 139, 250, 0.08)); border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.2);">
                           <input type="checkbox" id="sugar-policy-enabled" style="width: 22px; height: 22px; cursor: pointer; accent-color: #8b5cf6;">
@@ -2680,43 +3038,86 @@
                           </div>
                         </label>
                         <div id="sugar-policy-controls" style="display: none;">
-                          <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; cursor: pointer; padding: 12px; background: rgba(239, 68, 68, 0.08); border-radius: 10px; border: 1px solid rgba(239, 68, 68, 0.2);">
-                            <input type="checkbox" id="sugar-block-unhealthy" style="width: 20px; height: 20px; cursor: pointer;">
-                            <div>
-                              <strong style="color: #dc2626;">Mit barn må ikke købe usunde produkter</strong>
-                              <div style="font-size: 12px; color: #666; margin-top: 2px;">Barnet kan stadig se produkterne, men de kan ikke købes.</div>
-                            </div>
-                          </label>
                           <div id="sugar-limits-container" style="display: flex; flex-direction: column; gap: 12px;">
                             <div>
                               <label for="sugar-max-per-day" style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #374151;">
-                                Maks antal usunde produkter pr. dag
+                                Maks antal sukkerholdige produkter pr. dag
                               </label>
                               <div style="position: relative;">
                                 <input type="number" id="sugar-max-per-day" max="10" placeholder="Ingen grænse"
                                        style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
                                 <span id="sugar-max-per-day-label" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #9ca3af; pointer-events: none;"></span>
                               </div>
-                              <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">Gælder samlet for alle usunde produkter. Tom = ingen grænse.</div>
+                              <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">Gælder samlet for alle sukkerholdige produkter. Tom = ingen grænse.</div>
                             </div>
                             <div>
                               <label for="sugar-max-per-product" style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #374151;">
-                                Maks antal af hvert usundt produkt pr. dag
+                                Maks antal af hvert sukkerholdigt produkt pr. dag
                               </label>
                               <div style="position: relative;">
                                 <input type="number" id="sugar-max-per-product" max="10" placeholder="Ingen grænse"
                                        style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
                                 <span id="sugar-max-per-product-label" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #9ca3af; pointer-events: none;"></span>
                               </div>
-                              <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">Gælder pr. produkt (fx sodavand eller slik). Tom = ingen grænse.</div>
+                              <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">Gælder pr. produkt (fx myslibar eller juice). Tom = ingen grænse.</div>
                             </div>
                           </div>
+                          <label style="display: flex; align-items: center; gap: 10px; margin-top: 16px; cursor: pointer; padding: 12px; background: rgba(239, 68, 68, 0.08); border-radius: 10px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                            <input type="checkbox" id="sugar-block-unhealthy" style="width: 20px; height: 20px; cursor: pointer;">
+                            <div>
+                              <strong style="color: #dc2626;">Mit barn må ikke købe sukkerholdige produkter</strong>
+                              <div style="font-size: 12px; color: #666; margin-top: 2px;">Barnet kan stadig se produkterne, men de kan ikke købes.</div>
+                            </div>
+                          </label>
                         </div>
                         <button type="button" id="save-sugar-policy-btn" style="margin-top: 16px; width: 100%; padding: 12px; background: linear-gradient(135deg, #8b5cf6, #a78bfa); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);">
                           Gem sukkerpolitik
                         </button>
                         <div id="sugar-policy-feedback" style="margin-top: 8px; font-size: 12px; text-align: center;"></div>
                       </div>
+                    </section>
+                  </div>
+                </div>
+
+                <!-- 8b. Kostpræferencer (vegetarisk, svinekød, usundt) -->
+                <div class="collapsible-section-container" id="dietary-prefs-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">🥗</div>
+                      <span>Kostpræferencer</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <section style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <p style="font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 16px;">
+                        Her kan du vælge kostpræferencer for dit barn. Disse regler håndhæves automatisk i caféen.
+                      </p>
+
+                      <div id="dietary-pref-vegetarian" style="display: none;">
+                        <label style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; cursor: pointer; padding: 14px; background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(74, 222, 128, 0.08)); border-radius: 12px; border: 1px solid rgba(34, 197, 94, 0.2);">
+                          <input type="checkbox" id="dietary-vegetarian-only" style="width: 22px; height: 22px; cursor: pointer; accent-color: #16a34a;">
+                          <div>
+                            <strong style="color: #16a34a;">Kun vegetarisk</strong>
+                            <div style="font-size: 12px; color: #666; margin-top: 2px;">Mit barn må kun købe vegetariske produkter</div>
+                          </div>
+                        </label>
+                      </div>
+
+                      <div id="dietary-pref-no-pork" style="display: none;">
+                        <label style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; cursor: pointer; padding: 14px; background: linear-gradient(135deg, rgba(234, 88, 12, 0.08), rgba(251, 146, 60, 0.08)); border-radius: 12px; border: 1px solid rgba(234, 88, 12, 0.2);">
+                          <input type="checkbox" id="dietary-no-pork" style="width: 22px; height: 22px; cursor: pointer; accent-color: #ea580c;">
+                          <div>
+                            <strong style="color: #ea580c;">Ingen svinekød</strong>
+                            <div style="font-size: 12px; color: #666; margin-top: 2px;">Mit barn må ikke købe produkter der indeholder svinekød</div>
+                          </div>
+                        </label>
+                      </div>
+
+                      <button type="button" id="save-dietary-prefs-btn" style="margin-top: 4px; width: 100%; padding: 12px; background: linear-gradient(135deg, #16a34a, #4ade80); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);">
+                        Gem kostpræferencer
+                      </button>
+                      <div id="dietary-prefs-feedback" style="margin-top: 8px; font-size: 12px; text-align: center;"></div>
                     </section>
                   </div>
                 </div>
@@ -2961,6 +3362,8 @@
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impia25qZ2JwZ2hyYnJzdHF3b3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MjIwNjMsImV4cCI6MjA3ODE5ODA2M30.ZMlxQyzmXuy43EcKIN6-eO8pJZs2F6kfDw_cfaks9qQ";
       const LINK_SIBLING_URL =
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/link-sibling-by-code";
+      const GET_PURCHASE_PROFILE_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-purchase-profile";
 
       const supabase = window.supabase.createClient(
         SUPABASE_URL,
@@ -2972,6 +3375,25 @@
       let currentParentPin = null;
       let currentChildName = null;
       let allowedChildren = []; // Liste over alle børn forælderen har adgang til
+      let signOutInProgress = false; // Guard: undgå flere signOut-kald og SIGNED_OUT-loop
+      let authMode = null; // 'email_password' | 'pin' | 'magic_link'
+      let authAccessToken = null; // JWT token for email+password sessions
+
+      // Auth headers helper: bruger JWT bearer til email+password, ellers anon key
+      function getAuthHeaders() {
+        if (authMode === 'email_password' && authAccessToken) {
+          return {
+            "Content-Type": "application/json",
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${authAccessToken}`,
+          };
+        }
+        return {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        };
+      }
 
       const loginView = document.getElementById("login-view");
       const resultsView = document.getElementById("results-view");
@@ -3424,11 +3846,15 @@
           }
         }
 
-        // Optank saldo - vises/skjules i renderPaymentSection baseret på prefs
+        // Købsprofil - altid synlig når logget ind, load data med det samme
+        const ppCollapsible = document.getElementById("purchase-profile-collapsible");
+        if (ppCollapsible) {
+          ppCollapsible.style.display = "block";
+          ppLoaded = true;
+          loadPurchaseProfile();
+        }
 
-        // Club Limitations - vis hvis der er begrænsninger
-        const clubLimitationsCollapsible = document.getElementById("club-limitations-collapsible");
-        // Vil blive sat til block i loadAndRenderClubLimitations hvis der er data
+        // Optank saldo - vises/skjules i renderPaymentSection baseret på prefs
 
         // Daily Assortment - vil blive sat til block i loadAndRenderDailyAssortment hvis der er produkter
 
@@ -3449,6 +3875,20 @@
           }
         }
 
+        // Dagens Ret visning i produktgrænser
+        const dsContainer = document.getElementById("daily-special-stepper-container");
+        if (dsContainer) {
+          const showDailySpecial = productLimitEnabled && prefs.parent_portal_daily_special !== false;
+          dsContainer.style.display = showDailySpecial ? "flex" : "none";
+          if (showDailySpecial) {
+            const priceEl = dsContainer.querySelector(".product-limit-item-price");
+            if (priceEl) {
+              const price = prefs.parent_portal_daily_special_price;
+              priceEl.textContent = price ? `ca. ${price}` : "Samlet grænse for alle dagens ret-produkter";
+            }
+          }
+        }
+
         // Sukkerpolitik (default false - institution må aktivere)
         const sugarPolicyEnabled = prefs && prefs.parent_portal_sugar_policy === true;
         const sugarPolicyCollapsible = document.getElementById("sugar-policy-collapsible");
@@ -3456,6 +3896,33 @@
           sugarPolicyCollapsible.style.display = sugarPolicyEnabled ? "block" : "none";
           if (sugarPolicyEnabled && currentChildId) {
             loadSugarPolicy();
+          }
+        }
+
+        // Sukkerpolitik info-boks
+        const sugarInfoBox = document.getElementById("sugar-policy-info-box");
+        if (sugarInfoBox) {
+          const showInfoBox = sugarPolicyEnabled && prefs.sugar_policy_info_enabled !== false;
+          sugarInfoBox.style.display = showInfoBox ? "block" : "none";
+          if (showInfoBox) {
+            const defaultText = "Klubben har foretaget en pædagogisk vurdering med fokus på børns sundhed og ernæring.\nVi prioriterer en hverdag med stabil energi, trivsel og gode vaner \u2013 og tilbyder derfor kun sukkerholdige eftermiddagssnacks i et meget begrænset omfang.\n\nØnsker du en yderligere begrænsning af dit barns adgang til sukker, kan du justere forbruget herunder.";
+            sugarInfoBox.textContent = prefs.sugar_policy_info_text || defaultText;
+          }
+        }
+
+        // Kostpræferencer (vegetarisk, svinekød)
+        const dietaryCollapsible = document.getElementById("dietary-prefs-collapsible");
+        if (dietaryCollapsible) {
+          const showVegetarian = prefs && prefs.parent_portal_vegetarian_only !== false;
+          const showNoPork = prefs && prefs.parent_portal_no_pork !== false;
+          const anyDietaryEnabled = showVegetarian || showNoPork;
+          dietaryCollapsible.style.display = anyDietaryEnabled ? "block" : "none";
+          const vegEl = document.getElementById("dietary-pref-vegetarian");
+          const porkEl = document.getElementById("dietary-pref-no-pork");
+          if (vegEl) vegEl.style.display = showVegetarian ? "block" : "none";
+          if (porkEl) porkEl.style.display = showNoPork ? "block" : "none";
+          if (anyDietaryEnabled && currentChildId) {
+            loadDietaryPreferences();
           }
         }
 
@@ -3490,11 +3957,7 @@
         try {
           const res = await fetch(GET_PARENT_EVENTS_URL, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ child_id: childId, parent_pin: parentPin }),
           });
           const data = await res.json();
@@ -3729,11 +4192,7 @@
         try {
           const res = await fetch(PARENT_EVENT_REGISTER_URL, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
               child_id: currentChildId,
               parent_pin: currentParentPin,
@@ -3791,11 +4250,7 @@
         try {
           const res = await fetch(PARENT_EVENT_CANCEL_URL, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
               child_id: childId,
               parent_pin: parentPin,
@@ -3837,11 +4292,7 @@
           // 1. Create PaymentIntent
           const res = await fetch(CREATE_EVENT_PAYMENT_URL, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
               child_id: currentChildId,
               parent_pin: currentParentPin,
@@ -3928,11 +4379,7 @@
               try {
                 const confirmRes = await fetch(CONFIRM_EVENT_PAYMENT_URL, {
                   method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    apikey: SUPABASE_ANON_KEY,
-                    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-                  },
+                  headers: getAuthHeaders(),
                   body: JSON.stringify({
                     child_id: currentChildId,
                     parent_pin: currentParentPin,
@@ -3970,6 +4417,11 @@
       }
 
       async function refreshParentView() {
+        // For email+password: brug loadChildrenAndEnterPortal i stedet
+        if (authMode === 'email_password') {
+          await loadChildrenAndEnterPortal();
+          return;
+        }
         if (!currentInstitutionId || !currentParentPin) return;
         // Brug child_id hvis tilgængelig, ellers name_input
         const body = currentChildId
@@ -3987,11 +4439,7 @@
         try {
           const res = await fetch(FUNCTION_URL, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify(body),
           });
           const data = await res.json().catch(() => ({}));
@@ -4002,7 +4450,7 @@
               allowedChildren = data.allowed_children;
               renderChildSwitcher(allowedChildren);
             }
-            if (currentChildId && currentParentPin) {
+            if (currentChildId && (currentParentPin || authMode === 'email_password')) {
               loadAndRenderEvents(currentChildId, currentParentPin);
             }
           }
@@ -4035,11 +4483,7 @@
         try {
           const res = await fetch(CREATE_TOPUP_URL, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
               child_id: currentChildId,
               parent_pin: currentParentPin,
@@ -4109,11 +4553,7 @@
               try {
                 const confirmRes = await fetch(CONFIRM_TOPUP_URL, {
                   method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    apikey: SUPABASE_ANON_KEY,
-                    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-                  },
+                  headers: getAuthHeaders(),
                   body: JSON.stringify({
                     child_id: currentChildId,
                     parent_pin: currentParentPin,
@@ -4157,19 +4597,216 @@
         }
       }
 
+      // ── Købsprofil (Purchase Profile) ──
+      let ppCurrentPeriod = "all";
+      let ppCurrentSort = "antal";
+      let ppLoaded = false;
+
+      const ppCylinderColors = [
+        { bg: "linear-gradient(90deg, #00838f 0%, #00bcd4 35%, #4dd0e1 50%, #00bcd4 65%, #00838f 100%)", shadow: "#006064", cap: "linear-gradient(180deg, #80deea 0%, #26c6da 100%)" },
+        { bg: "linear-gradient(90deg, #1565c0 0%, #2196f3 35%, #64b5f6 50%, #2196f3 65%, #1565c0 100%)", shadow: "#0d47a1", cap: "linear-gradient(180deg, #90caf9 0%, #42a5f5 100%)" },
+        { bg: "linear-gradient(90deg, #f9a825 0%, #ffc107 35%, #ffeb3b 50%, #ffc107 65%, #f9a825 100%)", shadow: "#f57f17", cap: "linear-gradient(180deg, #fff59d 0%, #ffca28 100%)" },
+        { bg: "linear-gradient(90deg, #c2185b 0%, #e91e63 35%, #f06292 50%, #e91e63 65%, #c2185b 100%)", shadow: "#880e4f", cap: "linear-gradient(180deg, #f8bbd9 0%, #ec407a 100%)" },
+        { bg: "linear-gradient(90deg, #6a1b9a 0%, #9c27b0 35%, #ba68c8 50%, #9c27b0 65%, #6a1b9a 100%)", shadow: "#4a148c", cap: "linear-gradient(180deg, #ce93d8 0%, #ab47bc 100%)" },
+        { bg: "linear-gradient(90deg, #512da8 0%, #673ab7 35%, #9575cd 50%, #673ab7 65%, #512da8 100%)", shadow: "#311b92", cap: "linear-gradient(180deg, #b39ddb 0%, #7e57c2 100%)" },
+        { bg: "linear-gradient(90deg, #00796b 0%, #009688 35%, #4db6ac 50%, #009688 65%, #00796b 100%)", shadow: "#004d40", cap: "linear-gradient(180deg, #80cbc4 0%, #26a69a 100%)" },
+        { bg: "linear-gradient(90deg, #0277bd 0%, #03a9f4 35%, #4fc3f7 50%, #03a9f4 65%, #0277bd 100%)", shadow: "#01579b", cap: "linear-gradient(180deg, #81d4fa 0%, #29b6f6 100%)" },
+        { bg: "linear-gradient(90deg, #ef6c00 0%, #ff9800 35%, #ffb74d 50%, #ff9800 65%, #ef6c00 100%)", shadow: "#e65100", cap: "linear-gradient(180deg, #ffcc80 0%, #ffa726 100%)" },
+        { bg: "linear-gradient(90deg, #c62828 0%, #f44336 35%, #e57373 50%, #f44336 65%, #c62828 100%)", shadow: "#b71c1c", cap: "linear-gradient(180deg, #ef9a9a 0%, #ef5350 100%)" },
+        { bg: "linear-gradient(90deg, #546e7a 0%, #78909c 35%, #b0bec5 50%, #78909c 65%, #546e7a 100%)", shadow: "#37474f", cap: "linear-gradient(180deg, #cfd8dc 0%, #90a4ae 100%)" }
+      ];
+
+      function ppFormatKr(amount) {
+        return amount.toFixed(2).replace(".", ",") + " kr";
+      }
+
+      async function loadPurchaseProfile() {
+        if (!currentChildId || (!currentParentPin && authMode !== 'email_password')) return;
+
+        const chartEl = document.getElementById("pp-chart");
+        const emptyEl = document.getElementById("pp-empty");
+        const loadingEl = document.getElementById("pp-loading");
+        const totalEl = document.getElementById("pp-total");
+
+        if (loadingEl) loadingEl.style.display = "block";
+        if (chartEl) chartEl.innerHTML = "";
+        if (emptyEl) emptyEl.style.display = "none";
+        if (totalEl) totalEl.style.display = "none";
+
+        try {
+          const res = await fetch(GET_PURCHASE_PROFILE_URL, {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+              child_id: currentChildId,
+              parent_pin: currentParentPin,
+              period: ppCurrentPeriod,
+              sort_by: ppCurrentSort,
+            }),
+          });
+
+          const data = await res.json();
+          if (loadingEl) loadingEl.style.display = "none";
+
+          if (!data.success || !data.chartData || data.chartData.length === 0) {
+            if (emptyEl) emptyEl.style.display = "block";
+            return;
+          }
+
+          // Show total
+          if (totalEl) {
+            const totalAmountEl = document.getElementById("pp-total-amount");
+            if (totalAmountEl) totalAmountEl.textContent = ppFormatKr(data.total);
+            totalEl.style.display = "block";
+          }
+
+          renderPurchaseChart(data.chartData);
+        } catch (e) {
+          console.error("[purchase-profile] Fetch error:", e);
+          if (loadingEl) loadingEl.style.display = "none";
+          if (emptyEl) emptyEl.style.display = "block";
+        }
+      }
+
+      function renderPurchaseChart(chartData) {
+        const container = document.getElementById("pp-chart");
+        if (!container) return;
+        container.innerHTML = "";
+
+        const fragment = document.createDocumentFragment();
+
+        chartData.forEach((item, index) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "pp-bar-wrapper";
+
+          // Value label
+          const valueLabel = document.createElement("div");
+          valueLabel.className = "pp-bar-value";
+          valueLabel.textContent = item.displayValue;
+
+          // Bar height: min 25px, max 170px
+          const minH = 25;
+          const maxH = 170;
+          const calcHeight = minH + (item.normalizedHeight / 100) * (maxH - minH);
+          const colors = ppCylinderColors[index % ppCylinderColors.length];
+
+          // Bar (cylinder body)
+          const bar = document.createElement("div");
+          bar.className = "pp-bar";
+          bar.style.setProperty("--final-height", Math.round(calcHeight) + "px");
+          bar.style.background = colors.bg;
+          bar.style.boxShadow = `3px 0 0 ${colors.shadow}, 0 8px 16px rgba(0,0,0,0.15)`;
+
+          // Cap
+          const cap = document.createElement("div");
+          cap.className = "pp-bar-cap";
+          cap.style.background = colors.cap;
+          bar.appendChild(cap);
+
+          // Tooltip
+          const tooltip = document.createElement("div");
+          tooltip.className = "pp-bar-tooltip";
+          tooltip.innerHTML = `<div style="font-weight:800;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:3px;margin-bottom:3px;">${item.name}</div>` +
+            `<div style="display:flex;justify-content:space-between;gap:12px;"><span>Antal:</span><span style="font-weight:700;">${item.antal}</span></div>` +
+            `<div style="display:flex;justify-content:space-between;gap:12px;"><span>Beløb:</span><span style="font-weight:700;">${ppFormatKr(item.kr)}</span></div>`;
+          bar.appendChild(tooltip);
+
+          // Tap to toggle tooltip on mobile
+          bar.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const wasVisible = bar.classList.contains("tooltip-visible");
+            // Hide all other tooltips
+            container.querySelectorAll(".pp-bar.tooltip-visible").forEach(b => b.classList.remove("tooltip-visible"));
+            if (!wasVisible) bar.classList.add("tooltip-visible");
+          });
+
+          // Icon
+          const iconWrap = document.createElement("div");
+          iconWrap.className = "pp-bar-icon";
+          if (item.isDagensRet) {
+            iconWrap.innerHTML = '<span>🍽️</span>';
+          } else if (item.isAndreVarer) {
+            iconWrap.innerHTML = '<span>📦</span>';
+          } else if (item.icon) {
+            if (item.icon.startsWith("http") || item.icon.includes(".webp") || item.icon.includes(".png")) {
+              iconWrap.innerHTML = `<img src="${item.icon}" alt="${item.name}">`;
+            } else {
+              iconWrap.innerHTML = `<span>${item.icon}</span>`;
+            }
+          } else {
+            iconWrap.innerHTML = '<span>🛒</span>';
+          }
+
+          // Name
+          const nameLabel = document.createElement("div");
+          nameLabel.className = "pp-bar-name";
+          nameLabel.textContent = item.name;
+          nameLabel.title = item.name;
+
+          wrapper.appendChild(valueLabel);
+          wrapper.appendChild(bar);
+          wrapper.appendChild(iconWrap);
+          wrapper.appendChild(nameLabel);
+          fragment.appendChild(wrapper);
+        });
+
+        container.appendChild(fragment);
+
+        // Animate bars in
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const bars = container.querySelectorAll(".pp-bar");
+            bars.forEach((b, i) => {
+              setTimeout(() => {
+                const finalH = b.style.getPropertyValue("--final-height");
+                b.style.height = finalH;
+              }, i * 80);
+            });
+          });
+        });
+      }
+
+      // Set up period + sort button listeners
+      function setupPurchaseProfileControls() {
+        document.querySelectorAll(".pp-period-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            document.querySelectorAll(".pp-period-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            ppCurrentPeriod = btn.dataset.period;
+            loadPurchaseProfile();
+          });
+        });
+        document.querySelectorAll(".pp-sort-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            document.querySelectorAll(".pp-sort-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            ppCurrentSort = btn.dataset.sort;
+            loadPurchaseProfile();
+          });
+        });
+      }
+
+      setupPurchaseProfileControls();
+
+      // Dismiss purchase profile tooltips when tapping outside
+      document.addEventListener("click", () => {
+        document.querySelectorAll(".pp-bar.tooltip-visible").forEach(b => b.classList.remove("tooltip-visible"));
+      });
+
       // Collapsible section toggle functionality with accordion behavior
       function setupCollapsibleSections() {
         // List of all collapsible section IDs - iterate through each one individually
         const sectionIds = [
-          "email-notification-collapsible",
-          "history-collapsible",
-          "events-collapsible",
           "payment-collapsible",
-          "club-limitations-collapsible",
+          "events-collapsible",
+          "purchase-profile-collapsible",
+          "history-collapsible",
+          "email-notification-collapsible",
           "daily-assortment-collapsible",
           "spending-limit-collapsible",
           "product-limit-collapsible",
           "sugar-policy-collapsible",
+          "dietary-prefs-collapsible",
           "allergens-collapsible",
           "change-pin-collapsible"
         ];
@@ -4285,23 +4922,26 @@
       let productLimitProducts = [];
       let productLimitSettings = new Map(); // productId -> max_per_day (null = ubegrænset)
       let institutionProductLimits = new Map(); // productId -> max_per_day fra institutionen
+      let dailySpecialLimitValue = -1; // -1 = ubegrænset, 0 = blokeret, 1-5 = maks
+
+      // Hjælper: Sæt besked i produktlisten uden at fjerne Dagens Ret
+      function setProductListMessage(listEl, msg) {
+        listEl.querySelectorAll(".product-limit-item:not(#daily-special-stepper-container), .product-limit-empty").forEach(el => el.remove());
+        listEl.insertAdjacentHTML("beforeend", `<div class="product-limit-empty">${msg}</div>`);
+      }
 
       async function loadProductLimits(institutionId, childId) {
         const listEl = document.getElementById("product-limit-list");
         if (!listEl) return;
 
         console.log("[loadProductLimits] START via Edge Function", { institutionId, childId });
-        listEl.innerHTML = '<div class="product-limit-empty">Indlæser produkter...</div>';
+        setProductListMessage(listEl, "Indlæser produkter...");
 
         try {
           // Brug Edge Function i stedet for direkte Supabase query (løser RLS-problemer på mobil)
           const res = await fetch(GET_PRODUCTS_URL, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
               institution_id: institutionId,
               child_id: childId,
@@ -4313,7 +4953,7 @@
 
           if (!res.ok) {
             console.error("Fejl fra Edge Function:", data);
-            listEl.innerHTML = `<div class="product-limit-empty">Kunne ikke indlæse produkter. (${data.error || 'ukendt fejl'})</div>`;
+            setProductListMessage(listEl, `Kunne ikke indlæse produkter. (${data.error || 'ukendt fejl'})`);
             return;
           }
 
@@ -4321,7 +4961,7 @@
 
           if (productLimitProducts.length === 0) {
             console.warn("[loadProductLimits] Ingen produkter fra Edge Function");
-            listEl.innerHTML = '<div class="product-limit-empty">Ingen aktive produkter fundet.</div>';
+            setProductListMessage(listEl, "Ingen aktive produkter fundet.");
             return;
           }
 
@@ -4339,47 +4979,37 @@
             productLimitSettings.set(row.product_id, row.max_per_day);
           });
 
+          // Sæt dagens ret grænse
+          dailySpecialLimitValue = data.daily_special_limit != null ? data.daily_special_limit : -1;
+
           renderProductLimitList();
+          renderDailySpecialStepper();
           wireProductLimitEvents();
 
         } catch (err) {
           console.error("Uventet fejl ved indlæsning af produktgrænser:", err);
-          listEl.innerHTML = '<div class="product-limit-empty">Uventet fejl opstod.</div>';
+          setProductListMessage(listEl, "Uventet fejl opstod.");
         }
       }
 
       function renderProductLimitList() {
         const listEl = document.getElementById("product-limit-list");
-        const searchInput = document.getElementById("product-limit-search");
-        const showModifiedCheckbox = document.getElementById("product-limit-show-modified");
 
         if (!listEl) return;
 
-        const searchTerm = (searchInput?.value || "").toLowerCase().trim();
-        const showOnlyModified = showModifiedCheckbox?.checked || false;
+        // Bevar Dagens Ret elementet (statisk HTML)
+        const dsEl = document.getElementById("daily-special-stepper-container");
+        const dsParent = dsEl?.parentNode === listEl ? dsEl : null;
 
-        let filteredProducts = productLimitProducts;
-
-        // Filtrering
-        if (searchTerm) {
-          filteredProducts = filteredProducts.filter(p =>
-            (p.name || "").toLowerCase().includes(searchTerm)
-          );
-        }
-
-        if (showOnlyModified) {
-          // Vis kun produkter med en grænse sat (ikke -1 = ubegrænset)
-          filteredProducts = filteredProducts.filter(p =>
-            productLimitSettings.has(p.id) && productLimitSettings.get(p.id) !== -1
-          );
-        }
+        // Vis kun fast sortiment produkter
+        let filteredProducts = productLimitProducts.filter(p => p.is_core_assortment === true);
 
         if (filteredProducts.length === 0) {
-          listEl.innerHTML = '<div class="product-limit-empty">Ingen produkter matcher din søgning.</div>';
+          setProductListMessage(listEl, "Ingen produkter i fast sortiment.");
           return;
         }
 
-        listEl.innerHTML = filteredProducts.map(product => {
+        const html = filteredProducts.map(product => {
           const childLimit = productLimitSettings.has(product.id) ? productLimitSettings.get(product.id) : -1;
           const instLimit = institutionProductLimits.get(product.id);
           const isModified = productLimitSettings.has(product.id) && productLimitSettings.get(product.id) !== -1;
@@ -4418,6 +5048,18 @@
             </div>
           `;
         }).join("");
+
+        // Fjern gamle produkt-items (men bevar Dagens Ret)
+        listEl.querySelectorAll(".product-limit-item:not(#daily-special-stepper-container), .product-limit-empty").forEach(el => el.remove());
+        listEl.insertAdjacentHTML("beforeend", html);
+      }
+
+      function renderDailySpecialStepper() {
+        const valueEl = document.getElementById("daily-special-stepper-value");
+        if (!valueEl) return;
+        const v = dailySpecialLimitValue;
+        valueEl.textContent = v === -1 ? "Ubegrænset" : (v === 0 ? "Blokeret" : `${v}/dag`);
+        valueEl.className = "product-limit-stepper-value " + (v === 0 ? "is-zero" : (v === -1 ? "is-unlimited" : ""));
       }
 
       let productLimitEventsWired = false;
@@ -4426,27 +5068,8 @@
         productLimitEventsWired = true;
 
         const listEl = document.getElementById("product-limit-list");
-        const searchInput = document.getElementById("product-limit-search");
-        const filterToggle = document.getElementById("product-limit-filter-toggle");
-        const showModifiedCheckbox = document.getElementById("product-limit-show-modified");
         const saveBtn = document.getElementById("save-product-limits-btn");
         const feedback = document.getElementById("product-limit-feedback");
-
-        // Søgning
-        if (searchInput) {
-          searchInput.addEventListener("input", () => {
-            renderProductLimitList();
-          });
-        }
-
-        // Filter toggle
-        if (filterToggle && showModifiedCheckbox) {
-          filterToggle.addEventListener("click", () => {
-            showModifiedCheckbox.checked = !showModifiedCheckbox.checked;
-            filterToggle.classList.toggle("is-active", showModifiedCheckbox.checked);
-            renderProductLimitList();
-          });
-        }
 
         // Stepper controls (event delegation)
         if (listEl) {
@@ -4483,6 +5106,24 @@
 
             renderProductLimitList();
             if (feedback) feedback.textContent = "";
+          });
+        }
+
+        // Dagens Ret stepper
+        const dsStepper = document.getElementById("daily-special-stepper");
+        if (dsStepper) {
+          dsStepper.addEventListener("click", (e) => {
+            const btn = e.target.closest(".ds-stepper-dec, .ds-stepper-inc");
+            if (!btn) return;
+            const isInc = btn.classList.contains("ds-stepper-inc");
+            const cur = dailySpecialLimitValue;
+            let newVal;
+            if (cur === -1) { newVal = isInc ? 0 : 5; }
+            else if (cur === 0) { newVal = isInc ? 1 : -1; }
+            else if (cur === 5) { newVal = isInc ? -1 : 4; }
+            else { newVal = isInc ? cur + 1 : cur - 1; }
+            dailySpecialLimitValue = newVal;
+            renderDailySpecialStepper();
           });
         }
 
@@ -4523,7 +5164,12 @@
               "apikey": SUPABASE_ANON_KEY,
               "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
             },
-            body: JSON.stringify({ child_id: currentChildId, parent_pin: currentParentPin, limits }),
+            body: JSON.stringify({
+              child_id: currentChildId,
+              parent_pin: currentParentPin,
+              limits,
+              max_daily_special_per_day: dailySpecialLimitValue === -1 ? null : dailySpecialLimitValue,
+            }),
           });
 
           const result = await response.json();
@@ -4620,7 +5266,7 @@
         const feedback = document.getElementById("sugar-policy-feedback");
         const saveBtn = document.getElementById("save-sugar-policy-btn");
 
-        if (!currentChildId || !currentParentPin) {
+        if (!currentChildId || (!currentParentPin && authMode !== 'email_password')) {
           if (feedback) {
             feedback.textContent = "Fejl: Mangler login-information.";
             feedback.style.color = "#dc2626";
@@ -4631,6 +5277,7 @@
         const isEnabled = enabledCheckbox?.checked === true;
 
         // Hvis deaktiveret, sæt alle begrænsninger til null/false
+        // Bevar eksisterende dietary preferences
         const payload = {
           child_id: currentChildId,
           parent_pin: currentParentPin,
@@ -4638,6 +5285,8 @@
           block_unhealthy: isEnabled ? (blockCheckbox?.checked === true) : false,
           max_unhealthy_per_day: isEnabled && maxPerDayInput?.value ? parseInt(maxPerDayInput.value, 10) : null,
           max_unhealthy_per_product_per_day: isEnabled && maxPerProductInput?.value ? parseInt(maxPerProductInput.value, 10) : null,
+          vegetarian_only: currentSugarPolicy?.vegetarian_only === true,
+          no_pork: currentSugarPolicy?.no_pork === true,
         };
 
         if (saveBtn) saveBtn.disabled = true;
@@ -4645,11 +5294,7 @@
         try {
           const res = await fetch(SAVE_SUGAR_POLICY_URL, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify(payload),
           });
 
@@ -4659,8 +5304,9 @@
               feedback.textContent = "Sukkerpolitik gemt!";
               feedback.style.color = "#16a34a";
             }
-            // Opdater lokal state
+            // Opdater lokal state (bevar dietary preferences)
             currentSugarPolicy = {
+              ...currentSugarPolicy,
               enabled: payload.enabled,
               block_unhealthy: payload.block_unhealthy,
               max_unhealthy_per_day: payload.max_unhealthy_per_day,
@@ -4699,39 +5345,95 @@
       document.getElementById("sugar-max-per-day")?.addEventListener("input", handleSugarLimitInput);
       document.getElementById("sugar-max-per-product")?.addEventListener("input", handleSugarLimitInput);
 
+      // ===== KOSTPRÆFERENCER FUNKTIONER =====
+
+      function loadDietaryPreferences() {
+        const vegCheckbox = document.getElementById("dietary-vegetarian-only");
+        const porkCheckbox = document.getElementById("dietary-no-pork");
+
+        if (currentSugarPolicy) {
+          if (vegCheckbox) vegCheckbox.checked = currentSugarPolicy.vegetarian_only === true;
+          if (porkCheckbox) porkCheckbox.checked = currentSugarPolicy.no_pork === true;
+        } else {
+          if (vegCheckbox) vegCheckbox.checked = false;
+          if (porkCheckbox) porkCheckbox.checked = false;
+        }
+      }
+
+      async function saveDietaryPreferences() {
+        const vegCheckbox = document.getElementById("dietary-vegetarian-only");
+        const porkCheckbox = document.getElementById("dietary-no-pork");
+        const feedback = document.getElementById("dietary-prefs-feedback");
+        const saveBtn = document.getElementById("save-dietary-prefs-btn");
+
+        if (!currentChildId || (!currentParentPin && authMode !== 'email_password')) {
+          if (feedback) {
+            feedback.textContent = "Fejl: Mangler login-information.";
+            feedback.style.color = "#dc2626";
+          }
+          return;
+        }
+
+        // Bevar eksisterende sugar policy værdier + opdater kun dietary preferences
+        const payload = {
+          child_id: currentChildId,
+          parent_pin: currentParentPin,
+          enabled: currentSugarPolicy?.enabled === true,
+          block_unhealthy: currentSugarPolicy?.block_unhealthy === true,
+          max_unhealthy_per_day: currentSugarPolicy?.max_unhealthy_per_day ?? null,
+          max_unhealthy_per_product_per_day: currentSugarPolicy?.max_unhealthy_per_product_per_day ?? null,
+          vegetarian_only: vegCheckbox?.checked === true,
+          no_pork: porkCheckbox?.checked === true,
+        };
+
+        if (saveBtn) saveBtn.disabled = true;
+
+        try {
+          const res = await fetch(SAVE_SUGAR_POLICY_URL, {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload),
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            if (feedback) {
+              feedback.textContent = "Kostpræferencer gemt!";
+              feedback.style.color = "#16a34a";
+            }
+            // Opdater lokal state
+            if (!currentSugarPolicy) currentSugarPolicy = {};
+            currentSugarPolicy.vegetarian_only = payload.vegetarian_only;
+            currentSugarPolicy.no_pork = payload.no_pork;
+          } else {
+            if (feedback) {
+              feedback.textContent = data.error || "Kunne ikke gemme.";
+              feedback.style.color = "#dc2626";
+            }
+          }
+        } catch (e) {
+          console.error("[saveDietaryPreferences] Error:", e);
+          if (feedback) {
+            feedback.textContent = "Netværksfejl. Prøv igen.";
+            feedback.style.color = "#dc2626";
+          }
+        } finally {
+          if (saveBtn) saveBtn.disabled = false;
+          setTimeout(() => { if (feedback) feedback.textContent = ""; }, 3000);
+        }
+      }
+
+      document.getElementById("save-dietary-prefs-btn")?.addEventListener("click", saveDietaryPreferences);
+
       async function loadInstitutionPreferences(institutionId) {
         if (!institutionId) return null;
         try {
-          // NOTE: Denne funktion er kun fallback - get-parent-view returnerer allerede institutions data
-          // View'et public_institutions har kun id, name, parent_contact_phone - ikke alle preferences
-          // Så denne query vil ikke returnere alle felter, men det er OK da get-parent-view bruges primært
-          let { data, error } = await supabase
-            .from("public_institutions")
-            .select("id, name, parent_contact_phone")
-            .eq("id", institutionId)
-            .maybeSingle();
-
-          // Fallback hvis view'et ikke findes endnu
-          if (error && (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation') || error.message?.includes('view'))) {
-            const fallbackResult = await supabase
-              .from("institutions")
-              .select("id, name")
-              .eq("id", institutionId)
-              .maybeSingle();
-            
-            if (!fallbackResult.error && fallbackResult.data) {
-              data = fallbackResult.data;
-              error = null;
-            }
-          }
-
+          const { data: list, error } = await supabase.rpc("get_public_institutions");
           if (error) {
             console.warn("Kunne ikke hente institutions-præferencer:", error);
-            // Returner tomt objekt så UI stadig virker
-            // (betalingssektionen vil vise "midlertidigt utilgængelig" hvis prefs mangler)
             return {};
           }
-          // Returner kun de felter view'et har - resten kommer fra get-parent-view response
+          const data = Array.isArray(list) ? list.find((i) => i.id === institutionId) : null;
           return data || {};
         } catch (e) {
           console.warn("Uventet fejl ved hentning af institutions-præferencer:", e);
@@ -4739,97 +5441,20 @@
         }
       }
 
-      // Hent og vis klubbens begrænsninger (daglig grænse og produkter med købsgrænse)
-      async function loadAndRenderClubLimitations(institutionId, prefs) {
-        const clubLimitationsCollapsible = document.getElementById("club-limitations-collapsible");
-        const clubLimitationsCard = document.getElementById("club-limitations-card");
-        const dailyLimitItem = document.getElementById("club-daily-limit-item");
-        const dailyLimitValue = document.getElementById("club-daily-limit");
-        const productLimitsItem = document.getElementById("club-product-limits-item");
-        const productLimitsContainer = document.getElementById("club-product-limits");
-        const clubLimitationsFallback = document.getElementById("club-limitations-fallback");
+      // Vis klubbens daglige grænse i "Daglig beløbsgrænse"-sektionen
+      function loadAndRenderClubLimitations(institutionId, prefs) {
+        const infoEl = document.getElementById("club-daily-limit-info");
+        const amountEl = document.getElementById("club-daily-limit-amount");
+        if (!infoEl || !amountEl) return;
 
-        if (!clubLimitationsCard || !clubLimitationsCollapsible) return;
-
-        // Hent daglig grænse fra institutionens prefs
         const spendingLimitEnabled = prefs && (prefs.spending_limit_enabled === true || prefs.spending_limit_enabled === "true" || prefs.spending_limit_enabled === 1 || prefs.spending_limit_enabled === "1");
         const spendingLimitAmount = prefs && prefs.spending_limit_amount ? Number(prefs.spending_limit_amount) : null;
 
         if (spendingLimitEnabled && spendingLimitAmount && spendingLimitAmount > 0) {
-          dailyLimitItem.style.display = "block";
-          dailyLimitValue.textContent = `${spendingLimitAmount} kr.`;
+          amountEl.textContent = `${spendingLimitAmount} kr.`;
+          infoEl.style.display = "block";
         } else {
-          dailyLimitItem.style.display = "none";
-        }
-
-        // Hent produkter med købsgrænse fra product_limits tabellen
-        try {
-          // Først: Hent product_limits
-          const { data: productLimits, error: productLimitsError } = await supabase
-            .from("product_limits")
-            .select("product_id, max_per_day")
-            .eq("institution_id", institutionId)
-            .gt("max_per_day", 0);
-
-          if (productLimitsError) {
-            console.warn("Kunne ikke hente produkter med købsgrænse:", productLimitsError);
-            productLimitsItem.style.display = "none";
-          } else if (productLimits && productLimits.length > 0) {
-            // Derefter: Hent produkter for de fundne product_ids
-            const productIds = productLimits.map((pl) => pl.product_id);
-            const { data: products, error: productsError } = await supabase
-              .from("products")
-              .select("id, name, price")
-              .in("id", productIds)
-              .eq("is_enabled", true)
-              .order("name", { ascending: true });
-
-            if (productsError) {
-              console.warn("Kunne ikke hente produktdetaljer:", productsError);
-              productLimitsItem.style.display = "none";
-            } else if (products && products.length > 0) {
-              // Match products med deres limits
-              const limitMap = new Map();
-              productLimits.forEach((pl) => {
-                limitMap.set(pl.product_id, pl.max_per_day);
-              });
-
-              productLimitsItem.style.display = "block";
-              productLimitsContainer.innerHTML = "";
-
-              products.forEach((product) => {
-                const maxPerDay = limitMap.get(product.id);
-                if (!maxPerDay) return;
-
-                const productItem = document.createElement("div");
-                productItem.className = "product-item";
-                const price = product.price ? Number(product.price).toFixed(0) : "0";
-                const productName = escapeHtml(product.name);
-                productItem.innerHTML = `
-                  <span class="product-name">${productName}</span> – ${price} kr. Maks. <strong>${maxPerDay} stk.</strong> pr. dag
-                `;
-                productLimitsContainer.appendChild(productItem);
-              });
-            } else {
-              productLimitsItem.style.display = "none";
-            }
-          } else {
-            productLimitsItem.style.display = "none";
-          }
-        } catch (e) {
-          console.warn("Uventet fejl ved hentning af produkter med købsgrænse:", e);
-          productLimitsItem.style.display = "none";
-        }
-
-        // Vis collapsible sektionen også hvis der ikke er begrænsninger
-        const hasAnyLimitations =
-          (dailyLimitItem.style.display !== "none") ||
-          (productLimitsItem.style.display !== "none");
-        if (clubLimitationsFallback) {
-          clubLimitationsFallback.style.display = hasAnyLimitations ? "none" : "block";
-        }
-        if (clubLimitationsCollapsible) {
-          clubLimitationsCollapsible.style.display = "block";
+          infoEl.style.display = "none";
         }
       }
 
@@ -4974,10 +5599,7 @@
       `${GET_ALLERGY_URL}?child_id=${encodeURIComponent(childId)}`,
       {
         method: "GET",
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
+        headers: getAuthHeaders(),
       }
     );
 
@@ -5047,11 +5669,7 @@
           try {
             const res = await fetch(SAVE_ALLERGY_URL, {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-              },
+              headers: getAuthHeaders(),
               body: JSON.stringify({
                 child_id: currentChildId,
                 allergy_settings: settings,
@@ -5121,11 +5739,7 @@
           try {
             const res = await fetch(SAVE_DAILY_LIMIT_URL, {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-              },
+              headers: getAuthHeaders(),
               body: JSON.stringify({
                 child_id: currentChildId,
                 daily_spend_limit: limit, // forventes at være i kroner pr. dag
@@ -5147,6 +5761,11 @@
               dailyLimitFeedback.textContent = "Beløbsgrænsen er gemt.";
               dailyLimitFeedback.style.color = "#16a34a";
             }
+            // Opdater "Din daglige grænse" visning
+            const childLimitEl = document.getElementById("child-daily-limit-display");
+            if (childLimitEl) {
+              childLimitEl.textContent = limit > 0 ? `${limit} kr.` : "ingen grænse";
+            }
           } catch (err) {
             console.error("Fejl ved gemning af daglig beløbsgrænse:", err);
             if (dailyLimitFeedback) {
@@ -5165,30 +5784,20 @@
 
       async function loadInstitutions() {
         try {
-          // Prøv først public_institutions view (ny sikker løsning)
-          let { data, error } = await supabase
-            .from("public_institutions")
-            .select("id, name, parent_contact_phone")
-            .order("name", { ascending: true });
-      
-          // Hvis view'et ikke findes endnu (fx hvis migration ikke er deployed), prøv fallback til institutions
-          if (error && (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation') || error.message?.includes('view'))) {
-            console.warn("public_institutions view findes ikke endnu, prøver fallback til institutions tabellen", error);
-            
-            // Fallback: Prøv institutions tabellen direkte (hvis RLS tillader det)
-            const fallbackResult = await supabase
-              .from("institutions")
-              .select("id, name")
-              .order("name", { ascending: true });
-            
-            if (!fallbackResult.error && fallbackResult.data && fallbackResult.data.length > 0) {
-              data = fallbackResult.data;
-              error = null;
-            }
-          }
+          // Brug RPC (RLS-sikker) – 403 på public_institutions er permissions, ikke "view findes ikke"
+          const { data, error } = await supabase.rpc("get_public_institutions");
       
           if (error) {
-            console.error("Fejl ved hentning af institutioner", error);
+            // 403 / PGRST301 = RLS/permission, ikke "relation findes ikke"
+            if (error.code === "PGRST301" || (error.message && (error.message.includes("403") || error.message.includes("permission") || error.message.includes("policy")))) {
+              console.warn("Ingen adgang til institutioner (RLS/permission).", error);
+            } else {
+              console.error("Fejl ved hentning af institutioner", error);
+            }
+            institutionSelect.innerHTML = '<option value="">Ingen institutioner tilgængelige</option>';
+            if (institutionRow) institutionRow.style.display = "block";
+            if (institutionInfo) institutionInfo.style.display = "none";
+            if (institutionNameLabel) institutionNameLabel.textContent = "";
             return;
           }
       
@@ -5244,6 +5853,329 @@
           console.error("Uventet fejl ved hentning af institutioner", e);
         }
       }
+      // ===== EMAIL+PASSWORD LOGIN/SIGNUP/RESET HANDLERS =====
+
+      // Navigation mellem login-former
+      const epLoginSection = document.getElementById("email-password-login-section");
+      const signupSection = document.getElementById("signup-section");
+      const forgotSection = document.getElementById("forgot-password-section");
+      const resetSection = document.getElementById("reset-password-section");
+      const altMethods = document.getElementById("alternative-login-methods");
+
+      function showLoginForm(section) {
+        [epLoginSection, signupSection, forgotSection, resetSection].forEach(s => {
+          if (s) s.style.display = "none";
+        });
+        if (altMethods) altMethods.style.display = section === resetSection ? "none" : "";
+        if (section) section.style.display = "block";
+      }
+
+      const gotoSignup = document.getElementById("goto-signup-link");
+      const gotoLogin = document.getElementById("goto-login-link");
+      const forgotLink = document.getElementById("forgot-password-link");
+      const backToLogin = document.getElementById("back-to-login-link");
+
+      if (gotoSignup) gotoSignup.addEventListener("click", (e) => { e.preventDefault(); showLoginForm(signupSection); });
+      if (gotoLogin) gotoLogin.addEventListener("click", (e) => { e.preventDefault(); showLoginForm(epLoginSection); });
+      if (forgotLink) forgotLink.addEventListener("click", (e) => { e.preventDefault(); showLoginForm(forgotSection); });
+      if (backToLogin) backToLogin.addEventListener("click", (e) => { e.preventDefault(); showLoginForm(epLoginSection); });
+
+      // loadChildrenAndEnterPortal: Henter børn for autentificeret forælder og viser portalen
+      async function loadChildrenAndEnterPortal() {
+        try {
+          const { data: children, error } = await supabase.rpc('get_children_for_parent');
+          if (error) {
+            console.error("Fejl ved hentning af børn:", error);
+            showNoChildrenState();
+            return;
+          }
+
+          const childList = Array.isArray(children) ? children : [];
+          if (childList.length === 0) {
+            showNoChildrenState();
+            return;
+          }
+
+          const firstChild = childList[0];
+          currentInstitutionId = firstChild.institution_id;
+          allowedChildren = childList;
+
+          // Hent fuld data via get-parent-view med JWT auth (ingen PIN nødvendig)
+          const res = await fetch(FUNCTION_URL, {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+              child_id: firstChild.child_id,
+              institution_id: firstChild.institution_id,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            console.error("get-parent-view fejl:", data);
+            showNoChildrenState();
+            return;
+          }
+
+          // Brug allowed_children fra vores RPC (mere pålidelig)
+          data.allowed_children = childList.map(c => ({
+            child_id: c.child_id,
+            child_name: c.child_name,
+            institution_id: c.institution_id,
+            balance: c.balance,
+            daily_spend_limit: c.daily_spend_limit,
+          }));
+
+          displayResults(data);
+          currentParentPin = null; // Ingen PIN i email+password mode
+          loadAndRenderEvents(firstChild.child_id, null);
+          setTimeout(() => setupCollapsibleSections(), 100);
+        } catch (err) {
+          console.error("loadChildrenAndEnterPortal fejl:", err);
+          showNoChildrenState();
+        }
+      }
+
+      // EMAIL+PASSWORD LOGIN
+      const epLoginForm = document.getElementById("email-password-login-form");
+      const epLoginBtn = document.getElementById("ep-login-btn");
+      const epLoginError = document.getElementById("ep-login-error");
+      const rememberMeCheckbox = document.getElementById("remember-me-checkbox");
+
+      if (epLoginForm) {
+        epLoginForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          epLoginError.style.display = "none";
+
+          const email = document.getElementById("ep-email-input").value.trim();
+          const password = document.getElementById("ep-password-input").value;
+
+          if (!email || !password) {
+            epLoginError.textContent = "Udfyld e-mail og adgangskode.";
+            epLoginError.style.display = "block";
+            return;
+          }
+
+          epLoginBtn.disabled = true;
+          epLoginBtn.textContent = "Logger ind...";
+
+          try {
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+            if (error) {
+              let msg = "Forkert e-mail eller adgangskode.";
+              if (error.message && error.message.includes("Email not confirmed")) {
+                msg = "Din e-mail er ikke bekræftet endnu. Tjek din indbakke.";
+              }
+              epLoginError.textContent = msg;
+              epLoginError.style.display = "block";
+              return;
+            }
+
+            authMode = 'email_password';
+            authAccessToken = data.session.access_token;
+
+            // "Husk mig": Hvis ikke valgt, marker at sessionen skal ryddes ved lukning
+            if (!rememberMeCheckbox.checked) {
+              window.__flangoForgetOnClose = true;
+            }
+
+            await loadChildrenAndEnterPortal();
+          } catch (err) {
+            console.error("Login fejl:", err);
+            epLoginError.textContent = "Der opstod en fejl. Prøv igen.";
+            epLoginError.style.display = "block";
+          } finally {
+            epLoginBtn.disabled = false;
+            epLoginBtn.textContent = "Log ind";
+          }
+        });
+      }
+
+      // OPRET KONTO
+      const signupForm = document.getElementById("signup-form");
+      const signupBtn = document.getElementById("signup-btn");
+      const signupError = document.getElementById("signup-error");
+      const signupSuccess = document.getElementById("signup-success");
+
+      if (signupForm) {
+        signupForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          signupError.style.display = "none";
+          signupSuccess.style.display = "none";
+
+          const email = document.getElementById("signup-email-input").value.trim();
+          const code = document.getElementById("signup-code-input").value.trim().toUpperCase();
+          const password = document.getElementById("signup-password-input").value;
+          const passwordConfirm = document.getElementById("signup-password-confirm").value;
+
+          if (!email || !code || !password) {
+            signupError.textContent = "Udfyld alle felter.";
+            signupError.style.display = "block";
+            return;
+          }
+
+          if (password !== passwordConfirm) {
+            signupError.textContent = "Adgangskoderne er ikke ens.";
+            signupError.style.display = "block";
+            return;
+          }
+
+          if (password.length < 6) {
+            signupError.textContent = "Adgangskoden skal være mindst 6 tegn.";
+            signupError.style.display = "block";
+            return;
+          }
+
+          signupBtn.disabled = true;
+          signupBtn.textContent = "Opretter...";
+
+          try {
+            // 1) Opret auth bruger
+            const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+              email,
+              password,
+              options: {
+                emailRedirectTo: window.location.origin + window.location.pathname,
+              },
+            });
+
+            if (signUpErr) {
+              let msg = signUpErr.message;
+              if (msg && msg.includes("already registered")) {
+                msg = "Denne e-mail er allerede registreret. Prøv at logge ind i stedet.";
+              }
+              signupError.textContent = msg;
+              signupError.style.display = "block";
+              return;
+            }
+
+            // 2) Hvis e-mail-bekræftelse er påkrævet, vis besked
+            if (!signUpData.session) {
+              signupSuccess.textContent = "Tjek din e-mail for at bekræfte din konto. Log derefter ind.";
+              signupSuccess.style.display = "block";
+              return;
+            }
+
+            // 3) Session oprettet (auto-confirm) – link barnet
+            authMode = 'email_password';
+            authAccessToken = signUpData.session.access_token;
+
+            const { data: linkResult, error: linkError } = await supabase.rpc(
+              'verify_parent_code_and_link_child',
+              { p_code: code }
+            );
+
+            if (linkError || (linkResult && linkResult.error)) {
+              const errMsg = linkResult?.error || "Kunne ikke verificere koden. Tjek koden og prøv igen.";
+              signupError.textContent = errMsg;
+              signupError.style.display = "block";
+              return;
+            }
+
+            // Succes – indlæs portalen
+            await loadChildrenAndEnterPortal();
+          } catch (err) {
+            console.error("Signup fejl:", err);
+            signupError.textContent = "Der opstod en fejl. Prøv igen.";
+            signupError.style.display = "block";
+          } finally {
+            signupBtn.disabled = false;
+            signupBtn.textContent = "Opret konto";
+          }
+        });
+      }
+
+      // GLEMT ADGANGSKODE
+      const forgotForm = document.getElementById("forgot-password-form");
+      if (forgotForm) {
+        forgotForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const email = document.getElementById("forgot-email-input").value.trim();
+          const errorEl = document.getElementById("forgot-error");
+          const successEl = document.getElementById("forgot-success");
+          errorEl.style.display = "none";
+          successEl.style.display = "none";
+
+          if (!email) {
+            errorEl.textContent = "Indtast din e-mail.";
+            errorEl.style.display = "block";
+            return;
+          }
+
+          try {
+            await supabase.auth.resetPasswordForEmail(email, {
+              redirectTo: window.location.origin + window.location.pathname,
+            });
+            // Vis altid succes uanset om e-mail findes (sikkerhed)
+            successEl.textContent = "Hvis e-mailen findes i systemet, har vi sendt et link til at nulstille din adgangskode.";
+            successEl.style.display = "block";
+          } catch (err) {
+            errorEl.textContent = "Der opstod en fejl. Prøv igen.";
+            errorEl.style.display = "block";
+          }
+        });
+      }
+
+      // NULSTIL ADGANGSKODE (vises efter klik på reset-link i e-mail)
+      const resetForm = document.getElementById("reset-password-form");
+      if (resetForm) {
+        resetForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const newPass = document.getElementById("reset-new-password").value;
+          const confirmPass = document.getElementById("reset-confirm-password").value;
+          const errorEl = document.getElementById("reset-error");
+          const successEl = document.getElementById("reset-success");
+          errorEl.style.display = "none";
+          successEl.style.display = "none";
+
+          if (newPass !== confirmPass) {
+            errorEl.textContent = "Adgangskoderne er ikke ens.";
+            errorEl.style.display = "block";
+            return;
+          }
+
+          if (newPass.length < 6) {
+            errorEl.textContent = "Adgangskoden skal være mindst 6 tegn.";
+            errorEl.style.display = "block";
+            return;
+          }
+
+          try {
+            const { error } = await supabase.auth.updateUser({ password: newPass });
+            if (error) {
+              errorEl.textContent = error.message || "Kunne ikke opdatere adgangskode.";
+              errorEl.style.display = "block";
+              return;
+            }
+
+            successEl.innerHTML = 'Din adgangskode er nu opdateret. <a href="#" id="reset-goto-login" style="color: #4a90e2;">Log ind</a>';
+            successEl.style.display = "block";
+            resetForm.style.display = "none";
+
+            const resetGotoLogin = document.getElementById("reset-goto-login");
+            if (resetGotoLogin) {
+              resetGotoLogin.addEventListener("click", (e) => {
+                e.preventDefault();
+                showLoginForm(epLoginSection);
+              });
+            }
+          } catch (err) {
+            errorEl.textContent = "Der opstod en fejl. Prøv igen.";
+            errorEl.style.display = "block";
+          }
+        });
+      }
+
+      // "HUSK MIG" – ryd localStorage-session ved lukning hvis ikke valgt
+      window.addEventListener("beforeunload", () => {
+        if (window.__flangoForgetOnClose) {
+          localStorage.removeItem('sb-jbknjgbpghrbrstqwoxj-auth-token');
+        }
+      });
+
+      // ===== EKSISTERENDE KODE-LOGIN HANDLER (uændret bortset fra authMode) =====
       loginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         loginError.style.display = "none";
@@ -5275,11 +6207,7 @@
         try {
           const res = await fetch(FUNCTION_URL, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
               institution_id: institutionId,
               name_input: nameInput,
@@ -5307,6 +6235,7 @@
           }
 
           displayResults(data);
+          authMode = 'pin';
           currentParentPin = parentPin; // Gem PIN til senere brug (produktgrænser)
           // Gem allowed_children fra response
           if (data.allowed_children && Array.isArray(data.allowed_children)) {
@@ -5435,10 +6364,29 @@
         }
       }
       
-      // Håndter successful email login
+      // Vis "Ingen børn koblet" state (forbliv i session, ingen signOut)
+      function showNoChildrenState() {
+        const noChildrenState = document.getElementById("no-children-state");
+        const collapsibleContainer = document.getElementById("collapsible-sections-container");
+        const resultsHeader = resultsView.querySelector(".results-header");
+        if (noChildrenState) noChildrenState.style.display = "block";
+        if (collapsibleContainer) collapsibleContainer.style.display = "none";
+        if (resultsHeader) resultsHeader.style.display = "flex";
+        loginView.style.display = "none";
+        resultsView.style.display = "block";
+      }
+
+      // Skjul "Ingen børn" state og vis normal indhold
+      function hideNoChildrenState() {
+        const noChildrenState = document.getElementById("no-children-state");
+        const collapsibleContainer = document.getElementById("collapsible-sections-container");
+        if (noChildrenState) noChildrenState.style.display = "none";
+        if (collapsibleContainer) collapsibleContainer.style.display = "block";
+      }
+
+      // Håndter successful email login – forbliv i session også ved 0 børn / fejl
       async function handleEmailLoginSuccess(email) {
         try {
-          // Find alle børn hvor denne email er registreret i parent_notifications
           const { data: notifications, error } = await supabase
             .from("parent_notifications")
             .select("user_id, email")
@@ -5446,62 +6394,83 @@
 
           if (error) {
             console.error("Fejl ved hentning af børn:", error);
-            alert("Kunne ikke finde børn for denne e-mail. Kontakt klubben.");
-            await supabase.auth.signOut();
+            showNoChildrenState();
             return;
           }
 
           if (!notifications || notifications.length === 0) {
-            alert("Ingen børn fundet for denne e-mail. Kontakt klubben.");
-            await supabase.auth.signOut();
+            showNoChildrenState();
             return;
           }
 
-          // Hvis flere børn, vis picker
           if (notifications.length > 1) {
-            // TODO: Implementér child picker for email login
-            alert(`Flere børn fundet (${notifications.length}). Email login med flere børn er ikke fuldt implementeret endnu. Brug kode-login i stedet.`);
-            await supabase.auth.signOut();
+            // Flere børn: vis samme state med mulighed for kode-login
+            showNoChildrenState();
             return;
-          } else {
-            // Ét barn: log ind automatisk
-            const childId = notifications[0].user_id;
-            await switchToChildViaEmail(childId, email);
           }
+
+          const childId = notifications[0].user_id;
+          await switchToChildViaEmail(childId, email);
         } catch (err) {
           console.error("Fejl ved email login flow:", err);
-          alert("Der opstod en fejl ved email login. Prøv kode-login i stedet.");
-          await supabase.auth.signOut();
+          showNoChildrenState();
         }
       }
 
-      // Tjek om bruger er logget ind via email (magic link)
+      // Auth state change handler – håndterer email+password, magic link, recovery og signout
       supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('[auth] State change:', event, session?.user?.email);
-        
-        if (event === "SIGNED_IN" && session?.user?.email) {
-          // Hvis vi kommer fra magic link redirect, håndter det
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          if (hashParams.has('access_token')) {
-            // Håndter magic link redirect
-            await handleMagicLinkRedirect();
-          } else {
-            // Normal auth state change
+
+        // PASSWORD_RECOVERY: vis nulstil-adgangskode formular
+        if (event === "PASSWORD_RECOVERY") {
+          showLoginForm(resetSection);
+          loginView.style.display = "block";
+          resultsView.style.display = "none";
+          return;
+        }
+
+        // TOKEN_REFRESHED: opdater JWT token
+        if (event === "TOKEN_REFRESHED" && session) {
+          if (authMode === 'email_password') {
+            authAccessToken = session.access_token;
+          }
+          return;
+        }
+
+        if ((event === "INITIAL_SESSION" || event === "SIGNED_IN") && session?.user?.email) {
+          window.history.replaceState(null, '', window.location.pathname);
+
+          // Tjek om dette er en email+password session med linkede børn
+          if (authMode !== 'pin') {
+            authMode = 'email_password';
+            authAccessToken = session.access_token;
+            try {
+              const { data: children, error } = await supabase.rpc('get_children_for_parent');
+              const childList = Array.isArray(children) ? children : [];
+              if (!error && childList.length > 0) {
+                await loadChildrenAndEnterPortal();
+                return;
+              }
+            } catch (e) {
+              console.error('[auth] Fejl ved hentning af børn efter login:', e);
+            }
+            // Ingen børn linket – fallback til gammel magic link flow
             await handleEmailLoginSuccess(session.user.email);
           }
         } else if (event === "SIGNED_OUT") {
-          // Ryd op ved logout
+          signOutInProgress = false;
+          authMode = null;
+          authAccessToken = null;
+          window.__flangoForgetOnClose = false;
           console.log('[auth] Signed out');
+          loginView.style.display = "block";
+          resultsView.style.display = "none";
+          hideNoChildrenState();
+          showLoginForm(epLoginSection);
         }
       });
-      
-      // Tjek ved page load om der er magic link tokens i URL
-      if (window.location.hash.includes('access_token')) {
-        handleMagicLinkRedirect();
-      }
 
       async function switchToChildViaEmail(childId, email) {
-        // Hent child data og institution
         try {
           const { data: child, error: childError } = await supabase
             .from("users")
@@ -5510,29 +6479,15 @@
             .maybeSingle();
 
           if (childError || !child) {
-            alert("Kunne ikke finde barn.");
-            await supabase.auth.signOut();
+            showNoChildrenState();
             return;
           }
 
-          // Email login giver adgang, men vi mangler PIN for at kalde get-parent-view
-          // Vi kan ikke hente PIN fra parent_pin_hash (det er hashed)
-          // Så vi skal prompte brugeren for PIN eller bruge en alternativ metode
-          
-          // For nu: Vis en besked om at bruge kode-login for fuld adgang
-          // I fremtiden kan vi implementere PIN prompt eller alternativ autentificering
-          alert(`Email login virker! Men for at få fuld adgang til ${child.name}, skal du også indtaste PIN-koden.\n\nBrug kode-login for at se saldo og historik.`);
-          
-          // Log ud igen så brugeren kan bruge kode-login
-          await supabase.auth.signOut();
-          
-          // Vis login view
-          loginView.style.display = "block";
-          resultsView.style.display = "none";
+          // Email login giver adgang, men vi mangler PIN for get-parent-view – vis state og CTA til kode-login
+          showNoChildrenState();
         } catch (err) {
           console.error("Fejl ved switchToChildViaEmail:", err);
-          alert("Der opstod en fejl. Prøv kode-login i stedet.");
-          await supabase.auth.signOut();
+          showNoChildrenState();
         }
       }
 
@@ -5598,11 +6553,7 @@
           try {
             const res = await fetch(LINK_SIBLING_URL, {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-              },
+              headers: getAuthHeaders(),
               body: JSON.stringify({
                 action: "preview",
                 current_child_id: currentChildId,
@@ -5632,11 +6583,7 @@
             // Bekræft linking
             const confirmRes = await fetch(LINK_SIBLING_URL, {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-              },
+              headers: getAuthHeaders(),
               body: JSON.stringify({
                 action: "confirm",
                 current_child_id: currentChildId,
@@ -5655,9 +6602,22 @@
               return;
             }
 
+            // Hvis email+password mode: link også barnet i parent_account_children
+            if (authMode === 'email_password') {
+              try {
+                await supabase.rpc('verify_parent_code_and_link_child', { p_code: code });
+              } catch (e) {
+                console.warn('[link-sibling] Kunne ikke linke i parent_account_children:', e);
+              }
+            }
+
             // Success - refresh view
             close();
-            await refreshParentView();
+            if (authMode === 'email_password') {
+              await loadChildrenAndEnterPortal();
+            } else {
+              await refreshParentView();
+            }
             alert("Barn tilknyttet!");
           } catch (err) {
             console.error("Link sibling fejl:", err);
@@ -5684,8 +6644,8 @@
           overlay.className = "modal-overlay";
           overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;padding:20px;box-sizing:border-box;";
 
-          const contactPhone = currentInstitutionPrefs?.parent_contact_phone_enabled
-            ? currentInstitutionPrefs?.parent_contact_phone
+          const contactPhone = currentInstitutionPrefs?.institution_contact_phone_enabled
+            ? currentInstitutionPrefs?.institution_contact_phone
             : null;
 
           const gradeYearText = preview.grade_year ? ` (Årgang ${preview.grade_year})` : "";
@@ -5755,23 +6715,24 @@
       }
 
       async function switchToChild(childId) {
-        if (!currentInstitutionId || !currentParentPin) {
+        // For email+password mode: brug JWT auth, for PIN mode: kræv PIN
+        if (authMode !== 'email_password' && (!currentInstitutionId || !currentParentPin)) {
           alert("Manglende login-information.");
           return;
         }
 
+        // Find barnets institution_id fra allowedChildren
+        const childInfo = allowedChildren.find(c => c.child_id === childId);
+        const instId = currentInstitutionId || (childInfo && childInfo.institution_id);
+
         try {
           const res = await fetch(FUNCTION_URL, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
-              institution_id: currentInstitutionId,
-              child_id: childId, // Brug child_id i stedet for name_input
-              parent_pin: currentParentPin,
+              institution_id: instId,
+              child_id: childId,
+              ...(currentParentPin ? { parent_pin: currentParentPin } : {}),
             }),
           });
 
@@ -5789,8 +6750,15 @@
             renderChildSwitcher(allowedChildren);
           }
           // Refresh events
-          if (currentChildId && currentParentPin) {
+          if (currentChildId && (currentParentPin || authMode === 'email_password')) {
             loadAndRenderEvents(currentChildId, currentParentPin);
+          }
+          // Reset købsprofil så den genindlæses for det nye barn
+          ppLoaded = false;
+          const ppContent = document.querySelector("#purchase-profile-collapsible .collapsible-section-content");
+          if (ppContent && ppContent.classList.contains("active")) {
+            ppLoaded = true;
+            loadPurchaseProfile();
           }
         } catch (err) {
           console.error("Switch child fejl:", err);
@@ -5798,7 +6766,25 @@
         }
       }
 
-      logoutBtn.addEventListener("click", () => {
+      // SignOut kun ved brugerens "Log ud" – guard så det kun trigges én gang
+      async function safeSignOut(reason) {
+        if (signOutInProgress) return;
+        signOutInProgress = true;
+        console.log('[signOut]', reason || 'unknown', new Error().stack);
+        await supabase.auth.signOut();
+      }
+
+      const noChildrenGotoCodeLogin = document.getElementById("no-children-goto-code-login");
+      if (noChildrenGotoCodeLogin) {
+        noChildrenGotoCodeLogin.addEventListener("click", () => {
+          resultsView.style.display = "none";
+          loginView.style.display = "block";
+          hideNoChildrenState();
+        });
+      }
+
+      logoutBtn.addEventListener("click", async () => {
+        await safeSignOut('user_logout');
         loginView.style.display = "block";
         resultsView.style.display = "none";
         loginForm.reset();
@@ -5837,7 +6823,14 @@
         currentChildId = null;
         currentParentPin = null;
         allowedChildren = [];
+        authMode = null;
+        authAccessToken = null;
+        window.__flangoForgetOnClose = false;
+        // Ryd Supabase session fra localStorage for at forhindre auto-login
+        try { localStorage.removeItem('sb-jbknjgbpghrbrstqwoxj-auth-token'); } catch(e) {}
         if (childSwitcher) childSwitcher.style.display = "none";
+        // Vis primær login-form
+        showLoginForm(epLoginSection);
       });
 
       if (changePinForm) {
@@ -5886,11 +6879,7 @@
           try {
             const res = await fetch(UPDATE_PIN_URL, {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-              },
+              headers: getAuthHeaders(),
               body: JSON.stringify({
                 child_id: currentChildId,
                 new_pin: newPin,
@@ -5942,12 +6931,7 @@
         try {
           const res = await fetch(SAVE_NOTIFY_URL, {
   method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    apikey: SUPABASE_ANON_KEY,
-    // VIGTIGT: til Edge Functions med Verify JWT
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-  },
+  headers: getAuthHeaders(),
   body: JSON.stringify({
     child_id: currentChildId,
     email: email,
@@ -6146,11 +7130,13 @@
         }
 
         // Daglig beløbsgrænse (valgfri) – forventer at backend evt. sender `daily_spend_limit` i kroner
+        const childLimitDisplay = document.getElementById("child-daily-limit-display");
         if (dailyLimitInput) {
           const limitRaw = data.daily_spend_limit;
           if (limitRaw !== undefined && limitRaw !== null && !isNaN(Number(limitRaw))) {
             const limit = Number(limitRaw);
             dailyLimitInput.value = limit.toString();
+            if (childLimitDisplay) childLimitDisplay.textContent = `${limit} kr.`;
 
             if (dailyLimitChips && dailyLimitChips.length) {
               dailyLimitChips.forEach((chip) => {
@@ -6166,6 +7152,7 @@
             }
           } else {
             dailyLimitInput.value = "";
+            if (childLimitDisplay) childLimitDisplay.textContent = "ingen grænse";
             if (dailyLimitChips && dailyLimitChips.length) {
               dailyLimitChips.forEach((chip) => chip.classList.remove("is-active"));
             }
@@ -6182,6 +7169,7 @@
 
         loginView.style.display = "none";
         resultsView.style.display = "block";
+        hideNoChildrenState();
       }
     });
   </script>

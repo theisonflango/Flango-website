@@ -36,7 +36,7 @@ async function handler(req) {
 console.log(`Server kører på http://${HOST}:${PORT}\n`);
 await Deno.serve({ hostname: HOST, port: PORT }, handler);
 DENO_SCRIPT
-    PORT="$PORT" deno run --allow-net --allow-read --watch "$TMP"
+    PORT="$PORT" deno run --allow-net --allow-read --allow-env=PORT --watch "$TMP"
     exit 0
 fi
 
