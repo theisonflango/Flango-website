@@ -49,6 +49,10 @@ function onEventsStatus(status) {
         eventsResubscribeTimer = setTimeout(() => {
             eventsResubscribeTimer = null;
             if (!subscribedInstitutionId) return;
+            // Skip resubscribe if channel is now healthy (prevents infinite loop)
+            if (lastRealtimeStatus.events === 'SUBSCRIBED') {
+                return;
+            }
             console.warn('[realtime-sync] events channel unhealthy → resubscribing');
             subscribeEvents(subscribedInstitutionId);
         }, 1500);

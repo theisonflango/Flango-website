@@ -220,21 +220,28 @@ export function setupProductAssortmentFlow({
             return;
         }
         try {
-            const { error } = await supabaseClient
-                .from('products')
-                .update({ is_visible: false })
-                .eq('id', productId);
-            if (error) {
-                console.warn('[grid] Kunne ikke skjule produkt:', error.message);
-                showAlert?.(`Kunne ikke skjule produkt: ${error.message}`);
-                return;
-            }
-            const currentProducts = getAllProducts() || [];
-            const updated = currentProducts.map(p =>
+            // OPTIMISTISK UPDATE: Gem gammel state til rollback, opdater cache FØRST
+            const previousProducts = getAllProducts() || [];
+            const updated = previousProducts.map(p =>
                 String(p.id) === String(productId) ? { ...p, is_visible: false } : p
             );
             setAllProducts(updated);
             await renderProductsFromLocalState(updated);
+
+            // Send til database asynkront
+            const { error } = await supabaseClient
+                .from('products')
+                .update({ is_visible: false })
+                .eq('id', productId);
+
+            if (error) {
+                // Rollback ved fejl
+                console.warn('[grid] Kunne ikke skjule produkt:', error.message);
+                setAllProducts(previousProducts);
+                await renderProductsFromLocalState(previousProducts);
+                showAlert?.(`Kunne ikke skjule produkt: ${error.message}`);
+                return;
+            }
         } catch (err) {
             console.warn('[grid] Uventet fejl ved skjul produkt:', err);
         }
@@ -252,17 +259,10 @@ export function setupProductAssortmentFlow({
         }
         const sortOrder = Number.isFinite(slot.sort_order) ? slot.sort_order : 0;
         try {
-            const { error } = await supabaseClient
-                .from('products')
-                .update({ is_visible: true, sort_order: sortOrder })
-                .eq('id', productId);
-            if (error) {
-                console.warn('[placeholder] Kunne ikke indsætte produkt:', error.message);
-                showAlert?.(`Kunne ikke indsætte produkt: ${error.message}`);
-                return;
-            }
-            const currentProducts = getAllProducts() || [];
-            const updated = currentProducts.map(p =>
+            // OPTIMISTISK UPDATE: Gem gammel state til rollback, opdater cache FØRST
+            const previousProducts = getAllProducts() || [];
+            const previousPlaceholders = [...placeholderSlots];
+            const updated = previousProducts.map(p =>
                 String(p.id) === String(productId)
                     ? { ...p, is_visible: true, sort_order: sortOrder }
                     : p
@@ -270,6 +270,22 @@ export function setupProductAssortmentFlow({
             setAllProducts(updated);
             placeholderSlots = placeholderSlots.filter(p => p.placeholder_id !== placeholderId);
             await renderProductsFromLocalState(updated);
+
+            // Send til database asynkront
+            const { error } = await supabaseClient
+                .from('products')
+                .update({ is_visible: true, sort_order: sortOrder })
+                .eq('id', productId);
+
+            if (error) {
+                // Rollback ved fejl
+                console.warn('[placeholder] Kunne ikke indsætte produkt:', error.message);
+                setAllProducts(previousProducts);
+                placeholderSlots = previousPlaceholders;
+                await renderProductsFromLocalState(previousProducts);
+                showAlert?.(`Kunne ikke indsætte produkt: ${error.message}`);
+                return;
+            }
         } catch (err) {
             console.warn('[placeholder] Uventet fejl ved indsæt produkt:', err);
         }
@@ -306,6 +322,23 @@ export function setupProductAssortmentFlow({
         if (updates.length === 0) return;
 
         try {
+            // OPTIMISTISK UPDATE: Gem gammel state til rollback, opdater cache FØRST
+            const previousProducts = [...currentProducts];
+            const productMap = new Map(currentProducts.map(p => [String(p.id), p]));
+            const reordered = updates
+                .map(({ id, sort_order }) => {
+                    const product = productMap.get(String(id));
+                    if (!product) return null;
+                    return { ...product, sort_order };
+                })
+                .filter(Boolean);
+
+            if (typeof setAllProducts === 'function') {
+                setAllProducts(reordered);
+            }
+            updatePlaceholderOrderFromDom(cards);
+
+            // Send til database asynkront
             const results = await Promise.all(
                 updates.map(({ id, sort_order }) =>
                     supabaseClient.from('products').update({ sort_order }).eq('id', id)
@@ -313,20 +346,12 @@ export function setupProductAssortmentFlow({
             );
             const firstError = results.find(res => res?.error)?.error;
             if (firstError) {
+                // Rollback ved fejl
                 console.warn('[product reorder] save error:', firstError.message);
+                if (typeof setAllProducts === 'function') {
+                    setAllProducts(previousProducts);
+                }
             }
-            if (typeof getAllProducts === 'function' && typeof setAllProducts === 'function') {
-                const productMap = new Map(currentProducts.map(p => [String(p.id), p]));
-                const reordered = updates
-                    .map(({ id, sort_order }) => {
-                        const product = productMap.get(String(id));
-                        if (!product) return null;
-                        return { ...product, sort_order };
-                    })
-                    .filter(Boolean);
-                setAllProducts(reordered);
-            }
-            updatePlaceholderOrderFromDom(cards);
         } catch (err) {
             console.warn('[product reorder] unexpected save error:', err);
         }
@@ -562,27 +587,17 @@ export function setupProductAssortmentFlow({
             ghostClass: 'sortable-ghost',
             onEnd: async (evt) => {
                 const reorderedIds = Array.from(evt.target.children).map(item => item.dataset.productId);
-                const updates = reorderedIds.map((id, index) =>
-                    supabaseClient.from('products').update({ sort_order: index }).eq('id', id)
-                );
 
                 try {
-                    const results = await Promise.all(updates);
-                    const firstError = results.find(res => res?.error)?.error;
-                    if (firstError) {
-                        console.error('[assortment] Fejl ved opdatering af produkt rækkefølge:', firstError);
-                        showAlert(`Kunne ikke opdatere rækkefølge: ${firstError.message}`);
-                        return;
-                    }
-                    // Optimistisk update: opdater lokal state uden DB fetch
-                    const currentProducts = getAllProducts();
-                    const productMap = new Map(currentProducts.map(p => [String(p.id), p]));
+                    // OPTIMISTISK UPDATE: Gem gammel state til rollback, opdater cache FØRST
+                    const previousProducts = getAllProducts();
+                    const productMap = new Map(previousProducts.map(p => [String(p.id), p]));
                     const reorderedProducts = reorderedIds.map((id, index) => {
                         const prod = productMap.get(String(id));
                         return prod ? { ...prod, sort_order: index } : null;
                     }).filter(Boolean);
                     // Behold skjulte/disabled produkter med højere sort_order
-                    const hiddenProducts = currentProducts
+                    const hiddenProducts = previousProducts
                         .filter(p => !reorderedIds.includes(String(p.id)))
                         .map((p, i) => ({ ...p, sort_order: reorderedIds.length + i }));
                     const allUpdated = [...reorderedProducts, ...hiddenProducts]
@@ -590,6 +605,22 @@ export function setupProductAssortmentFlow({
 
                     setAllProducts(allUpdated);
                     await renderProductsFromLocalState(allUpdated);
+
+                    // Send til database asynkront
+                    const updates = reorderedIds.map((id, index) =>
+                        supabaseClient.from('products').update({ sort_order: index }).eq('id', id)
+                    );
+                    const results = await Promise.all(updates);
+                    const firstError = results.find(res => res?.error)?.error;
+                    if (firstError) {
+                        // Rollback ved fejl
+                        console.error('[assortment] Fejl ved opdatering af produkt rækkefølge:', firstError);
+                        setAllProducts(previousProducts);
+                        await renderProductsFromLocalState(previousProducts);
+                        renderAssortmentModal(); // Re-render modal med gammel state
+                        showAlert(`Kunne ikke opdatere rækkefølge: ${firstError.message}`);
+                        return;
+                    }
                 } catch (err) {
                     console.error('[assortment] Uventet fejl ved opdatering af rækkefølge:', err);
                     showAlert('Der opstod en fejl ved opdatering af rækkefølgen');
@@ -612,27 +643,29 @@ export function setupProductAssortmentFlow({
             if (checkbox) {
                 const isVisible = checkbox.checked;
 
-                // Opdater database og tjek for fejl
+                // OPTIMISTISK UPDATE: Gem gammel state til rollback, opdater cache FØRST
+                const previousProducts = getAllProducts();
+                const updatedProducts = previousProducts.map(p =>
+                    String(p.id) === String(productId) ? { ...p, is_visible: isVisible } : p
+                );
+                setAllProducts(updatedProducts);
+                await renderProductsFromLocalState(updatedProducts);
+
+                // Send til database asynkront
                 const { error } = await supabaseClient
                     .from('products')
                     .update({ is_visible: isVisible })
                     .eq('id', productId);
 
                 if (error) {
+                    // Rollback ved fejl
                     console.error('[assortment] Fejl ved opdatering af produkt synlighed:', error);
-                    showAlert(`Kunne ikke opdatere produkt: ${error.message}`);
-                    // Revert checkbox til den gamle værdi
+                    setAllProducts(previousProducts);
+                    await renderProductsFromLocalState(previousProducts);
                     checkbox.checked = !isVisible;
+                    showAlert(`Kunne ikke opdatere produkt: ${error.message}`);
                     return;
                 }
-
-                // Optimistisk update: opdater lokal state uden DB fetch
-                const currentProducts = getAllProducts();
-                const updatedProducts = currentProducts.map(p =>
-                    String(p.id) === String(productId) ? { ...p, is_visible: isVisible } : p
-                );
-                setAllProducts(updatedProducts);
-                await renderProductsFromLocalState(updatedProducts);
             }
         };
     }
