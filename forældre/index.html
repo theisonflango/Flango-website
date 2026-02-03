@@ -5996,7 +5996,7 @@
           epLoginBtn.disabled = true;
           epLoginBtn.textContent = "Logger ind...";
 
-          const LOGIN_TIMEOUT_MS = 15000;
+          const LOAD_PORTAL_TIMEOUT_MS = 20000;
           function loginWithTimeout(promise, ms, label) {
             return Promise.race([
               promise,
@@ -6007,11 +6007,7 @@
           }
 
           try {
-            const { data, error } = await loginWithTimeout(
-              supabase.auth.signInWithPassword({ email, password }),
-              LOGIN_TIMEOUT_MS,
-              "signIn"
-            );
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
             if (error) {
               let msg = "Forkert e-mail eller adgangskode.";
@@ -6031,7 +6027,7 @@
               window.__flangoForgetOnClose = true;
             }
 
-            await loginWithTimeout(loadChildrenAndEnterPortal(), LOGIN_TIMEOUT_MS, "load_portal");
+            await loginWithTimeout(loadChildrenAndEnterPortal(), LOAD_PORTAL_TIMEOUT_MS, "load_portal");
           } catch (err) {
             console.error("Login fejl:", err);
             if (err && err.message && err.message.startsWith("timeout:")) {
