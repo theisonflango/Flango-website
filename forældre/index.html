@@ -5797,7 +5797,10 @@
         });
       }
 
-      loadInstitutions();
+      // Skip institution loading if in password recovery mode
+      if (!__pendingPasswordRecovery) {
+        loadInstitutions();
+      }
 
       async function loadInstitutions() {
         try {
@@ -6198,7 +6201,8 @@
               });
             }
           } catch (err) {
-            errorEl.textContent = "Der opstod en fejl. Prøv igen.";
+            console.error('[reset] Error updating password:', err);
+            errorEl.textContent = err.message || "Der opstod en fejl. Prøv igen.";
             errorEl.style.display = "block";
           }
         });
