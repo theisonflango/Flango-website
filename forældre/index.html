@@ -3365,15 +3365,21 @@
       const GET_PURCHASE_PROFILE_URL =
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-purchase-profile";
 
+      // VIGTIGT: Tjek URL hash for recovery token FØR createClient processerer den
+      // Supabase inkluderer type=recovery i hash når bruger klikker reset-link
+      let __pendingPasswordRecovery = false;
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      if (hashParams.get('type') === 'recovery') {
+        console.log('[auth] Password recovery detected from URL hash');
+        __pendingPasswordRecovery = true;
+      }
+
       const supabase = window.supabase.createClient(
         SUPABASE_URL,
         SUPABASE_ANON_KEY
       );
 
-      // VIGTIGT: Registrer tidlig auth state change handler med det samme
-      // så PASSWORD_RECOVERY event fanges ved page load med recovery token
-      // (DOM elements som resetSection er ikke klar endnu, så vi bruger en flag)
-      let __pendingPasswordRecovery = false;
+      // Registrer også auth state change handler for andre events
       supabase.auth.onAuthStateChange((event, session) => {
         console.log('[auth-early] State change:', event, session?.user?.email);
         if (event === "PASSWORD_RECOVERY") {
