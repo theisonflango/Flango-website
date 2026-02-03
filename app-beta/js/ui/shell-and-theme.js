@@ -1777,9 +1777,6 @@ async function openInstitutionPreferences() {
         openMobilePayImportModal();
     });
 
-    // Bytte-timer og Tilmelding (Arrangementer) er flyttet til hovedmenuen (Indstillinger)
-    window.__flangoOpenCafeEventSettings = openCafeEventSettingsModal;
-
     contentEl.appendChild(parentPortalBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(sugarPolicyBtn);
@@ -1902,6 +1899,7 @@ async function openCafeEventSettingsModal() {
     backdrop.style.display = 'flex';
     updateSettingsModalBackVisibility();
 }
+window.__flangoOpenCafeEventSettings = openCafeEventSettingsModal;
 
 /**
  * Åbner Bytte-timer indstillinger modal
@@ -2845,7 +2843,7 @@ async function openParentPortalFeaturesModal() {
     // Load current settings
     const { data, error } = await supabaseClient
         .from('institutions')
-        .select('parent_portal_email_notifications, parent_portal_spending_limit, parent_portal_allergens, parent_portal_product_limit, parent_portal_sugar_policy, parent_contact_phone, parent_contact_phone_enabled')
+        .select('parent_portal_email_notifications, parent_portal_spending_limit, parent_portal_allergens, parent_portal_product_limit, parent_portal_sugar_policy, parent_portal_vegetarian_only, parent_portal_no_pork, institution_contact_phone, institution_contact_phone_enabled, sugar_policy_info_text, sugar_policy_info_enabled, parent_portal_daily_special, parent_portal_daily_special_price')
         .eq('id', institutionId)
         .single();
 
@@ -2859,8 +2857,16 @@ async function openParentPortalFeaturesModal() {
     const allergens = document.getElementById('parent-portal-allergens');
     const productLimit = document.getElementById('parent-portal-product-limit');
     const sugarPolicy = document.getElementById('parent-portal-sugar-policy');
-    const contactPhoneInput = document.getElementById('parent-contact-phone-input');
-    const contactPhoneEnabled = document.getElementById('parent-contact-phone-enabled');
+    const contactPhoneInput = document.getElementById('institution-contact-phone-input');
+    const contactPhoneEnabled = document.getElementById('institution-contact-phone-enabled');
+    const vegetarianOnly = document.getElementById('parent-portal-vegetarian-only');
+    const noPork = document.getElementById('parent-portal-no-pork');
+    const sugarPolicyInfoText = document.getElementById('sugar-policy-info-text');
+    const sugarPolicyInfoEnabled = document.getElementById('sugar-policy-info-enabled');
+    const sugarPolicyInfoSettings = document.getElementById('sugar-policy-info-settings');
+    const dailySpecial = document.getElementById('parent-portal-daily-special');
+    const dailySpecialPrice = document.getElementById('parent-portal-daily-special-price');
+    const dailySpecialSettings = document.getElementById('daily-special-portal-settings');
 
     if (data) {
         if (emailNotifications) emailNotifications.checked = data.parent_portal_email_notifications !== false;
@@ -2868,24 +2874,111 @@ async function openParentPortalFeaturesModal() {
         if (allergens) allergens.checked = data.parent_portal_allergens !== false;
         if (productLimit) productLimit.checked = data.parent_portal_product_limit === true;
         if (sugarPolicy) sugarPolicy.checked = data.parent_portal_sugar_policy === true;
-        if (contactPhoneInput) contactPhoneInput.value = data.parent_contact_phone || '';
-        if (contactPhoneEnabled) contactPhoneEnabled.checked = data.parent_contact_phone_enabled === true;
+        if (contactPhoneInput) contactPhoneInput.value = data.institution_contact_phone || '';
+        if (contactPhoneEnabled) contactPhoneEnabled.checked = data.institution_contact_phone_enabled === true;
+        if (vegetarianOnly) vegetarianOnly.checked = data.parent_portal_vegetarian_only !== false;
+        if (noPork) noPork.checked = data.parent_portal_no_pork !== false;
+        if (sugarPolicyInfoText) sugarPolicyInfoText.value = data.sugar_policy_info_text || '';
+        if (sugarPolicyInfoEnabled) sugarPolicyInfoEnabled.checked = data.sugar_policy_info_enabled !== false;
+        if (dailySpecial) dailySpecial.checked = data.parent_portal_daily_special !== false;
+        if (dailySpecialPrice) dailySpecialPrice.value = data.parent_portal_daily_special_price || '';
     }
 
-    // Save button
+    // Vis/skjul info-boks indstillinger baseret på sukkerpolitik-checkbox
+    const toggleInfoSettings = () => {
+        if (sugarPolicyInfoSettings) {
+            sugarPolicyInfoSettings.style.display = sugarPolicy?.checked ? 'block' : 'none';
+        }
+    };
+    toggleInfoSettings();
+    if (sugarPolicy) sugarPolicy.addEventListener('change', toggleInfoSettings);
+
+    // Vis/skjul dagens ret indstillinger baseret på produktgrænse-checkbox
+    const toggleDailySpecialSettings = () => {
+        if (dailySpecialSettings) {
+            dailySpecialSettings.style.display = productLimit?.checked ? 'block' : 'none';
+        }
+    };
+    toggleDailySpecialSettings();
+    if (productLimit) productLimit.addEventListener('change', toggleDailySpecialSettings);
+
+    // Save button – disabled when no changes, shows confirmation on save
     const saveBtn = document.getElementById('save-parent-portal-features-btn');
     if (saveBtn) {
         const newSaveBtn = saveBtn.cloneNode(true);
         saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+        // Snapshot initial state for dirty-checking
+        const initialState = () => ({
+            emailNotifications: emailNotifications?.checked,
+            spendingLimit: spendingLimit?.checked,
+            allergens: allergens?.checked,
+            productLimit: productLimit?.checked,
+            sugarPolicy: sugarPolicy?.checked,
+            contactPhone: contactPhoneInput?.value.trim() || '',
+            contactPhoneEnabled: contactPhoneEnabled?.checked,
+            vegetarianOnly: vegetarianOnly?.checked,
+            noPork: noPork?.checked,
+            sugarPolicyInfoText: sugarPolicyInfoText?.value.trim() || '',
+            sugarPolicyInfoEnabled: sugarPolicyInfoEnabled?.checked,
+            dailySpecial: dailySpecial?.checked,
+            dailySpecialPrice: dailySpecialPrice?.value.trim() || ''
+        });
+        let savedState = initialState();
+
+        const currentState = () => ({
+            emailNotifications: emailNotifications?.checked,
+            spendingLimit: spendingLimit?.checked,
+            allergens: allergens?.checked,
+            productLimit: productLimit?.checked,
+            sugarPolicy: sugarPolicy?.checked,
+            contactPhone: contactPhoneInput?.value.trim() || '',
+            contactPhoneEnabled: contactPhoneEnabled?.checked,
+            vegetarianOnly: vegetarianOnly?.checked,
+            noPork: noPork?.checked,
+            sugarPolicyInfoText: sugarPolicyInfoText?.value.trim() || '',
+            sugarPolicyInfoEnabled: sugarPolicyInfoEnabled?.checked,
+            dailySpecial: dailySpecial?.checked,
+            dailySpecialPrice: dailySpecialPrice?.value.trim() || ''
+        });
+
+        const hasChanges = () => JSON.stringify(savedState) !== JSON.stringify(currentState());
+
+        const updateSaveBtn = () => {
+            const dirty = hasChanges();
+            newSaveBtn.disabled = !dirty;
+            newSaveBtn.style.opacity = dirty ? '1' : '0.45';
+            newSaveBtn.style.cursor = dirty ? 'pointer' : 'default';
+        };
+        updateSaveBtn();
+
+        // Listen for changes on all inputs
+        const inputs = [emailNotifications, spendingLimit, allergens, productLimit, sugarPolicy, contactPhoneEnabled, vegetarianOnly, noPork, sugarPolicyInfoEnabled, dailySpecial];
+        inputs.forEach(cb => { if (cb) cb.addEventListener('change', updateSaveBtn); });
+        if (contactPhoneInput) contactPhoneInput.addEventListener('input', updateSaveBtn);
+        if (sugarPolicyInfoText) sugarPolicyInfoText.addEventListener('input', updateSaveBtn);
+        if (dailySpecialPrice) dailySpecialPrice.addEventListener('input', updateSaveBtn);
+
         newSaveBtn.addEventListener('click', async () => {
+            if (!hasChanges()) return;
+
+            newSaveBtn.disabled = true;
+            newSaveBtn.textContent = 'Gemmer...';
+
             const updates = {
                 parent_portal_email_notifications: emailNotifications?.checked !== false,
                 parent_portal_spending_limit: spendingLimit?.checked !== false,
                 parent_portal_allergens: allergens?.checked !== false,
                 parent_portal_product_limit: productLimit?.checked === true,
                 parent_portal_sugar_policy: sugarPolicy?.checked === true,
-                parent_contact_phone: contactPhoneInput?.value.trim() || null,
-                parent_contact_phone_enabled: contactPhoneEnabled?.checked === true
+                institution_contact_phone: contactPhoneInput?.value.trim() || null,
+                institution_contact_phone_enabled: contactPhoneEnabled?.checked === true,
+                parent_portal_vegetarian_only: vegetarianOnly?.checked !== false,
+                parent_portal_no_pork: noPork?.checked !== false,
+                sugar_policy_info_text: sugarPolicyInfoText?.value.trim() || null,
+                sugar_policy_info_enabled: sugarPolicyInfoEnabled?.checked !== false,
+                parent_portal_daily_special: dailySpecial?.checked !== false,
+                parent_portal_daily_special_price: dailySpecialPrice?.value.trim() || null
             };
 
             const { error } = await supabaseClient
@@ -2895,9 +2988,16 @@ async function openParentPortalFeaturesModal() {
 
             if (error) {
                 console.error('[parent-portal-features] Error saving:', error);
-                alert('Fejl ved gemning af indstillinger');
+                newSaveBtn.textContent = 'Fejl – prøv igen';
+                newSaveBtn.disabled = false;
+                newSaveBtn.style.opacity = '1';
+                newSaveBtn.style.cursor = 'pointer';
+                setTimeout(() => { newSaveBtn.textContent = 'Gem'; }, 2000);
             } else {
-                modal.style.display = 'none';
+                savedState = currentState();
+                updateSaveBtn();
+                newSaveBtn.textContent = '✓ Gemt';
+                setTimeout(() => { newSaveBtn.textContent = 'Gem'; }, 1500);
                 if (typeof window.__flangoFetchAndRenderProducts === 'function') {
                     window.__flangoFetchAndRenderProducts();
                 }

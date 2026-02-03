@@ -57,7 +57,9 @@ export function formatTime(timeStr) {
  * @returns {Promise<{events: Array, error: string|null}>}
  */
 export async function fetchEvents(institutionId, filter = 'active') {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const nowTime = now.toTimeString().substring(0, 5); // "HH:MM"
 
     let query = supabaseClient
         .from('club_events')
@@ -67,14 +69,34 @@ export async function fetchEvents(institutionId, filter = 'active') {
     if (filter === 'active') {
         query = query.eq('status', 'active').gte('event_date', today).order('event_date', { ascending: true }).order('start_time', { ascending: true });
     } else if (filter === 'past') {
-        // Afsluttede: aktive events med dato i fortiden + arkiverede
-        query = query.or(`and(status.eq.active,event_date.lt.${today}),status.eq.archived`).order('event_date', { ascending: false });
+        // Afsluttede: aktive events med dato <= i dag + arkiverede (vi filtrerer dagens events client-side)
+        query = query.or(`and(status.eq.active,event_date.lte.${today}),status.eq.archived`).order('event_date', { ascending: false });
     } else if (filter === 'cancelled') {
         query = query.eq('status', 'cancelled').order('event_date', { ascending: false });
     }
 
     const { data: events, error: eventsError } = await query;
     if (eventsError) return { events: [], error: eventsError.message };
+
+    // Filtrér dagens events baseret på slut-/starttid så de flyttes til korrekt liste
+    if (events && events.length > 0 && (filter === 'active' || filter === 'past')) {
+        const isEventEndedToday = (ev) => {
+            if (ev.event_date !== today) return false;
+            const endOrStart = ev.end_time ? ev.end_time.substring(0, 5) : ev.start_time ? ev.start_time.substring(0, 5) : null;
+            return endOrStart ? endOrStart <= nowTime : false;
+        };
+        if (filter === 'active') {
+            // Fjern dagens events der allerede er afsluttet
+            const filtered = events.filter(ev => !isEventEndedToday(ev));
+            events.length = 0;
+            events.push(...filtered);
+        } else if (filter === 'past') {
+            // Fjern dagens events der endnu ikke er afsluttet
+            const filtered = events.filter(ev => ev.event_date !== today || isEventEndedToday(ev));
+            events.length = 0;
+            events.push(...filtered);
+        }
+    }
 
     if (!events || events.length === 0) return { events: [], error: null };
 

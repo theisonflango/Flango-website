@@ -870,6 +870,21 @@
                             </div>
                         </label>
 
+                        <!-- Dagens Ret indstillinger (synlig når Købsgrænse er aktiv) -->
+                        <div id="daily-special-portal-settings" style="display: none; margin-left: 34px; margin-bottom: 15px; padding: 12px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer; margin-bottom: 10px;">
+                                <input type="checkbox" id="parent-portal-daily-special" style="cursor: pointer;" checked />
+                                <span style="font-size: 13px;">Vis Dagens Ret i portalen</span>
+                            </label>
+                            <label style="display: block; font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 4px;">Pris for Dagens Ret</label>
+                            <input
+                                type="text"
+                                id="parent-portal-daily-special-price"
+                                placeholder="fx 5-7 kr"
+                                style="width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;"
+                            />
+                        </div>
+
                         <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
                             <input type="checkbox" id="parent-portal-sugar-policy" style="margin-right: 12px; cursor: pointer;">
                             <div>
@@ -878,45 +893,54 @@
                             </div>
                         </label>
 
-                        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Kontakttelefon til forældre</label>
-                            <input
-                                type="tel"
-                                id="parent-contact-phone-input"
-                                placeholder="fx 12345678"
-                                style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 8px; box-sizing: border-box;"
-                            />
-                            <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
-                                <input type="checkbox" id="parent-contact-phone-enabled" style="cursor: pointer;" />
-                                <span>Vis telefon i forældreportalen</span>
+                        <!-- Info-boks indstillinger (synlig når sukkerpolitik er aktiv) -->
+                        <div id="sugar-policy-info-settings" style="display: none; margin-left: 34px; margin-bottom: 15px; padding: 12px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer; margin-bottom: 10px;">
+                                <input type="checkbox" id="sugar-policy-info-enabled" style="cursor: pointer;" checked />
+                                <span style="font-size: 13px;">Vis info-boks i portalen</span>
                             </label>
+                            <label style="display: block; font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 4px;">Tekst i info-boksen (tom = standardtekst)</label>
+                            <textarea
+                                id="sugar-policy-info-text"
+                                rows="4"
+                                placeholder="Klubben har foretaget en pædagogisk vurdering med fokus på børns sundhed og ernæring. Vi prioriterer en hverdag med stabil energi, trivsel og gode vaner – og tilbyder derfor kun sukkerholdige eftermiddagssnacks i et meget begrænset omfang.&#10;&#10;Ønsker du en yderligere begrænsning af dit barns adgang til sukker, kan du justere forbruget herunder."
+                                style="width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; resize: vertical; box-sizing: border-box; font-family: inherit;"
+                            ></textarea>
                         </div>
+
                     </div>
 
-                    <h4 style="margin: 0 15px 10px; color: #999; font-size: 13px; font-weight: 500;">Kommer snart</h4>
-                    <div style="padding: 0 15px 15px; opacity: 0.5;">
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: not-allowed;">
-                            <input type="checkbox" id="parent-portal-vegetarian-only" style="margin-right: 12px;" disabled>
+                    <h4 style="margin: 0 15px 10px; color: #666; font-size: 13px; font-weight: 500;">Kostpræferencer</h4>
+                    <div style="padding: 0 15px 15px;">
+                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
+                            <input type="checkbox" id="parent-portal-vegetarian-only" style="margin-right: 12px; cursor: pointer;">
                             <div>
                                 <strong>Kun Vegetarisk</strong>
                                 <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan markere at deres barn kun må købe vegetariske produkter</div>
                             </div>
                         </label>
 
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: not-allowed;">
-                            <input type="checkbox" id="parent-portal-no-pork" style="margin-right: 12px;" disabled>
+                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
+                            <input type="checkbox" id="parent-portal-no-pork" style="margin-right: 12px; cursor: pointer;">
                             <div>
                                 <strong>Må ikke få svinekød</strong>
                                 <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan markere at deres barn ikke må få svinekød</div>
                             </div>
                         </label>
 
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: not-allowed;">
-                            <input type="checkbox" id="parent-portal-no-unhealthy" style="margin-right: 12px;" disabled>
-                            <div>
-                                <strong>Må ikke købe noget usundt</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan blokere alle usunde produkter for deres barn</div>
-                            </div>
+                    </div>
+
+                    <div style="margin-top: 20px; padding: 15px; border-top: 1px solid #e5e7eb;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Kontakttelefon til forældre</label>
+                        <input
+                            type="tel"
+                            id="institution-contact-phone-input"
+                            placeholder="fx 12345678"
+                            style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 8px; box-sizing: border-box;"
+                        />
+                        <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+                            <input type="checkbox" id="institution-contact-phone-enabled" style="cursor: pointer;" />
+                            <span>Vis telefon i forældreportalen</span>
                         </label>
                     </div>
                 </div>

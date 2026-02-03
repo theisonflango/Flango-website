@@ -212,7 +212,9 @@ export function setupEventAdminModule(config) {
             const capacityText = event.capacity ? `${event._registeredCount}/${event.capacity}` : `${event._registeredCount}`;
             const priceText = parseFloat(event.price) > 0 ? `${parseFloat(event.price).toFixed(2)} kr.` : 'Gratis';
 
-            const today = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const nowTime = now.toTimeString().substring(0, 5);
             let statusClass = 'upcoming';
             let statusLabel = 'Kommende';
             if (event.status === 'cancelled') {
@@ -221,6 +223,12 @@ export function setupEventAdminModule(config) {
             } else if (event.event_date < today || event.status === 'archived') {
                 statusClass = 'past';
                 statusLabel = 'Afsluttet';
+            } else if (event.event_date === today) {
+                const endOrStart = event.end_time ? event.end_time.substring(0, 5) : event.start_time ? event.start_time.substring(0, 5) : null;
+                if (endOrStart && endOrStart <= nowTime) {
+                    statusClass = 'past';
+                    statusLabel = 'Afsluttet';
+                }
             }
 
             item.innerHTML = `

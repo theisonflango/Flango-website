@@ -12,7 +12,7 @@ import {
 } from './cafe-session-store.js';
 import { renderOrder } from './order-ui.js';
 import { getProductIconInfo, getBulkDiscountedUnitPrice, getBulkDiscountSummary } from './products-and-cart.js';
-import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild } from './purchase-limits.js';
+import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild, getChildSugarPolicySnapshot } from './purchase-limits.js';
 import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
 import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
 import { escapeHtml } from '../core/escape-html.js';
@@ -471,6 +471,54 @@ export async function enforceSugarPolicy({ customer, currentOrder, allProducts }
     return true; // All checks passed
 }
 
+/**
+ * Håndhæver kostpræferencer (vegetarisk, svinekød) sat af forældre.
+ * Blokerer køb hvis produkter i kurven overtræder barnets kostpræferencer.
+ */
+export async function enforceDietaryRestrictions({ customer, currentOrder, allProducts }) {
+    if (!customer?.id) return true;
+
+    // Hent barnets dietary preferences via cached sugar policy snapshot
+    let policyData;
+    try {
+        policyData = await getChildSugarPolicySnapshot(customer.id);
+    } catch (e) {
+        console.warn('[enforceDietaryRestrictions] Could not fetch policy:', e);
+        return true; // Fail-open ved fejl
+    }
+
+    const policy = policyData?.policy;
+    if (!policy) return true; // Ingen policy sat
+
+    const vegetarianOnly = policy.vegetarianOnly === true;
+    const noPork = policy.noPork === true;
+
+    if (!vegetarianOnly && !noPork) return true; // Ingen kostpræferencer sat
+
+    for (const item of currentOrder) {
+        const product = allProducts.find(p => p.id === item.id);
+        if (!product) continue;
+
+        if (vegetarianOnly && product.is_vegetarian !== true) {
+            await showCustomAlert(
+                'Køb Blokeret',
+                `Hov, ${escapeHtml(customer.name)} må kun købe vegetariske produkter.<br><br><strong>${escapeHtml(product.name)}</strong> er ikke markeret som vegetarisk.`
+            );
+            return false;
+        }
+
+        if (noPork && product.contains_pork === true) {
+            await showCustomAlert(
+                'Køb Blokeret',
+                `Hov, ${escapeHtml(customer.name)} må ikke købe produkter med svinekød.<br><br><strong>${escapeHtml(product.name)}</strong> indeholder svinekød.`
+            );
+            return false;
+        }
+    }
+
+    return true;
+}
+
 let purchaseInFlight = false;
 
 export async function handleCompletePurchase({
@@ -629,6 +677,9 @@ export async function handleCompletePurchase({
 
     const sugarOk = await enforceSugarPolicy({ customer, currentOrder: orderSnapshot, allProducts });
     if (!sugarOk) return;
+
+    const dietaryOk = await enforceDietaryRestrictions({ customer, currentOrder: orderSnapshot, allProducts });
+    if (!dietaryOk) return;
 
     try {
         const childId = customer.id;
