@@ -3395,6 +3395,7 @@
       let signOutInProgress = false; // Guard: undgå flere signOut-kald og SIGNED_OUT-loop
       let authMode = null; // 'email_password' | 'pin' | 'magic_link'
       let authAccessToken = null; // JWT token for email+password sessions
+      let emailLoginInProgress = false; // Guard: undgå dobbelt-processing fra onAuthStateChange
 
       // Auth headers helper: bruger JWT bearer til email+password, ellers anon key
       function getAuthHeaders() {
@@ -6021,6 +6022,7 @@
 
             authMode = 'email_password';
             authAccessToken = data.session.access_token;
+            emailLoginInProgress = true; // Forhindre onAuthStateChange fra at processere
 
             // "Husk mig": Hvis ikke valgt, marker at sessionen skal ryddes ved lukning
             if (!rememberMeCheckbox.checked) {
@@ -6037,6 +6039,7 @@
             }
             epLoginError.style.display = "block";
           } finally {
+            emailLoginInProgress = false;
             epLoginBtn.disabled = false;
             epLoginBtn.textContent = "Log ind";
           }
@@ -6126,6 +6129,7 @@
             // 3) Session oprettet (auto-confirm) – link barnet
             authMode = 'email_password';
             authAccessToken = signUpData.session.access_token;
+            emailLoginInProgress = true; // Forhindre onAuthStateChange fra at processere
 
             const { data: linkResult, error: linkError } = await withTimeout(
               supabase.rpc('verify_parent_code_and_link_child', { p_code: code }),
@@ -6161,6 +6165,7 @@
             }
             signupError.style.display = "block";
           } finally {
+            emailLoginInProgress = false;
             signupBtn.disabled = false;
             signupBtn.textContent = "Opret konto";
           }
@@ -6536,6 +6541,11 @@
           // Skip auto-login hvis vi er i password recovery mode
           if (__pendingPasswordRecovery) {
             console.log('[auth] Skipping auto-login - in password recovery mode');
+            return;
+          }
+          // Skip hvis login/signup form handler allerede processerer
+          if (emailLoginInProgress) {
+            console.log('[auth] Skipping - email login already in progress');
             return;
           }
 
