@@ -6474,6 +6474,12 @@
         }
 
         if ((event === "INITIAL_SESSION" || event === "SIGNED_IN") && session?.user?.email) {
+          // Skip auto-login hvis vi er i password recovery mode
+          if (__pendingPasswordRecovery) {
+            console.log('[auth] Skipping auto-login - in password recovery mode');
+            return;
+          }
+
           window.history.replaceState(null, '', window.location.pathname);
 
           // Tjek om dette er en email+password session med linkede børn
