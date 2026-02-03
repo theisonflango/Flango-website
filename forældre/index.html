@@ -6168,7 +6168,18 @@
           }
 
           try {
+            // Tjek om vi har en aktiv session
+            const { data: sessionData } = await supabase.auth.getSession();
+            console.log('[reset] Current session:', sessionData?.session?.user?.email, sessionData?.session?.access_token ? 'has token' : 'no token');
+
+            if (!sessionData?.session) {
+              errorEl.textContent = "Din session er udløbet. Anmod om et nyt reset-link.";
+              errorEl.style.display = "block";
+              return;
+            }
+
             const { error } = await supabase.auth.updateUser({ password: newPass });
+            console.log('[reset] updateUser result:', error ? error.message : 'success');
             if (error) {
               errorEl.textContent = error.message || "Kunne ikke opdatere adgangskode.";
               errorEl.style.display = "block";
