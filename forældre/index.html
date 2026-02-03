@@ -5929,21 +5929,28 @@
           allowedChildren = childList;
 
           // Hent fuld data via get-parent-view med JWT auth (ingen PIN nødvendig)
-          const res = await fetch(FUNCTION_URL, {
-            method: "POST",
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-              child_id: firstChild.child_id,
-              institution_id: firstChild.institution_id,
-            }),
-          });
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 20000);
+          let res;
+          try {
+            res = await fetch(FUNCTION_URL, {
+              method: "POST",
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                child_id: firstChild.child_id,
+                institution_id: firstChild.institution_id,
+              }),
+              signal: controller.signal,
+            });
+          } finally {
+            clearTimeout(timeoutId);
+          }
 
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
 
           if (!res.ok) {
-            console.error("get-parent-view fejl:", data);
-            showNoChildrenState();
-            return;
+            console.error("get-parent-view fejl:", res.status, data);
+            throw new Error(data?.error || data?.message || "Kunne ikke hente portalen (svar " + res.status + "). Prøv igen.");
           }
 
           // Brug allowed_children fra vores RPC (mere pålidelig)
@@ -5962,6 +5969,7 @@
         } catch (err) {
           console.error("loadChildrenAndEnterPortal fejl:", err);
           showNoChildrenState();
+          throw err;
         }
       }
 
@@ -5988,8 +5996,22 @@
           epLoginBtn.disabled = true;
           epLoginBtn.textContent = "Logger ind...";
 
+          const LOGIN_TIMEOUT_MS = 28000;
+          function loginWithTimeout(promise, ms, label) {
+            return Promise.race([
+              promise,
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("timeout:" + label)), ms)
+              ),
+            ]);
+          }
+
           try {
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await loginWithTimeout(
+              supabase.auth.signInWithPassword({ email, password }),
+              LOGIN_TIMEOUT_MS,
+              "signIn"
+            );
 
             if (error) {
               let msg = "Forkert e-mail eller adgangskode.";
@@ -6009,10 +6031,14 @@
               window.__flangoForgetOnClose = true;
             }
 
-            await loadChildrenAndEnterPortal();
+            await loginWithTimeout(loadChildrenAndEnterPortal(), LOGIN_TIMEOUT_MS, "load_portal");
           } catch (err) {
             console.error("Login fejl:", err);
-            epLoginError.textContent = "Der opstod en fejl. Prøv igen.";
+            if (err && err.message && err.message.startsWith("timeout:")) {
+              epLoginError.textContent = "Det tog for lang tid. Tjek din forbindelse og prøv igen.";
+            } else {
+              epLoginError.textContent = err?.message || "Der opstod en fejl. Prøv igen.";
+            }
             epLoginError.style.display = "block";
           } finally {
             epLoginBtn.disabled = false;
