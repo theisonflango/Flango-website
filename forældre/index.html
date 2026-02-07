@@ -6971,8 +6971,10 @@
 
         // Indlæs institutioner
         (async () => {
+          console.log("[link-sibling] Loading institutions...");
           try {
             const { data: institutions, error } = await supabase.rpc('get_public_institutions');
+            console.log("[link-sibling] RPC result:", { institutions, error });
             if (error) throw error;
 
             institutionSelect.innerHTML = '<option value="">Vælg institution...</option>';
@@ -6986,8 +6988,9 @@
               }
               institutionSelect.appendChild(opt);
             });
+            console.log("[link-sibling] Institutions loaded:", (institutions || []).length);
           } catch (err) {
-            console.error("Fejl ved indlæsning af institutioner:", err);
+            console.error("[link-sibling] Fejl ved indlæsning af institutioner:", err);
             institutionSelect.innerHTML = '<option value="">Kunne ikke indlæse institutioner</option>';
           }
         })();
