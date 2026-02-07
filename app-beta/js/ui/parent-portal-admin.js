@@ -618,7 +618,8 @@ export function createParentPortalAdminUI(options = {}) {
         const confirmed = await showConfirmNewParentPin(child, !!hasExistingPin);
         if (!confirmed) return;
 
-        const newPin = String(Math.floor(100000 + Math.random() * 900000)); // 6-cifret kode
+        // 8-cifret PIN (kun tal 0-9, længde 8)
+        const newPin = String(Math.floor(10000000 + Math.random() * 90000000));
 
         try {
             const { data: invokeData, error: invokeError } = await supabaseClient.functions.invoke('update-parent-pin', {
