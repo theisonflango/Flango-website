@@ -6379,7 +6379,16 @@
             if (signUpErr) {
               let msg = signUpErr.message;
               if (msg && msg.includes("already registered")) {
-                msg = "Denne e-mail er allerede registreret. Prøv at logge ind i stedet.";
+                signupError.innerHTML = 'Denne e-mail er allerede registreret. <a href="#" id="goto-login-from-error" style="color:#2563eb;text-decoration:underline;">Log ind</a> for at tilknytte flere børn.';
+                signupError.style.display = "block";
+                const loginLink = signupError.querySelector("#goto-login-from-error");
+                if (loginLink) {
+                  loginLink.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    showLoginForm(epLoginSection);
+                  });
+                }
+                return;
               }
               signupError.textContent = msg;
               signupError.style.display = "block";
