@@ -22,13 +22,27 @@ export async function fetchInstitutions(forceRefresh = false) {
         return institutionsCache;
     }
 
-    const doFetch = async () => {
+    const doFetch = async (retryCount = 0) => {
         // VIGTIGT SIKKERHED:
         // - login_code må ikke hentes til klienten.
         // - For "klub login" (ingen auth session) henter vi kun id/name/is_active.
         // - Efter admin-login (auth session) henter vi institutions settings (stadig uden login_code).
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        const isAuthed = !!session;
+        let isAuthed = false;
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            isAuthed = !!session;
+        } catch (sessionErr) {
+            // Hvis getSession fejler med AbortError, prøv igen efter kort pause
+            const isAbort = sessionErr?.name === 'AbortError' || (sessionErr?.message || '').includes('aborted');
+            if (isAbort && retryCount < 2) {
+                console.warn(`[institution-store] getSession AbortError, retry ${retryCount + 1}/2...`);
+                await new Promise(r => setTimeout(r, 300 * (retryCount + 1)));
+                return doFetch(retryCount + 1);
+            }
+            // Fallback: antag ikke-authed og fortsæt med minimal query
+            console.warn('[institution-store] getSession fejlede, fortsætter som anon:', sessionErr?.message);
+            isAuthed = false;
+        }
 
         const { data, error } = await supabaseClient
             .from('institutions')
@@ -49,6 +63,13 @@ export async function fetchInstitutions(forceRefresh = false) {
             .order('name');
 
         if (error) {
+            // Hvis query fejler med AbortError, prøv igen
+            const isAbort = error?.name === 'AbortError' || (error?.message || '').includes('aborted');
+            if (isAbort && retryCount < 2) {
+                console.warn(`[institution-store] Query AbortError, retry ${retryCount + 1}/2...`);
+                await new Promise(r => setTimeout(r, 300 * (retryCount + 1)));
+                return doFetch(retryCount + 1);
+            }
             console.error('[institution-store] Supabase fejl:', error);
             throw error;
         }
