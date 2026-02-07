@@ -7172,7 +7172,11 @@
             // Hvis email+password mode: link også barnet i parent_account_children
             if (authMode === 'email_password') {
               try {
-                await supabase.rpc('verify_parent_code_and_link_child', { p_code: code });
+                await supabase.rpc('verify_parent_code_and_link_child', {
+                  p_code: code,
+                  p_institution_id: selectedInstitutionId
+                });
+                console.log('[link-sibling] Barn linket i parent_account_children');
               } catch (e) {
                 console.warn('[link-sibling] Kunne ikke linke i parent_account_children:', e);
               }
@@ -7253,11 +7257,18 @@
 
       // Child switcher functionality
       function renderChildSwitcher(children) {
+        console.log("[child-switcher] renderChildSwitcher called:", {
+          childCount: Array.isArray(children) ? children.length : null,
+          hasElement: !!childSwitcher,
+          children: children
+        });
         if (!childSwitcher || !Array.isArray(children) || children.length <= 1) {
+          console.log("[child-switcher] Hiding switcher (count <= 1 or missing element)");
           if (childSwitcher) childSwitcher.style.display = "none";
           return;
         }
 
+        console.log("[child-switcher] Showing switcher with", children.length, "children");
         childSwitcher.style.display = "block";
         childSwitcherSelect.innerHTML = children
           .map(
