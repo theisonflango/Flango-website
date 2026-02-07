@@ -6035,9 +6035,13 @@
           let children;
           let error;
           try {
+            console.log("[auth] authMode:", authMode);
             if (authMode === 'email_password') {
+              console.log("[auth] Using XHR path, getting session...");
               const { data: sessionData } = await supabase.auth.getSession();
+              console.log("[auth] Got session, hasToken:", !!sessionData?.session?.access_token);
               const accessToken = sessionData?.session?.access_token || authAccessToken || null;
+              console.log("[auth] Starting XHR to get_children_for_parent...");
               const xhrResult = await postJsonXHR(
                 `${SUPABASE_URL}/rest/v1/rpc/get_children_for_parent`,
                 {
@@ -6047,6 +6051,7 @@
                 },
                 "{}"
               );
+              console.log("[auth] XHR done:", { ok: xhrResult.ok, status: xhrResult.status, dataLength: Array.isArray(xhrResult.data) ? xhrResult.data.length : null });
               // #region agent log
               fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:xhr_result',message:'xhr result',data:{ok:xhrResult.ok,status:xhrResult.status,childCount:Array.isArray(xhrResult.data)?xhrResult.data.length:null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
               // #endregion
@@ -6056,7 +6061,9 @@
                 error = new Error(xhrResult.data?.error || xhrResult.data?.message || "XHR fejl");
               }
             } else {
+              console.log("[auth] Using Supabase RPC path...");
               ({ data: children, error } = await supabase.rpc('get_children_for_parent'));
+              console.log("[auth] RPC done:", { hasError: !!error, count: Array.isArray(children) ? children.length : null });
             }
           } catch (rpcErr) {
             console.error("[auth] get_children_for_parent threw:", rpcErr);
