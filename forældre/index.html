@@ -2561,9 +2561,17 @@
                 <div id="signup-section" style="display: none;">
                   <h3 style="margin-top: 0; margin-bottom: 8px;">Opret forældrekonto</h3>
                   <p style="font-size: 13px; color: #666; margin: 0 0 12px 0;">
-                    Brug barnets unikke forældrekode, som klubben har udleveret.
+                    Vælg institution og indtast den 8-cifrede kode fra klubben.
                   </p>
                   <form id="signup-form" class="login-form">
+                    <!-- Institution dropdown -->
+                    <select
+                      id="signup-institution-select"
+                      required
+                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background: #fff;"
+                    >
+                      <option value="">Vælg institution...</option>
+                    </select>
                     <input
                       type="email"
                       id="signup-email-input"
@@ -2572,15 +2580,16 @@
                       required
                       style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
                     />
+                    <!-- 8-cifret PIN (kun tal) -->
                     <input
                       type="text"
                       id="signup-code-input"
-                      placeholder="Invitationskode (6 cifre)"
-                      maxlength="6"
+                      placeholder="8-cifret kode"
+                      maxlength="8"
                       inputmode="numeric"
-                      pattern="[0-9]*"
+                      pattern="[0-9]{8}"
                       required
-                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; text-transform: uppercase; letter-spacing: 2px; text-align: center;"
+                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 18px; letter-spacing: 3px; text-align: center;"
                     />
                     <input
                       type="password"
@@ -2705,9 +2714,10 @@
                         <input
                           type="password"
                           id="parent-pin-input"
-                          placeholder="Forældre-kode (fx 6 cifre eller kodeord)"
-                          inputmode="text"
-                          maxlength="32"
+                          placeholder="8-cifret forældre-kode"
+                          inputmode="numeric"
+                          maxlength="8"
+                          pattern="[0-9]{8}"
                           required
                         />
 
@@ -6293,19 +6303,56 @@
         });
       }
 
+      // Hent og populer institutions-dropdown ved page load
+      async function loadSignupInstitutions() {
+        const select = document.getElementById("signup-institution-select");
+        if (!select) return;
+        try {
+          const { data, error } = await supabase.rpc("get_public_institutions");
+          if (error || !Array.isArray(data)) {
+            console.warn("Kunne ikke hente institutioner:", error);
+            return;
+          }
+          data.forEach(inst => {
+            const opt = document.createElement("option");
+            opt.value = inst.id;
+            opt.textContent = inst.name;
+            select.appendChild(opt);
+          });
+        } catch (e) {
+          console.error("Fejl ved hentning af institutioner:", e);
+        }
+      }
+      loadSignupInstitutions();
+
       if (signupForm) {
         signupForm.addEventListener("submit", async (event) => {
           event.preventDefault();
           signupError.style.display = "none";
           signupSuccess.style.display = "none";
 
+          const institutionId = document.getElementById("signup-institution-select").value;
           const email = document.getElementById("signup-email-input").value.trim();
           const pin = document.getElementById("signup-code-input").value.trim();
           const password = document.getElementById("signup-password-input").value;
           const passwordConfirm = document.getElementById("signup-password-confirm").value;
 
+          // Validering: institution påkrævet
+          if (!institutionId) {
+            signupError.textContent = "Vælg venligst en institution.";
+            signupError.style.display = "block";
+            return;
+          }
+
           if (!email || !pin || !password) {
             signupError.textContent = "Udfyld alle felter.";
+            signupError.style.display = "block";
+            return;
+          }
+
+          // Validering: 8 cifre (kun tal)
+          if (pin.length !== 8 || !/^[0-9]{8}$/.test(pin)) {
+            signupError.textContent = "Koden skal være præcis 8 cifre (kun tal).";
             signupError.style.display = "block";
             return;
           }
@@ -6337,10 +6384,10 @@
           }
 
           try {
-            // STEP 1: Verificer PIN og hent barnets navn FØR oprettelse
-            console.log("[signup] Verificerer PIN...", { pin, pinLength: pin.length });
+            // STEP 1: Verificer 8-cifret PIN med institution (hurtig lookup)
+            console.log("[signup] Verificerer PIN...", { pin, pinLength: pin.length, institutionId });
             const { data: verifyResult, error: verifyError } = await withTimeout(
-              supabase.rpc('verify_pin_and_get_child_info', { p_pin: pin }),
+              supabase.rpc('verify_pin_and_get_child_info', { p_pin: pin, p_institution_id: institutionId }),
               SIGNUP_TIMEOUT_MS,
               "verify_pin"
             );
@@ -6410,8 +6457,9 @@
             authAccessToken = signUpData.session.access_token;
             emailLoginInProgress = true;
 
+            // Link barnet med institution (8-cifret PIN)
             const { data: linkResult, error: linkError } = await withTimeout(
-              supabase.rpc('verify_parent_code_and_link_child', { p_code: pin }),
+              supabase.rpc('verify_parent_code_and_link_child', { p_code: pin, p_institution_id: institutionId }),
               SIGNUP_TIMEOUT_MS,
               "verify_code"
             );
@@ -6891,16 +6939,19 @@
           <div class="event-payment-modal" style="background:var(--card-bg, #fff);border-radius:16px;padding:24px;max-width:480px;width:100%;box-shadow:0 18px 45px rgba(15,23,42,0.18);box-sizing:border-box;">
             <h3 style="margin:0 0 12px 0;">Tilknyt barn</h3>
             <p style="font-size:14px;color:#666;margin:0 0 16px 0;">
-              Indtast den 6-cifrede kode til barnet, som du har modtaget fra institutionen.
+              Vælg barnets institution og indtast den 8-cifrede kode.
             </p>
+            <select id="sibling-institution-select" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;margin-bottom:12px;background:#fff;">
+              <option value="">Indlæser institutioner...</option>
+            </select>
             <input
               type="text"
               id="sibling-code-input"
-              placeholder="6-cifret kode"
+              placeholder="8-cifret kode"
               inputmode="numeric"
-              pattern="[0-9]*"
+              pattern="[0-9]{8}"
               style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:18px;margin-bottom:12px;text-align:center;letter-spacing:3px;"
-              maxlength="6"
+              maxlength="8"
             />
             <p id="link-sibling-error" class="error-message" style="display:none;margin-bottom:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
@@ -6912,10 +6963,34 @@
 
         document.body.appendChild(overlay);
 
+        const institutionSelect = overlay.querySelector("#sibling-institution-select");
         const codeInput = overlay.querySelector("#sibling-code-input");
         const errorEl = overlay.querySelector("#link-sibling-error");
         const cancelBtn = overlay.querySelector("#link-sibling-cancel-btn");
         const previewBtn = overlay.querySelector("#link-sibling-preview-btn");
+
+        // Indlæs institutioner
+        (async () => {
+          try {
+            const { data: institutions, error } = await supabase.rpc('get_public_institutions');
+            if (error) throw error;
+
+            institutionSelect.innerHTML = '<option value="">Vælg institution...</option>';
+            (institutions || []).forEach(inst => {
+              const opt = document.createElement('option');
+              opt.value = inst.id;
+              opt.textContent = inst.name;
+              // Pre-select current institution if available
+              if (currentInstitutionId && inst.id === currentInstitutionId) {
+                opt.selected = true;
+              }
+              institutionSelect.appendChild(opt);
+            });
+          } catch (err) {
+            console.error("Fejl ved indlæsning af institutioner:", err);
+            institutionSelect.innerHTML = '<option value="">Kunne ikke indlæse institutioner</option>';
+          }
+        })();
 
         const close = () => overlay.remove();
 
@@ -6925,9 +7000,22 @@
         });
 
         previewBtn.addEventListener("click", async () => {
-          const code = codeInput.value.trim().toUpperCase();
+          const selectedInstitutionId = institutionSelect.value;
+          const code = codeInput.value.trim();
+
+          // Validering
+          if (!selectedInstitutionId) {
+            errorEl.textContent = "Vælg venligst en institution.";
+            errorEl.style.display = "block";
+            return;
+          }
           if (!code) {
             errorEl.textContent = "Indtast en kode.";
+            errorEl.style.display = "block";
+            return;
+          }
+          if (code.length !== 8 || !/^[0-9]{8}$/.test(code)) {
+            errorEl.textContent = "Koden skal være præcis 8 cifre (kun tal).";
             errorEl.style.display = "block";
             return;
           }
@@ -6955,7 +7043,7 @@
               // #endregion
               const { data: linkResult, error: linkError } = await supabase.rpc(
                 'verify_parent_code_and_link_child',
-                { p_code: code }
+                { p_code: code, p_institution_id: selectedInstitutionId }
               );
               // #region agent log
               fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:linkSibling:verify_result',message:'verify result',data:{hasError:!!linkError},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H'})}).catch(()=>{});
@@ -6976,7 +7064,7 @@
                         apikey: SUPABASE_ANON_KEY,
                         Authorization: `Bearer ${accessToken || SUPABASE_ANON_KEY}`,
                       },
-                      JSON.stringify({ p_code: code })
+                      JSON.stringify({ p_code: code, p_institution_id: selectedInstitutionId })
                     );
                     if (fallback.ok) {
                       close();
@@ -7019,6 +7107,7 @@
                 current_child_id: currentChildId,
                 parent_pin: currentParentPin,
                 sibling_code: code,
+                sibling_institution_id: selectedInstitutionId,
               }),
             });
 
