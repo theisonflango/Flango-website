@@ -17,7 +17,20 @@ const supabaseLib = typeof window !== 'undefined' && window.supabase ? window.su
 if (!supabaseLib || typeof supabaseLib.createClient !== 'function') {
     throw new Error('Supabase library ikke fundet. Tjek at CDN script er inkluderet i index.html');
 }
-const _rawClient = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Supabase auth config - undgår lock-problemer ved at bruge unik storage key
+const authConfig = {
+    auth: {
+        storageKey: 'flango-auth-v3',
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        // Vigtigt: flowType 'implicit' undgår nogle lock-problemer
+        flowType: 'implicit',
+    }
+};
+
+const _rawClient = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, authConfig);
 export const supabaseClient = instrumentSupabase(_rawClient);
 
 console.log('Supabase client initialiseret til Flango-3.');
