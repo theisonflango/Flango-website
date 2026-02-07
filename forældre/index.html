@@ -6338,13 +6338,16 @@
 
           try {
             // STEP 1: Verificer PIN og hent barnets navn FØR oprettelse
+            console.log("[signup] Verificerer PIN...", { pin, pinLength: pin.length });
             const { data: verifyResult, error: verifyError } = await withTimeout(
               supabase.rpc('verify_pin_and_get_child_info', { p_pin: pin }),
               SIGNUP_TIMEOUT_MS,
               "verify_pin"
             );
+            console.log("[signup] RPC result:", { verifyResult, verifyError });
 
             if (verifyError || !verifyResult?.success) {
+              console.error("[signup] Verification failed:", verifyError, verifyResult);
               signupError.textContent = verifyResult?.error || verifyError?.message || "Ugyldig kode. Tjek koden og prøv igen.";
               signupError.style.display = "block";
               return;
