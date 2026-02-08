@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <title>Informationssikkerhed i Flango – Flango</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Informationssikkerhed i Flango – databeskyttelse, adgangsstyring, kryptering og beredskab for SFO'er og fritidsinstitutioner." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5f5fb;
+      --bg-soft: #ffffff;
+      --accent: #ff7a3c;
+      --accent-dark: #e0521f;
+      --text-main: #111827;
+      --text-muted: #4b5563;
+      --border-soft: #e5e7eb;
+      --radius-lg: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: radial-gradient(circle at top, #ffe8d6 0, #f5f5fb 38%, #f9fafb 100%); color: var(--text-main); }
+    a { color: inherit; text-decoration: none; }
+    .page { min-height: 100vh; max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 40px; }
+    header {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 14px 16px; margin: 0 -16px 0;
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-soft); flex-wrap: wrap;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .logo-mark { width: 34px; height: 34px; border-radius: 14px; background: radial-gradient(circle at 30% 20%, #ffe8d6 0, #ff7a3c 42%, #ff4b73 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 25px rgba(248,113,113,0.55); }
+    .logo-mark span { font-family: 'Baloo 2', cursive; font-size: 20px; color: #fff; transform: translateY(-1px); }
+    .logo-text-main { font-family: 'Baloo 2', cursive; font-size: 22px; line-height: 1; }
+    .logo-sub { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+    nav { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; flex-wrap: wrap; }
+    .nav-link { padding: 6px 12px; border-radius: 999px; color: var(--text-muted); white-space: nowrap; transition: color 0.15s, background 0.15s; }
+    .nav-link:hover { color: var(--text-main); background: rgba(0,0,0,0.04); }
+    .nav-link.here { color: var(--accent-dark); }
+    .nav-cta { padding: 8px 14px; border-radius: 999px; background: #111827; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 12px 30px rgba(15,23,42,0.45); white-space: nowrap; }
+    .nav-cta:hover { background: #1f2937; }
+    @media (max-width: 830px) { header { flex-direction: column; align-items: flex-start; } nav { gap: 8px; } }
+    @media (max-width: 640px) { .nav-link { padding: 5px 10px; font-size: 12px; } .nav-cta { padding: 6px 12px; font-size: 12px; } }
+    .page-title { margin: 0; font-size: clamp(24px,4vw,30px); font-family: 'Baloo 2', cursive; }
+    .page-intro { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); max-width: 65ch; line-height: 1.55; }
+    .section-heading { margin: 0 0 16px; font-size: 20px; font-family: 'Baloo 2', cursive; }
+    .divider { margin: 32px 0; border: none; height: 0; border-top: 1px solid var(--border-soft); }
+    .about-section { max-width: 65ch; }
+    .about-section p { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+    .about-section p:last-child { margin-bottom: 0; }
+    .about-section ul { margin: 12px 0 0; padding-left: 1.25em; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+    .about-section li { margin-bottom: 6px; }
+    footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-soft); font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <a href="/" class="logo" aria-label="Flango – forsiden">
+        <div class="logo-mark"><span>F</span></div>
+        <div>
+          <div class="logo-text-main">Flango</div>
+          <div class="logo-sub">SFO’ernes cafésystem</div>
+        </div>
+      </a>
+      <nav>
+        <a class="nav-link" href="/">FORSIDE</a>
+        <a class="nav-link" href="/pris/">PRISER</a>
+        <a class="nav-link" href="/gaming/">GAMING</a>
+        <a class="nav-link" href="/event/">EVENT</a>
+        <a class="nav-link" href="/prov-flango/">PRØV FLANGO</a>
+        <a class="nav-link" href="/om-flango/">OM FLANGO</a>
+        <a class="nav-link" href="/forældre/">FORÆLDRE PORTAL</a>
+        <a class="nav-link" href="/kontakt/">KONTAKT</a>
+        <a class="nav-cta" href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango">Book en snak</a>
+      </nav>
+    </header>
+
+    <section>
+      <h1 class="page-title">Informationssikkerhed i Flango</h1>
+      <p class="page-intro">Flango er udviklet med fokus på stabil drift, databeskyttelse og sikker adgang til systemet for børn, personale og forældre.</p>
+      <p class="page-intro">Løsningen er designet til brug i danske SFO'er og fritidsinstitutioner og følger almindelige principper for kommunal IT-sikkerhed.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="arkitektur-heading">
+      <h2 id="arkitektur-heading" class="section-heading">Arkitektur og drift</h2>
+      <p>Flango er en cloudbaseret webplatform.</p>
+      <p>Systemet består af:</p>
+      <ul>
+        <li>En webapplikation til personale og børn (cafédrift)</li>
+        <li>En forældreportal til forældre</li>
+        <li>En backend med database og API</li>
+      </ul>
+      <p>Driften sker på etablerede cloudplatforme med datacentre i EU.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="adgang-heading">
+      <h2 id="adgang-heading" class="section-heading">Adgang og rettigheder</h2>
+      <p>Flango anvender rollebaseret adgangsstyring, hvor brugere kun har adgang til relevante funktioner:</p>
+      <ul>
+        <li>Administratorer (institution/leverandør)</li>
+        <li>Personale (pædagogisk personale)</li>
+        <li>Børn (begrænset funktionalitet)</li>
+        <li>Forældre (kun eget barn)</li>
+      </ul>
+      <p>Alle brugere autentificeres med personlige loginoplysninger.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="kryptering-heading">
+      <h2 id="kryptering-heading" class="section-heading">Kryptering og kommunikation</h2>
+      <ul>
+        <li>Al kommunikation mellem bruger og system sker via krypteret HTTPS (TLS).</li>
+        <li>Adgang til backend og database er begrænset til autoriserede systemkomponenter.</li>
+      </ul>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="dataseparation-heading">
+      <h2 id="dataseparation-heading" class="section-heading">Dataseparation mellem institutioner</h2>
+      <p>Data er opdelt pr. institution i databasen, så oplysninger fra én institution ikke er tilgængelige for andre institutioner.</p>
+      <p>Dette reducerer risikoen for utilsigtet datadeling.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="backup-heading">
+      <h2 id="backup-heading" class="section-heading">Backup og beredskab</h2>
+      <p>Der etableres backup- og gendannelsesprocedurer for at sikre:</p>
+      <ul>
+        <li>Gendannelse ved systemfejl</li>
+        <li>Gendannelse ved utilsigtet sletning</li>
+        <li>Dokumenteret beredskabsprocedure</li>
+      </ul>
+      <p>Backup kan opbevares krypteret og med adgangsbegrænsning.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="logging-heading">
+      <h2 id="logging-heading" class="section-heading">Logging og ændringshistorik</h2>
+      <p>Systemet understøtter:</p>
+      <ul>
+        <li>Versionsstyring af kode</li>
+        <li>Dokumenteret ændringshistorik ved nye funktioner og rettelser</li>
+        <li>Mulighed for logning af systemaktiviteter</li>
+      </ul>
+      <p>Dette understøtter sporbarhed og fejlsøgning.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="integrationer-heading">
+      <h2 id="integrationer-heading" class="section-heading">Integrationer og API</h2>
+      <p>Flango kan på sigt integreres med eksterne systemer (fx betalingsløsninger) via API.</p>
+      <p>Integrationer etableres kun efter:</p>
+      <ul>
+        <li>Aftale med institution/kommune</li>
+        <li>Sikkerhedsvurdering</li>
+        <li>Dokumenteret databehandleraftale</li>
+      </ul>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="leverandor-heading">
+      <h2 id="leverandor-heading" class="section-heading">Leverandøransvar</h2>
+      <p>Flango leveres af Theison (CVR 34360642).</p>
+      <p>Der kan indgås databehandleraftale (DPA) mellem institutionen/kommunen og leverandøren.</p>
+    </section>
+
+    <footer>
+      <div>© <span id="year"></span> Flango – SFO’ernes cafésystem</div>
+      <div>
+        <a href="/forældre/">Forældre Portal</a> ·
+        <a href="/pris/">Priser</a> ·
+        <a href="/om-flango/">Om Flango</a> ·
+        <a href="/sikkerhed/">Sikkerhed</a> ·
+        <a href="/gdpr/">GDPR</a> ·
+        <a href="/kontakt/">Kontakt</a>
+      </div>
+    </footer>
+  </main>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

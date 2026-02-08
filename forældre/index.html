@@ -703,6 +703,77 @@
       color: #111827;
     }
 
+    /* Signup bekræftelses-popup */
+    .signup-confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    .signup-confirm-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    .signup-confirm-card h3 {
+      margin: 0 0 12px 0;
+      font-size: 20px;
+      color: #111827;
+    }
+    .signup-confirm-card p {
+      margin: 0 0 8px 0;
+      font-size: 15px;
+      color: #374151;
+    }
+    .child-name-display {
+      font-size: 24px;
+      font-weight: 700;
+      color: #2563eb;
+      margin: 16px 0;
+      padding: 12px;
+      background: #f0f7ff;
+      border-radius: 8px;
+    }
+    .confirm-note {
+      font-size: 14px;
+      color: #666;
+      margin: 12px 0 20px 0;
+    }
+    .confirm-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    .confirm-buttons button {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+    .confirm-buttons .cancel-btn {
+      background: #e5e7eb;
+      color: #374151;
+    }
+    .confirm-buttons .cancel-btn:hover {
+      background: #d1d5db;
+    }
+    .confirm-buttons .confirm-btn {
+      background: #f87116;
+      color: #fff;
+    }
+    .confirm-buttons .confirm-btn:hover {
+      background: #ea580c;
+    }
+
     .results-header {
       display: flex;
       align-items: center;
@@ -2490,9 +2561,17 @@
                 <div id="signup-section" style="display: none;">
                   <h3 style="margin-top: 0; margin-bottom: 8px;">Opret forældrekonto</h3>
                   <p style="font-size: 13px; color: #666; margin: 0 0 12px 0;">
-                    Brug barnets unikke forældrekode, som klubben har udleveret.
+                    Vælg institution og indtast den 8-cifrede kode fra klubben.
                   </p>
                   <form id="signup-form" class="login-form">
+                    <!-- Institution dropdown -->
+                    <select
+                      id="signup-institution-select"
+                      required
+                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background: #fff;"
+                    >
+                      <option value="">Vælg institution...</option>
+                    </select>
                     <input
                       type="email"
                       id="signup-email-input"
@@ -2501,13 +2580,16 @@
                       required
                       style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
                     />
+                    <!-- 8-cifret PIN (kun tal) -->
                     <input
                       type="text"
                       id="signup-code-input"
-                      placeholder="Barnets forældrekode (8 tegn)"
+                      placeholder="8-cifret kode"
                       maxlength="8"
+                      inputmode="numeric"
+                      pattern="[0-9]{8}"
                       required
-                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;"
+                      style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 18px; letter-spacing: 3px; text-align: center;"
                     />
                     <input
                       type="password"
@@ -2594,90 +2676,7 @@
                   </form>
                 </div>
 
-                <!-- ALTERNATIVE LOGINMETODER (fold-ud) -->
-                <details id="alternative-login-methods" style="margin-top: 24px;">
-                  <summary style="font-size: 14px; color: #666; cursor: pointer; padding: 8px 0; user-select: none;">
-                    Alternative loginmetoder
-                  </summary>
-                  <div style="padding-top: 16px;">
-                    <!-- Eksisterende kode-login (uændret) -->
-                    <div id="code-login-section">
-                      <h3 style="margin-top: 0; margin-bottom: 12px;">Log ind med kode</h3>
-                      <form id="parent-login-form" class="login-form">
-                        <div class="form-group" id="institution-row">
-                          <label for="institution-select" class="section-subtitle" id="institution-label">
-                            Vælg klub/SFO
-                          </label>
-                          <select id="institution-select" required>
-                            <option value="">Vælg klub/SFO…</option>
-                          </select>
-                        </div>
-
-                        <p
-                          id="institution-info"
-                          class="section-subtitle"
-                          style="display: none; margin-bottom: 10px;"
-                        >
-                          Institutioner i nærheden af dig:
-                          <strong id="institution-name-label"></strong>
-                        </p>
-
-                        <input
-                          type="text"
-                          id="child-name-input"
-                          placeholder="Barnets fulde navn (fx Oliver Jensen)"
-                          required
-                        />
-
-                        <input
-                          type="password"
-                          id="parent-pin-input"
-                          placeholder="Forældre-kode (fx 6 cifre eller kodeord)"
-                          inputmode="text"
-                          maxlength="32"
-                          required
-                        />
-
-                        <button type="submit" id="login-btn">Se saldo og historik</button>
-                        <p id="login-error" class="error-message" style="display: none;"></p>
-                      </form>
-
-                      <p class="login-help">
-                        <strong>Har du ikke fået en kode?</strong><br />
-                        Kontakt klubben/SFO'en – de kan oplyse eller nulstille jeres forældre-login.
-                      </p>
-                    </div>
-
-                    <div class="login-divider" style="margin: 16px 0; text-align: center; position: relative;">
-                      <span style="background: var(--card-bg, #fff); padding: 0 12px; color: #666;">eller</span>
-                      <hr style="position: absolute; top: 50%; left: 0; right: 0; margin: 0; border: none; border-top: 1px solid #ddd; z-index: -1;">
-                    </div>
-
-                    <!-- Eksisterende magic link (uændret) -->
-                    <div id="email-login-section">
-                      <h3 style="margin-top: 0; margin-bottom: 8px;">Log ind med magic link</h3>
-                      <p class="microcopy" style="font-size: 13px; color: #666; margin-bottom: 12px;">
-                        Modtag et login-link på din e-mail.
-                      </p>
-                      <form id="email-login-form" class="login-form">
-                        <input
-                          type="email"
-                          id="parent-email-login-input"
-                          placeholder="Din e-mail"
-                          required
-                          style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
-                        />
-                        <button type="submit" id="email-login-btn" style="width: 100%; padding: 12px; background: #4a90e2; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
-                          Send magic link
-                        </button>
-                        <p id="email-login-error" class="error-message" style="display: none; margin-top: 8px;"></p>
-                        <p id="email-login-success" style="display: none; margin-top: 8px; color: #28a745; font-size: 14px;">
-                          Tjek din e-mail for login-link
-                        </p>
-                      </form>
-                    </div>
-                  </div>
-                </details>
+                <!-- Alternative loginmetoder er fjernet - kun email+password login understøttes nu -->
 
               </div>
             </div>
@@ -3395,6 +3394,7 @@
       let signOutInProgress = false; // Guard: undgå flere signOut-kald og SIGNED_OUT-loop
       let authMode = null; // 'email_password' | 'pin' | 'magic_link'
       let authAccessToken = null; // JWT token for email+password sessions
+      let emailLoginInProgress = false; // Guard: undgå dobbelt-processing fra onAuthStateChange
 
       // Auth headers helper: bruger JWT bearer til email+password, ellers anon key
       function getAuthHeaders() {
@@ -3410,6 +3410,35 @@
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         };
+      }
+
+      // XHR helper (fallback når fetch giver AbortError)
+      function postJsonXHR(url, headers, body) {
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", url, true);
+          Object.entries(headers || {}).forEach(([key, value]) => {
+            xhr.setRequestHeader(key, value);
+          });
+          xhr.onreadystatechange = () => {
+            if (xhr.readyState !== 4) return;
+            let data = null;
+            try {
+              data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+            } catch (_) {
+              data = null;
+            }
+            const status = xhr.status || 0;
+            resolve({
+              ok: status >= 200 && status < 300,
+              status,
+              data,
+            });
+          };
+          xhr.onerror = () => reject(new Error("xhr_error"));
+          xhr.onabort = () => reject(new Error("xhr_abort"));
+          xhr.send(body);
+        });
       }
 
       const loginView = document.getElementById("login-view");
@@ -5797,7 +5826,10 @@
         });
       }
 
-      loadInstitutions();
+      // Skip institution loading if in password recovery mode
+      if (!__pendingPasswordRecovery) {
+        loadInstitutions();
+      }
 
       async function loadInstitutions() {
         try {
@@ -5908,15 +5940,118 @@
       // loadChildrenAndEnterPortal: Henter børn for autentificeret forælder og viser portalen
       async function loadChildrenAndEnterPortal() {
         try {
-          const { data: children, error } = await supabase.rpc('get_children_for_parent');
+          console.log("[auth] loadChildrenAndEnterPortal start");
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:entry',message:'enter',data:{authMode,hasAccessToken:!!authAccessToken},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          console.log("[auth] get_children_for_parent start");
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:rpc_start',message:'rpc start',data:{authMode},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          let children;
+          let error;
+          try {
+            console.log("[auth] authMode:", authMode);
+            if (authMode === 'email_password') {
+              // Brug authAccessToken direkte - undgå getSession() som kan hænge pga Web Locks
+              console.log("[auth] Using XHR path, hasToken:", !!authAccessToken);
+              const accessToken = authAccessToken || null;
+              if (!accessToken) {
+                console.warn("[auth] No access token available, trying getSession as fallback...");
+                try {
+                  const { data: sessionData } = await Promise.race([
+                    supabase.auth.getSession(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("getSession timeout")), 3000))
+                  ]);
+                  if (sessionData?.session?.access_token) {
+                    authAccessToken = sessionData.session.access_token;
+                  }
+                } catch (e) {
+                  console.warn("[auth] getSession fallback failed:", e.message);
+                }
+              }
+              console.log("[auth] Starting XHR to get_children_for_parent...");
+              const xhrResult = await postJsonXHR(
+                `${SUPABASE_URL}/rest/v1/rpc/get_children_for_parent`,
+                {
+                  "Content-Type": "application/json",
+                  apikey: SUPABASE_ANON_KEY,
+                  Authorization: `Bearer ${accessToken || SUPABASE_ANON_KEY}`,
+                },
+                "{}"
+              );
+              console.log("[auth] XHR done:", { ok: xhrResult.ok, status: xhrResult.status, dataLength: Array.isArray(xhrResult.data) ? xhrResult.data.length : null });
+              // #region agent log
+              fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:xhr_result',message:'xhr result',data:{ok:xhrResult.ok,status:xhrResult.status,childCount:Array.isArray(xhrResult.data)?xhrResult.data.length:null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
+              // #endregion
+              if (xhrResult.ok) {
+                children = xhrResult.data;
+              } else {
+                error = new Error(xhrResult.data?.error || xhrResult.data?.message || "XHR fejl");
+              }
+            } else {
+              console.log("[auth] Using Supabase RPC path...");
+              ({ data: children, error } = await supabase.rpc('get_children_for_parent'));
+              console.log("[auth] RPC done:", { hasError: !!error, count: Array.isArray(children) ? children.length : null });
+            }
+          } catch (rpcErr) {
+            console.error("[auth] get_children_for_parent threw:", rpcErr);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:rpc_throw',message:'rpc threw',data:{name:rpcErr?.name||null,message:rpcErr?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            throw rpcErr;
+          }
+          console.log("[auth] get_children_for_parent done", { hasError: !!error, count: Array.isArray(children) ? children.length : null });
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:rpc_result',message:'rpc resolved',data:{hasError:!!error,childCount:Array.isArray(children)?children.length:null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          if (error && String(error.message || "").includes("AbortError")) {
+            console.warn("[auth] get_children_for_parent aborted, retry via REST");
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:rpc_abort_fallback_start',message:'rpc abort fallback start',data:{hasAccessToken:!!authAccessToken},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'I'})}).catch(()=>{});
+            // #endregion
+            try {
+              const { data: sessionData } = await supabase.auth.getSession();
+              const accessToken = sessionData?.session?.access_token || authAccessToken || null;
+              const fallback = await postJsonXHR(
+                `${SUPABASE_URL}/rest/v1/rpc/get_children_for_parent`,
+                {
+                  "Content-Type": "application/json",
+                  apikey: SUPABASE_ANON_KEY,
+                  Authorization: `Bearer ${accessToken || SUPABASE_ANON_KEY}`,
+                },
+                "{}"
+              );
+              const fallbackData = Array.isArray(fallback.data) ? fallback.data : [];
+              // #region agent log
+              fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:rpc_abort_fallback_result',message:'rpc abort fallback result',data:{ok:fallback.ok,status:fallback.status,childCount:fallbackData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'I'})}).catch(()=>{});
+              // #endregion
+              if (fallback.ok) {
+                children = fallbackData;
+                error = null;
+              }
+            } catch (fallbackErr) {
+              // #region agent log
+              fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:rpc_abort_fallback_error',message:'rpc abort fallback error',data:{name:fallbackErr?.name||null,message:fallbackErr?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'I'})}).catch(()=>{});
+              // #endregion
+            }
+          }
           if (error) {
             console.error("Fejl ved hentning af børn:", error);
+            console.log("[auth] get_children_for_parent error -> showNoChildrenState");
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:rpc_error',message:'rpc error',data:{code:error?.code||null,message:error?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
             showNoChildrenState();
             return;
           }
 
           const childList = Array.isArray(children) ? children : [];
           if (childList.length === 0) {
+            console.log("[auth] no children linked -> showNoChildrenState");
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:no_children',message:'no children',data:{childCount:0},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
             showNoChildrenState();
             return;
           }
@@ -5926,21 +6061,36 @@
           allowedChildren = childList;
 
           // Hent fuld data via get-parent-view med JWT auth (ingen PIN nødvendig)
-          const res = await fetch(FUNCTION_URL, {
-            method: "POST",
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-              child_id: firstChild.child_id,
-              institution_id: firstChild.institution_id,
-            }),
-          });
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 20000);
+          let res;
+          try {
+            console.log("[auth] get-parent-view fetch start");
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:fetch_start',message:'fetch get-parent-view start',data:{childCount:childList.length,hasInstitutionId:!!firstChild?.institution_id},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
+            res = await fetch(FUNCTION_URL, {
+              method: "POST",
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                child_id: firstChild.child_id,
+                institution_id: firstChild.institution_id,
+              }),
+              signal: controller.signal,
+            });
+          } finally {
+            clearTimeout(timeoutId);
+          }
 
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
+          console.log("[auth] get-parent-view response", { status: res.status, ok: res.ok });
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:fetch_response',message:'fetch get-parent-view response',data:{status:res.status,ok:res.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D'})}).catch(()=>{});
+          // #endregion
 
           if (!res.ok) {
-            console.error("get-parent-view fejl:", data);
-            showNoChildrenState();
-            return;
+            console.error("get-parent-view fejl:", res.status, data);
+            throw new Error(data?.error || data?.message || "Kunne ikke hente portalen (svar " + res.status + "). Prøv igen.");
           }
 
           // Brug allowed_children fra vores RPC (mere pålidelig)
@@ -5958,7 +6108,11 @@
           setTimeout(() => setupCollapsibleSections(), 100);
         } catch (err) {
           console.error("loadChildrenAndEnterPortal fejl:", err);
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:loadChildrenAndEnterPortal:catch',message:'loadChildrenAndEnterPortal catch',data:{name:err?.name||null,message:err?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'J'})}).catch(()=>{});
+          // #endregion
           showNoChildrenState();
+          throw err;
         }
       }
 
@@ -5985,10 +6139,30 @@
           epLoginBtn.disabled = true;
           epLoginBtn.textContent = "Logger ind...";
 
+          const LOAD_PORTAL_TIMEOUT_MS = 20000;
+          function loginWithTimeout(promise, ms, label) {
+            return Promise.race([
+              promise,
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("timeout:" + label)), ms)
+              ),
+            ]);
+          }
+
           try {
+            // Sæt FØR signInWithPassword - onAuthStateChange fyrer UNDER kaldet
+            emailLoginInProgress = true;
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:emailLogin:start',message:'email login start',data:{emailLength:email.length,rememberMe:!!rememberMeCheckbox?.checked},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'K'})}).catch(()=>{});
+            // #endregion
+
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:emailLogin:result',message:'email login result',data:{hasError:!!error,hasSession:!!data?.session},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'K'})}).catch(()=>{});
+            // #endregion
 
             if (error) {
+              emailLoginInProgress = false;
               let msg = "Forkert e-mail eller adgangskode.";
               if (error.message && error.message.includes("Email not confirmed")) {
                 msg = "Din e-mail er ikke bekræftet endnu. Tjek din indbakke.";
@@ -6006,12 +6180,23 @@
               window.__flangoForgetOnClose = true;
             }
 
-            await loadChildrenAndEnterPortal();
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:emailLogin:loadPortalStart',message:'load portal start',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'K'})}).catch(()=>{});
+            // #endregion
+            await loginWithTimeout(loadChildrenAndEnterPortal(), LOAD_PORTAL_TIMEOUT_MS, "load_portal");
           } catch (err) {
             console.error("Login fejl:", err);
-            epLoginError.textContent = "Der opstod en fejl. Prøv igen.";
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:emailLogin:catch',message:'email login catch',data:{name:err?.name||null,message:err?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'K'})}).catch(()=>{});
+            // #endregion
+            if (err && err.message && err.message.startsWith("timeout:")) {
+              epLoginError.textContent = "Indloggningen tog for lang tid (serveren svarer ikke). Tjek din forbindelse eller prøv igen om lidt.";
+            } else {
+              epLoginError.textContent = err?.message || "Der opstod en fejl. Prøv igen.";
+            }
             epLoginError.style.display = "block";
           } finally {
+            emailLoginInProgress = false;
             epLoginBtn.disabled = false;
             epLoginBtn.textContent = "Log ind";
           }
@@ -6024,19 +6209,86 @@
       const signupError = document.getElementById("signup-error");
       const signupSuccess = document.getElementById("signup-success");
 
+      // Bekræftelses-popup for signup
+      function showSignupConfirmation(childName) {
+        return new Promise((resolve) => {
+          const overlay = document.createElement('div');
+          overlay.className = 'signup-confirm-overlay';
+          overlay.innerHTML = `
+            <div class="signup-confirm-card">
+              <h3>Bekræft tilknytning</h3>
+              <p>Du er ved at oprette en konto tilknyttet:</p>
+              <div class="child-name-display">${childName}</div>
+              <p class="confirm-note">Bekræft at dette er dit barn.<br>Hvis ikke, kontakt institutionen.</p>
+              <div class="confirm-buttons">
+                <button type="button" class="cancel-btn" id="signup-confirm-cancel">Annuller</button>
+                <button type="button" class="confirm-btn" id="signup-confirm-ok">Ja, det er mit barn</button>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(overlay);
+
+          const cleanup = (result) => {
+            overlay.remove();
+            resolve(result);
+          };
+
+          overlay.querySelector('#signup-confirm-cancel').onclick = () => cleanup(false);
+          overlay.querySelector('#signup-confirm-ok').onclick = () => cleanup(true);
+          overlay.onclick = (e) => { if (e.target === overlay) cleanup(false); };
+        });
+      }
+
+      // Hent og populer institutions-dropdown ved page load
+      async function loadSignupInstitutions() {
+        const select = document.getElementById("signup-institution-select");
+        if (!select) return;
+        try {
+          const { data, error } = await supabase.rpc("get_public_institutions");
+          if (error || !Array.isArray(data)) {
+            console.warn("Kunne ikke hente institutioner:", error);
+            return;
+          }
+          data.forEach(inst => {
+            const opt = document.createElement("option");
+            opt.value = inst.id;
+            opt.textContent = inst.name;
+            select.appendChild(opt);
+          });
+        } catch (e) {
+          console.error("Fejl ved hentning af institutioner:", e);
+        }
+      }
+      loadSignupInstitutions();
+
       if (signupForm) {
         signupForm.addEventListener("submit", async (event) => {
           event.preventDefault();
           signupError.style.display = "none";
           signupSuccess.style.display = "none";
 
+          const institutionId = document.getElementById("signup-institution-select").value;
           const email = document.getElementById("signup-email-input").value.trim();
-          const code = document.getElementById("signup-code-input").value.trim().toUpperCase();
+          const pin = document.getElementById("signup-code-input").value.trim();
           const password = document.getElementById("signup-password-input").value;
           const passwordConfirm = document.getElementById("signup-password-confirm").value;
 
-          if (!email || !code || !password) {
+          // Validering: institution påkrævet
+          if (!institutionId) {
+            signupError.textContent = "Vælg venligst en institution.";
+            signupError.style.display = "block";
+            return;
+          }
+
+          if (!email || !pin || !password) {
             signupError.textContent = "Udfyld alle felter.";
+            signupError.style.display = "block";
+            return;
+          }
+
+          // Validering: 8 cifre (kun tal)
+          if (pin.length !== 8 || !/^[0-9]{8}$/.test(pin)) {
+            signupError.textContent = "Koden skal være præcis 8 cifre (kun tal).";
             signupError.style.display = "block";
             return;
           }
@@ -6054,58 +6306,128 @@
           }
 
           signupBtn.disabled = true;
-          signupBtn.textContent = "Opretter...";
+          signupBtn.textContent = "Verificerer kode...";
+
+          const SIGNUP_TIMEOUT_MS = 28000;
+
+          function withTimeout(promise, ms, label) {
+            return Promise.race([
+              promise,
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("timeout:" + label)), ms)
+              ),
+            ]);
+          }
 
           try {
-            // 1) Opret auth bruger
-            const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-              email,
-              password,
-              options: {
-                emailRedirectTo: window.location.origin + window.location.pathname,
-              },
-            });
+            // STEP 1: Verificer 8-cifret PIN med institution (hurtig lookup)
+            console.log("[signup] Verificerer PIN...", { pin, pinLength: pin.length, institutionId });
+            const { data: verifyResult, error: verifyError } = await withTimeout(
+              supabase.rpc('verify_pin_and_get_child_info', { p_pin: pin, p_institution_id: institutionId }),
+              SIGNUP_TIMEOUT_MS,
+              "verify_pin"
+            );
+            console.log("[signup] RPC result:", { verifyResult, verifyError });
+
+            if (verifyError || !verifyResult?.success) {
+              console.error("[signup] Verification failed:", verifyError, verifyResult);
+              signupError.textContent = verifyResult?.error || verifyError?.message || "Ugyldig kode. Tjek koden og prøv igen.";
+              signupError.style.display = "block";
+              return;
+            }
+
+            const childName = verifyResult.child_name;
+
+            // STEP 2: Vis bekræftelses-popup
+            signupBtn.textContent = "Venter på bekræftelse...";
+            const confirmed = await showSignupConfirmation(childName);
+            if (!confirmed) {
+              signupError.textContent = "Oprettelse annulleret. Kontakt institutionen hvis du har spørgsmål.";
+              signupError.style.display = "block";
+              return;
+            }
+
+            signupBtn.textContent = "Opretter konto...";
+
+            // STEP 3: Opret auth bruger
+            const { data: signUpData, error: signUpErr } = await withTimeout(
+              supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                  emailRedirectTo: window.location.origin + window.location.pathname,
+                },
+              }),
+              SIGNUP_TIMEOUT_MS,
+              "signUp"
+            );
 
             if (signUpErr) {
               let msg = signUpErr.message;
               if (msg && msg.includes("already registered")) {
-                msg = "Denne e-mail er allerede registreret. Prøv at logge ind i stedet.";
+                signupError.innerHTML = 'Denne e-mail er allerede registreret. <a href="#" id="goto-login-from-error" style="color:#2563eb;text-decoration:underline;">Log ind</a> for at tilknytte flere børn.';
+                signupError.style.display = "block";
+                const loginLink = signupError.querySelector("#goto-login-from-error");
+                if (loginLink) {
+                  loginLink.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    showLoginForm(epLoginSection);
+                  });
+                }
+                return;
               }
               signupError.textContent = msg;
               signupError.style.display = "block";
               return;
             }
 
-            // 2) Hvis e-mail-bekræftelse er påkrævet, vis besked
+            // Hvis e-mail-bekræftelse er påkrævet, vis besked og nulstil formular
             if (!signUpData.session) {
-              signupSuccess.textContent = "Tjek din e-mail for at bekræfte din konto. Log derefter ind.";
+              signupSuccess.textContent = "Tjek din e-mail for at bekræfte din konto. Klik på linket i mailen, og log derefter ind med din nye konto.";
               signupSuccess.style.display = "block";
+              signupForm.reset();
+              // Vis login-formularen i stedet for signup
+              setTimeout(() => {
+                if (loginSection) showLoginForm(loginSection);
+              }, 3000);
               return;
             }
 
-            // 3) Session oprettet (auto-confirm) – link barnet
+            // STEP 4: Session oprettet (auto-confirm) – link barnet
             authMode = 'email_password';
             authAccessToken = signUpData.session.access_token;
+            emailLoginInProgress = true;
 
-            const { data: linkResult, error: linkError } = await supabase.rpc(
-              'verify_parent_code_and_link_child',
-              { p_code: code }
+            // Link barnet med institution (8-cifret PIN)
+            const { data: linkResult, error: linkError } = await withTimeout(
+              supabase.rpc('verify_parent_code_and_link_child', { p_code: pin, p_institution_id: institutionId }),
+              SIGNUP_TIMEOUT_MS,
+              "verify_code"
             );
 
-            if (linkError || (linkResult && linkResult.error)) {
-              const errMsg = linkResult?.error || "Kunne ikke verificere koden. Tjek koden og prøv igen.";
-              signupError.textContent = errMsg;
+            if (linkError || linkResult?.error) {
+              console.error("Link fejl:", linkError, linkResult);
+              signupError.textContent = "Konto oprettet, men kunne ikke tilknytte barn. Log ind og tilknyt manuelt.";
               signupError.style.display = "block";
               return;
             }
 
-            // Succes – indlæs portalen
-            await loadChildrenAndEnterPortal();
+            // STEP 5: Succes – indlæs portalen
+            await withTimeout(
+              loadChildrenAndEnterPortal(),
+              SIGNUP_TIMEOUT_MS,
+              "load_portal"
+            );
           } catch (err) {
             console.error("Signup fejl:", err);
-            signupError.textContent = "Der opstod en fejl. Prøv igen.";
+            if (err && err.message && err.message.startsWith("timeout:")) {
+              signupError.textContent = "Det tog for lang tid. Tjek din forbindelse og prøv igen, eller log ind nedenfor hvis kontoen allerede er oprettet.";
+            } else {
+              signupError.textContent = err?.message || "Der opstod en fejl. Prøv igen.";
+            }
             signupError.style.display = "block";
           } finally {
+            emailLoginInProgress = false;
             signupBtn.disabled = false;
             signupBtn.textContent = "Opret konto";
           }
@@ -6178,6 +6500,9 @@
               return;
             }
 
+            // Vent kort på at sessionen stabiliserer sig (undgå AbortError fra race conditions)
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             const { error } = await supabase.auth.updateUser({ password: newPass });
             console.log('[reset] updateUser result:', error ? error.message : 'success');
             if (error) {
@@ -6198,7 +6523,8 @@
               });
             }
           } catch (err) {
-            errorEl.textContent = "Der opstod en fejl. Prøv igen.";
+            console.error('[reset] Error updating password:', err);
+            errorEl.textContent = err.message || "Der opstod en fejl. Prøv igen.";
             errorEl.style.display = "block";
           }
         });
@@ -6211,8 +6537,9 @@
         }
       });
 
-      // ===== EKSISTERENDE KODE-LOGIN HANDLER (uændret bortset fra authMode) =====
-      loginForm.addEventListener("submit", async (event) => {
+      // ===== LEGACY KODE-LOGIN HANDLER (fjernet - kun email+password login understøttes nu) =====
+      // PIN-login formular er fjernet fra UI, men handler holdes som guard mod evt. resterende referencer
+      if (loginForm) loginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         loginError.style.display = "none";
 
@@ -6479,6 +6806,11 @@
             console.log('[auth] Skipping auto-login - in password recovery mode');
             return;
           }
+          // Skip hvis login/signup form handler allerede processerer
+          if (emailLoginInProgress) {
+            console.log('[auth] Skipping - email login already in progress');
+            return;
+          }
 
           window.history.replaceState(null, '', window.location.pathname);
 
@@ -6541,6 +6873,7 @@
       }
 
       function openLinkSiblingModal() {
+        console.log("[link-sibling] Modal opened");
         const overlay = document.createElement("div");
         overlay.className = "modal-overlay";
         overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;box-sizing:border-box;";
@@ -6549,13 +6882,18 @@
           <div class="event-payment-modal" style="background:var(--card-bg, #fff);border-radius:16px;padding:24px;max-width:480px;width:100%;box-shadow:0 18px 45px rgba(15,23,42,0.18);box-sizing:border-box;">
             <h3 style="margin:0 0 12px 0;">Tilknyt barn</h3>
             <p style="font-size:14px;color:#666;margin:0 0 16px 0;">
-              Skriv den unikke kode til barnet, som du har modtaget på Aula – eller få den udleveret i klubbens café.
+              Vælg barnets institution og indtast den 8-cifrede kode.
             </p>
+            <select id="sibling-institution-select" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;margin-bottom:12px;background:#fff;">
+              <option value="">Indlæser institutioner...</option>
+            </select>
             <input
               type="text"
               id="sibling-code-input"
-              placeholder="Indtast kode"
-              style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;margin-bottom:12px;text-transform:uppercase;"
+              placeholder="8-cifret kode"
+              inputmode="numeric"
+              pattern="[0-9]{8}"
+              style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:18px;margin-bottom:12px;text-align:center;letter-spacing:3px;"
               maxlength="8"
             />
             <p id="link-sibling-error" class="error-message" style="display:none;margin-bottom:12px;"></p>
@@ -6568,10 +6906,37 @@
 
         document.body.appendChild(overlay);
 
+        const institutionSelect = overlay.querySelector("#sibling-institution-select");
         const codeInput = overlay.querySelector("#sibling-code-input");
         const errorEl = overlay.querySelector("#link-sibling-error");
         const cancelBtn = overlay.querySelector("#link-sibling-cancel-btn");
         const previewBtn = overlay.querySelector("#link-sibling-preview-btn");
+
+        // Indlæs institutioner
+        (async () => {
+          console.log("[link-sibling] Loading institutions...");
+          try {
+            const { data: institutions, error } = await supabase.rpc('get_public_institutions');
+            console.log("[link-sibling] RPC result:", { institutions, error });
+            if (error) throw error;
+
+            institutionSelect.innerHTML = '<option value="">Vælg institution...</option>';
+            (institutions || []).forEach(inst => {
+              const opt = document.createElement('option');
+              opt.value = inst.id;
+              opt.textContent = inst.name;
+              // Pre-select current institution if available
+              if (currentInstitutionId && inst.id === currentInstitutionId) {
+                opt.selected = true;
+              }
+              institutionSelect.appendChild(opt);
+            });
+            console.log("[link-sibling] Institutions loaded:", (institutions || []).length);
+          } catch (err) {
+            console.error("[link-sibling] Fejl ved indlæsning af institutioner:", err);
+            institutionSelect.innerHTML = '<option value="">Kunne ikke indlæse institutioner</option>';
+          }
+        })();
 
         const close = () => overlay.remove();
 
@@ -6581,9 +6946,22 @@
         });
 
         previewBtn.addEventListener("click", async () => {
-          const code = codeInput.value.trim().toUpperCase();
+          const selectedInstitutionId = institutionSelect.value;
+          const code = codeInput.value.trim();
+
+          // Validering
+          if (!selectedInstitutionId) {
+            errorEl.textContent = "Vælg venligst en institution.";
+            errorEl.style.display = "block";
+            return;
+          }
           if (!code) {
             errorEl.textContent = "Indtast en kode.";
+            errorEl.style.display = "block";
+            return;
+          }
+          if (code.length !== 8 || !/^[0-9]{8}$/.test(code)) {
+            errorEl.textContent = "Koden skal være præcis 8 cifre (kun tal).";
             errorEl.style.display = "block";
             return;
           }
@@ -6593,6 +6971,80 @@
           errorEl.style.display = "none";
 
           try {
+            console.log("[link-sibling] preview start", {
+              authMode,
+              hasCurrentChildId: !!currentChildId,
+              hasParentPin: !!currentParentPin,
+              hasAccessToken: !!authAccessToken,
+              codeLength: code.length,
+            });
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:linkSibling:preview_start',message:'preview start',data:{authMode,hasCurrentChildId:!!currentChildId,hasParentPin:!!currentParentPin,hasAccessToken:!!authAccessToken,codeLength:code.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            // Hvis vi ikke har et current_child_id (første barn), så brug RPC der kun kræver kode
+            if (!currentChildId && authMode === 'email_password') {
+              console.log("[link-sibling] no current child -> verify_parent_code_and_link_child");
+              // #region agent log
+              fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:linkSibling:verify_start',message:'verify start',data:{hasCurrentChildId:false,authMode},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H'})}).catch(()=>{});
+              // #endregion
+              const { data: linkResult, error: linkError } = await supabase.rpc(
+                'verify_parent_code_and_link_child',
+                { p_code: code, p_institution_id: selectedInstitutionId }
+              );
+              // #region agent log
+              fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:linkSibling:verify_result',message:'verify result',data:{hasError:!!linkError},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H'})}).catch(()=>{});
+              // #endregion
+
+              if (linkError) {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:linkSibling:verify_error',message:'verify error',data:{message:linkError?.message||null,code:linkError?.code||null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H'})}).catch(()=>{});
+                // #endregion
+                if (String(linkError.message || "").includes("AbortError")) {
+                  try {
+                    const { data: sessionData } = await supabase.auth.getSession();
+                    const accessToken = sessionData?.session?.access_token || authAccessToken || null;
+                    const fallback = await postJsonXHR(
+                      `${SUPABASE_URL}/rest/v1/rpc/verify_parent_code_and_link_child`,
+                      {
+                        "Content-Type": "application/json",
+                        apikey: SUPABASE_ANON_KEY,
+                        Authorization: `Bearer ${accessToken || SUPABASE_ANON_KEY}`,
+                      },
+                      JSON.stringify({ p_code: code, p_institution_id: selectedInstitutionId })
+                    );
+                    if (fallback.ok) {
+                      close();
+                      await loadChildrenAndEnterPortal();
+                      alert("Barn tilknyttet!");
+                      return;
+                    }
+                    const fallbackErrMsg =
+                      fallback.data?.error ||
+                      fallback.data?.message ||
+                      "Kunne ikke verificere koden. Tjek koden og prøv igen.";
+                    errorEl.textContent = fallbackErrMsg;
+                    errorEl.style.display = "block";
+                    previewBtn.disabled = false;
+                    previewBtn.textContent = "Fortsæt";
+                    return;
+                  } catch (_) {
+                    // fall through to standard error handling
+                  }
+                }
+                const errMsg = linkError.message || linkResult?.error || "Kunne ikke verificere koden. Tjek koden og prøv igen.";
+                errorEl.textContent = errMsg;
+                errorEl.style.display = "block";
+                previewBtn.disabled = false;
+                previewBtn.textContent = "Fortsæt";
+                return;
+              }
+
+              close();
+              await loadChildrenAndEnterPortal();
+              alert("Barn tilknyttet!");
+              return;
+            }
+
             const res = await fetch(LINK_SIBLING_URL, {
               method: "POST",
               headers: getAuthHeaders(),
@@ -6601,10 +7053,15 @@
                 current_child_id: currentChildId,
                 parent_pin: currentParentPin,
                 sibling_code: code,
+                sibling_institution_id: selectedInstitutionId,
               }),
             });
 
             const preview = await res.json();
+            console.log("[link-sibling] preview response", { status: res.status, ok: res.ok, error: preview?.error });
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:linkSibling:preview_response',message:'preview response',data:{status:res.status,ok:res.ok,error:preview?.error||null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'F'})}).catch(()=>{});
+            // #endregion
 
             if (!res.ok) {
               errorEl.textContent = preview.error || "Kunne ikke finde barn med denne kode.";
@@ -6623,6 +7080,9 @@
             }
 
             // Bekræft linking
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/061553fc-00e4-4d47-b4a3-265f30951c0a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'forældre/index.html:linkSibling:confirm_start',message:'confirm start',data:{hasCurrentChildId:!!currentChildId,hasParentPin:!!currentParentPin,hasAccessToken:!!authAccessToken},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'G'})}).catch(()=>{});
+            // #endregion
             const confirmRes = await fetch(LINK_SIBLING_URL, {
               method: "POST",
               headers: getAuthHeaders(),
@@ -6647,7 +7107,11 @@
             // Hvis email+password mode: link også barnet i parent_account_children
             if (authMode === 'email_password') {
               try {
-                await supabase.rpc('verify_parent_code_and_link_child', { p_code: code });
+                await supabase.rpc('verify_parent_code_and_link_child', {
+                  p_code: code,
+                  p_institution_id: selectedInstitutionId
+                });
+                console.log('[link-sibling] Barn linket i parent_account_children');
               } catch (e) {
                 console.warn('[link-sibling] Kunne ikke linke i parent_account_children:', e);
               }
@@ -6728,13 +7192,28 @@
 
       // Child switcher functionality
       function renderChildSwitcher(children) {
+        console.log("[child-switcher] renderChildSwitcher called:", {
+          childCount: Array.isArray(children) ? children.length : null,
+          hasElement: !!childSwitcher,
+          children: children
+        });
         if (!childSwitcher || !Array.isArray(children) || children.length <= 1) {
+          console.log("[child-switcher] Hiding switcher (count <= 1 or missing element)");
           if (childSwitcher) childSwitcher.style.display = "none";
           return;
         }
 
+        console.log("[child-switcher] Showing switcher with", children.length, "children");
         childSwitcher.style.display = "block";
-        childSwitcherSelect.innerHTML = children
+
+        // Hent frisk reference til select-elementet (kan være udskiftet)
+        const selectEl = document.getElementById("child-switcher-select");
+        if (!selectEl) {
+          console.error("[child-switcher] Select element not found");
+          return;
+        }
+
+        selectEl.innerHTML = children
           .map(
             (child) => `
             <option value="${child.child_id}" ${child.child_id === currentChildId ? 'selected' : ''}>
@@ -6744,9 +7223,10 @@
           )
           .join("");
 
-        // Remove existing listener
-        const newSelect = childSwitcherSelect.cloneNode(true);
-        childSwitcherSelect.parentNode.replaceChild(newSelect, childSwitcherSelect);
+        // Remove existing listener ved at clone og replace
+        const newSelect = selectEl.cloneNode(true);
+        newSelect.id = "child-switcher-select"; // Behold ID så vi kan finde det igen
+        selectEl.parentNode.replaceChild(newSelect, selectEl);
 
         newSelect.addEventListener("change", async (e) => {
           const newChildId = e.target.value;

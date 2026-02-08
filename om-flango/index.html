@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <title>Om Flango – Flango</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5f5fb;
+      --bg-soft: #ffffff;
+      --accent: #ff7a3c;
+      --accent-dark: #e0521f;
+      --text-main: #111827;
+      --text-muted: #4b5563;
+      --border-soft: #e5e7eb;
+      --radius-lg: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: radial-gradient(circle at top, #ffe8d6 0, #f5f5fb 38%, #f9fafb 100%); color: var(--text-main); }
+    a { color: inherit; text-decoration: none; }
+    .page { min-height: 100vh; max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 40px; }
+    header {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 14px 16px; margin: 0 -16px 0;
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-soft); flex-wrap: wrap;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .logo-mark { width: 34px; height: 34px; border-radius: 14px; background: radial-gradient(circle at 30% 20%, #ffe8d6 0, #ff7a3c 42%, #ff4b73 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 25px rgba(248,113,113,0.55); }
+    .logo-mark span { font-family: 'Baloo 2', cursive; font-size: 20px; color: #fff; transform: translateY(-1px); }
+    .logo-text-main { font-family: 'Baloo 2', cursive; font-size: 22px; line-height: 1; }
+    .logo-sub { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+    nav { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; flex-wrap: wrap; }
+    .nav-link { padding: 6px 12px; border-radius: 999px; color: var(--text-muted); white-space: nowrap; transition: color 0.15s, background 0.15s; }
+    .nav-link:hover { color: var(--text-main); background: rgba(0,0,0,0.04); }
+    .nav-link.here { color: var(--accent-dark); }
+    .nav-cta { padding: 8px 14px; border-radius: 999px; background: #111827; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 12px 30px rgba(15,23,42,0.45); white-space: nowrap; }
+    .nav-cta:hover { background: #1f2937; }
+    @media (max-width: 830px) { header { flex-direction: column; align-items: flex-start; } nav { gap: 8px; } }
+    @media (max-width: 640px) { .nav-link { padding: 5px 10px; font-size: 12px; } .nav-cta { padding: 6px 12px; font-size: 12px; } }
+    .page-title { margin: 0; font-size: clamp(24px,4vw,30px); font-family: 'Baloo 2', cursive; }
+    .page-intro { font-size: 15px; color: var(--text-muted); max-width: 60ch; line-height: 1.5; }
+    .section-heading { margin: 0 0 16px; font-size: 20px; font-family: 'Baloo 2', cursive; }
+    .contact-wrap { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 32px; align-items: start; }
+    @media (max-width: 720px) { .contact-wrap { grid-template-columns: minmax(0,1fr); } }
+    .contact-form { background: var(--bg-soft); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border-soft); box-shadow: 0 18px 36px rgba(15,23,42,0.06); }
+    .contact-form label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--text-main); }
+    .contact-form input, .contact-form textarea { width: 100%; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-soft); font-size: 15px; font-family: inherit; margin-bottom: 16px; }
+    .contact-form input:focus, .contact-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,122,60,0.15); }
+    .contact-form textarea { min-height: 120px; resize: vertical; }
+    .contact-form .btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 20px; border-radius: 999px; font-size: 15px; font-weight: 600; border: none; cursor: pointer; background: linear-gradient(135deg, #ff7a3c, #ff4b73); color: #fff; box-shadow: 0 10px 24px rgba(248,113,113,0.4); transition: transform 0.15s, box-shadow 0.15s; }
+    .contact-form .btn:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(248,113,113,0.5); }
+    .contact-hours { background: var(--bg-soft); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border-soft); box-shadow: 0 18px 36px rgba(15,23,42,0.06); }
+    .contact-hours h3 { margin: 0 0 8px; font-size: 16px; font-weight: 700; }
+    .contact-hours p { margin: 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+    .contact-hours .phone { font-size: 18px; font-weight: 700; color: var(--accent-dark); margin-top: 12px; }
+    .contact-hours .phone a { color: inherit; }
+    .contact-hours .phone a:hover { text-decoration: underline; }
+    .hours-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; margin-left: 10px; vertical-align: middle; }
+    .hours-badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
+    .hours-badge.open { background: rgba(34, 197, 94, 0.12); color: #15803d; }
+    .hours-badge.open::before { background: #22c55e; box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25); }
+    .hours-badge.closed { background: #f3f4f6; color: #6b7280; }
+    .hours-badge.closed::before { background: #9ca3af; }
+    .hours-next { font-size: 13px; color: var(--text-muted); margin: 8px 0 0; }
+    .divider { margin: 32px 0; border: none; height: 0; border-top: 1px solid var(--border-soft); }
+    .about-section { max-width: 65ch; }
+    .about-section p { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+    .about-section p:last-child { margin-bottom: 0; }
+    .about-section ul { margin: 12px 0 0; padding-left: 1.25em; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+    .about-section li { margin-bottom: 6px; }
+    .about-section a { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
+    .about-section a:hover { color: var(--accent); }
+    .module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 12px; }
+    .module-card { background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: 12px; padding: 16px; }
+    .module-card strong { font-size: 15px; color: var(--text-main); }
+    .module-card p { margin: 8px 0 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+    footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-soft); font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <a href="/" class="logo" aria-label="Flango – forsiden">
+        <div class="logo-mark"><span>F</span></div>
+        <div>
+          <div class="logo-text-main">Flango</div>
+          <div class="logo-sub">SFO’ernes cafésystem</div>
+        </div>
+      </a>
+      <nav>
+        <a class="nav-link" href="/">FORSIDE</a>
+        <a class="nav-link" href="/pris/">PRISER</a>
+        <a class="nav-link" href="/gaming/">GAMING</a>
+        <a class="nav-link" href="/event/">EVENT</a>
+        <a class="nav-link" href="/prov-flango/">PRØV FLANGO</a>
+        <a class="nav-link here" href="/om-flango/">OM FLANGO</a>
+        <a class="nav-link" href="/forældre/">FORÆLDRE PORTAL</a>
+        <a class="nav-link" href="/kontakt/">KONTAKT</a>
+        <a class="nav-cta" href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango">Book en snak</a>
+      </nav>
+    </header>
+    <section>
+      <h1 class="page-title">Om Flango</h1>
+      <p class="page-intro">Flango er en digital platform udviklet til SFO'er og fritidsinstitutioner, der ønsker en enkel, sikker og børnevenlig måde at håndtere cafédrift, aktiviteter og digitale services.</p>
+      <p class="page-intro">Platformen er udviklet med udgangspunkt i pædagogisk praksis og daglig drift i danske SFO'er, med fokus på læring, ansvarlighed og reduktion af administrativt arbejde.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="formaal-heading">
+      <h2 id="formaal-heading" class="section-heading">Formål og vision – Læring gennem ansvar</h2>
+      <p>Flangos formål er at gøre hverdagen lettere for børn, personale og forældre ved at samle centrale funktioner i én brugervenlig platform.</p>
+      <p>Visionen er at give børn en tryg og lærerig introduktion til ansvar, økonomi og fællesskab – samtidig med at institutionen får et robust og professionelt værktøj til drift og administration.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="hvad-er-flango-heading">
+      <h2 id="hvad-er-flango-heading" class="section-heading">Hvad er Flango?</h2>
+      <p>Flango består af flere moduler, der kan anvendes samlet eller enkeltvis:</p>
+      <div class="module-grid">
+        <div class="module-card">
+          <strong>Flango Café</strong>
+          <p>Et digitalt cafésystem, hvor børn kan købe varer kontantløst, og hvor personalet nemt kan administrere sortiment, priser og salgsstatistik.</p>
+        </div>
+        <div class="module-card">
+          <strong>Flango Forældre</strong>
+          <p>En forældreportal, hvor forældre kan følge barnets saldo, aktiviteter og indstillinger samt foretage indbetalinger digitalt.</p>
+        </div>
+        <div class="module-card">
+          <strong>Flango Skærmtid</strong>
+          <p>Et modul til styring af skærmtid i gamingrum og digitale aktiviteter, hvor børn kan bruge tid ansvarligt og i faste rammer.</p>
+        </div>
+        <div class="module-card">
+          <strong>Flango Event</strong>
+          <p>En løsning til skole- og SFO-arrangementer (fx sommerfester, temadage m.m.), hvor boder kan registrere salg digitalt og kontantløst.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="paedagogisk-heading">
+      <h2 id="paedagogisk-heading" class="section-heading">Pædagogisk udgangspunkt</h2>
+      <p><strong>Cafédrift som pædagogisk aktivitet</strong></p>
+      <p>Flango er udviklet med fokus på pædagogiske principper:</p>
+      <ul>
+        <li>Træning i ansvar og økonomisk forståelse</li>
+        <li>Digitale kompetencer i trygge rammer</li>
+        <li>Fællesskab og deltagelse i institutionslivet</li>
+        <li>Børnevenlig og overskuelig brugerflade</li>
+      </ul>
+      <p>Systemet er designet til at kunne anvendes af børn som ekspedienter, hvilket understøtter læring gennem praksis.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="sikkerhed-heading">
+      <h2 id="sikkerhed-heading" class="section-heading">Sikkerhed og databeskyttelse</h2>
+      <p>Flango er udviklet med fokus på informationssikkerhed og databeskyttelse:</p>
+      <ul>
+        <li>Rollebaseret adgang (personale, børn, administratorer)</li>
+        <li>Krypteret kommunikation (HTTPS)</li>
+        <li>Adskillelse af institutioner i databasen</li>
+        <li>Mulighed for databehandleraftale (DPA)</li>
+        <li>Backup- og gendannelsesprocedurer</li>
+      </ul>
+      <p>Flango er designet i overensstemmelse med GDPR-principper og generelle danske kommunale retningslinjer for informationssikkerhed.</p>
+      <p>Der kan indgås databehandleraftale (DPA) mellem institutionen/kommunen og leverandøren.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="samarbejde-heading">
+      <h2 id="samarbejde-heading" class="section-heading">Samarbejde og implementering</h2>
+      <p>Flango tilbyder at understøtte dialogen mellem SFO'er, skoleledelse og kommunale instanser om digital cafédrift og relaterede digitale løsninger.</p>
+      <p>Formålet er at sikre en fælles forståelse af behov, databeskyttelse og driftsmæssige forhold, før en eventuel implementering.</p>
+      <p>Flango kan bidrage med:</p>
+      <ul>
+        <li>Teknisk og pædagogisk sparring om digital cafédrift</li>
+        <li>Gennemgang af datasikkerhed, GDPR og organisatoriske forhold</li>
+        <li>Dokumentation og materiale til brug i intern kommunal vurdering</li>
+        <li>Understøttelse af afprøvning og erfaringsopsamling i praksis</li>
+      </ul>
+      <p>Løsningen kan tilpasses lokale forhold og organisatoriske rammer og indgå som grundlag for en eventuel bredere vurdering i kommunen.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="udvikler-heading">
+      <h2 id="udvikler-heading" class="section-heading">Udvikler og organisation</h2>
+      <p>Flango er udviklet af Theison (CVR 34360642), en dansk enkeltmandsvirksomhed med fokus på digitale løsninger til undervisning og fritidspædagogik.</p>
+      <p>Udviklingen sker i tæt dialog med pædagogisk personale og med udgangspunkt i konkrete behov i daglig drift.</p>
+      <p>Udviklingen af Flango blev påbegyndt i 2021 og er løbende videreudviklet i tæt samarbejde med pædagogisk personale. Systemet blev taget i brug i institutionsdrift i 2025.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="governance-heading">
+      <h2 id="governance-heading" class="section-heading">Governance og videreudvikling</h2>
+      <p>Flango udvikles løbende med fokus på stabilitet, sikkerhed og brugervenlighed.</p>
+      <p>Arkitekturen er cloudbaseret og designet til skalerbar drift på institutions- og kommuneniveau.</p>
+      <p>Der arbejdes med:</p>
+      <ul>
+        <li>Versionsstyring og dokumenteret ændringshistorik</li>
+        <li>Backup- og beredskabsprocedurer</li>
+        <li>Rolle- og rettighedsstyring</li>
+        <li>Mulighed for integrationer via API, herunder automatiseret saldoopdatering, efter nærmere aftale og sikkerhedsgodkendelse</li>
+      </ul>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section">
+      <p>Vil du i dialog med os? <a href="/kontakt/">Kontakt</a>.</p>
+    </section>
+
+    <footer>
+      <div>© <span id="year"></span> Flango – SFO’ernes cafésystem</div>
+      <div>
+        <a href="/forældre/">Forældre Portal</a> ·
+        <a href="/pris/">Priser</a> ·
+        <a href="/om-flango/">Om Flango</a> ·
+        <a href="/sikkerhed/">Sikkerhed</a> ·
+        <a href="/gdpr/">GDPR</a> ·
+        <a href="/kontakt/">Kontakt</a>
+      </div>
+    </footer>
+  </main>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
