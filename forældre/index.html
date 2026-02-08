@@ -2676,91 +2676,7 @@
                   </form>
                 </div>
 
-                <!-- ALTERNATIVE LOGINMETODER (fold-ud) -->
-                <details id="alternative-login-methods" style="margin-top: 24px;">
-                  <summary style="font-size: 14px; color: #666; cursor: pointer; padding: 8px 0; user-select: none;">
-                    Alternative loginmetoder
-                  </summary>
-                  <div style="padding-top: 16px;">
-                    <!-- Eksisterende kode-login (uændret) -->
-                    <div id="code-login-section">
-                      <h3 style="margin-top: 0; margin-bottom: 12px;">Log ind med kode</h3>
-                      <form id="parent-login-form" class="login-form">
-                        <div class="form-group" id="institution-row">
-                          <label for="institution-select" class="section-subtitle" id="institution-label">
-                            Vælg klub/SFO
-                          </label>
-                          <select id="institution-select" required>
-                            <option value="">Vælg klub/SFO…</option>
-                          </select>
-                        </div>
-
-                        <p
-                          id="institution-info"
-                          class="section-subtitle"
-                          style="display: none; margin-bottom: 10px;"
-                        >
-                          Institutioner i nærheden af dig:
-                          <strong id="institution-name-label"></strong>
-                        </p>
-
-                        <input
-                          type="text"
-                          id="child-name-input"
-                          placeholder="Barnets fulde navn (fx Oliver Jensen)"
-                          required
-                        />
-
-                        <input
-                          type="password"
-                          id="parent-pin-input"
-                          placeholder="8-cifret forældre-kode"
-                          inputmode="numeric"
-                          maxlength="8"
-                          pattern="[0-9]{8}"
-                          required
-                        />
-
-                        <button type="submit" id="login-btn">Se saldo og historik</button>
-                        <p id="login-error" class="error-message" style="display: none;"></p>
-                      </form>
-
-                      <p class="login-help">
-                        <strong>Har du ikke fået en kode?</strong><br />
-                        Kontakt klubben/SFO'en – de kan oplyse eller nulstille jeres forældre-login.
-                      </p>
-                    </div>
-
-                    <div class="login-divider" style="margin: 16px 0; text-align: center; position: relative;">
-                      <span style="background: var(--card-bg, #fff); padding: 0 12px; color: #666;">eller</span>
-                      <hr style="position: absolute; top: 50%; left: 0; right: 0; margin: 0; border: none; border-top: 1px solid #ddd; z-index: -1;">
-                    </div>
-
-                    <!-- Eksisterende magic link (uændret) -->
-                    <div id="email-login-section">
-                      <h3 style="margin-top: 0; margin-bottom: 8px;">Log ind med magic link</h3>
-                      <p class="microcopy" style="font-size: 13px; color: #666; margin-bottom: 12px;">
-                        Modtag et login-link på din e-mail.
-                      </p>
-                      <form id="email-login-form" class="login-form">
-                        <input
-                          type="email"
-                          id="parent-email-login-input"
-                          placeholder="Din e-mail"
-                          required
-                          style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px;"
-                        />
-                        <button type="submit" id="email-login-btn" style="width: 100%; padding: 12px; background: #4a90e2; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
-                          Send magic link
-                        </button>
-                        <p id="email-login-error" class="error-message" style="display: none; margin-top: 8px;"></p>
-                        <p id="email-login-success" style="display: none; margin-top: 8px; color: #28a745; font-size: 14px;">
-                          Tjek din e-mail for login-link
-                        </p>
-                      </form>
-                    </div>
-                  </div>
-                </details>
+                <!-- Alternative loginmetoder er fjernet - kun email+password login understøttes nu -->
 
               </div>
             </div>
@@ -6465,10 +6381,15 @@
               return;
             }
 
-            // Hvis e-mail-bekræftelse er påkrævet, vis besked
+            // Hvis e-mail-bekræftelse er påkrævet, vis besked og nulstil formular
             if (!signUpData.session) {
-              signupSuccess.textContent = "Tjek din e-mail for at bekræfte din konto. Log derefter ind.";
+              signupSuccess.textContent = "Tjek din e-mail for at bekræfte din konto. Klik på linket i mailen, og log derefter ind med din nye konto.";
               signupSuccess.style.display = "block";
+              signupForm.reset();
+              // Vis login-formularen efter 3 sekunder
+              setTimeout(() => {
+                if (loginSection) showLoginForm(loginSection);
+              }, 3000);
               return;
             }
 
@@ -6616,8 +6537,9 @@
         }
       });
 
-      // ===== EKSISTERENDE KODE-LOGIN HANDLER (uændret bortset fra authMode) =====
-      loginForm.addEventListener("submit", async (event) => {
+      // ===== LEGACY KODE-LOGIN HANDLER (fjernet - kun email+password login understøttes nu) =====
+      // PIN-login formular er fjernet fra UI, men handler holdes som guard mod evt. resterende referencer
+      if (loginForm) loginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         loginError.style.display = "none";
 
