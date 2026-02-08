@@ -4648,6 +4648,11 @@
       let ppCurrentSort = "antal";
       let ppLoaded = false;
 
+      // Lazy loading flags for collapsible sections
+      let eventsLoaded = false;
+      let allergyLoaded = false;
+      let dailyAssortmentLoaded = false;
+
       const ppCylinderColors = [
         { bg: "linear-gradient(90deg, #00838f 0%, #00bcd4 35%, #4dd0e1 50%, #00bcd4 65%, #00838f 100%)", shadow: "#006064", cap: "linear-gradient(180deg, #80deea 0%, #26c6da 100%)" },
         { bg: "linear-gradient(90deg, #1565c0 0%, #2196f3 35%, #64b5f6 50%, #2196f3 65%, #1565c0 100%)", shadow: "#0d47a1", cap: "linear-gradient(180deg, #90caf9 0%, #42a5f5 100%)" },
@@ -4948,6 +4953,44 @@
                 thisHeader.classList.add("active");
                 thisContent.classList.add("active");
                 if (thisArrow) thisArrow.textContent = "▲";
+
+                // LAZY LOADING: Hent data når sektionen åbnes første gang
+                (async () => {
+                  try {
+                    switch(thisSectionId) {
+                      case "events-collapsible":
+                        if (!eventsLoaded && currentChildId && (currentParentPin || authMode === 'email_password')) {
+                          eventsLoaded = true;
+                          console.log('[lazy] Loading events on section open');
+                          await loadAndRenderEvents(currentChildId, currentParentPin);
+                        }
+                        break;
+                      case "allergens-collapsible":
+                        if (!allergyLoaded && currentChildId && typeof loadAllergySettingsForChild === 'function') {
+                          allergyLoaded = true;
+                          console.log('[lazy] Loading allergy settings on section open');
+                          await loadAllergySettingsForChild(currentChildId);
+                        }
+                        break;
+                      case "daily-assortment-collapsible":
+                        if (!dailyAssortmentLoaded && currentInstitutionId) {
+                          dailyAssortmentLoaded = true;
+                          console.log('[lazy] Loading daily assortment on section open');
+                          await loadAndRenderDailyAssortment(currentInstitutionId);
+                        }
+                        break;
+                      case "purchase-profile-collapsible":
+                        if (!ppLoaded) {
+                          ppLoaded = true;
+                          console.log('[lazy] Loading purchase profile on section open');
+                          await loadPurchaseProfile();
+                        }
+                        break;
+                    }
+                  } catch (err) {
+                    console.error('[lazy] Error loading section data:', thisSectionId, err);
+                  }
+                })();
               }
             } else {
               // This section is active, so close it
@@ -4955,7 +4998,7 @@
               thisContent.classList.remove("active");
               if (thisArrow) thisArrow.textContent = "▼";
             }
-            
+
             // Reset flag after a short delay to allow the DOM to update
             setTimeout(() => {
               isToggling = false;
@@ -6104,7 +6147,17 @@
 
           displayResults(data);
           currentParentPin = null; // Ingen PIN i email+password mode
-          loadAndRenderEvents(firstChild.child_id, null);
+          // Reset lazy flags ved initial login
+          eventsLoaded = false;
+          allergyLoaded = false;
+          dailyAssortmentLoaded = false;
+          ppLoaded = false;
+          // Lazy: kun load events hvis sektionen er åben (typisk ikke ved login)
+          const eventsContent = document.querySelector("#events-collapsible .collapsible-section-content");
+          if (eventsContent?.classList.contains("active")) {
+            eventsLoaded = true;
+            loadAndRenderEvents(firstChild.child_id, null);
+          }
           setTimeout(() => setupCollapsibleSections(), 100);
         } catch (err) {
           console.error("loadChildrenAndEnterPortal fejl:", err);
@@ -6619,12 +6672,28 @@
           console.log('[parent-portal] Rendering payment section med prefs:', currentInstitutionPrefs);
           renderPaymentSection(currentInstitutionPrefs || {});
           renderFeatureSections(currentInstitutionPrefs || {});
-          // Hent og vis klubbens begrænsninger
+          // Hent og vis klubbens begrænsninger (kun DOM, ingen network)
           await loadAndRenderClubLimitations(institutionId, currentInstitutionPrefs);
-          // Hent og vis dagens sortiment
-          await loadAndRenderDailyAssortment(institutionId);
-          // Hent og vis kommende arrangementer
-          loadAndRenderEvents(currentChildId, currentParentPin);
+
+          // Reset lazy flags ved login
+          eventsLoaded = false;
+          allergyLoaded = false;
+          dailyAssortmentLoaded = false;
+          ppLoaded = false;
+
+          // Lazy load: kun hent data hvis sektionen er åben (typisk ikke ved login)
+          const assortmentContent = document.querySelector("#daily-assortment-collapsible .collapsible-section-content");
+          if (assortmentContent?.classList.contains("active")) {
+            dailyAssortmentLoaded = true;
+            await loadAndRenderDailyAssortment(institutionId);
+          }
+
+          const eventsContent = document.querySelector("#events-collapsible .collapsible-section-content");
+          if (eventsContent?.classList.contains("active")) {
+            eventsLoaded = true;
+            loadAndRenderEvents(currentChildId, currentParentPin);
+          }
+
           // Setup collapsible functionality - kald efter en lille delay for at sikre DOM er klar
           setTimeout(() => setupCollapsibleSections(), 100);
         } catch (err) {
@@ -7271,14 +7340,34 @@
             allowedChildren = data.allowed_children;
             renderChildSwitcher(allowedChildren);
           }
-          // Refresh events
-          if (currentChildId && (currentParentPin || authMode === 'email_password')) {
+
+          // Reset lazy loading flags for alle sektioner
+          eventsLoaded = false;
+          allergyLoaded = false;
+          dailyAssortmentLoaded = false;
+          ppLoaded = false;
+
+          // Lazy load: kun hent data hvis sektionen er åben
+          const eventsContent = document.querySelector("#events-collapsible .collapsible-section-content");
+          if (eventsContent?.classList.contains("active") && currentChildId && (currentParentPin || authMode === 'email_password')) {
+            eventsLoaded = true;
             loadAndRenderEvents(currentChildId, currentParentPin);
           }
-          // Reset købsprofil så den genindlæses for det nye barn
-          ppLoaded = false;
+
+          const allergyContent = document.querySelector("#allergens-collapsible .collapsible-section-content");
+          if (allergyContent?.classList.contains("active") && currentChildId && typeof loadAllergySettingsForChild === 'function') {
+            allergyLoaded = true;
+            loadAllergySettingsForChild(currentChildId);
+          }
+
+          const assortmentContent = document.querySelector("#daily-assortment-collapsible .collapsible-section-content");
+          if (assortmentContent?.classList.contains("active") && currentInstitutionId) {
+            dailyAssortmentLoaded = true;
+            loadAndRenderDailyAssortment(currentInstitutionId);
+          }
+
           const ppContent = document.querySelector("#purchase-profile-collapsible .collapsible-section-content");
-          if (ppContent && ppContent.classList.contains("active")) {
+          if (ppContent?.classList.contains("active")) {
             ppLoaded = true;
             loadPurchaseProfile();
           }
@@ -7507,16 +7596,25 @@
         }
         // Gem sukkerpolitik fra response
         currentSugarPolicy = data.sugar_policy ?? null;
+        // Lazy load helper funktion
+        const lazyLoadDailyAssortment = () => {
+          const assortmentContent = document.querySelector("#daily-assortment-collapsible .collapsible-section-content");
+          if (assortmentContent?.classList.contains("active") && !dailyAssortmentLoaded) {
+            dailyAssortmentLoaded = true;
+            loadAndRenderDailyAssortment(currentInstitutionId);
+          }
+        };
+
         // Hvis vi har institutions data fra get-parent-view response, brug det
         if (data.institution) {
           currentInstitutionPrefs = data.institution;
           console.log('[displayResults] Bruger institutions data fra get-parent-view response');
           renderPaymentSection(currentInstitutionPrefs);
           renderFeatureSections(currentInstitutionPrefs);
-          // Hent og vis klubbens begrænsninger
+          // Hent og vis klubbens begrænsninger (kun DOM, ingen network)
           loadAndRenderClubLimitations(currentInstitutionId, currentInstitutionPrefs);
-          // Hent og vis dagens sortiment
-          loadAndRenderDailyAssortment(currentInstitutionId);
+          // Lazy: kun hent dagens sortiment hvis sektionen er åben
+          lazyLoadDailyAssortment();
           // Setup collapsible functionality - kald efter en lille delay for at sikre DOM er klar
           setTimeout(() => setupCollapsibleSections(), 100);
         } else if (currentInstitutionPrefs) {
@@ -7524,10 +7622,10 @@
           console.log('[displayResults] Bruger eksisterende currentInstitutionPrefs');
           renderPaymentSection(currentInstitutionPrefs);
           renderFeatureSections(currentInstitutionPrefs);
-          // Hent og vis klubbens begrænsninger
+          // Hent og vis klubbens begrænsninger (kun DOM, ingen network)
           loadAndRenderClubLimitations(currentInstitutionId, currentInstitutionPrefs);
-          // Hent og vis dagens sortiment
-          loadAndRenderDailyAssortment(currentInstitutionId);
+          // Lazy: kun hent dagens sortiment hvis sektionen er åben
+          lazyLoadDailyAssortment();
           // Setup collapsible functionality - kald efter en lille delay for at sikre DOM er klar
           setTimeout(() => setupCollapsibleSections(), 100);
         } else if (currentInstitutionId) {
@@ -7538,10 +7636,10 @@
               currentInstitutionPrefs = prefs;
               renderPaymentSection(currentInstitutionPrefs);
               renderFeatureSections(currentInstitutionPrefs);
-              // Hent og vis klubbens begrænsninger
+              // Hent og vis klubbens begrænsninger (kun DOM, ingen network)
               loadAndRenderClubLimitations(currentInstitutionId, currentInstitutionPrefs);
-              // Hent og vis dagens sortiment
-              loadAndRenderDailyAssortment(currentInstitutionId);
+              // Lazy: kun hent dagens sortiment hvis sektionen er åben
+              lazyLoadDailyAssortment();
               // Setup collapsible functionality - kald efter en lille delay for at sikre DOM er klar
               setTimeout(() => setupCollapsibleSections(), 100);
             } else {
@@ -7550,7 +7648,10 @@
           });
         }
 
-        if (currentChildId && typeof loadAllergySettingsForChild === "function") {
+        // Lazy: kun load allergi-indstillinger hvis sektionen er åben
+        const allergyContent = document.querySelector("#allergens-collapsible .collapsible-section-content");
+        if (allergyContent?.classList.contains("active") && currentChildId && typeof loadAllergySettingsForChild === "function" && !allergyLoaded) {
+          allergyLoaded = true;
           loadAllergySettingsForChild(currentChildId);
         }
 
