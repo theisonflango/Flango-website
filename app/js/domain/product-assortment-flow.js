@@ -1,8 +1,16 @@
 import { getCurrentCustomer } from './cafe-session-store.js';
+import { runWithAuthRetry } from '../core/auth-retry.js';
 import { applyProductLimitsToButtons, getProductIconInfo } from './products-and-cart.js';
 let flangoReorderMode = false;
 let flangoLongPressTimer = null;
 let flangoDraggedCard = null;
+let placeholderSlots = [];
+let placeholderCounter = 0;
+let placeholderSelection = null;
+let pendingPlaceholderCreate = null;
+let updateReorderUiState = () => {};
+let ensureReorderHintActions = () => null;
+let rerenderGridForReorderMode = () => Promise.resolve();
 
 function enableReorderMode() {
     if (flangoReorderMode) return;
@@ -10,6 +18,11 @@ function enableReorderMode() {
     document.body.classList.add('reorder-mode');
     document.querySelectorAll('#products .product-btn').forEach(card => {
         card.setAttribute('draggable', 'true');
+    });
+    updateReorderUiState(true);
+    ensureReorderHintActions();
+    rerenderGridForReorderMode().catch((err) => {
+        console.warn('[reorder] Kunne ikke re-render grid i edit mode:', err);
     });
 }
 
@@ -29,6 +42,10 @@ function disableReorderMode() {
         clearTimeout(flangoLongPressTimer);
         flangoLongPressTimer = null;
     }
+    updateReorderUiState(false);
+    rerenderGridForReorderMode().catch((err) => {
+        console.warn('[reorder] Kunne ikke re-render grid ved exit:', err);
+    });
 }
 
 function handleLongPressStart(e) {
@@ -83,6 +100,180 @@ export function setupProductAssortmentFlow({
     parentPortalAdminUI,
     addToOrder,
 }) {
+    const PLACEHOLDER_NAME = 'Tom plads';
+    const REORDER_TOOLTIP_TEXT = 'Træk i produkter for at ændre placering. Tryk ENTER for at fortsætte.';
+
+    const createPlaceholderSlot = (sortOrder) => ({
+        placeholder_id: `placeholder-${Date.now()}-${placeholderCounter++}`,
+        sort_order: Number.isFinite(sortOrder) ? sortOrder : 9999,
+        is_placeholder: true,
+        name: PLACEHOLDER_NAME,
+        is_visible: true,
+        is_enabled: true,
+    });
+
+    const buildGridItems = (allProducts) => {
+        const visibleProducts = (allProducts || [])
+            .filter(p => p?.is_visible !== false && p?.is_enabled !== false)
+            .map(p => ({ ...p, is_placeholder: false }));
+        // Vis placeholders altid, ikke kun i reorder mode
+        const placeholders = placeholderSlots.map(slot => ({
+            ...slot,
+            name: PLACEHOLDER_NAME,
+            is_placeholder: true,
+            is_visible: true,
+            is_enabled: true,
+        }));
+        const combined = [...visibleProducts, ...placeholders];
+        combined.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+        return combined;
+    };
+
+    const ensureGridControls = () => {
+        const productsArea = document.getElementById('products-area');
+        if (!productsArea) return null;
+        let controls = productsArea.querySelector('.product-grid-controls');
+        if (controls) return controls;
+        controls = document.createElement('div');
+        controls.className = 'product-grid-controls';
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'product-grid-toggle';
+        toggleBtn.setAttribute('aria-label', 'Rediger layout');
+        toggleBtn.textContent = '⚙️';
+        toggleBtn.addEventListener('click', (evt) => {
+            evt.preventDefault();
+            evt.stopPropagation();
+            if (flangoReorderMode) {
+                disableReorderMode();
+            } else {
+                enableReorderMode();
+            }
+        });
+
+        controls.appendChild(toggleBtn);
+        productsArea.appendChild(controls);
+        return controls;
+    };
+
+    updateReorderUiState = (isActive) => {
+        ensureGridControls();
+        const hint = document.getElementById('product-reorder-hint');
+        if (!hint) return;
+        hint.textContent = REORDER_TOOLTIP_TEXT;
+    };
+
+    ensureReorderHintActions = () => {
+        const hint = document.getElementById('product-reorder-hint');
+        if (!hint) return null;
+        let addBtn = hint.querySelector('.product-reorder-add-btn');
+        if (addBtn) return addBtn;
+        addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'product-reorder-add-btn';
+        addBtn.textContent = 'Tilføj Produkt (+)';
+        addBtn.addEventListener('click', async (evt) => {
+            evt.preventDefault();
+            evt.stopPropagation();
+            if (!flangoReorderMode) return;
+            const allProducts = typeof getAllProducts === 'function' ? (getAllProducts() || []) : [];
+            const gridItems = buildGridItems(allProducts);
+            const sortOrder = gridItems.length;
+            const slot = createPlaceholderSlot(sortOrder);
+            placeholderSlots.push(slot);
+            await renderProductsFromLocalState(allProducts);
+        });
+        hint.appendChild(addBtn);
+        return addBtn;
+    };
+
+    rerenderGridForReorderMode = async () => {
+        const allProducts = getAllProducts() || [];
+        if (!allProducts.length) return;
+        await renderProductsFromLocalState(allProducts);
+        // Ensure drag handlers are set up after re-render
+        initProductReorder();
+    };
+
+    const updatePlaceholderOrderFromDom = (cards) => {
+        if (!Array.isArray(cards) || placeholderSlots.length === 0) return;
+        const next = [];
+        cards.forEach((card, index) => {
+            const placeholderId = card.dataset.placeholderId;
+            if (!placeholderId) return;
+            const slot = placeholderSlots.find(p => p.placeholder_id === placeholderId);
+            if (!slot) {
+                console.warn('[placeholder] Ukendt placeholder i DOM:', placeholderId);
+                return;
+            }
+            next.push({ ...slot, sort_order: index });
+        });
+        if (next.length > 0) {
+            placeholderSlots = next;
+        }
+    };
+
+    const hideProductFromGrid = async (productId) => {
+        if (!productId) {
+            console.warn('[grid] Mangler productId ved fjern');
+            return;
+        }
+        try {
+            const { error } = await supabaseClient
+                .from('products')
+                .update({ is_visible: false })
+                .eq('id', productId);
+            if (error) {
+                console.warn('[grid] Kunne ikke skjule produkt:', error.message);
+                showAlert?.(`Kunne ikke skjule produkt: ${error.message}`);
+                return;
+            }
+            const currentProducts = getAllProducts() || [];
+            const updated = currentProducts.map(p =>
+                String(p.id) === String(productId) ? { ...p, is_visible: false } : p
+            );
+            setAllProducts(updated);
+            await renderProductsFromLocalState(updated);
+        } catch (err) {
+            console.warn('[grid] Uventet fejl ved skjul produkt:', err);
+        }
+    };
+
+    const assignProductToPlaceholder = async (productId, placeholderId) => {
+        const slot = placeholderSlots.find(p => p.placeholder_id === placeholderId);
+        if (!slot) {
+            console.warn('[placeholder] Mangler placeholder for selection:', placeholderId);
+            return;
+        }
+        if (!productId) {
+            console.warn('[placeholder] Mangler productId ved selection');
+            return;
+        }
+        const sortOrder = Number.isFinite(slot.sort_order) ? slot.sort_order : 0;
+        try {
+            const { error } = await supabaseClient
+                .from('products')
+                .update({ is_visible: true, sort_order: sortOrder })
+                .eq('id', productId);
+            if (error) {
+                console.warn('[placeholder] Kunne ikke indsætte produkt:', error.message);
+                showAlert?.(`Kunne ikke indsætte produkt: ${error.message}`);
+                return;
+            }
+            const currentProducts = getAllProducts() || [];
+            const updated = currentProducts.map(p =>
+                String(p.id) === String(productId)
+                    ? { ...p, is_visible: true, sort_order: sortOrder }
+                    : p
+            );
+            setAllProducts(updated);
+            placeholderSlots = placeholderSlots.filter(p => p.placeholder_id !== placeholderId);
+            await renderProductsFromLocalState(updated);
+        } catch (err) {
+            console.warn('[placeholder] Uventet fejl ved indsæt produkt:', err);
+        }
+    };
     async function saveProductOrder() {
         const container = document.getElementById('products');
         if (!container) return;
@@ -93,6 +284,9 @@ export function setupProductAssortmentFlow({
 
         cards.forEach((card, index) => {
             const productId = card.dataset.productId;
+            if (card.dataset.placeholderId) {
+                return;
+            }
             if (!productId) return;
             const normalizedId = String(productId);
             updates.push({ id: normalizedId, sort_order: index });
@@ -132,6 +326,7 @@ export function setupProductAssortmentFlow({
                     .filter(Boolean);
                 setAllProducts(reordered);
             }
+            updatePlaceholderOrderFromDom(cards);
         } catch (err) {
             console.warn('[product reorder] unexpected save error:', err);
         }
@@ -183,7 +378,7 @@ export function setupProductAssortmentFlow({
 
     function updateProductShortcutNumbers(container) {
         if (!container) return;
-        const cards = Array.from(container.querySelectorAll('.product-btn'));
+        const cards = Array.from(container.querySelectorAll('.product-btn')).filter(card => !card.dataset.placeholderId);
         cards.forEach((card, index) => {
             const shortcut = card.querySelector('.product-shortcut');
             if (shortcut && index < 10) {
@@ -216,6 +411,20 @@ export function setupProductAssortmentFlow({
         if (!productsContainer) return;
         const cards = productsContainer.querySelectorAll('.product-btn');
         cards.forEach(card => {
+            // KRITISK FIX: Fjern eksisterende listeners før nye tilføjes
+            // Dette forhindrer memory leak ved gentagne renderinger
+            card.removeEventListener('mousedown', handleLongPressStart);
+            card.removeEventListener('touchstart', handleLongPressStart);
+            card.removeEventListener('mouseup', handleLongPressEnd);
+            card.removeEventListener('mouseleave', handleLongPressEnd);
+            card.removeEventListener('touchend', handleLongPressEnd);
+            card.removeEventListener('touchcancel', handleLongPressEnd);
+            card.removeEventListener('dragstart', handleDragStart);
+            card.removeEventListener('dragover', handleDragOver);
+            card.removeEventListener('drop', handleDrop);
+            card.removeEventListener('dragend', handleDragEnd);
+
+            // Tilføj nye listeners
             card.addEventListener('mousedown', handleLongPressStart);
             card.addEventListener('touchstart', handleLongPressStart, { passive: true });
             card.addEventListener('mouseup', handleLongPressEnd);
@@ -241,11 +450,13 @@ export function setupProductAssortmentFlow({
         const currentCustomer = getCurrentCustomer();
         const childId = currentCustomer?.id || null;
 
+        const gridItems = buildGridItems(allProducts);
         await renderProductsGrid(
-            allProducts,
+            gridItems,
             productsContainer,
             async (product, evt) => {
                 if (flangoReorderMode) return null;
+                if (product?.is_placeholder) return null;
                 const result = await addToOrder(product, getCurrentOrder(), orderList, totalPriceEl, updateSelectedUserInfo, { sourceEvent: evt });
                 const currentChildId = getCurrentCustomer()?.id || null;
                 const sugarData = typeof window.__flangoGetSugarData === 'function' ? window.__flangoGetSugarData() : null;
@@ -268,14 +479,19 @@ export function setupProductAssortmentFlow({
         const sugarDataForLocks = typeof window.__flangoGetSugarData === 'function' ? window.__flangoGetSugarData() : null;
         await applyProductLimitsToButtons(allProducts, productsContainer, getCurrentOrder(), childId, sugarDataForLocks);
         renderProductsInModal(allProducts, modalProductList);
+        ensureGridControls();
+        ensureReorderHintActions();
     }
 
     async function fetchAndRenderProducts() {
-        const { data, error } = await supabaseClient
-            .from('products')
-            .select('*')
-            .eq('institution_id', adminProfile.institution_id)
-            .order('sort_order');
+        const { data, error } = await runWithAuthRetry(
+            'fetchProducts',
+            () => supabaseClient
+                .from('products')
+                .select('*')
+                .eq('institution_id', adminProfile.institution_id)
+                .order('sort_order')
+        );
         if (error) {
             showAlert('Fejl ved hentning af produkter: ' + error.message);
             return;
@@ -284,13 +500,15 @@ export function setupProductAssortmentFlow({
         const allProducts = getAllProducts();
         const currentCustomer = getCurrentCustomer();
         const childId = currentCustomer?.id || null;
+        const gridItems = buildGridItems(allProducts);
 
         // renderProductsGrid er nu async og tager currentCustomer parameter
         await renderProductsGrid(
-            allProducts,
+            gridItems,
             productsContainer,
             async (product, evt) => {
                 if (flangoReorderMode) return null;
+                if (product?.is_placeholder) return null;
                 const result = await addToOrder(product, getCurrentOrder(), orderList, totalPriceEl, updateSelectedUserInfo, { sourceEvent: evt });
                 // VIGTIGT: Brug altid den opdaterede kurv her, og hent childId på ny.
                 const currentChildId = getCurrentCustomer()?.id || null;
@@ -313,6 +531,8 @@ export function setupProductAssortmentFlow({
         const sugarDataForLocks = typeof window.__flangoGetSugarData === 'function' ? window.__flangoGetSugarData() : null;
         await applyProductLimitsToButtons(allProducts, productsContainer, getCurrentOrder(), childId, sugarDataForLocks);
         renderProductsInModal(allProducts, modalProductList);
+        ensureGridControls();
+        ensureReorderHintActions();
     }
 
     function renderAssortmentModal() {
@@ -378,9 +598,19 @@ export function setupProductAssortmentFlow({
         });
 
         assortmentList.onclick = async (e) => {
-            if (e.target.matches('input[type="checkbox"]')) {
-                const productId = e.target.dataset.productId;
-                const isVisible = e.target.checked;
+            const target = e.target;
+            const checkbox = target.matches('input[type="checkbox"]') ? target : null;
+            const productId = checkbox?.dataset.productId || target.closest('.item')?.dataset.productId;
+
+            if (placeholderSelection?.placeholderId && productId) {
+                await assignProductToPlaceholder(productId, placeholderSelection.placeholderId);
+                placeholderSelection = null;
+                assortmentModal.style.display = 'none';
+                return;
+            }
+
+            if (checkbox) {
+                const isVisible = checkbox.checked;
 
                 // Opdater database og tjek for fejl
                 const { error } = await supabaseClient
@@ -392,7 +622,7 @@ export function setupProductAssortmentFlow({
                     console.error('[assortment] Fejl ved opdatering af produkt synlighed:', error);
                     showAlert(`Kunne ikke opdatere produkt: ${error.message}`);
                     // Revert checkbox til den gamle værdi
-                    e.target.checked = !isVisible;
+                    checkbox.checked = !isVisible;
                     return;
                 }
 
@@ -419,6 +649,200 @@ export function setupProductAssortmentFlow({
         renderAssortmentModal();
         assortmentModal.style.display = 'flex';
     };
+
+    window.__flangoAssignPlaceholderProduct = async (product, placeholderIdOverride = null) => {
+        const placeholderId = placeholderIdOverride || pendingPlaceholderCreate?.placeholderId || placeholderSelection?.placeholderId;
+        if (!placeholderId) {
+            console.warn('[placeholder] Mangler placeholderId ved create');
+            return;
+        }
+        if (!product?.id) {
+            console.warn('[placeholder] Mangler product data ved create');
+            return;
+        }
+        pendingPlaceholderCreate = null;
+        placeholderSelection = null;
+        await assignProductToPlaceholder(product.id, placeholderId);
+    };
+
+    if (productsContainer) {
+        productsContainer.addEventListener('click', async (event) => {
+                const removeOverlay = event.target.closest('.product-remove-overlay');
+                if (removeOverlay) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    // Placeholders kan kun fjernes i reorder mode
+                    const placeholderId = removeOverlay.dataset.placeholderId;
+                    if (placeholderId) {
+                        if (!flangoReorderMode) {
+                            // Kryds virker kun i reorder mode for placeholders
+                            return;
+                        }
+                        // I reorder mode - fjern placeholder
+                        const before = placeholderSlots.length;
+                        placeholderSlots = placeholderSlots.filter(p => p.placeholder_id !== placeholderId);
+                        if (before === placeholderSlots.length) {
+                            console.warn('[grid] Placeholder ikke fundet:', placeholderId);
+                        }
+                        const allProducts = getAllProducts() || [];
+                        await renderProductsFromLocalState(allProducts);
+                        return;
+                    }
+                    // For almindelige produkter, kræv reorder mode
+                    if (!flangoReorderMode) return;
+                    const pid = removeOverlay.dataset.productId;
+                    if (!pid) {
+                        console.warn('[grid] Mangler productId på remove overlay');
+                        return;
+                    }
+                    await hideProductFromGrid(pid);
+                    return;
+                }
+            const placeholderBtn = event.target.closest('[data-placeholder-action]');
+            if (placeholderBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+                const placeholderId = placeholderBtn.dataset.placeholderId;
+                const action = placeholderBtn.dataset.placeholderAction;
+                if (!placeholderId) {
+                    console.warn('[placeholder] Mangler placeholderId');
+                    return;
+                }
+                if (action === 'select') {
+                    placeholderSelection = { placeholderId };
+                    if (assortmentModal) {
+                        renderAssortmentModal();
+                        assortmentModal.style.display = 'flex';
+                    } else {
+                        console.warn('[placeholder] assortmentModal mangler');
+                    }
+                } else if (action === 'create') {
+                    pendingPlaceholderCreate = { placeholderId };
+                    const editMenuOriginalBtn = document.getElementById('edit-menu-original-btn');
+                    const addProductBtn = document.getElementById('add-btn-modal');
+                    if (editMenuOriginalBtn) {
+                        editMenuOriginalBtn.click();
+                    } else {
+                        console.warn('[placeholder] edit-menu-original-btn mangler');
+                    }
+                    if (addProductBtn) {
+                        addProductBtn.click();
+                    } else {
+                        console.warn('[placeholder] add-btn-modal mangler');
+                    }
+                }
+            }
+        });
+
+        productsContainer.addEventListener('focusin', (event) => {
+            const editableName = event.target.closest('.product-edit-name');
+            const priceInput = event.target.closest('.product-edit-price-input');
+            const target = editableName || priceInput;
+            if (!target) return;
+            if (!target.dataset.prevValue) {
+                target.dataset.prevValue = editableName ? editableName.textContent : target.value;
+            }
+        });
+
+        const commitInlineEdit = async (target, kind) => {
+            const productId = target?.dataset.productId;
+            if (!productId) {
+                console.warn('[edit] Mangler productId ved inline edit');
+                return;
+            }
+            const allProducts = getAllProducts() || [];
+            const product = allProducts.find(p => String(p.id) === String(productId));
+            if (!product) {
+                console.warn('[edit] Produkt ikke fundet:', productId);
+                return;
+            }
+            const prev = target.dataset.prevValue ?? '';
+            const raw = kind === 'name' ? String(target.textContent || '') : String(target.value || '');
+            if (raw === prev) return;
+
+            let updates = null;
+            if (kind === 'name') {
+                const name = raw.trim();
+                // Tillad tomme navne - de kan rettes senere
+                updates = { name: name || '' };
+            } else if (kind === 'price') {
+                const num = Number(raw.replace(',', '.'));
+                if (!Number.isFinite(num) || num < 0) {
+                    console.warn('[edit] Ugyldig pris:', raw);
+                    const priceInWholeKr = Math.round(Number(product.price || 0));
+                    target.value = priceInWholeKr;
+                    return;
+                }
+                // Gem som hele kr
+                updates = { price: Math.round(num) };
+            }
+
+            const { error } = await runWithAuthRetry(
+                'inlineProductEdit',
+                () => supabaseClient.from('products').update(updates).eq('id', productId)
+            );
+            if (error) {
+                console.warn('[edit] Kunne ikke gemme ændring:', error.message);
+                return;
+            }
+            const updated = allProducts.map(p =>
+                String(p.id) === String(productId) ? { ...p, ...updates } : p
+            );
+            setAllProducts(updated);
+            // Opdater prevValue korrekt
+            if (kind === 'name') {
+                target.dataset.prevValue = target.textContent || '';
+            } else {
+                const priceInWholeKr = Math.round(Number(updates.price || 0));
+                target.value = priceInWholeKr;
+                target.dataset.prevValue = String(priceInWholeKr);
+            }
+        };
+
+        productsContainer.addEventListener('blur', (event) => {
+            const editableName = event.target.closest('.product-edit-name');
+            const priceInput = event.target.closest('.product-edit-price-input');
+            if (editableName) {
+                commitInlineEdit(editableName, 'name');
+            } else if (priceInput) {
+                commitInlineEdit(priceInput, 'price');
+            }
+        }, true);
+
+        productsContainer.addEventListener('change', (event) => {
+            const priceInput = event.target.closest('.product-edit-price-input');
+            if (priceInput) {
+                commitInlineEdit(priceInput, 'price');
+            }
+        });
+
+        productsContainer.addEventListener('keydown', (event) => {
+            // Gem ved Enter i edit mode
+            if (event.key === 'Enter') {
+                const editableName = event.target.closest('.product-edit-name');
+                const priceInput = event.target.closest('.product-edit-price-input');
+                if (editableName) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    commitInlineEdit(editableName, 'name');
+                    editableName.blur();
+                } else if (priceInput) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    commitInlineEdit(priceInput, 'price');
+                    priceInput.blur();
+                }
+            }
+        });
+    }
+
+    if (assortmentModal) {
+        assortmentModal.addEventListener('click', (event) => {
+            if (event.target === assortmentModal || event.target.closest('.close-btn')) {
+                placeholderSelection = null;
+            }
+        });
+    }
 
     return {
         fetchAndRenderProducts,

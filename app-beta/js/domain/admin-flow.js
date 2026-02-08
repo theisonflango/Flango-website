@@ -3,6 +3,7 @@ import { setupCustomerSearchKeyboardNavigation } from '../ui/customer-picker.js'
 import { showAddUserModal, showBalanceModal } from '../ui/user-modals.js';
 import { createAdminUserActions } from '../ui/admin-user-actions.js';
 import { setupAdminUserManagerFromModule } from '../ui/admin-user-manager.js';
+import { setupEventAdminModule } from '../ui/event-admin.js';
 import { createParentPortalAdminUI } from '../ui/parent-portal-admin.js';
 import { mergeUsersWithParentNotifications } from './users-and-admin.js';
 import { runWithAuthRetry } from '../core/auth-retry.js';
@@ -247,6 +248,12 @@ export function setupAdminFlow({
             onUserListClick: handleUserListClick,
             getAdminManagerMode,
             setAdminManagerMode,
+        });
+        setupEventAdminModule({
+            adminProfile,
+            supabaseClient,
+            getAllUsers,
+            institutionId: adminProfile.institution_id,
         });
     }
 

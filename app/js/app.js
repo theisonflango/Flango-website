@@ -28,6 +28,22 @@ document.addEventListener('DOMContentLoaded', () => {
             ribbon.textContent = 'BETA';
             logoBtn.appendChild(ribbon);
         }
+
+        // Add BETA sticker on login screens (under logo, above icon/title)
+        const addBetaStickersToLoginScreens = () => {
+            const loginContainers = document.querySelectorAll('.login-container');
+            loginContainers.forEach((container) => {
+                const logo = container.querySelector('.login-logo');
+                if (!logo) return;
+                if (container.querySelector('.beta-login-sticker')) return;
+
+                const sticker = document.createElement('div');
+                sticker.className = 'beta-login-sticker';
+                sticker.textContent = 'BETA';
+                logo.insertAdjacentElement('afterend', sticker);
+            });
+        };
+        addBetaStickersToLoginScreens();
     }
 
     // =================================================================
@@ -53,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     copyFromTemplate('balance-modal', 'balance-modal-template');
     copyFromTemplate('edit-user-detail-modal', 'edit-user-detail-modal-template');
     copyFromTemplate('assign-badge-modal', 'assign-badge-modal-template');
+    copyFromTemplate('event-admin-modal', 'event-admin-modal-template');
 
     const customAlertModal = document.getElementById('custom-alert-modal');
     // Ensure custom alert modal is always on top

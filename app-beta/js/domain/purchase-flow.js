@@ -1,4 +1,5 @@
 import { showAlert, showCustomAlert, playSound } from '../ui/sound-and-alerts.js';
+import { logDebugEvent } from '../core/debug-flight-recorder.js';
 import { supabaseClient } from '../core/config-and-supabase.js';
 import { runWithAuthRetry } from '../core/auth-retry.js';
 import { OVERDRAFT_LIMIT } from '../core/constants.js';
@@ -11,11 +12,12 @@ import {
 } from './cafe-session-store.js';
 import { renderOrder } from './order-ui.js';
 import { getProductIconInfo, getBulkDiscountedUnitPrice, getBulkDiscountSummary } from './products-and-cart.js';
-import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild } from './purchase-limits.js';
+import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild, getChildSugarPolicySnapshot } from './purchase-limits.js';
 import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
 import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
 import { escapeHtml } from '../core/escape-html.js';
 import { formatKr } from '../ui/confirm-modals.js';
+import { processEventItemsInCheckout } from '../ui/cafe-event-strip.js';
 
 // ============================================================================
 // HELPER FUNKTIONER FOR handleCompletePurchase (OPT-6)
@@ -412,7 +414,7 @@ export async function enforceSugarPolicy({ customer, currentOrder, allProducts }
     // Query today's purchases for this customer
     const today = new Date().toISOString().split('T')[0];
     const { data: todaySales } = await supabaseClient
-        .from('sales_items')
+        .from('sale_items')
         .select(`
             product_id,
             quantity,
@@ -469,6 +471,56 @@ export async function enforceSugarPolicy({ customer, currentOrder, allProducts }
     return true; // All checks passed
 }
 
+/**
+ * Håndhæver kostpræferencer (vegetarisk, svinekød) sat af forældre.
+ * Blokerer køb hvis produkter i kurven overtræder barnets kostpræferencer.
+ */
+export async function enforceDietaryRestrictions({ customer, currentOrder, allProducts }) {
+    if (!customer?.id) return true;
+
+    // Hent barnets dietary preferences via cached sugar policy snapshot
+    let policyData;
+    try {
+        policyData = await getChildSugarPolicySnapshot(customer.id);
+    } catch (e) {
+        console.warn('[enforceDietaryRestrictions] Could not fetch policy:', e);
+        return true; // Fail-open ved fejl
+    }
+
+    const policy = policyData?.policy;
+    if (!policy) return true; // Ingen policy sat
+
+    const vegetarianOnly = policy.vegetarianOnly === true;
+    const noPork = policy.noPork === true;
+
+    if (!vegetarianOnly && !noPork) return true; // Ingen kostpræferencer sat
+
+    for (const item of currentOrder) {
+        const product = allProducts.find(p => p.id === item.id);
+        if (!product) continue;
+
+        if (vegetarianOnly && product.is_vegetarian !== true) {
+            await showCustomAlert(
+                'Køb Blokeret',
+                `Hov, ${escapeHtml(customer.name)} må kun købe vegetariske produkter.<br><br><strong>${escapeHtml(product.name)}</strong> er ikke markeret som vegetarisk.`
+            );
+            return false;
+        }
+
+        if (noPork && product.contains_pork === true) {
+            await showCustomAlert(
+                'Køb Blokeret',
+                `Hov, ${escapeHtml(customer.name)} må ikke købe produkter med svinekød.<br><br><strong>${escapeHtml(product.name)}</strong> indeholder svinekød.`
+            );
+            return false;
+        }
+    }
+
+    return true;
+}
+
+let purchaseInFlight = false;
+
 export async function handleCompletePurchase({
     customer,
     currentOrder,
@@ -484,8 +536,68 @@ export async function handleCompletePurchase({
     refreshProductLocks,
     renderProductsFromCache,
 }) {
+    // KRITISK FIX: Hvis currentOrder er tom men order-store har varer, brug order-store
+    // Dette løser synkroniseringsfejl hvor lokal variabel ikke er opdateret
+    // KRITISK FIX: Hvis currentOrder er tom men order-store har varer, brug order-store
+    // Dette løser synkroniseringsfejl hvor lokal variabel ikke er opdateret
+    const orderFromStore = typeof getOrder === 'function' ? getOrder() : [];
+    const effectiveOrder = (Array.isArray(currentOrder) && currentOrder.length > 0) ? currentOrder : orderFromStore;
+    let orderSnapshot = Array.isArray(effectiveOrder) ? [...effectiveOrder] : [];
+    
+    // Opdater lokal variabel hvis den var tom men order-store har varer
+    if (typeof setCurrentOrder === 'function' && (!Array.isArray(currentOrder) || currentOrder.length === 0) && orderFromStore.length > 0) {
+        setCurrentOrder([...orderFromStore]);
+        currentOrder = [...orderFromStore];
+    }
+    
+    // Flight recorder: log purchase flow start
+    logDebugEvent('purchase_flow_started', {
+        customerId: customer?.id,
+        customerName: customer?.name,
+        cartLength: orderSnapshot?.length,
+        cartItems: orderSnapshot?.slice(0, 5).map(i => ({ name: i.name, id: i.id, price: i.price })),
+        orderStoreLength: typeof getOrder === 'function' ? getOrder()?.length : 'N/A',
+    });
     if (!customer) return showAlert("Fejl: Vælg venligst en kunde!");
-    if (currentOrder.length === 0) return showAlert("Fejl: Indkøbskurven er tom!");
+    if (orderSnapshot.length === 0) {
+        return showAlert("Fejl: Indkøbskurven er tom!");
+    }
+    if (purchaseInFlight) {
+        logDebugEvent('purchase_inflight_blocked', { customerId: customer?.id });
+        return;
+    }
+    purchaseInFlight = true;
+    try {
+    // === EVENT ITEMS SPLIT ===
+    // Separér event-items fra normalvarer. Events håndteres IKKE via process_sale.
+    const eventItems = orderSnapshot.filter(item => item.type === 'event');
+    const normalItems = orderSnapshot.filter(item => item.type !== 'event');
+
+    // Hvis KUN event-items: skip al normalvare-validering og processér direkte
+    if (normalItems.length === 0 && eventItems.length > 0) {
+        logDebugEvent('purchase_event_only', { eventCount: eventItems.length, customerId: customer?.id });
+        await processEventItemsInCheckout(eventItems, customer);
+        // Opdater saldo-visning uden log ud (balance-manager har allerede opdateret, sikr synk UI)
+        if (typeof updateSelectedUserInfo === 'function') updateSelectedUserInfo();
+        // Ryd kurv
+        let nextOrder = clearOrder();
+        setOrder([...nextOrder]);
+        if (typeof setCurrentOrder === 'function') setCurrentOrder(nextOrder);
+        renderOrder(orderList, nextOrder, totalPriceEl, updateSelectedUserInfo);
+        if (typeof refreshProductLocks === 'function') await refreshProductLocks({ force: true });
+        if (typeof renderProductsFromCache === 'function') renderProductsFromCache();
+        setButtonLoadingState(completePurchaseBtn, 'normal');
+        return;
+    }
+
+    // Brug normalItems til al validering herunder (event-items springer over)
+    // Erstat orderSnapshot med normalItems i resten af flowet
+    if (eventItems.length > 0) {
+        orderSnapshot = normalItems;
+        setOrder([...normalItems]); // Sync order-store
+    }
+    // === SLUT EVENT ITEMS SPLIT ===
+
     // === ALLERGI-CHECK ===
     let allergyPolicy = customer?.allergyPolicy;
 
@@ -495,7 +607,7 @@ export async function handleCompletePurchase({
         (typeof allergyPolicy === 'object' && Object.keys(allergyPolicy).length === 0);
 
     // OPTIMERING: Parallelize allergi-checks for 100-200ms speedup
-    const productIdsInOrder = currentOrder.map(item => item.product_id || item.productId || item.id).filter(Boolean);
+    const productIdsInOrder = orderSnapshot.map(item => item.product_id || item.productId || item.id).filter(Boolean);
 
     const [fetchedAllergyPolicy, productAllergenMap] = await Promise.all([
         isEmptyPolicy ? fetchAllergyPolicyForChild(customer.id, customer.institution_id) : Promise.resolve(allergyPolicy),
@@ -510,7 +622,7 @@ export async function handleCompletePurchase({
     console.log('[allergies] effective allergyPolicy for', customer.name, allergyPolicy);
 
     // OPTIMERING: Brug helper funktion til at berige ordrelinjer med allergener
-    const orderWithAllergens = enrichOrderWithAllergens(currentOrder, allProducts, productAllergenMap);
+    const orderWithAllergens = enrichOrderWithAllergens(orderSnapshot, allProducts, productAllergenMap);
 
     console.log('[allergies] policy for', customer.name, allergyPolicy);
     console.log('[allergies] orderWithAllergens', orderWithAllergens);
@@ -542,10 +654,10 @@ export async function handleCompletePurchase({
     let evaluation = null;
     try {
         // Deterministic sync: avoid sharing mutable array reference
-        setOrder(Array.isArray(currentOrder) ? [...currentOrder] : []);
+        setOrder(Array.isArray(orderSnapshot) ? [...orderSnapshot] : []);
         const shadowOrder = getOrder();
         console.log('[order-store] shadow sync:', {
-            currentOrderLength: currentOrder.length,
+            currentOrderLength: orderSnapshot.length,
             shadowOrderLength: Array.isArray(shadowOrder) ? shadowOrder.length : 'n/a',
         });
     } catch (err) {
@@ -555,7 +667,7 @@ export async function handleCompletePurchase({
         const purchaseInput = {
             customer,
             currentBalance: customer?.balance ?? null,
-            orderItems: currentOrder,
+            orderItems: orderSnapshot,
             products: allProducts,
             maxOverdraft: OVERDRAFT_LIMIT,
         };
@@ -563,15 +675,22 @@ export async function handleCompletePurchase({
         console.log('[cafe-session] evaluatePurchase result:', evaluation);
     }
 
-    const sugarOk = await enforceSugarPolicy({ customer, currentOrder, allProducts });
+    const sugarOk = await enforceSugarPolicy({ customer, currentOrder: orderSnapshot, allProducts });
     if (!sugarOk) return;
+
+    const dietaryOk = await enforceDietaryRestrictions({ customer, currentOrder: orderSnapshot, allProducts });
+    if (!dietaryOk) return;
 
     try {
         const childId = customer.id;
 
         // Parallel validation checks for all items (much faster than sequential)
         // FIX: Wrap each canChildPurchase call with retry logic for transient errors
-        const checkPromises = currentOrder.map(async (line) => {
+        const missingProductIdCount = orderSnapshot.reduce((count, line) => {
+            const productId = line?.product_id || line?.productId || line?.id;
+            return productId == null ? count + 1 : count;
+        }, 0);
+        const checkPromises = orderSnapshot.map(async (line) => {
             const productId = line.product_id || line.productId || line.id;
             const product = allProducts.find(p => p.id === productId);
             if (!productId) return { allowed: true };
@@ -583,7 +702,7 @@ export async function handleCompletePurchase({
                     const result = await canChildPurchase(
                         productId,
                         childId,
-                        currentOrder,
+                        orderSnapshot,
                         customer.institution_id,
                         product?.name,
                         true // final checkout: undgå dobbelt-tælling af kurven
@@ -615,22 +734,15 @@ export async function handleCompletePurchase({
         const failedCheck = results.find(result => result && result.allowed === false);
         if (failedCheck) {
             const message = failedCheck.message || 'Det her køb er ikke tilladt lige nu. Tal med en voksen i caféen.';
-            // FIX: Kun spil fejlyd når købet faktisk blokeres pga. validering
-            try { 
-                playSound?.('error'); 
-            } catch {}
+            // showCustomAlert viser fejlbeskeden uden at spille lyd
             await showCustomAlert('Køb ikke tilladt', message);
             return;
         }
     } catch (err) {
-        // FIX: Kun spil fejlyd og blokér hvis det er en strukturel fejl der ikke kunne retries
+        // Strukturel fejl ved validering – afviser køb
         console.error('[canChildPurchase] Strukturel fejl ved validering – afviser køb:', err);
-        
-        // Giv bruger feedback (lyd/alert) - kun når købet faktisk blokeres
-        try { 
-            playSound?.('error'); 
-        } catch {}
-        
+
+        // showCustomAlert viser fejlbeskeden uden at spille lyd
         await showCustomAlert(
             'Kan ikke bekræfte regler', 
             'Vi kan ikke bekræfte grænserne lige nu. Prøv igen om 5 sekunder eller tjek din forbindelse.'
@@ -734,7 +846,8 @@ export async function handleCompletePurchase({
             if (wouldSpend > spendingLimit) {
                 const remaining = Math.max(0, spendingLimit - spentToday);
                 const errorMessage = `Du har nået din daglige forbrugsgrænse!<br>Grænse: <strong>${spendingLimit.toFixed(2)} kr.</strong><br>Brugt i dag: <strong>${spentToday.toFixed(2)} kr.</strong><br>Tilbage: <strong>${remaining.toFixed(2)} kr.</strong><br><br>Prøv igen i morgen!`;
-                return showCustomAlert('Køb Afvist', errorMessage);
+                await showCustomAlert('Køb Afvist', errorMessage);
+                return;
             }
         }
     }
@@ -751,21 +864,32 @@ export async function handleCompletePurchase({
             if (newBalance < balanceLimit) {
                 const available = customer.balance - balanceLimit;
                 const errorMessage = `Der er ikke penge nok på kontoen til dette køb!<br>Du har <strong>${available.toFixed(2)} kr.</strong> tilbage, før du rammer ${balanceLimit} kr. grænsen.<br><br>Husk at bede dine forældre pænt om at overføre.`;
-                return showCustomAlert('Køb Afvist', errorMessage);
+                await showCustomAlert('Køb Afvist', errorMessage);
+                return;
             }
         }
     }
 
     // OPTIMERING: Brug helper funktion til at bygge bekræftelsesdialog
-    const confirmationBody = buildConfirmationUI(customer, currentOrder, finalTotal, newBalance);
+    // Flight recorder: log modal build
+    logDebugEvent('confirmation_modal_building', {
+        cartLength: orderSnapshot?.length,
+        cartItemNames: orderSnapshot?.slice(0, 5).map(i => i.name),
+        orderStoreLength: typeof getOrder === 'function' ? getOrder()?.length : 'N/A',
+        finalTotal,
+        newBalance,
+    });
+    const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance);
+    logDebugEvent('confirmation_modal_showing', { bodyLength: confirmationBody?.length });
     const confirmed = await showCustomAlert('Bekræft Køb', confirmationBody, 'confirm');
+    logDebugEvent('confirmation_modal_closed', { confirmed, cartLengthAfter: orderSnapshot?.length });
     if (!confirmed) return;
 
     // OPTIMERING: Brug helper funktion til at sætte knap state
     setButtonLoadingState(completePurchaseBtn, 'loading');
 
     // Grupper items til database payload (bruger shouldBeFreePurchase fra tidligere)
-    const itemCounts = groupOrderItems(currentOrder);
+    const itemCounts = groupOrderItems(orderSnapshot);
     const cartItemsForDB = Object.values(itemCounts).map(item => {
         const effectiveUnitPrice = shouldBeFreePurchase
             ? 0
@@ -817,6 +941,8 @@ export async function handleCompletePurchase({
         }
         // Dispatch event for shift-timer (bytte-timer) salgstælling
         window.dispatchEvent(new CustomEvent('flango:saleCompleted'));
+        // Flight recorder: log purchase success
+        logDebugEvent('purchase_success', { customerId: customer?.id, finalTotal });
         playSound('purchase');
         const appliedBalance = Number.isFinite(newBalance) ? newBalance : customer.balance - finalTotal;
         // 1) Provisional optimistic update for snappy POS feel
@@ -856,6 +982,12 @@ export async function handleCompletePurchase({
                 console.warn('[purchase-flow] Balance confirmation failed; UI remains on provisional', { nonce: balanceUpdateNonce });
             }
         }
+        // Processér event-items EFTER normalvare-køb er gennemført
+        if (eventItems.length > 0) {
+            logDebugEvent('purchase_event_items_after_normal', { eventCount: eventItems.length });
+            await processEventItemsInCheckout(eventItems, customer);
+        }
+
         let nextOrder = clearOrder();
         try {
             // State-consistency: always use spread to avoid sharing mutable array reference
@@ -878,6 +1010,9 @@ export async function handleCompletePurchase({
         }
         // NOTE: Don't hide selected-user-info here - updateSelectedUserInfo() handles display state
         setButtonLoadingState(completePurchaseBtn, 'normal');
+    }
+    } finally {
+        purchaseInFlight = false;
     }
 }
 

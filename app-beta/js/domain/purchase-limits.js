@@ -132,7 +132,7 @@ async function getProductById(productId) {
     // Fallback: hent fra DB (kun hvis ikke i memory)
     const { data, error } = await supabaseClient
         .from('products')
-        .select('id, name, price, max_per_day, unhealthy, is_enabled')
+        .select('id, name, price, max_per_day, unhealthy, is_enabled, is_daily_special')
         .eq('id', productId)
         .single();
     if (error) {
@@ -379,6 +379,60 @@ async function getTodaysQuantityForProduct(childId, productId, institutionId = n
         }
     });
     if (LIMITS_DEBUG) console.log('[limits] getTodaysQuantityForProduct', { childId, productId, productName, todaysQty: total });
+    return total;
+}
+
+/**
+ * Tæl alle "dagens ret"-køb for et barn i dag (på tværs af alle daily special produkter)
+ */
+async function getTodaysDailySpecialQuantity(childId, institutionId) {
+    const { rows, error } = await getTodaysSalesForChild(childId, institutionId);
+    if (error) return 0;
+
+    // Hent alle produkter for at vide hvilke der er daily special
+    const allProducts = typeof window !== 'undefined' && typeof window.__flangoGetAllProducts === 'function'
+        ? window.__flangoGetAllProducts()
+        : null;
+    if (!allProducts || allProducts.length === 0) return 0;
+
+    const dailySpecialIds = new Set(
+        allProducts.filter(p => p.is_daily_special === true).map(p => String(p.id))
+    );
+
+    const allItems = rows.flatMap(row => normalizeItems(row?.items ?? row?.details));
+    let total = 0;
+    allItems.forEach(item => {
+        const pid = extractProductId(item);
+        if (pid && dailySpecialIds.has(String(pid))) {
+            total += extractQuantity(item);
+        }
+    });
+    if (LIMITS_DEBUG) console.log('[limits] getTodaysDailySpecialQuantity', { childId, total });
+    return total;
+}
+
+/**
+ * Tæl daily special produkter i den aktuelle kurv
+ */
+function countDailySpecialInCart(orderItems, isFinalCheck) {
+    if (isFinalCheck || !orderItems || orderItems.length === 0) return 0;
+
+    const allProducts = typeof window !== 'undefined' && typeof window.__flangoGetAllProducts === 'function'
+        ? window.__flangoGetAllProducts()
+        : null;
+    if (!allProducts || allProducts.length === 0) return 0;
+
+    const dailySpecialIds = new Set(
+        allProducts.filter(p => p.is_daily_special === true).map(p => String(p.id))
+    );
+
+    let total = 0;
+    orderItems.forEach(item => {
+        const pid = extractProductId(item);
+        if (pid && dailySpecialIds.has(String(pid))) {
+            total += extractQuantity(item);
+        }
+    });
     return total;
 }
 
@@ -717,9 +771,11 @@ export async function canChildPurchase(productId, childId, orderItems = [], inst
     // 1) Slå produktet op
     const { product, error: productError } = await getProductById(productId);
     if (productError || !product) {
+        logLimitBlock('product_missing','H3',{productFound:!!product,productError:!!productError});
         return { allowed: false, message: 'Produktet findes ikke.' };
     }
     if (product.is_enabled === false) {
+        logLimitBlock('product_disabled','H3',{});
         return { allowed: false, message: 'Produktet er ikke aktivt i øjeblikket.' };
     }
 
@@ -744,16 +800,39 @@ export async function canChildPurchase(productId, childId, orderItems = [], inst
     // 5) Antals-regel
     if (effectiveMaxPerDay !== null && effectiveMaxPerDay !== undefined) {
         if (effectiveMaxPerDay === 0) {
+            logLimitBlock('limit_blocked','H1',{effectiveMaxPerDay,todaysQty,qtyInCartEffective,hasParentLimit:!!parentLimit});
             return { allowed: false, message: 'Denne vare er spærret for dig – det er en aftale med dine forældre.' };
         }
         if (todaysQty + qtyInCartEffective >= effectiveMaxPerDay) {
             if (parentLimit) {
+                logLimitBlock('limit_reached_parent','H1',{effectiveMaxPerDay,todaysQty,qtyInCartEffective,hasParentLimit:true});
                 return { allowed: false, message: 'Du har nået grænsen for, hvor mange du må købe af denne vare i dag. Det er aftalt med dine forældre.' };
             }
+            logLimitBlock('limit_reached_club','H1',{effectiveMaxPerDay,todaysQty,qtyInCartEffective,hasParentLimit:false});
             return {
                 allowed: false,
                 message: `I dag må man højst købe ${effectiveMaxPerDay} stk. af ${productName}. Barnet har allerede nået grænsen.`,
             };
+        }
+    }
+
+    // 5b) Dagens ret samlet grænse (parent_daily_special_limit)
+    if (product.is_daily_special === true) {
+        const { policy: sugarPolicy } = await getChildSugarPolicySnapshot(childId);
+        const maxDailySpecial = sugarPolicy?.maxDailySpecialPerDay ?? null;
+        if (maxDailySpecial !== null && maxDailySpecial !== undefined) {
+            if (maxDailySpecial === 0) {
+                logLimitBlock('daily_special_blocked','H1',{maxDailySpecial});
+                return { allowed: false, message: 'Dagens ret er spærret for dig – det er en aftale med dine forældre.' };
+            }
+            // Tæl alle dagens ret-køb i dag (på tværs af alle daily special produkter)
+            const todaysDailySpecialQty = await getTodaysDailySpecialQuantity(childId, institutionId);
+            const dsInCart = countDailySpecialInCart(orderItems, isFinalCheck);
+            if (LIMITS_DEBUG) console.log('[limits] daily special check', { todaysDailySpecialQty, dsInCart, maxDailySpecial });
+            if (todaysDailySpecialQty + dsInCart >= maxDailySpecial) {
+                logLimitBlock('daily_special_limit_reached','H1',{maxDailySpecial,todaysDailySpecialQty,dsInCart});
+                return { allowed: false, message: `Du har nået grænsen for dagens ret i dag. Dine forældre har sat grænsen til ${maxDailySpecial} stk.` };
+            }
         }
     }
 
@@ -774,6 +853,7 @@ export async function canChildPurchase(productId, childId, orderItems = [], inst
         }
         // Dagligt beløb tjek
         if (todaysTotalSpend + price > safeNumber(dailyBudget, 0)) {
+            logLimitBlock('daily_budget_exceeded','H1',{dailyBudget,todaysTotalSpend,price});
             return { allowed: false, message: 'Du har nået dit daglige max-beløb i caféen. Tal med en voksen, hvis der er noget, du er i tvivl om.' };
         }
     }

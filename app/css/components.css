@@ -154,6 +154,42 @@ body[data-theme="pastel-pop"] .toolbar-gear-menu {
     text-align: left;
     cursor: pointer;
 }
+.settings-modal-content .settings-item-btn:has(.settings-item-icon) {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.settings-modal-content .settings-item-btn .settings-item-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.04);
+}
+.settings-modal-content .settings-item-btn .settings-item-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.settings-modal-content .settings-item-btn .settings-item-icon .settings-item-icon-emoji {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+.settings-modal-content .settings-item-btn .settings-item-text {
+    flex: 1;
+    min-width: 0;
+}
+.settings-modal-content .settings-item-btn .settings-item-text .settings-item-desc {
+    font-size: 12px;
+    margin-top: 2px;
+    font-weight: normal;
+    opacity: 0.85;
+}
 
 .toggle-row {
     display: flex;
@@ -265,7 +301,7 @@ body[data-theme="pastel-pop"] .settings-modal {
 }
 
 .modal.admin-mode .modal-entry-info {
-    grid-template-columns: 2fr 1fr 1fr 1.2fr;
+    grid-template-columns: 2fr 1fr 0.7fr 1fr 1.2fr;
 }
 
 .modal-product-list .action-icons {
@@ -363,7 +399,8 @@ body[data-theme="pastel-pop"] .settings-modal {
     color: #4b5563;
 }
 
-.edit-user-form input {
+.edit-user-form input,
+.edit-user-form select {
     padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid #d1d5db;
@@ -420,7 +457,7 @@ body[data-theme="pastel-pop"] .settings-modal {
 }
 
 .modal.admin-mode .user-list-header {
-    grid-template-columns: 2fr 1fr 1fr 1.2fr;
+    grid-template-columns: 2fr 1fr 0.7fr 1fr 1.2fr;
 }
 
 .sort-header {
@@ -438,8 +475,19 @@ body[data-theme="pastel-pop"] .settings-modal {
     text-align: center;
 }
 
-.user-list-header > div:nth-child(3),
+.user-list-header > div:nth-child(3) {
+    text-align: right;
+}
+
 .user-list-header > div.static-header {
+    text-align: right;
+}
+
+/* Admin mode: 5 columns (Navn, Nummer, Klasse, Saldo, Handlinger) */
+.modal.admin-mode .user-list-header > div:nth-child(3) {
+    text-align: center;
+}
+.modal.admin-mode .user-list-header > div:nth-child(4) {
     text-align: right;
 }
 
@@ -489,6 +537,12 @@ body[data-theme="pastel-pop"] .settings-modal {
     text-align: center;
     color: #666;
     font-size: 0.9em;
+}
+
+.user-list-grade {
+    text-align: center;
+    color: #666;
+    font-size: 0.85em;
 }
 
 .user-list-balance {

@@ -483,6 +483,24 @@ body[data-theme="pos-pro"] .settings-item-btn {
     font-weight: 600;
     color: var(--pos-text-primary);
 }
+body[data-theme="pos-pro"] .settings-item-btn:has(.settings-item-icon) {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+body[data-theme="pos-pro"] .settings-item-btn .settings-item-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(99, 102, 241, 0.1);
+}
+body[data-theme="pos-pro"] .settings-item-btn .settings-item-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
 
 body[data-theme="pos-pro"] .settings-item-btn:hover {
     background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);

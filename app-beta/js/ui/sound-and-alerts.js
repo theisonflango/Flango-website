@@ -11,6 +11,7 @@ import {
     setSoundFile,
     getAllSoundSettings
 } from '../core/sound-manager.js';
+import { logDebugEvent } from '../core/debug-flight-recorder.js';
 
 const customAlertModal = document.getElementById('custom-alert-modal');
 const customAlertContent = document.getElementById('custom-alert-content');
@@ -20,6 +21,25 @@ const customAlertOk = document.getElementById('custom-alert-ok');
 const customAlertCancel = document.getElementById('custom-alert-cancel');
 
 export function playSound(soundName) {
+    // Flight recorder: log sound plays (only important ones to avoid noise)
+    if (soundName === 'error' || soundName === 'purchase' || soundName === 'success') {
+        // Get a short caller hint without expensive stack trace
+        let callerHint = 'unknown';
+        try {
+            const stack = new Error().stack;
+            const lines = stack?.split('\n') || [];
+            // Find first non-playSound caller
+            for (let i = 2; i < Math.min(5, lines.length); i++) {
+                const line = lines[i];
+                if (line && !line.includes('playSound')) {
+                    const match = line.match(/at\s+(\S+)/);
+                    callerHint = match ? match[1].substring(0, 50) : line.substring(0, 50);
+                    break;
+                }
+            }
+        } catch (e) { /* ignore */ }
+        logDebugEvent('sound_played', { soundName, caller: callerHint });
+    }
     // OPTIMERING: Zero-lag volume check (kun in-memory access)
     const effectiveVolume = getEffectiveVolume(soundName);
     if (effectiveVolume === null) {
@@ -92,6 +112,7 @@ export function showCustomAlert(title, body, config = 'alert') {
     };
 
     return new Promise((resolve) => {
+        let confirmSource = null; // 'enter' | 'click'
         const cleanup = (result) => {
             customAlertModal.classList.remove('dropdown-active');
             customAlertModal.style.display = 'none';
@@ -101,26 +122,48 @@ export function showCustomAlert(title, body, config = 'alert') {
             }
             customAlertOk.onclick = null;
             if (customAlertCancel) customAlertCancel.onclick = null;
-            document.removeEventListener('keydown', handleKeydown);
+            document.removeEventListener('keydown', handleKeydown, true);
             resolve(result);
         };
 
         const handleKeydown = (event) => {
+            // Flight recorder: log modal keydown (only for confirm/cancel keys)
+            if (event.key === confirmKey || event.key === cancelKey || event.key === 'Escape') {
+                logDebugEvent('modal_keydown', {
+                    key: event.key,
+                    confirmKey,
+                    title: title?.substring(0, 30),
+                    action: event.key === confirmKey ? 'confirm' : 'cancel',
+                });
+            }
             if (event.key === confirmKey) {
                 event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                confirmSource = 'enter';
                 customAlertOk.click();
             } else if (event.key === cancelKey || event.key === 'Escape') {
                 if (shouldListenForCancel()) {
                     event.preventDefault();
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
                     customAlertCancel.click();
                 }
             }
         };
 
-        document.addEventListener('keydown', handleKeydown);
-        customAlertOk.onclick = () => cleanup(true);
+        document.addEventListener('keydown', handleKeydown, true);
+        customAlertOk.onclick = () => {
+            const source = confirmSource || 'click';
+            logDebugEvent('modal_confirmed', { source, title: title?.substring(0, 30) });
+            confirmSource = null;
+            cleanup(true);
+        };
         if (customAlertCancel) {
-            customAlertCancel.onclick = () => cleanup(false);
+            customAlertCancel.onclick = () => {
+                logDebugEvent('modal_cancelled', { title: title?.substring(0, 30) });
+                cleanup(false);
+            };
         }
     });
 }

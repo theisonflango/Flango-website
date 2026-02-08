@@ -2,6 +2,7 @@
 import { getProductIconInfo, PRODUCT_ICON_CLASS_MAP } from '../domain/products-and-cart.js';
 import { getOrder } from '../domain/order-store.js';
 import { refetchAllProducts } from '../core/data-refetch.js';
+import { runWithAuthRetry } from '../core/auth-retry.js';
 import {
     STANDARD_ICONS,
     uploadProductIcon,
@@ -50,8 +51,9 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
     if (!productsContainer) return;
 
     productsContainer.innerHTML = '';
+    // Vis placeholders altid
     const visibleProducts = allProducts
-        .filter(p => p.is_visible !== false && p.is_enabled !== false)
+        .filter(p => (p?.is_placeholder === true) || (p.is_visible !== false && p.is_enabled !== false))
         .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999)); // Eksplicit sortering efter sort_order
 
     // Pre-beregn refill-berettigelse hvis der er en kunde
@@ -66,6 +68,12 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
 
         // Batch alle refill checks parallelt for performance
         const refillChecks = visibleProducts.map(async (product) => {
+            if (product?.is_placeholder) {
+                return {
+                    productId: product.placeholder_id || product.id || 'placeholder',
+                    effective: { price: 0, name: product.name || 'Tom plads', isRefill: false }
+                };
+            }
             try {
                 if (PRODUCT_MANAGEMENT_DEBUG) console.log('[renderProductsGrid] Tjekker refill for produkt:', product.name, 'refill_enabled:', product.refill_enabled);
                 const effective = await getEffectiveProductForChild(product, childContext);
@@ -92,11 +100,43 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
         if (PRODUCT_MANAGEMENT_DEBUG) console.log('[renderProductsGrid] Ingen kunde valgt, springer refill over');
     }
 
+    const isReorderMode = document.body.classList.contains('reorder-mode');
     visibleProducts.forEach((product, index) => {
+        const isPlaceholder = product?.is_placeholder === true;
         const productBtn = document.createElement('button');
-        productBtn.dataset.productId = String(product.id);
+        if (!isPlaceholder) {
+            productBtn.dataset.productId = String(product.id);
+        } else {
+            const placeholderId = product?.placeholder_id || product?.id || `placeholder-${index}`;
+            productBtn.dataset.placeholderId = String(placeholderId);
+        }
         if (PRODUCT_MANAGEMENT_DEBUG) console.log(`[renderProductsGrid] Created button for product ${product.name} (id: ${product.id}), dataset.productId = "${productBtn.dataset.productId}"`);
         const productNameLower = product.name ? product.name.trim().toLowerCase() : '';
+
+        if (isPlaceholder) {
+            productBtn.className = 'product-btn product-placeholder';
+            productBtn.innerHTML = `
+                <div class="product-btn-inner placeholder-inner">
+                    <div class="product-info-box">
+                    </div>
+                    <div class="placeholder-actions">
+                        <button type="button" class="placeholder-action-btn" data-placeholder-action="select" data-placeholder-id="${productBtn.dataset.placeholderId}">Vælg Produkt</button>
+                        <button type="button" class="placeholder-action-btn" data-placeholder-action="create" data-placeholder-id="${productBtn.dataset.placeholderId}">Opret Nyt Produkt</button>
+                    </div>
+                </div>
+                <div class="product-remove-overlay" data-placeholder-id="${productBtn.dataset.placeholderId}">
+                    <span class="product-remove-x">✕</span>
+                </div>`;
+            productBtn.addEventListener('click', (evt) => {
+                // Tillad remove-overlay clicks at gå gennem
+                if (evt.target.closest('.product-remove-overlay')) return;
+                if (evt.target.closest('.placeholder-action-btn')) return;
+                evt.preventDefault();
+                evt.stopPropagation();
+            });
+            productsContainer.appendChild(productBtn);
+            return;
+        }
 
         // Hent effektive værdier (med refill hvis berettiget)
         const effectiveData = effectiveProducts.get(String(product.id));
@@ -149,13 +189,28 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
             }
         }
 
+        const priceInWholeKr = Math.round(Number(displayPrice ?? 0));
+        const nameMarkup = isReorderMode
+            ? `<span class="product-name-wrapper">
+                <span class="product-edit-icon">✎</span>
+                <span class="product-name product-edit-name" contenteditable="true" data-product-id="${product.id}">${displayName || ''}</span>
+               </span>`
+            : `<span class="product-name">${displayName}</span>`;
+        const priceMarkup = isReorderMode
+            ? `<span class="product-price${isRefill ? ' refill-price' : ''} product-edit-price-wrap">
+                    <span class="product-edit-icon">✎</span>
+                    <input type="number" class="product-edit-price-input" data-product-id="${product.id}" value="${priceInWholeKr}" min="0" step="1" inputmode="numeric">
+                    <span class="product-edit-price-currency">DKK</span>
+               </span>`
+            : `<span class="product-price${isRefill ? ' refill-price' : ''}">${displayPrice.toFixed(2)} DKK</span>`;
+
         productBtn.innerHTML = `
             <div class="product-btn-inner">
                 ${timerMarkup}
                 ${visualMarkup}
                 <div class="product-info-box">
-                    <span class="product-name">${displayName}</span>
-                    <span class="product-price${isRefill ? ' refill-price' : ''}">${displayPrice.toFixed(2)} DKK</span>
+                    ${nameMarkup}
+                    ${priceMarkup}
                 </div>
                 ${badgeMarkup}
                 <div class="product-quantity-badge"><span class="cart-icon">🛒</span><span class="cart-qty">${qtyInCart}</span></div>
@@ -163,18 +218,59 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
             <div class="avatar-lock-overlay">
                 <img src="Icons/webp/Function/Lock.webp" alt="locked">
             </div>
-            <div class="product-limit-counter" aria-hidden="true"></div>`;
+            <div class="product-limit-counter" aria-hidden="true"></div>
+            <div class="product-remove-overlay" data-product-id="${product.id}">
+                <span class="product-remove-x">✕</span>
+            </div>`;
 
         if (typeof onProductClick === 'function') {
-            productBtn.addEventListener('click', (evt) => {
-                // Hvis det er et refill-køb, skal vi sende den effektive data med
-                const productToAdd = isRefill && effectiveData ? {
-                    ...product,
-                    _effectivePrice: displayPrice,
-                    _effectiveName: displayName,
-                    _isRefill: true
-                } : product;
-                onProductClick(productToAdd, evt);
+            // Debounce state per produkt-knap for at forhindre dobbeltklik og repeat-klik
+            let isProcessing = false;
+            let lastClickTime = 0;
+            const CLICK_DEBOUNCE_MS = 300; // Minimum tid mellem klik (300ms = ~3 klik/sekund max)
+            
+            productBtn.addEventListener('click', async (evt) => {
+                if (evt.target.closest('.product-remove-overlay')) {
+                    evt.preventDefault();
+                    return;
+                }
+                
+                // Forhindre dobbeltklik og repeat-klik
+                const now = Date.now();
+                const timeSinceLastClick = now - lastClickTime;
+                
+                if (isProcessing) {
+                    evt.preventDefault();
+                    evt.stopPropagation();
+                    return;
+                }
+                
+                if (timeSinceLastClick < CLICK_DEBOUNCE_MS) {
+                    evt.preventDefault();
+                    evt.stopPropagation();
+                    return;
+                }
+                
+                // Marker som processing og opdater tid
+                isProcessing = true;
+                lastClickTime = now;
+                
+                try {
+                    // Hvis det er et refill-køb, skal vi sende den effektive data med
+                    const productToAdd = isRefill && effectiveData ? {
+                        ...product,
+                        _effectivePrice: displayPrice,
+                        _effectiveName: displayName,
+                        _isRefill: true
+                    } : product;
+                    
+                    await onProductClick(productToAdd, evt);
+                } finally {
+                    // Reset processing flag efter en kort forsinkelse
+                    setTimeout(() => {
+                        isProcessing = false;
+                    }, CLICK_DEBOUNCE_MS);
+                }
             });
         }
 
@@ -625,6 +721,9 @@ export function createProductManagementUI(options = {}) {
 
     modalProductList.addEventListener('click', handleProductListClick);
 
+    // Eksponér showAddEditProductModal til window så andre moduler kan åbne den
+    window.__flangoOpenEditProductModal = (product) => showAddEditProductModal(product);
+
     async function showAddEditProductModal(product = null) {
         const isEditing = product !== null;
         const modal = document.getElementById('add-edit-product-modal');
@@ -655,6 +754,15 @@ export function createProductManagementUI(options = {}) {
             ? product.refill_max_refills
             : 0;
         const existingUnhealthy = isEditing && product?.unhealthy === true;
+        const existingBulkDiscountEnabled = isEditing && product?.bulk_discount_enabled === true;
+        const existingBulkDiscountQty = isEditing && Number.isFinite(product?.bulk_discount_qty)
+            ? product.bulk_discount_qty
+            : '';
+        const existingBulkDiscountPrice = isEditing && Number.isFinite(product?.bulk_discount_price_ore)
+            ? (product.bulk_discount_price_ore / 100)
+            : '';
+        const existingDailySpecial = isEditing && product?.is_daily_special === true;
+        const existingCoreAssortment = isEditing && product?.is_core_assortment === true;
 
         // Load parent portal settings and sugar policy to determine which fields to show
         const { data: portalSettings } = await supabaseClient
@@ -700,6 +808,25 @@ export function createProductManagementUI(options = {}) {
                 </div>` : ''}
                 <div class="refill-row">
                     <label class="refill-option">
+                        <input type="checkbox" id="product-bulk-discount-enabled" ${existingBulkDiscountEnabled ? 'checked' : ''}>
+                        Aktiver mængderabat
+                    </label>
+                </div>
+                <div id="bulk-discount-fields" class="refill-fields ${existingBulkDiscountEnabled ? '' : 'hidden'}">
+                    <div class="refill-field">
+                        <label for="product-bulk-discount-qty">Antal (fx 2)</label>
+                        <input type="number" id="product-bulk-discount-qty" min="2" step="1" placeholder="Antal (fx 2)" value="${existingBulkDiscountQty}">
+                    </div>
+                    <div class="refill-field">
+                        <label for="product-bulk-discount-price">Pris for antal (fx 10,00)</label>
+                        <input type="number" id="product-bulk-discount-price" class="refill-price-input" min="0" step="0.01" placeholder="Pris for antal (fx 10,00)" value="${existingBulkDiscountPrice === '' ? '' : existingBulkDiscountPrice}">
+                    </div>
+                    <div class="refill-help">Gælder kun når de købes samtidigt i samme ordre.</div>
+                    <div id="bulk-discount-preview" class="refill-help"></div>
+                    <div id="bulk-discount-warning" class="refill-help"></div>
+                </div>
+                <div class="refill-row">
+                    <label class="refill-option">
                         <input type="checkbox" id="product-refill-enabled" ${existingRefillEnabled ? 'checked' : ''}>
                         Aktiver rabat ved Refill/Genopfyldning
                     </label>
@@ -722,6 +849,18 @@ export function createProductManagementUI(options = {}) {
                         Vegetarisk
                     </label>
                 </div>` : ''}
+                <div class="refill-row">
+                    <label class="refill-option">
+                        <input type="checkbox" id="product-is-daily-special" ${existingDailySpecial ? 'checked' : ''}>
+                        Dagens ret
+                    </label>
+                </div>
+                <div class="refill-row">
+                    <label class="refill-option">
+                        <input type="checkbox" id="product-is-core-assortment" ${existingCoreAssortment ? 'checked' : ''}>
+                        Fast sortiment
+                    </label>
+                </div>
                 <div id="refill-fields" class="refill-fields ${existingRefillEnabled ? '' : 'hidden'}">
                     <div class="refill-field">
                         <label for="product-refill-price-input" class="refill-label" data-label-base="Pris for genopfyldning">Pris for genopfyldning (kr)</label>
@@ -1120,14 +1259,101 @@ export function createProductManagementUI(options = {}) {
 
         // Initial preview update
         updateIconPreview();
+        const bulkDiscountEnabledCheckbox = document.getElementById('product-bulk-discount-enabled');
+        const bulkDiscountFields = document.getElementById('bulk-discount-fields');
+        const bulkDiscountQtyInput = document.getElementById('product-bulk-discount-qty');
+        const bulkDiscountPriceInput = document.getElementById('product-bulk-discount-price');
+        const bulkDiscountPreview = document.getElementById('bulk-discount-preview');
+        const bulkDiscountWarning = document.getElementById('bulk-discount-warning');
+        const priceInput = document.getElementById('product-price-input');
         const refillEnabledCheckbox = document.getElementById('product-refill-enabled');
         const unhealthyCheckbox = document.getElementById('product-unhealthy-enabled');
         const containsPorkCheckbox = document.getElementById('product-contains-pork');
         const isVegetarianCheckbox = document.getElementById('product-is-vegetarian');
+        const isDailySpecialCheckbox = document.getElementById('product-is-daily-special');
+        const isCoreAssortmentCheckbox = document.getElementById('product-is-core-assortment');
         const refillFields = document.getElementById('refill-fields');
         const refillPriceInput = document.getElementById('product-refill-price-input');
         const refillTimeLimitInput = document.getElementById('product-refill-time-limit-input');
         const refillMaxInput = document.getElementById('product-refill-max-input');
+
+        const parseMoneyToOre = (raw) => {
+            if (raw === null || raw === undefined || raw === '') return null;
+            const num = Number(String(raw).replace(',', '.'));
+            if (!Number.isFinite(num) || num <= 0) return null;
+            return Math.round(num * 100);
+        };
+
+        const parseBulkQty = (raw) => {
+            const num = Number(raw);
+            if (!Number.isFinite(num) || !Number.isInteger(num) || num < 2) return null;
+            return num;
+        };
+
+        const formatOreToDkk = (ore) => {
+            const num = Number(ore);
+            if (!Number.isFinite(num)) return '';
+            return (num / 100).toFixed(2);
+        };
+
+        const setBulkPreview = ({ qty, priceOre, unitPriceOre }) => {
+            if (!bulkDiscountPreview) return;
+            if (!qty || !priceOre) {
+                bulkDiscountPreview.textContent = '';
+                return;
+            }
+            const example = `Eksempel: ${qty} for ${formatOreToDkk(priceOre)}`;
+            let savings = '';
+            if (Number.isFinite(unitPriceOre)) {
+                const normalTotal = qty * unitPriceOre;
+                const savedOre = normalTotal - priceOre;
+                if (savedOre > 0) {
+                    savings = ` • Spar ${formatOreToDkk(savedOre)}`;
+                }
+            }
+            bulkDiscountPreview.textContent = `${example}${savings}`;
+        };
+
+        const syncBulkDiscountState = () => {
+            if (!bulkDiscountEnabledCheckbox) return { valid: true };
+            const enabled = bulkDiscountEnabledCheckbox.checked;
+            if (bulkDiscountFields) {
+                bulkDiscountFields.classList.toggle('hidden', !enabled);
+            }
+            if (bulkDiscountWarning) {
+                bulkDiscountWarning.textContent = '';
+            }
+            if (!enabled) {
+                setBulkPreview({ qty: null, priceOre: null, unitPriceOre: null });
+                if (saveBtn) saveBtn.disabled = false;
+                return { valid: true, enabled: false };
+            }
+
+            const qty = parseBulkQty(bulkDiscountQtyInput?.value);
+            const priceOre = parseMoneyToOre(bulkDiscountPriceInput?.value);
+            const unitPriceOre = parseMoneyToOre(priceInput?.value);
+
+            if (!qty || !priceOre) {
+                if (bulkDiscountWarning) {
+                    bulkDiscountWarning.textContent = 'Udfyld både antal og pris (antal min. 2).';
+                }
+                if (saveBtn) saveBtn.disabled = true;
+                setBulkPreview({ qty, priceOre, unitPriceOre });
+                return { valid: false, enabled: true };
+            }
+
+            if (Number.isFinite(unitPriceOre) && priceOre >= qty * unitPriceOre) {
+                if (bulkDiscountWarning) {
+                    bulkDiscountWarning.textContent = 'Giver ingen rabat ift. normalpris';
+                }
+            } else if (bulkDiscountWarning) {
+                bulkDiscountWarning.textContent = '';
+            }
+
+            if (saveBtn) saveBtn.disabled = false;
+            setBulkPreview({ qty, priceOre, unitPriceOre });
+            return { valid: true, enabled: true, qty, priceOre };
+        };
 
         const updateLabelText = (inputEl, zeroText) => {
             if (!inputEl) return;
@@ -1167,6 +1393,14 @@ export function createProductManagementUI(options = {}) {
             updateLabelText(refillTimeLimitInput, 'Resten af dagen');
             updateLabelText(refillMaxInput, 'Ubegrænset');
         };
+        if (bulkDiscountEnabledCheckbox) {
+            syncBulkDiscountState();
+            bulkDiscountEnabledCheckbox.addEventListener('change', syncBulkDiscountState);
+        }
+        [bulkDiscountQtyInput, bulkDiscountPriceInput, priceInput].forEach((el) => {
+            if (!el) return;
+            el.addEventListener('input', syncBulkDiscountState);
+        });
         if (refillEnabledCheckbox) {
             if (!existingRefillEnabled) {
                 syncRefillState();
@@ -1185,6 +1419,9 @@ export function createProductManagementUI(options = {}) {
         });
         modal.style.display = 'flex';
         saveBtn.onclick = async () => {
+            // KRITISK: Prevent double-click under async operation
+            if (saveBtn.disabled) return;
+
             const name = document.getElementById('product-name-input').value;
             const priceStr = document.getElementById('product-price-input').value;
             const maxPerDayStr = document.getElementById('product-max-per-day-input').value;
@@ -1199,10 +1436,26 @@ export function createProductManagementUI(options = {}) {
             if (maxPerDay !== null && (!Number.isFinite(maxPerDay) || maxPerDay < 0)) {
                 return showCustomAlert('Fejl', 'Købsgrænse skal være et ikke-negativt tal eller tom for ubegrænset.');
             }
+            const bulkEnabled = !!(bulkDiscountEnabledCheckbox?.checked);
+            let bulkDiscountQty = null;
+            let bulkDiscountPriceOre = null;
+            if (bulkEnabled) {
+                bulkDiscountQty = parseBulkQty(bulkDiscountQtyInput?.value);
+                bulkDiscountPriceOre = parseMoneyToOre(bulkDiscountPriceInput?.value);
+                if (!bulkDiscountQty || !bulkDiscountPriceOre) {
+                    console.warn('[bulk-discount] Ugyldig mængderabat-konfiguration', {
+                        qty: bulkDiscountQtyInput?.value,
+                        price: bulkDiscountPriceInput?.value,
+                    });
+                    return showCustomAlert('Fejl', 'Udfyld gyldigt antal (min. 2) og pris for mængderabat.');
+                }
+            }
             const refillEnabled = !!(refillEnabledCheckbox?.checked);
             const unhealthy = !!(unhealthyCheckbox?.checked);
             const containsPork = !!(containsPorkCheckbox?.checked);
             const isVegetarian = !!(isVegetarianCheckbox?.checked);
+            const isDailySpecial = !!(isDailySpecialCheckbox?.checked);
+            const isCoreAssortment = !!(isCoreAssortmentCheckbox?.checked);
             const parseNumber = (el, fallback = 0) => {
                 if (!el) return fallback;
                 const num = Number(el.value);
@@ -1211,47 +1464,71 @@ export function createProductManagementUI(options = {}) {
             const refillPrice = parseNumber(refillPriceInput, 0);
             const refillTimeLimitMinutes = parseNumber(refillTimeLimitInput, 0);
             const refillMaxRefills = parseNumber(refillMaxInput, 0);
-            if (isEditing) {
-                await handleEditProduct(product.id, {
-                    name,
-                    priceStr,
-                    emoji: emoji,
-                    maxPerDay,
-                    allergens: allergenSelections,
-                    institutionId,
-                    unhealthy,
-                    containsPork,
-                    isVegetarian,
-                    refillEnabled,
-                    refillPrice,
-                    refillTimeLimitMinutes,
-                    refillMaxRefills,
-                });
-            } else {
-                await handleAddProduct({
-                    name,
-                    priceStr,
-                    emoji: emoji,
-                    maxPerDay,
-                    allergens: allergenSelections,
-                    institutionId,
-                    unhealthy,
-                    containsPork,
-                    isVegetarian,
-                    refillEnabled,
-                    refillPrice,
-                    refillTimeLimitMinutes,
-                    refillMaxRefills,
-                });
+
+            // Disable og vis loading state
+            saveBtn.disabled = true;
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = 'Gemmer...';
+
+            try {
+                if (isEditing) {
+                    await handleEditProduct(product.id, {
+                        name,
+                        priceStr,
+                        emoji: emoji,
+                        maxPerDay,
+                        allergens: allergenSelections,
+                        institutionId,
+                        unhealthy,
+                        containsPork,
+                        isVegetarian,
+                        isDailySpecial,
+                        isCoreAssortment,
+                        bulkDiscountEnabled: bulkEnabled,
+                        bulkDiscountQty,
+                        bulkDiscountPriceOre,
+                        refillEnabled,
+                        refillPrice,
+                        refillTimeLimitMinutes,
+                        refillMaxRefills,
+                    });
+                } else {
+                    await handleAddProduct({
+                        name,
+                        priceStr,
+                        emoji: emoji,
+                        maxPerDay,
+                        allergens: allergenSelections,
+                        institutionId,
+                        unhealthy,
+                        containsPork,
+                        isVegetarian,
+                        isDailySpecial,
+                        isCoreAssortment,
+                        bulkDiscountEnabled: bulkEnabled,
+                        bulkDiscountQty,
+                        bulkDiscountPriceOre,
+                        refillEnabled,
+                        refillPrice,
+                        refillTimeLimitMinutes,
+                        refillMaxRefills,
+                    });
+                }
+                closeEditProductModal();
+            } catch (err) {
+                console.error('[save product] Error:', err);
+                showAlert?.('Fejl ved gemning: ' + (err.message || 'Ukendt fejl'));
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = originalText;
             }
-            closeEditProductModal();
         };
         const closeBtn = modal.querySelector('.close-btn');
         const closeEditProductModal = () => {
             modal.style.display = 'none';
             saveBtn.onclick = null;
             // OPTIMERING: Cleanup event listener for at forhindre memory leaks
-            customIconGrid.removeEventListener('click', handleCustomIconClick);
+            standardIconGrid?.removeEventListener('click', handleStandardIconClick);
             if (returnToProductModal) {
                 renderProductsInModalFn?.(getProducts(), modalProductList);
                 productModal.style.display = 'flex';
@@ -1288,6 +1565,11 @@ export function createProductManagementUI(options = {}) {
             unhealthy = false,
             containsPork = false,
             isVegetarian = false,
+            isDailySpecial = false,
+            isCoreAssortment = false,
+            bulkDiscountEnabled = false,
+            bulkDiscountQty = null,
+            bulkDiscountPriceOre = null,
             refillEnabled = false,
             refillPrice = null,
             refillTimeLimitMinutes = null,
@@ -1297,7 +1579,9 @@ export function createProductManagementUI(options = {}) {
         if (isNaN(price)) return showAlert("Ugyldig pris.");
         const products = getProducts();
         const refillEnabledValue = refillEnabled === true;
-        const { data, error } = await supabaseClient.from("products").insert([{
+        const { data, error } = await runWithAuthRetry(
+            'addProduct',
+            () => supabaseClient.from("products").insert([{
             name,
             price,
             emoji,
@@ -1305,6 +1589,11 @@ export function createProductManagementUI(options = {}) {
             unhealthy,
             contains_pork: containsPork,
             is_vegetarian: isVegetarian,
+            is_daily_special: isDailySpecial,
+            is_core_assortment: isCoreAssortment,
+                bulk_discount_enabled: bulkDiscountEnabled === true,
+                bulk_discount_qty: bulkDiscountEnabled ? bulkDiscountQty : null,
+                bulk_discount_price_ore: bulkDiscountEnabled ? bulkDiscountPriceOre : null,
             refill_enabled: refillEnabledValue,
             refill_price: refillEnabledValue ? refillPrice : null,
             refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
@@ -1313,11 +1602,21 @@ export function createProductManagementUI(options = {}) {
             sort_order: products.length,
             is_visible: true,  // FIX: Sæt is_visible til true som standard, så nye produkter er synlige
             is_enabled: true   // FIX: Sæt is_enabled til true som standard, så nye produkter er aktive
-        }]).select().single();
+            }]).select().single()
+        );
         if (error) return showAlert(`Fejl: ${error.message}`);
         await saveProductAllergens(data.id, allergens);
         if (institutionId) {
             await saveProductLimit(institutionId, data.id, (maxPerDay === null ? null : Math.floor(maxPerDay)));
+        }
+
+        // Hook: Hvis vi er i placeholder-flow, erstat placeholder med nyt produkt
+        if (typeof window !== 'undefined' && typeof window.__flangoAssignPlaceholderProduct === 'function') {
+            try {
+                await window.__flangoAssignPlaceholderProduct(data);
+            } catch (err) {
+                console.warn('[placeholder] Kunne ikke tilknytte nyt produkt til placeholder:', err);
+            }
         }
 
         // REFETCH PATTERN: Hent fresh data fra database for at sikre UI er synkroniseret
@@ -1341,6 +1640,11 @@ export function createProductManagementUI(options = {}) {
             unhealthy = false,
             containsPork = false,
             isVegetarian = false,
+            isDailySpecial = false,
+            isCoreAssortment = false,
+            bulkDiscountEnabled = false,
+            bulkDiscountQty = null,
+            bulkDiscountPriceOre = null,
             refillEnabled = false,
             refillPrice = null,
             refillTimeLimitMinutes = null,
@@ -1352,7 +1656,9 @@ export function createProductManagementUI(options = {}) {
         const price = parseFloat(priceStr.replace(",", "."));
         if (isNaN(price)) return showAlert("Ugyldig pris.");
         const refillEnabledValue = refillEnabled === true;
-        const { error } = await supabaseClient.from("products").update({
+        const { error } = await runWithAuthRetry(
+            'editProduct',
+            () => supabaseClient.from("products").update({
             name,
             price,
             emoji,
@@ -1360,11 +1666,17 @@ export function createProductManagementUI(options = {}) {
             unhealthy,
             contains_pork: containsPork,
             is_vegetarian: isVegetarian,
+            is_daily_special: isDailySpecial,
+            is_core_assortment: isCoreAssortment,
+                bulk_discount_enabled: bulkDiscountEnabled === true,
+                bulk_discount_qty: bulkDiscountEnabled ? bulkDiscountQty : null,
+                bulk_discount_price_ore: bulkDiscountEnabled ? bulkDiscountPriceOre : null,
             refill_enabled: refillEnabledValue,
             refill_price: refillEnabledValue ? refillPrice : null,
             refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
             refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
-        }).eq("id", productId);
+            }).eq("id", productId)
+        );
         if (error) return showAlert(`Fejl: ${error.message}`);
         Object.assign(product, {
             name,
@@ -1372,6 +1684,13 @@ export function createProductManagementUI(options = {}) {
             emoji,
             max_per_day: maxPerDay,
             unhealthy,
+            contains_pork: containsPork,
+            is_vegetarian: isVegetarian,
+            is_daily_special: isDailySpecial,
+            is_core_assortment: isCoreAssortment,
+            bulk_discount_enabled: bulkDiscountEnabled === true,
+            bulk_discount_qty: bulkDiscountEnabled ? bulkDiscountQty : null,
+            bulk_discount_price_ore: bulkDiscountEnabled ? bulkDiscountPriceOre : null,
             refill_enabled: refillEnabledValue,
             refill_price: refillEnabledValue ? refillPrice : null,
             refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
@@ -1397,10 +1716,13 @@ export function createProductManagementUI(options = {}) {
         if (!product) return;
         const currentlyEnabled = product.is_enabled !== false;
         const nextEnabled = !currentlyEnabled;
-        const { error } = await supabaseClient
-            .from("products")
-            .update({ is_enabled: nextEnabled })
-            .eq("id", productId);
+        const { error } = await runWithAuthRetry(
+            'toggleProductStatus',
+            () => supabaseClient
+                .from("products")
+                .update({ is_enabled: nextEnabled })
+                .eq("id", productId)
+        );
         if (error) return showAlert(`Fejl: ${error.message}`);
 
         // REFETCH PATTERN: Hent fresh data fra database for at sikre UI er synkroniseret
@@ -1418,7 +1740,10 @@ export function createProductManagementUI(options = {}) {
         if (!product) return;
         const confirmed = await showCustomAlert('Bekræft Sletning', `Er du sikker på, du vil slette <strong>${product.name}</strong> permanent?`, 'confirm');
         if (!confirmed) return;
-        const { error } = await supabaseClient.from("products").delete().eq("id", productId);
+        const { error } = await runWithAuthRetry(
+            'deleteProduct',
+            () => supabaseClient.from("products").delete().eq("id", productId)
+        );
         if (error) return showAlert(`Fejl: ${error.message}`);
 
         // REFETCH PATTERN: Hent fresh data fra database for at sikre UI er synkroniseret

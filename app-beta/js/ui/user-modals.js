@@ -112,6 +112,19 @@ export function showAddUserModal(options = {}) {
             ` : `
                 <input type="text" id="user-number-input" placeholder="Brugernummer (til børnelogin)">
                 <input type="text" id="user-pin-input" placeholder="4-cifret PIN (til børnelogin)">
+                <select id="user-grade-level-input" style="font-size: 16px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;">
+                    <option value="">Klasse (valgfrit)</option>
+                    <option value="0">0. klasse</option>
+                    <option value="1">1. klasse</option>
+                    <option value="2">2. klasse</option>
+                    <option value="3">3. klasse</option>
+                    <option value="4">4. klasse</option>
+                    <option value="5">5. klasse</option>
+                    <option value="6">6. klasse</option>
+                    <option value="7">7. klasse</option>
+                    <option value="8">8. klasse</option>
+                    <option value="9">9. klasse</option>
+                </select>
                 <input type="number" id="user-balance-input" placeholder="Startsaldo (f.eks. 50.00)" step="0.01" value="0.00">
             `}
         `;
@@ -122,6 +135,7 @@ export function showAddUserModal(options = {}) {
     const passwordInput = document.getElementById('user-password-input');
     const numberInput = document.getElementById('user-number-input');
     const pinInput = document.getElementById('user-pin-input');
+    const gradeLevelInput = document.getElementById('user-grade-level-input');
     const balanceInput = document.getElementById('user-balance-input');
 
     return new Promise((resolve) => {
@@ -135,6 +149,7 @@ export function showAddUserModal(options = {}) {
                 return;
             }
 
+            const gradeLevelRaw = gradeLevelInput ? gradeLevelInput.value : '';
             const userData = {
                 name,
                 email: email || null,
@@ -143,6 +158,7 @@ export function showAddUserModal(options = {}) {
                 balance: balanceInput ? (parseFloat(balanceInput.value.replace(',', '.')) || 0) : 0,
                 role: preferredRole,
                 pin: pinInput ? pinInput.value : null,
+                grade_level: gradeLevelRaw !== '' ? parseInt(gradeLevelRaw, 10) : null,
             };
             modal.style.display = 'none'; // Skjul modal før resolve
             resolve(userData);

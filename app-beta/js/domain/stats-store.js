@@ -1,5 +1,4 @@
 import { supabaseClient, INSTITUTION_ID_KEY } from '../core/config-and-supabase.js';
-import { loadSalesHistory } from './history-store.js';
 import { getCurrentAdmin, getCurrentClerk, getInstitutionId } from './session-store.js';
 
 // Stats-tilstand og Supabase-integration (ingen UI/badge-logik)
@@ -10,28 +9,38 @@ const safeNumber = (value) => {
 
 const aggregateSalesForClerk = (rows, clerkProfile) => {
     const clerkName = clerkProfile?.name || null;
+    const clerkId = clerkProfile?.id || null;
 
     let totalAmount = 0;
     let customers = 0;
     let items = 0;
     const productMap = new Map();
-
     rows.forEach((event) => {
         if (event.event_type !== 'SALE') return;
 
         // Use clerk_name directly from events_view (with COALESCE fallback built-in)
         // The view returns clerk_name from clerk_user_id, or falls back to admin_name for old records
         const eventClerkName = event.clerk_name || null;
+        const eventClerkId = event.clerk_user_id || event.admin_user_id || null;
 
         // Match by name (works for both old and new records thanks to COALESCE in view)
-        const isMySale = eventClerkName && clerkName && (eventClerkName === clerkName);
+        const isMySaleByName = eventClerkName && clerkName && (eventClerkName === clerkName);
+        const isMySaleById = eventClerkId && clerkId && (eventClerkId === clerkId);
 
-        if (!isMySale) return;
+        const isMySale = isMySaleByName || isMySaleById;
+
+        if (!isMySale) {
+            return;
+        }
 
         const details = event.details || {};
-        let amount = safeNumber(details.amount);
+        let amount = safeNumber(details.total_amount);
 
-        // I dine events ligger beløbet typisk i items/price_at_purchase, ikke i details.amount
+        if (!amount) {
+            amount = safeNumber(details.amount);
+        }
+
+        // I dine events ligger beløbet typisk i items/price_at_purchase
         if (!amount && Array.isArray(event.items)) {
             amount = event.items.reduce((sum, item) => {
                 const qty = safeNumber(item.quantity);
@@ -199,7 +208,6 @@ export async function loadFlangoAdminStats() {
 
         let todayMinutesWorked = 0;
         let totalMinutesWorked = safeNumber(profile.total_minutes_worked);
-
         // Hent rå stats fra Supabase (som opdateres via increment_user_stats)
         const { data: statsRows, error: statsError } = await supabaseClient
             .from('user_daily_stats')
@@ -229,12 +237,75 @@ export async function loadFlangoAdminStats() {
             }
         }
 
-        // Hent salgs-historik til beløb og produkter
-        const { rows: todayRows } = await loadSalesHistory({ from: todayKey, to: todayKey });
-        const { rows: totalRows } = await loadSalesHistory({});
+        const toIsoRange = (from, to) => {
+            const start = from ? new Date(`${from}T00:00:00`) : null;
+            const end = to ? new Date(`${to}T23:59:59.999`) : null;
+            return {
+                startIso: start ? start.toISOString() : null,
+                endIso: end ? end.toISOString() : null
+            };
+        };
+
+        const loadClerkSalesEventsView = async ({ clerkId, from, to }) => {
+            if (!clerkId) return [];
+            const { startIso, endIso } = toIsoRange(from, to);
+            const pageSize = 1000;
+            let offset = 0;
+            let eventIds = [];
+
+            while (true) {
+                const { data: eventRows, error } = await supabaseClient
+                    .from('events')
+                    .select('id')
+                    .eq('institution_id', institutionId)
+                    .eq('event_type', 'SALE')
+                    .or(`clerk_user_id.eq.${clerkId},admin_user_id.eq.${clerkId}`)
+                    .gte('created_at', startIso || '1970-01-01T00:00:00.000Z')
+                    .lte('created_at', endIso || '2999-12-31T23:59:59.999Z')
+                    .range(offset, offset + pageSize - 1);
+
+                if (error) {
+                    break;
+                }
+
+                const ids = (eventRows || []).map(row => row.id).filter(Boolean);
+                eventIds = eventIds.concat(ids);
+
+                if (!eventRows || eventRows.length < pageSize) break;
+                offset += pageSize;
+            }
+
+            if (eventIds.length === 0) return [];
+
+            const chunkSize = 200;
+            const chunks = [];
+            for (let i = 0; i < eventIds.length; i += chunkSize) {
+                chunks.push(eventIds.slice(i, i + chunkSize));
+            }
+
+            let rows = [];
+            for (const chunk of chunks) {
+                const { data: viewRows, error: viewError } = await supabaseClient
+                    .from('events_view')
+                    .select('*')
+                    .in('id', chunk);
+                if (viewError) {
+                    continue;
+                }
+                rows = rows.concat(viewRows || []);
+            }
+
+            return rows;
+        };
+
+        // Hent salgs-historik til beløb og produkter (kun for denne ekspedient)
+        const todayRows = await loadClerkSalesEventsView({ clerkId: profile.id, from: todayKey, to: todayKey });
+        const totalRows = await loadClerkSalesEventsView({ clerkId: profile.id });
+
 
         const todayAgg = aggregateSalesForClerk(todayRows || [], profile);
         const totalAgg = aggregateSalesForClerk(totalRows || [], profile);
+
 
         return {
             today: {

@@ -4,6 +4,9 @@ import { performLogin } from './auth-and-session.js';
 import { fetchAdminsForInstitution } from './users-and-admin.js';
 import { showScreen } from '../ui/shell-and-theme.js';
 
+const CLUB_LOGIN_CODE_KEY = 'flango_club_login_code';
+let lastClubLoginCode = null;
+
 export async function setupClubLoginScreen() {
     const institutions = await fetchInstitutions();
     showScreen('screen-club-login');
@@ -14,6 +17,10 @@ export async function setupClubLoginScreen() {
     if (!selectEl || !codeInput || !loginBtn || !errorEl) return;
 
     errorEl.textContent = '';
+    lastClubLoginCode = null;
+    try {
+        sessionStorage.removeItem(CLUB_LOGIN_CODE_KEY);
+    } catch {}
     codeInput.value = '';
     loginBtn.disabled = true;
     loginBtn.textContent = 'Fortsæt';
@@ -69,12 +76,17 @@ export async function setupClubLoginScreen() {
             return;
         }
 
+        // Gem kode til admin-email autofill og send den videre til locked screen
+        lastClubLoginCode = code;
+        try {
+            sessionStorage.setItem(CLUB_LOGIN_CODE_KEY, code);
+        } catch {}
         rememberInstitution(inst);
-        await setupLockedScreen();
+        await setupLockedScreen(code);
     };
 }
 
-export async function setupLockedScreen() {
+export async function setupLockedScreen(clubLoginCode = null) {
     const club = await ensureActiveInstitution();
     if (!club) {
         await supabaseClient.auth.signOut();
@@ -97,6 +109,9 @@ export async function setupLockedScreen() {
         switchClubBtn.style.display = 'inline-block';
         switchClubBtn.onclick = async () => {
             clearSavedInstitution();
+            try {
+                sessionStorage.removeItem(CLUB_LOGIN_CODE_KEY);
+            } catch {}
             await supabaseClient.auth.signOut();
             await fetchInstitutions(true);
             await setupClubLoginScreen();
@@ -106,34 +121,149 @@ export async function setupLockedScreen() {
     if (adminSelect) {
         adminSelect.disabled = true;
         adminSelect.innerHTML = '<option value="">Henter administratorer...</option>';
-        fetchAdminsForInstitution(club.id).then(admins => {
+        if (clubLoginCode) {
+            lastClubLoginCode = clubLoginCode;
+            try {
+                sessionStorage.setItem(CLUB_LOGIN_CODE_KEY, clubLoginCode);
+            } catch {}
+        } else if (!lastClubLoginCode) {
+            try {
+                lastClubLoginCode = sessionStorage.getItem(CLUB_LOGIN_CODE_KEY);
+            } catch {}
+        }
+        fetchAdminsForInstitution(club.id, { loginCode: lastClubLoginCode }).then(async (admins) => {
             if (!adminSelect) return;
-            if (!admins.length) {
+            if (!admins || !admins.length) {
                 adminSelect.innerHTML = '<option value="">Ingen administratorer fundet</option>';
                 adminSelect.disabled = true;
                 emailInput.value = '';
                 return;
             }
+            
+            // KRITISK FIX: RPC'en get_admin_directory_for_login burde returnere emails hvis loginCode er sat
+            // Men hvis den ikke gør, kan vi ikke hente emails fra users tabellen (401 Unauthorized)
+            // Så vi bruger admins direkte og henter email dynamisk når admin vælges via RPC
+            const adminsWithEmail = admins; // Brug admins direkte - email hentes senere når admin vælges
+            
             adminSelect.disabled = false;
             adminSelect.innerHTML = '<option value="">— Vælg administrator —</option>';
-            admins.forEach(admin => {
+            // Gem admin-objekter i et map for nem adgang til email
+            const adminMap = new Map();
+            console.log('[club-login] Admins received:', adminsWithEmail.map(a => ({ 
+                id: a.id, 
+                name: a.name, 
+                email: a.email,
+                allKeys: Object.keys(a)
+            })));
+            adminsWithEmail.forEach(admin => {
                 const opt = document.createElement('option');
-                // SIKKERHED: Vi viser kun navn (ingen email-læk).
-                opt.value = admin.id || '';
-                opt.textContent = admin.name || 'Admin';
+                // KRITISK FIX: Tjek om email findes i admin objektet, ellers brug id
+                const email = admin.email || admin.user_email || admin.email_address || '';
+                opt.value = email || admin.id || '';
+                opt.textContent = admin.name || admin.email || admin.user_email || 'Admin';
                 adminSelect.appendChild(opt);
+                // Gem admin-objektet med email som nøgle (eller id hvis ingen email)
+                // Gem også med id som nøgle for at sikre vi kan finde det senere
+                adminMap.set(opt.value, admin);
+                if (admin.id && opt.value !== admin.id) {
+                    adminMap.set(admin.id, admin);
+                }
+                // Gem også med email hvis den findes
+                if (email) {
+                    adminMap.set(email, admin);
+                }
+                console.log('[club-login] Added admin to map:', { 
+                    optValue: opt.value, 
+                    adminId: admin.id, 
+                    adminEmail: admin.email || admin.user_email || admin.email_address,
+                    adminName: admin.name,
+                    adminObject: admin
+                });
             });
-            adminSelect.onchange = () => {
-                // Vi autofylder ikke email længere (skal indtastes manuelt).
-                const selectedId = adminSelect.value;
-                if (selectedId) {
+            
+            // Funktion til at udfylde email baseret på valgt admin
+            const fillEmailFromSelectedAdmin = async () => {
+                const selectedValue = adminSelect.value;
+                
+                if (selectedValue) {
+                    // Find admin-objektet og udfyld e-mail automatisk hvis den findes
+                    let selectedAdmin = adminMap.get(selectedValue);
+                    
+                    // Fallback: Hvis adminMap ikke virker, søg direkte i adminsWithEmail arrayet
+                    if (!selectedAdmin) {
+                        const allAdmins = Array.from(adminMap.values());
+                        selectedAdmin = allAdmins.find(a => 
+                            (a.email && a.email === selectedValue) || 
+                            (a.id && a.id === selectedValue)
+                        );
+                    }
+                    
+                    // KRITISK FIX: Tjek om selectedAdmin har email i forskellige felter
+                    const adminEmail = selectedAdmin?.email || selectedAdmin?.user_email || selectedAdmin?.email_address || '';
+                    if (selectedAdmin && adminEmail) {
+                        emailInput.value = adminEmail;
+                        passwordInput.focus();
+                        return true;
+                    } else if (selectedValue.includes('@')) {
+                        // Fallback: hvis værdien er en e-mail, brug den direkte
+                        emailInput.value = selectedValue;
+                        passwordInput.focus();
+                        return true;
+                    } else if (selectedAdmin && selectedAdmin.id) {
+                        // KRITISK FIX: Hent email via RPC get_admin_directory_for_login i stedet for direkte fra users tabellen
+                        // Dette virker fordi vi har loginCode og RPC'en har adgang til emails
+                        // Hent loginCode fra sessionStorage hvis lastClubLoginCode ikke er sat
+                        let loginCodeToUse = lastClubLoginCode;
+                        if (!loginCodeToUse) {
+                            try {
+                                loginCodeToUse = sessionStorage.getItem(CLUB_LOGIN_CODE_KEY);
+                            } catch {}
+                        }
+                        
+                        if (loginCodeToUse) {
+                            try {
+                                const { data: adminData, error: rpcError } = await supabaseClient.rpc('get_admin_directory_for_login', {
+                                    p_institution_id: club.id,
+                                    p_code: loginCodeToUse
+                                });
+                                
+                                if (!rpcError && adminData) {
+                                    const adminWithEmail = adminData.find(a => a.id === selectedAdmin.id);
+                                    if (adminWithEmail && adminWithEmail.email) {
+                                        emailInput.value = adminWithEmail.email;
+                                        passwordInput.focus();
+                                        return true;
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('[club-login] Could not fetch email via RPC:', e);
+                            }
+                        }
+                    }
+                    
+                    // Ingen e-mail fundet, ryd feltet og fokuser
                     emailInput.value = '';
                     emailInput.focus();
+                    return false;
                 } else {
                     emailInput.value = '';
                     emailInput.focus();
+                    return false;
                 }
             };
+            
+            // KRITISK FIX: Sæt onchange handler FØR automatisk valg, så den virker når brugeren manuelt vælger
+            // Brug både onchange property og addEventListener for at sikre kompatibilitet
+            // Wrapper for at håndtere async funktion i event handler
+            const handleAdminChange = () => {
+                fillEmailFromSelectedAdmin().catch(err => {
+                    console.error('[club-login] Error in fillEmailFromSelectedAdmin:', err);
+                });
+            };
+            adminSelect.onchange = handleAdminChange;
+            adminSelect.addEventListener('change', handleAdminChange);
+            
+            // Ingen automatisk valg - dropdown'en skal altid starte med "vælg administrator"
         });
     }
 
@@ -146,6 +276,13 @@ export async function setupLockedScreen() {
         if (!email.trim() || !password.trim()) {
             errorEl.textContent = 'Indtast venligst både e-mail og adgangskode.';
             return;
+        }
+
+        // Gem valgt email til næste gang
+        try {
+            sessionStorage.setItem('flango_last_selected_admin_email', email);
+        } catch (e) {
+            // Ignorer fejl ved sessionStorage
         }
 
         loginBtn.disabled = true;

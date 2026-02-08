@@ -623,11 +623,15 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
         }
 
         // TOOLTIP: Saml alle begrænsninger med kilde-information
+        const institutionPolicy = sugarData?.institutionPolicy || null;
+        const hideClubLimitForSugar = product?.unhealthy === true
+            && institutionPolicy?.enabled === true
+            && institutionPolicy?.maxUnhealthyPerProductPerDay != null;
         const restrictions = [];
 
         // 1. Klub-grænse
         const clubMaxPerDay = snapshotEntry?.clubMaxPerDay;
-        if (clubMaxPerDay != null) {
+        if (clubMaxPerDay != null && !hideClubLimitForSugar) {
             const used = todaysQty + qtyInCart;
             restrictions.push({
                 type: 'club',
@@ -749,6 +753,8 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
             pid,
             isAtLimit,
             sugarLocked,
+            isUnhealthy: product?.unhealthy === true,
+            hideClubLimit: hideClubLimitForSugar,
             needsFallbackCheck: !isAtLimit && childId && productMap.has(pid),
             // Data for limit counter display
             todaysQty,
@@ -834,7 +840,20 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
             // Today-only styling (neutral grå - kun info, ingen begrænsning)
             const todayOnlyStyle = 'background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border:1.5px solid #cbd5e1;color:#475569;box-shadow:0 2px 6px rgba(100,116,139,0.15);';
 
-            if (hasRegularLimit) {
+            const preferSugarLimit = data.isUnhealthy && data.sugarPerProductMax != null && data.hideClubLimit;
+
+            if (preferSugarLimit) {
+                // Sukkerpolitik-grænse (effektiv grænse for usunde produkter)
+                const used = data.sugarPerProductUsed;
+                const maxPerDay = data.sugarPerProductMax;
+
+                limitCounter.textContent = `🍬 ${used}/${maxPerDay}`;
+                if (used >= maxPerDay) {
+                    limitCounter.style.cssText = baseStyle + sugarAtLimitStyle;
+                } else {
+                    limitCounter.style.cssText = baseStyle + sugarNormalStyle;
+                }
+            } else if (hasRegularLimit) {
                 // Almindelig købsgrænse har prioritet
                 const used = data.todaysQty + data.qtyInCart;
                 const maxPerDay = data.effectiveMaxPerDay;

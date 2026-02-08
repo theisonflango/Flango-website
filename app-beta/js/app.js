@@ -69,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     copyFromTemplate('balance-modal', 'balance-modal-template');
     copyFromTemplate('edit-user-detail-modal', 'edit-user-detail-modal-template');
     copyFromTemplate('assign-badge-modal', 'assign-badge-modal-template');
+    copyFromTemplate('event-admin-modal', 'event-admin-modal-template');
 
     const customAlertModal = document.getElementById('custom-alert-modal');
     // Ensure custom alert modal is always on top
@@ -93,31 +94,62 @@ document.addEventListener('DOMContentLoaded', () => {
     // APP-OPSTART
     // =================================================================
     async function initializeApp() {
-        await fetchInstitutions();
-        const hasInstitution = await ensureActiveInstitution();
-        if (!hasInstitution) {
-            await supabaseClient.auth.signOut();
-            await setupClubLoginScreen();
-            return;
-        }
-
-        const { data: { session } } = await supabaseClient.auth.getSession();
-
-        if (session) {
-            // Der er en aktiv admin-session
-            const adminProfile = await getCurrentUserProfile(session);
-            if (adminProfile && adminProfile.role === 'admin') {
-                setupAdminLoginScreen(adminProfile);
-            } else {
-                // Sessionen er ugyldig eller ikke en admin, log ud
+        try {
+            await fetchInstitutions();
+            const hasInstitution = await ensureActiveInstitution();
+            if (!hasInstitution) {
                 await supabaseClient.auth.signOut();
+                await setupClubLoginScreen();
+                return;
+            }
+
+            const { data: { session } } = await supabaseClient.auth.getSession();
+
+            if (session) {
+                // Der er en aktiv admin-session
+                const adminProfile = await getCurrentUserProfile(session);
+                if (adminProfile && adminProfile.role === 'admin') {
+                    setupAdminLoginScreen(adminProfile);
+                } else {
+                    // Sessionen er ugyldig eller ikke en admin, log ud
+                    await supabaseClient.auth.signOut();
+                    setupLockedScreen();
+                }
+            } else {
+                // Ingen session, vis den låste skærm
                 setupLockedScreen();
             }
-        } else {
-            // Ingen session, vis den låste skærm
-            setupLockedScreen();
+        } catch (err) {
+            const isAbort = err?.name === 'AbortError' || (err?.message || '').includes('aborted');
+            if (isAbort) {
+                console.warn('[app] initializeApp AbortError – venter og prøver igen...');
+                // Vent kort og prøv igen (Supabase client kan have brug for at stabilisere)
+                await new Promise(r => setTimeout(r, 500));
+                try {
+                    await fetchInstitutions(true);
+                    const hasInstitution = await ensureActiveInstitution();
+                    if (hasInstitution) {
+                        const { data: { session } } = await supabaseClient.auth.getSession();
+                        if (session) {
+                            const adminProfile = await getCurrentUserProfile(session);
+                            if (adminProfile && adminProfile.role === 'admin') {
+                                setupAdminLoginScreen(adminProfile);
+                                return;
+                            }
+                        }
+                    }
+                } catch (retryErr) {
+                    console.error('[app] initializeApp retry fejl:', retryErr?.message);
+                }
+            }
+            console.error('[app] initializeApp fejl – viser klub login:', err?.message || err);
+            await supabaseClient.auth.signOut().catch(() => {});
+            await setupClubLoginScreen();
         }
     }
 
-    initializeApp();
+    initializeApp().catch((err) => {
+        console.error('[app] initializeApp afvist:', err?.message || err);
+        setupClubLoginScreen();
+    });
 });

@@ -262,6 +262,7 @@ export function getStatsSummaryHTML(statsData, options = {}, clerkProfile) {
     const totalItems = cloneStats?.total?.items ?? totalSales;
     const todayAmount = cloneStats?.today?.amount ?? 0;
     const totalAmount = cloneStats?.total?.amount ?? 0;
+
     const todayProducts = cloneStats?.today?.products || [];
     const totalProducts = cloneStats?.total?.products || [];
 

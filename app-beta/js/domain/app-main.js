@@ -1,12 +1,13 @@
 import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '../ui/sound-and-alerts.js';
 import { initializeSoundSettings } from '../core/sound-manager.js';
+import { initDebugRecorder, logDebugEvent } from '../core/debug-flight-recorder.js';
 import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen } from '../ui/shell-and-theme.js';
 import { getCurrentTheme } from '../ui/theme-loader.js';
 import { configureHistoryModule, showTransactionsInSummary, showOverviewInSummary, resetSharedHistoryControls } from './history-and-reports.js';
 import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js';
 import { setupLogoutFlow } from './logout-flow.js';
 import { getFinancialState, setCurrentCustomer, getCurrentCustomer, clearEvaluation, getSelectionToken, clearCurrentCustomer } from './cafe-session-store.js';
-import { getOrderTotal, setOrder } from './order-store.js';
+import { getOrderTotal, setOrder, getOrder } from './order-store.js';
 import { updateLoggedInUserDisplay, updateAvatarStorage, updateSelectedUserInfo } from './app-ui-updates.js';
 import { updateTotalPrice, renderOrder, handleOrderListClick, addToOrder, removeLastItemFromOrder, removeOneItemByName } from './order-ui.js';
 import { renderProductsInModal, renderProductsGrid, createProductManagementUI, updateProductQuantityBadges } from '../ui/product-management.js';
@@ -31,9 +32,13 @@ import {
     handleUndoPreviousSale,
 } from './purchase-flow.js';
 import { onBalanceChange } from '../core/balance-manager.js';
+import { startRealtimeSync } from '../core/realtime-sync.js';
+import { initToastNotifications, clearAllToasts } from '../ui/toast-notifications.js';
 import { setupCustomerPickerFlow } from './customer-picker-flow.js';
 import { setupAdminFlow, loadUsersAndNotifications } from './admin-flow.js';
 import { setupProductAssortmentFlow } from './product-assortment-flow.js';
+import { initCafeEventStrip, refreshCafeEventStrip, hideCafeEventStrip } from '../ui/cafe-event-strip.js';
+import { invalidateCafeEventsCache } from './cafe-events.js';
 import { isAuthAdminUser, openDbHistoryModal } from '../ui/db-history.js';
 import {
     setCurrentAdmin,
@@ -49,6 +54,12 @@ import {
 } from './session-store.js';
 
 export async function startApp() {
+    // Guard: undgå dobbelt initialisering (kan give multiple click-handlers)
+    if (window.__flangoAppStarted) {
+        console.warn('[app-main] startApp already initialized - skipping re-init');
+        return;
+    }
+    window.__flangoAppStarted = true;
     const adminProfile = getCurrentAdmin();
     const clerkProfile = getCurrentClerk();
 
@@ -156,6 +167,15 @@ export async function startApp() {
     let sessionSalesCount = 0;
 
     console.log('Starter applikationen...');
+
+    // 1.5) Initialiser debug flight recorder FØRST (før alt andet)
+    initDebugRecorder();
+    logDebugEvent('app_started', {
+        adminId: adminProfile?.id,
+        adminName: adminProfile?.name,
+        clerkId: clerkProfile?.id,
+        clerkName: clerkProfile?.name,
+    });
 
     // 2) Initialiser lydindstillinger fra localStorage (før lyde afspilles)
     initializeSoundSettings();
@@ -324,8 +344,16 @@ export async function startApp() {
 
         return refreshPending;
     };
-    const addToOrderWithLocks = (product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, optionsArg = {}) =>
-        addToOrder(product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, { ...optionsArg, onOrderChanged: refreshProductLocks });
+    const addToOrderWithLocks = async (product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, optionsArg = {}) => {
+        const result = await addToOrder(product, currentOrderArg, orderListArg, totalPriceArg, updateSelectedUserInfoArg, { ...optionsArg, onOrderChanged: refreshProductLocks });
+        // KRITISK FIX: Opdater lokal currentOrder variabel efter addToOrder for at undgå synkroniseringsfejl
+        // Læs fra order-store for at sikre vi har den seneste state
+        const updatedOrder = typeof getOrder === 'function' ? getOrder() : currentOrderArg;
+        if (updatedOrder.length > 0) {
+            currentOrder = [...updatedOrder];
+        }
+        return result;
+    };
 
     const resetUserModalView = () => {
         delete userModal.dataset.mode;
@@ -408,10 +436,31 @@ export async function startApp() {
     });
 
     // Købshåndtering
-    completePurchaseBtn.addEventListener('click', async () => {
+    if (completePurchaseBtn._flangoPurchaseHandler) {
+        completePurchaseBtn.removeEventListener('click', completePurchaseBtn._flangoPurchaseHandler);
+    }
+    const purchaseHandler = async () => {
+        // KRITISK FIX: Læs fra order-store i stedet for lokal variabel for at undgå synkroniseringsfejl
+        // Hvis lokal currentOrder er tom men order-store har varer, brug order-store
+        const orderFromStore = typeof getOrder === 'function' ? getOrder() : [];
+        const effectiveOrder = (currentOrder?.length > 0) ? currentOrder : orderFromStore;
+        
+        // Opdater lokal variabel hvis den var tom men order-store har varer
+        if (currentOrder?.length === 0 && orderFromStore.length > 0) {
+            currentOrder = [...orderFromStore];
+        }
+        
+        // Flight recorder: log purchase button click
+        logDebugEvent('purchase_btn_clicked', {
+            customerId: getCurrentCustomer()?.id,
+            customerName: getCurrentCustomer()?.name,
+            cartLength: effectiveOrder?.length,
+            cartItems: effectiveOrder?.slice(0, 5).map(i => ({ name: i.name, id: i.id })),
+            btnDisabled: completePurchaseBtn?.disabled,
+        });
         await handleCompletePurchase({
             customer: getCurrentCustomer(),
-            currentOrder,
+            currentOrder: effectiveOrder,
             setCurrentOrder: (next) => { currentOrder = next; },
             allProducts,
             updateSelectedUserInfo,
@@ -426,7 +475,11 @@ export async function startApp() {
         });
         // MUST-RUN: After any purchase attempt, force refresh so locks can't be dropped by debounce.
         await refreshProductLocks({ force: true });
-    });
+        // Skjul event strip efter køb (bruger er ryddet)
+        hideCafeEventStrip();
+    };
+    completePurchaseBtn._flangoPurchaseHandler = purchaseHandler;
+    completePurchaseBtn.addEventListener('click', purchaseHandler);
 
     // 5) Produktstyring
     createProductManagementUI({
@@ -448,7 +501,10 @@ export async function startApp() {
             renderProductsInModal,
             renderProductsGrid,
             fetchAndRenderProducts: async () => {
-                await productAssortment.fetchAndRenderProducts();
+                // KRITISK FIX: Brug renderFromCache i stedet for fetchAndRenderProducts
+                // Dette sikrer at produkter vises med det samme efter oprettelse/redigering
+                // fordi refetchAllProducts() allerede har opdateret cache'en
+                await productAssortment.renderFromCache();
                 // Sørg for at alle knapper har et låse-overlay, så CSS kan virke
                 productsContainer.querySelectorAll('.product-btn').forEach(btn => {
                     if (!btn.querySelector('.product-lock-overlay')) {
@@ -502,6 +558,18 @@ export async function startApp() {
         allUsers = next;
         window.__flangoAllUsers = next; // Keep window property in sync
         console.log(`[app-main] setAllUsers called: ${next.length} users, window.__flangoAllUsers.length=${window.__flangoAllUsers.length}`);
+
+        // Sync selectedCustomer from latest list so "valgt bruger" never shows stale balance.
+        const cur = getCurrentCustomer();
+        if (cur && Array.isArray(next)) {
+            const fresh = next.find((u) => u.id === cur.id);
+            if (fresh) {
+                setCurrentCustomer(fresh);
+            }
+        }
+        if (typeof updateSelectedUserInfo === 'function') {
+            updateSelectedUserInfo();
+        }
     };
     // Expose setter globally for data-refetch module
     window.__flangoSetAllUsers = setAllUsers;
@@ -581,6 +649,44 @@ export async function startApp() {
         addToOrder: addToOrderWithLocks,
     });
 
+    // Eksponér renderFromCache til window så andre moduler kan opdatere produkt-visningen
+    window.__flangoRenderProductsFromCache = () => productAssortment.renderFromCache();
+
+    // Café Event Strip: Initialisér mini-kort visning over produktgrid
+    initCafeEventStrip({
+        onEventAddedToCart: (eventItem) => {
+            // Tjek for duplikat: samme event må kun ligge i kurven én gang
+            const eventKey = `event-${eventItem.eventId}`;
+            const alreadyInCart = currentOrder.some(i => i.id === eventKey);
+            if (alreadyInCart) {
+                showAlert('Dette arrangement er allerede i kurven.');
+                return;
+            }
+            // Tilføj event som item i kurven (med emoji og type markering)
+            const item = {
+                ...eventItem,
+                id: eventKey,
+                product_id: eventKey,
+                emoji: '🎪',
+                quantity: 1,
+            };
+            currentOrder.push(item);
+            setOrder([...currentOrder]);
+            renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
+        },
+        onEventRegistered: async () => {
+            // Refresh strip efter registrering
+            const customer = getCurrentCustomer();
+            if (customer) {
+                await refreshCafeEventStrip({
+                    institutionId: customer.institution_id,
+                    childId: customer.id,
+                    childGradeLevel: customer.grade_level,
+                });
+            }
+        },
+    });
+
     // 10) UI-events og helpers
     setupRuntimeUIEvents({
         salesHistoryBtn,
@@ -602,7 +708,7 @@ export async function startApp() {
 
     // Setup summary/opsummering modal
     const institutionId = getInstitutionId();
-    setupSummaryModal(institutionId);
+    setupSummaryModal(institutionId, { getAllUsers });
 
     // Setup global functions for loading views in summary modal
     window.__flangoLoadTransactionsInSummary = () => {
@@ -668,7 +774,22 @@ export async function startApp() {
     // 12) Første produkt-load
     await productAssortment.fetchAndRenderProducts();
 
+    // 12.5) Toast notifications system
+    initToastNotifications();
+
+    // 12.6) Realtime sync: balance (forældre topup) + produkter/sortiment (create/toggle) + events (toast)
+    startRealtimeSync();
+
     async function selectUser(userId) {
+        // Flight recorder: log user selection
+        const prevCustomer = getCurrentCustomer();
+        logDebugEvent('user_select_started', {
+            newUserId: userId,
+            prevUserId: prevCustomer?.id,
+            prevUserName: prevCustomer?.name,
+            cartLengthBefore: currentOrder?.length,
+            cartItemsBefore: currentOrder?.slice(0, 3).map(i => i.name),
+        });
         // Tjek om samme bruger allerede er valgt
         const currentCustomer = getCurrentCustomer();
         if (currentCustomer && currentCustomer.id === userId) {
@@ -682,10 +803,12 @@ export async function startApp() {
         currentOrder = [];
         currentSugarData = null;
         setOrder([]); // KRITISK: Sync order-store module state så getOrderTotal() returnerer 0
+        logDebugEvent('cart_cleared_on_user_switch', { newUserId: userId });
         clearEvaluation(); // Ryd evaluation cache så "Ny Saldo" vises korrekt
         renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
 
-        const selectedUser = allUsers.find(u => u.id === userId);
+        const users = window.__flangoAllUsers || allUsers;
+        const selectedUser = Array.isArray(users) ? users.find((u) => u.id === userId) : null;
         if (!selectedUser) return;
 
         setCurrentCustomer(selectedUser);
@@ -769,6 +892,13 @@ export async function startApp() {
         await productAssortment.renderFromCache();
         console.log('[selectUser] Produkter genrenderet');
 
+        // Refresh café event strip for det valgte barn
+        refreshCafeEventStrip({
+            institutionId: selectedUser.institution_id,
+            childId: selectedUser.id,
+            childGradeLevel: selectedUser.grade_level,
+        }).catch(err => console.warn('[selectUser] Event strip fejl:', err));
+
         // Guard: If user switched during render, skip remaining updates
         if (getSelectionToken() !== token) {
             console.log('[selectUser] User switched during render, skipping remaining updates');
@@ -790,6 +920,8 @@ export async function startApp() {
     }
 
     // updateSelectedUserInfo moved to app-ui-updates.js
+    // Expose updateSelectedUserInfo on window for use in other modules
+    window.updateSelectedUserInfo = updateSelectedUserInfo;
 
     // Register listener for balance changes to update UI
     onBalanceChange('main-ui-updater', (event) => {
@@ -799,7 +931,11 @@ export async function startApp() {
         const currentCustomer = getCurrentCustomer();
         if (currentCustomer && currentCustomer.id === userId) {
             console.log(`[app-main] Balance changed for selected customer: ${newBalance} kr (${source})`);
-            updateSelectedUserInfo();
+            // KRITISK: Brug requestAnimationFrame for at sikre DOM er klar til opdatering
+            // Dette løser timing-issues hvor state er opdateret men UI ikke reflekterer det
+            requestAnimationFrame(() => {
+                updateSelectedUserInfo();
+            });
         }
     });
 
@@ -843,18 +979,21 @@ export async function startApp() {
         // Clear customer and evaluation
         clearCurrentCustomer();
         clearEvaluation();
-        
+
         // Clear order
         currentOrder = [];
         setOrder([]);
         renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
-        
+
         // Clear sugar data
         currentSugarData = null;
-        
+
+        // Skjul event strip
+        hideCafeEventStrip();
+
         // Refresh product locks (remove locks when no user selected)
         await refreshProductLocks({ force: true });
-        
+
         // Update UI
         updateSelectedUserInfo();
     };

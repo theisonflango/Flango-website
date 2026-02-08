@@ -1,3 +1,5 @@
+import { logDebugEvent } from '../core/debug-flight-recorder.js';
+
 export function setupKeyboardShortcuts({
     getAllProducts,
     getCurrentOrder,
@@ -12,11 +14,44 @@ export function setupKeyboardShortcuts({
     closeTopMostOverlay,
     onOrderChanged,
 }) {
-    document.addEventListener('keydown', (event) => {
-        if (document.querySelector('.modal[style*="display: flex"]') || event.target.tagName === 'INPUT') {
+    // Flight recorder: log keyboard shortcuts setup
+    window._flangoKeyboardShortcutsSetupCount = (window._flangoKeyboardShortcutsSetupCount || 0) + 1;
+    let callerTag = 'unknown';
+    try {
+        const stack = new Error().stack?.split('\n') || [];
+        const candidate = stack[2] || stack[1] || '';
+        callerTag = candidate.replace('at ', '').trim().slice(0, 120) || callerTag;
+    } catch (e) { /* ignore */ }
+    logDebugEvent('keyboard_shortcuts_setup', {
+        callCount: window._flangoKeyboardShortcutsSetupCount,
+        caller: callerTag,
+    });
+
+    // Remove previous handlers if any (avoid duplicates and stale closures)
+    const prevHandlers = window.__flangoKeyboardShortcutsHandlers;
+    if (prevHandlers) {
+        document.removeEventListener('keydown', prevHandlers.main);
+        document.removeEventListener('keydown', prevHandlers.escape);
+        document.removeEventListener('keydown', prevHandlers.general);
+        document.removeEventListener('keydown', prevHandlers.admin);
+    }
+
+    const mainKeydownHandler = (event) => {
+        if (event.defaultPrevented) return;
+        // Deaktiver shortcuts hvis man er i reorder-mode eller redigerer i et felt
+        const isInReorderMode = document.body.classList.contains('reorder-mode');
+        const isEditing = event.target.tagName === 'INPUT' || 
+                         event.target.tagName === 'TEXTAREA' ||
+                         event.target.isContentEditable ||
+                         event.target.closest('[contenteditable="true"]');
+        
+        const isCustomAlertOpen = document.getElementById('custom-alert-modal')?.style?.display === 'flex';
+        if (document.querySelector('.modal[style*="display: flex"]') || isCustomAlertOpen || isEditing || isInReorderMode) {
             return;
         }
+        
         if (event.key >= '0' && event.key <= '9') {
+            if (event.repeat) return;
             event.preventDefault();
             const productIndex = event.key === '0' ? 9 : parseInt(event.key, 10) - 1;
             const visibleProducts = getAllProducts().filter(p => p.is_visible !== false && p.is_enabled !== false);
@@ -31,10 +66,13 @@ export function setupKeyboardShortcuts({
                 );
             }
         } else if (event.key === 'Enter') {
+            // Flight recorder: log Enter key in main handler
+            logDebugEvent('keyboard_enter_pressed', {
+                btnDisabled: completePurchaseButton?.disabled,
+                modalOpen: !!document.querySelector('.modal[style*="display: flex"]'),
+                willTriggerPurchase: completePurchaseButton && !completePurchaseButton.disabled,
+            });
             event.preventDefault();
-            if (document.body.classList.contains('reorder-mode')) {
-                return;
-            }
             if (completePurchaseButton && !completePurchaseButton.disabled) {
                 completePurchaseButton.click();
             }
@@ -53,18 +91,34 @@ export function setupKeyboardShortcuts({
                 }
             }
         }
-    });
+    };
 
-    document.addEventListener('keydown', (event) => {
+    const escapeKeydownHandler = (event) => {
+        if (event.defaultPrevented) return;
+        // Tillad Escape selv i edit mode (for at lukke modals/overlays)
         if (event.key === 'Escape') {
-            closeTopMostOverlay();
+            // Men ikke hvis man er i midten af at redigere navn/pris
+            const isEditing = event.target.isContentEditable || 
+                             event.target.tagName === 'INPUT' ||
+                             event.target.closest('.product-edit-name, .product-edit-price-input');
+            if (!isEditing) {
+                closeTopMostOverlay();
+            }
         }
-    });
+    };
 
     // Generelle keyboard shortcuts (for alle brugere)
-    document.addEventListener('keydown', (event) => {
+    const generalKeydownHandler = (event) => {
+        if (event.defaultPrevented) return;
         const key = event.key.toLowerCase();
-        const isTyping = event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA';
+        const isInReorderMode = document.body.classList.contains('reorder-mode');
+        const isTyping = event.target.tagName === 'INPUT' || 
+                        event.target.tagName === 'TEXTAREA' ||
+                        event.target.isContentEditable ||
+                        event.target.closest('[contenteditable="true"]');
+        
+        // Deaktiver shortcuts i reorder-mode
+        if (isInReorderMode) return;
 
         // H: Åbn/luk historik
         if (key === 'h') {
@@ -141,14 +195,19 @@ export function setupKeyboardShortcuts({
                 }
             }
         }
-    });
+    };
 
     // Admin-only keyboard shortcuts
-    document.addEventListener('keydown', (event) => {
-        // Skip if typing in input or modal is open
-        if (event.target.tagName === 'INPUT' ||
-            event.target.tagName === 'TEXTAREA' ||
-            document.querySelector('.modal[style*="display: flex"]')) {
+    const adminKeydownHandler = (event) => {
+        if (event.defaultPrevented) return;
+        // Skip if typing in input, contenteditable, reorder-mode or modal is open
+        const isInReorderMode = document.body.classList.contains('reorder-mode');
+        const isEditing = event.target.tagName === 'INPUT' ||
+                         event.target.tagName === 'TEXTAREA' ||
+                         event.target.isContentEditable ||
+                         event.target.closest('[contenteditable="true"]');
+        
+        if (isEditing || isInReorderMode || document.querySelector('.modal[style*="display: flex"]')) {
             return;
         }
 
@@ -165,5 +224,17 @@ export function setupKeyboardShortcuts({
                 window.__flangoOpenAdminUserManager('customers');
             }
         }
-    });
+    };
+
+    document.addEventListener('keydown', mainKeydownHandler);
+    document.addEventListener('keydown', escapeKeydownHandler);
+    document.addEventListener('keydown', generalKeydownHandler);
+    document.addEventListener('keydown', adminKeydownHandler);
+
+    window.__flangoKeyboardShortcutsHandlers = {
+        main: mainKeydownHandler,
+        escape: escapeKeydownHandler,
+        general: generalKeydownHandler,
+        admin: adminKeydownHandler,
+    };
 }

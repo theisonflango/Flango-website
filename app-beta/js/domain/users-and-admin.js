@@ -42,6 +42,11 @@ export function buildUserAdminTableRows(users, selectedIndex = 0) {
         return num.toFixed(2);
     };
 
+    const safeGrade = (value) => {
+        if (value === null || value === undefined) return '—';
+        return value + '. kl.';
+    };
+
     return users.map((user, index) => {
         const highlightClass = index === selectedIndex ? ' highlight' : '';
         const balanceClass = (user.balance || 0) < 0 ? 'negative' : 'positive';
@@ -50,6 +55,7 @@ export function buildUserAdminTableRows(users, selectedIndex = 0) {
                 <div class="modal-entry-info${highlightClass}" data-index="${index}" data-user-id="${user.id}">
                     <span class="user-list-name">${escapeHtml(user.name)}</span>
                     <span class="user-list-number">${escapeHtml(safeNumber(user.number))}</span>
+                    <span class="user-list-grade">${safeGrade(user.grade_level)}</span>
                     <span class="user-list-balance ${balanceClass}">${safeBalance(user.balance)} kr.</span>
                     <div class="admin-action-column">
                         <button type="button" class="admin-action-btn" data-user-action="deposit" data-id="${user.id}">Opdater Saldo</button>

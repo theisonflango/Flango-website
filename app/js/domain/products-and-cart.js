@@ -235,9 +235,128 @@ export function clearOrder(order) {
     order.length = 0;
 }
 
+function getUnitPriceOre(product) {
+    const price = Number(product?.price);
+    if (!Number.isFinite(price) || price < 0) {
+        return 0;
+    }
+    return Math.round(price * 100);
+}
+
+function getBulkDiscountConfig(product) {
+    if (!product || product.bulk_discount_enabled !== true) return null;
+    const qty = Number(product.bulk_discount_qty);
+    const priceOre = Number(product.bulk_discount_price_ore);
+    const qtyValid = Number.isInteger(qty) && qty >= 2;
+    const priceValid = Number.isFinite(priceOre) && priceOre > 0;
+    if (!qtyValid || !priceValid) {
+        console.warn('[bulk-discount] Ugyldig mængderabat-konfiguration', {
+            productId: product?.id,
+            name: product?.name,
+            qty: product?.bulk_discount_qty,
+            priceOre: product?.bulk_discount_price_ore,
+        });
+        return null;
+    }
+    return { qty, priceOre };
+}
+
+export function getBulkDiscountSummary(product, qty, options = {}) {
+    const count = Number.isFinite(qty) ? qty : 0;
+    const unitPriceOre = getUnitPriceOre(product);
+    const normalSubtotalOre = Math.max(0, count) * unitPriceOre;
+    const disableDiscount = options?.disableDiscount === true;
+    const config = getBulkDiscountConfig(product);
+    if (disableDiscount || !config || count <= 0) {
+        return {
+            normalSubtotal: normalSubtotalOre / 100,
+            discountedTotal: normalSubtotalOre / 100,
+            discountAmount: 0,
+            label: null,
+            qtyRule: null,
+            bundlePrice: null,
+        };
+    }
+    const bundles = Math.floor(count / config.qty);
+    const rest = count % config.qty;
+    const discountedTotalOre = (bundles * config.priceOre) + (rest * unitPriceOre);
+    const discountAmountOre = Math.max(0, normalSubtotalOre - discountedTotalOre);
+    return {
+        normalSubtotal: normalSubtotalOre / 100,
+        discountedTotal: discountedTotalOre / 100,
+        discountAmount: discountAmountOre / 100,
+        label: `Rabat (${config.qty} for ${config.priceOre / 100})`,
+        qtyRule: config.qty,
+        bundlePrice: config.priceOre / 100,
+    };
+}
+
+export function calculateLineTotalWithBulkDiscount(product, qty, options = {}) {
+    const count = Number.isFinite(qty) ? qty : 0;
+    if (count <= 0) return 0;
+    if (options?.disableDiscount === true) {
+        const unitPriceOre = getUnitPriceOre(product);
+        return (unitPriceOre * count) / 100;
+    }
+    const unitPriceOre = getUnitPriceOre(product);
+    const config = getBulkDiscountConfig(product);
+    if (!config) {
+        return (unitPriceOre * count) / 100;
+    }
+    const bundles = Math.floor(count / config.qty);
+    const rest = count % config.qty;
+    const totalOre = (bundles * config.priceOre) + (rest * unitPriceOre);
+    return totalOre / 100;
+}
+
+export function getBulkDiscountedUnitPrice(product, qty, options = {}) {
+    const count = Number.isFinite(qty) ? qty : 0;
+    if (count <= 0) return 0;
+    if (options?.disableDiscount === true) {
+        const unitPriceOre = getUnitPriceOre(product);
+        return unitPriceOre / 100;
+    }
+    const unitPriceOre = getUnitPriceOre(product);
+    const config = getBulkDiscountConfig(product);
+    if (!config) {
+        return unitPriceOre / 100;
+    }
+    const bundles = Math.floor(count / config.qty);
+    const rest = count % config.qty;
+    const totalOre = (bundles * config.priceOre) + (rest * unitPriceOre);
+    return (totalOre / count) / 100;
+}
+
 export function calculateOrderTotal(order) {
     if (!Array.isArray(order)) return 0;
-    return order.reduce((sum, item) => sum + (item?.price || 0), 0);
+    const grouped = new Map();
+    let total = 0;
+
+    order.forEach((item) => {
+        const productId = item?.product_id || item?.productId || item?.id;
+        const qty = Number.isFinite(item?.quantity) ? item.quantity : 1;
+        if (productId == null) {
+            const price = Number(item?.price) || 0;
+            total += price * qty;
+            return;
+        }
+        const key = String(productId);
+        const existing = grouped.get(key);
+        if (existing) {
+            existing.count += qty;
+            if (item?._bulkDiscountDisabled === true) {
+                existing.disableDiscount = true;
+            }
+        } else {
+            grouped.set(key, { item, count: qty, disableDiscount: item?._bulkDiscountDisabled === true });
+        }
+    });
+
+    grouped.forEach(({ item, count, disableDiscount }) => {
+        total += calculateLineTotalWithBulkDiscount(item, count, { disableDiscount });
+    });
+
+    return total;
 }
 
 let currentChildLimitSnapshot = null;
@@ -269,7 +388,7 @@ export function invalidateChildLimitSnapshot() {
     currentChildLimitSnapshot = null;
     currentChildLimitSnapshotChildId = null;
     // VIGTIGT: Vi invaliderer ikke de globale limits/sales caches her.
-    // Caches er allerede keyed pr. childId og har TTL + explicit invalidation efter køb/undo.
+    // Caches er keyed pr. childId og invalideres eksplicit efter køb/undo.
     // Global invalidation ved hvert bruger-skift skaber unødige DB-kald og giver "cache thrash".
 }
 
@@ -504,11 +623,15 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
         }
 
         // TOOLTIP: Saml alle begrænsninger med kilde-information
+        const institutionPolicy = sugarData?.institutionPolicy || null;
+        const hideClubLimitForSugar = product?.unhealthy === true
+            && institutionPolicy?.enabled === true
+            && institutionPolicy?.maxUnhealthyPerProductPerDay != null;
         const restrictions = [];
 
         // 1. Klub-grænse
         const clubMaxPerDay = snapshotEntry?.clubMaxPerDay;
-        if (clubMaxPerDay != null) {
+        if (clubMaxPerDay != null && !hideClubLimitForSugar) {
             const used = todaysQty + qtyInCart;
             restrictions.push({
                 type: 'club',
@@ -630,6 +753,8 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
             pid,
             isAtLimit,
             sugarLocked,
+            isUnhealthy: product?.unhealthy === true,
+            hideClubLimit: hideClubLimitForSugar,
             needsFallbackCheck: !isAtLimit && childId && productMap.has(pid),
             // Data for limit counter display
             todaysQty,
@@ -715,7 +840,20 @@ export async function applyProductLimitsToButtons(allProducts, productsContainer
             // Today-only styling (neutral grå - kun info, ingen begrænsning)
             const todayOnlyStyle = 'background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border:1.5px solid #cbd5e1;color:#475569;box-shadow:0 2px 6px rgba(100,116,139,0.15);';
 
-            if (hasRegularLimit) {
+            const preferSugarLimit = data.isUnhealthy && data.sugarPerProductMax != null && data.hideClubLimit;
+
+            if (preferSugarLimit) {
+                // Sukkerpolitik-grænse (effektiv grænse for usunde produkter)
+                const used = data.sugarPerProductUsed;
+                const maxPerDay = data.sugarPerProductMax;
+
+                limitCounter.textContent = `🍬 ${used}/${maxPerDay}`;
+                if (used >= maxPerDay) {
+                    limitCounter.style.cssText = baseStyle + sugarAtLimitStyle;
+                } else {
+                    limitCounter.style.cssText = baseStyle + sugarNormalStyle;
+                }
+            } else if (hasRegularLimit) {
                 // Almindelig købsgrænse har prioritet
                 const used = data.todaysQty + data.qtyInCart;
                 const maxPerDay = data.effectiveMaxPerDay;

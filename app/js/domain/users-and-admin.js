@@ -42,6 +42,11 @@ export function buildUserAdminTableRows(users, selectedIndex = 0) {
         return num.toFixed(2);
     };
 
+    const safeGrade = (value) => {
+        if (value === null || value === undefined) return '—';
+        return value + '. kl.';
+    };
+
     return users.map((user, index) => {
         const highlightClass = index === selectedIndex ? ' highlight' : '';
         const balanceClass = (user.balance || 0) < 0 ? 'negative' : 'positive';
@@ -50,6 +55,7 @@ export function buildUserAdminTableRows(users, selectedIndex = 0) {
                 <div class="modal-entry-info${highlightClass}" data-index="${index}" data-user-id="${user.id}">
                     <span class="user-list-name">${escapeHtml(user.name)}</span>
                     <span class="user-list-number">${escapeHtml(safeNumber(user.number))}</span>
+                    <span class="user-list-grade">${safeGrade(user.grade_level)}</span>
                     <span class="user-list-balance ${balanceClass}">${safeBalance(user.balance)} kr.</span>
                     <div class="admin-action-column">
                         <button type="button" class="admin-action-btn" data-user-action="deposit" data-id="${user.id}">Opdater Saldo</button>
@@ -71,14 +77,18 @@ export function buildCustomerSelectionEntryElement(user, index, isHighlighted) {
     return userElement;
 }
 
-export async function fetchAdminsForInstitution(instId) {
+export async function fetchAdminsForInstitution(instId, options = {}) {
     if (!instId) return [];
     if (adminCacheByInstitutionUsers?.[instId]) return adminCacheByInstitutionUsers[instId];
     try {
-        // SIKKERHED: Brug RPC der kun returnerer {id,name} (ingen email-læk før login)
-        const { data, error } = await supabaseClient.rpc('get_admin_directory_public', {
-            p_institution_id: instId,
-        });
+        const { loginCode } = options || {};
+        // Hvis vi har verificeret klubkode i denne session, kan vi hente emails via secure RPC.
+        const rpcName = loginCode ? 'get_admin_directory_for_login' : 'get_admin_directory_public';
+        const params = loginCode
+            ? { p_institution_id: instId, p_code: loginCode }
+            : { p_institution_id: instId };
+
+        const { data, error } = await supabaseClient.rpc(rpcName, params);
         if (error) throw error;
         adminCacheByInstitutionUsers[instId] = data || [];
     } catch (err) {

@@ -11,8 +11,7 @@ let selectionToken = 0; // Race protection: increments on each user selection/cl
 // ============================================================================
 // ALLERGEN CACHE - undgår gentagne DB-kald for samme barn
 // ============================================================================
-const allergenCache = new Map(); // childId → { data, timestamp }
-const ALLERGEN_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutter (ændres sjældent)
+const allergenCache = new Map(); // childId → data
 
 async function loadChildAllergyPolicy(childId) {
     const tokenAtStart = selectionToken;
@@ -27,8 +26,8 @@ async function loadChildAllergyPolicy(childId) {
 
         // OPTIMERING: Check cache først
         const cached = allergenCache.get(childId);
-        if (cached && Date.now() - cached.timestamp < ALLERGEN_CACHE_TTL_MS) {
-            assignIfStillSelected(cached.data);
+        if (cached) {
+            assignIfStillSelected(cached);
             return;
         }
 
@@ -49,7 +48,7 @@ async function loadChildAllergyPolicy(childId) {
         });
 
         // Gem i cache
-        allergenCache.set(childId, { data: map, timestamp: Date.now() });
+        allergenCache.set(childId, map);
         assignIfStillSelected(map);
     } catch (err) {
         console.error('[allergies] unexpected error:', err);

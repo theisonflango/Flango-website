@@ -14,7 +14,6 @@ export const TOAST_NOTIFICATION_MS = 1500;
 export const SESSION_TIMER_INTERVAL_MS = 1000;
 
 // Caching & Performance
-export const CACHE_TTL_MS = 2000;
 export const SEARCH_DEBOUNCE_MS = 150;
 
 // ===========================
