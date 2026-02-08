@@ -7270,7 +7270,15 @@
 
         console.log("[child-switcher] Showing switcher with", children.length, "children");
         childSwitcher.style.display = "block";
-        childSwitcherSelect.innerHTML = children
+
+        // Hent frisk reference til select-elementet (kan være udskiftet)
+        const selectEl = document.getElementById("child-switcher-select");
+        if (!selectEl) {
+          console.error("[child-switcher] Select element not found");
+          return;
+        }
+
+        selectEl.innerHTML = children
           .map(
             (child) => `
             <option value="${child.child_id}" ${child.child_id === currentChildId ? 'selected' : ''}>
@@ -7280,9 +7288,10 @@
           )
           .join("");
 
-        // Remove existing listener
-        const newSelect = childSwitcherSelect.cloneNode(true);
-        childSwitcherSelect.parentNode.replaceChild(newSelect, childSwitcherSelect);
+        // Remove existing listener ved at clone og replace
+        const newSelect = selectEl.cloneNode(true);
+        newSelect.id = "child-switcher-select"; // Behold ID så vi kan finde det igen
+        selectEl.parentNode.replaceChild(newSelect, selectEl);
 
         newSelect.addEventListener("change", async (e) => {
           const newChildId = e.target.value;
