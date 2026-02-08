@@ -6037,10 +6037,23 @@
           try {
             console.log("[auth] authMode:", authMode);
             if (authMode === 'email_password') {
-              console.log("[auth] Using XHR path, getting session...");
-              const { data: sessionData } = await supabase.auth.getSession();
-              console.log("[auth] Got session, hasToken:", !!sessionData?.session?.access_token);
-              const accessToken = sessionData?.session?.access_token || authAccessToken || null;
+              // Brug authAccessToken direkte - undgå getSession() som kan hænge pga Web Locks
+              console.log("[auth] Using XHR path, hasToken:", !!authAccessToken);
+              const accessToken = authAccessToken || null;
+              if (!accessToken) {
+                console.warn("[auth] No access token available, trying getSession as fallback...");
+                try {
+                  const { data: sessionData } = await Promise.race([
+                    supabase.auth.getSession(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("getSession timeout")), 3000))
+                  ]);
+                  if (sessionData?.session?.access_token) {
+                    authAccessToken = sessionData.session.access_token;
+                  }
+                } catch (e) {
+                  console.warn("[auth] getSession fallback failed:", e.message);
+                }
+              }
               console.log("[auth] Starting XHR to get_children_for_parent...");
               const xhrResult = await postJsonXHR(
                 `${SUPABASE_URL}/rest/v1/rpc/get_children_for_parent`,
