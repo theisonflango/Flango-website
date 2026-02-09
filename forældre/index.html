@@ -472,6 +472,245 @@
       display: block;
     }
 
+    .skaermtid-stats { margin-top: 12px; }
+    .skaermtid-row { margin-bottom: 10px; font-size: 14px; color: #374151; }
+    .skaermtid-row strong { color: #1f2937; }
+
+    .skaermtid-section-divider {
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 18px 0 14px 0;
+    }
+    .skaermtid-sub-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+      margin: 0 0 10px 0;
+    }
+    .skaermtid-desc {
+      font-size: 13px;
+      color: #6b7280;
+      line-height: 1.5;
+      margin: 0 0 12px 0;
+    }
+
+    /* Personal limits form */
+    .skaermtid-limits-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .skaermtid-limits-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 13px;
+      color: #374151;
+      font-weight: 500;
+    }
+    .skaermtid-limits-form input[type="number"] {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fff;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .skaermtid-limits-form input[type="number"]:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .skaermtid-limits-hint {
+      font-size: 12px;
+      color: #9ca3af;
+      margin: 0;
+    }
+    .skaermtid-save-btn {
+      margin-top: 6px;
+      padding: 10px 16px;
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .skaermtid-save-btn:hover { background: #2563eb; }
+    .skaermtid-save-btn:disabled { background: #93c5fd; cursor: not-allowed; }
+    .skaermtid-feedback {
+      font-size: 13px;
+      margin-top: 6px;
+      min-height: 18px;
+    }
+
+    /* Extra time consent toggle */
+    .skaermtid-toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .skaermtid-toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .skaermtid-toggle input { opacity: 0; width: 0; height: 0; }
+    .skaermtid-toggle .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #d1d5db;
+      border-radius: 24px;
+      transition: 0.3s;
+    }
+    .skaermtid-toggle .slider::before {
+      content: "";
+      position: absolute;
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+    .skaermtid-toggle input:checked + .slider { background: #3b82f6; }
+    .skaermtid-toggle input:checked + .slider::before { transform: translateX(20px); }
+    .skaermtid-toggle-label {
+      font-size: 14px;
+      color: #374151;
+      font-weight: 500;
+    }
+
+    /* Game catalog */
+    .skaermtid-game-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .skaermtid-game-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .skaermtid-game-name {
+      color: #1f2937;
+      font-weight: 500;
+    }
+    .skaermtid-game-category {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-left: 6px;
+    }
+    .skaermtid-game-item.blocked {
+      opacity: 0.6;
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+    .skaermtid-game-item .skaermtid-toggle { width: 38px; height: 20px; }
+    .skaermtid-game-item .skaermtid-toggle .slider::before {
+      height: 14px; width: 14px;
+    }
+    .skaermtid-game-item .skaermtid-toggle input:checked + .slider::before {
+      transform: translateX(18px);
+    }
+    .skaermtid-game-empty {
+      font-size: 13px;
+      color: #9ca3af;
+      padding: 8px 0;
+    }
+
+    /* ── Skærmtid chart (matches Købsprofil style) ── */
+    .st-chart-section {
+      margin-top: 4px;
+    }
+    .st-chart-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .st-view-btns,
+    .st-period-btns {
+      display: flex;
+      gap: 6px;
+    }
+    .st-view-btn, .st-period-btn {
+      padding: 6px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .st-view-btn:hover, .st-period-btn:hover {
+      border-color: #6366f1;
+      color: #6366f1;
+    }
+    .st-view-btn.active, .st-period-btn.active {
+      background: #6366f1;
+      color: #fff;
+      border-color: #6366f1;
+    }
+    .st-chart-total {
+      font-size: 14px;
+      color: #475569;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .st-chart-total strong { color: #1e293b; }
+    .st-chart {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      gap: 14px;
+      padding: 40px 20px 20px;
+      min-height: 320px;
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .st-chart::before,
+    .st-chart::after {
+      content: "";
+      flex: 1 0 0px;
+    }
+    .st-chart-empty {
+      width: 100%;
+      text-align: center;
+      font-size: 14px;
+      color: #6b7280;
+      padding: 40px 12px;
+    }
+    @media (max-width: 600px) {
+      .st-chart {
+        gap: 8px;
+        padding: 20px 10px 16px;
+        min-height: 260px;
+      }
+    }
+
     .daily-assortment-card {
       background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(255, 255, 255, 0.98));
       border-radius: 18px;
@@ -3121,6 +3360,95 @@
                   </div>
                 </div>
 
+                <!-- Skærmtid – vises når institutionen har slået det til (get-parent-view returnerer institution.skaermtid_enabled) -->
+                <div class="collapsible-section-container" id="skaermtid-collapsible" style="display: none;">
+                  <div class="collapsible-section-header">
+                    <div class="collapsible-section-title">
+                      <div class="collapsible-section-icon">🕹️</div>
+                      <span>Skærmtid</span>
+                    </div>
+                    <div class="collapsible-section-arrow">▼</div>
+                  </div>
+                  <div class="collapsible-section-content">
+                    <section style="margin: 0; border: none; box-shadow: none; padding: 0;">
+                      <p style="font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 16px;">
+                        Her kan du se og styre dit barns spilletid i institutionen. Indstillingerne afhænger af, hvad klubben har slået til.
+                      </p>
+                      <div id="skaermtid-content" class="skaermtid-stats" style="display: none;">
+                        <div id="skaermtid-remaining" class="skaermtid-row" style="display: none;"><strong>Resterende spilletid:</strong> <span id="skaermtid-remaining-value">—</span> min</div>
+                        <div id="skaermtid-usage" class="skaermtid-row" style="display: none;"><strong>Brugt i dag:</strong> <span id="skaermtid-usage-value">—</span></div>
+                        <div id="skaermtid-rules" class="skaermtid-row" style="display: none;"><strong>Institutions-regler:</strong> <span id="skaermtid-rules-value">—</span></div>
+
+                        <!-- Personlige grænser -->
+                        <div id="skaermtid-personal-limits" style="display: none;">
+                          <hr class="skaermtid-section-divider">
+                          <p class="skaermtid-sub-title">Sæt personlige grænser</p>
+                          <p class="skaermtid-desc">Du kan sætte lavere grænser for dit barn. Grænsen kan aldrig overstige institutionens regler.</p>
+                          <div class="skaermtid-limits-form">
+                            <label>
+                              Daglig grænse (minutter)
+                              <input type="number" id="skaermtid-limit-daily" min="1" max="999" placeholder="Brug institutionens">
+                            </label>
+                            <p class="skaermtid-limits-hint" id="skaermtid-limit-daily-hint"></p>
+                            <label>
+                              Maks per session (minutter)
+                              <input type="number" id="skaermtid-limit-session" min="1" max="999" placeholder="Brug institutionens">
+                            </label>
+                            <p class="skaermtid-limits-hint" id="skaermtid-limit-session-hint"></p>
+                            <button class="skaermtid-save-btn" id="skaermtid-save-limits-btn">Gem personlige grænser</button>
+                            <div class="skaermtid-feedback" id="skaermtid-limits-feedback"></div>
+                          </div>
+                        </div>
+
+                        <!-- Samtykke til forlænget spilletid -->
+                        <div id="skaermtid-extra-time" style="display: none;">
+                          <hr class="skaermtid-section-divider">
+                          <p class="skaermtid-sub-title">Samtykke til forlænget spilletid</p>
+                          <p class="skaermtid-desc">Giv forudgående samtykke til, at personalet undtagelsesvis må forlænge dit barns spilletid. Samtykket giver ikke barnet ekstra rettigheder og udløser ikke automatiske forlængelser – det fungerer udelukkende som pædagogisk beslutningsstøtte for personalet.</p>
+                          <div class="skaermtid-toggle-row">
+                            <label class="skaermtid-toggle">
+                              <input type="checkbox" id="skaermtid-consent-toggle">
+                              <span class="slider"></span>
+                            </label>
+                            <span class="skaermtid-toggle-label" id="skaermtid-consent-label">Samtykke ikke givet</span>
+                          </div>
+                          <div class="skaermtid-feedback" id="skaermtid-consent-feedback"></div>
+                        </div>
+
+                        <!-- Godkend spil fra kataloget -->
+                        <div id="skaermtid-game-approval" style="display: none;">
+                          <hr class="skaermtid-section-divider">
+                          <p class="skaermtid-sub-title">Godkend spil fra kataloget</p>
+                          <p class="skaermtid-desc">Vælg hvilke spil dit barn må spille. Spil der ikke er godkendt, vil blive blokeret.</p>
+                          <div class="skaermtid-game-list" id="skaermtid-game-list"></div>
+                          <div class="skaermtid-feedback" id="skaermtid-games-feedback"></div>
+                        </div>
+
+                        <!-- Spilletids-chart (station type / spil) -->
+                        <div id="skaermtid-chart-section" class="st-chart-section" style="display: none;">
+                          <hr class="skaermtid-section-divider">
+                          <p class="skaermtid-sub-title">Spilletidsoversigt</p>
+                          <div class="st-chart-controls">
+                            <div class="st-view-btns">
+                              <button class="st-view-btn active" data-view="type">Stationer</button>
+                              <button class="st-view-btn" data-view="game">Spil</button>
+                            </div>
+                            <div class="st-period-btns">
+                              <button class="st-period-btn active" data-period="all">Alt</button>
+                              <button class="st-period-btn" data-period="30">30 dage</button>
+                              <button class="st-period-btn" data-period="7">7 dage</button>
+                            </div>
+                          </div>
+                          <div class="st-chart-total" id="st-total" style="display:none;">
+                            Samlet spilletid: <strong id="st-total-value">0 min</strong>
+                          </div>
+                          <div id="st-chart" class="st-chart"></div>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+
                 <!-- 9. Allergier & madbegrænsninger -->
                 <div class="collapsible-section-container" id="allergens-collapsible" style="display: none;">
                   <div class="collapsible-section-header">
@@ -3338,6 +3666,8 @@
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-products-for-parent";
       const SAVE_SUGAR_POLICY_URL =
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/save-parent-sugar-policy";
+      const SAVE_SKAERMTID_URL =
+        "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/save-skaermtid-parent-settings";
       const GET_PARENT_EVENTS_URL =
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-parent-events";
       const PARENT_EVENT_REGISTER_URL =
@@ -3892,12 +4222,16 @@
           }
         }
 
-        // Købsprofil - altid synlig når logget ind, load data med det samme
+        // Købsprofil - altid synlig, men lazy load data
         const ppCollapsible = document.getElementById("purchase-profile-collapsible");
         if (ppCollapsible) {
           ppCollapsible.style.display = "block";
-          ppLoaded = true;
-          loadPurchaseProfile();
+          // LAZY: Load kun hvis sektionen er åben
+          const ppContent = ppCollapsible.querySelector(".collapsible-section-content");
+          if (ppContent?.classList.contains("active") && !ppLoaded) {
+            ppLoaded = true;
+            loadPurchaseProfile();
+          }
         }
 
         // Optank saldo - vises/skjules i renderPaymentSection baseret på prefs
@@ -3916,7 +4250,10 @@
         const productLimitCollapsible = document.getElementById("product-limit-collapsible");
         if (productLimitCollapsible) {
           productLimitCollapsible.style.display = productLimitEnabled ? "block" : "none";
-          if (productLimitEnabled && currentChildId && currentInstitutionId) {
+          // LAZY: Load kun hvis sektionen er åben
+          const plContent = productLimitCollapsible.querySelector(".collapsible-section-content");
+          if (productLimitEnabled && plContent?.classList.contains("active") && !productLimitsLoaded) {
+            productLimitsLoaded = true;
             loadProductLimits(currentInstitutionId, currentChildId);
           }
         }
@@ -3940,7 +4277,10 @@
         const sugarPolicyCollapsible = document.getElementById("sugar-policy-collapsible");
         if (sugarPolicyCollapsible) {
           sugarPolicyCollapsible.style.display = sugarPolicyEnabled ? "block" : "none";
-          if (sugarPolicyEnabled && currentChildId) {
+          // LAZY: Load kun hvis sektionen er åben
+          const spContent = sugarPolicyCollapsible.querySelector(".collapsible-section-content");
+          if (sugarPolicyEnabled && spContent?.classList.contains("active") && !sugarPolicyLoaded) {
+            sugarPolicyLoaded = true;
             loadSugarPolicy();
           }
         }
@@ -3972,6 +4312,13 @@
           }
         }
 
+        // Skærmtid – vis kun når institutionen har slået det til (get-parent-view: institution.skaermtid_enabled)
+        const skaermtidCollapsible = document.getElementById("skaermtid-collapsible");
+        if (skaermtidCollapsible) {
+          const skaermtidEnabled = prefs && prefs.skaermtid_enabled === true;
+          skaermtidCollapsible.style.display = skaermtidEnabled ? "block" : "none";
+        }
+
         // Allergener (default true hvis ikke sat)
         const allergensEnabled = prefs && prefs.parent_portal_allergens !== false;
         const allergensCollapsible = document.getElementById("allergens-collapsible");
@@ -3985,6 +4332,434 @@
           changePinCollapsible.style.display = "block";
         }
       }
+
+      // Gem seneste skaermtid data så event handlers kan bruge det
+      let _skaermtidData = null;
+      let _skaermtidPrefs = null;
+
+      function renderSkaermtidContent(data, prefs) {
+        const container = document.getElementById("skaermtid-content");
+        if (!container) return;
+        if (!prefs || prefs.skaermtid_enabled !== true) {
+          container.style.display = "none";
+          return;
+        }
+        _skaermtidData = data;
+        _skaermtidPrefs = prefs;
+
+        console.log("[skaermtid] renderSkaermtidContent data:", {
+          skaermtid_balance_minutes: data.skaermtid_balance_minutes,
+          skaermtid_default_balance_minutes: data.skaermtid_default_balance_minutes,
+          skaermtid_max_session_minutes: data.skaermtid_max_session_minutes,
+          skaermtid_used_today: data.skaermtid_used_today,
+          skaermtid_parent_overrides: data.skaermtid_parent_overrides,
+          skaermtid_game_catalog: data.skaermtid_game_catalog,
+        });
+
+        const balanceMinutes = data.skaermtid_balance_minutes != null ? Number(data.skaermtid_balance_minutes) : (typeof data.balance === "number" ? data.balance : Number(data.balance || 0));
+        const defaultBalance = data.skaermtid_default_balance_minutes != null ? Number(data.skaermtid_default_balance_minutes) : null;
+        const maxSession = data.skaermtid_max_session_minutes != null ? Number(data.skaermtid_max_session_minutes) : null;
+        const usedToday = typeof data.skaermtid_used_today === "number" ? data.skaermtid_used_today : 0;
+        const overrides = data.skaermtid_parent_overrides || null;
+        const gameCatalog = Array.isArray(data.skaermtid_game_catalog) ? data.skaermtid_game_catalog : [];
+
+        // ── Resterende tid ──
+        const remainingEl = document.getElementById("skaermtid-remaining");
+        const remainingVal = document.getElementById("skaermtid-remaining-value");
+        if (prefs.skaermtid_show_remaining !== false && remainingEl && remainingVal) {
+          remainingEl.style.display = "block";
+          remainingVal.textContent = Math.max(0, Math.round(balanceMinutes));
+        } else if (remainingEl) remainingEl.style.display = "none";
+
+        // ── Forbrug (brugt i dag) ──
+        const usageEl = document.getElementById("skaermtid-usage");
+        const usageVal = document.getElementById("skaermtid-usage-value");
+        if (prefs.skaermtid_show_usage !== false && usageEl && usageVal) {
+          usageEl.style.display = "block";
+          usageVal.textContent = usedToday > 0 ? (usedToday + " min") : "0 min";
+        } else if (usageEl) usageEl.style.display = "none";
+
+        // ── Institutions-regler ──
+        const rulesEl = document.getElementById("skaermtid-rules");
+        const rulesVal = document.getElementById("skaermtid-rules-value");
+        if (prefs.skaermtid_show_rules !== false && rulesEl && rulesVal) {
+          rulesEl.style.display = "block";
+          const parts = [];
+          if (defaultBalance != null && defaultBalance > 0) parts.push("Daglig grænse: " + Math.round(defaultBalance) + " minutter.");
+          if (maxSession != null && maxSession > 0) parts.push("Max " + Math.round(maxSession) + " minutter per session.");
+          rulesVal.textContent = parts.length ? parts.join(" ") : "Klubben har ikke sat grænser endnu.";
+        } else if (rulesEl) rulesEl.style.display = "none";
+
+        // ── Personlige grænser ──
+        const limitsSection = document.getElementById("skaermtid-personal-limits");
+        if (prefs.skaermtid_allow_personal_limits === true && limitsSection) {
+          limitsSection.style.display = "block";
+          const dailyInput = document.getElementById("skaermtid-limit-daily");
+          const sessionInput = document.getElementById("skaermtid-limit-session");
+          const dailyHint = document.getElementById("skaermtid-limit-daily-hint");
+          const sessionHint = document.getElementById("skaermtid-limit-session-hint");
+
+          // Sæt maks attribut baseret på institutions-regler
+          if (dailyInput) {
+            if (defaultBalance != null && defaultBalance > 0) {
+              dailyInput.max = defaultBalance;
+              if (dailyHint) dailyHint.textContent = "Institutionens grænse: " + Math.round(defaultBalance) + " min. Lad feltet stå tomt for at bruge institutionens.";
+            } else {
+              if (dailyHint) dailyHint.textContent = "Lad feltet stå tomt for at bruge institutionens standard.";
+            }
+            dailyInput.value = overrides?.max_daily_minutes ?? "";
+          }
+          if (sessionInput) {
+            if (maxSession != null && maxSession > 0) {
+              sessionInput.max = maxSession;
+              if (sessionHint) sessionHint.textContent = "Institutionens grænse: " + Math.round(maxSession) + " min. Lad feltet stå tomt for at bruge institutionens.";
+            } else {
+              if (sessionHint) sessionHint.textContent = "Lad feltet stå tomt for at bruge institutionens standard.";
+            }
+            sessionInput.value = overrides?.max_session_minutes ?? "";
+          }
+        } else if (limitsSection) limitsSection.style.display = "none";
+
+        // ── Samtykke til forlænget spilletid ──
+        const extraTimeSection = document.getElementById("skaermtid-extra-time");
+        if (prefs.skaermtid_allow_extra_time_requests === true && extraTimeSection) {
+          extraTimeSection.style.display = "block";
+          const toggle = document.getElementById("skaermtid-consent-toggle");
+          const label = document.getElementById("skaermtid-consent-label");
+          if (toggle) {
+            toggle.checked = overrides?.extra_time_consent === true;
+            if (label) label.textContent = toggle.checked ? "Samtykke givet" : "Samtykke ikke givet";
+          }
+        } else if (extraTimeSection) extraTimeSection.style.display = "none";
+
+        // ── Godkend spil fra kataloget ──
+        const gameSection = document.getElementById("skaermtid-game-approval");
+        if (prefs.skaermtid_allow_game_approval === true && gameSection) {
+          gameSection.style.display = "block";
+          const gameList = document.getElementById("skaermtid-game-list");
+          if (gameList) {
+            if (gameCatalog.length === 0) {
+              gameList.innerHTML = '<p class="skaermtid-game-empty">Ingen spil i kataloget endnu.</p>';
+            } else {
+              gameList.innerHTML = gameCatalog.map(g => {
+                const catLabel = g.category === "pc" ? "PC" : g.category === "console" ? "Konsol" : "PC/Konsol";
+                const isBlocked = g.set_by === "institution" && g.allowed === false;
+                const checked = g.allowed ? "checked" : "";
+                const disabled = isBlocked ? "disabled" : "";
+                const blockedClass = !g.allowed ? " blocked" : "";
+                return '<div class="skaermtid-game-item' + blockedClass + '">' +
+                  '<div><span class="skaermtid-game-name">' + g.name + '</span><span class="skaermtid-game-category">' + catLabel + '</span>' +
+                  (isBlocked ? '<br><span style="font-size:11px;color:#ef4444;">Blokeret af institutionen</span>' : '') +
+                  '</div>' +
+                  '<label class="skaermtid-toggle">' +
+                  '<input type="checkbox" data-game-id="' + g.id + '" ' + checked + ' ' + disabled + '>' +
+                  '<span class="slider"></span>' +
+                  '</label></div>';
+              }).join("");
+            }
+          }
+        } else if (gameSection) gameSection.style.display = "none";
+
+        // ── Spilletids-chart (altid synlig når skaermtid er slået til) ──
+        const chartSection = document.getElementById("skaermtid-chart-section");
+        if (chartSection) {
+          chartSection.style.display = "block";
+          stSessionData = Array.isArray(data.skaermtid_sessions) ? data.skaermtid_sessions : [];
+          stCurrentView = "type";
+          stCurrentPeriod = "all";
+          // Reset button states
+          document.querySelectorAll(".st-view-btn").forEach(b => b.classList.toggle("active", b.dataset.view === "type"));
+          document.querySelectorAll(".st-period-btn").forEach(b => b.classList.toggle("active", b.dataset.period === "all"));
+          renderSkaermtidChart();
+        }
+
+        container.style.display = "block";
+      }
+
+      // ── Skærmtid event handlers ──
+      // Gem personlige grænser
+      document.addEventListener("click", async function(e) {
+        if (e.target && e.target.id === "skaermtid-save-limits-btn") {
+          e.preventDefault();
+          const btn = e.target;
+          const feedback = document.getElementById("skaermtid-limits-feedback");
+          const dailyVal = document.getElementById("skaermtid-limit-daily")?.value;
+          const sessionVal = document.getElementById("skaermtid-limit-session")?.value;
+
+          const maxDaily = dailyVal ? parseInt(dailyVal) : null;
+          const maxSessionVal = sessionVal ? parseInt(sessionVal) : null;
+
+          btn.disabled = true;
+          btn.textContent = "Gemmer...";
+          if (feedback) { feedback.textContent = ""; feedback.style.color = ""; }
+
+          try {
+            const res = await fetch(SAVE_SKAERMTID_URL, {
+              method: "POST",
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                child_id: currentChildId,
+                institution_id: currentInstitutionId,
+                action: "save_limits",
+                max_daily_minutes: maxDaily,
+                max_session_minutes: maxSessionVal,
+              }),
+            });
+            const result = await res.json();
+            if (result.success) {
+              if (feedback) { feedback.textContent = "Grænser gemt."; feedback.style.color = "#16a34a"; }
+            } else {
+              if (feedback) { feedback.textContent = result.error || "Fejl ved gemning."; feedback.style.color = "#dc2626"; }
+            }
+          } catch (err) {
+            console.error("[skaermtid] save limits error:", err);
+            if (feedback) { feedback.textContent = "Netværksfejl. Prøv igen."; feedback.style.color = "#dc2626"; }
+          } finally {
+            btn.disabled = false;
+            btn.textContent = "Gem personlige grænser";
+          }
+        }
+      });
+
+      // Samtykke toggle
+      document.addEventListener("change", async function(e) {
+        if (e.target && e.target.id === "skaermtid-consent-toggle") {
+          const consent = e.target.checked;
+          const label = document.getElementById("skaermtid-consent-label");
+          const feedback = document.getElementById("skaermtid-consent-feedback");
+          if (label) label.textContent = consent ? "Samtykke givet" : "Samtykke ikke givet";
+          if (feedback) { feedback.textContent = "Gemmer..."; feedback.style.color = "#6b7280"; }
+
+          try {
+            const res = await fetch(SAVE_SKAERMTID_URL, {
+              method: "POST",
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                child_id: currentChildId,
+                institution_id: currentInstitutionId,
+                action: "save_extra_time_consent",
+                extra_time_consent: consent,
+              }),
+            });
+            const result = await res.json();
+            if (result.success) {
+              if (feedback) { feedback.textContent = "Gemt."; feedback.style.color = "#16a34a"; }
+              setTimeout(() => { if (feedback) feedback.textContent = ""; }, 2000);
+            } else {
+              if (feedback) { feedback.textContent = result.error || "Fejl."; feedback.style.color = "#dc2626"; }
+              e.target.checked = !consent;
+              if (label) label.textContent = !consent ? "Samtykke givet" : "Samtykke ikke givet";
+            }
+          } catch (err) {
+            console.error("[skaermtid] consent toggle error:", err);
+            if (feedback) { feedback.textContent = "Netværksfejl."; feedback.style.color = "#dc2626"; }
+            e.target.checked = !consent;
+            if (label) label.textContent = !consent ? "Samtykke givet" : "Samtykke ikke givet";
+          }
+        }
+      });
+
+      // Spil-godkendelse toggle
+      document.addEventListener("change", async function(e) {
+        if (e.target && e.target.closest && e.target.closest("#skaermtid-game-list") && e.target.dataset.gameId) {
+          const gameId = e.target.dataset.gameId;
+          const allowed = e.target.checked;
+          const feedback = document.getElementById("skaermtid-games-feedback");
+          const item = e.target.closest(".skaermtid-game-item");
+
+          if (item) {
+            if (allowed) item.classList.remove("blocked");
+            else item.classList.add("blocked");
+          }
+          if (feedback) { feedback.textContent = "Gemmer..."; feedback.style.color = "#6b7280"; }
+
+          try {
+            const res = await fetch(SAVE_SKAERMTID_URL, {
+              method: "POST",
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                child_id: currentChildId,
+                institution_id: currentInstitutionId,
+                action: "save_game_permissions",
+                permissions: [{ game_id: gameId, allowed: allowed }],
+              }),
+            });
+            const result = await res.json();
+            if (result.success) {
+              if (feedback) { feedback.textContent = "Gemt."; feedback.style.color = "#16a34a"; }
+              setTimeout(() => { if (feedback) feedback.textContent = ""; }, 2000);
+            } else {
+              if (feedback) { feedback.textContent = result.error || "Fejl."; feedback.style.color = "#dc2626"; }
+              e.target.checked = !allowed;
+              if (item) { if (!allowed) item.classList.remove("blocked"); else item.classList.add("blocked"); }
+            }
+          } catch (err) {
+            console.error("[skaermtid] game permission error:", err);
+            if (feedback) { feedback.textContent = "Netværksfejl."; feedback.style.color = "#dc2626"; }
+            e.target.checked = !allowed;
+            if (item) { if (!allowed) item.classList.remove("blocked"); else item.classList.add("blocked"); }
+          }
+        }
+      });
+
+      // ── Skærmtid Chart ──
+      let stCurrentView = "type";
+      let stCurrentPeriod = "all";
+      let stSessionData = [];
+
+      const stCylinderColors = [
+        { bg: "linear-gradient(90deg, #4338ca 0%, #6366f1 35%, #818cf8 50%, #6366f1 65%, #4338ca 100%)", shadow: "#312e81", cap: "linear-gradient(180deg, #a5b4fc 0%, #818cf8 100%)" },
+        { bg: "linear-gradient(90deg, #0891b2 0%, #22d3ee 35%, #67e8f9 50%, #22d3ee 65%, #0891b2 100%)", shadow: "#155e75", cap: "linear-gradient(180deg, #a5f3fc 0%, #67e8f9 100%)" },
+        { bg: "linear-gradient(90deg, #c026d3 0%, #e879f9 35%, #f0abfc 50%, #e879f9 65%, #c026d3 100%)", shadow: "#86198f", cap: "linear-gradient(180deg, #f5d0fe 0%, #e879f9 100%)" },
+        { bg: "linear-gradient(90deg, #ea580c 0%, #fb923c 35%, #fdba74 50%, #fb923c 65%, #ea580c 100%)", shadow: "#9a3412", cap: "linear-gradient(180deg, #fed7aa 0%, #fb923c 100%)" },
+        { bg: "linear-gradient(90deg, #059669 0%, #34d399 35%, #6ee7b7 50%, #34d399 65%, #059669 100%)", shadow: "#064e3b", cap: "linear-gradient(180deg, #a7f3d0 0%, #6ee7b7 100%)" },
+        { bg: "linear-gradient(90deg, #dc2626 0%, #f87171 35%, #fca5a5 50%, #f87171 65%, #dc2626 100%)", shadow: "#991b1b", cap: "linear-gradient(180deg, #fecaca 0%, #f87171 100%)" },
+        { bg: "linear-gradient(90deg, #ca8a04 0%, #facc15 35%, #fde68a 50%, #facc15 65%, #ca8a04 100%)", shadow: "#854d0e", cap: "linear-gradient(180deg, #fef08a 0%, #facc15 100%)" },
+        { bg: "linear-gradient(90deg, #0284c7 0%, #38bdf8 35%, #7dd3fc 50%, #38bdf8 65%, #0284c7 100%)", shadow: "#075985", cap: "linear-gradient(180deg, #bae6fd 0%, #7dd3fc 100%)" },
+      ];
+
+      function stFilterByPeriod(sessions, period) {
+        if (period === "all") return sessions;
+        const days = parseInt(period);
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        const cutoffStr = cutoff.toISOString().substring(0, 10);
+        return sessions.filter(s => s.date && s.date >= cutoffStr);
+      }
+
+      function stAggregateByType(sessions) {
+        const map = {};
+        sessions.forEach(s => {
+          const label = s.device_type === "console" ? "Konsol" : "PC";
+          const icon = s.device_type === "console" ? "🎮" : "🖥️";
+          if (!map[label]) map[label] = { label, icon, minutes: 0 };
+          map[label].minutes += s.minutes;
+        });
+        return Object.values(map).sort((a, b) => b.minutes - a.minutes);
+      }
+
+      function stAggregateByGame(sessions) {
+        // Games are identified by device_name for now (station name)
+        // In future, when game tracking is added, this would use game_name
+        const map = {};
+        sessions.forEach(s => {
+          const label = s.device_name || "Ukendt";
+          if (!map[label]) map[label] = { label, icon: s.device_type === "console" ? "🎮" : "🖥️", minutes: 0 };
+          map[label].minutes += s.minutes;
+        });
+        return Object.values(map).sort((a, b) => b.minutes - a.minutes);
+      }
+
+      function renderSkaermtidChart() {
+        const container = document.getElementById("st-chart");
+        const totalEl = document.getElementById("st-total");
+        const totalVal = document.getElementById("st-total-value");
+        if (!container) return;
+
+        const filtered = stFilterByPeriod(stSessionData, stCurrentPeriod);
+        const chartData = stCurrentView === "type" ? stAggregateByType(filtered) : stAggregateByGame(filtered);
+
+        if (chartData.length === 0) {
+          container.innerHTML = '<div class="st-chart-empty">Ingen spilletid registreret i den valgte periode.</div>';
+          if (totalEl) totalEl.style.display = "none";
+          return;
+        }
+
+        const totalMinutes = chartData.reduce((sum, d) => sum + d.minutes, 0);
+        if (totalEl && totalVal) {
+          totalVal.textContent = totalMinutes + " min";
+          totalEl.style.display = "block";
+        }
+
+        const maxMinutes = Math.max(...chartData.map(d => d.minutes));
+        container.innerHTML = "";
+        const fragment = document.createDocumentFragment();
+
+        chartData.forEach((item, index) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "pp-bar-wrapper";
+
+          const valueLabel = document.createElement("div");
+          valueLabel.className = "pp-bar-value";
+          valueLabel.textContent = item.minutes + " min";
+
+          const normalizedHeight = maxMinutes > 0 ? (item.minutes / maxMinutes) * 100 : 0;
+          const minH = 25;
+          const maxH = 170;
+          const calcHeight = minH + (normalizedHeight / 100) * (maxH - minH);
+          const colors = stCylinderColors[index % stCylinderColors.length];
+
+          const bar = document.createElement("div");
+          bar.className = "pp-bar";
+          bar.style.setProperty("--final-height", Math.round(calcHeight) + "px");
+          bar.style.background = colors.bg;
+          bar.style.boxShadow = "3px 0 0 " + colors.shadow + ", 0 8px 16px rgba(0,0,0,0.15)";
+
+          const cap = document.createElement("div");
+          cap.className = "pp-bar-cap";
+          cap.style.background = colors.cap;
+          bar.appendChild(cap);
+
+          const tooltip = document.createElement("div");
+          tooltip.className = "pp-bar-tooltip";
+          tooltip.innerHTML = '<div style="font-weight:800;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:3px;margin-bottom:3px;">' + item.label + '</div>' +
+            '<div style="display:flex;justify-content:space-between;gap:12px;"><span>Spilletid:</span><span style="font-weight:700;">' + item.minutes + ' min</span></div>';
+          bar.appendChild(tooltip);
+
+          bar.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const wasVisible = bar.classList.contains("tooltip-visible");
+            container.querySelectorAll(".pp-bar.tooltip-visible").forEach(b => b.classList.remove("tooltip-visible"));
+            if (!wasVisible) bar.classList.add("tooltip-visible");
+          });
+
+          const iconWrap = document.createElement("div");
+          iconWrap.className = "pp-bar-icon";
+          iconWrap.innerHTML = '<span>' + item.icon + '</span>';
+
+          const nameLabel = document.createElement("div");
+          nameLabel.className = "pp-bar-name";
+          nameLabel.textContent = item.label;
+          nameLabel.title = item.label;
+
+          wrapper.appendChild(valueLabel);
+          wrapper.appendChild(bar);
+          wrapper.appendChild(iconWrap);
+          wrapper.appendChild(nameLabel);
+          fragment.appendChild(wrapper);
+        });
+
+        container.appendChild(fragment);
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            container.querySelectorAll(".pp-bar").forEach((b, i) => {
+              setTimeout(() => { b.style.height = b.style.getPropertyValue("--final-height"); }, i * 80);
+            });
+          });
+        });
+      }
+
+      // View + period button listeners
+      document.addEventListener("click", function(e) {
+        if (e.target && e.target.classList.contains("st-view-btn")) {
+          document.querySelectorAll(".st-view-btn").forEach(b => b.classList.remove("active"));
+          e.target.classList.add("active");
+          stCurrentView = e.target.dataset.view;
+          renderSkaermtidChart();
+        }
+        if (e.target && e.target.classList.contains("st-period-btn")) {
+          document.querySelectorAll(".st-period-btn").forEach(b => b.classList.remove("active"));
+          e.target.classList.add("active");
+          stCurrentPeriod = e.target.dataset.period;
+          renderSkaermtidChart();
+        }
+      });
+
+      // Dismiss chart tooltips
+      document.addEventListener("click", () => {
+        document.querySelectorAll("#st-chart .pp-bar.tooltip-visible").forEach(b => b.classList.remove("tooltip-visible"));
+      });
 
       // ── Kommende arrangementer ──
       let eventsChildBalance = 0;
@@ -4652,6 +5427,8 @@
       let eventsLoaded = false;
       let allergyLoaded = false;
       let dailyAssortmentLoaded = false;
+      let productLimitsLoaded = false;
+      let sugarPolicyLoaded = false;
 
       const ppCylinderColors = [
         { bg: "linear-gradient(90deg, #00838f 0%, #00bcd4 35%, #4dd0e1 50%, #00bcd4 65%, #00838f 100%)", shadow: "#006064", cap: "linear-gradient(180deg, #80deea 0%, #26c6da 100%)" },
@@ -4858,6 +5635,7 @@
           "product-limit-collapsible",
           "sugar-policy-collapsible",
           "dietary-prefs-collapsible",
+          "skaermtid-collapsible",
           "allergens-collapsible",
           "change-pin-collapsible"
         ];
@@ -4984,6 +5762,20 @@
                           ppLoaded = true;
                           console.log('[lazy] Loading purchase profile on section open');
                           await loadPurchaseProfile();
+                        }
+                        break;
+                      case "product-limit-collapsible":
+                        if (!productLimitsLoaded && currentInstitutionId && currentChildId) {
+                          productLimitsLoaded = true;
+                          console.log('[lazy] Loading product limits on section open');
+                          await loadProductLimits(currentInstitutionId, currentChildId);
+                        }
+                        break;
+                      case "sugar-policy-collapsible":
+                        if (!sugarPolicyLoaded && currentChildId) {
+                          sugarPolicyLoaded = true;
+                          console.log('[lazy] Loading sugar policy on section open');
+                          await loadSugarPolicy();
                         }
                         break;
                     }
@@ -6152,6 +6944,8 @@
           allergyLoaded = false;
           dailyAssortmentLoaded = false;
           ppLoaded = false;
+          productLimitsLoaded = false;
+          sugarPolicyLoaded = false;
           // Lazy: kun load events hvis sektionen er åben (typisk ikke ved login)
           const eventsContent = document.querySelector("#events-collapsible .collapsible-section-content");
           if (eventsContent?.classList.contains("active")) {
@@ -6680,6 +7474,8 @@
           allergyLoaded = false;
           dailyAssortmentLoaded = false;
           ppLoaded = false;
+          productLimitsLoaded = false;
+          sugarPolicyLoaded = false;
 
           // Lazy load: kun hent data hvis sektionen er åben (typisk ikke ved login)
           const assortmentContent = document.querySelector("#daily-assortment-collapsible .collapsible-section-content");
@@ -7312,9 +8108,9 @@
           return;
         }
 
-        // Find barnets institution_id fra allowedChildren
+        // Brug det valgte barns institution_id (så vi henter den rigtige institutions portal-indstillinger, fx Skærmtid)
         const childInfo = allowedChildren.find(c => c.child_id === childId);
-        const instId = currentInstitutionId || (childInfo && childInfo.institution_id);
+        const instId = (childInfo && childInfo.institution_id) || currentInstitutionId;
 
         try {
           const res = await fetch(FUNCTION_URL, {
@@ -7346,6 +8142,8 @@
           allergyLoaded = false;
           dailyAssortmentLoaded = false;
           ppLoaded = false;
+          productLimitsLoaded = false;
+          sugarPolicyLoaded = false;
 
           // Lazy load: kun hent data hvis sektionen er åben
           const eventsContent = document.querySelector("#events-collapsible .collapsible-section-content");
@@ -7605,12 +8403,21 @@
           }
         };
 
+        // Hold currentInstitutionId i sync med den viste institutions data
+        if (data.institution && data.institution.id) {
+          currentInstitutionId = data.institution.id;
+        }
+        // Debug: se hvilken institution og skaermtid_enabled der kom tilbage
+        if (data.institution) {
+          console.log('[get-parent-view] institution:', data.institution.name, data.institution.id, '| skaermtid_enabled:', data.institution.skaermtid_enabled);
+        }
         // Hvis vi har institutions data fra get-parent-view response, brug det
         if (data.institution) {
           currentInstitutionPrefs = data.institution;
           console.log('[displayResults] Bruger institutions data fra get-parent-view response');
           renderPaymentSection(currentInstitutionPrefs);
           renderFeatureSections(currentInstitutionPrefs);
+          renderSkaermtidContent(data, currentInstitutionPrefs);
           // Hent og vis klubbens begrænsninger (kun DOM, ingen network)
           loadAndRenderClubLimitations(currentInstitutionId, currentInstitutionPrefs);
           // Lazy: kun hent dagens sortiment hvis sektionen er åben
@@ -7622,6 +8429,7 @@
           console.log('[displayResults] Bruger eksisterende currentInstitutionPrefs');
           renderPaymentSection(currentInstitutionPrefs);
           renderFeatureSections(currentInstitutionPrefs);
+          renderSkaermtidContent(data, currentInstitutionPrefs);
           // Hent og vis klubbens begrænsninger (kun DOM, ingen network)
           loadAndRenderClubLimitations(currentInstitutionId, currentInstitutionPrefs);
           // Lazy: kun hent dagens sortiment hvis sektionen er åben
