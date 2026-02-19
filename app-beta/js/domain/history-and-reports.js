@@ -225,6 +225,15 @@ export async function showSalesHistory() {
         };
     }
 
+    // Wire up admin deposits exclusion checkbox
+    const excludeAdminDepositsCb = document.getElementById('exclude-admin-deposits-checkbox');
+    if (excludeAdminDepositsCb) {
+        excludeAdminDepositsCb.onchange = () => {
+            const isActive = document.getElementById('filter-deposits-btn')?.classList.contains('active');
+            renderSalesHistory(fullSalesHistory, null, isActive ? 'DEPOSIT' : null);
+        };
+    }
+
     salesHistoryModal.style.display = 'flex';
 
     const now = new Date();
@@ -490,6 +499,25 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
                 transition: background-color 0.2s;
             }
             .history-edit-btn:hover { background-color: #e4e4e4; }
+            /* GRATIS ADMIN-KØB - grøn styling */
+            .history-row-free-admin {
+                background-color: #ecfdf5 !important;
+                border-left: 4px solid #10b981 !important;
+            }
+            .history-row-free-admin:hover {
+                background-color: #d1fae5 !important;
+            }
+            .free-admin-badge {
+                display: inline-block;
+                background-color: #10b981;
+                color: white;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2px 6px;
+                border-radius: 999px;
+                margin-right: 4px;
+                vertical-align: middle;
+            }
             /* Styling for child adjustments - visuelt adskilt med gul/orange */
             .history-entry-adjustment-child {
                 background-color: #fff8e6 !important;
@@ -804,6 +832,15 @@ function buildSalesHistoryEntryElement(event, options = {}) {
         rowDiv.classList.add('history-row-voided');
     }
 
+    // Detect gratis admin-køb (ny flag ELLER heuristik for gamle salg)
+    const isFreeAdminPurchase = event.event_type === 'SALE' && (
+        event.details?.is_free_admin_purchase === true ||
+        (getEventAmount(event) === 0 && event.target_user_role === 'admin')
+    );
+    if (isFreeAdminPurchase && !options.isAdjustmentChild) {
+        rowDiv.classList.add('history-row-free-admin');
+    }
+
     const saleDate = new Date(getEventTimestamp(event));
     const formattedDate = saleDate.toLocaleDateString('da-DK', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const formattedTime = saleDate.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
@@ -812,7 +849,11 @@ function buildSalesHistoryEntryElement(event, options = {}) {
     let actionLabel = 'Handling:';
     let customerName = event.target_user_name || 'Ukendt';
     if (event.event_type === 'SALE') {
-        actionLabel = isRefundedSale ? '❌ Annulleret salg:' : 'Salg til:';
+        if (isFreeAdminPurchase) {
+            actionLabel = '<span class="free-admin-badge">GRATIS</span> Salg til:';
+        } else {
+            actionLabel = isRefundedSale ? '❌ Annulleret salg:' : 'Salg til:';
+        }
     } else if (event.event_type === 'DEPOSIT') {
         actionLabel = 'Indbetaling til:';
     } else if (event.event_type === 'BALANCE_EDIT') {
@@ -867,7 +908,15 @@ function buildSalesHistoryEntryElement(event, options = {}) {
             amount = refunded;
         }
     }
-    const amountText = `${amount.toFixed(2)} kr.`;
+    let amountText;
+    if (isFreeAdminPurchase) {
+        const originalAmount = safeNumber(event.details?.original_total_amount);
+        amountText = originalAmount > 0
+            ? `0,00 kr. <span style="font-size: 11px; color: #6b7280;">(normalt ${originalAmount.toFixed(2)} kr.)</span>`
+            : '0,00 kr.';
+    } else {
+        amountText = `${amount.toFixed(2)} kr.`;
+    }
 
     // Felt 4: Dato/Tid
     let datetimeHtml = `<div class="history-primary">${formattedDate}</div><div class="history-secondary">${formattedTime}</div>`;
@@ -1554,9 +1603,32 @@ function buildSalesHistorySummaryHTML(preFilteredData, filteredEvents) {
         .filter(e => e.event_type === 'SALE')
         .reduce((sum, sale) => sum + getEventAmount(sale), 0);
 
-    const totalDeposits = filteredEvents
-        .filter(e => e.event_type === 'DEPOSIT')
+    // Tjek om admin-indbetalinger skal ekskluderes fra statistik
+    const excludeAdminDepositsCheckbox = document.getElementById('exclude-admin-deposits-checkbox-shared')
+        || document.getElementById('exclude-admin-deposits-checkbox');
+    const excludeAdminDeposits = excludeAdminDepositsCheckbox ? excludeAdminDepositsCheckbox.checked : true;
+
+    const depositEvents = filteredEvents.filter(e => e.event_type === 'DEPOSIT');
+    const customerDeposits = depositEvents.filter(e => e.target_user_role !== 'admin');
+    const adminDeposits = depositEvents.filter(e => e.target_user_role === 'admin');
+
+
+    const totalDeposits = (excludeAdminDeposits ? customerDeposits : depositEvents)
         .reduce((sum, deposit) => sum + safeNumber(deposit.details?.amount), 0);
+    const adminDepositsTotal = adminDeposits
+        .reduce((sum, deposit) => sum + safeNumber(deposit.details?.amount), 0);
+
+    // Tæl gratis admin-køb
+    const freeAdminPurchases = filteredEvents.filter(e =>
+        e.event_type === 'SALE' && (
+            e.details?.is_free_admin_purchase === true ||
+            (getEventAmount(e) === 0 && e.target_user_role === 'admin')
+        )
+    );
+    const freeAdminPurchaseCount = freeAdminPurchases.length;
+    const freeAdminPurchaseNormalValue = freeAdminPurchases.reduce((sum, e) =>
+        sum + safeNumber(e.details?.original_total_amount), 0
+    );
 
     const productSummaryData = {};
     filteredEvents.forEach(sale => {
@@ -1576,10 +1648,19 @@ function buildSalesHistorySummaryHTML(preFilteredData, filteredEvents) {
     const isToday = historyStartDate?.value === today && historyEndDate?.value === today;
     const summaryTitle = isToday ? 'Dagens Oversigt' : 'Oversigt for den viste periode';
 
+    const adminDepositNote = excludeAdminDeposits && adminDepositsTotal > 0
+        ? ` <span style="font-size: 12px; color: #888;">(ekskl. ${adminDepositsTotal.toFixed(2)} kr. til admins)</span>`
+        : '';
+
+    const freeAdminPurchaseNote = freeAdminPurchaseNormalValue > 0
+        ? ` <span style="font-size: 12px; color: #6b7280;">(normalværdi: ${freeAdminPurchaseNormalValue.toFixed(2)} kr.)</span>`
+        : '';
+
     let summaryHTML = `
         <h3>${summaryTitle}</h3>
         ${totalRevenue > 0 ? `<p><strong>Total Omsætning (salg):</strong> ${totalRevenue.toFixed(2)} kr.</p>` : ''}
-        ${totalDeposits > 0 ? `<p><strong>Total Indbetalinger:</strong> ${totalDeposits.toFixed(2)} kr.</p>` : ''}
+        ${totalDeposits > 0 ? `<p><strong>Total Indbetalinger:</strong> ${totalDeposits.toFixed(2)} kr.${adminDepositNote}</p>` : ''}
+        ${freeAdminPurchaseCount > 0 ? `<p><span class="free-admin-badge" style="font-size: 11px; padding: 2px 8px;">GRATIS</span> <strong>Gratis admin-køb:</strong> ${freeAdminPurchaseCount} stk.${freeAdminPurchaseNote}</p>` : ''}
         `;
 
     // Tilføj nye stilarter for carousel-funktionaliteten
@@ -1821,7 +1902,29 @@ function handlePrintReport() {
     if (filteredEvents.length === 0) return showAlert('Der er intet at printe.');
 
     const totalRevenue = filteredEvents.filter(e => e.event_type === 'SALE').reduce((sum, sale) => sum + getEventAmount(sale), 0);
-    const totalDeposits = filteredEvents.filter(e => e.event_type === 'DEPOSIT').reduce((sum, deposit) => sum + safeNumber(deposit.details?.amount), 0);
+
+    // Tjek om admin-indbetalinger skal ekskluderes fra rapport-statistik
+    const reportExcludeAdminCb = document.getElementById('exclude-admin-deposits-checkbox-shared')
+        || document.getElementById('exclude-admin-deposits-checkbox');
+    const reportExcludeAdmin = reportExcludeAdminCb ? reportExcludeAdminCb.checked : true;
+
+    const reportDepositEvents = filteredEvents.filter(e => e.event_type === 'DEPOSIT');
+    const totalDeposits = (reportExcludeAdmin ? reportDepositEvents.filter(e => e.target_user_role !== 'admin') : reportDepositEvents)
+        .reduce((sum, deposit) => sum + safeNumber(deposit.details?.amount), 0);
+    const reportAdminDeposits = reportDepositEvents.filter(e => e.target_user_role === 'admin')
+        .reduce((sum, deposit) => sum + safeNumber(deposit.details?.amount), 0);
+
+    // Tæl gratis admin-køb i rapport
+    const reportFreeAdminPurchases = filteredEvents.filter(e =>
+        e.event_type === 'SALE' && (
+            e.details?.is_free_admin_purchase === true ||
+            (getEventAmount(e) === 0 && e.target_user_role === 'admin')
+        )
+    );
+    const reportFreeAdminCount = reportFreeAdminPurchases.length;
+    const reportFreeAdminNormalValue = reportFreeAdminPurchases.reduce((sum, e) =>
+        sum + safeNumber(e.details?.original_total_amount), 0
+    );
 
     const productSummaryData = {};
     filteredEvents.forEach(event => {
@@ -1843,7 +1946,15 @@ function handlePrintReport() {
         const details = event.details || {};
         if (event.event_type === 'SALE') {
             const amount = getEventAmount(event);
-            description = `Salg til ${event.target_user_name || 'Ukendt'} på ${amount.toFixed(2)} kr.`;
+            const isFreePurchase = details.is_free_admin_purchase === true ||
+                (amount === 0 && event.target_user_role === 'admin');
+            if (isFreePurchase) {
+                const origAmount = safeNumber(details.original_total_amount);
+                description = `GRATIS Salg til ${event.target_user_name || 'Ukendt'}` +
+                    (origAmount > 0 ? ` (normalt ${origAmount.toFixed(2)} kr.)` : ' på 0,00 kr.');
+            } else {
+                description = `Salg til ${event.target_user_name || 'Ukendt'} på ${amount.toFixed(2)} kr.`;
+            }
         } else if (event.event_type === 'DEPOSIT') {
             const amount = safeNumber(details.amount);
             description = `Indbetaling til ${event.target_user_name || 'Ukendt'} på ${amount.toFixed(2)} kr.`;
@@ -1862,7 +1973,14 @@ function handlePrintReport() {
     }
     let reportContent = `Rapport for perioden: ${startDate} - ${endDate}\n\n--- Opsummering ---\n`;
     if (totalRevenue > 0) reportContent += `Total Omsætning (salg): ${totalRevenue.toFixed(2)} kr.\n`;
-    if (totalDeposits > 0) reportContent += `Total Indbetalinger: ${totalDeposits.toFixed(2)} kr.\n`;
+    if (totalDeposits > 0) {
+        const adminNote = reportExcludeAdmin && reportAdminDeposits > 0 ? ` (ekskl. ${reportAdminDeposits.toFixed(2)} kr. til admins)` : '';
+        reportContent += `Total Indbetalinger: ${totalDeposits.toFixed(2)} kr.${adminNote}\n`;
+    }
+    if (reportFreeAdminCount > 0) {
+        const normalNote = reportFreeAdminNormalValue > 0 ? ` (normalværdi: ${reportFreeAdminNormalValue.toFixed(2)} kr.)` : '';
+        reportContent += `Gratis admin-køb: ${reportFreeAdminCount} stk.${normalNote}\n`;
+    }
     if (Object.keys(productSummaryData).length > 0) reportContent += `\n${productSummary}`;
     reportContent += `\n${transactionList}`;
 
@@ -2266,6 +2384,12 @@ function initSharedHistoryControls() {
             }
             reloadCurrentHistoryView();
         };
+    }
+
+    // Wire up admin deposits exclusion checkbox
+    const excludeAdminDepositsShared = document.getElementById('exclude-admin-deposits-checkbox-shared');
+    if (excludeAdminDepositsShared) {
+        excludeAdminDepositsShared.onchange = () => reloadCurrentHistoryView();
     }
 
     sharedControlsInitialized = true;
@@ -2672,6 +2796,25 @@ function renderSalesHistoryInSummary(history, searchQuery = null, eventTypeFilte
                 transition: background-color 0.2s;
             }
             .history-edit-btn:hover { background-color: #e4e4e4; }
+            /* GRATIS ADMIN-KØB - grøn styling */
+            .history-row-free-admin {
+                background-color: #ecfdf5 !important;
+                border-left: 4px solid #10b981 !important;
+            }
+            .history-row-free-admin:hover {
+                background-color: #d1fae5 !important;
+            }
+            .free-admin-badge {
+                display: inline-block;
+                background-color: #10b981;
+                color: white;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2px 6px;
+                border-radius: 999px;
+                margin-right: 4px;
+                vertical-align: middle;
+            }
             /* Styling for child adjustments - visuelt adskilt med gul/orange */
             .history-entry-adjustment-child {
                 background-color: #fff8e6 !important;

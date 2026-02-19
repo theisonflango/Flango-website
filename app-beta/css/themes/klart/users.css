@@ -1,0 +1,725 @@
+/* ============================================================
+   KLART THEME - USERS STYLES
+   User Selection, Avatars, Session Banners, Sidebar
+   Clean typographic design — no sticky notes, no pushpins
+   ============================================================ */
+
+/* ============================================================
+   USER SESSION BANNER - CLEAN CHIP LAYOUT
+   Replaces Unstoppable's sticky notes + pushpins
+   ============================================================ */
+
+.user-session-banner {
+    background: var(--klart-bg-raised);
+    border: 1px solid var(--klart-border);
+    border-radius: var(--klart-radius-md);
+    padding: 10px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    box-shadow: none;
+}
+
+/* Hide original text content */
+.user-session-banner #logged-in-user {
+    display: none;
+}
+
+/* Session chips — clean Klart style */
+.session-sticky-note {
+    flex: 1;
+    max-width: 180px;
+    padding: 8px 12px;
+    border-radius: var(--klart-radius-sm);
+    position: relative;
+    text-align: center;
+    box-shadow: none;
+    font-family: var(--font-body);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--klart-bg);
+    border: 1px solid var(--klart-border);
+}
+
+/* NO pushpins — remove all pseudo-elements */
+.session-sticky-note::before,
+.session-sticky-note::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* Clerk chip — accent soft */
+.session-sticky-note.clerk-note {
+    background: var(--klart-accent-soft);
+    border-color: rgba(26, 138, 110, 0.2);
+    transform: none;
+}
+
+/* Adult chip — light green */
+.session-sticky-note.adult-note {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    transform: none;
+}
+
+/* Label styling — clean body font */
+.session-sticky-note .sticky-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--klart-fg-muted);
+    white-space: nowrap;
+}
+
+/* Name styling — clean body font */
+.session-sticky-note .sticky-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--klart-fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+}
+
+/* Shift timer pill — Klart clean style */
+#shift-timer-pill {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 6px 14px !important;
+    background: var(--klart-bg-inset) !important;
+    border: 1px solid var(--klart-border) !important;
+    border-radius: var(--klart-radius-full) !important;
+    font-family: var(--font-body) !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--klart-fg-soft) !important;
+    box-shadow: none !important;
+    margin: 0 4px !important;
+}
+
+/* ============================================================
+   SIDEBAR & USER INFO
+   ============================================================ */
+
+#sidebar-logo {
+    width: clamp(70px, 8vw, 100px);
+    height: auto;
+    display: block;
+    margin: 0;
+    filter: none;
+}
+
+#flango-logo-button img {
+    object-fit: contain;
+}
+
+.sidebar-header-icon {
+    width: clamp(32px, 5vw, 48px);
+    height: clamp(32px, 5vw, 48px);
+    object-fit: contain;
+}
+
+/* .sidebar-header defined in features.css (cart header context) */
+
+/* Selected user info — customer bar matching styleguide */
+#selected-user-info {
+    background: transparent;
+    border: none;
+    border-top: 1px solid rgba(200, 180, 120, 0.2);
+    padding: 10px 44px 10px 20px;
+    border-radius: 0;
+    margin-bottom: 0;
+    display: flex !important;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    position: relative;
+    z-index: 10;
+    transform: none;
+    box-shadow: none;
+    font-family: var(--font-body);
+}
+
+/* NO pushpin — remove pseudo-elements */
+#selected-user-info::before,
+#selected-user-info::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* Customer avatar — 40px circle */
+.customer-avatar {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    background: #fff3d8;
+    border: 2px solid #e8c868;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+/* Customer name block */
+.customer-name-block {
+    flex-shrink: 0;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.customer-name {
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.2;
+    color: var(--klart-fg);
+    font-family: var(--font-body);
+}
+
+.customer-number {
+    color: var(--klart-fg-muted);
+    font-weight: 500;
+    font-size: 12px;
+}
+
+/* Saldo container — groups saldo + arrow + ny saldo */
+.customer-saldo-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: var(--klart-radius-md);
+    min-width: 0;
+}
+
+.saldo-arrow {
+    color: var(--klart-fg-muted);
+    font-size: 16px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.info-box {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-family: var(--font-body);
+    flex: 1;
+    text-align: center;
+}
+
+.info-box-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--klart-fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-family: var(--font-body);
+    margin-bottom: 1px;
+}
+
+.info-box-value {
+    font-size: clamp(14px, 1.6vw, 18px);
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--klart-fg);
+    font-family: var(--font-body);
+}
+
+.info-box-value.negative {
+    color: var(--danger-color);
+}
+
+/* "Ny Saldo" — green accent */
+.info-box.saldo-new .info-box-label {
+    color: var(--klart-accent);
+    font-weight: 600;
+}
+
+.info-box.saldo-new .info-box-value:not(.negative) {
+    color: var(--klart-accent);
+}
+
+#new-balance-info {
+    font-weight: 700;
+    color: var(--danger-color);
+}
+
+/* Deselect user button — absolute positioned × */
+.deselect-user-btn {
+    position: absolute !important;
+    top: 50% !important;
+    right: 8px !important;
+    transform: translateY(-50%) !important;
+    background: rgba(0, 0, 0, 0.06) !important;
+    color: var(--klart-fg-muted) !important;
+    border: none !important;
+    border-radius: 50% !important;
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    z-index: 5 !important;
+}
+
+.deselect-user-btn:hover {
+    background: rgba(196, 64, 64, 0.1) !important;
+    color: var(--danger-color) !important;
+}
+
+/* ============================================================
+   USER SELECTION
+   ============================================================ */
+
+#user-selection-area {
+    border-top: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#select-customer-main-btn {
+    background: var(--klart-bg-raised);
+    color: var(--klart-fg);
+    padding: 12px 16px;
+    font-size: 15px;
+    font-family: var(--font-body);
+    border: 1px solid var(--klart-border-strong);
+    border-radius: var(--klart-radius-md);
+    cursor: pointer;
+    margin-bottom: 0;
+    font-weight: 600;
+    box-shadow: none;
+    transition: all var(--klart-duration) var(--klart-ease);
+}
+
+#select-customer-main-btn:hover {
+    transform: translateY(-1px);
+    background: var(--klart-bg-hover);
+    border-color: var(--klart-border-strong);
+}
+
+#user-selection-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: stretch;
+}
+
+#user-selection-actions button {
+    width: 100%;
+}
+
+/* ============================================================
+   AVATAR PICKER - CLEAN CAROUSEL
+   ============================================================ */
+
+.avatar-carousel-container {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    padding-bottom: 15px;
+}
+
+#avatar-picker-scroll-wrapper {
+    overflow-y: auto;
+    flex-grow: 1;
+    padding: 15px 10px 0 10px;
+    margin: 0 -10px;
+}
+
+#avatar-picker-modal .modal-content {
+    max-width: 850px;
+}
+
+.avatar-row {
+    position: relative;
+}
+
+/* Avatar row header — clean green tint, no purple gradient */
+.avatar-row-header {
+    background: var(--klart-accent-soft);
+    border: 1px solid var(--klart-border);
+    border-radius: var(--klart-radius-md);
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    box-shadow: var(--klart-shadow-sm);
+}
+
+/* Avatar row title — solid green color, no gradient text */
+.avatar-row-title {
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    line-height: 1.4;
+    color: var(--klart-accent);
+    background: none;
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: var(--klart-accent);
+    background-clip: unset;
+}
+
+.avatar-row-description {
+    font-size: 14px;
+    color: var(--klart-fg-soft);
+    font-weight: 400;
+    font-family: var(--font-body);
+    margin: -4px 0 8px;
+    padding-left: 10px;
+    max-width: 560px;
+}
+
+.avatar-row.locked .avatar-scroller {
+    filter: grayscale(90%) brightness(0.8);
+}
+
+/* Lock overlay for avatar rows — clean white, no warm gradient */
+.avatar-row-lock-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+    border-radius: var(--klart-radius-md);
+    color: var(--klart-fg-muted);
+    text-align: center;
+}
+
+/* Individual avatar lock overlay — simplified */
+.avatar-lock-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+}
+
+.avatar-row.locked .avatar-lock-overlay {
+    display: flex;
+}
+
+.avatar-lock-overlay img {
+    width: 40px;
+    height: 40px;
+    opacity: 0.8;
+}
+
+.avatar-lock-overlay.shake {
+    animation: shake-animation 0.4s ease-in-out;
+}
+
+/* Avatar scroller */
+.avatar-scroller {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    padding: 10px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.avatar-scroller::-webkit-scrollbar {
+    display: none;
+}
+
+/* Avatar row navigation — white bg, green text */
+.avatar-row-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--klart-bg-raised);
+    border: 1px solid var(--klart-border);
+    box-shadow: var(--klart-shadow-md);
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--klart-accent);
+    transition: all var(--klart-duration) var(--klart-ease);
+}
+
+.avatar-row-nav:hover {
+    background: var(--klart-accent);
+    color: #fff;
+    border-color: var(--klart-accent);
+    transform: translateY(50%) scale(1.1);
+}
+
+.avatar-row-nav.left {
+    left: 15px;
+}
+
+.avatar-row-nav.right {
+    right: 15px;
+}
+
+.avatar-carousel-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.avatar-scroller-viewport {
+    width: 645px;
+    overflow: hidden;
+}
+
+/* Avatar options — clean white/green, no purple borders */
+.avatar-option {
+    border-radius: var(--klart-radius-lg);
+    position: relative;
+    background: var(--klart-bg-raised);
+    cursor: pointer;
+    transition: all var(--klart-duration) var(--klart-ease);
+    overflow: hidden;
+    border: 2px solid var(--klart-border);
+    flex-shrink: 0;
+    width: 200px;
+    height: 200px;
+}
+
+/* Selected avatar — green border + green ring, NO purple */
+.avatar-option.selected {
+    border-color: var(--klart-accent);
+    box-shadow: 0 0 0 4px rgba(26, 138, 110, 0.2), var(--klart-shadow-lg);
+    transform: translateY(-4px);
+    outline: 3px solid rgba(26, 138, 110, 0.4);
+}
+
+.avatar-option.selected::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--success-gradient);
+    color: white;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(42, 138, 74, 0.4);
+    z-index: 3;
+}
+
+.avatar-row.locked .avatar-option {
+    cursor: not-allowed;
+}
+
+/* Avatar hover — green border, no purple shadow */
+.avatar-option:hover {
+    transform: scale(1.05) translateY(-4px);
+    box-shadow: var(--klart-shadow-lg);
+    border-color: var(--klart-accent);
+}
+
+.avatar-option img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Avatar preview button — clean white, green on hover */
+.avatar-preview-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--klart-radius-full);
+    border: 1px solid var(--klart-border);
+    background: var(--klart-bg-raised);
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: var(--klart-shadow-md);
+    transition: all var(--klart-duration) var(--klart-ease);
+    color: var(--klart-fg-soft);
+}
+
+.avatar-preview-btn:hover {
+    background: var(--klart-accent);
+    color: #fff;
+    border-color: var(--klart-accent);
+    transform: scale(1.1);
+}
+
+/* ============================================================
+   AVATAR PREVIEW MODAL
+   ============================================================ */
+
+.avatar-preview-full {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.avatar-preview-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.avatar-preview-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.avatar-preview-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+/* Preview close button — clean white, green border */
+.avatar-preview-content .close-btn {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--klart-bg-raised);
+    color: var(--klart-fg);
+    border: 1px solid var(--klart-border);
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: var(--klart-shadow-md);
+    transition: all var(--klart-duration) var(--klart-ease);
+}
+
+.avatar-preview-content .close-btn:hover {
+    background: var(--klart-bg-hover);
+    border-color: var(--klart-border-strong);
+}
+
+/* Preview navigation — clean white, green on hover */
+.avatar-preview-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 1px solid var(--klart-border);
+    background: var(--klart-bg-raised);
+    font-size: 32px;
+    cursor: pointer;
+    box-shadow: var(--klart-shadow-md);
+    transition: all var(--klart-duration) var(--klart-ease);
+    color: var(--klart-fg-soft);
+}
+
+.avatar-preview-nav:hover {
+    background: var(--klart-accent);
+    color: #fff;
+    border-color: var(--klart-accent);
+}
+
+.avatar-preview-nav.prev {
+    left: -60px;
+}
+
+.avatar-preview-nav.next {
+    right: -60px;
+}
+
+/* ============================================================
+   LOGGED IN USER AVATAR
+   ============================================================ */
+
+#logged-in-user-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: none;
+    transition: all var(--klart-duration) var(--klart-ease);
+    box-shadow: none;
+}
+
+.user-info-cluster:hover #logged-in-user-avatar {
+    transform: translateY(-1px);
+    box-shadow: var(--klart-shadow-sm);
+}
+
+/* Avatar container defined in features.css (sidebar-main-header context) */
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes shake-animation {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    20%, 60% {
+        transform: translateX(calc(var(--shake-distance, 4px) * -1));
+    }
+    40%, 80% {
+        transform: translateX(var(--shake-distance, 4px));
+    }
+}
+
+@keyframes lockFadeIn {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0px);
+        -webkit-backdrop-filter: blur(0px);
+    }
+    to {
+        opacity: 1;
+        backdrop-filter: blur(0px);
+        -webkit-backdrop-filter: blur(0px);
+    }
+}

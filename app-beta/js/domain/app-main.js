@@ -970,6 +970,14 @@ export async function startApp() {
         return ok;
     };
 
+    // Expose clear cart function globally (used by Klart theme "Ryd kurv" button)
+    window.__flangoClearCart = () => {
+        currentOrder = [];
+        setOrder([]);
+        renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
+        updateSelectedUserInfo();
+    };
+
     // KRITISK: Initialiser selected-user-info boksen ved app start
     console.log('[app-main] startApp complete - initializing selected-user-info box');
     updateSelectedUserInfo();

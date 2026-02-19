@@ -1,7 +1,7 @@
 /* ============================================================
-   FLANGO UNSTOPPABLE THEME - PRODUCTS STYLES
+   KLART THEME - PRODUCTS STYLES
    Product Grid, Cards, Buttons, Refills, Locks, Icons
-   Candy-tech colorful gradients for each card
+   Warm colored backgrounds preserved from Flango identity
    ============================================================ */
 
 /* Product Grid Container */
@@ -9,13 +9,11 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 15px;
-    background: linear-gradient(145deg, rgba(255, 251, 247, 0.8) 0%, rgba(255, 245, 235, 0.8) 100%);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: linear-gradient(180deg, #fef9ee 0%, #fdf6e4 100%);
     padding: 20px;
-    border-radius: var(--unstoppable-radius-lg);
-    border: 2px solid rgba(168, 85, 247, 0.1);
-    box-shadow: var(--unstoppable-shadow);
+    border-radius: var(--klart-radius-lg);
+    border: 1px solid var(--klart-border);
+    box-shadow: var(--klart-shadow-card);
     overflow-y: auto;
     height: 100%;
     align-content: stretch;
@@ -27,7 +25,7 @@
 
 .product-reorder-hint {
     font-size: 13px;
-    color: #6b7280;
+    color: var(--klart-fg-muted);
     margin-bottom: 6px;
     text-align: left;
     display: none;
@@ -48,23 +46,34 @@
 .product-grid-toggle {
     width: 32px;
     height: 32px;
-    border-radius: 50%;
-    border: 2px solid rgba(242, 163, 60, 0.5);
-    background: #fff7d6;
-    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+    border-radius: var(--klart-radius-md);
+    border: 1px solid var(--klart-border);
+    background: var(--klart-bg-raised);
+    box-shadow: var(--klart-shadow-sm);
     cursor: pointer;
     font-size: 16px;
+    transition: all var(--klart-duration) var(--klart-ease);
+}
+
+.product-grid-toggle:hover {
+    background: var(--klart-bg-hover);
+    border-color: var(--klart-border-strong);
 }
 
 .product-reorder-add-btn {
     display: none;
     padding: 6px 10px;
-    border-radius: 12px;
-    border: 2px solid rgba(242, 163, 60, 0.5);
-    background: #fff7d6;
+    border-radius: var(--klart-radius-md);
+    border: 1px solid var(--klart-border);
+    background: var(--klart-bg-raised);
     cursor: pointer;
     font-size: 13px;
-    color: #5d4037;
+    color: var(--klart-fg-soft);
+    transition: all var(--klart-duration) var(--klart-ease);
+}
+
+.product-reorder-add-btn:hover {
+    background: var(--klart-bg-hover);
 }
 
 .product-remove-overlay {
@@ -77,7 +86,7 @@
     height: 64px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.75);
-    border: 2px solid rgba(239, 68, 68, 0.35);
+    border: 2px solid rgba(196, 64, 64, 0.35);
     display: none;
     align-items: center;
     justify-content: center;
@@ -89,64 +98,21 @@
 .product-remove-x {
     font-size: 28px;
     font-weight: 700;
-    color: rgba(239, 68, 68, 0.75);
+    color: rgba(196, 64, 64, 0.75);
 }
 
 .reorder-mode .product-remove-overlay {
     display: flex;
 }
 
-/* Vis remove-overlay for placeholders kun i reorder mode */
 .reorder-mode .product-btn.product-placeholder .product-remove-overlay {
     display: flex;
 }
 
-/* Edit pencil button - bottom-right corner in reorder mode */
-.product-edit-pencil {
-    position: absolute;
-    right: 6px;
-    bottom: 6px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(124, 58, 237, 0.9);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 7;
-    cursor: pointer;
-    pointer-events: auto;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    transition: transform 0.15s ease;
-}
-
-.product-edit-pencil span {
-    font-size: 18px;
-    line-height: 1;
-}
-
-.product-edit-pencil:active {
-    transform: scale(0.9);
-}
-
-body.reorder-mode .product-btn .product-edit-pencil {
-    display: flex !important;
-}
-
-/* Hide pencil on placeholders */
-body.reorder-mode .product-btn.product-placeholder .product-edit-pencil {
-    display: none !important;
-}
-
-/* Ensure overflow visible in reorder mode so pencil/overlays show properly */
-body.reorder-mode .product-btn {
-    overflow: visible !important;
-}
-
 .product-btn.product-placeholder {
     border-style: dashed;
-    border-color: rgba(242, 163, 60, 0.5);
-    background: #fff9e6;
+    border-color: var(--klart-border-strong);
+    background: var(--klart-bg-inset);
     cursor: default;
 }
 
@@ -162,13 +128,18 @@ body.reorder-mode .product-btn {
 }
 
 .placeholder-action-btn {
-    border-radius: 10px;
-    border: 2px solid rgba(242, 163, 60, 0.5);
-    background: #fff7d6;
+    border-radius: var(--klart-radius-md);
+    border: 1px solid var(--klart-border-strong);
+    background: var(--klart-bg-raised);
     padding: 6px 10px;
     cursor: pointer;
     font-size: 12px;
-    color: #5d4037;
+    color: var(--klart-fg-soft);
+    transition: all var(--klart-duration) var(--klart-ease);
+}
+
+.placeholder-action-btn:hover {
+    background: var(--klart-bg-hover);
 }
 
 body.reorder-mode .product-reorder-hint {
@@ -181,91 +152,86 @@ body.reorder-mode .product-reorder-add-btn {
     display: inline-flex;
 }
 
-/* ===== Dynamisk produkt-grid (1–10 produkter) ===== */
+/* ===== Dynamisk produkt-grid (2–10 produkter) =====
+   Designprincip fra styleguide v5:
+   - Basis er 3 kolonner
+   - Ved 2 eller 4 produkter → 2 kolonner
+   - Ved ulige rest (5, 7, 8, 10) → hero-kort (span 2) for at undgå tomme celler
+   - Ved 7 og 10 → "diagonal balance" med hero i top-venstre OG bund-højre
+   - 3, 6, 9 → perfekt 3-kolonne grid (ingen hero)
+   ===== */
 
-/* 1 produkt → centreret, samme størrelse som i 3-kolonne grid */
-#products:has(> .product-btn:first-child:last-child) {
+/* 1 produkt — 1 kolonne */
+#products:has(> .product-btn:nth-child(1):last-child) {
     grid-template-columns: 1fr;
-    justify-items: center;
 }
 
-#products:has(> .product-btn:first-child:last-child) > .product-btn {
-    max-width: calc((100% - 30px) / 3);
-    width: 100%;
-}
-
-/* 2 produkter → 1x2 grid */
+/* 2 produkter — 2 kolonner */
 #products:has(> .product-btn:nth-child(2):last-child) {
     grid-template-columns: repeat(2, 1fr);
 }
 
-/* 3 produkter → 1x3 grid (standard) */
+/* 3 produkter — 3 kolonner (perfekt) */
 #products:has(> .product-btn:nth-child(3):last-child) {
     grid-template-columns: repeat(3, 1fr);
 }
 
-/* 4 produkter → 2x2 grid */
+/* 4 produkter — 2×2 (2 kolonner) */
 #products:has(> .product-btn:nth-child(4):last-child) {
     grid-template-columns: repeat(2, 1fr);
 }
 
-/* 5 produkter → 3 kolonner + hero-kort */
+/* 5 produkter — 3 kolonner, 1. produkt = hero (span 2) */
 #products:has(> .product-btn:nth-child(5):last-child) {
     grid-template-columns: repeat(3, 1fr);
 }
-
-/* Hero-kort: første produkt er bredere (span 2 kolonner) når der er præcis 5 produkter */
 #products:has(> .product-btn:nth-child(5):last-child) > .product-btn:first-child {
     grid-column: span 2;
 }
 
-/* ===== 6 produkter → 3×2 symmetrisk grid ===== */
+/* 6 produkter — 3×2 perfekt */
 #products:has(> .product-btn:nth-child(6):last-child) {
     grid-template-columns: repeat(3, 1fr);
 }
 
-/* ===== 7 produkter → Diagonal Balance Layout ===== */
+/* 7 produkter — diagonal balance: 1. OG sidste = hero (span 2) */
 #products:has(> .product-btn:nth-child(7):last-child) {
     grid-template-columns: repeat(3, 1fr);
 }
-
 #products:has(> .product-btn:nth-child(7):last-child) > .product-btn:first-child {
     grid-column: span 2;
 }
-
 #products:has(> .product-btn:nth-child(7):last-child) > .product-btn:last-child {
     grid-column: span 2;
 }
 
-/* ===== 8 produkter → Hero + 7 normale ===== */
+/* 8 produkter — 3 kolonner, 1. produkt = hero (span 2) */
 #products:has(> .product-btn:nth-child(8):last-child) {
     grid-template-columns: repeat(3, 1fr);
 }
-
 #products:has(> .product-btn:nth-child(8):last-child) > .product-btn:first-child {
     grid-column: span 2;
 }
 
-/* ===== 9 produkter → Perfekt 3×3 grid ===== */
+/* 9 produkter — 3×3 perfekt */
 #products:has(> .product-btn:nth-child(9):last-child) {
     grid-template-columns: repeat(3, 1fr);
 }
 
-/* ===== 10 produkter → Diagonal Balance ===== */
+/* 10 produkter — diagonal balance: 1. OG sidste = hero (span 2) */
 #products:has(> .product-btn:nth-child(10):last-child) {
     grid-template-columns: repeat(3, 1fr);
 }
-
 #products:has(> .product-btn:nth-child(10):last-child) > .product-btn:first-child {
     grid-column: span 2;
 }
-
 #products:has(> .product-btn:nth-child(10):last-child) > .product-btn:last-child {
     grid-column: span 2;
 }
 
 /* ============================================================
-   PRODUCT BUTTONS - CANDY-TECH GRADIENT CARDS
+   PRODUCT BUTTONS - KLART CARDS
+   Colored backgrounds preserved, cleaner borders and shadows
    ============================================================ */
 
 .product-btn {
@@ -274,131 +240,131 @@ body.reorder-mode .product-reorder-add-btn {
     flex-direction: column;
     justify-content: space-between;
     padding: 16px;
-    border-radius: var(--unstoppable-radius);
-    border: 2px solid rgba(168, 85, 247, 0.2);
-    background: linear-gradient(145deg, #ffecd2 0%, #fcb69f 100%);
-    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.15);
+    border-radius: var(--klart-radius-lg);
+    border: 2px solid transparent;
+    background: #fff4d4;
+    box-shadow: var(--klart-shadow-card);
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all var(--klart-duration) var(--klart-ease);
     overflow: hidden;
     height: 100%;
 }
 
-/* Different gradient colors for each product position */
+/* Klart-toned card backgrounds — warm pastels */
 .product-btn:nth-child(10n+1) {
-    background: linear-gradient(145deg, #fef3c7 0%, #fde68a 100%);
-    border-color: rgba(251, 191, 36, 0.4);
+    background: #fff4d4; /* yellow */
+    border-color: rgba(220, 200, 120, 0.3);
 }
 .product-btn:nth-child(10n+1):hover {
-    border-color: rgba(251, 191, 36, 0.7);
-    box-shadow: 0 10px 30px rgba(251, 191, 36, 0.35);
+    border-color: rgba(220, 200, 120, 0.6);
+    box-shadow: var(--klart-shadow-lg);
 }
 
 .product-btn:nth-child(10n+2) {
-    background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%);
-    border-color: rgba(16, 185, 129, 0.4);
+    background: #d4f0ea; /* mint */
+    border-color: rgba(120, 200, 180, 0.3);
 }
 .product-btn:nth-child(10n+2):hover {
-    border-color: rgba(16, 185, 129, 0.7);
-    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.35);
+    border-color: rgba(120, 200, 180, 0.6);
+    box-shadow: var(--klart-shadow-lg);
 }
 
 .product-btn:nth-child(10n+3) {
-    background: linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%);
-    border-color: rgba(59, 130, 246, 0.4);
+    background: #d4e8f8; /* blue */
+    border-color: rgba(120, 180, 220, 0.3);
 }
 .product-btn:nth-child(10n+3):hover {
-    border-color: rgba(59, 130, 246, 0.7);
-    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.35);
+    border-color: rgba(120, 180, 220, 0.6);
+    box-shadow: var(--klart-shadow-lg);
 }
 
 .product-btn:nth-child(10n+4) {
-    background: linear-gradient(145deg, #fce7f3 0%, #fbcfe8 100%);
-    border-color: rgba(236, 72, 153, 0.4);
+    background: #fce4ec; /* pink */
+    border-color: rgba(220, 160, 180, 0.3);
 }
 .product-btn:nth-child(10n+4):hover {
-    border-color: rgba(236, 72, 153, 0.7);
-    box-shadow: 0 10px 30px rgba(236, 72, 153, 0.35);
+    border-color: rgba(220, 160, 180, 0.6);
+    box-shadow: var(--klart-shadow-lg);
 }
 
 .product-btn:nth-child(10n+5) {
-    background: linear-gradient(145deg, #e0e7ff 0%, #c7d2fe 100%);
-    border-color: rgba(99, 102, 241, 0.4);
+    background: #e8daf8; /* lavender */
+    border-color: rgba(180, 160, 220, 0.3);
 }
 .product-btn:nth-child(10n+5):hover {
-    border-color: rgba(99, 102, 241, 0.7);
-    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.35);
+    border-color: rgba(180, 160, 220, 0.6);
+    box-shadow: var(--klart-shadow-lg);
 }
 
 .product-btn:nth-child(10n+6) {
-    background: linear-gradient(145deg, #ffedd5 0%, #fed7aa 100%);
-    border-color: rgba(249, 115, 22, 0.4);
+    background: #ffe8d4; /* peach */
+    border-color: rgba(220, 180, 140, 0.3);
 }
 .product-btn:nth-child(10n+6):hover {
-    border-color: rgba(249, 115, 22, 0.7);
-    box-shadow: 0 10px 30px rgba(249, 115, 22, 0.35);
+    border-color: rgba(220, 180, 140, 0.6);
+    box-shadow: var(--klart-shadow-lg);
 }
 
 .product-btn:nth-child(10n+7) {
-    background: linear-gradient(145deg, #cffafe 0%, #a5f3fc 100%);
-    border-color: rgba(6, 182, 212, 0.4);
+    background: #d4f0ea; /* mint again */
+    border-color: rgba(120, 200, 180, 0.3);
 }
 .product-btn:nth-child(10n+7):hover {
-    border-color: rgba(6, 182, 212, 0.7);
-    box-shadow: 0 10px 30px rgba(6, 182, 212, 0.35);
+    border-color: rgba(120, 200, 180, 0.6);
+    box-shadow: var(--klart-shadow-lg);
 }
 
 .product-btn:nth-child(10n+8) {
-    background: linear-gradient(145deg, #ede9fe 0%, #ddd6fe 100%);
-    border-color: rgba(139, 92, 246, 0.4);
+    background: #e8daf8; /* lavender again */
+    border-color: rgba(180, 160, 220, 0.3);
 }
 .product-btn:nth-child(10n+8):hover {
-    border-color: rgba(139, 92, 246, 0.7);
-    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.35);
+    border-color: rgba(180, 160, 220, 0.6);
+    box-shadow: var(--klart-shadow-lg);
 }
 
 .product-btn:nth-child(10n+9) {
-    background: linear-gradient(145deg, #fef9c3 0%, #fef08a 100%);
-    border-color: rgba(234, 179, 8, 0.4);
+    background: #fff4d4; /* yellow again */
+    border-color: rgba(220, 200, 120, 0.3);
 }
 .product-btn:nth-child(10n+9):hover {
-    border-color: rgba(234, 179, 8, 0.7);
-    box-shadow: 0 10px 30px rgba(234, 179, 8, 0.35);
+    border-color: rgba(220, 200, 120, 0.6);
+    box-shadow: var(--klart-shadow-lg);
 }
 
 .product-btn:nth-child(10n+10) {
-    background: linear-gradient(145deg, #dcfce7 0%, #bbf7d0 100%);
-    border-color: rgba(34, 197, 94, 0.4);
+    background: #d4e8f8; /* blue again */
+    border-color: rgba(120, 180, 220, 0.3);
 }
 .product-btn:nth-child(10n+10):hover {
-    border-color: rgba(34, 197, 94, 0.7);
-    box-shadow: 0 10px 30px rgba(34, 197, 94, 0.35);
+    border-color: rgba(120, 180, 220, 0.6);
+    box-shadow: var(--klart-shadow-lg);
 }
 
 /* Hover and active states */
 .product-btn:hover {
-    transform: translateY(-4px) scale(1.02);
+    transform: translateY(-2px);
 }
 
 .product-btn:active {
-    transform: translateY(-2px) scale(1.01);
+    transform: translateY(-1px);
 }
 
-/* Refill produkter - special green styling */
+/* Refill products */
 .product-btn.product-refill {
-    border-color: rgba(16, 185, 129, 0.5);
-    background: linear-gradient(145deg, #d1fae5 0%, #6ee7b7 100%);
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25);
+    border-color: rgba(42, 138, 74, 0.3);
+    background: linear-gradient(145deg, #d4f0ea 0%, #b8e6d8 100%);
+    box-shadow: var(--klart-shadow-card);
 }
 
 .product-btn.product-refill:hover {
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: 0 12px 30px rgba(16, 185, 129, 0.35);
-    border-color: rgba(16, 185, 129, 0.8);
+    transform: translateY(-2px);
+    box-shadow: var(--klart-shadow-lg);
+    border-color: rgba(42, 138, 74, 0.5);
 }
 
 .product-btn.product-refill:active {
-    transform: translateY(-2px) scale(1.01);
+    transform: translateY(-1px);
 }
 
 .product-btn.toast-product {
@@ -407,7 +373,6 @@ body.reorder-mode .product-reorder-add-btn {
     padding: 5px;
 }
 
-/* Indhold inde i knappen */
 .product-btn .product-btn-inner {
     display: flex;
     flex-direction: column;
@@ -444,13 +409,11 @@ body.reorder-mode .product-reorder-add-btn {
     display: flex;
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(200, 200, 200, 0.4) 100%);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    background: rgba(255, 255, 255, 0.5);
     align-items: center;
     justify-content: center;
     z-index: 10;
-    border-radius: var(--unstoppable-radius);
+    border-radius: var(--klart-radius-lg);
 }
 
 .product-btn.product-limit-reached .avatar-lock-overlay img {
@@ -460,15 +423,160 @@ body.reorder-mode .product-reorder-add-btn {
     max-height: 180px;
     object-fit: contain;
     opacity: 1.0;
-    filter: drop-shadow(0 6px 12px rgba(0,0,0,0.6));
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
 }
 
 .product-btn.product-limit-reached:hover {
     transform: none;
 }
 
+/* Counter z-index override for locked products */
+.product-btn.product-limit-reached .product-limit-counter {
+    z-index: 50;
+}
+
 /* ============================================================
-   PRODUCT CONTENT - Icons, Emojis, Names, Prices
+   LIMIT COUNTER BADGE
+   Positioned top-center on product card, color-coded by type
+   ============================================================ */
+
+.product-limit-counter {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1.5px solid #7dd3fc;
+    border-radius: var(--klart-radius-full);
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0369a1;
+    font-family: var(--font-body);
+    z-index: 50;
+    pointer-events: auto;
+    cursor: help;
+    box-shadow: 0 2px 6px rgba(14, 165, 233, 0.2);
+    white-space: nowrap;
+}
+
+.product-limit-counter.visible {
+    display: inline-flex !important;
+    width: auto !important;
+}
+
+/* At limit — red warning styling */
+.product-limit-counter.at-limit {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border-color: #f87171;
+    color: #b91c1c;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+}
+
+/* ============================================================
+   LIMIT COUNTER TOOLTIP
+   Dark tooltip below counter with color-coded source blocks
+   ============================================================ */
+
+.limit-tooltip {
+    position: absolute;
+    top: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 220px;
+    max-width: 280px;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: var(--klart-radius-md);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+.limit-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-bottom-color: #1e293b;
+}
+
+.limit-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.limit-tooltip-block {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.limit-tooltip-block:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.limit-tooltip-source {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Color codes per source type */
+.limit-tooltip-source.club {
+    color: #60a5fa; /* Blue — club limit */
+}
+
+.limit-tooltip-source.parent {
+    color: #a78bfa; /* Purple — parent limit */
+}
+
+.limit-tooltip-source.sugar {
+    color: #f472b6; /* Pink — sugar policy */
+}
+
+.limit-tooltip-source.allergy {
+    color: #fb923c; /* Orange — allergen */
+}
+
+.limit-tooltip-source.refill {
+    color: #34d399; /* Green — refill */
+}
+
+.limit-tooltip-message {
+    font-size: 12px;
+    font-weight: 400;
+    color: #f1f5f9;
+    line-height: 1.4;
+}
+
+.limit-tooltip-message strong {
+    font-weight: 600;
+    color: #fff;
+}
+
+.limit-tooltip-icon {
+    font-size: 11px;
+}
+
+/* ============================================================
+   PRODUCT CONTENT
    ============================================================ */
 
 .product-emoji {
@@ -495,9 +603,10 @@ body.reorder-mode .product-reorder-add-btn {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    border-radius: calc(var(--unstoppable-radius) - 2px);
+    border-radius: calc(var(--klart-radius-lg) - 2px);
     opacity: 1;
     z-index: 0;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
 }
 
 .product-icon-small {
@@ -509,39 +618,41 @@ body.reorder-mode .product-reorder-add-btn {
 .product-name {
     margin-top: 8px;
     font-weight: 700;
-    color: #374151;
+    color: var(--klart-fg);
 }
 
 .product-price {
     font-size: 14px;
-    color: #6b7280;
+    color: var(--klart-fg-soft);
     font-weight: 600;
 }
 
-/* Refill pris styling */
 .product-price.refill-price {
-    color: #059669;
+    color: var(--success-color);
     font-weight: 700;
 }
 
+/* Keyboard shortcut badge — green, Klart style */
 .product-shortcut {
     position: absolute;
     top: 8px;
     left: 8px;
-    width: 24px;
-    height: 24px;
-    background: var(--gradient-secondary);
+    width: 22px;
+    height: 22px;
+    background: var(--success-color);
     color: #fff;
-    border-radius: 50%;
+    border-radius: var(--klart-radius-sm);
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 14px;
-    font-weight: 700;
-    box-shadow: 0 2px 8px rgba(6, 182, 212, 0.4);
+    font-size: 11px;
+    font-weight: 800;
+    box-shadow: var(--klart-shadow-sm);
+    z-index: 20;
+    line-height: 1;
 }
 
-/* Cart quantity badge when product is in cart (desktop) */
+/* Cart quantity badge */
 .product-quantity-badge {
     position: absolute;
     top: 6px;
@@ -549,17 +660,17 @@ body.reorder-mode .product-reorder-add-btn {
     min-width: 22px;
     height: 22px;
     padding: 0 6px;
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    background: var(--danger-color);
     color: #fff;
-    border-radius: 11px;
+    border-radius: var(--klart-radius-full);
     display: none;
     justify-content: center;
     align-items: center;
     font-size: 12px;
     font-weight: 700;
-    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.5);
+    box-shadow: var(--klart-shadow-sm);
     z-index: 15;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-body);
     border: 2px solid white;
     gap: 2px;
 }
@@ -578,31 +689,33 @@ body.reorder-mode .product-reorder-add-btn {
 }
 
 /* ============================================================
-   PRODUCT INFO BOX - PREMIUM PILL
+   PRODUCT INFO BOX - KLART BAR
    ============================================================ */
 
 .product-info-box {
     display: flex;
     justify-content: flex-start;
     align-items: baseline;
-    border-radius: var(--unstoppable-radius-sm);
+    border-radius: var(--klart-radius-md);
     z-index: 1;
     position: absolute;
     gap: 8px;
     min-width: 0;
-    background: linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(124, 58, 237, 0.9) 100%);
-    color: #fff;
+    background: rgba(0, 0, 0, 0.12);
+    color: var(--klart-fg);
     font-weight: 700;
-    font-family: 'Poppins', sans-serif;
+    font-family: var(--font-body);
     line-height: 1;
-    font-size: clamp(12px, 1.5vw, 18px);
+    font-size: clamp(12px, 1.5vw, 16px);
     padding: clamp(4px, 0.5vw, 8px) clamp(10px, 1.4vw, 14px);
     bottom: clamp(6px, 1.2vw, 10px);
     left: clamp(6px, 1.2vw, 10px);
     right: clamp(6px, 1.2vw, 10px);
-    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+    box-shadow: none;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
 }
 
 .product-info-box .product-price {
@@ -657,8 +770,8 @@ body.reorder-mode .product-reorder-add-btn {
 }
 
 .reorder-mode .product-edit-name {
-    outline: 1px dashed rgba(60, 35, 5, 0.35);
-    border-radius: 6px;
+    outline: 1px dashed rgba(26, 26, 46, 0.25);
+    border-radius: 4px;
     padding: 2px 4px;
     min-height: 18px;
     cursor: text;
@@ -694,8 +807,8 @@ body.reorder-mode .product-reorder-add-btn {
     background: transparent;
     font: inherit;
     color: inherit;
-    outline: 1px dashed rgba(60, 35, 5, 0.35);
-    border-radius: 6px;
+    outline: 1px dashed rgba(26, 26, 46, 0.25);
+    border-radius: 4px;
     padding: 2px 4px;
     cursor: text;
     pointer-events: auto;
@@ -708,24 +821,23 @@ body.reorder-mode .product-reorder-add-btn {
    ============================================================ */
 
 .refill-timer {
-    /* Absolut positioneret under limit-counter */
     position: absolute;
     top: 38px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 45;
     font-size: 14px;
-    color: #059669;
+    color: var(--success-color);
     font-weight: 700;
     padding: 4px 10px;
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    border-radius: var(--unstoppable-radius-sm);
+    background: #edf8f0;
+    border-radius: var(--klart-radius-md);
     display: flex;
     align-items: center;
     gap: 5px;
     justify-content: center;
-    border: 2px solid rgba(16, 185, 129, 0.4);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(42, 138, 74, 0.3);
+    box-shadow: var(--klart-shadow-sm);
     white-space: nowrap;
 }
 
@@ -763,19 +875,4 @@ body.reorder-mode .product-reorder-add-btn {
     vertical-align: middle;
 }
 
-.confirm-product-line {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 6px 0;
-}
-
-.confirm-product-icon {
-    width: 176px;
-    height: 176px;
-    object-fit: contain;
-}
-
-.confirm-product-emoji {
-    font-size: 112px;
-}
+/* Legacy confirm-product klasser fjernet — erstattet af Klart v5c i components.css */

@@ -1294,6 +1294,62 @@
 }
 
 /* ============================================================
+   CONFIRM PURCHASE MODAL (Klart v5c) — UNSTOPPABLE THEME
+   ============================================================ */
+
+.confirm-modal-header h3 {
+    font-family: var(--font-heading);
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.confirm-modal-header .customer-highlight {
+    color: var(--secondary-color);
+}
+
+.confirm-product-row {
+    background: linear-gradient(145deg, rgba(168, 85, 247, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%);
+    border: 1px solid rgba(168, 85, 247, 0.1);
+    border-radius: var(--unstoppable-radius-sm);
+}
+
+.confirm-modal-summary {
+    border-top-color: rgba(168, 85, 247, 0.15);
+}
+
+.confirm-summary-row .value.positive {
+    color: var(--success-color);
+}
+
+.confirm-summary-row .value.negative {
+    color: var(--danger-color);
+}
+
+.confirm-negative-warning {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.12) 100%);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: #991b1b;
+}
+
+/* Knapper i bekræftelsesmodal — 2-kolonne grid */
+#custom-alert-content:has(.confirm-modal-header) #custom-alert-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+#custom-alert-content:has(.confirm-modal-header) #custom-alert-buttons button {
+    width: 100%;
+    min-width: unset;
+}
+
+#custom-alert-content:has(.confirm-modal-header) #custom-alert-cancel {
+    order: -1; /* Annullér til venstre */
+}
+
+/* ============================================================
    SETTINGS SECTIONS
    ============================================================ */
 

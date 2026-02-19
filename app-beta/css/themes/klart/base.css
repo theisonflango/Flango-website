@@ -1,0 +1,378 @@
+/* ============================================================
+   KLART THEME - BASE STYLES
+   Clean, calm, warm — Flango's warmth with typographic clarity
+   "Klart" = Clear in Danish
+   ============================================================ */
+
+/* ============================================================
+   FONT IMPORTS
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&display=swap');
+
+/* ============================================================
+   CSS VARIABLES - KLART COLOR PALETTE
+   Warm off-whites, green accent, semantic colors
+   ============================================================ */
+
+:root {
+    /* Primary: Warm green accent */
+    --primary-color: #1a8a6e;
+    --primary-dark: #157a60;
+    --primary-light: #2aa080;
+
+    /* Secondary: Same green family */
+    --secondary-color: #1a8a6e;
+    --secondary-dark: #157a60;
+    --secondary-light: #2aa080;
+
+    /* Admin: Deep green */
+    --admin-color: #157a60;
+
+    /* Backgrounds: Warm off-white */
+    --background-light: #f8f7f4;
+    --background-warm: #f8f7f4;
+    --background-cool: #f0efeb;
+
+    /* Card/Container backgrounds */
+    --white: #ffffff;
+    --card-bg: #ffffff;
+
+    /* Product cards: Warm peachy tones (preserved from Flango identity) */
+    --product-bg: #fff4d4;
+    --product-border: #e2e1dc;
+
+    /* Status colors */
+    --success-color: #2a8a4a;
+    --success-gradient: linear-gradient(135deg, #2a8a4a 0%, #1e7a3e 100%);
+    --reset-color: #8888a4;
+    --warning-color: #c48a20;
+    --warning-gradient: linear-gradient(135deg, #c48a20 0%, #b07a18 100%);
+    --danger-color: #c44040;
+    --danger-gradient: linear-gradient(135deg, #c44040 0%, #b03636 100%);
+
+    /* Typography */
+    --font-body: 'DM Sans', -apple-system, system-ui, sans-serif;
+    --font-heading: 'Fraunces', Georgia, serif;
+
+    /* Klart design tokens */
+    --klart-fg: #1a1a2e;
+    --klart-fg-soft: #4a4a68;
+    --klart-fg-muted: #8888a4;
+    --klart-bg: #f8f7f4;
+    --klart-bg-raised: #ffffff;
+    --klart-bg-inset: #f0efeb;
+    --klart-bg-hover: #eae9e4;
+    --klart-border: #e2e1dc;
+    --klart-border-strong: #d0cfc8;
+    --klart-accent: #1a8a6e;
+    --klart-accent-hover: #157a60;
+    --klart-accent-soft: #e8f5f0;
+    --klart-shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --klart-shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+    --klart-shadow-lg: 0 4px 20px rgba(0,0,0,0.08);
+    --klart-shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px var(--klart-border);
+    --klart-radius-sm: 6px;
+    --klart-radius-md: 10px;
+    --klart-radius-lg: 16px;
+    --klart-radius-xl: 24px;
+    --klart-radius-full: 9999px;
+    --klart-ease: cubic-bezier(.22,.61,.36,1);
+    --klart-duration: 180ms;
+
+    /* Unstoppable-compatible aliases (for any JS that references these) */
+    --unstoppable-glow: none;
+    --unstoppable-shadow: var(--klart-shadow-lg);
+    --unstoppable-shadow-hover: var(--klart-shadow-lg);
+    --unstoppable-radius: var(--klart-radius-lg);
+    --unstoppable-radius-lg: var(--klart-radius-xl);
+    --unstoppable-radius-sm: var(--klart-radius-md);
+
+    /* Gradient presets (simplified for Klart — mostly solid) */
+    --gradient-primary: linear-gradient(135deg, #1a8a6e 0%, #157a60 100%);
+    --gradient-secondary: linear-gradient(135deg, #1a8a6e 0%, #157a60 100%);
+    --gradient-warm: linear-gradient(135deg, #fff4d4 0%, #ffe8d4 100%);
+    --gradient-cool: linear-gradient(135deg, #e8f5f0 0%, #d4f0ea 100%);
+    --gradient-sunset: linear-gradient(135deg, #fff4d4 0%, #ffe8d4 50%, #e8f5f0 100%);
+    --gradient-candy: linear-gradient(135deg, #fce4ec 0%, #e8daf8 50%, #d4e8f8 100%);
+    --gradient-body: linear-gradient(180deg, #f8f7f4 0%, #f0efeb 100%);
+}
+
+/* ============================================================
+   BODY RESET - KLART STYLE
+   ============================================================ */
+
+body {
+    font-family: var(--font-body);
+    background: var(--klart-bg);
+    background-attachment: fixed;
+    color: var(--klart-fg);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+}
+
+/* Ensure DM Sans inherits to ALL elements */
+*,
+*::before,
+*::after {
+    font-family: inherit;
+}
+
+/* Explicit font for form elements (don't inherit by default in some browsers) */
+input,
+button,
+select,
+textarea {
+    font-family: var(--font-body);
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+
+h1,
+h2 {
+    font-family: var(--font-heading);
+}
+
+h2 {
+    background: none;
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: var(--klart-fg);
+    background-clip: unset;
+    text-align: left;
+    font-size: clamp(22px, 2.6vw, 32px);
+    margin: 0;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+h3 {
+    font-family: var(--font-heading);
+    background: none;
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: var(--klart-fg);
+    background-clip: unset;
+    border-bottom: 1px solid var(--klart-border);
+    padding-bottom: 10px;
+    margin-top: 20px;
+    font-weight: 600;
+}
+
+/* ============================================================
+   LOGIN CONTAINER
+   ============================================================ */
+
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: var(--klart-bg-raised);
+    padding: 40px;
+    border-radius: var(--klart-radius-xl);
+    border: 1px solid var(--klart-border);
+    box-shadow: var(--klart-shadow-lg);
+    width: 90%;
+    max-width: 450px;
+    position: relative;
+    overflow: hidden;
+}
+
+.login-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--gradient-primary);
+}
+
+.login-logo {
+    max-width: 250px;
+    height: auto;
+    margin-bottom: 20px;
+    filter: none;
+}
+
+.lock-icon {
+    font-size: 50px;
+    margin-bottom: 10px;
+}
+
+.login-container h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    background: none;
+    -webkit-text-fill-color: var(--klart-fg);
+    color: var(--klart-fg);
+}
+
+.login-container select,
+.login-container input,
+.login-container button {
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+    border-radius: var(--klart-radius-md);
+    margin-top: 15px;
+    box-sizing: border-box;
+    font-family: var(--font-body);
+    transition: all var(--klart-duration) var(--klart-ease);
+}
+
+.login-container select,
+.login-container input {
+    border: 1px solid var(--klart-border-strong);
+    background: var(--klart-bg-raised);
+    color: var(--klart-fg);
+}
+
+.login-container select:focus,
+.login-container input:focus {
+    outline: none;
+    border-color: var(--klart-accent);
+    box-shadow: 0 0 0 3px rgba(26, 138, 110, 0.15);
+}
+
+.login-container button {
+    background: var(--gradient-primary);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    box-shadow: var(--klart-shadow-md);
+    transition: all var(--klart-duration) var(--klart-ease);
+}
+
+.login-container button:hover {
+    background: linear-gradient(135deg, #157a60 0%, #126e56 100%);
+    box-shadow: var(--klart-shadow-lg);
+}
+
+.login-container button:active {
+    transform: translateY(0);
+}
+
+.login-container label {
+    font-weight: 600;
+    align-self: flex-start;
+    margin: 6px 0 2px;
+    color: var(--klart-fg-soft);
+    font-size: 14px;
+}
+
+/* ============================================================
+   LOGIN SCREEN
+   ============================================================ */
+
+#login-screen {
+    text-align: center;
+    background: var(--klart-bg-raised);
+    padding: 40px;
+    border-radius: var(--klart-radius-xl);
+    border: 1px solid var(--klart-border);
+    box-shadow: var(--klart-shadow-lg);
+}
+
+.login-options {
+    width: 100%;
+}
+
+#quick-login-btn {
+    background: var(--success-gradient);
+    box-shadow: var(--klart-shadow-md);
+}
+
+#quick-login-btn:hover {
+    box-shadow: var(--klart-shadow-lg);
+}
+
+#start-login-btn {
+    background: var(--gradient-primary);
+    box-shadow: var(--klart-shadow-md);
+}
+
+#start-login-btn:hover {
+    box-shadow: var(--klart-shadow-lg);
+}
+
+/* ============================================================
+   LOGIN VARIANTS & COMPONENTS
+   ============================================================ */
+
+#pin-modal-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.secondary-action {
+    background: linear-gradient(135deg, #8888a4 0%, #6b6b84 100%) !important;
+    box-shadow: var(--klart-shadow-md) !important;
+}
+
+.secondary-action:hover {
+    box-shadow: var(--klart-shadow-lg) !important;
+}
+
+.login-error {
+    color: var(--danger-color);
+    margin-top: 15px;
+    font-weight: 600;
+    padding: 10px;
+    background: #fdf0f0;
+    border-radius: var(--klart-radius-md);
+    border: 1px solid #f0c0c0;
+    font-size: 14px;
+}
+
+.login-subtitle {
+    margin: -6px 0 14px;
+    color: var(--klart-fg-soft);
+    font-size: 16px;
+}
+
+#admin-user-select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--klart-border-strong);
+    border-radius: var(--klart-radius-md);
+    font-size: 16px;
+    box-sizing: border-box;
+    background: var(--klart-bg-raised);
+    transition: all var(--klart-duration) var(--klart-ease);
+}
+
+#admin-user-select:focus {
+    outline: none;
+    border-color: var(--klart-accent);
+    box-shadow: 0 0 0 3px rgba(26, 138, 110, 0.15);
+}
+
+.switch-club-btn {
+    background: none;
+    border: none;
+    color: var(--klart-accent);
+    text-decoration: none;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 6px;
+    font-weight: 600;
+    transition: all var(--klart-duration) var(--klart-ease);
+}
+
+.switch-club-btn:hover {
+    color: var(--klart-accent-hover);
+    text-decoration: underline;
+}

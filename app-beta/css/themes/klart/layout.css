@@ -1,23 +1,23 @@
 /* ============================================================
-   LAYOUT STYLES - Flango Café
+   KLART THEME - LAYOUT STYLES
    Main Grid, Sidebar, Products Area, Containers
    ============================================================ */
 
-/* Main App Grid Layout */
+/* Main App Grid Layout — header spans full width, sidebar takes full right column */
 #main-app {
     display: grid;
-    grid-template-columns: 1fr 460px;
-    grid-template-rows: auto auto 1fr;
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: auto 1fr;
     grid-template-areas:
-        "products sidebar-header"
-        "products user-banner"
-        "products sidebar";
-    gap: 20px;
+        "header     header"
+        "products   sidebar";
+    gap: 8px 16px;
     width: 100%;
     height: 100%;
-    padding: 20px;
+    padding: 12px 16px 16px;
     box-sizing: border-box;
-    position: relative
+    position: relative;
+    background: transparent;
 }
 
 /* Products Area */
@@ -30,18 +30,18 @@
     position: relative;
 }
 
-/* Sidebar Regions */
+/* Header — full width bar */
 .sidebar-main-header {
-    grid-area: sidebar-header;
+    grid-area: header;
 }
 
 #sidebar {
     grid-area: sidebar;
 }
 
+/* Session banner hidden in Klart — info is in the header bar */
 .user-session-banner {
-    grid-area: user-banner;
-    width: 100%;
+    display: none;
 }
 
 /* ============================================================
@@ -51,18 +51,22 @@
 @media (max-width:800px) {
     body {
         overflow: auto;
-        height: auto
+        height: auto;
     }
 
     #main-app {
         grid-template-columns: 1fr;
-        grid-template-rows: auto auto;
+        grid-template-rows: auto auto auto;
+        grid-template-areas:
+            "header"
+            "products"
+            "sidebar";
         height: auto;
         padding: 10px;
-        gap: 10px
+        gap: 10px;
     }
 
     #sidebar {
-        min-height: 400px
+        min-height: 400px;
     }
 }

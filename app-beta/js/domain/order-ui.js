@@ -8,6 +8,15 @@ import { MAX_ITEMS_PER_ORDER } from '../core/constants.js';
 import { formatKr } from '../ui/confirm-modals.js';
 
 /**
+ * Tjekker om den nuværende kunde er en admin med gratis-køb
+ */
+function isCurrentCustomerFreeAdmin() {
+    const customer = getCurrentCustomer();
+    if (!customer || customer.role !== 'admin') return false;
+    return window.__flangoInstitutionSettings?.adminsPurchaseFree || false;
+}
+
+/**
  * Genererer mini-kvittering med chips til mobil
  */
 function buildMiniReceiptNode(total) {
@@ -80,22 +89,60 @@ export function updateTotalPrice(totalPriceEl) {
     const total = getOrderTotal();
     const isMobile = window.innerWidth <= 767;
     const currentOrder = getOrder();
+    const isFreeAdmin = isCurrentCustomerFreeAdmin() && currentOrder.length > 0;
 
     // Avoid innerHTML injection: build DOM instead
     totalPriceEl.replaceChildren();
 
     if (isMobile) {
-        totalPriceEl.appendChild(buildMiniReceiptNode(total));
+        if (isFreeAdmin) {
+            // Mobil: vis GRATIS i stedet for total
+            const mobileNode = buildMiniReceiptNode(total);
+            const totalValueEl = mobileNode.querySelector('#total-price-value');
+            if (totalValueEl) {
+                totalValueEl.textContent = '';
+                const strikeEl = document.createElement('s');
+                strikeEl.style.opacity = '0.5';
+                strikeEl.textContent = `${total.toFixed(2)} DKK`;
+                totalValueEl.appendChild(document.createTextNode('Total: '));
+                totalValueEl.appendChild(strikeEl);
+                totalValueEl.appendChild(document.createTextNode(' '));
+                const badge = document.createElement('span');
+                badge.className = 'free-admin-badge-inline';
+                badge.textContent = 'GRATIS';
+                totalValueEl.appendChild(badge);
+            }
+            totalPriceEl.appendChild(mobileNode);
+        } else {
+            totalPriceEl.appendChild(buildMiniReceiptNode(total));
+        }
         return;
     }
 
     const summary = buildProductIconSummaryNode(currentOrder);
     if (summary) totalPriceEl.appendChild(summary);
 
-    const totalText = document.createElement('span');
-    totalText.className = 'total-text';
-    totalText.textContent = `Total: ${total.toFixed(2)} DKK`;
-    totalPriceEl.appendChild(totalText);
+    if (isFreeAdmin) {
+        // Desktop: vis overstreget pris + GRATIS badge
+        const totalWrap = document.createElement('span');
+        totalWrap.className = 'total-text';
+        totalWrap.appendChild(document.createTextNode('Total: '));
+        const strikeEl = document.createElement('s');
+        strikeEl.style.opacity = '0.5';
+        strikeEl.textContent = `${total.toFixed(2)} DKK`;
+        totalWrap.appendChild(strikeEl);
+        totalWrap.appendChild(document.createTextNode(' '));
+        const badge = document.createElement('span');
+        badge.className = 'free-admin-badge-inline';
+        badge.textContent = 'GRATIS';
+        totalWrap.appendChild(badge);
+        totalPriceEl.appendChild(totalWrap);
+    } else {
+        const totalText = document.createElement('span');
+        totalText.className = 'total-text';
+        totalText.textContent = `Total: ${total.toFixed(2)} DKK`;
+        totalPriceEl.appendChild(totalText);
+    }
 }
 
 /**
@@ -189,6 +236,15 @@ export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelec
 
     // Use DocumentFragment for batched DOM insertion (reduces reflows)
     const fragment = document.createDocumentFragment();
+
+    // Gratis admin-køb banner
+    if (isCurrentCustomerFreeAdmin() && currentOrder.length > 0) {
+        const banner = document.createElement('li');
+        banner.className = 'admin-free-banner';
+        banner.innerHTML = '<span style="font-size: 18px;">&#x267E;</span> <span>Gratis &mdash; Medarbejdere betaler ikke</span>';
+        fragment.appendChild(banner);
+    }
+
     const productCounts = new Map();
     const remainingById = new Map();
     const sampleById = new Map();

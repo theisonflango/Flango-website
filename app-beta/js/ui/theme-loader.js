@@ -1,6 +1,6 @@
 // js/ui/theme-loader.js
-// Theme Pack Loader for Flango Unstoppable
-// Swaps between default CSS and Unstoppable theme-pack CSS files
+// Theme Pack Loader for Flango
+// Swaps between default CSS and theme-pack CSS files (Unstoppable, Klart)
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 
@@ -18,10 +18,10 @@ const THEME_CSS_FILES = [
 const MOBILE_CSS_FILE = 'mobile.css';
 
 // Themes that use a complete theme-pack (CSS file replacement)
-const THEME_PACK_THEMES = ['flango-unstoppable'];
+const THEME_PACK_THEMES = ['flango-unstoppable', 'klart'];
 
 // All valid themes
-const ALL_VALID_THEMES = ['flango-unstoppable'];
+const ALL_VALID_THEMES = ['flango-unstoppable', 'klart'];
 
 /**
  * Check if a theme uses a theme-pack (complete CSS replacement)

@@ -108,74 +108,148 @@ function groupOrderItems(order) {
  * @param {Array} currentOrder - Ordre
  * @param {number} finalTotal - Totalt beløb
  * @param {number} newBalance - Ny balance
+ * @param {boolean} isFreeAdminPurchase - Om dette er et gratis admin-køb
  * @returns {string} HTML string til bekræftelsesdialog
  */
-function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance) {
+function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isFreeAdminPurchase = false) {
     // Grupper items efter produkt ID
     const itemCounts = groupOrderItems(currentOrder);
 
-    // Byg DOM først (undgår innerHTML injection fra produkt-/kundenavne)
+    // Byg DOM med ny Klart v5c-struktur
     const root = document.createElement('div');
 
-    const title = document.createElement('strong');
-    title.textContent = customer?.name || 'Ukendt';
-    root.appendChild(title);
-    root.appendChild(document.createTextNode(' køber:'));
-    root.appendChild(document.createElement('br'));
+    // === Header: kundenavn ===
+    const header = document.createElement('div');
+    header.className = 'confirm-modal-header';
+    const h3 = document.createElement('h3');
+    h3.textContent = 'Bekræft køb';
+    header.appendChild(h3);
+    const customerHighlight = document.createElement('div');
+    customerHighlight.className = 'customer-highlight';
+    customerHighlight.textContent = `${customer?.name || 'Ukendt'} køber:`;
+    header.appendChild(customerHighlight);
+    root.appendChild(header);
+
+    // === Produktrækker ===
+    const productsContainer = document.createElement('div');
+    productsContainer.className = 'confirm-modal-products';
 
     Object.values(itemCounts).forEach((item) => {
-        const line = document.createElement('div');
-        line.className = 'confirm-product-line';
+        const row = document.createElement('div');
+        row.className = 'confirm-product-row';
 
+        // Ikon (billede eller emoji)
+        const iconWrap = document.createElement('span');
+        iconWrap.className = 'cp-icon';
         const iconInfo = getProductIconInfo(item);
         if (iconInfo?.path) {
             const img = document.createElement('img');
             img.src = iconInfo.path;
             img.alt = item?.name || 'Produkt';
-            img.className = 'confirm-product-icon';
-            line.appendChild(img);
+            iconWrap.appendChild(img);
         } else {
-            const emoji = document.createElement('span');
-            emoji.className = 'confirm-product-emoji';
-            emoji.textContent = item?.emoji || '❓';
-            line.appendChild(emoji);
+            iconWrap.textContent = item?.emoji || '❓';
         }
+        row.appendChild(iconWrap);
 
-        const text = document.createElement('span');
-        text.textContent = `${item.count} x ${item.name || 'Ukendt'}`;
-        line.appendChild(text);
+        // Info (navn + antal)
+        const info = document.createElement('div');
+        info.className = 'cp-info';
+        const name = document.createElement('div');
+        name.className = 'cp-name';
+        name.textContent = item.name || 'Ukendt';
+        info.appendChild(name);
+        const qty = document.createElement('div');
+        qty.className = 'cp-qty';
+        qty.textContent = `${item.count} stk.`;
+        info.appendChild(qty);
+        row.appendChild(info);
 
-        root.appendChild(line);
+        // Pris (pr. linje, efter evt. rabat)
+        const unitPrice = getBulkDiscountedUnitPrice(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
+        const lineTotal = unitPrice * item.count;
+        const price = document.createElement('div');
+        price.className = 'cp-price';
+        price.textContent = formatKr(lineTotal);
+        row.appendChild(price);
 
+        productsContainer.appendChild(row);
+
+        // Bulk-rabat info under produktrækken
         const summary = getBulkDiscountSummary(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
         if (summary.discountAmount > 0) {
-            const discountLine = document.createElement('div');
-            discountLine.className = 'confirm-product-line';
-            discountLine.style.color = '#64748b';
+            const discountRow = document.createElement('div');
+            discountRow.className = 'confirm-discount-row';
             const bundleLabel = summary.bundlePrice != null
                 ? formatKr(summary.bundlePrice).replace(' kr', '')
                 : '';
             const label = bundleLabel
                 ? `🏷️ Rabat (${summary.qtyRule} for ${bundleLabel})`
                 : '🏷️ Rabat';
-            discountLine.textContent = `${label}: -${formatKr(summary.discountAmount)}`;
-            root.appendChild(discountLine);
+            discountRow.textContent = `${label}: -${formatKr(summary.discountAmount)}`;
+            productsContainer.appendChild(discountRow);
         }
     });
 
-    // Byg negativ balance advarsel hvis relevant
-    let negativeBalanceWarning = '';
-    if (newBalance < 0) {
-        if (customer.balance < 0) {
-            negativeBalanceWarning = `<p style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #f5c6cb;"><strong>Advarsel:</strong> Er du helt sikker på, at du vil gå endnu mere i minus?</p>`;
-        } else {
-            negativeBalanceWarning = `<p style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #f5c6cb;"><strong>Advarsel:</strong> Er du helt sikker på, du vil gå i minus?</p>`;
+    root.appendChild(productsContainer);
+
+    // === Summary sektion ===
+    const summaryDiv = document.createElement('div');
+    summaryDiv.className = 'confirm-modal-summary';
+
+    if (isFreeAdminPurchase) {
+        // Gratis admin-køb
+        const normalTotal = Object.values(itemCounts).reduce((sum, item) => {
+            const unitPrice = getBulkDiscountedUnitPrice(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
+            return sum + (unitPrice * item.count);
+        }, 0);
+
+        const freeBox = document.createElement('div');
+        freeBox.className = 'admin-free-confirm-box';
+        freeBox.innerHTML = '<span style="font-size: 20px;">&#x267E;</span><span>GRATIS ADMIN-K\u00D8B</span>';
+        summaryDiv.appendChild(freeBox);
+
+        const normalPriceRow = document.createElement('div');
+        normalPriceRow.className = 'confirm-summary-row';
+        normalPriceRow.innerHTML = `<span class="label">Normalpris</span><span class="value" style="text-decoration: line-through; color: #94a3b8;">${escapeHtml(formatKr(normalTotal))}</span>`;
+        summaryDiv.appendChild(normalPriceRow);
+
+        const balanceRow = document.createElement('div');
+        balanceRow.className = 'confirm-summary-row';
+        balanceRow.innerHTML = `<span class="label">Saldo (u\u00e6ndret)</span><span class="value">${escapeHtml(formatKr(customer.balance))}</span>`;
+        summaryDiv.appendChild(balanceRow);
+    } else {
+        // Normal køb — Total, Nuværende saldo, Ny saldo
+        const totalRow = document.createElement('div');
+        totalRow.className = 'confirm-summary-row total';
+        totalRow.innerHTML = `<span class="label">Total</span><span class="value">${escapeHtml(formatKr(finalTotal))}</span>`;
+        summaryDiv.appendChild(totalRow);
+
+        const currentBalRow = document.createElement('div');
+        currentBalRow.className = 'confirm-summary-row';
+        currentBalRow.innerHTML = `<span class="label">Nuv\u00e6rende saldo</span><span class="value">${escapeHtml(formatKr(customer.balance))}</span>`;
+        summaryDiv.appendChild(currentBalRow);
+
+        const newBalClass = newBalance >= 0 ? 'positive' : 'negative';
+        const newBalRow = document.createElement('div');
+        newBalRow.className = 'confirm-summary-row';
+        newBalRow.innerHTML = `<span class="label">Ny saldo</span><span class="value ${newBalClass}">${escapeHtml(formatKr(newBalance))}</span>`;
+        summaryDiv.appendChild(newBalRow);
+
+        // Negativ balance advarsel
+        if (newBalance < 0) {
+            const warning = document.createElement('div');
+            warning.className = 'confirm-negative-warning';
+            if (customer.balance < 0) {
+                warning.innerHTML = '<strong>Advarsel:</strong> Er du helt sikker p\u00e5, at du vil g\u00e5 endnu mere i minus?';
+            } else {
+                warning.innerHTML = '<strong>Advarsel:</strong> Er du helt sikker p\u00e5, du vil g\u00e5 i minus?';
+            }
+            summaryDiv.appendChild(warning);
         }
     }
 
-    // Append totals section (as HTML string for formatting; names are escaped)
-    const totalsHtml = `<br>for <strong>${formatKr(finalTotal)}</strong><hr style="margin: 15px 0; border: 1px solid #eee;">${escapeHtml(customer?.name || 'Ukendt')} har <strong>${formatKr(newBalance)}</strong> tilbage.${negativeBalanceWarning}`;
-    root.insertAdjacentHTML('beforeend', totalsHtml);
+    root.appendChild(summaryDiv);
 
     return root.innerHTML;
 }
@@ -879,9 +953,13 @@ export async function handleCompletePurchase({
         finalTotal,
         newBalance,
     });
-    const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance);
+    const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance, shouldBeFreePurchase);
     logDebugEvent('confirmation_modal_showing', { bodyLength: confirmationBody?.length });
-    const confirmed = await showCustomAlert('Bekræft Køb', confirmationBody, 'confirm');
+    const confirmed = await showCustomAlert('Bekræft Køb', confirmationBody, {
+        type: 'confirm',
+        okText: 'Bekræft Køb',
+        cancelText: 'Annullér',
+    });
     logDebugEvent('confirmation_modal_closed', { confirmed, cartLengthAfter: orderSnapshot?.length });
     if (!confirmed) return;
 

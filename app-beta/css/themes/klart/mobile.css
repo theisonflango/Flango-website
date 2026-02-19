@@ -1,10 +1,11 @@
 /* ============================================================
-   FLANGO UNSTOPPABLE THEME - MOBILE & TABLET RESPONSIVE STYLES
-   Premium gradient styling for all screen sizes
+   KLART THEME - MOBILE & TABLET RESPONSIVE STYLES
+   Clean, warm, typographic — no glassmorphism, no gradients
    ============================================================ */
 
 /* ============================================================
    DESKTOP - over 767px
+   Hide selected-user-info on login screens
    ============================================================ */
 @media (min-width: 768px) {
     body:has(#screen-club-login:not([style*="display: none"])) #selected-user-info,
@@ -16,7 +17,7 @@
 }
 
 /* ============================================================
-   TABLET (iPAD) - 768px til 1024px
+   TABLET (iPad) - 768px til 1024px
    ============================================================ */
 @media (max-width: 1024px) and (min-width: 768px) {
     #main-app {
@@ -24,32 +25,49 @@
         padding: 12px !important;
     }
 
+    /* Basis: 3 kolonner */
     #products {
-        grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-columns: repeat(3, 1fr) !important;
         gap: 12px !important;
         padding: 15px !important;
     }
 
-    /* 1 produkt → centreret, begrænset størrelse */
-    #products:has(> .product-btn:first-child:last-child) {
-        grid-template-columns: 1fr !important;
-        justify-items: center !important;
-    }
+    /* === Dynamisk grid (tablet) — samme regler som desktop === */
 
-    #products:has(> .product-btn:first-child:last-child) > .product-btn {
-        max-width: calc((100% - 12px) / 2) !important;
-        width: 100% !important;
-    }
-
-    #products:has(> .product-btn:nth-child(2):last-child),
-    #products:has(> .product-btn:nth-child(3):last-child),
-    #products:has(> .product-btn:nth-child(4):last-child),
-    #products:has(> .product-btn:nth-child(5):last-child) {
+    /* 2 produkter → 2 kolonner */
+    #products:has(> .product-btn:nth-child(2):last-child) {
         grid-template-columns: repeat(2, 1fr) !important;
     }
 
+    /* 4 produkter → 2×2 (2 kolonner) */
+    #products:has(> .product-btn:nth-child(4):last-child) {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    /* 5 produkter → hero (1. span 2) */
     #products:has(> .product-btn:nth-child(5):last-child) > .product-btn:first-child {
-        grid-column: span 1 !important;
+        grid-column: span 2 !important;
+    }
+
+    /* 7 produkter → diagonal balance */
+    #products:has(> .product-btn:nth-child(7):last-child) > .product-btn:first-child {
+        grid-column: span 2 !important;
+    }
+    #products:has(> .product-btn:nth-child(7):last-child) > .product-btn:last-child {
+        grid-column: span 2 !important;
+    }
+
+    /* 8 produkter → hero (1. span 2) */
+    #products:has(> .product-btn:nth-child(8):last-child) > .product-btn:first-child {
+        grid-column: span 2 !important;
+    }
+
+    /* 10 produkter → diagonal balance */
+    #products:has(> .product-btn:nth-child(10):last-child) > .product-btn:first-child {
+        grid-column: span 2 !important;
+    }
+    #products:has(> .product-btn:nth-child(10):last-child) > .product-btn:last-child {
+        grid-column: span 2 !important;
     }
 
     .product-btn {
@@ -66,7 +84,7 @@
 
 /* ============================================================
    MOBILE (SMARTPHONE) - under 768px
-   UNSTOPPABLE PREMIUM MOBILE STYLING
+   KLART CLEAN MOBILE STYLING
    ============================================================ */
 @media (max-width: 767px) {
     :root {
@@ -116,12 +134,12 @@
         overflow: hidden !important;
     }
 
-    /* ===== UNSTOPPABLE HEADER ===== */
+    /* ===== KLART HEADER ===== */
     .sidebar-main-header {
         position: relative !important;
         width: 100% !important;
-        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%) !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+        background: var(--gradient-primary) !important;
+        border-bottom: 1px solid rgba(26, 138, 110, 0.3) !important;
         padding: 6px 8px !important;
         margin: 0 !important;
         display: flex !important;
@@ -148,9 +166,9 @@
         min-height: 32px !important;
         padding: 4px !important;
         flex-shrink: 0 !important;
-        background: rgba(255, 255, 255, 0.15) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 8px !important;
+        background: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border-radius: var(--klart-radius-sm) !important;
     }
 
     .header-action-btn img {
@@ -159,26 +177,22 @@
         filter: brightness(0) invert(1) !important;
     }
 
-    /* ===== UNSTOPPABLE USER BANNER ===== */
+    /* ===== KLART USER BANNER — hidden on mobile (info in header) ===== */
     .user-session-banner {
-        position: relative !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 8px 12px !important;
-        background: linear-gradient(135deg, #a855f7 0%, #06b6d4 100%) !important;
-        border-bottom: none !important;
-        box-shadow: 0 2px 10px rgba(168, 85, 247, 0.3) !important;
-        flex-shrink: 0 !important;
-        grid-area: unset !important;
+        display: none !important;
     }
 
     #logged-in-user {
-        color: white !important;
-        font-size: 11px !important;
-        font-weight: 600 !important;
-        text-align: center !important;
-        letter-spacing: 0.3px !important;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+        display: none !important;
+    }
+
+    /* ===== KLART HEADER EXTRAS — compact on mobile ===== */
+    .klart-institution-info {
+        display: none !important;
+    }
+
+    .klart-clerk-info {
+        display: none !important;
     }
 
     #main-app[style*="display: none"] .user-session-banner,
@@ -186,7 +200,7 @@
         display: none !important;
     }
 
-    /* ===== SELECTED USER INFO - UNSTOPPABLE GLASSMORPHISM ===== */
+    /* ===== SELECTED USER INFO - KLART CLEAN CARD ===== */
     #selected-user-info {
         position: fixed !important;
         left: 8px !important;
@@ -201,12 +215,12 @@
         gap: 6px !important;
         padding: 12px !important;
         margin: 0 !important;
-        background: linear-gradient(135deg, rgba(168, 85, 247, 0.95) 0%, rgba(6, 182, 212, 0.95) 100%) !important;
-        backdrop-filter: blur(20px) !important;
-        -webkit-backdrop-filter: blur(20px) !important;
-        border-radius: 16px !important;
-        border: 2px solid rgba(255, 255, 255, 0.3) !important;
-        box-shadow: 0 -4px 20px rgba(168, 85, 247, 0.35) !important;
+        background: var(--klart-bg-raised) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border-radius: var(--klart-radius-lg) !important;
+        border: 1px solid var(--klart-border) !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
         height: auto !important;
         pointer-events: auto !important;
         min-height: 48px !important;
@@ -232,11 +246,12 @@
         content: "VALGT BRUGER" !important;
         display: block !important;
         font-size: 12px !important;
-        font-weight: 800 !important;
-        color: white !important;
+        font-weight: 700 !important;
+        color: var(--klart-fg-muted) !important;
         text-align: center !important;
         padding: 10px 8px !important;
-        opacity: 0.95 !important;
+        opacity: 0.8 !important;
+        letter-spacing: 0.5px !important;
     }
 
     #selected-user-info.hidden,
@@ -260,7 +275,7 @@
     #selected-user-info .info-box-label {
         font-size: 9px !important;
         font-weight: 600 !important;
-        color: rgba(255, 255, 255, 0.85) !important;
+        color: var(--klart-fg-muted) !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
     }
@@ -268,12 +283,12 @@
     #selected-user-info .info-box-value {
         font-size: 13px !important;
         font-weight: 700 !important;
-        color: white !important;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+        color: var(--klart-fg) !important;
+        text-shadow: none !important;
     }
 
     #selected-user-info .info-box-value.negative {
-        color: #fecaca !important;
+        color: var(--danger-color) !important;
         font-weight: 800 !important;
     }
 
@@ -283,7 +298,7 @@
         margin: 0 !important;
         padding: 0 !important;
         flex: 1 1 auto !important;
-        background: linear-gradient(135deg, #fef7f0 0%, #fff5eb 100%) !important;
+        background: var(--klart-bg) !important;
         grid-area: unset !important;
         display: flex !important;
         flex-direction: column !important;
@@ -301,7 +316,7 @@
         grid-auto-rows: auto !important;
         gap: 8px !important;
         padding: 10px !important;
-        background: linear-gradient(135deg, rgba(168, 85, 247, 0.03) 0%, rgba(6, 182, 212, 0.03) 100%) !important;
+        background: transparent !important;
         width: 100% !important;
         margin: 0 !important;
         height: auto !important;
@@ -370,7 +385,7 @@
         display: flex !important;
     }
 
-    /* ===== PRODUCT BUTTONS - UNSTOPPABLE MOBILE STYLE ===== */
+    /* ===== PRODUCT BUTTONS - KLART CLEAN STYLE ===== */
     .product-btn {
         aspect-ratio: 1 / 1 !important;
         width: 100% !important;
@@ -385,12 +400,12 @@
         align-items: center !important;
         justify-content: center !important;
         gap: 4px !important;
-        border-radius: 18px !important;
+        border-radius: var(--klart-radius-lg) !important;
         position: relative !important;
         overflow: visible !important;
-        background: linear-gradient(145deg, #fffbf7 0%, #fff5eb 100%) !important;
-        box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15) !important;
-        border: 2px solid rgba(168, 85, 247, 0.2) !important;
+        background: var(--klart-bg-raised) !important;
+        box-shadow: var(--klart-shadow-sm) !important;
+        border: 1px solid var(--klart-border) !important;
         margin: 0 !important;
     }
 
@@ -411,7 +426,7 @@
         width: 8px !important;
         height: 8px !important;
         border-radius: 50% !important;
-        background: rgba(168, 85, 247, 0.3) !important;
+        background: rgba(26, 138, 110, 0.3) !important;
         transition: all 0.2s ease !important;
         cursor: pointer !important;
     }
@@ -420,7 +435,7 @@
         width: 10px !important;
         height: 10px !important;
         background: var(--gradient-primary) !important;
-        box-shadow: 0 2px 8px rgba(168, 85, 247, 0.4) !important;
+        box-shadow: 0 2px 8px rgba(26, 138, 110, 0.4) !important;
     }
 
     .product-btn-inner {
@@ -450,19 +465,20 @@
         line-height: 1.1 !important;
         margin: 0 !important;
         text-align: center !important;
-        color: #374151 !important;
+        color: var(--klart-fg) !important;
         font-weight: 600 !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         white-space: nowrap !important;
         max-width: 100% !important;
+        font-family: var(--font-body) !important;
     }
 
     .product-price {
         font-size: 8px !important;
         font-weight: 700 !important;
         margin: 0 !important;
-        color: var(--primary-color) !important;
+        color: var(--klart-accent) !important;
         line-height: 1 !important;
     }
 
@@ -481,7 +497,7 @@
         object-fit: contain !important;
         object-position: center !important;
         opacity: 1 !important;
-        border-radius: 12px !important;
+        border-radius: var(--klart-radius-md) !important;
         z-index: auto !important;
     }
 
@@ -520,7 +536,7 @@
         justify-content: center !important;
         z-index: 20 !important;
         pointer-events: none !important;
-        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4) !important;
+        box-shadow: 0 2px 6px rgba(196, 64, 64, 0.4) !important;
         border: 2px solid white !important;
     }
 
@@ -538,18 +554,18 @@
         overflow: visible !important;
     }
 
-    /* ===== UNSTOPPABLE CHECKOUT AREA ===== */
+    /* ===== KLART CHECKOUT AREA (SIDEBAR) ===== */
     #sidebar {
         position: fixed !important;
         bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
         width: 100% !important;
-        background: linear-gradient(135deg, rgba(168, 85, 247, 0.95) 0%, rgba(6, 182, 212, 0.95) 100%) !important;
-        backdrop-filter: blur(20px) !important;
-        -webkit-backdrop-filter: blur(20px) !important;
-        border-top: 2px solid rgba(255, 255, 255, 0.3) !important;
-        box-shadow: 0 -6px 25px rgba(168, 85, 247, 0.35) !important;
+        background: var(--klart-bg-raised) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border-top: 1px solid var(--klart-border) !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
         padding: 10px calc(10px + env(safe-area-inset-right, 0px)) calc(10px + var(--flango-safe-bottom)) calc(10px + env(safe-area-inset-left, 0px)) !important;
         margin: 0 !important;
         display: flex !important;
@@ -573,50 +589,31 @@
         display: none !important;
     }
 
-    /* Order list - STICKY NOTE STYLE (crumpled, tilted) */
+    /* Order list - KLART CLEAN STYLE (warm creme, no rotation, no tape) */
     #sidebar #current-order {
         display: block !important;
         flex: 0 0 auto !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
         -webkit-overflow-scrolling: touch !important;
-        padding: 10px 10px 10px 30px !important;
+        padding: 10px 10px 10px 14px !important;
         margin: 0 4px 8px 4px !important;
-        /* Crumpled paper effect */
-        background:
-            radial-gradient(ellipse at 20% 30%, rgba(255, 255, 255, 0.4) 0%, transparent 50%),
-            radial-gradient(ellipse at 80% 70%, rgba(255, 255, 255, 0.3) 0%, transparent 40%),
-            radial-gradient(ellipse at 60% 20%, rgba(0, 0, 0, 0.03) 0%, transparent 30%),
-            linear-gradient(175deg, #fff59d 0%, #fff176 40%, #ffee58 70%, #fdd835 100%) !important;
+        background: linear-gradient(180deg, #fef9ee 0%, #fdf6e4 100%) !important;
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
-        border-radius: 6px !important;
+        border-radius: var(--klart-radius-md) !important;
         height: 110px !important;
         min-height: 110px !important;
         max-height: 110px !important;
-        border: none !important;
-        box-shadow: 2px 3px 10px rgba(0, 0, 0, 0.15), inset 0 0 20px rgba(0, 0, 0, 0.02) !important;
+        border: 1px solid var(--klart-border) !important;
+        box-shadow: var(--klart-shadow-sm) !important;
         position: relative !important;
-        transform: rotate(-1deg) !important;
+        transform: none !important;
     }
 
-    /* Tape at top of mobile sticky note */
+    /* NO tape pseudo-element */
     #sidebar #current-order::before {
-        content: '' !important;
-        position: absolute !important;
-        top: -10px !important;
-        left: 50% !important;
-        transform: translateX(-50%) rotate(1deg) !important;
-        width: 50px !important;
-        height: 20px !important;
-        background: linear-gradient(
-            180deg,
-            rgba(255, 255, 255, 0.7) 0%,
-            rgba(200, 195, 180, 0.5) 100%
-        ) !important;
-        border-radius: 2px !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15) !important;
-        z-index: 2 !important;
+        display: none !important;
     }
 
     #order-list {
@@ -639,23 +636,17 @@
         -webkit-backdrop-filter: none !important;
         border-radius: 0 !important;
         border: none !important;
-        color: #4e342e !important;
-        font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif !important;
-        font-size: 15px !important;
+        color: var(--klart-fg) !important;
+        font-family: var(--font-body) !important;
+        font-size: 14px !important;
         line-height: 26px !important;
         position: relative !important;
         gap: 6px !important;
     }
 
-    /* Checkmark (flueben) before each item */
+    /* NO checkmark before items */
     #order-list li::before {
-        content: '✓' !important;
-        position: absolute !important;
-        left: -20px !important;
-        font-size: 16px !important;
-        color: #43a047 !important;
-        font-weight: bold !important;
-        font-family: sans-serif !important;
+        display: none !important;
     }
 
     .cart-product-line {
@@ -684,7 +675,7 @@
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         font-weight: 600 !important;
-        color: #4e342e !important;
+        color: var(--klart-fg) !important;
     }
 
     .remove-item-btn {
@@ -694,15 +685,15 @@
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        background: rgba(255, 255, 255, 0.6) !important;
+        background: rgba(196, 64, 64, 0.1) !important;
         border-radius: 50% !important;
         cursor: pointer !important;
         transition: all 0.15s ease !important;
-        color: #d32f2f !important;
+        color: var(--danger-color) !important;
     }
 
     .remove-item-btn:active {
-        background: rgba(255, 255, 255, 0.9) !important;
+        background: rgba(196, 64, 64, 0.2) !important;
         transform: scale(0.95) !important;
     }
 
@@ -712,18 +703,18 @@
         opacity: 0.9 !important;
     }
 
-    /* ===== CHECKOUT STACK - UNSTOPPABLE GLASS ===== */
+    /* ===== CHECKOUT STACK - KLART CLEAN ===== */
     #checkout-stack {
         display: flex !important;
         flex-direction: column !important;
         gap: 0 !important;
         padding: 8px !important;
-        background: rgba(255, 255, 255, 0.2) !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
-        border-radius: 18px !important;
-        border: 2px solid rgba(255, 255, 255, 0.3) !important;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+        background: var(--klart-bg-inset) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border-radius: var(--klart-radius-lg) !important;
+        border: 1px solid var(--klart-border) !important;
+        box-shadow: none !important;
         overflow: hidden !important;
     }
 
@@ -732,7 +723,7 @@
         border-radius: 0 !important;
         padding: 8px 12px !important;
         margin: 0 !important;
-        color: white !important;
+        color: var(--klart-fg) !important;
         font-size: 18px !important;
         font-weight: 800 !important;
         display: flex !important;
@@ -740,9 +731,9 @@
         justify-content: flex-end !important;
         border: none !important;
         box-shadow: none !important;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+        text-shadow: none !important;
         letter-spacing: 0.5px !important;
-        -webkit-text-fill-color: white !important;
+        -webkit-text-fill-color: var(--klart-fg) !important;
         background-clip: unset !important;
     }
 
@@ -794,16 +785,16 @@
         font-size: 14px !important;
         font-weight: 700 !important;
         min-height: 48px !important;
-        border-radius: 14px !important;
-        border: 2px solid rgba(255, 255, 255, 0.4) !important;
+        border-radius: var(--klart-radius-md) !important;
+        border: 1px solid var(--klart-border) !important;
         margin: 0 !important;
-        background: rgba(255, 255, 255, 0.2) !important;
-        backdrop-filter: blur(8px) !important;
-        -webkit-backdrop-filter: blur(8px) !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
-        color: white !important;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
-        letter-spacing: 0.5px !important;
+        background: var(--klart-bg-raised) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        box-shadow: var(--klart-shadow-sm) !important;
+        color: var(--klart-fg) !important;
+        text-shadow: none !important;
+        letter-spacing: 0.3px !important;
         margin-top: 6px !important;
         transition: all 0.15s ease !important;
     }
@@ -817,8 +808,9 @@
         font-size: 14px !important;
         font-weight: 700 !important;
         min-height: 48px !important;
-        background: rgba(6, 182, 212, 0.4) !important;
-        border: 2px solid rgba(255, 255, 255, 0.5) !important;
+        background: var(--klart-accent) !important;
+        color: white !important;
+        border: none !important;
     }
 
     #complete-order-btn,
@@ -829,14 +821,16 @@
         font-weight: 800 !important;
         min-height: 50px !important;
         margin: 0 !important;
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.5) 0%, rgba(16, 185, 129, 0.6) 100%) !important;
-        border: 2px solid rgba(255, 255, 255, 0.6) !important;
-        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+        background: var(--success-gradient) !important;
+        border: none !important;
+        box-shadow: var(--klart-shadow-md) !important;
+        border-radius: var(--klart-radius-md) !important;
+        color: white !important;
     }
 
     #complete-order-btn:active,
     #complete-purchase:active {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.6) 0%, rgba(16, 185, 129, 0.7) 100%) !important;
+        box-shadow: var(--klart-shadow-sm) !important;
         transform: scale(0.97) !important;
     }
 
@@ -848,12 +842,12 @@
         overflow-x: hidden !important;
     }
 
-    /* ===== MODALS - UNSTOPPABLE STYLE ===== */
+    /* ===== MODALS - KLART CLEAN STYLE ===== */
     .modal {
         padding: 0 !important;
-        background: rgba(15, 23, 42, 0.85) !important;
-        backdrop-filter: blur(8px) !important;
-        -webkit-backdrop-filter: blur(8px) !important;
+        background: rgba(26, 26, 46, 0.6) !important;
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
         align-items: flex-start !important;
         overflow-y: auto !important;
         justify-content: flex-start !important;
@@ -870,15 +864,15 @@
         display: flex !important;
         flex-direction: column !important;
         height: auto !important;
-        background: linear-gradient(145deg, #fffbf7 0%, #fff5eb 100%) !important;
+        background: var(--klart-bg-raised) !important;
     }
 
     .modal-header {
         position: sticky !important;
         top: 0 !important;
         z-index: 100 !important;
-        background: linear-gradient(145deg, #fffbf7 0%, #fff5eb 100%) !important;
-        border-bottom: 2px solid rgba(168, 85, 247, 0.15) !important;
+        background: var(--klart-bg-raised) !important;
+        border-bottom: 1px solid var(--klart-border) !important;
         padding: 16px 14px !important;
         margin: 0 !important;
         border-radius: 0 !important;
@@ -890,6 +884,8 @@
     .modal-header h2 {
         font-size: 19px !important;
         margin: 0 !important;
+        color: var(--klart-fg) !important;
+        -webkit-text-fill-color: var(--klart-fg) !important;
     }
 
     .close-btn {
@@ -901,7 +897,7 @@
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        color: var(--primary-color) !important;
+        color: var(--klart-accent) !important;
     }
 
     .modal-body {
@@ -913,8 +909,8 @@
     .modal-footer {
         position: sticky !important;
         bottom: 0 !important;
-        background: linear-gradient(145deg, #fffbf7 0%, #fff5eb 100%) !important;
-        border-top: 2px solid rgba(168, 85, 247, 0.15) !important;
+        background: var(--klart-bg-raised) !important;
+        border-top: 1px solid var(--klart-border) !important;
         padding: 14px !important;
         margin: 0 !important;
     }
@@ -932,9 +928,10 @@
         padding: 14px !important;
         font-size: 16px !important;
         min-height: 48px !important;
-        border-radius: 12px !important;
-        border: 2px solid rgba(168, 85, 247, 0.2) !important;
-        background: linear-gradient(145deg, #fffbf7 0%, #fff5eb 100%) !important;
+        border-radius: var(--klart-radius-md) !important;
+        border: 1px solid var(--klart-border-strong) !important;
+        background: var(--klart-bg-raised) !important;
+        color: var(--klart-fg) !important;
     }
 
     .modal-controls button {
@@ -979,7 +976,7 @@
         min-width: 22px !important;
         min-height: 22px !important;
         cursor: pointer !important;
-        accent-color: var(--primary-color) !important;
+        accent-color: var(--klart-accent) !important;
     }
 }
 
@@ -1026,8 +1023,7 @@
     }
 
     .user-session-banner {
-        top: 70px !important;
-        padding: 6px 12px !important;
+        display: none !important;
     }
 
     #main-app {

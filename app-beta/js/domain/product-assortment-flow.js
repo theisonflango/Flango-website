@@ -731,6 +731,23 @@ export function setupProductAssortmentFlow({
                     await hideProductFromGrid(pid);
                     return;
                 }
+
+                // ── Edit pencil button (reorder mode only) ──
+                const editPencil = event.target.closest('.product-edit-pencil');
+                if (editPencil) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!flangoReorderMode) return;
+                    const pid = editPencil.dataset.productId;
+                    if (!pid) return;
+                    const allProducts = getAllProducts() || [];
+                    const product = allProducts.find(p => p.id === pid);
+                    if (product && typeof window.__flangoOpenEditProductModal === 'function') {
+                        window.__flangoOpenEditProductModal(product);
+                    }
+                    return;
+                }
+
             const placeholderBtn = event.target.closest('[data-placeholder-action]');
             if (placeholderBtn) {
                 event.preventDefault();

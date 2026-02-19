@@ -569,6 +569,12 @@
                         <label><input type="checkbox" class="history-filter-checkbox" value="SALE_UNDO" checked> Fortrudte Salg</label>
                     </div>
                 </div>
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color, #e0e0e0);">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                        <input type="checkbox" id="exclude-admin-deposits-checkbox" checked style="cursor: pointer;">
+                        <span>Ekskluder indbetalinger til admins fra statistik</span>
+                    </label>
+                </div>
             </div>
             <div class="date-filter">
                 <input type="date" id="history-start-date" autocomplete="off" spellcheck="false" autocapitalize="off">
@@ -689,9 +695,40 @@
                 <button id="back-to-preferences-sugar-policy-btn" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">← Tilbage</button>
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <button id="toggle-inactive-products-btn" style="padding: 10px 16px; background: #f5f5f5; color: #666; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-weight: 500;">Vis deaktiverede</button>
+                    <button id="manage-icons-btn" style="padding: 10px 16px; background: #7c3aed; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">🎨 Ikoner</button>
                     <button id="add-product-from-rules-btn" style="padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">+ Tilføj nyt produkt</button>
                 </div>
                 <button id="apply-sugar-policy-btn" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Anvend ændringer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Icon Management Modal -->
+    <div id="icon-management-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px; width: 95%;">
+            <div class="modal-header">
+                <h2>Administrer Produktikoner</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-user-list" style="padding: 15px;">
+                <div id="icon-mgmt-counter" style="text-align: center; margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; font-weight: 600; color: #475569;">
+                    Indlæser...
+                </div>
+
+                <div id="icon-mgmt-uploaded" style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2563eb;">📤 Uploadede ikoner</label>
+                    <div id="icon-mgmt-uploaded-grid" class="custom-icon-grid" style="gap: 10px;"></div>
+                    <div id="icon-mgmt-uploaded-empty" style="display: none; padding: 12px; text-align: center; color: #94a3b8; font-size: 13px; background: #f8f9fa; border-radius: 8px;">Ingen uploadede ikoner.</div>
+                </div>
+
+                <div id="icon-mgmt-ai">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #7c3aed;">🪄 AI-genererede ikoner</label>
+                    <div id="icon-mgmt-ai-grid" class="custom-icon-grid" style="gap: 10px;"></div>
+                    <div id="icon-mgmt-ai-empty" style="display: none; padding: 12px; text-align: center; color: #94a3b8; font-size: 13px; background: #f8f9fa; border-radius: 8px;">Ingen AI-genererede ikoner.</div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 15px; border-top: 1px solid #eee; display: flex; justify-content: flex-end;">
+                <button id="icon-mgmt-close-btn" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Luk</button>
             </div>
         </div>
     </div>
@@ -1055,7 +1092,7 @@
     <div id="custom-alert-modal" class="modal">
         <div id="custom-alert-content">
             <h2 id="custom-alert-title">Bekræft Køb</h2>
-            <p id="custom-alert-body"></p>
+            <div id="custom-alert-body"></div>
             <div id="custom-alert-buttons">
                 <button id="custom-alert-ok">OK</button>
                 <button id="custom-alert-cancel">Annuller</button>
@@ -1164,6 +1201,12 @@
                             <label><input type="checkbox" class="history-filter-checkbox-shared" value="SALE_EDIT" checked> Redigerede Salg</label>
                             <label><input type="checkbox" class="history-filter-checkbox-shared" value="SALE_UNDO" checked> Fortrudte Salg</label>
                         </div>
+                    </div>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color, #e0e0e0);">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                            <input type="checkbox" id="exclude-admin-deposits-checkbox-shared" checked style="cursor: pointer;">
+                            <span>Ekskluder indbetalinger til admins fra statistik</span>
+                        </label>
                     </div>
                 </div>
                 <div class="date-filter">
@@ -1404,8 +1447,7 @@
     </div></div></template>
     <template id="event-admin-modal-template"><div class="modal-content event-admin-modal"><div class="modal-header event-admin-header"><button id="event-admin-back-btn" class="event-back-btn event-admin-back-hidden" type="button">← Tilbage</button><h2 id="event-admin-title" class="event-admin-title">Arrangementer</h2><span class="close-btn">&times;</span></div><div id="event-list-view" class="event-view"><div class="event-filter-bar"><button id="event-filter-active" class="event-filter-btn active" data-filter="active">Kommende</button><button id="event-filter-past" class="event-filter-btn" data-filter="past">Afsluttede</button><button id="event-filter-cancelled" class="event-filter-btn" data-filter="cancelled">Aflyste</button><button id="event-create-btn" class="event-create-btn">+ Opret Arrangement</button></div><div id="event-list-container" class="event-list-container"></div><div id="event-list-empty" class="event-list-empty" style="display:none;"><p>Ingen arrangementer fundet.</p></div></div><div id="event-detail-view" class="event-view" style="display:none;"><div id="event-detail-header" class="event-detail-header"></div><div id="event-detail-summary" class="event-detail-summary"></div><div id="event-detail-actions" class="event-detail-actions"></div><h4 class="event-reg-list-header">Tilmeldte brugere</h4><div id="event-reg-list" class="event-reg-list"></div></div><div id="event-form-view" class="event-view" style="display:none;"><h3 id="event-form-subtitle">Opret Arrangement</h3><div class="event-form"><input type="text" id="event-form-title" placeholder="Titel *" required><textarea id="event-form-description" placeholder="Beskrivelse (valgfrit)" rows="3"></textarea><input type="number" id="event-form-price" placeholder="Pris (kr.)" step="0.01" value="0.00"><input type="number" id="event-form-capacity" placeholder="Kapacitet (tom = ubegr&#230;nset)" min="1"><label style="font-size:13px;color:#666;">Startdato og -tid *</label><input type="datetime-local" id="event-form-start" required><label style="font-size:13px;color:#666;">Slutdato og -tid (valgfrit)</label><input type="datetime-local" id="event-form-end"><div class="event-class-section"><label style="font-size:13px;color:#666;">Tilladt klasse (ingen valgt = alle)</label><div id="event-form-classes" class="event-class-checkboxes"></div></div><div class="event-form-actions"><button id="event-form-save-btn" class="event-save-btn">Gem</button><button id="event-form-cancel-btn" class="event-cancel-btn">Annuller</button></div></div></div></div></template>
 
-    <!-- DISABLED: Theme picker (flango-unstoppable is the only active theme) -->
-    <!--
+    <!-- Theme picker -->
     <button id="open-theme-picker" style="display:none;"></button>
     <div id="theme-picker-backdrop" class="theme-picker-backdrop" style="display:none;">
         <div class="theme-picker-modal">
@@ -1417,12 +1459,18 @@
                     Fedt og energisk design
                 </label>
             </div>
+            <div class="theme-option">
+                <input type="radio" name="flango-theme" id="theme-klart" value="klart">
+                <label for="theme-klart">
+                    <strong>Klart</strong><br>
+                    Rent og roligt design
+                </label>
+            </div>
             <div class="theme-picker-actions">
                 <button id="theme-picker-close" class="settings-button">Luk</button>
             </div>
         </div>
     </div>
-    -->
 
     <!-- Indstillinger modal -->
     <div id="settings-modal-backdrop" class="settings-modal-backdrop" style="display:none;">

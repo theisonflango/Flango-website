@@ -7,6 +7,7 @@ import { getCurrentTheme } from '../ui/theme-loader.js';
 import { getCurrentCustomer } from './cafe-session-store.js';
 import { getOrderTotal } from './order-store.js';
 import { getFinancialState } from './cafe-session-store.js';
+import { calculateLevel } from './statistics-data.js';
 
 /**
  * Deselect user function - exposed via window for use in UI
@@ -66,6 +67,52 @@ export function updateLoggedInUserDisplay(clerkProfile, avatarCache, constants) 
         if (shiftTimerPill) {
             sessionBanner.insertBefore(shiftTimerPill, adultNote);
         }
+    } else if (sessionBanner && getCurrentTheme() === 'klart') {
+        // Klart theme: Simple header — institution info (left) + action buttons (right)
+        // Avatar stays inside header-actions. Timer becomes a button in header-actions.
+        sessionBanner.querySelectorAll('.session-sticky-note').forEach(el => el.remove());
+
+        // Hide the default logged-in-user text and session banner
+        userDisplay.style.display = 'none';
+        sessionBanner.style.display = 'none';
+
+        const header = document.querySelector('.sidebar-main-header');
+        if (header) {
+            // Remove any previous Klart header elements (institution-info only)
+            header.querySelectorAll('.klart-institution-info').forEach(el => el.remove());
+
+            // Institution info — left side of header
+            const institutionName = localStorage.getItem('flango_institution_name') || '';
+            const isClerkMode = clerkProfile?.role !== 'admin';
+            const roleLabel = isClerkMode ? `${clerkName} · Voksen: ${adultName}` : adultName;
+
+            const instInfo = document.createElement('div');
+            instInfo.className = 'klart-institution-info';
+            instInfo.innerHTML = `
+                <span class="klart-inst-icon">🏠</span>
+                <div class="klart-inst-text">
+                    <div class="klart-inst-name">${institutionName}</div>
+                    <div class="klart-inst-meta">${roleLabel}</div>
+                </div>
+            `;
+            header.insertBefore(instInfo, header.firstChild);
+
+            // Move shift-timer pill into header-actions (before avatar)
+            const headerActions = header.querySelector('.header-actions');
+            const shiftTimerPill = document.getElementById('shift-timer-pill');
+            if (shiftTimerPill && headerActions) {
+                const avatarBtn = headerActions.querySelector('#logged-in-user-avatar-container');
+                if (avatarBtn) {
+                    headerActions.insertBefore(shiftTimerPill, avatarBtn);
+                } else {
+                    headerActions.prepend(shiftTimerPill);
+                }
+            }
+        }
+
+        // Add "Ryd kurv" button to sidebar header
+        setupKlartClearCartButton();
+
     } else if (sessionBanner) {
         // Remove sticky notes for other themes
         sessionBanner.querySelectorAll('.session-sticky-note').forEach(el => el.remove());
@@ -93,6 +140,26 @@ export function updateLoggedInUserDisplay(clerkProfile, avatarCache, constants) 
     if (avatarImg) {
         avatarContainer.onclick = () => window.__flangoOpenAvatarPicker?.();
     }
+}
+
+/**
+ * Tilføjer "Ryd kurv" knap i sidebar-header for Klart-temaet
+ */
+function setupKlartClearCartButton() {
+    const sidebarHeader = document.querySelector('#sidebar .sidebar-header');
+    if (!sidebarHeader || sidebarHeader.querySelector('.klart-clear-cart-btn')) return;
+
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'klart-clear-cart-btn';
+    clearBtn.textContent = 'Ryd kurv';
+    clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Use the global clear cart function exposed from app-main.js
+        if (typeof window.__flangoClearCart === 'function') {
+            window.__flangoClearCart();
+        }
+    });
+    sidebarHeader.appendChild(clearBtn);
 }
 
 /**
@@ -143,15 +210,16 @@ export function updateSelectedUserInfo() {
             return box;
         };
 
+        const isKlart = getCurrentTheme() === 'klart';
+
         if (!selectedUser) {
             console.log('[app-main] No user selected - showing empty state');
-            // Vis boks med "Ingen kunde valgt" i stedet for at skjule
             userInfoEl.replaceChildren();
             const box = createInfoBox('Ingen kunde valgt', 'Vælg en kunde for at se saldo..', {
-                boxStyle: 'grid-column: 1 / -1;'
+                boxStyle: isKlart ? '' : 'grid-column: 1 / -1;'
             });
             userInfoEl.appendChild(box);
-            userInfoEl.style.display = 'grid';
+            userInfoEl.style.display = isKlart ? 'flex' : 'grid';
             console.log('[app-main] Empty state rendered, children count:', userInfoEl.children.length);
             return;
         }
@@ -179,48 +247,116 @@ export function updateSelectedUserInfo() {
 
         const name = selectedUser?.name ?? 'Ukendt';
         const number = selectedUser?.number ? String(selectedUser.number) : '';
-        const nameLine = number ? `${name} (${number})` : name;
 
-        // Create "Valgt:" info box with close button
-        const valgtBox = createInfoBox('Valgt:', nameLine);
-        const closeBtn = document.createElement('button');
-        closeBtn.innerHTML = '&times;';
-        closeBtn.className = 'deselect-user-btn';
-        closeBtn.style.cssText = `
-            position: absolute;
-            left: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(0, 0, 0, 0.1);
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            cursor: pointer;
-            font-size: 20px;
-            line-height: 1;
-            color: #666;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            transition: all 0.2s;
-        `;
-        closeBtn.title = 'Fjern valgt bruger';
-        closeBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent triggering parent click (customer selection modal)
-            deselectUser();
-        });
-        valgtBox.style.position = 'relative';
-        valgtBox.style.paddingLeft = '32px';
-        valgtBox.appendChild(closeBtn);
+        if (isKlart) {
+            // --- Klart layout: avatar + name (left) | saldo box (right) | close btn ---
 
-        userInfoEl.appendChild(valgtBox);
-        userInfoEl.appendChild(createInfoBox('Nuværende Saldo:', `${currentBalance.toFixed(2)} kr.`));
-        userInfoEl.appendChild(createInfoBox('Ny Saldo:', `${newBalance.toFixed(2)} kr.`, {
-            valueClass: newBalance < 0 ? 'negative' : ''
-        }));
-        userInfoEl.style.display = 'grid';
+            // 1) Avatar
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'customer-avatar';
+            const avatarKey = `flango-avatar-${selectedUser.id}`;
+            const savedAvatar = localStorage.getItem(avatarKey);
+            if (savedAvatar) {
+                avatarDiv.innerHTML = `<img src="${savedAvatar}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            } else {
+                avatarDiv.textContent = '👦';
+            }
+            userInfoEl.appendChild(avatarDiv);
+
+            // 2) Name + number
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'customer-name-block';
+            const nameSpan = document.createElement('div');
+            nameSpan.className = 'customer-name';
+            nameSpan.textContent = name;
+            nameDiv.appendChild(nameSpan);
+            if (number) {
+                const numSpan = document.createElement('span');
+                numSpan.className = 'customer-number';
+                numSpan.textContent = `(${number})`;
+                nameSpan.appendChild(document.createTextNode(' '));
+                nameSpan.appendChild(numSpan);
+            }
+            userInfoEl.appendChild(nameDiv);
+
+            // 3) Saldo container (saldo → ny saldo)
+            const saldoContainer = document.createElement('div');
+            saldoContainer.className = 'customer-saldo-container';
+
+            const saldoBox = createInfoBox('Saldo', `${currentBalance.toFixed(2)}`);
+            saldoBox.className = 'info-box saldo-current';
+            saldoContainer.appendChild(saldoBox);
+
+            const arrowSpan = document.createElement('div');
+            arrowSpan.className = 'saldo-arrow';
+            arrowSpan.textContent = '→';
+            saldoContainer.appendChild(arrowSpan);
+
+            const nySaldoBox = createInfoBox('Ny saldo', `${newBalance.toFixed(2)}`);
+            nySaldoBox.className = 'info-box saldo-new';
+            if (newBalance < 0) {
+                nySaldoBox.querySelector('.info-box-value').classList.add('negative');
+            }
+            saldoContainer.appendChild(nySaldoBox);
+
+            userInfoEl.appendChild(saldoContainer);
+
+            // 4) Close button
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '&times;';
+            closeBtn.className = 'deselect-user-btn';
+            closeBtn.title = 'Fjern valgt bruger';
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deselectUser();
+            });
+            userInfoEl.appendChild(closeBtn);
+
+            userInfoEl.style.display = 'flex';
+        } else {
+            // --- Default/Unstoppable layout: 3-column grid ---
+            const nameLine = number ? `${name} (${number})` : name;
+
+            const valgtBox = createInfoBox('Valgt:', nameLine);
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '&times;';
+            closeBtn.className = 'deselect-user-btn';
+            closeBtn.style.cssText = `
+                position: absolute;
+                left: 8px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: rgba(0, 0, 0, 0.1);
+                border: none;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                cursor: pointer;
+                font-size: 20px;
+                line-height: 1;
+                color: #666;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                transition: all 0.2s;
+            `;
+            closeBtn.title = 'Fjern valgt bruger';
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deselectUser();
+            });
+            valgtBox.style.position = 'relative';
+            valgtBox.style.paddingLeft = '32px';
+            valgtBox.appendChild(closeBtn);
+
+            userInfoEl.appendChild(valgtBox);
+            userInfoEl.appendChild(createInfoBox('Nuværende Saldo:', `${currentBalance.toFixed(2)} kr.`));
+            userInfoEl.appendChild(createInfoBox('Ny Saldo:', `${newBalance.toFixed(2)} kr.`, {
+                valueClass: newBalance < 0 ? 'negative' : ''
+            }));
+            userInfoEl.style.display = 'grid';
+        }
 
         console.log('[app-main] RENDERED! Children count:', userInfoEl.children.length);
     } catch (error) {

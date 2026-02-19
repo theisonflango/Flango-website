@@ -1,0 +1,1385 @@
+/* ============================================================
+   KLART THEME - FEATURES STYLES
+   Cart, Checkout, Buttons, Header Actions, Summary, Version
+   Clean, calm, warm — typographic clarity over glossy effects
+   ============================================================ */
+
+/* ============================================================
+   TYPOGRAPHY (H2, H3)
+   Solid color text — NO gradient text clipping
+   ============================================================ */
+
+h2 {
+    font-family: var(--font-heading);
+    background: none;
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: var(--klart-fg);
+    background-clip: unset;
+    color: var(--klart-fg);
+    text-align: left;
+    font-size: clamp(22px, 2.6vw, 32px);
+    margin: 0;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+h3 {
+    font-family: var(--font-heading);
+    background: none;
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: var(--klart-fg);
+    background-clip: unset;
+    color: var(--klart-fg);
+    border-bottom: 1px solid var(--klart-border);
+    padding-bottom: 10px;
+    margin-top: 20px;
+    font-weight: 600;
+}
+
+/* ============================================================
+   SIDEBAR - CLEAN WHITE CARD WITH WARM BOTTOM GRADIENT
+   NO sticky note, NO paper curl, NO tape, NO pushpins
+   ============================================================ */
+
+#sidebar {
+    background: linear-gradient(180deg, #fef9ee 0%, #fdf6e4 100%);
+    padding: 0;
+    border-radius: var(--klart-radius-lg);
+    border: 1px solid var(--klart-border);
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* NO paper curl shadow — clean sidebar */
+#sidebar::after {
+    display: none;
+}
+
+/* Header bar — full width with institution left, actions center-right */
+.sidebar-main-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px;
+    background: var(--klart-bg-raised);
+    border-radius: var(--klart-radius-md);
+    border: 1px solid var(--klart-border);
+    min-height: 56px;
+}
+
+/* Default logged-in-user text — hidden in Klart (replaced by structured elements) */
+#logged-in-user {
+    text-align: left;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--klart-fg);
+    margin: 0;
+    line-height: 1.3;
+    flex-shrink: 0;
+    order: -1;
+}
+
+/* ============================================================
+   KLART HEADER — Institution Info (left), Actions (center), Profile (right)
+   ============================================================ */
+
+/* Institution info block — left side of header */
+.klart-institution-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    order: -2;
+}
+
+.klart-inst-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.klart-inst-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.klart-inst-name {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--klart-fg);
+    line-height: 1.2;
+}
+
+.klart-inst-meta {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--klart-fg-muted);
+    line-height: 1.2;
+}
+
+/* Shift-timer pill — styled as header action when inside Klart header */
+.header-actions .shift-timer-pill,
+.header-actions #shift-timer-pill {
+    margin: 0 !important;
+    padding: 4px 10px !important;
+    font-size: 12px !important;
+    font-family: var(--font-body) !important;
+    border-radius: var(--klart-radius-sm) !important;
+    gap: 5px !important;
+    border: 1px solid var(--klart-border) !important;
+    background: var(--klart-bg) !important;
+    color: var(--klart-fg-muted) !important;
+    box-shadow: none !important;
+    height: 40px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all var(--klart-duration) var(--klart-ease);
+}
+
+.header-actions .shift-timer-pill:hover,
+.header-actions #shift-timer-pill:hover {
+    background: var(--klart-bg-hover) !important;
+    border-color: var(--klart-border-strong) !important;
+    color: var(--klart-fg) !important;
+    transform: translateY(-1px);
+}
+
+/* Hide session banner in Klart — info is in header */
+.user-session-banner {
+    display: none;
+}
+
+/* Action buttons container — right side, next to avatar */
+.header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex: 1;
+}
+
+/* Action buttons — compact 40px icon buttons */
+.header-action-btn {
+    width: 40px;
+    height: 40px;
+    padding: 6px;
+    border-radius: var(--klart-radius-md);
+    border: 1px solid var(--klart-border);
+    background: var(--klart-bg);
+    cursor: pointer;
+    transition: all var(--klart-duration) var(--klart-ease);
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--klart-fg-soft);
+}
+
+.header-action-btn:hover {
+    transform: translateY(-1px);
+    background: var(--klart-bg-hover);
+    border-color: var(--klart-border-strong);
+    color: var(--klart-fg);
+}
+
+.header-action-btn:active {
+    transform: translateY(0);
+}
+
+.header-action-btn img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+/* Avatar button in header — larger, accent border, positioned right */
+#logged-in-user-avatar-container {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--klart-accent-soft);
+    border: 2px solid var(--klart-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: none;
+    transition: all var(--klart-duration) var(--klart-ease);
+    padding: 0;
+    order: 1;
+    margin-left: 8px;
+    overflow: hidden;
+}
+
+#logged-in-user-avatar-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+#logged-in-user-avatar-container:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--klart-shadow-md);
+    border-color: var(--klart-accent-hover);
+}
+
+/* ============================================================
+   BETA RIBBON (only visible on /app-beta)
+   Kept as-is — functional, not design-related
+   ============================================================ */
+
+#flango-logo-button {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+#flango-logo-button .beta-ribbon {
+    position: absolute !important;
+    display: block !important;
+    top: -2px !important;
+    right: -8px !important;
+    background: linear-gradient(135deg, #ff9f43 0%, #f7b731 50%, #ff9f43 100%) !important;
+    color: #5d4037 !important;
+    font-size: 7px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+    padding: 2px 12px !important;
+    border-radius: 2px !important;
+    transform: rotate(35deg) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+    z-index: 999 !important;
+    pointer-events: none !important;
+    text-transform: uppercase !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+}
+
+/* Beta sticker on login screens (only on /app-beta) */
+.login-container .beta-login-sticker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    margin: -90px auto 10px !important;
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    color: #5d4037;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    width: fit-content;
+    transform: rotate(-2deg);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    pointer-events: none;
+}
+
+/* ============================================================
+   CURRENT ORDER / CART - CLEAN WITH WARM GRADIENT
+   NO crumpled paper, NO tape, NO checkmarks, NO rotation
+   ============================================================ */
+
+/* Sidebar header — clean, cart title + "Ryd kurv" */
+.sidebar-header {
+    position: relative;
+    background: none;
+    padding: 16px 20px 12px;
+    margin: 0;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(200, 180, 120, 0.2);
+    box-shadow: none;
+    transform: none;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+/* NO tape effect */
+.sidebar-header::before {
+    display: none;
+}
+
+.sidebar-header h2 {
+    font-family: var(--font-heading);
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    -webkit-text-fill-color: var(--klart-fg) !important;
+    background-clip: unset !important;
+    color: var(--klart-fg);
+    font-size: 22px;
+    font-weight: 700;
+    text-align: left;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.sidebar-header-icon {
+    display: none;
+}
+
+/* "Ryd kurv" / clear cart button in sidebar header */
+.klart-clear-cart-btn {
+    font-size: 13px;
+    color: var(--klart-fg-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: var(--klart-radius-sm);
+    transition: all var(--klart-duration) var(--klart-ease);
+    font-family: var(--font-body);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.klart-clear-cart-btn:hover {
+    color: var(--danger-color);
+    background: rgba(196, 64, 64, 0.06);
+}
+
+/* The cart container — transparent, sidebar provides background */
+#current-order {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: transparent;
+    border-radius: 0;
+    border: none;
+    position: relative;
+    transform: none;
+    box-shadow: none;
+}
+
+/* No red margin line */
+#current-order::before {
+    display: none;
+}
+
+#current-order ul {
+    list-style: none;
+    padding: 0 20px;
+    margin: 0;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable both-edges;
+}
+
+#current-order li {
+    padding: 10px 12px;
+    min-height: 38px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: none;
+    border-radius: var(--klart-radius-md);
+    margin: 0 0 4px;
+    background: rgba(255, 255, 255, 0.6);
+    transition: all var(--klart-duration) var(--klart-ease);
+    position: relative;
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--klart-fg);
+    line-height: 1.4;
+}
+
+#current-order li:last-child {
+    margin-bottom: 0;
+}
+
+#current-order li:hover {
+    background: rgba(255, 255, 255, 0.8);
+}
+
+/* Strikethrough effect when item is being removed */
+#current-order li.removing {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+/* Remove button — green checkmark in Klart theme */
+.remove-item-btn {
+    font-size: 0;
+    cursor: pointer;
+    color: var(--klart-accent);
+    padding: 4px 10px;
+    transition: all var(--klart-duration) var(--klart-ease);
+    background: transparent;
+    border-radius: var(--klart-radius-sm);
+    line-height: 1;
+    font-family: var(--font-body);
+    font-weight: 700;
+}
+
+/* Show green checkmark — hide original content */
+.remove-item-btn::before {
+    content: '✓';
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--klart-accent);
+}
+
+.remove-item-btn > * {
+    display: none;
+}
+
+.remove-item-btn:hover {
+    transform: scale(1.1);
+    color: var(--danger-color);
+    background: rgba(196, 64, 64, 0.08);
+}
+
+.remove-item-btn:hover::before {
+    content: '✕';
+    color: var(--danger-color);
+}
+
+/* NO paper curl shadow */
+#current-order::after {
+    display: none;
+}
+
+/* Total price — warm pedagogical box with icon summation */
+#total-price {
+    text-align: right;
+    font-size: clamp(18px, 2.2vw, 24px);
+    font-weight: 700;
+    margin: 8px 20px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #fff4e0 0%, #ffe8d0 40%, #ffdece 100%);
+    font-family: var(--font-heading);
+    color: var(--klart-fg);
+    -webkit-text-fill-color: var(--klart-fg);
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 2px 8px rgba(200, 140, 60, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    border-radius: var(--klart-radius-lg);
+    border: 1px solid rgba(220, 180, 120, 0.25);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    transform: none;
+}
+
+/* Product icon summary row — warm pedagogical icons */
+.total-product-summary {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 18px;
+    flex-wrap: wrap;
+}
+
+.total-product-summary img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    border-radius: var(--klart-radius-sm);
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.total-product-summary .plus-sign {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--klart-fg-muted);
+    margin: 0 2px;
+}
+
+.total-product-summary .equals-sign {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--klart-fg);
+    margin-left: auto;
+}
+
+.total-product-summary .discount-tag-icon {
+    font-size: 32px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.total-text {
+    white-space: nowrap;
+    font-weight: 800;
+}
+
+/* NO hand-drawn underline pseudo-element */
+#total-price::before {
+    display: none;
+}
+
+/* ============================================================
+   CHECKOUT & ACTION BUTTONS - CLEAN WITH KLART RADII
+   ============================================================ */
+
+#checkout-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: auto;
+    padding: 12px 20px 16px;
+    background: transparent;
+}
+
+#bottom-buttons {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.action-button {
+    width: 100%;
+    color: #fff;
+    padding: clamp(12px, 2.2vw, 18px);
+    font-size: clamp(16px, 1.9vw, 20px);
+    font-family: var(--font-body);
+    border: none;
+    border-radius: var(--klart-radius-md);
+    cursor: pointer;
+    margin-bottom: clamp(6px, 1.4vw, 10px);
+    transition: all var(--klart-duration) var(--klart-ease);
+    font-weight: 700;
+    box-shadow: var(--klart-shadow-md);
+}
+
+.action-button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--klart-shadow-lg);
+}
+
+.action-button:active {
+    transform: translateY(0);
+}
+
+.action-button:disabled {
+    background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+#settings-btn {
+    background: var(--gradient-secondary);
+    box-shadow: 0 4px 15px rgba(26, 138, 110, 0.2);
+}
+
+#settings-btn:hover {
+    box-shadow: 0 6px 20px rgba(26, 138, 110, 0.3);
+}
+
+#undo-last-sale-btn {
+    background: var(--warning-gradient);
+    box-shadow: 0 4px 15px rgba(196, 138, 32, 0.2);
+}
+
+#undo-last-sale-btn:hover {
+    box-shadow: 0 6px 20px rgba(196, 138, 32, 0.3);
+}
+
+#complete-purchase {
+    background: var(--klart-accent);
+    padding: 12px 16px;
+    font-size: 15px;
+    margin-bottom: 0;
+    box-shadow: none;
+    border-radius: var(--klart-radius-md);
+}
+
+#complete-purchase:hover {
+    background: var(--klart-accent-hover);
+    box-shadow: var(--klart-shadow-sm);
+}
+
+#admin-panel {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.admin-btn {
+    background: var(--gradient-primary);
+    box-shadow: 0 4px 15px rgba(26, 138, 110, 0.2);
+}
+
+.admin-btn:hover {
+    box-shadow: 0 6px 20px rgba(26, 138, 110, 0.3);
+}
+
+/* ============================================================
+   SETTINGS SECTIONS
+   ============================================================ */
+
+.settings-section:has(#print-negative-balance-btn) {
+    display: block;
+}
+
+/* ============================================================
+   REORDER MODE ANIMATIONS
+   ============================================================ */
+
+.reorder-mode #products .product-btn {
+    --shake-distance: 1px;
+    animation: shake-animation 0.55s ease-in-out infinite;
+    cursor: grab;
+}
+
+.reorder-mode #products .product-btn:nth-child(3n) {
+    animation-duration: 0.6s;
+    animation-delay: -0.05s;
+}
+
+.reorder-mode #products .product-btn:nth-child(3n+1) {
+    animation-duration: 0.56s;
+    animation-delay: -0.12s;
+}
+
+.reorder-mode #products .product-btn:nth-child(3n+2) {
+    animation-duration: 0.62s;
+    animation-delay: -0.18s;
+}
+
+.reorder-mode #products .product-btn:active {
+    cursor: grabbing;
+}
+
+/* ============================================================
+   SOUND SETTINGS - GREEN ACCENT, NEUTRAL BORDERS
+   ============================================================ */
+
+.sound-global-controls {
+    width: 100%;
+}
+
+.sound-control-section {
+    background: var(--klart-bg);
+    padding: 18px;
+    border-radius: var(--klart-radius-md);
+    margin-bottom: 16px;
+    border: 1px solid var(--klart-border);
+}
+
+.sound-control-section h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--klart-fg);
+    -webkit-text-fill-color: var(--klart-fg);
+    background: none;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.sound-control-row {
+    margin-bottom: 12px;
+}
+
+.sound-control-row:last-child {
+    margin-bottom: 0;
+}
+
+.sound-control-row label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--klart-fg);
+    margin-bottom: 6px;
+}
+
+.sound-control-row input[type="checkbox"] {
+    margin-right: 8px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    vertical-align: middle;
+    accent-color: var(--klart-accent);
+}
+
+.sound-control-row input[type="range"] {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--klart-bg-inset);
+    outline: none;
+    cursor: pointer;
+}
+
+.sound-control-row input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(26, 138, 110, 0.3);
+}
+
+.sound-control-row input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    cursor: pointer;
+    border: none;
+}
+
+#master-volume-display {
+    font-weight: 600;
+    color: var(--klart-accent);
+}
+
+.sound-item-extended {
+    border: 1px solid var(--klart-border);
+    padding: 14px;
+    border-radius: var(--klart-radius-md);
+    margin-bottom: 10px;
+    background: var(--klart-bg-raised);
+}
+
+.sound-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.sound-item-header label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--klart-fg);
+    margin: 0;
+}
+
+.sound-item-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.sound-volume-control {
+    margin-top: 8px;
+}
+
+.sound-volume-control label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--klart-fg-muted);
+    margin-bottom: 4px;
+}
+
+.sound-volume-display {
+    font-weight: 600;
+    color: var(--klart-accent);
+}
+
+.sound-volume-slider {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--klart-bg-inset);
+    outline: none;
+    cursor: pointer;
+}
+
+.sound-volume-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--success-gradient);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(42, 138, 74, 0.3);
+}
+
+.sound-volume-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--success-gradient);
+    cursor: pointer;
+    border: none;
+}
+
+/* ============================================================
+   SUMMARY / OPSUMMERING - KLART STYLING
+   ============================================================ */
+
+.summary-view-selector {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 12px;
+    background: var(--klart-bg);
+    border-radius: var(--klart-radius-lg);
+    flex-wrap: wrap;
+    border: 1px solid var(--klart-border);
+}
+
+.summary-view-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 14px 22px;
+    font-size: 16px;
+    font-weight: 600;
+    border: 1px solid var(--klart-border);
+    border-radius: var(--klart-radius-md);
+    background: var(--klart-bg-raised);
+    color: var(--klart-fg-muted);
+    cursor: pointer;
+    transition: all var(--klart-duration) var(--klart-ease);
+    box-shadow: var(--klart-shadow-sm);
+}
+
+.summary-view-btn:hover {
+    background: var(--klart-accent-soft);
+    transform: translateY(-2px);
+    box-shadow: var(--klart-shadow-md);
+    color: var(--klart-fg);
+}
+
+.summary-view-btn.active {
+    background: var(--gradient-primary);
+    color: #fff;
+    border-color: var(--klart-accent);
+    box-shadow: 0 4px 15px rgba(26, 138, 110, 0.25);
+}
+
+.summary-filters {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: var(--klart-bg-raised);
+    border: 1px solid var(--klart-border);
+    border-radius: var(--klart-radius-md);
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--klart-fg-muted);
+}
+
+.date-input {
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid var(--klart-border);
+    border-radius: var(--klart-radius-md);
+    background: var(--klart-bg-raised);
+    transition: all var(--klart-duration) var(--klart-ease);
+    color: var(--klart-fg);
+    font-family: var(--font-body);
+}
+
+.date-input:focus {
+    outline: none;
+    border-color: var(--klart-accent);
+    box-shadow: 0 0 0 3px rgba(26, 138, 110, 0.15);
+}
+
+.summary-table-container {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    border: 1px solid var(--klart-border);
+    border-radius: var(--klart-radius-md);
+    background: var(--klart-bg-raised);
+    max-height: calc(90vh - 400px);
+}
+
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    font-family: var(--font-body);
+}
+
+.summary-table thead {
+    position: sticky;
+    top: 0;
+    background: var(--gradient-primary);
+    color: #fff;
+    z-index: 10;
+}
+
+.summary-table th {
+    padding: 16px 14px;
+    text-align: left;
+    font-weight: 700;
+    border-bottom: 2px solid var(--klart-accent-hover);
+    white-space: nowrap;
+}
+
+.summary-table tbody tr {
+    transition: all var(--klart-duration) var(--klart-ease);
+    border-bottom: 1px solid var(--klart-border);
+}
+
+.summary-table tbody tr:hover {
+    background: var(--klart-accent-soft);
+    cursor: pointer;
+}
+
+.summary-table td {
+    padding: 14px;
+    vertical-align: top;
+    color: var(--klart-fg);
+}
+
+.period-day:nth-child(odd) {
+    background: rgba(255, 244, 212, 0.35);
+}
+
+.period-day:nth-child(even) {
+    background: rgba(255, 244, 212, 0.18);
+}
+
+.period-week:nth-child(odd) {
+    background: rgba(219, 234, 254, 0.35);
+}
+
+.period-week:nth-child(even) {
+    background: rgba(219, 234, 254, 0.18);
+}
+
+.period-month:nth-child(odd) {
+    background: rgba(232, 245, 240, 0.5);
+}
+
+.period-month:nth-child(even) {
+    background: rgba(232, 245, 240, 0.25);
+}
+
+.period-year:nth-child(odd) {
+    background: rgba(237, 233, 254, 0.35);
+}
+
+.period-year:nth-child(even) {
+    background: rgba(237, 233, 254, 0.18);
+}
+
+.week-separator {
+    border-top: 2px solid var(--klart-accent) !important;
+}
+
+.summary-table tfoot {
+    position: sticky;
+    bottom: 0;
+    background: var(--gradient-primary);
+    color: #fff;
+    font-weight: 700;
+    z-index: 10;
+}
+
+.summary-table tfoot td {
+    padding: 16px 14px;
+    border-top: 2px solid var(--klart-accent-hover);
+}
+
+.summary-loading,
+.summary-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.summary-loading .spinner {
+    border: 4px solid var(--klart-border);
+    border-top: 4px solid var(--klart-accent);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.summary-loading p {
+    font-size: 18px;
+    color: var(--klart-fg-muted);
+    font-weight: 600;
+}
+
+.summary-error {
+    color: var(--danger-color);
+}
+
+.summary-error p:first-child {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.summary-error p:last-child {
+    font-size: 16px;
+    color: var(--klart-fg-muted);
+}
+
+.summary-actions {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    background: var(--klart-bg);
+    border-top: 1px solid var(--klart-border);
+    border-radius: 0 0 var(--klart-radius-md) var(--klart-radius-md);
+    flex-wrap: wrap;
+}
+
+.summary-actions .action-button {
+    flex: 1;
+    min-width: 150px;
+}
+
+.secondary-action {
+    background: linear-gradient(135deg, #8888a4 0%, #6b6b84 100%) !important;
+    box-shadow: var(--klart-shadow-md) !important;
+}
+
+.secondary-action:hover {
+    box-shadow: var(--klart-shadow-lg) !important;
+}
+
+.summary-empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--klart-fg-muted);
+}
+
+.summary-empty p {
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.summary-empty p:first-child {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .summary-view-selector {
+        flex-direction: column;
+    }
+
+    .summary-view-btn {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .summary-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .summary-table {
+        font-size: 13px;
+    }
+
+    .summary-table th,
+    .summary-table td {
+        padding: 10px;
+    }
+
+    .summary-actions {
+        flex-direction: column;
+    }
+}
+
+/* Feedback section + sticky-note defined in components.css */
+
+/* ============================================================
+   MEDIA QUERIES
+   ============================================================ */
+
+@media (max-width:800px) {
+    body {
+        overflow: auto;
+        height: auto;
+    }
+
+    #main-app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+        height: auto;
+        padding: 10px;
+        gap: 10px;
+    }
+
+    #sidebar {
+        min-height: 400px;
+    }
+
+    /* Hide Klart header extras on mobile */
+    .klart-institution-info,
+    .klart-clerk-info {
+        display: none;
+    }
+
+    .user-session-banner {
+        display: none;
+    }
+}
+
+/* ============================================================
+   UPDATE CHIP - GREEN SUCCESS GRADIENT (KEPT)
+   ============================================================ */
+
+.flango-update-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--success-gradient);
+    color: #fff;
+    border: none;
+    border-radius: var(--klart-radius-full);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--klart-duration) var(--klart-ease);
+    box-shadow: 0 4px 12px rgba(42, 138, 74, 0.25);
+    animation: update-pulse 2s ease-in-out infinite;
+}
+
+.flango-update-chip:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(42, 138, 74, 0.35);
+}
+
+.flango-update-chip:active {
+    transform: translateY(0);
+}
+
+.update-chip-icon {
+    font-size: 16px;
+    animation: update-spin 3s linear infinite;
+}
+
+@keyframes update-pulse {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(42, 138, 74, 0.25);
+    }
+    50% {
+        box-shadow: 0 4px 20px rgba(42, 138, 74, 0.4);
+    }
+}
+
+@keyframes update-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Version Info Panel (Settings) — clean white with 1px borders */
+.version-info-panel {
+    background: var(--klart-bg-raised);
+    border: 1px solid var(--klart-border);
+    border-radius: var(--klart-radius-lg);
+    padding: 18px;
+    margin-top: 12px;
+}
+
+.version-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--klart-border);
+}
+
+.version-info-row:last-of-type {
+    border-bottom: none;
+}
+
+.version-label {
+    font-size: 14px;
+    color: var(--klart-fg-muted);
+}
+
+.version-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--klart-fg);
+}
+
+.version-value.status-ok {
+    color: var(--success-color);
+}
+
+.version-value.status-update {
+    color: var(--warning-color);
+}
+
+.version-value.status-warning {
+    color: var(--danger-color);
+}
+
+.version-refresh-btn,
+.version-check-btn {
+    width: 100%;
+    padding: 14px 18px;
+    margin-top: 12px;
+    border: none;
+    border-radius: var(--klart-radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--klart-duration) var(--klart-ease);
+    font-family: var(--font-body);
+}
+
+.version-refresh-btn {
+    background: var(--success-gradient);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(42, 138, 74, 0.2);
+}
+
+.version-refresh-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(42, 138, 74, 0.3);
+}
+
+.version-refresh-btn:disabled {
+    background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.version-check-btn {
+    background: var(--klart-bg);
+    color: var(--klart-fg-muted);
+    border: 1px solid var(--klart-border);
+}
+
+.version-check-btn:hover {
+    background: var(--klart-bg-hover);
+    border-color: var(--klart-border-strong);
+    color: var(--klart-fg);
+}
+
+.version-check-btn:disabled {
+    background: var(--klart-bg);
+    color: var(--klart-fg-muted);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* User session banner defined in users.css */
+
+/* ============================================================
+   EVENT STRIP — Klart overrides for café event cards
+   events.css is NOT part of theme-pack, so we override here.
+   Use higher specificity (#cafe-event-strip .class) to guarantee
+   these win over events.css default styles.
+   ============================================================ */
+
+#cafe-event-strip {
+    background: var(--klart-bg-raised) !important;
+    border-radius: var(--klart-radius-lg) !important;
+    border: 1px solid var(--klart-border) !important;
+    box-shadow: var(--klart-shadow-card) !important;
+    padding: 12px 16px !important;
+    gap: 12px !important;
+}
+
+/* Event cards — wider, matching styleguide (min-width:200px, padding:16px) */
+#cafe-event-strip .cafe-event-card {
+    min-width: 200px !important;
+    max-width: 280px !important;
+    padding: 14px 16px !important;
+    border-radius: var(--klart-radius-lg) !important;
+    font-family: var(--font-body) !important;
+    gap: 6px !important;
+}
+
+#cafe-event-strip .cafe-event-title {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    font-family: var(--font-body) !important;
+}
+
+#cafe-event-strip .cafe-event-datetime,
+#cafe-event-strip .cafe-event-days {
+    font-family: var(--font-body) !important;
+    font-size: 12px !important;
+}
+
+#cafe-event-strip .cafe-event-price {
+    font-family: var(--font-body) !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+}
+
+#cafe-event-strip .cafe-event-capacity-text {
+    font-family: var(--font-body) !important;
+    font-size: 10px !important;
+}
+
+#cafe-event-strip .cafe-event-badge {
+    font-family: var(--font-body) !important;
+    border-radius: var(--klart-radius-full) !important;
+    font-size: 9px !important;
+}
+
+#cafe-event-strip .cafe-event-progress {
+    height: 4px !important;
+    border-radius: var(--klart-radius-full) !important;
+    margin-top: 8px !important;
+}
+
+#cafe-event-strip .cafe-event-progress-bar {
+    border-radius: var(--klart-radius-full) !important;
+}
+
+/* ============================================================
+   SHAKE ANIMATION
+   ============================================================ */
+
+@keyframes shake-animation {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    20%, 60% {
+        transform: translateX(calc(var(--shake-distance, 4px) * -1));
+    }
+    40%, 80% {
+        transform: translateX(var(--shake-distance, 4px));
+    }
+}

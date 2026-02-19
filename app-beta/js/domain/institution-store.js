@@ -44,23 +44,29 @@ export async function fetchInstitutions(forceRefresh = false) {
             isAuthed = false;
         }
 
-        const { data, error } = await supabaseClient
-            .from('institutions')
-            .select(isAuthed ? `
-                id, name, is_active,
-                sugar_policy_enabled, sugar_policy_max_unhealthy_per_day,
-                sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled,
-                sugar_policy_max_per_product_enabled,
-                balance_limit_enabled, balance_limit_amount,
-                balance_limit_exempt_admins, balance_limit_exempt_test_users,
-                spending_limit_enabled, spending_limit_amount,
-                spending_limit_applies_to_regular_users, spending_limit_applies_to_admins,
-                spending_limit_applies_to_test_users,
-                show_admins_in_user_list, admins_purchase_free, shift_timer_enabled
-            ` : `
-                id, name, is_active
-            `)
-            .order('name');
+        // For anon (login-flow): brug RPC der filtrerer på institution_apps (kun café-aktiverede)
+        // For authed (efter admin-login): hent fuld settings for valgt institution
+        let data, error;
+        if (isAuthed) {
+            ({ data, error } = await supabaseClient
+                .from('institutions')
+                .select(`
+                    id, name, is_active,
+                    sugar_policy_enabled, sugar_policy_max_unhealthy_per_day,
+                    sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled,
+                    sugar_policy_max_per_product_enabled,
+                    balance_limit_enabled, balance_limit_amount,
+                    balance_limit_exempt_admins, balance_limit_exempt_test_users,
+                    spending_limit_enabled, spending_limit_amount,
+                    spending_limit_applies_to_regular_users, spending_limit_applies_to_admins,
+                    spending_limit_applies_to_test_users,
+                    show_admins_in_user_list, admins_purchase_free, shift_timer_enabled
+                `)
+                .order('name'));
+        } else {
+            ({ data, error } = await supabaseClient
+                .rpc('get_institutions_for_app', { p_app_name: 'cafe' }));
+        }
 
         if (error) {
             // Hvis query fejler med AbortError, prøv igen

@@ -7,7 +7,13 @@ import {
     STANDARD_ICONS,
     uploadProductIcon,
     removeProductIcon,
-    formatIconUpdateTime
+    formatIconUpdateTime,
+    fetchInstitutionIconLibrary,
+    fetchSharedIconLibrary,
+    getInstitutionIconCount,
+    deleteInstitutionIcon,
+    fetchIconSharingSettings,
+    processImageForUpload,
 } from '../core/product-icon-utils.js';
 
 // Sæt til true ved fejlsøgning; hold false i prod for mindre console-støj
@@ -221,6 +227,9 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
             <div class="product-limit-counter" aria-hidden="true"></div>
             <div class="product-remove-overlay" data-product-id="${product.id}">
                 <span class="product-remove-x">✕</span>
+            </div>
+            <div class="product-edit-pencil" data-product-id="${product.id}">
+                <span>✏️</span>
             </div>`;
 
         if (typeof onProductClick === 'function') {
@@ -233,6 +242,10 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
                 if (evt.target.closest('.product-remove-overlay')) {
                     evt.preventDefault();
                     return;
+                }
+                if (evt.target.closest('.product-edit-pencil')) {
+                    evt.preventDefault();
+                    return; // Handled by event delegation in product-assortment-flow.js
                 }
                 
                 // Forhindre dobbeltklik og repeat-klik
@@ -889,28 +902,61 @@ export function createProductManagementUI(options = {}) {
                             <div id="icon-status" style="font-size: 12px; color: #666;"></div>
                         </div>
 
-                        <!-- Icon Type Selection -->
-                        <div id="icon-type-selector" style="display: flex; gap: 10px; margin-bottom: 15px;">
-                            <label class="icon-type-card" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                        <!-- Icon Type Selection (5 tabs, wrapping) -->
+                        <div id="icon-type-selector" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
+                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
                                 <input type="radio" name="icon-type" value="standard" style="display: none;">
-                                <div style="font-size: 24px; margin-bottom: 5px;">📁</div>
-                                <div style="font-weight: 600; font-size: 13px;">Standard ikon</div>
+                                <div style="font-size: 20px; margin-bottom: 3px;">📁</div>
+                                <div style="font-weight: 600; font-size: 11px;">Standard</div>
                             </label>
-                            <label class="icon-type-card" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                <input type="radio" name="icon-type" value="institution" style="display: none;">
+                                <div style="font-size: 20px; margin-bottom: 3px;">🏠</div>
+                                <div style="font-weight: 600; font-size: 11px;" id="institution-icons-tab-label">Jeres ikoner</div>
+                            </label>
+                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                <input type="radio" name="icon-type" value="shared" style="display: none;">
+                                <div style="font-size: 20px; margin-bottom: 3px;">🌐</div>
+                                <div style="font-weight: 600; font-size: 11px;">Fra andre</div>
+                            </label>
+                            <label class="icon-type-card" style="flex: 1 1 calc(50% - 4px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
                                 <input type="radio" name="icon-type" value="custom" style="display: none;">
-                                <div style="font-size: 24px; margin-bottom: 5px;">📤</div>
-                                <div style="font-weight: 600; font-size: 13px;">Upload eget</div>
+                                <div style="font-size: 20px; margin-bottom: 3px;">📤</div>
+                                <div style="font-weight: 600; font-size: 11px;">Upload</div>
+                            </label>
+                            <label class="icon-type-card" style="flex: 1 1 calc(50% - 4px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                <input type="radio" name="icon-type" value="ai" style="display: none;">
+                                <div style="font-size: 20px; margin-bottom: 3px;">🪄</div>
+                                <div style="font-weight: 600; font-size: 11px;">AI Generer</div>
                             </label>
                         </div>
 
-                        <!-- Standard Icon Section -->
+                        <!-- Standard Icon Section (Flango Standard only) -->
                         <div id="standard-icon-section" style="display: none;">
-                            <label style="display: block; font-weight: 500; margin-bottom: 8px;">Vælg standard ikon</label>
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #4682b4;">Flango Standard</label>
                             <div id="standard-icon-grid" class="custom-icon-grid"></div>
 
                             <label style="margin-top: 15px; display: block; font-weight: 500;">Eller vælg emoji</label>
                             <input type="text" id="product-emoji-input" placeholder="Indtast emoji her..." value="${isEditing && product.emoji ? product.emoji : ''}" style="margin-top: 5px;">
                             <div id="product-emoji-grid" class="emoji-grid" style="padding-top: 10px;"></div>
+                        </div>
+
+                        <!-- Institution Icons Section (own uploaded + AI-generated) -->
+                        <div id="institution-icons-section" style="display: none;">
+                            <label id="institution-icons-heading" style="display: block; font-weight: 600; margin-bottom: 8px; color: #7c3aed;">Jeres ikoner</label>
+                            <div id="institution-icons-grid" class="custom-icon-grid"></div>
+                            <div id="institution-icons-empty" style="display: none; padding: 15px; text-align: center; color: #94a3b8; font-size: 13px; background: #f8f9fa; border-radius: 8px;">
+                                Ingen egne ikoner endnu — upload eller generer via AI.
+                            </div>
+                        </div>
+
+                        <!-- Shared Icons from Other Institutions -->
+                        <div id="shared-icons-section" style="display: none;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #059669;">Ikoner fra andre institutioner</label>
+                            <div id="shared-icons-grid" class="custom-icon-grid"></div>
+                            <div id="shared-icons-empty" style="display: none; padding: 15px; text-align: center; color: #94a3b8; font-size: 13px; background: #f8f9fa; border-radius: 8px;">
+                                Ingen delte ikoner tilgængelige.
+                            </div>
                         </div>
 
                         <!-- Custom Upload Section -->
@@ -943,6 +989,45 @@ export function createProductManagementUI(options = {}) {
                             <button type="button" id="remove-custom-icon-btn" style="display: none; margin-top: 15px; width: 100%; padding: 10px; background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; border-radius: 8px; cursor: pointer; font-weight: 500;">
                                 🗑️ Fjern custom ikon
                             </button>
+                        </div>
+
+                        <!-- AI Icon Generation Section -->
+                        <div id="ai-icon-section" style="display: none;">
+                            <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Produktnavn</label>
+                            <input type="text" id="ai-icon-input" placeholder="fx Pasta med kødsovs" maxlength="100" style="width: 100%; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; margin-bottom: 12px; box-sizing: border-box;">
+
+                            <!-- Foto-reference (valgfrit) -->
+                            <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                                📷 Foto som reference
+                                <span style="font-size: 11px; font-weight: 500; color: #94a3b8; background: #f1f5f9; padding: 1px 8px; border-radius: 8px;">valgfrit</span>
+                            </label>
+                            <div id="ai-photo-upload-area" style="margin-bottom: 12px;">
+                                <input type="file" id="ai-reference-file" accept="image/*" style="display: none;">
+                                <div id="ai-photo-dropzone" style="border: 2px dashed #d1d5db; border-radius: 10px; padding: 14px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa;">
+                                    <div style="font-size: 13px; color: #64748b;">📸 Klik eller træk et foto hertil</div>
+                                </div>
+                                <div id="ai-reference-preview" style="display: none; margin-top: 8px; position: relative;">
+                                    <img id="ai-reference-img" style="width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 2px solid #e0e0e0;">
+                                    <button type="button" id="ai-remove-photo-btn" style="position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #ef4444; color: white; border: none; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">✕</button>
+                                </div>
+                                <p style="font-size: 11px; color: #94a3b8; margin: 4px 0 0 0;">
+                                    AI'en bruger fotoet til at forstå maden — ikonet genereres i Flango-stil
+                                </p>
+                            </div>
+
+                            <button type="button" id="ai-generate-btn" style="width: 100%; padding: 12px 20px; background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s; margin-bottom: 12px; position: relative; z-index: 2; -webkit-tap-highlight-color: rgba(124, 58, 237, 0.3); touch-action: manipulation;">
+                                ✨ Generer
+                            </button>
+
+                            <div id="ai-icon-preview" style="min-height: 0; text-align: center; transition: all 0.3s;"></div>
+                            <div id="ai-icon-actions" style="display: none; margin-top: 12px; gap: 10px;">
+                                <button type="button" id="ai-icon-accept-btn" style="flex: 1; padding: 10px; background: #22c55e; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">
+                                    Brug dette ikon
+                                </button>
+                                <button type="button" id="ai-icon-retry-btn" style="flex: 1; padding: 10px; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 10px; font-weight: 600; cursor: pointer;">
+                                    🔄 Prøv igen
+                                </button>
+                            </div>
                         </div>
 
                     </div>
@@ -1014,6 +1099,8 @@ export function createProductManagementUI(options = {}) {
         const iconPreview = document.getElementById('icon-preview');
         const iconStatus = document.getElementById('icon-status');
         const standardIconSection = document.getElementById('standard-icon-section');
+        const institutionIconsSection = document.getElementById('institution-icons-section');
+        const sharedIconsSection = document.getElementById('shared-icons-section');
         const customUploadSection = document.getElementById('custom-upload-section');
         const uploadDropzone = document.getElementById('upload-dropzone');
         const iconFileInput = document.getElementById('icon-file-input');
@@ -1021,6 +1108,13 @@ export function createProductManagementUI(options = {}) {
         const uploadError = document.getElementById('upload-error');
         const removeCustomIconBtn = document.getElementById('remove-custom-icon-btn');
         const iconTypeCards = document.querySelectorAll('.icon-type-card');
+
+        // Set institution name in tab label and heading
+        const instName = localStorage.getItem('flango_institution_name') || 'Jeres';
+        const instTabLabel = document.getElementById('institution-icons-tab-label');
+        const instHeading = document.getElementById('institution-icons-heading');
+        if (instTabLabel) instTabLabel.textContent = `${instName}s`;
+        if (instHeading) instHeading.textContent = `${instName}s ikoner`;
 
         // Track current state
         let selectedStandardIcon = existingCustomIcon;
@@ -1058,7 +1152,8 @@ export function createProductManagementUI(options = {}) {
             iconStatus.textContent = statusText;
         };
 
-        // Switch between standard and custom icon sections
+        // Switch between standard, institution, shared, custom, and AI icon sections
+        const aiIconSection = document.getElementById('ai-icon-section');
         const switchIconType = (type) => {
             iconTypeCards.forEach(card => {
                 const radio = card.querySelector('input[type="radio"]');
@@ -1069,7 +1164,10 @@ export function createProductManagementUI(options = {}) {
             });
 
             standardIconSection.style.display = type === 'standard' ? 'block' : 'none';
+            if (institutionIconsSection) institutionIconsSection.style.display = type === 'institution' ? 'block' : 'none';
+            if (sharedIconsSection) sharedIconsSection.style.display = type === 'shared' ? 'block' : 'none';
             customUploadSection.style.display = type === 'custom' ? 'block' : 'none';
+            if (aiIconSection) aiIconSection.style.display = type === 'ai' ? 'block' : 'none';
 
             // Show/hide remove button
             removeCustomIconBtn.style.display = (type === 'custom' && currentIconUrl) ? 'block' : 'none';
@@ -1083,7 +1181,13 @@ export function createProductManagementUI(options = {}) {
         iconTypeCards.forEach(card => {
             card.addEventListener('click', () => {
                 const radio = card.querySelector('input[type="radio"]');
-                switchIconType(radio.value);
+                const type = radio.value;
+                switchIconType(type);
+                // Lazy-load shared icons on first visit
+                if (type === 'shared' && !sharedIconsLoaded) {
+                    sharedIconsLoaded = true;
+                    loadSharedIcons();
+                }
             });
         });
 
@@ -1122,8 +1226,90 @@ export function createProductManagementUI(options = {}) {
         };
         standardIconGrid.addEventListener('click', handleStandardIconClick);
 
+        // ===== INSTITUTION ICONS (own uploaded + AI-generated) =====
+        const institutionIconsGrid = document.getElementById('institution-icons-grid');
+        const institutionIconsEmpty = document.getElementById('institution-icons-empty');
+
+        const loadInstitutionIcons = async () => {
+            if (!institutionIconsGrid) return;
+            institutionIconsGrid.innerHTML = '';
+
+            const libraryIcons = await fetchInstitutionIconLibrary(institutionId);
+
+            if (libraryIcons.length === 0) {
+                if (institutionIconsEmpty) institutionIconsEmpty.style.display = 'block';
+                return;
+            }
+            if (institutionIconsEmpty) institutionIconsEmpty.style.display = 'none';
+
+            libraryIcons.forEach(icon => {
+                const option = document.createElement('div');
+                option.className = 'custom-icon-option';
+                option.dataset.path = icon.icon_url;
+                const sourceTag = icon.source === 'uploaded' ? '📤' : '🪄';
+                option.innerHTML = `<img src="${icon.icon_url}" alt="${icon.name}"><span>${sourceTag} ${icon.name}</span>`;
+                institutionIconsGrid.appendChild(option);
+            });
+
+            updateStandardIconSelection();
+        };
+
+        // Click handler for institution icons grid
+        institutionIconsGrid?.addEventListener('click', handleStandardIconClick);
+
+        // Load institution icons
+        loadInstitutionIcons();
+
+        // ===== SHARED ICONS (from other institutions) =====
+        const sharedIconsGrid = document.getElementById('shared-icons-grid');
+        const sharedIconsEmpty = document.getElementById('shared-icons-empty');
+
+        const loadSharedIcons = async () => {
+            if (!sharedIconsGrid) return;
+            sharedIconsGrid.innerHTML = '';
+
+            // Check if our institution has "use shared" enabled
+            const settings = await fetchIconSharingSettings(institutionId);
+            if (!settings.icon_use_shared_enabled) {
+                if (sharedIconsEmpty) {
+                    sharedIconsEmpty.textContent = 'Brug af delte ikoner er ikke aktiveret. Slå det til under Institutionsindstillinger.';
+                    sharedIconsEmpty.style.display = 'block';
+                }
+                return;
+            }
+
+            const sharedIcons = await fetchSharedIconLibrary(institutionId);
+
+            if (sharedIcons.length === 0) {
+                if (sharedIconsEmpty) sharedIconsEmpty.style.display = 'block';
+                return;
+            }
+            if (sharedIconsEmpty) sharedIconsEmpty.style.display = 'none';
+
+            sharedIcons.forEach(icon => {
+                const option = document.createElement('div');
+                option.className = 'custom-icon-option';
+                option.dataset.path = icon.icon_url;
+                option.innerHTML = `<img src="${icon.icon_url}" alt="${icon.name}"><span>${icon.name}</span>`;
+                sharedIconsGrid.appendChild(option);
+            });
+
+            updateStandardIconSelection();
+        };
+
+        // Click handler for shared icons grid
+        sharedIconsGrid?.addEventListener('click', handleStandardIconClick);
+
+        // Load shared icons (lazy — only when tab is opened for the first time)
+        let sharedIconsLoaded = false;
+
         const updateStandardIconSelection = () => {
-            standardIconGrid.querySelectorAll('.custom-icon-option').forEach(opt => {
+            const allOptions = [
+                ...standardIconGrid.querySelectorAll('.custom-icon-option'),
+                ...(institutionIconsGrid?.querySelectorAll('.custom-icon-option') || []),
+                ...(sharedIconsGrid?.querySelectorAll('.custom-icon-option') || []),
+            ];
+            allOptions.forEach(opt => {
                 opt.classList.toggle('selected', !!selectedStandardIcon && opt.dataset.path === selectedStandardIcon);
             });
         };
@@ -1166,12 +1352,11 @@ export function createProductManagementUI(options = {}) {
                     throw new Error('Admin bruger ID ikke fundet');
                 }
 
-                // Determine background removal mode from checkbox
-                const removeBackgroundMode = removeBgCheckbox?.checked ? 'simple' : 'none';
+                // Process image client-side: resize to 256x256, convert to WebP, compress
+                const processedBlob = await processImageForUpload(file);
+                const processedFile = new File([processedBlob], `${product.id}.webp`, { type: 'image/webp' });
 
-                const result = await uploadProductIcon(file, institutionId, product.id, adminUserId, {
-                    removeBackgroundMode
-                });
+                const result = await uploadProductIcon(processedFile, institutionId, product.id, adminUserId);
 
                 if (result.success) {
                     currentIconUrl = result.icon_url;
@@ -1179,6 +1364,8 @@ export function createProductManagementUI(options = {}) {
                     updateIconPreview();
                     removeCustomIconBtn.style.display = 'block';
                     playSound?.('success');
+                    // Refresh institution icons grid (upload also saves to library)
+                    loadInstitutionIcons();
                 } else {
                     throw new Error(result.error || 'Upload fejlede');
                 }
@@ -1255,6 +1442,180 @@ export function createProductManagementUI(options = {}) {
                 removeCustomIconBtn.disabled = false;
                 removeCustomIconBtn.textContent = '🗑️ Fjern custom ikon';
             }
+        });
+
+        // ===== AI ICON GENERATION =====
+        const aiIconInput = document.getElementById('ai-icon-input');
+        const aiGenerateBtn = document.getElementById('ai-generate-btn');
+        const aiIconPreview = document.getElementById('ai-icon-preview');
+        const aiIconActions = document.getElementById('ai-icon-actions');
+        const aiIconAcceptBtn = document.getElementById('ai-icon-accept-btn');
+        const aiIconRetryBtn = document.getElementById('ai-icon-retry-btn');
+        let aiGeneratedUrl = null;
+        let aiIsGenerating = false;
+
+        // Pre-fill AI input with product name
+        if (isEditing && product?.name && aiIconInput) {
+            aiIconInput.value = product.name;
+        }
+
+        // ===== PHOTO REFERENCE HANDLERS =====
+        const aiReferenceFile = document.getElementById('ai-reference-file');
+        const aiPhotoDropzone = document.getElementById('ai-photo-dropzone');
+        const aiReferencePreview = document.getElementById('ai-reference-preview');
+        const aiReferenceImg = document.getElementById('ai-reference-img');
+        const aiRemovePhotoBtn = document.getElementById('ai-remove-photo-btn');
+        let aiSelectedPhoto = null; // Store file reference directly (iOS can lose input.files)
+
+        const showPhotoPreview = (file) => {
+            if (!file || !aiReferenceImg || !aiReferencePreview || !aiPhotoDropzone) return;
+            aiSelectedPhoto = file;
+            aiReferenceImg.src = URL.createObjectURL(file);
+            aiReferencePreview.style.display = 'block';
+            aiPhotoDropzone.style.display = 'none';
+        };
+
+        const removePhotoPreview = () => {
+            aiSelectedPhoto = null;
+            if (aiReferenceFile) aiReferenceFile.value = '';
+            if (aiReferencePreview) aiReferencePreview.style.display = 'none';
+            if (aiPhotoDropzone) aiPhotoDropzone.style.display = 'block';
+            if (aiReferenceImg) {
+                if (aiReferenceImg.src.startsWith('blob:')) URL.revokeObjectURL(aiReferenceImg.src);
+                aiReferenceImg.src = '';
+            }
+        };
+
+        aiPhotoDropzone?.addEventListener('click', () => aiReferenceFile?.click());
+        aiReferenceFile?.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (file) showPhotoPreview(file);
+        });
+        aiRemovePhotoBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removePhotoPreview();
+        });
+
+        // Drag & drop on photo dropzone
+        aiPhotoDropzone?.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            aiPhotoDropzone.style.borderColor = '#7c3aed';
+            aiPhotoDropzone.style.background = '#f5f3ff';
+        });
+        aiPhotoDropzone?.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            aiPhotoDropzone.style.borderColor = '#d1d5db';
+            aiPhotoDropzone.style.background = '#fafafa';
+        });
+        aiPhotoDropzone?.addEventListener('drop', (e) => {
+            e.preventDefault();
+            aiPhotoDropzone.style.borderColor = '#d1d5db';
+            aiPhotoDropzone.style.background = '#fafafa';
+            const file = e.dataTransfer?.files?.[0];
+            if (file && file.type.startsWith('image/')) {
+                showPhotoPreview(file);
+            }
+        });
+
+        // ===== AI GENERATE HANDLER =====
+        const handleAiGenerate = async () => {
+            if (aiIsGenerating) return;
+            if (!isEditing || !product?.id) {
+                showAlert?.('Gem produktet først, derefter kan du generere et AI-ikon');
+                return;
+            }
+            const name = aiIconInput?.value?.trim();
+            const referenceFile = aiSelectedPhoto || aiReferenceFile?.files?.[0] || null;
+
+            if (!name && !referenceFile) {
+                showAlert?.('Skriv et produktnavn eller upload et foto');
+                return;
+            }
+
+            aiIsGenerating = true;
+            aiGenerateBtn.disabled = true;
+            aiGenerateBtn.textContent = referenceFile ? '⏳ Analyserer foto...' : '⏳ Genererer...';
+            aiIconPreview.innerHTML = `<div style="padding: 30px; text-align: center;"><div style="font-size: 32px; animation: pulse 1.5s infinite;">🪄</div><div style="font-size: 13px; color: #64748b; margin-top: 8px;">${referenceFile ? 'Analyserer foto og genererer ikon...' : 'Genererer ikon...'}</div></div>`;
+            aiIconActions.style.display = 'none';
+            aiGeneratedUrl = null;
+
+            try {
+                const adminUserId = adminProfile?.user_id;
+                if (!adminUserId) throw new Error('Admin bruger ID ikke fundet');
+
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                const accessToken = session?.access_token || '';
+
+                const supabaseUrl = supabaseClient.supabaseUrl || supabaseClient.rest?.url?.replace('/rest/v1', '') || 'https://jbknjgbpghrbrstqwoxj.supabase.co';
+
+                // Build request — FormData if photo, JSON if text-only
+                let body;
+                const headers = {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'x-admin-user-id': adminUserId,
+                };
+
+                if (referenceFile) {
+                    // Photo-mode: FormData (no Content-Type — browser sets boundary)
+                    body = new FormData();
+                    body.append('product_id', product.id);
+                    body.append('product_name', name || '');
+                    body.append('reference_image', referenceFile);
+                } else {
+                    // Text-mode: JSON (backward compatible)
+                    headers['Content-Type'] = 'application/json';
+                    body = JSON.stringify({
+                        product_name: name,
+                        product_id: product.id,
+                    });
+                }
+
+                const response = await fetch(
+                    `${supabaseUrl}/functions/v1/generate-product-icon`,
+                    { method: 'POST', headers, body }
+                );
+
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error || 'Generering fejlede');
+
+                aiGeneratedUrl = result.icon_url;
+                currentIconUrl = result.icon_url;
+                currentIconUpdatedAt = result.icon_updated_at;
+
+                // Show preview
+                const timestamp = result.icon_updated_at ? new Date(result.icon_updated_at).getTime() : Date.now();
+                aiIconPreview.innerHTML = `
+                    <div style="padding: 15px; background: #f8f9fa; border-radius: 12px; text-align: center;">
+                        <img src="${result.icon_url}?v=${timestamp}" alt="${name}" style="width: 128px; height: 128px; border-radius: 12px; background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">${result.mode === 'photo' ? '📷 Genereret fra foto' : '✏️ Genereret fra tekst'}</div>
+                    </div>`;
+                aiIconActions.style.display = 'flex';
+                updateIconPreview();
+                playSound?.('success');
+
+            } catch (err) {
+                console.error('[AI Icon] Error:', err);
+                aiIconPreview.innerHTML = `<div style="padding: 15px; background: #fef2f2; border-radius: 8px; text-align: center; color: #dc2626; font-size: 13px;">${err.message || 'Generering fejlede'}</div>`;
+                playSound?.('error');
+            } finally {
+                aiIsGenerating = false;
+                aiGenerateBtn.disabled = false;
+                aiGenerateBtn.textContent = '✨ Generer';
+            }
+        };
+
+        aiGenerateBtn?.addEventListener('click', handleAiGenerate);
+        aiIconRetryBtn?.addEventListener('click', handleAiGenerate);
+
+        aiIconAcceptBtn?.addEventListener('click', () => {
+            if (!aiGeneratedUrl) return;
+            // Icon is already saved by Edge Function — just update preview and close AI section
+            updateIconPreview();
+            aiIconActions.style.display = 'none';
+            aiIconPreview.innerHTML = '<div style="padding: 10px; text-align: center; color: #22c55e; font-weight: 600;">✅ Ikon gemt!</div>';
+            playSound?.('success');
+            // Refresh institution icons grid to include the new icon
+            loadInstitutionIcons();
         });
 
         // Initial preview update
@@ -1753,5 +2114,100 @@ export function createProductManagementUI(options = {}) {
         await fetchAndRenderProducts?.();
         renderProductsInModalFn?.(getProducts(), modalProductList);
         console.log('[handleDeleteProduct] Product deleted and UI refreshed');
+    }
+
+    // ===== ICON MANAGEMENT MODAL =====
+    const manageIconsBtn = document.getElementById('manage-icons-btn');
+    const iconMgmtModal = document.getElementById('icon-management-modal');
+
+    if (manageIconsBtn && iconMgmtModal) {
+        const iconMgmtCloseBtn = iconMgmtModal.querySelector('.close-btn');
+        const iconMgmtCloseFooter = document.getElementById('icon-mgmt-close-btn');
+
+        const closeIconMgmt = () => { iconMgmtModal.style.display = 'none'; };
+        iconMgmtCloseBtn?.addEventListener('click', closeIconMgmt);
+        iconMgmtCloseFooter?.addEventListener('click', closeIconMgmt);
+
+        manageIconsBtn.addEventListener('click', async () => {
+            iconMgmtModal.style.display = 'flex';
+            await loadIconManagementGrid();
+        });
+
+        async function loadIconManagementGrid() {
+            const counter = document.getElementById('icon-mgmt-counter');
+            const uploadedGrid = document.getElementById('icon-mgmt-uploaded-grid');
+            const uploadedEmpty = document.getElementById('icon-mgmt-uploaded-empty');
+            const aiGrid = document.getElementById('icon-mgmt-ai-grid');
+            const aiEmpty = document.getElementById('icon-mgmt-ai-empty');
+
+            if (!uploadedGrid || !aiGrid) return;
+
+            uploadedGrid.innerHTML = '';
+            aiGrid.innerHTML = '';
+
+            const institutionId = adminProfile?.institution_id;
+            if (!institutionId) return;
+
+            const [icons, settings] = await Promise.all([
+                fetchInstitutionIconLibrary(institutionId),
+                fetchIconSharingSettings(institutionId),
+            ]);
+
+            const iconLimit = settings.icon_limit || 50;
+            if (counter) counter.textContent = `${icons.length} / ${iconLimit} ikoner brugt`;
+
+            const uploaded = icons.filter(i => i.source === 'uploaded');
+            const aiGenerated = icons.filter(i => i.source !== 'uploaded');
+
+            const renderIconGrid = (iconList, gridEl, emptyEl) => {
+                gridEl.innerHTML = '';
+                if (iconList.length === 0) {
+                    if (emptyEl) emptyEl.style.display = 'block';
+                    return;
+                }
+                if (emptyEl) emptyEl.style.display = 'none';
+
+                iconList.forEach(icon => {
+                    const option = document.createElement('div');
+                    option.className = 'custom-icon-option';
+                    option.style.position = 'relative';
+                    option.innerHTML = `
+                        <img src="${icon.icon_url}" alt="${icon.name}">
+                        <span style="font-size: 11px;">${icon.name}</span>
+                        <button type="button" class="icon-mgmt-delete-btn" data-icon-id="${icon.id}" title="Slet ikon"
+                            style="position: absolute; top: -4px; right: -4px; width: 20px; height: 20px; border-radius: 50%; background: #ef4444; color: white; border: none; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; z-index: 5;">✕</button>
+                    `;
+                    gridEl.appendChild(option);
+                });
+            };
+
+            renderIconGrid(uploaded, uploadedGrid, uploadedEmpty);
+            renderIconGrid(aiGenerated, aiGrid, aiEmpty);
+
+            // Delete handlers (event delegation)
+            const handleDelete = async (e) => {
+                const btn = e.target.closest('.icon-mgmt-delete-btn');
+                if (!btn) return;
+                e.stopPropagation();
+                const iconId = btn.dataset.iconId;
+                if (!iconId) return;
+
+                const confirmed = await showCustomAlert('Slet ikon?', 'Ikonet fjernes fra biblioteket. Produkter der bruger det beholder deres kopi.', 'confirm');
+                if (!confirmed) return;
+
+                const result = await deleteInstitutionIcon(iconId);
+                if (result.success) {
+                    await loadIconManagementGrid();
+                } else {
+                    showAlert?.(result.error || 'Kunne ikke slette ikonet');
+                }
+            };
+
+            uploadedGrid.addEventListener('click', handleDelete);
+            aiGrid.addEventListener('click', handleDelete);
+        }
+
+        // Expose globally so icon sharing settings can open this modal
+        window.__flangoLoadIconManagementGrid = loadIconManagementGrid;
     }
 }

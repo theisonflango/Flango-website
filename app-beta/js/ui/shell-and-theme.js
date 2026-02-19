@@ -1777,13 +1777,143 @@ async function openInstitutionPreferences() {
         openMobilePayImportModal();
     });
 
+    // Ikon-deling knap
+    const iconSharingBtn = document.createElement('button');
+    iconSharingBtn.className = 'settings-item-btn';
+    iconSharingBtn.innerHTML = prefRow('🎨', 'Produktikoner – Deling', 'Del jeres ikoner med andre institutioner og brug andres delte ikoner.');
+    iconSharingBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openIconSharingSettingsModal();
+    });
+
     contentEl.appendChild(parentPortalBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(sugarPolicyBtn);
+    contentEl.appendChild(iconSharingBtn);
     contentEl.appendChild(editAdminsBtn);
     contentEl.appendChild(mobilePayImportBtn);
     backdrop.style.display = 'flex';
     updateSettingsModalBackVisibility();
+}
+
+/**
+ * Åbner Ikon-deling indstillinger modal
+ */
+async function openIconSharingSettingsModal() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+
+    titleEl.textContent = 'Produktikoner – Deling';
+    contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Indlæser...</div>';
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
+
+    // Fetch current settings
+    const { data: settings, error } = await supabaseClient
+        .from('institutions')
+        .select('icon_sharing_enabled, icon_use_shared_enabled, icon_limit')
+        .eq('id', institutionId)
+        .single();
+
+    if (error || !settings) {
+        contentEl.innerHTML = '<div style="color: red; padding: 20px;">Kunne ikke hente indstillinger.</div>';
+        return;
+    }
+
+    contentEl.innerHTML = '';
+
+    const group = document.createElement('div');
+    group.style.cssText = 'display: flex; flex-direction: column; gap: 15px; padding: 10px 0;';
+
+    // Description
+    const desc = document.createElement('p');
+    desc.style.cssText = 'color: #64748b; font-size: 13px; margin: 0;';
+    desc.textContent = 'Vælg om jeres ikoner skal være tilgængelige for andre institutioner, og om I vil kunne se andres delte ikoner.';
+    group.appendChild(desc);
+
+    // Toggle 1: Share outward
+    const shareRow = document.createElement('div');
+    shareRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f8f9fa; border-radius: 8px;';
+    const shareLabel = document.createElement('div');
+    shareLabel.innerHTML = '<strong>Del jeres ikoner</strong><div style="font-size: 12px; color: #64748b;">Andre institutioner kan bruge jeres ikoner</div>';
+    const shareCheckbox = document.createElement('input');
+    shareCheckbox.type = 'checkbox';
+    shareCheckbox.checked = settings.icon_sharing_enabled;
+    shareCheckbox.style.cssText = 'width: 22px; height: 22px; cursor: pointer; flex-shrink: 0;';
+    shareRow.appendChild(shareLabel);
+    shareRow.appendChild(shareCheckbox);
+    group.appendChild(shareRow);
+
+    // Toggle 2: Use shared
+    const useRow = document.createElement('div');
+    useRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f8f9fa; border-radius: 8px;';
+    const useLabel = document.createElement('div');
+    useLabel.innerHTML = '<strong>Brug andres ikoner</strong><div style="font-size: 12px; color: #64748b;">Se og brug ikoner delt af andre institutioner</div>';
+    const useCheckbox = document.createElement('input');
+    useCheckbox.type = 'checkbox';
+    useCheckbox.checked = settings.icon_use_shared_enabled;
+    useCheckbox.style.cssText = 'width: 22px; height: 22px; cursor: pointer; flex-shrink: 0;';
+    useRow.appendChild(useLabel);
+    useRow.appendChild(useCheckbox);
+    group.appendChild(useRow);
+
+    contentEl.appendChild(group);
+
+    // "Vis ikoner" button — opens the icon management modal
+    const viewIconsBtn = document.createElement('button');
+    viewIconsBtn.className = 'event-save-btn';
+    viewIconsBtn.style.cssText = 'margin-top: 12px; width: 100%; background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white; border: none;';
+    viewIconsBtn.innerHTML = '🎨 Vis jeres ikoner';
+    viewIconsBtn.addEventListener('click', () => {
+        // Close this settings modal
+        backdrop.style.display = 'none';
+        // Open the icon management modal
+        const iconMgmtModal = document.getElementById('icon-management-modal');
+        if (iconMgmtModal) {
+            iconMgmtModal.style.display = 'flex';
+            // Trigger load of the icon management grid
+            if (typeof window.__flangoLoadIconManagementGrid === 'function') {
+                window.__flangoLoadIconManagementGrid();
+            }
+        }
+    });
+    contentEl.appendChild(viewIconsBtn);
+
+    // Save button
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'event-save-btn';
+    saveBtn.textContent = 'Gem';
+    saveBtn.style.cssText = 'margin-top: 16px; width: 100%;';
+    contentEl.appendChild(saveBtn);
+
+    saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Gemmer...';
+
+        const { error: updateError } = await supabaseClient
+            .from('institutions')
+            .update({
+                icon_sharing_enabled: shareCheckbox.checked,
+                icon_use_shared_enabled: useCheckbox.checked,
+            })
+            .eq('id', institutionId);
+
+        if (updateError) {
+            saveBtn.textContent = 'Fejl – prøv igen';
+            saveBtn.disabled = false;
+            return;
+        }
+
+        saveBtn.textContent = '✅ Gemt!';
+        setTimeout(() => {
+            backdrop.style.display = 'none';
+        }, 800);
+    });
 }
 
 /**
