@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Download Flango Skærmtid — PC-klient</title>
+<meta name="description" content="Download Flango Skærmtid PC-klient til automatisk tidsstyring på gaming-PC'er i SFO'er og fritidsklubber.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --peach-50: #FFF8F3;
+  --peach-100: #FFEED9;
+  --peach-200: #FFD9AD;
+  --peach-400: #FFA347;
+  --peach-500: #F08C28;
+  --peach-600: #D97316;
+  --slate-100: #F1F4F6;
+  --slate-200: #E2E7EB;
+  --slate-400: #9AA5B4;
+  --slate-500: #6B7A8D;
+  --slate-600: #4A5568;
+  --slate-700: #334155;
+  --slate-800: #1E293B;
+  --sage-50: #F2F7F2;
+  --sage-100: #E0EBE0;
+  --sage-600: #4A8C4A;
+  --sky-50: #EFF8FF;
+  --sky-100: #DBEEFE;
+  --sky-600: #2B7CC9;
+  --white: #FFFFFF;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font-body);
+  color: var(--slate-800);
+  background: var(--peach-50);
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 60px 24px;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.header a {
+  color: var(--peach-500);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.header a:hover { text-decoration: underline; }
+
+.header h1 {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  margin-top: 16px;
+  color: var(--slate-800);
+}
+
+.header p {
+  color: var(--slate-500);
+  font-size: 1.1rem;
+  margin-top: 8px;
+}
+
+/* Download Card */
+.download-card {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.download-icon {
+  font-size: 4rem;
+  margin-bottom: 16px;
+}
+
+.download-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+
+.download-card .version {
+  color: var(--slate-400);
+  font-size: 0.85rem;
+  margin-bottom: 24px;
+}
+
+.download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--peach-500);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 16px 40px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.15s;
+  box-shadow: 0 4px 12px rgba(240, 140, 40, 0.3);
+}
+
+.download-btn:hover {
+  background: var(--peach-600);
+  transform: translateY(-1px);
+}
+
+.download-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.download-meta {
+  margin-top: 16px;
+  color: var(--slate-400);
+  font-size: 0.85rem;
+}
+
+.download-meta span {
+  margin: 0 8px;
+}
+
+/* Requirements */
+.requirements {
+  background: var(--sky-50);
+  border: 1px solid var(--sky-100);
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-bottom: 32px;
+}
+
+.requirements h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--sky-600);
+  margin-bottom: 12px;
+}
+
+.requirements ul {
+  list-style: none;
+  padding: 0;
+}
+
+.requirements li {
+  padding: 6px 0;
+  color: var(--slate-600);
+  font-size: 0.95rem;
+}
+
+.requirements li::before {
+  content: "\2713";
+  color: var(--sky-600);
+  font-weight: 700;
+  margin-right: 10px;
+}
+
+/* Setup Steps */
+.setup-steps {
+  background: var(--sage-50);
+  border: 1px solid var(--sage-100);
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-bottom: 32px;
+}
+
+.setup-steps h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--sage-600);
+  margin-bottom: 16px;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 10px 0;
+}
+
+.step-num {
+  background: var(--sage-600);
+  color: var(--white);
+  font-size: 0.75rem;
+  font-weight: 700;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.step p {
+  color: var(--slate-600);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.step strong {
+  color: var(--slate-700);
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 32px 0;
+  color: var(--slate-400);
+  font-size: 0.85rem;
+}
+
+.footer a {
+  color: var(--peach-500);
+  text-decoration: none;
+}
+
+.footer a:hover { text-decoration: underline; }
+
+@media (max-width: 600px) {
+  .container { padding: 40px 16px; }
+  .header h1 { font-size: 2rem; }
+  .download-card { padding: 28px 20px; }
+  .download-btn { padding: 14px 28px; font-size: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <a href="https://flango.dk">&larr; Tilbage til flango.dk</a>
+    <h1>Flango Skærmtid</h1>
+    <p>PC-klient til automatisk tidsstyring</p>
+  </div>
+
+  <div class="download-card">
+    <div class="download-icon">&#128187;</div>
+    <h2>Flango Skærmtid til Windows</h2>
+    <p class="version">Version 0.1.0</p>
+
+    <a href="https://github.com/theisonflango/Flango/releases/download/pc-client-v0.1.0/Flango-Skaermtid-0.1.0-Setup.exe" class="download-btn">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v7.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L9 11.586V4a1 1 0 011-1z"/><path d="M3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"/></svg>
+      Download installer
+    </a>
+
+    <p class="download-meta">
+      Windows 10/11 (64-bit) <span>&bull;</span> ~79 MB
+    </p>
+  </div>
+
+  <div class="requirements">
+    <h3>Systemkrav</h3>
+    <ul>
+      <li>Windows 10 eller nyere (64-bit)</li>
+      <li>Internetforbindelse (til opsætning og sessioner)</li>
+      <li>Administratorrettigheder til installation</li>
+    </ul>
+  </div>
+
+  <div class="setup-steps">
+    <h3>Opsætning efter installation</h3>
+    <div class="step">
+      <span class="step-num">1</span>
+      <p><strong>Installer programmet</strong> ved at køre den downloadede fil</p>
+    </div>
+    <div class="step">
+      <span class="step-num">2</span>
+      <p>Programmet starter automatisk. <strong>Indtast institutionens navn</strong> (præcis som vist i Skærmtid-kontrolpanelet)</p>
+    </div>
+    <div class="step">
+      <span class="step-num">3</span>
+      <p><strong>Indtast institutionens kode</strong> (samme kode som bruges til login i kontrolpanelet)</p>
+    </div>
+    <div class="step">
+      <span class="step-num">4</span>
+      <p><strong>Vælg stationen</strong> fra listen (fx "PC-1", "PC-2")</p>
+    </div>
+    <div class="step">
+      <span class="step-num">5</span>
+      <p><strong>Bekræft tilknytningen</strong> — PC'en er nu klar til brug</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>&copy; 2026 Flango &mdash; <a href="https://flango.dk">flango.dk</a></p>
+  </div>
+
+</div>
+
+</body>
+</html>
