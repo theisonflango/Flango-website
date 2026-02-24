@@ -1,5 +1,5 @@
 /* ============================================================
-   FLANGO UNSTOPPABLE THEME - USERS STYLES
+   AURORA THEME - USERS STYLES
    User Selection, Avatars, Session Banners, Sidebar
    ============================================================ */
 
@@ -7,117 +7,30 @@
    USER SESSION BANNER - TWO STICKY NOTES WITH PUSHPINS
    ============================================================ */
 
-.user-session-banner {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    padding: 0;
-    margin-bottom: 12px;
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    box-shadow: none;
-}
+.user-session-banner { background: transparent; border: none; border-radius: 0; padding: 0; margin-bottom: 12px; display: flex; gap: 16px; justify-content: center; align-items: stretch; box-shadow: none; }
 
 /* Hide original text content */
 .user-session-banner #logged-in-user {
     display: none;
 }
 
-/* Sticky note base style for both notes - horizontal layout */
-.session-sticky-note {
-    flex: 1;
-    max-width: 160px;
-    padding: 16px 12px 10px 12px;
-    border-radius: 3px;
-    position: relative;
-    text-align: center;
-    box-shadow:
-        2px 3px 8px rgba(0, 0, 0, 0.12),
-        inset 0 0 15px rgba(0, 0, 0, 0.02);
-    font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-}
+/* Premium glass pill for user notes */
+.session-sticky-note { flex: 1; max-width: 240px; padding: 12px 16px; border-radius: 12px; position: relative; text-align: left; background: linear-gradient(145deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%); border: 1px solid rgba(0, 210, 255, 0.3); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(0, 210, 255, 0.05); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 
-/* Clerk sticky note - light blue */
 .session-sticky-note.clerk-note {
-    background:
-        radial-gradient(ellipse at 30% 25%, rgba(255, 255, 255, 0.5) 0%, transparent 50%),
-        linear-gradient(172deg, #bbdefb 0%, #90caf9 40%, #64b5f6 100%);
-    transform: rotate(-2deg);
+    border-color: rgba(0, 210, 255, 0.5);
+    box-shadow: 0 0 10px rgba(0, 210, 255, 0.2);
 }
 
-/* Adult sticky note - light green */
 .session-sticky-note.adult-note {
-    background:
-        radial-gradient(ellipse at 70% 25%, rgba(255, 255, 255, 0.5) 0%, transparent 50%),
-        linear-gradient(172deg, #c8e6c9 0%, #a5d6a7 40%, #81c784 100%);
-    transform: rotate(1.5deg);
+    border-color: rgba(168, 85, 247, 0.5);
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
 }
 
-/* Pushpin for sticky notes */
-.session-sticky-note::before {
-    content: '';
-    position: absolute;
-    top: -6px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    box-shadow:
-        0 2px 4px rgba(0, 0, 0, 0.3),
-        inset -1px -1px 3px rgba(0, 0, 0, 0.2),
-        inset 1px 1px 3px rgba(255, 255, 255, 0.3);
-    z-index: 5;
-}
+.session-sticky-note .sticky-label { font-size: 12px; font-weight: 600; color: #00d2ff; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
 
-/* Blue pushpin for clerk */
-.session-sticky-note.clerk-note::before {
-    background: radial-gradient(circle at 40% 35%, #2196f3 0%, #1565c0 60%, #0d47a1 100%);
-}
+.session-sticky-note .sticky-name { font-size: 18px; font-weight: 700; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-shadow: 0 0 5px rgba(255,255,255,0.3); }
 
-/* Green pushpin for adult */
-.session-sticky-note.adult-note::before {
-    background: radial-gradient(circle at 40% 35%, #4caf50 0%, #2e7d32 60%, #1b5e20 100%);
-}
-
-/* Pushpin needle shadow */
-.session-sticky-note::after {
-    content: '';
-    position: absolute;
-    top: 5px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 3px;
-    height: 6px;
-    background: linear-gradient(180deg, #9e9e9e 0%, #616161 100%);
-    border-radius: 0 0 1px 1px;
-    z-index: 4;
-}
-
-/* Label styling - inline */
-.session-sticky-note .sticky-label {
-    font-size: 14px;
-    font-weight: 600;
-    color: #5d4037;
-    opacity: 0.9;
-    white-space: nowrap;
-}
-
-/* Name styling - inline */
-.session-sticky-note .sticky-name {
-    font-size: 16px;
-    font-weight: 700;
-    color: #3e2723;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 90px;
-}
 
 /* ============================================================
    SIDEBAR & USER INFO
@@ -128,7 +41,7 @@
     height: auto;
     display: block;
     margin: 0;
-    filter: drop-shadow(0 4px 8px rgba(168, 85, 247, 0.2));
+    filter: drop-shadow(0 4px 8px rgba(0, 210, 255, 0.4));
 }
 
 #flango-logo-button img {
@@ -146,66 +59,210 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 4px;
+    margin-bottom: 12px;
+    padding: 0;
 }
 
-/* Selected user info - Sticky note with pushpin */
+/* ============================================================
+   SELECTED USER INFO - AURORA GLASSMORPHISM CARD (2-LINE GRID)
+   Row 1: [Avatar] [Name + Number]              [×]
+   Row 2: [Avatar] [Saldo → Ny Saldo]           [×]
+   Avatar & close button span both rows.
+   ============================================================ */
 #selected-user-info {
-    /* Crumpled sticky note paper - pink/salmon color */
-    background:
-        radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.5) 0%, transparent 50%),
-        radial-gradient(ellipse at 70% 80%, rgba(255, 255, 255, 0.3) 0%, transparent 40%),
-        radial-gradient(ellipse at 80% 30%, rgba(0, 0, 0, 0.02) 0%, transparent 30%),
-        linear-gradient(172deg, #ffcdd2 0%, #ef9a9a 40%, #e57373 100%);
-    border: none;
-    padding: 18px 14px 14px 14px;
-    border-radius: 4px;
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 210, 255, 0.25);
+    padding: 10px 14px;
+    border-radius: var(--aurora-radius-sm);
     margin-bottom: clamp(14px, 2.5vw, 20px);
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    text-align: center;
+    /* Override inline display:flex from JS */
+    display: grid !important;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+    column-gap: 10px;
+    row-gap: 2px;
+    align-items: center;
+    text-align: left;
     position: relative;
     z-index: 10;
-    transform: rotate(1.5deg);
-    overflow: visible;
     box-shadow:
-        2px 3px 10px rgba(0, 0, 0, 0.12),
-        inset 0 0 20px rgba(0, 0, 0, 0.02);
+        0 8px 24px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: box-shadow 0.2s ease;
 }
 
-/* Pushpin / Tegnestift */
-#selected-user-info::before {
-    content: '';
-    position: absolute;
-    top: -8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 20px;
-    height: 20px;
-    background: radial-gradient(circle at 40% 35%, #f44336 0%, #c62828 60%, #b71c1c 100%);
-    border-radius: 50%;
-    box-shadow:
-        0 3px 6px rgba(0, 0, 0, 0.3),
-        inset -2px -2px 4px rgba(0, 0, 0, 0.2),
-        inset 2px 2px 4px rgba(255, 255, 255, 0.3);
-    z-index: 5;
-}
-
-/* Pushpin needle shadow */
+#selected-user-info::before,
 #selected-user-info::after {
-    content: '';
-    position: absolute;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 4px;
-    height: 8px;
-    background: linear-gradient(180deg, #9e9e9e 0%, #616161 100%);
-    border-radius: 0 0 2px 2px;
-    z-index: 4;
+    display: none;
 }
 
+/* --- Empty state (no user selected) --- */
+#selected-user-info.empty-state {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    text-align: center;
+}
+
+#selected-user-info.empty-state .info-box {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-bottom: none !important;
+    gap: 2px !important;
+}
+
+#selected-user-info.empty-state .info-box-label {
+    font-size: 10px !important;
+    color: #94a3b8 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+#selected-user-info.empty-state .info-box-value {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #f8fafc !important;
+}
+
+/* --- Avatar circle (spans both rows) --- */
+#selected-user-info .customer-avatar {
+    grid-row: 1 / 3;
+    grid-column: 1;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(0, 210, 255, 0.15), rgba(168, 85, 247, 0.15));
+    border: 2px solid rgba(0, 210, 255, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    overflow: hidden;
+    box-shadow: 0 0 12px rgba(0, 210, 255, 0.15);
+    align-self: center;
+}
+
+/* --- Name block (row 1, col 2) --- */
+#selected-user-info .customer-name-block {
+    grid-row: 1;
+    grid-column: 2;
+    min-width: 0;
+    overflow: hidden;
+}
+
+#selected-user-info .customer-name {
+    font-size: clamp(14px, 1.6vw, 17px);
+    font-weight: 700;
+    color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+    text-shadow: 0 0 6px rgba(255, 255, 255, 0.1);
+}
+
+#selected-user-info .customer-number {
+    font-size: 12px;
+    font-weight: 500;
+    color: #94a3b8;
+    margin-left: 4px;
+}
+
+/* --- Saldo container (row 2, col 2): [Current] → [New] --- */
+#selected-user-info .customer-saldo-container {
+    grid-row: 2;
+    grid-column: 2;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+#selected-user-info .saldo-arrow {
+    color: #475569;
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+/* --- Info boxes within saldo row --- */
+#selected-user-info .info-box {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 4px;
+    border-bottom: none;
+    padding-bottom: 0;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+#selected-user-info .info-box:last-of-type {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* Saldo labels inline next to values */
+#selected-user-info .customer-saldo-container .info-box-label {
+    font-size: 9px;
+    white-space: nowrap;
+}
+
+#selected-user-info .customer-saldo-container .info-box-value {
+    font-size: 15px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* --- Close / deselect button (spans both rows) --- */
+#selected-user-info .deselect-user-btn {
+    grid-row: 1 / 3;
+    grid-column: 3;
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    align-self: center;
+    transition: all 0.2s ease;
+    box-shadow: none;
+}
+
+#selected-user-info .deselect-user-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #f87171;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+    transform: scale(1.08);
+}
+
+#selected-user-info .deselect-user-btn:active {
+    transform: scale(0.95);
+    background: rgba(239, 68, 68, 0.3);
+}
+
+/* --- General info-box styling --- */
 .info-box {
     display: flex;
     flex-direction: column;
@@ -213,25 +270,29 @@
 }
 
 .info-box-label {
-    font-size: 13px;
+    font-size: 10px;
     font-weight: 600;
-    color: #5d4037;
-    font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
+    color: #64748b;
+    font-family: var(--font-body);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .info-box-value {
-    font-size: clamp(16px, 2vw, 20px);
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 800;
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: #3e2723;
-    font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
+    color: #00d2ff;
+    font-family: var(--font-body);
+    text-shadow: 0 0 8px rgba(0, 210, 255, 0.3);
 }
 
 .info-box-value.negative {
-    color: #c62828;
+    color: #ef4444;
+    text-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
 
 #new-balance-info {
@@ -244,8 +305,8 @@
    ============================================================ */
 
 #user-selection-area {
-    border-top: 2px solid rgba(168, 85, 247, 0.15);
-    padding-top: clamp(4px, 1vw, 8px);
+    border-top: 1px solid rgba(0, 210, 255, 0.2);
+    padding-top: clamp(8px, 1.5vw, 12px);
     padding-bottom: 0;
     margin-bottom: 0;
     display: flex;
@@ -254,27 +315,29 @@
 }
 
 #select-customer-main-btn {
-    background: var(--warning-gradient);
-    color: #fff;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+    color: #00d2ff;
     padding: clamp(10px, 2vw, 16px);
     font-size: clamp(16px, 1.8vw, 18px);
     font-family: var(--font-body);
-    border: none;
-    border-radius: var(--unstoppable-radius-sm);
+    border: 1px solid rgba(0, 210, 255, 0.3);
+    border-radius: var(--aurora-radius-sm);
     cursor: pointer;
     margin-bottom: 0;
     font-weight: 700;
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     transition: all 0.2s ease;
 }
 
 #select-customer-main-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 210, 255, 0.15);
+    background: rgba(0, 210, 255, 0.1);
 }
 
 #user-selection-actions {
     display: flex;
+    flex-direction: column;
     gap: clamp(6px, 1.5vw, 12px);
     align-items: stretch;
 }
@@ -312,7 +375,7 @@
 .avatar-row-header {
     background: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(6, 182, 212, 0.08) 100%);
     border: 2px solid rgba(168, 85, 247, 0.15);
-    border-radius: var(--unstoppable-radius);
+    border-radius: var(--Aurora-radius);
     padding: 10px 14px;
     margin-bottom: 10px;
     box-shadow: 0 4px 15px rgba(168, 85, 247, 0.1);
@@ -336,7 +399,7 @@
 
 .avatar-row-description {
     font-size: 14px;
-    color: #6b7280;
+    color: #cbd5e1;
     font-weight: 400;
     font-family: var(--font-body);
     margin: -4px 0 8px;
@@ -351,7 +414,7 @@
 .avatar-row-lock-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(255, 251, 247, 0.85) 0%, rgba(255, 245, 235, 0.85) 100%);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     display: flex;
@@ -359,8 +422,8 @@
     align-items: center;
     justify-content: center;
     z-index: 3;
-    border-radius: var(--unstoppable-radius);
-    color: #6b7280;
+    border-radius: var(--Aurora-radius);
+    color: #cbd5e1;
     text-align: center;
 }
 
@@ -368,7 +431,7 @@
     display: none;
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(255, 251, 247, 0.7) 0%, rgba(255, 245, 235, 0.7) 100%);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.7) 100%);
     backdrop-filter: blur(3px);
     -webkit-backdrop-filter: blur(3px);
     align-items: center;
@@ -411,7 +474,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, rgba(255, 251, 247, 0.95) 0%, rgba(255, 245, 235, 0.95) 100%);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
     border: 2px solid rgba(168, 85, 247, 0.2);
     box-shadow: 0 4px 15px rgba(168, 85, 247, 0.15);
     font-size: 24px;
@@ -452,7 +515,7 @@
 }
 
 .avatar-option {
-    border-radius: var(--unstoppable-radius);
+    border-radius: var(--Aurora-radius);
     position: relative;
     background: linear-gradient(145deg, #fef7f0 0%, #fff5eb 100%);
     cursor: pointer;
@@ -513,7 +576,7 @@
     height: 32px;
     border-radius: 999px;
     border: none;
-    background: linear-gradient(135deg, rgba(255, 251, 247, 0.95) 0%, rgba(255, 245, 235, 0.95) 100%);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
     font-size: 16px;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -562,8 +625,8 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #fffbf7 0%, #fff5eb 100%);
-    color: #374151;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #f8fafc;
     border: 2px solid rgba(168, 85, 247, 0.2);
     font-size: 28px;
     line-height: 1;
@@ -579,7 +642,7 @@
     height: 50px;
     border-radius: 50%;
     border: none;
-    background: linear-gradient(135deg, rgba(255, 251, 247, 0.95) 0%, rgba(255, 245, 235, 0.95) 100%);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
     font-size: 32px;
     cursor: pointer;
     box-shadow: 0 4px 15px rgba(168, 85, 247, 0.2);
@@ -599,15 +662,7 @@
     right: -60px;
 }
 
-#logged-in-user-avatar {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid rgba(168, 85, 247, 0.3);
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 15px rgba(168, 85, 247, 0.2);
-}
+#logged-in-user-avatar { width: calc(100% + 4px) !important; height: calc(100% + 4px) !important; border-radius: 50%; object-fit: cover; border: none; transition: all 0.2s ease; margin: -2px; }
 
 .user-info-cluster:hover #logged-in-user-avatar {
     transform: translateY(-2px);

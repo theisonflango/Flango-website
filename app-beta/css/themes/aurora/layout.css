@@ -1,0 +1,92 @@
+/* ============================================================
+   AURORA THEME - LAYOUT STYLES
+   Main Grid, Sidebar, Products Area, Containers
+   ============================================================ */
+
+/* Main App Grid Layout — header spans full width, sidebar takes full right column */
+#main-app {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+        "header     header"
+        "products   sidebar";
+    gap: 8px 16px;
+    width: 100%;
+    height: 100%;
+    padding: 12px 16px 16px;
+    box-sizing: border-box;
+    position: relative;
+    background: transparent;
+}
+
+/* Products Area */
+#products-area {
+    grid-area: products;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    height: 100%;
+    min-height: 0;
+    position: relative;
+}
+
+/* Header — full width bar */
+.sidebar-main-header {
+    grid-area: header;
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%); 
+    border-radius: var(--aurora-radius-lg); 
+    padding: 12px 20px; 
+    border: 1px solid rgba(168, 85, 247, 0.2); 
+    box-shadow: var(--aurora-shadow); 
+    gap: 20px;
+}
+
+#sidebar {
+    grid-area: sidebar;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+    border-radius: var(--aurora-radius-lg);
+    border: 1px solid rgba(0, 210, 255, 0.2);
+    box-shadow: var(--aurora-shadow);
+    overflow: hidden;
+    padding: 20px;
+}
+
+/* Session banner hidden in Aurora — info is in the header bar */
+.user-session-banner {
+    display: none;
+}
+
+/* ============================================================
+   MEDIA QUERIES
+   ============================================================ */
+
+@media (max-width:800px) {
+    body {
+        overflow: auto;
+        height: auto;
+    }
+
+    #main-app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        grid-template-areas:
+            "header"
+            "products"
+            "sidebar";
+        height: auto;
+        padding: 10px;
+        gap: 10px;
+    }
+
+    #sidebar {
+        min-height: 400px;
+    }
+}

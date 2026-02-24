@@ -1989,6 +1989,21 @@ async function openCafeEventSettingsModal() {
     daysRow.appendChild(daysInput);
     group.appendChild(daysRow);
 
+    // Toggle: Vis som produkter
+    const displayRow = document.createElement('div');
+    displayRow.className = 'cafe-event-settings-row';
+    const displayLabel = document.createElement('label');
+    displayLabel.textContent = 'Vis arrangementer på samme måde som produkter';
+    displayLabel.htmlFor = 'cafe-events-display';
+    const displayCheckbox = document.createElement('input');
+    displayCheckbox.type = 'checkbox';
+    displayCheckbox.id = 'cafe-events-display';
+    displayCheckbox.checked = settings.cafe_events_as_products;
+    displayCheckbox.style.cssText = 'width: 20px; height: 20px; cursor: pointer;';
+    displayRow.appendChild(displayLabel);
+    displayRow.appendChild(displayCheckbox);
+    group.appendChild(displayRow);
+
     contentEl.appendChild(group);
 
     // Gem knap
@@ -2000,6 +2015,7 @@ async function openCafeEventSettingsModal() {
 
     saveBtn.addEventListener('click', async () => {
         const enabled = toggleCheckbox.checked;
+        const asProducts = displayCheckbox.checked;
         const days = Math.max(1, Math.min(90, parseInt(daysInput.value, 10) || 14));
         saveBtn.disabled = true;
         saveBtn.textContent = 'Gemmer...';
@@ -2007,6 +2023,7 @@ async function openCafeEventSettingsModal() {
         const { error } = await saveCafeEventSettings(institutionId, {
             cafe_events_enabled: enabled,
             cafe_events_days_ahead: days,
+            cafe_events_as_products: asProducts,
         });
 
         if (error) {
@@ -2021,6 +2038,7 @@ async function openCafeEventSettingsModal() {
         if (window.__flangoInstitutionSettings) {
             window.__flangoInstitutionSettings.cafeEventsEnabled = enabled;
             window.__flangoInstitutionSettings.cafeEventsDaysAhead = days;
+            window.__flangoInstitutionSettings.cafeEventsAsProducts = asProducts;
         }
 
         settingsModalGoBack();

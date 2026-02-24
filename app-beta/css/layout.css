@@ -27,6 +27,7 @@
     flex-direction: column;
     gap: 6px;
     height: 100%;
+    min-height: 0;
     position: relative;
 }
 
@@ -37,6 +38,7 @@
 
 #sidebar {
     grid-area: sidebar;
+    min-height: 0;
 }
 
 .user-session-banner {

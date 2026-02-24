@@ -689,13 +689,14 @@ export function setupEventAdminModule(config) {
 
         // Register
         const result = await registerUserForEvent(eventId, selectedUser.id, adminOverride);
-        if (!result.success) {
-            showAlert(result.error || 'Kunne ikke tilmelde bruger.');
+        console.log('[event-admin] registerUserForEvent result:', result);
+        if (!result || !result.success) {
+            showAlert(result?.error || 'Kunne ikke tilmelde bruger.');
             return;
         }
 
+        await openEventDetail(eventId); // Refresh listen FØRST — så brugeren ser den nye tilmelding
         showCustomAlert('Tilmeldt', `${selectedUser.name} er tilmeldt!`);
-        openEventDetail(eventId); // Refresh
     }
 
     // ========================================================================

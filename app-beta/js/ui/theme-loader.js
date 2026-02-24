@@ -18,10 +18,10 @@ const THEME_CSS_FILES = [
 const MOBILE_CSS_FILE = 'mobile.css';
 
 // Themes that use a complete theme-pack (CSS file replacement)
-const THEME_PACK_THEMES = ['flango-unstoppable', 'klart'];
+const THEME_PACK_THEMES = ['flango-unstoppable', 'klart', 'aurora'];
 
 // All valid themes
-const ALL_VALID_THEMES = ['flango-unstoppable', 'klart'];
+const ALL_VALID_THEMES = ['flango-unstoppable', 'klart', 'aurora'];
 
 /**
  * Check if a theme uses a theme-pack (complete CSS replacement)

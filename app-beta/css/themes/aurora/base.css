@@ -1,0 +1,341 @@
+/* ============================================================
+   AURORA THEME - BASE STYLES
+   A modern POS for kids: playful, premium, professional, colorful
+   "Candy-tech" meets luxury
+   ============================================================ */
+
+/* ============================================================
+   FONT IMPORTS
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+
+/* ============================================================
+   CSS VARIABLES - Aurora COLOR PALETTE
+   Vibrant gradients, no pure white/black
+   ============================================================ */
+
+:root {
+    /* Primary: Electric Violet / Magenta */
+    --primary-color: #00d2ff;
+    --primary-dark: #00a8cc;
+    --primary-light: #80e5ff;
+
+    /* Secondary: Cyan / Teal */
+    --secondary-color: #ff00c8;
+    --secondary-dark: #cc00a0;
+    --secondary-light: #ff80e3;
+
+    /* Admin: Deep Purple */
+    --admin-color: #7c3aed;
+
+    /* Backgrounds: Warm cream & soft gradients (never pure white) */
+    --background-light: #0f172a;
+    --background-warm: #1e293b;
+    --background-cool: #020617;
+
+    /* Card/Container backgrounds (tinted, not white) */
+    --white: #1e293b;
+    --card-bg: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+
+    /* Product cards: Warm peachy tones */
+    --product-bg: linear-gradient(145deg, #334155 0%, #1e293b 100%);
+    --product-border: #475569;
+
+    /* Status colors */
+    --success-color: #10b981;
+    --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --reset-color: #94a3b8;
+    --warning-color: #f59e0b;
+    --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    --danger-color: #ef4444;
+    --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+
+    /* Typography */
+    --font-body: "Outfit", sans-serif;
+    --font-heading: "Space Grotesk", sans-serif;
+
+    /* Aurora specific */
+    --Aurora-glow: 0 0 20px rgba(168, 85, 247, 0.4);
+    --Aurora-shadow: 0 8px 32px rgba(124, 58, 237, 0.15);
+    --Aurora-shadow-hover: 0 12px 40px rgba(168, 85, 247, 0.25);
+    --Aurora-radius: 16px;
+    --Aurora-radius-lg: 24px;
+    --Aurora-radius-sm: 12px;
+
+    /* Gradient presets */
+    --gradient-primary: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+    --gradient-secondary: linear-gradient(135deg, #ff00c8 0%, #ff8a00 100%);
+    --gradient-warm: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    --gradient-cool: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+    --gradient-sunset: linear-gradient(135deg, #ff00c8 0%, #00d2ff 100%);
+    --gradient-candy: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
+    --gradient-body: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+}
+
+/* ============================================================
+   BODY RESET - Aurora STYLE
+   ============================================================ */
+
+body {
+    font-family: var(--font-body);
+    background: var(--gradient-body);
+    background-attachment: fixed;
+    color: #f8fafc;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    min-height: 100vh;
+}
+
+/* ============================================================
+   TYPOGRAPHY - HEADINGS WITH GRADIENTS
+   ============================================================ */
+
+h1,
+h2 {
+    font-family: var(--font-heading);
+}
+
+h2 {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-align: left;
+    font-size: clamp(22px, 2.6vw, 32px);
+    margin: 0;
+}
+
+h3 {
+    font-family: var(--font-heading);
+    background: var(--gradient-secondary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    border-bottom: 2px solid #e0e7ff;
+    padding-bottom: 10px;
+    margin-top: 20px;
+}
+
+/* ============================================================
+   LOGIN CONTAINER - PREMIUM GLASS CARD
+   ============================================================ */
+
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 40px;
+    border-radius: var(--Aurora-radius-lg);
+    border: 2px solid rgba(168, 85, 247, 0.15);
+    box-shadow: var(--Aurora-shadow);
+    width: 90%;
+    max-width: 450px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decorative gradient border effect */
+.login-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+}
+
+.login-logo {
+    max-width: 250px;
+    height: auto;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 4px 12px rgba(168, 85, 247, 0.2));
+}
+
+.lock-icon {
+    font-size: 50px;
+    margin-bottom: 10px;
+    filter: drop-shadow(0 4px 8px rgba(168, 85, 247, 0.3));
+}
+
+.login-container h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.login-container select,
+.login-container input,
+.login-container button {
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+    border-radius: var(--Aurora-radius-sm);
+    margin-top: 15px;
+    box-sizing: border-box;
+    font-family: var(--font-body);
+    transition: all 0.2s ease;
+}
+
+.login-container select,
+.login-container input {
+    border: 2px solid #334155;
+    background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+}
+
+.login-container select:focus,
+.login-container input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.15);
+}
+
+.login-container button {
+    background: var(--success-gradient);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    transition: all 0.15s ease;
+}
+
+.login-container button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.login-container button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+}
+
+.login-container label {
+    font-weight: 600;
+    align-self: flex-start;
+    margin: 6px 0 2px;
+    color: #cbd5e1;
+}
+
+/* ============================================================
+   LOGIN SCREEN
+   ============================================================ */
+
+#login-screen {
+    text-align: center;
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 40px;
+    border-radius: var(--Aurora-radius-lg);
+    border: 2px solid rgba(168, 85, 247, 0.15);
+    box-shadow: var(--Aurora-shadow);
+}
+
+.login-options {
+    width: 100%;
+}
+
+#quick-login-btn {
+    background: var(--success-gradient);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+#quick-login-btn:hover {
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    transform: translateY(-2px);
+}
+
+#start-login-btn {
+    background: var(--gradient-secondary);
+    box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+}
+
+#start-login-btn:hover {
+    box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+    transform: translateY(-2px);
+}
+
+/* ============================================================
+   LOGIN VARIANTS & COMPONENTS
+   ============================================================ */
+
+#pin-modal-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.secondary-action {
+    background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%) !important;
+    box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3) !important;
+}
+
+.secondary-action:hover {
+    box-shadow: 0 6px 16px rgba(100, 116, 139, 0.4) !important;
+    transform: translateY(-2px);
+}
+
+.login-error {
+    color: var(--danger-color);
+    margin-top: 15px;
+    font-weight: bold;
+    padding: 10px;
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border-radius: var(--Aurora-radius-sm);
+    border: 1px solid #fecaca;
+}
+
+.login-subtitle {
+    margin: -6px 0 14px;
+    color: #cbd5e1;
+    font-size: 16px;
+}
+
+#admin-user-select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #334155;
+    border-radius: var(--Aurora-radius-sm);
+    font-size: 16px;
+    box-sizing: border-box;
+    background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+    transition: all 0.2s ease;
+}
+
+#admin-user-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.15);
+}
+
+.switch-club-btn {
+    background: none;
+    border: none;
+    color: var(--secondary-color);
+    text-decoration: none;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 6px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.switch-club-btn:hover {
+    color: var(--secondary-dark);
+    text-decoration: underline;
+}

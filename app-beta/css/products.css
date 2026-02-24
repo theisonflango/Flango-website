@@ -15,7 +15,7 @@
     overflow-y: auto;
     height: 100%;
     align-content: stretch;
-    grid-auto-rows: 1fr;
+    grid-auto-rows: minmax(130px, 1fr);
     flex: 1;
     min-height: 0;
     position: relative;
@@ -173,147 +173,89 @@ body.reorder-mode .product-reorder-add-btn {
 }
 
 /* ===== Dynamisk produkt-grid (1–10 produkter) ===== */
+@media (min-width: 1025px) {
+    /* 1 produkt → centreret, samme størrelse som i 3-kolonne grid */
+    #products:has(> .product-btn:first-child:last-child) {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
 
-/* 1 produkt → centreret, samme størrelse som i 3-kolonne grid */
-#products:has(> .product-btn:first-child:last-child) {
-    grid-template-columns: 1fr;
-    justify-items: center;
-}
+    #products:has(> .product-btn:first-child:last-child) > .product-btn {
+        max-width: calc((100% - 30px) / 3);
+        width: 100%;
+    }
 
-#products:has(> .product-btn:first-child:last-child) > .product-btn {
-    max-width: calc((100% - 30px) / 3);
-    width: 100%;
-}
+    /* 2 produkter → 1x2 grid */
+    #products:has(> .product-btn:nth-child(2):last-child) {
+        grid-template-columns: repeat(2, 1fr);
+    }
 
-/* 2 produkter → 1x2 grid */
-#products:has(> .product-btn:nth-child(2):last-child) {
-    grid-template-columns: repeat(2, 1fr);
-}
+    /* 3 produkter → 1x3 grid (standard) */
+    #products:has(> .product-btn:nth-child(3):last-child) {
+        grid-template-columns: repeat(3, 1fr);
+    }
 
-/* 3 produkter → 1x3 grid (standard) */
-#products:has(> .product-btn:nth-child(3):last-child) {
-    grid-template-columns: repeat(3, 1fr);
-}
+    /* 4 produkter → 2x2 grid */
+    #products:has(> .product-btn:nth-child(4):last-child) {
+        grid-template-columns: repeat(2, 1fr);
+    }
 
-/* 4 produkter → 2x2 grid */
-#products:has(> .product-btn:nth-child(4):last-child) {
-    grid-template-columns: repeat(2, 1fr);
-}
+    /* 5 produkter → 3 kolonner + hero-kort */
+    #products:has(> .product-btn:nth-child(5):last-child) {
+        grid-template-columns: repeat(3, 1fr);
+    }
 
-/* 5 produkter → 3 kolonner + hero-kort */
-#products:has(> .product-btn:nth-child(5):last-child) {
-    grid-template-columns: repeat(3, 1fr);
-}
+    /* Hero-kort: første produkt er bredere (span 2 kolonner) når der er præcis 5 produkter */
+    #products:has(> .product-btn:nth-child(5):last-child) > .product-btn:first-child {
+        grid-column: span 2;
+    }
 
-/* Hero-kort: første produkt er bredere (span 2 kolonner) når der er præcis 5 produkter */
-#products:has(> .product-btn:nth-child(5):last-child) > .product-btn:first-child {
-    grid-column: span 2;
-}
+    /* ===== 6 produkter → 3×2 symmetrisk grid ===== */
+    #products:has(> .product-btn:nth-child(6):last-child) {
+        grid-template-columns: repeat(3, 1fr);
+    }
 
-/* ===== 6 produkter → 3×2 symmetrisk grid ===== */
-#products:has(> .product-btn:nth-child(6):last-child) {
-    grid-template-columns: repeat(3, 1fr);
-}
+    /* ===== 7 produkter → Diagonal Balance Layout ===== */
+    #products:has(> .product-btn:nth-child(7):last-child) {
+        grid-template-columns: repeat(3, 1fr);
+    }
 
-/* ===== 7 produkter → Diagonal Balance Layout ===== */
-/*
- * Visuelt layout:
- * ┌────────────┬────────────┬────────────┐
- * │   HERO     │   HERO     │  Prod 2    │
- * │  (span 2)  │  (span 2)  │            │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 3    │  Prod 4    │  Prod 5    │
- * ├────────────┼────────────┴────────────┤
- * │  Prod 6    │     Prod 7 (span 2)     │
- * └────────────┴─────────────────────────┘
- *
- * Designrationale:
- * - Hero (første produkt) forankrer top-venstre
- * - Sidste produkt forankrer bund-højre
- * - Skaber diagonal balance og visuel spænding
- * - Ingen tomme celler: 5×1 + 2×2 = 9 celler
- */
-#products:has(> .product-btn:nth-child(7):last-child) {
-    grid-template-columns: repeat(3, 1fr);
-}
+    /* Hero: Første produkt spænder 2 kolonner */
+    #products:has(> .product-btn:nth-child(7):last-child) > .product-btn:first-child {
+        grid-column: span 2;
+    }
 
-/* Hero: Første produkt spænder 2 kolonner */
-#products:has(> .product-btn:nth-child(7):last-child) > .product-btn:first-child {
-    grid-column: span 2;
-}
+    /* Anchor: Sidste produkt spænder 2 kolonner (diagonal balance) */
+    #products:has(> .product-btn:nth-child(7):last-child) > .product-btn:last-child {
+        grid-column: span 2;
+    }
 
-/* Anchor: Sidste produkt spænder 2 kolonner (diagonal balance) */
-#products:has(> .product-btn:nth-child(7):last-child) > .product-btn:last-child {
-    grid-column: span 2;
-}
+    /* ===== 8 produkter → Hero + 7 normale ===== */
+    #products:has(> .product-btn:nth-child(8):last-child) {
+        grid-template-columns: repeat(3, 1fr);
+    }
 
-/* ===== 8 produkter → Hero + 7 normale ===== */
-/*
- * Visuelt layout:
- * ┌────────────┬────────────┬────────────┐
- * │   HERO     │   HERO     │  Prod 2    │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 3    │  Prod 4    │  Prod 5    │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 6    │  Prod 7    │  Prod 8    │
- * └────────────┴────────────┴────────────┘
- *
- * Hero forankrer øverst, resten fylder symmetrisk.
- * 1×2 + 7×1 = 9 celler (3×3 grid)
- */
-#products:has(> .product-btn:nth-child(8):last-child) {
-    grid-template-columns: repeat(3, 1fr);
-}
+    #products:has(> .product-btn:nth-child(8):last-child) > .product-btn:first-child {
+        grid-column: span 2;
+    }
 
-#products:has(> .product-btn:nth-child(8):last-child) > .product-btn:first-child {
-    grid-column: span 2;
-}
+    /* ===== 9 produkter → Perfekt 3×3 grid (ingen hero) ===== */
+    #products:has(> .product-btn:nth-child(9):last-child) {
+        grid-template-columns: repeat(3, 1fr);
+    }
 
-/* ===== 9 produkter → Perfekt 3×3 grid (ingen hero) ===== */
-/*
- * Visuelt layout:
- * ┌────────────┬────────────┬────────────┐
- * │  Prod 1    │  Prod 2    │  Prod 3    │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 4    │  Prod 5    │  Prod 6    │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 7    │  Prod 8    │  Prod 9    │
- * └────────────┴────────────┴────────────┘
- *
- * 9 er et perfekt kvadrattal - ingen hero nødvendig.
- * Symmetrisk og balanceret som det er.
- */
-#products:has(> .product-btn:nth-child(9):last-child) {
-    grid-template-columns: repeat(3, 1fr);
-}
+    /* ===== 10 produkter → Diagonal Balance (som 7) ===== */
+    #products:has(> .product-btn:nth-child(10):last-child) {
+        grid-template-columns: repeat(3, 1fr);
+    }
 
-/* ===== 10 produkter → Diagonal Balance (som 7) ===== */
-/*
- * Visuelt layout:
- * ┌────────────┬────────────┬────────────┐
- * │   HERO     │   HERO     │  Prod 2    │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 3    │  Prod 4    │  Prod 5    │
- * ├────────────┼────────────┼────────────┤
- * │  Prod 6    │  Prod 7    │  Prod 8    │
- * ├────────────┼────────────┴────────────┤
- * │  Prod 9    │    Prod 10 (span 2)     │
- * └────────────┴─────────────────────────┘
- *
- * Samme diagonal balance mønster som 7 produkter.
- * Hero top-left + anchor bottom-right.
- * 2×2 + 8×1 = 12 celler (3×4 grid)
- */
-#products:has(> .product-btn:nth-child(10):last-child) {
-    grid-template-columns: repeat(3, 1fr);
-}
+    #products:has(> .product-btn:nth-child(10):last-child) > .product-btn:first-child {
+        grid-column: span 2;
+    }
 
-#products:has(> .product-btn:nth-child(10):last-child) > .product-btn:first-child {
-    grid-column: span 2;
-}
-
-#products:has(> .product-btn:nth-child(10):last-child) > .product-btn:last-child {
-    grid-column: span 2;
+    #products:has(> .product-btn:nth-child(10):last-child) > .product-btn:last-child {
+        grid-column: span 2;
+    }
 }
 
 /* ===== 11+ produkter → Standard 3-kolonne grid ===== */

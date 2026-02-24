@@ -67,7 +67,72 @@ export function updateLoggedInUserDisplay(clerkProfile, avatarCache, constants) 
         if (shiftTimerPill) {
             sessionBanner.insertBefore(shiftTimerPill, adultNote);
         }
-    } else if (sessionBanner && getCurrentTheme() === 'klart') {
+    
+    } else if (sessionBanner && getCurrentTheme() === 'aurora') {
+        sessionBanner.querySelectorAll('.session-sticky-note').forEach(el => el.remove());
+        userDisplay.style.display = 'none';
+        sessionBanner.style.display = 'none';
+
+        const header = document.querySelector('.sidebar-main-header');
+        if (header) {
+            header.querySelectorAll('.aurora-institution-info, .aurora-user-info').forEach(el => el.remove());
+
+            const institutionName = localStorage.getItem('flango_institution_name') || '';
+            const isClerkMode = clerkProfile?.role !== 'admin';
+            
+            // Get level and stars
+            const minutes = clerkProfile?.total_minutes_worked || 0;
+            const sales = clerkProfile?.total_sales_count || 0;
+            const levelInfo = typeof calculateLevel === 'function' ? calculateLevel(minutes, sales) : { name: 'Nybegynder', stars: '' };
+            const starsHtml = levelInfo.stars ? `<span class="aurora-stars">${levelInfo.stars}</span>` : '';
+
+            const instInfo = document.createElement('div');
+            instInfo.className = 'aurora-institution-info';
+            instInfo.innerHTML = `
+                <div class="aurora-inst-icon">🏢</div>
+                <div class="aurora-inst-text">
+                    <div class="aurora-inst-name">${institutionName}</div>
+                    <div class="aurora-inst-meta">Flango System</div>
+                </div>
+            `;
+            header.insertBefore(instInfo, header.firstChild);
+
+            // Clerk and Adult info next to avatar
+            const userInfo = document.createElement('div');
+            userInfo.className = 'aurora-user-info';
+            userInfo.innerHTML = `
+                <div class="aurora-user-role">
+                    <div class="aurora-role-label">Ekspedient</div>
+                    <div class="aurora-role-name">${clerkName} ${starsHtml}</div>
+                </div>
+                <div class="aurora-user-role adult-role">
+                    <div class="aurora-role-label">🔐 Ansvarlig</div>
+                    <div class="aurora-role-name">${adultName}</div>
+                </div>
+            `;
+            
+            const headerActions = header.querySelector('.header-actions');
+            if (headerActions) {
+                const avatarBtn = headerActions.querySelector('#logged-in-user-avatar-container');
+                if (avatarBtn) {
+                    headerActions.insertBefore(userInfo, avatarBtn);
+                } else {
+                    headerActions.prepend(userInfo);
+                }
+            }
+
+            const shiftTimerPill = document.getElementById('shift-timer-pill');
+            if (shiftTimerPill && headerActions) {
+                // Sørg for at den ligger pænt blandt de andre action-knapper, fx før historik
+                const historyBtn = headerActions.querySelector('#toolbar-history-btn');
+                if (historyBtn) {
+                    headerActions.insertBefore(shiftTimerPill, historyBtn);
+                } else {
+                    headerActions.appendChild(shiftTimerPill);
+                }
+            }
+        }
+} else if (sessionBanner && getCurrentTheme() === 'klart') {
         // Klart theme: Simple header — institution info (left) + action buttons (right)
         // Avatar stays inside header-actions. Timer becomes a button in header-actions.
         sessionBanner.querySelectorAll('.session-sticky-note').forEach(el => el.remove());
@@ -210,7 +275,7 @@ export function updateSelectedUserInfo() {
             return box;
         };
 
-        const isKlart = getCurrentTheme() === 'klart';
+        const isKlart = getCurrentTheme() === 'klart' || getCurrentTheme() === 'aurora';
 
         if (!selectedUser) {
             console.log('[app-main] No user selected - showing empty state');
@@ -220,9 +285,20 @@ export function updateSelectedUserInfo() {
             });
             userInfoEl.appendChild(box);
             userInfoEl.style.display = isKlart ? 'flex' : 'grid';
+            
+            // IF aurora or klart, also add a specific class so CSS can target it
+            if (isKlart) {
+                 userInfoEl.classList.add('empty-state');
+            } else {
+                 userInfoEl.classList.remove('empty-state');
+            }
+            
             console.log('[app-main] Empty state rendered, children count:', userInfoEl.children.length);
             return;
         }
+
+        // Fjerne empty-state klassen hvis der er valgt en bruger
+        userInfoEl.classList.remove('empty-state');
 
         // Brug den centrale order-store til totalen
         const total = getOrderTotal();
@@ -318,37 +394,6 @@ export function updateSelectedUserInfo() {
             const nameLine = number ? `${name} (${number})` : name;
 
             const valgtBox = createInfoBox('Valgt:', nameLine);
-            const closeBtn = document.createElement('button');
-            closeBtn.innerHTML = '&times;';
-            closeBtn.className = 'deselect-user-btn';
-            closeBtn.style.cssText = `
-                position: absolute;
-                left: 8px;
-                top: 50%;
-                transform: translateY(-50%);
-                background: rgba(0, 0, 0, 0.1);
-                border: none;
-                border-radius: 50%;
-                width: 24px;
-                height: 24px;
-                cursor: pointer;
-                font-size: 20px;
-                line-height: 1;
-                color: #666;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-                transition: all 0.2s;
-            `;
-            closeBtn.title = 'Fjern valgt bruger';
-            closeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                deselectUser();
-            });
-            valgtBox.style.position = 'relative';
-            valgtBox.style.paddingLeft = '32px';
-            valgtBox.appendChild(closeBtn);
 
             userInfoEl.appendChild(valgtBox);
             userInfoEl.appendChild(createInfoBox('Nuværende Saldo:', `${currentBalance.toFixed(2)} kr.`));
@@ -356,6 +401,38 @@ export function updateSelectedUserInfo() {
                 valueClass: newBalance < 0 ? 'negative' : ''
             }));
             userInfoEl.style.display = 'grid';
+
+            // Close button — positioned top-right of the entire container
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '&times;';
+            closeBtn.className = 'deselect-user-btn';
+            closeBtn.style.cssText = `
+                position: absolute;
+                right: -8px;
+                top: -8px;
+                background: #fff;
+                border: 1px solid #d6e8f8;
+                border-radius: 50%;
+                width: 22px;
+                height: 22px;
+                cursor: pointer;
+                font-size: 14px;
+                line-height: 1;
+                color: #666;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                transition: all 0.2s;
+                z-index: 15;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            `;
+            closeBtn.title = 'Fjern valgt bruger';
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deselectUser();
+            });
+            userInfoEl.appendChild(closeBtn);
         }
 
         console.log('[app-main] RENDERED! Children count:', userInfoEl.children.length);
