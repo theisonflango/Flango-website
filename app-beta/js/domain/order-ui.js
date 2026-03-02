@@ -419,6 +419,17 @@ export async function addToOrder(product, currentOrder, orderListEl, totalPriceE
     const productsContainer = document.getElementById('products');
     const onOrderChanged = options.onOrderChanged;
 
+    // === CALCULATOR ITEMS: Skip ALLE limit-checks ===
+    if (product && product.is_calculator_item) {
+        currentOrder.push(product);
+        try { setOrder([...currentOrder]); } catch {}
+        clearEvaluation();
+        playSound('addItem');
+        renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo);
+        if (typeof onOrderChanged === 'function') onOrderChanged();
+        return { success: true };
+    }
+
     // 1) Hvis produktet allerede er låst visuelt, skal klik kun give feedback
     if (productsContainer && product && product.id != null) {
         const pid = String(product.id);

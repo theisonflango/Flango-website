@@ -23,6 +23,7 @@ import { showPinModal } from '../ui/user-modals.js';
 import { setupAvatarPicker } from '../ui/avatar-picker.js';
 import { setupKeyboardShortcuts } from '../ui/keyboard-shortcuts.js';
 import { setupRuntimeUIEvents } from '../ui/runtime-ui-events.js';
+import { initCalculatorMode } from '../ui/calculator-mode.js';
 // VIGTIGT: shift-timer importeres FØR clerk-login-modal for at sætte window.__flangoOpenShiftTimer
 import { initShiftTimer } from './shift-timer.js';
 import { setupClerkLoginButton } from '../ui/clerk-login-modal.js';
@@ -553,6 +554,11 @@ export async function startApp() {
         onOrderChanged: refreshProductLocks,
     });
 
+    // 8) Lommeregner-mode
+    initCalculatorMode();
+    window.__flangoRefreshProductLocks = refreshProductLocks;
+    window.__flangoAddToOrder = (product) => addToOrderWithLocks(product, currentOrder, orderList, totalPriceEl, updateSelectedUserInfo, { onOrderChanged: refreshProductLocks });
+
     const getAllUsers = () => allUsers;
     const setAllUsers = (next) => {
         allUsers = next;
@@ -798,12 +804,13 @@ export async function startApp() {
             return;
         }
 
-        // Ryd den gamle ordre og sukkerpolitik FØR vi sætter en ny bruger.
-        // Dette sikrer, at `applyProductLimitsToButtons` ikke bruger forældede data.
-        currentOrder = [];
+        // Bevar calculator-items i kurven ved brugerskift (bruger kan have fyldt kurv før kundevalg).
+        // Normale produkter ryddes fordi de kan have bruger-specifikke grænser.
+        const calcItems = currentOrder.filter(item => item.is_calculator_item);
+        currentOrder = calcItems;
         currentSugarData = null;
-        setOrder([]); // KRITISK: Sync order-store module state så getOrderTotal() returnerer 0
-        logDebugEvent('cart_cleared_on_user_switch', { newUserId: userId });
+        setOrder([...calcItems]); // Sync order-store — bevar calc-items
+        logDebugEvent('cart_cleared_on_user_switch', { newUserId: userId, preservedCalcItems: calcItems.length });
         clearEvaluation(); // Ryd evaluation cache så "Ny Saldo" vises korrekt
         renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
 

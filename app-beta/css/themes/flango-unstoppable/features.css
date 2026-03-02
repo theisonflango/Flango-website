@@ -66,8 +66,8 @@ h3 {
 .sidebar-main-header {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 8px 14px;
+    justify-content: space-between;
+    padding: 10px 16px;
     background: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(6, 182, 212, 0.08) 100%);
     border-radius: var(--unstoppable-radius);
     border: 2px solid rgba(168, 85, 247, 0.1);
@@ -75,8 +75,8 @@ h3 {
 }
 
 #logged-in-user-avatar-container {
-    width: 68px;
-    height: 68px;
+    width: 52px;
+    height: 52px;
     flex-shrink: 0;
     border-radius: 50%;
     background: linear-gradient(145deg, #fffbf7 0%, #fff5eb 100%);
@@ -106,15 +106,15 @@ h3 {
 .header-actions {
     display: flex;
     align-items: center;
-    justify-content: space-evenly;
-    gap: 12px;
-    width: 100%;
+    justify-content: flex-end;
+    gap: 10px;
+    flex: 1;
 }
 
 .header-action-btn {
-    width: 68px;
-    height: 68px;
-    padding: 8px 12px;
+    width: 52px;
+    height: 52px;
+    padding: 8px;
     border-radius: var(--unstoppable-radius);
     border: 2px solid rgba(168, 85, 247, 0.15);
     background: linear-gradient(145deg, rgba(255, 251, 247, 0.9) 0%, rgba(255, 245, 235, 0.9) 100%);
@@ -137,8 +137,8 @@ h3 {
 }
 
 .header-action-btn img {
-    width: 60px;
-    height: 60px;
+    width: 34px;
+    height: 34px;
     object-fit: contain;
 }
 

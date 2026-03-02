@@ -765,6 +765,8 @@ export async function handleCompletePurchase({
             return productId == null ? count + 1 : count;
         }, 0);
         const checkPromises = orderSnapshot.map(async (line) => {
+            // Calculator-items har ingen rigtig product_id — skip DB-validering
+            if (line.is_calculator_item) return { allowed: true };
             const productId = line.product_id || line.productId || line.id;
             const product = allProducts.find(p => p.id === productId);
             if (!productId) return { allowed: true };
@@ -972,6 +974,19 @@ export async function handleCompletePurchase({
         const effectiveUnitPrice = shouldBeFreePurchase
             ? 0
             : getBulkDiscountedUnitPrice(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
+        // Calculator items: gem med custom_price/custom_name, product_id kan være null
+        if (item.is_calculator_item) {
+            return {
+                product_id: item.quick_product_id || null,
+                quantity: item.count,
+                price: shouldBeFreePurchase ? 0 : item.price,
+                is_refill: false,
+                product_name: item.name,
+                custom_price: item.price,
+                custom_name: item.name,
+                is_calculator_item: true,
+            };
+        }
         return {
             product_id: item.id,
             quantity: item.count,

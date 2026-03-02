@@ -739,6 +739,7 @@ export function createProductManagementUI(options = {}) {
 
     async function showAddEditProductModal(product = null) {
         const isEditing = product !== null;
+        let currentProduct = product;
         const modal = document.getElementById('add-edit-product-modal');
         const title = document.getElementById('product-form-title');
         const fieldsContainer = document.getElementById('product-form-fields');
@@ -1354,9 +1355,9 @@ export function createProductManagementUI(options = {}) {
 
                 // Process image client-side: resize to 256x256, convert to WebP, compress
                 const processedBlob = await processImageForUpload(file);
-                const processedFile = new File([processedBlob], `${product.id}.webp`, { type: 'image/webp' });
+                const processedFile = new File([processedBlob], `${currentProduct.id}.webp`, { type: 'image/webp' });
 
-                const result = await uploadProductIcon(processedFile, institutionId, product.id, adminUserId);
+                const result = await uploadProductIcon(processedFile, institutionId, currentProduct.id, adminUserId);
 
                 if (result.success) {
                     currentIconUrl = result.icon_url;
@@ -1419,13 +1420,13 @@ export function createProductManagementUI(options = {}) {
 
         // Remove custom icon button
         removeCustomIconBtn?.addEventListener('click', async () => {
-            if (!isEditing || !currentIconUrl) return;
+            if (!currentProduct?.id || !currentIconUrl) return;
 
             removeCustomIconBtn.disabled = true;
             removeCustomIconBtn.textContent = 'Fjerner...';
 
             try {
-                const result = await removeProductIcon(product.id);
+                const result = await removeProductIcon(currentProduct.id);
                 if (result.success) {
                     currentIconUrl = null;
                     currentIconUpdatedAt = null;
@@ -1520,9 +1521,49 @@ export function createProductManagementUI(options = {}) {
         // ===== AI GENERATE HANDLER =====
         const handleAiGenerate = async () => {
             if (aiIsGenerating) return;
-            if (!isEditing || !product?.id) {
-                showAlert?.('Gem produktet først, derefter kan du generere et AI-ikon');
-                return;
+            if (!currentProduct?.id) {
+                // Product not yet saved — offer to save first so we can generate an icon
+                const nameVal = document.getElementById('product-name-input')?.value?.trim();
+                const priceVal = document.getElementById('product-price-input')?.value?.trim();
+                if (!nameVal || !priceVal) {
+                    showCustomAlert('Manglende felter', 'Udfyld produktnavn og pris før du genererer et ikon.');
+                    return;
+                }
+                const confirmed = await showCustomAlert(
+                    'Gem produkt',
+                    'Produktet skal gemmes før et AI-ikon kan genereres.',
+                    {
+                        type: 'confirm',
+                        okText: 'Gem og Generer Ikon',
+                        cancelText: 'Annuller',
+                    }
+                );
+                if (!confirmed) return;
+                // Save product to get an ID for icon generation
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Gemmer...';
+                try {
+                    const formData = await collectFormData();
+                    if (!formData) {
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = 'Gem Produkt';
+                        return;
+                    }
+                    const savedData = await handleAddProduct(formData);
+                    if (!savedData) {
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = 'Gem Produkt';
+                        return;
+                    }
+                    currentProduct = savedData;
+                    title.textContent = 'Rediger Produkt';
+                } catch (err) {
+                    showAlert?.('Fejl ved gemning: ' + (err.message || 'Ukendt fejl'));
+                    return;
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Gem Produkt';
+                }
             }
             const name = aiIconInput?.value?.trim();
             const referenceFile = aiSelectedPhoto || aiReferenceFile?.files?.[0] || null;
@@ -1558,7 +1599,7 @@ export function createProductManagementUI(options = {}) {
                 if (referenceFile) {
                     // Photo-mode: FormData (no Content-Type — browser sets boundary)
                     body = new FormData();
-                    body.append('product_id', product.id);
+                    body.append('product_id', currentProduct.id);
                     body.append('product_name', name || '');
                     body.append('reference_image', referenceFile);
                 } else {
@@ -1566,7 +1607,7 @@ export function createProductManagementUI(options = {}) {
                     headers['Content-Type'] = 'application/json';
                     body = JSON.stringify({
                         product_name: name,
-                        product_id: product.id,
+                        product_id: currentProduct.id,
                     });
                 }
 
@@ -1779,10 +1820,9 @@ export function createProductManagementUI(options = {}) {
             el.addEventListener('input', () => updateLabelText(el, zeroText));
         });
         modal.style.display = 'flex';
-        saveBtn.onclick = async () => {
-            // KRITISK: Prevent double-click under async operation
-            if (saveBtn.disabled) return;
 
+        // Shared form data collection — used by both save button and AI-generate flow
+        const collectFormData = async () => {
             const name = document.getElementById('product-name-input').value;
             const priceStr = document.getElementById('product-price-input').value;
             const maxPerDayStr = document.getElementById('product-max-per-day-input').value;
@@ -1791,11 +1831,13 @@ export function createProductManagementUI(options = {}) {
                 .filter(cb => cb.checked)
                 .map(cb => cb.value);
             if (!name || !priceStr) {
-                return showCustomAlert('Fejl', 'Udfyld venligst både produktnavn og pris.');
+                await showCustomAlert('Fejl', 'Udfyld venligst både produktnavn og pris.');
+                return null;
             }
             const maxPerDay = maxPerDayStr === '' ? null : Number(maxPerDayStr);
             if (maxPerDay !== null && (!Number.isFinite(maxPerDay) || maxPerDay < 0)) {
-                return showCustomAlert('Fejl', 'Købsgrænse skal være et ikke-negativt tal eller tom for ubegrænset.');
+                await showCustomAlert('Fejl', 'Købsgrænse skal være et ikke-negativt tal eller tom for ubegrænset.');
+                return null;
             }
             const bulkEnabled = !!(bulkDiscountEnabledCheckbox?.checked);
             let bulkDiscountQty = null;
@@ -1808,15 +1850,16 @@ export function createProductManagementUI(options = {}) {
                         qty: bulkDiscountQtyInput?.value,
                         price: bulkDiscountPriceInput?.value,
                     });
-                    return showCustomAlert('Fejl', 'Udfyld gyldigt antal (min. 2) og pris for mængderabat.');
+                    await showCustomAlert('Fejl', 'Udfyld gyldigt antal (min. 2) og pris for mængderabat.');
+                    return null;
                 }
             }
             const refillEnabled = !!(refillEnabledCheckbox?.checked);
-            const unhealthy = !!(unhealthyCheckbox?.checked);
-            const containsPork = !!(containsPorkCheckbox?.checked);
-            const isVegetarian = !!(isVegetarianCheckbox?.checked);
-            const isDailySpecial = !!(isDailySpecialCheckbox?.checked);
-            const isCoreAssortment = !!(isCoreAssortmentCheckbox?.checked);
+            const unhealthyVal = !!(unhealthyCheckbox?.checked);
+            const containsPorkVal = !!(containsPorkCheckbox?.checked);
+            const isVegetarianVal = !!(isVegetarianCheckbox?.checked);
+            const isDailySpecialVal = !!(isDailySpecialCheckbox?.checked);
+            const isCoreAssortmentVal = !!(isCoreAssortmentCheckbox?.checked);
             const parseNumber = (el, fallback = 0) => {
                 if (!el) return fallback;
                 const num = Number(el.value);
@@ -1825,6 +1868,34 @@ export function createProductManagementUI(options = {}) {
             const refillPrice = parseNumber(refillPriceInput, 0);
             const refillTimeLimitMinutes = parseNumber(refillTimeLimitInput, 0);
             const refillMaxRefills = parseNumber(refillMaxInput, 0);
+            return {
+                name,
+                priceStr,
+                emoji,
+                maxPerDay,
+                allergens: allergenSelections,
+                institutionId,
+                unhealthy: unhealthyVal,
+                containsPork: containsPorkVal,
+                isVegetarian: isVegetarianVal,
+                isDailySpecial: isDailySpecialVal,
+                isCoreAssortment: isCoreAssortmentVal,
+                bulkDiscountEnabled: bulkEnabled,
+                bulkDiscountQty,
+                bulkDiscountPriceOre,
+                refillEnabled,
+                refillPrice,
+                refillTimeLimitMinutes,
+                refillMaxRefills,
+            };
+        };
+
+        saveBtn.onclick = async () => {
+            // KRITISK: Prevent double-click under async operation
+            if (saveBtn.disabled) return;
+
+            const formData = await collectFormData();
+            if (!formData) return;
 
             // Disable og vis loading state
             saveBtn.disabled = true;
@@ -1832,48 +1903,11 @@ export function createProductManagementUI(options = {}) {
             saveBtn.textContent = 'Gemmer...';
 
             try {
-                if (isEditing) {
-                    await handleEditProduct(product.id, {
-                        name,
-                        priceStr,
-                        emoji: emoji,
-                        maxPerDay,
-                        allergens: allergenSelections,
-                        institutionId,
-                        unhealthy,
-                        containsPork,
-                        isVegetarian,
-                        isDailySpecial,
-                        isCoreAssortment,
-                        bulkDiscountEnabled: bulkEnabled,
-                        bulkDiscountQty,
-                        bulkDiscountPriceOre,
-                        refillEnabled,
-                        refillPrice,
-                        refillTimeLimitMinutes,
-                        refillMaxRefills,
-                    });
+                if (currentProduct?.id) {
+                    await handleEditProduct(currentProduct.id, formData);
                 } else {
-                    await handleAddProduct({
-                        name,
-                        priceStr,
-                        emoji: emoji,
-                        maxPerDay,
-                        allergens: allergenSelections,
-                        institutionId,
-                        unhealthy,
-                        containsPork,
-                        isVegetarian,
-                        isDailySpecial,
-                        isCoreAssortment,
-                        bulkDiscountEnabled: bulkEnabled,
-                        bulkDiscountQty,
-                        bulkDiscountPriceOre,
-                        refillEnabled,
-                        refillPrice,
-                        refillTimeLimitMinutes,
-                        refillMaxRefills,
-                    });
+                    const savedData = await handleAddProduct(formData);
+                    if (savedData) currentProduct = savedData;
                 }
                 closeEditProductModal();
             } catch (err) {
@@ -1988,6 +2022,7 @@ export function createProductManagementUI(options = {}) {
         await fetchAndRenderProducts?.();
         renderProductsInModalFn?.(getProducts(), modalProductList);
         console.log('[handleAddProduct] Product added and UI refreshed');
+        return data;
     }
 
     async function handleEditProduct(productId, productData) {

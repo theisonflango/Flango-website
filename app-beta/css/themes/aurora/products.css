@@ -586,10 +586,10 @@ body.reorder-mode .product-reorder-add-btn {
 .reorder-mode .product-edit-price-input {
     width: 64px;
     border: none;
-    background: transparent;
+    background: rgba(30, 41, 59, 0.8);
     font: inherit;
-    color: inherit;
-    outline: 1px dashed rgba(60, 35, 5, 0.35);
+    color: #f8fafc;
+    outline: 1px dashed rgba(168, 85, 247, 0.35);
     border-radius: 6px;
     padding: 2px 4px;
     cursor: text;

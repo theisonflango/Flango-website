@@ -93,6 +93,38 @@ body {
 }
 
 /* ============================================================
+   GLOBAL FORM ELEMENT FIX — Dark theme text readability
+   Browsere arver IKKE body color på form-elementer.
+   Sætter lys tekst + mørk baggrund på ALLE text-inputs.
+   ============================================================ */
+
+input,
+select,
+textarea,
+[contenteditable] {
+    color: #f8fafc;
+}
+
+/* Mørk baggrund på text-inputs (fanger ustyled inputs i events, settings, etc.) */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+select,
+textarea {
+    background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+    border-color: #334155;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #64748b;
+    opacity: 1;
+}
+
+select option {
+    background: #1e293b;
+    color: #f8fafc;
+}
+
+/* ============================================================
    TYPOGRAPHY - HEADINGS WITH GRADIENTS
    ============================================================ */
 
@@ -195,6 +227,7 @@ h3 {
 .login-container input {
     border: 2px solid #334155;
     background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+    color: #f8fafc;
 }
 
 .login-container select:focus,
@@ -314,6 +347,7 @@ h3 {
     font-size: 16px;
     box-sizing: border-box;
     background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+    color: #f8fafc;
     transition: all 0.2s ease;
 }
 
@@ -338,4 +372,203 @@ h3 {
 .switch-club-btn:hover {
     color: var(--secondary-dark);
     text-decoration: underline;
+}
+
+/* ============================================================
+   HISTORIK v2 — Dark theme variable overrides
+   historik.css uses CSS custom properties for all colors,
+   so we can remap them for Aurora's dark palette.
+   ============================================================ */
+
+body[data-theme="aurora"] {
+    --hv2-ink: #f8fafc;
+    --hv2-ink-soft: #cbd5e1;
+    --hv2-ink-muted: #94a3b8;
+    --hv2-surface: #0f172a;
+    --hv2-surface-raised: #1e293b;
+    --hv2-surface-sunken: #020617;
+    --hv2-border: #334155;
+    --hv2-border-strong: #475569;
+    --hv2-flango-light: rgba(245, 150, 10, 0.15);
+    --hv2-positive-light: rgba(22, 163, 74, 0.15);
+    --hv2-caution-light: rgba(234, 88, 12, 0.15);
+    --hv2-negative-light: rgba(220, 38, 38, 0.15);
+    --hv2-info-light: rgba(37, 99, 235, 0.15);
+    --hv2-purple-light: rgba(124, 58, 237, 0.15);
+}
+
+/* ============================================================
+   EVENTS.CSS — Dark theme overrides
+   events.css is always loaded and uses hardcoded light-theme
+   colors. These scoped overrides fix readability in Aurora.
+   ============================================================ */
+
+/* --- Event admin modal --- */
+body[data-theme="aurora"] .event-admin-modal {
+    background: #1e293b;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Event list items --- */
+body[data-theme="aurora"] .event-list-item {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    border-color: #334155;
+}
+body[data-theme="aurora"] .event-list-item:hover {
+    background: linear-gradient(145deg, #334155, #1e293b);
+    border-color: rgba(0, 210, 255, 0.35);
+}
+
+/* --- Event filter buttons --- */
+body[data-theme="aurora"] .event-filter-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+}
+body[data-theme="aurora"] .event-filter-btn:hover {
+    background: #334155;
+    border-color: #475569;
+}
+
+/* --- Event meta badges + summary cards --- */
+body[data-theme="aurora"] .event-meta-badge {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    border-color: #334155;
+}
+body[data-theme="aurora"] .event-meta-badge-label {
+    color: #94a3b8;
+}
+body[data-theme="aurora"] .event-meta-badge-value {
+    color: #f8fafc;
+}
+body[data-theme="aurora"] .event-summary-card {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    border-color: #334155;
+}
+body[data-theme="aurora"] .event-summary-card .summary-label {
+    color: #94a3b8;
+}
+body[data-theme="aurora"] .event-summary-card .summary-value {
+    color: #f8fafc;
+}
+body[data-theme="aurora"] .event-summary-card .summary-sub {
+    color: #94a3b8;
+}
+
+/* --- Event registration table --- */
+body[data-theme="aurora"] .event-reg-table th {
+    background: linear-gradient(180deg, #1e293b, #0f172a);
+    color: #94a3b8;
+    border-bottom-color: #334155;
+}
+body[data-theme="aurora"] .event-reg-table th.event-reg-sortable:hover {
+    background: #334155;
+}
+body[data-theme="aurora"] .event-reg-table tbody tr:nth-child(even) {
+    background: rgba(30, 41, 59, 0.5);
+}
+body[data-theme="aurora"] .event-reg-table tbody tr:hover {
+    background: rgba(0, 210, 255, 0.08) !important;
+}
+body[data-theme="aurora"] .event-reg-table td {
+    border-bottom-color: #1e293b;
+}
+body[data-theme="aurora"] .event-reg-table .reg-name {
+    color: #f8fafc;
+}
+body[data-theme="aurora"] .event-reg-table .reg-number,
+body[data-theme="aurora"] .event-reg-table .reg-grade {
+    color: #94a3b8;
+}
+body[data-theme="aurora"] .event-reg-list-header {
+    color: #e2e8f0;
+}
+
+/* --- Event action buttons --- */
+body[data-theme="aurora"] .event-action-btn.secondary {
+    background: #334155;
+    color: #f8fafc;
+    border-color: #475569;
+}
+body[data-theme="aurora"] .event-action-btn.secondary:hover {
+    background: #475569;
+    border-color: #64748b;
+}
+body[data-theme="aurora"] .event-cancel-btn {
+    background: #334155;
+    color: #cbd5e1;
+    border-color: #475569;
+}
+body[data-theme="aurora"] .event-cancel-btn:hover {
+    background: #475569;
+}
+
+/* --- Event form inputs --- */
+body[data-theme="aurora"] .event-form input[type="text"],
+body[data-theme="aurora"] .event-form input[type="number"],
+body[data-theme="aurora"] .event-form input[type="datetime-local"],
+body[data-theme="aurora"] .event-form textarea {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    border-color: #334155;
+    color: #f8fafc;
+}
+
+/* --- Café event strip mini-cards --- */
+body[data-theme="aurora"] .cafe-event-card {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    border-color: #334155;
+}
+body[data-theme="aurora"] .cafe-event-card:hover {
+    border-color: var(--primary-color, #00d2ff);
+    box-shadow: 0 4px 12px rgba(0, 210, 255, 0.15);
+}
+body[data-theme="aurora"] .cafe-event-title {
+    color: #f8fafc;
+}
+body[data-theme="aurora"] .cafe-event-price {
+    color: #cbd5e1;
+}
+body[data-theme="aurora"] .cafe-event-days,
+body[data-theme="aurora"] .cafe-event-datetime {
+    color: #94a3b8;
+}
+body[data-theme="aurora"] .cafe-event-progress {
+    background: #334155;
+}
+body[data-theme="aurora"] .cafe-event-card.full {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+/* --- Event settings modal --- */
+body[data-theme="aurora"] .cafe-event-settings-row label {
+    color: #cbd5e1;
+}
+body[data-theme="aurora"] .cafe-event-settings-row input[type="number"] {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    border-color: #334155;
+    color: #f8fafc;
+}
+
+/* ============================================================
+   ADMIN PORTAL v2 — Dark theme variable overrides
+   admin-portal-v2.css scopes variables under .portal-v2
+   ============================================================ */
+
+body[data-theme="aurora"] .portal-v2 {
+    --ink: #f8fafc;
+    --ink-soft: #cbd5e1;
+    --ink-muted: #94a3b8;
+    --surface: #0f172a;
+    --surface-raised: #1e293b;
+    --surface-sunken: #020617;
+    --surface-hover: #334155;
+    --border: #334155;
+    --border-strong: #475569;
+    --flango-light: rgba(245, 150, 10, 0.15);
+    --positive-light: rgba(22, 163, 74, 0.15);
+    --caution-light: rgba(234, 88, 12, 0.15);
+    --negative-light: rgba(220, 38, 38, 0.15);
+    --info-light: rgba(37, 99, 235, 0.15);
+    --purple-light: rgba(124, 58, 237, 0.15);
 }

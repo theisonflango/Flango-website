@@ -43,12 +43,18 @@ export function updateLoggedInUserDisplay(clerkProfile, avatarCache, constants) 
         // Remove existing sticky notes if any
         sessionBanner.querySelectorAll('.session-sticky-note').forEach(el => el.remove());
 
-        // Create clerk sticky note
+        // Create clerk sticky note — show first name + level stars/crown
+        const clerkFirstName = clerkName.split(' ')[0];
+        const clerkLevel = calculateLevel(
+            clerkProfile?.total_minutes_worked || 0,
+            clerkProfile?.total_sales_count || 0
+        );
+        const levelIndicator = clerkLevel.stars ? ` ${clerkLevel.stars}` : '';
         const clerkNote = document.createElement('div');
         clerkNote.className = 'session-sticky-note clerk-note';
         clerkNote.innerHTML = `
             <div class="sticky-label">Ekspedient:</div>
-            <div class="sticky-name">${clerkName}</div>
+            <div class="sticky-name">${clerkFirstName}${levelIndicator}</div>
         `;
 
         // Create adult sticky note

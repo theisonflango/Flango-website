@@ -1,4 +1,5 @@
 import { logDebugEvent } from '../core/debug-flight-recorder.js';
+import { isCalculatorModeActive, handleCalculatorKeyboard } from './calculator-mode.js';
 
 export function setupKeyboardShortcuts({
     getAllProducts,
@@ -38,18 +39,44 @@ export function setupKeyboardShortcuts({
 
     const mainKeydownHandler = (event) => {
         if (event.defaultPrevented) return;
-        // Deaktiver shortcuts hvis man er i reorder-mode eller redigerer i et felt
         const isInReorderMode = document.body.classList.contains('reorder-mode');
-        const isEditing = event.target.tagName === 'INPUT' || 
+        const isEditing = event.target.tagName === 'INPUT' ||
                          event.target.tagName === 'TEXTAREA' ||
                          event.target.isContentEditable ||
                          event.target.closest('[contenteditable="true"]');
-        
+
         const isCustomAlertOpen = document.getElementById('custom-alert-modal')?.style?.display === 'flex';
-        if (document.querySelector('.modal[style*="display: flex"]') || isCustomAlertOpen || isEditing || isInReorderMode) {
+
+        // === CALCULATOR MODE ROUTING ===
+        // Når calculator mode er aktiv, routes keyboard-input til lommeregneren
+        if (isCalculatorModeActive() && !isInReorderMode) {
+            const anyModalOpen = document.querySelector('.modal[style*="display: flex"]');
+            if (!anyModalOpen && !isCustomAlertOpen) {
+                handleCalculatorKeyboard(event);
+                // Hvis lommeregneren håndterede eventet, stop her.
+                // Ellers (fx Enter med tomt display) — lad det falde igennem.
+                if (event.defaultPrevented) return;
+            }
+        }
+
+        // I reorder-mode: kun tal-genveje (åbn rediger-modal), resten deaktiveres
+        if (isInReorderMode) {
+            if (event.key >= '0' && event.key <= '9' && !isEditing) {
+                if (event.repeat) return;
+                event.preventDefault();
+                const productIndex = event.key === '0' ? 9 : parseInt(event.key, 10) - 1;
+                const visibleProducts = getAllProducts().filter(p => p.is_visible !== false && p.is_enabled !== false);
+                if (productIndex < visibleProducts.length && typeof window.__flangoOpenEditProductModal === 'function') {
+                    window.__flangoOpenEditProductModal(visibleProducts[productIndex]);
+                }
+            }
             return;
         }
-        
+
+        if (document.querySelector('.modal[style*="display: flex"]') || isCustomAlertOpen || isEditing) {
+            return;
+        }
+
         if (event.key >= '0' && event.key <= '9') {
             if (event.repeat) return;
             event.preventDefault();

@@ -1756,7 +1756,11 @@ async function openInstitutionPreferences() {
     parentPortalBtn.innerHTML = prefRow('Bruger.webp', 'Forældreportalen', 'Konfigurer funktioner tilgængelige i forældreportalen.');
     parentPortalBtn.addEventListener('click', () => {
         backdrop.style.display = 'none';
-        openParentPortalSettingsModal();
+        if (window.isV2Enabled && window.isV2Enabled()) {
+            window.openAdminPortalV2();
+        } else {
+            openParentPortalSettingsModal();
+        }
     });
 
     // Rediger Admin (Voksen konto'er) knap
@@ -3857,12 +3861,19 @@ export function setupToolbarGearMenu() {
 export function setupToolbarHistoryButton() {
     const historyBtn = document.getElementById('toolbar-history-btn');
     if (!historyBtn) return;
-    historyBtn.onclick = (event) => {
+    historyBtn.onclick = async (event) => {
         event.preventDefault();
-        if (typeof window.__flangoOpenSalesHistory === 'function') {
-            window.__flangoOpenSalesHistory();
-        } else {
-            notifyToolbarUser('Historik-funktionen er ikke klar.');
+        try {
+            const { openHistorikModal } = await import('./historik-modal.js');
+            openHistorikModal();
+        } catch (err) {
+            console.error('Kunne ikke åbne Historik v2:', err);
+            // Fallback til gammelt system
+            if (typeof window.__flangoOpenSalesHistory === 'function') {
+                window.__flangoOpenSalesHistory();
+            } else {
+                notifyToolbarUser('Historik-funktionen er ikke klar.');
+            }
         }
     };
 }

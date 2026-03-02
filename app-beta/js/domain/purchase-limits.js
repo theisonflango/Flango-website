@@ -2,6 +2,14 @@ import { supabaseClient } from '../core/config-and-supabase.js';
 
 const LIMITS_DEBUG = false;
 
+/** Log limit-blokering til debug flight recorder (no-op hvis recorder ikke er loaded) */
+function logLimitBlock(reason, source, details) {
+    if (LIMITS_DEBUG) console.log('[limits] BLOCK', reason, source, details);
+    if (typeof window.logDebugEvent === 'function') {
+        window.logDebugEvent('limit_block', { reason, source, ...details });
+    }
+}
+
 // ============================================================================
 // SALES CACHE (session-niveau - kun invalidér ved selectUser/afterPurchase)
 // ============================================================================

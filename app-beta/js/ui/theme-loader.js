@@ -12,6 +12,7 @@ const THEME_CSS_FILES = [
     'products.css',
     'users.css',
     'features.css',
+    'calculator.css',
 ];
 
 // Mobile CSS is separate
@@ -142,20 +143,11 @@ export function switchTheme(themeName) {
     // Save to localStorage
     localStorage.setItem(THEME_STORAGE_KEY, themeName);
 
-    // For theme-pack themes, we need to reload the page
-    // to properly swap all CSS files
-    if (isThemePackTheme(themeName) || isThemePackTheme(document.body.dataset.theme)) {
-        // Set theme before reload so it loads correctly
-        document.body.dataset.theme = themeName;
-
-        // Reload page to swap CSS
-        window.location.reload();
-        return;
-    }
-
-    // For non-theme-pack themes (default, pastel-pop, pos-pro)
-    // Just change the data-theme attribute
+    // Update data-theme attribute
     document.body.dataset.theme = themeName;
+
+    // Swap CSS dynamically — no reload needed
+    loadThemePack(themeName);
 }
 
 /**

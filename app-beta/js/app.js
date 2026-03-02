@@ -81,6 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // HJÆLPEFUNKTIONER (Globale)
     // =================================================================
     window.__flangoShowAlert = showAlert;
+    // __flangoRawSupabaseClient is exposed from config-and-supabase.js at module eval time
+    // __flangoGetInstitutionId: portal-data.js reads localStorage directly as fallback
     setupToolbarGearMenu();
     setupToolbarHistoryButton();
     setupSettingsModal();

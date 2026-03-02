@@ -109,6 +109,42 @@
     display: flex;
 }
 
+/* Edit pencil button - bottom-right corner in reorder mode */
+.product-edit-pencil {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(124, 58, 237, 0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 7;
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    transition: transform 0.15s ease;
+}
+
+.product-edit-pencil span {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.product-edit-pencil:active {
+    transform: scale(0.9);
+}
+
+body.reorder-mode .product-btn .product-edit-pencil {
+    display: flex !important;
+}
+
+body.reorder-mode .product-btn.product-placeholder .product-edit-pencil {
+    display: none !important;
+}
+
 .product-btn.product-placeholder {
     border-style: dashed;
     border-color: var(--klart-border-strong);
