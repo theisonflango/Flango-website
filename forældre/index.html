@@ -3655,6 +3655,16 @@
   </div>
 
   <script>
+    // Portal v2 redirect — if v2 enabled (default), redirect to new portal
+    (function() {
+      var PORTAL_VERSION_KEY = 'flango_portal_version';
+      if (localStorage.getItem(PORTAL_VERSION_KEY) !== 'v1') {
+        window.location.href = 'portal-v2.html' + window.location.search;
+        return;
+      }
+    })();
+  </script>
+  <script>
     document.addEventListener("DOMContentLoaded", () => {
       const FUNCTION_URL =
         "https://jbknjgbpghrbrstqwoxj.functions.supabase.co/get-parent-view";

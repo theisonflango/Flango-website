@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Flango Forældreportal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/portal-v2.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div id="portal-root" class="portal-v2">
+  <!-- Loading state -->
+  <div class="portal-loading" id="portal-loading">
+    <div class="portal-loading-inner">
+      <div class="portal-loading-spinner"></div>
+      <div class="portal-loading-text">Indlæser portal...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── Supabase Config ───
+  const SUPABASE_URL = "https://jbknjgbpghrbrstqwoxj.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impia25qZ2JwZ2hyYnJzdHF3b3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MjIwNjMsImV4cCI6MjA3ODE5ODA2M30.ZMlxQyzmXuy43EcKIN6-eO8pJZs2F6kfDw_cfaks9qQ";
+
+  // Safety check: don't point to localhost in production
+  if (SUPABASE_URL.includes('127.0.0.1') && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    throw new Error('Supabase URL must not point to localhost in production');
+  }
+
+  // Check for recovery token in hash before createClient processes it
+  let __pendingPasswordRecovery = false;
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  if (hashParams.get('type') === 'recovery') {
+    __pendingPasswordRecovery = true;
+  }
+
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      storageKey: 'flango-parent-auth',
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'implicit',
+    }
+  });
+  // Expose as global for portal-v2-api.js and portal-v2.js
+  window.portalSupabase = supabaseClient;
+
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      __pendingPasswordRecovery = true;
+    }
+  });
+
+  // ─── Version detection: if v1, redirect ───
+  // If the URL has ?v=1 or the user explicitly wants v1, redirect
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('v') === '1') {
+    window.location.href = 'index.html';
+  }
+</script>
+
+<script src="js/portal-v2-api.js"></script>
+<script src="js/portal-v2.js?v=3"></script>
+
+</body>
+</html>

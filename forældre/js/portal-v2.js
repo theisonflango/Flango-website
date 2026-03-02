@@ -1,0 +1,1991 @@
+/**
+ * Flango Parent Portal v2 — Main App Logic
+ *
+ * Builds the full portal UI dynamically.
+ * Handles auth, child switching, section rendering, saves, etc.
+ *
+ * Requires: window.portalSupabase (from portal-v2.html), PortalAPI (portal-v2-api.js)
+ */
+(function () {
+  'use strict';
+
+  const root = document.getElementById('portal-root');
+  const API = window.PortalAPI;
+
+  // ─── State ───
+  let currentSession = null;
+  let children = [];
+  let selectedChild = null;
+  let childData = null;       // from get-parent-view
+  let products = [];          // from get-products-for-parent
+  let purchaseProfile = null; // from get-purchase-profile
+  let allergySettings = null;
+  let screentimeData = null;
+  let eventsData = null;
+  let featureFlags = {};      // from institution
+
+  // ═══════════════════════════════════════
+  //  INIT
+  // ═══════════════════════════════════════
+
+  async function init() {
+    try {
+      const session = await API.getSession();
+      if (!session) {
+        renderLogin();
+        return;
+      }
+      currentSession = session;
+
+      // Check password recovery
+      if (window.__pendingPasswordRecovery) {
+        renderPasswordRecovery();
+        return;
+      }
+
+      await loadChildren();
+    } catch (err) {
+      console.error('[Portal] Init error:', err);
+      renderLogin();
+    }
+  }
+
+  async function loadChildren() {
+    showLoading();
+    try {
+      children = await API.getChildren();
+      if (!children || children.length === 0) {
+        renderNoChildren();
+        return;
+      }
+      selectedChild = children[0];
+      await loadChildData();
+      renderApp();
+    } catch (err) {
+      console.error('[Portal] Load children error:', err);
+      renderError('Kunne ikke hente dine børn. Prøv at genindlæse siden.');
+    }
+  }
+
+  async function loadChildData() {
+    if (!selectedChild) return;
+    const childId = selectedChild.child_id;
+    const instId = selectedChild.institution_id;
+    try {
+      const [view, prods, events] = await Promise.all([
+        API.getParentView(childId).catch(e => { console.error('[Portal] getParentView:', e); return null; }),
+        API.getProducts(instId, childId).catch(e => { console.error('[Portal] getProducts:', e); return []; }),
+        API.getParentEvents(childId).catch(e => { console.error('[Portal] getEvents:', e); return null; }),
+      ]);
+      childData = view;
+      products = prods?.products || prods || [];
+      eventsData = events;
+      featureFlags = childData?.institution || childData?.feature_flags || {};
+
+      // Load screentime data if enabled
+      if (featureFlags.skaermtid_enabled === true) {
+        screentimeData = await API.getScreentime(childId).catch(e => { console.error('[Portal] getScreentime:', e); return null; });
+      } else {
+        screentimeData = null;
+      }
+    } catch (err) {
+      console.error('[Portal] loadChildData error:', err);
+    }
+  }
+
+  async function switchChild(child) {
+    if (selectedChild?.child_id === child.child_id) return;
+    selectedChild = child;
+    showLoading();
+    await loadChildData();
+    renderApp();
+  }
+
+  // ═══════════════════════════════════════
+  //  HELPERS
+  // ═══════════════════════════════════════
+
+  function isMobile() { return window.innerWidth < 768; }
+
+  function formatKr(amount) {
+    if (amount == null) return '0';
+    const num = parseFloat(amount);
+    if (Number.isInteger(num)) return num.toFixed(0);
+    return num.toFixed(2).replace('.', ',');
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const months = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+    return `${d.getDate()}. ${months[d.getMonth()]}`;
+  }
+
+  function formatDateTime(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const days = ['søn', 'man', 'tir', 'ons', 'tor', 'fre', 'lør'];
+    const months = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+    const day = days[d.getDay()];
+    const date = d.getDate();
+    const month = months[d.getMonth()];
+    const hours = String(d.getHours()).padStart(2, '0');
+    const mins = String(d.getMinutes()).padStart(2, '0');
+    return `${day} ${date}. ${month} ${hours}:${mins}`;
+  }
+
+  function formatTime(timeStr) {
+    if (!timeStr) return '';
+    return timeStr.substring(0, 5);
+  }
+
+  function showLoading() {
+    root.innerHTML = `
+      <div class="portal-loading">
+        <div class="portal-loading-inner">
+          <div class="portal-loading-spinner"></div>
+          <div class="portal-loading-text">Indlæser portal...</div>
+        </div>
+      </div>`;
+  }
+
+  function showToast(message, type) {
+    const existing = document.querySelector('.toast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.className = `toast ${type || ''}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => { toast.classList.add('visible'); });
+    setTimeout(() => {
+      toast.classList.remove('visible');
+      setTimeout(() => toast.remove(), 300);
+    }, 2500);
+  }
+
+  function getBalanceStatus(balance) {
+    const b = parseFloat(balance || 0);
+    if (b > 30) return { cls: 'status-ok', text: 'God saldo' };
+    if (b > 0) return { cls: 'status-low', text: 'Lav saldo' };
+    return { cls: 'status-empty', text: 'Ingen saldo' };
+  }
+
+  function getChildName() { return selectedChild?.child_name || selectedChild?.name || 'Barn'; }
+  function getChildEmoji() { return selectedChild?.avatar_emoji || selectedChild?.emoji || '🧒'; }
+  function getChildBalance() { return childData?.balance ?? selectedChild?.balance ?? 0; }
+  function getInstitutionName() { return childData?.institution_name || childData?.institution?.name || ''; }
+
+  // ═══════════════════════════════════════
+  //  RENDER: LOGIN
+  // ═══════════════════════════════════════
+
+  function renderLogin() {
+    root.innerHTML = `
+      <div class="login-screen">
+        <div class="login-card">
+          <div class="login-brand">
+            <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;box-shadow:0 8px 20px rgba(245,150,10,.3)">🍊</div>
+            <div class="login-brand-name">Flango</div>
+          </div>
+          <div class="login-title">Forældreportal</div>
+          <div class="login-subtitle">Log ind med din e-mail og adgangskode</div>
+          <div class="login-error" id="login-error"></div>
+          <div class="login-field">
+            <label for="login-email">E-mail</label>
+            <input type="email" id="login-email" class="input-field" placeholder="din@email.dk" autocomplete="email">
+          </div>
+          <div class="login-field">
+            <label for="login-password">Adgangskode</label>
+            <input type="password" id="login-password" class="input-field" placeholder="Din adgangskode" autocomplete="current-password">
+          </div>
+          <button class="save-btn full" id="login-btn" style="margin-top:var(--s4)">Log ind</button>
+          <a href="#" class="login-forgot" id="forgot-link">Glemt adgangskode?</a>
+        </div>
+      </div>`;
+
+    document.getElementById('login-btn').addEventListener('click', handleLogin);
+    document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+    document.getElementById('forgot-link').addEventListener('click', handleForgotPassword);
+  }
+
+  async function handleLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errorEl = document.getElementById('login-error');
+    const btn = document.getElementById('login-btn');
+
+    if (!email || !password) {
+      errorEl.textContent = 'Udfyld venligst e-mail og adgangskode';
+      errorEl.classList.add('visible');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Logger ind...';
+    errorEl.classList.remove('visible');
+
+    try {
+      await API.signIn(email, password);
+      currentSession = await API.getSession();
+      await loadChildren();
+    } catch (err) {
+      errorEl.textContent = 'Forkert e-mail eller adgangskode';
+      errorEl.classList.add('visible');
+      btn.disabled = false;
+      btn.textContent = 'Log ind';
+    }
+  }
+
+  async function handleForgotPassword(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    if (!email) {
+      const errorEl = document.getElementById('login-error');
+      errorEl.textContent = 'Indtast din e-mail ovenfor';
+      errorEl.classList.add('visible');
+      return;
+    }
+    try {
+      await API.resetPassword(email);
+      showToast('Nulstillingslink sendt til ' + email, 'success');
+    } catch (err) {
+      showToast('Kunne ikke sende nulstillingslink', 'error');
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  RENDER: PASSWORD RECOVERY
+  // ═══════════════════════════════════════
+
+  function renderPasswordRecovery() {
+    root.innerHTML = `
+      <div class="login-screen">
+        <div class="login-card">
+          <div class="login-brand">
+            <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px">🍊</div>
+            <div class="login-brand-name">Flango</div>
+          </div>
+          <div class="login-title">Ny adgangskode</div>
+          <div class="login-subtitle">Indtast din nye adgangskode</div>
+          <div class="login-error" id="recovery-error"></div>
+          <div class="login-field">
+            <label for="recovery-pw">Ny adgangskode</label>
+            <input type="password" id="recovery-pw" class="input-field" placeholder="Mindst 6 tegn" autocomplete="new-password">
+          </div>
+          <div class="login-field">
+            <label for="recovery-pw2">Gentag adgangskode</label>
+            <input type="password" id="recovery-pw2" class="input-field" placeholder="Gentag" autocomplete="new-password">
+          </div>
+          <button class="save-btn full" id="recovery-btn" style="margin-top:var(--s4)">Gem ny adgangskode</button>
+        </div>
+      </div>`;
+
+    document.getElementById('recovery-btn').addEventListener('click', async () => {
+      const pw = document.getElementById('recovery-pw').value;
+      const pw2 = document.getElementById('recovery-pw2').value;
+      const errorEl = document.getElementById('recovery-error');
+      if (pw.length < 6) { errorEl.textContent = 'Mindst 6 tegn'; errorEl.classList.add('visible'); return; }
+      if (pw !== pw2) { errorEl.textContent = 'Adgangskoderne matcher ikke'; errorEl.classList.add('visible'); return; }
+      try {
+        await API.updatePassword(pw);
+        window.__pendingPasswordRecovery = false;
+        showToast('Adgangskode opdateret!', 'success');
+        await loadChildren();
+      } catch (err) {
+        errorEl.textContent = 'Kunne ikke opdatere adgangskoden';
+        errorEl.classList.add('visible');
+      }
+    });
+  }
+
+  // ═══════════════════════════════════════
+  //  RENDER: NO CHILDREN
+  // ═══════════════════════════════════════
+
+  function renderNoChildren() {
+    root.innerHTML = `
+      <div class="app">
+        <header class="topnav">
+          <div class="topnav-inner">
+            <div class="brand">
+              <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">🍊</div>
+              <div><div class="brand-name">Flango</div></div>
+            </div>
+          </div>
+        </header>
+        <main class="main">
+          <div class="empty-state" style="margin-top:var(--s16)">
+            <div class="empty-state-icon">👶</div>
+            <div class="empty-state-text">Du har endnu ikke tilknyttet nogen børn.<br>Brug koden fra institutionen for at komme i gang.</div>
+            <button class="save-btn" style="margin-top:var(--s5)" onclick="document.getElementById('add-child-modal').classList.add('visible')">Tilknyt barn</button>
+          </div>
+        </main>
+      </div>
+      ${renderAddChildModal()}`;
+    bindAddChildModal();
+  }
+
+  function renderError(msg) {
+    root.innerHTML = `
+      <div class="app">
+        <main class="main">
+          <div class="empty-state" style="margin-top:var(--s16)">
+            <div class="empty-state-icon">⚠️</div>
+            <div class="empty-state-text">${msg}</div>
+            <button class="save-btn" style="margin-top:var(--s5)" onclick="window.location.reload()">Prøv igen</button>
+          </div>
+        </main>
+      </div>`;
+  }
+
+  // ═══════════════════════════════════════
+  //  RENDER: MAIN APP
+  // ═══════════════════════════════════════
+
+  function renderApp() {
+    const balance = getChildBalance();
+    const status = getBalanceStatus(balance);
+    const name = getChildName();
+    const instName = getInstitutionName();
+
+    // Determine which sections are visible based on feature flags
+    const showEvents = !!featureFlags.cafe_events_enabled || (eventsData && eventsData.length > 0);
+    const showScreentime = featureFlags.skaermtid_enabled === true;
+
+    root.innerHTML = `
+      <div class="app">
+
+        <!-- DESKTOP SIDEBAR -->
+        <aside class="desktop-sidebar">
+          <div class="brand">
+            <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">🍊</div>
+            <div><div class="brand-name">Flango</div><div class="brand-sub">Forældreportal</div></div>
+          </div>
+          <div class="sidebar-child-section" id="sidebar-children"></div>
+          <div class="sidebar-divider"></div>
+          <div style="padding:0 var(--s5);margin-bottom:var(--s2)"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted)">Funktioner</span></div>
+          <nav class="sidebar-nav" id="sidebar-nav"></nav>
+          <div class="sidebar-footer">
+            <div class="sidebar-footer-btn" id="sidebar-logout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Log ud</div>
+          </div>
+        </aside>
+
+        <!-- MOBILE TOP NAV -->
+        <header class="topnav">
+          <div class="topnav-inner">
+            <div class="brand">
+              <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">🍊</div>
+              <div><div class="brand-name">Flango</div></div>
+            </div>
+            <div class="nav-actions">
+              <button class="nav-btn" id="nav-logout-btn" title="Log ud"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+            </div>
+          </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main class="main" id="main-content">
+
+          <!-- TAB: HOME -->
+          <div class="tab-view active" id="tab-home">
+            ${renderChildSelector()}
+
+            <!-- Balance Card -->
+            <div class="balance-card" id="section-balance">
+              <div class="balance-header">
+                <div>
+                  <div class="balance-label">Saldo</div>
+                  <div class="balance-amount">${renderBalanceAmount(balance)}</div>
+                  <div class="balance-child-name">${esc(name)}${instName ? ' · ' + esc(instName) : ''}</div>
+                </div>
+                <div class="balance-status ${status.cls}"><span class="status-dot"></span> ${status.text}</div>
+              </div>
+              <div class="topup-row">
+                <button class="topup-btn topup-primary" data-nav-tab="tab-pay"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Indbetal</button>
+                <button class="topup-btn topup-secondary" data-qa-scroll="section-feedback" data-qa-tab="tab-profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Kontakt</button>
+              </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+              <button class="qa-item" data-qa-scroll="section-spending-limit" data-qa-tab="tab-limits"><div class="qa-icon orange">💰</div><div class="qa-label">Daglig grænse</div></button>
+              <button class="qa-item" data-qa-scroll="section-allergens" data-qa-tab="tab-limits"><div class="qa-icon green">🥗</div><div class="qa-label">Kost & Allergi</div></button>
+              ${showScreentime ? '<button class="qa-item" data-qa-scroll="section-screentime" data-qa-tab="tab-screen"><div class="qa-icon blue">🕹️</div><div class="qa-label">Skærmtid</div></button>' : ''}
+              ${showEvents ? '<button class="qa-item" data-qa-scroll="section-events" data-qa-tab="tab-home"><div class="qa-icon red">📅</div><div class="qa-label">Events</div></button>' : '<button class="qa-item" data-qa-scroll="section-sortiment" data-qa-tab="tab-home"><div class="qa-icon red">📋</div><div class="qa-label">Sortiment</div></button>'}
+            </div>
+
+            ${showEvents ? renderEventsSection() : ''}
+            ${renderPurchaseProfileSection()}
+            ${renderHistorySection()}
+            ${renderSortimentSection()}
+          </div>
+
+          <!-- TAB: PAY -->
+          <div class="tab-view" id="tab-pay">
+            <div class="view-header mobile-only"><div class="view-title">Indbetaling</div><div class="view-subtitle">Optank ${esc(name)}s saldo</div></div>
+            ${renderTopupSection()}
+          </div>
+
+          <!-- TAB: LIMITS -->
+          <div class="tab-view" id="tab-limits">
+            <div class="view-header mobile-only"><div class="view-title">Grænser & Kost</div><div class="view-subtitle">Indstillinger for ${esc(name)}</div></div>
+            ${renderSpendingLimitSection()}
+            ${renderProductLimitsSection()}
+            ${renderSugarPolicySection()}
+            ${renderDietSection()}
+            ${renderAllergensSection()}
+          </div>
+
+          <!-- TAB: SCREEN TIME -->
+          ${showScreentime ? `
+          <div class="tab-view" id="tab-screen">
+            <div class="view-header mobile-only"><div class="view-title">Skærmtid</div><div class="view-subtitle">Gaming-regler for ${esc(name)}</div></div>
+            ${renderScreentimeSection()}
+            ${renderGamesSection()}
+            ${renderScreentimeChartSection()}
+          </div>` : ''}
+
+          <!-- TAB: PROFILE -->
+          <div class="tab-view" id="tab-profile">
+            <div class="view-header mobile-only"><div class="view-title">Profil</div><div class="view-subtitle">Indstillinger & notifikationer</div></div>
+            ${renderNotificationsSection()}
+            ${renderFeedbackSection()}
+            ${renderPinSection()}
+            <a href="index.html" class="v1-link">Vis original portal</a>
+          </div>
+
+        </main>
+
+        <!-- MOBILE BOTTOM NAV -->
+        <nav class="bottomnav">
+          <button class="bnav-item active" data-tab="tab-home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="bnav-label">Overblik</span></button>
+          <button class="bnav-item" data-tab="tab-pay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span class="bnav-label">Indbetal</span></button>
+          <button class="bnav-item" data-tab="tab-limits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span class="bnav-label">Grænser</span></button>
+          ${showScreentime ? '<button class="bnav-item" data-tab="tab-screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span class="bnav-label">Skærmtid</span></button>' : ''}
+          <button class="bnav-item" data-tab="tab-profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="bnav-label">Profil</span></button>
+        </nav>
+
+      </div>
+      ${renderAddChildModal()}`;
+
+    // Render dynamic sidebar content first, then bind all events
+    renderSidebarChildren();
+    renderSidebarNav();
+    bindEvents();
+  }
+
+  // ═══════════════════════════════════════
+  //  SECTION RENDERERS
+  // ═══════════════════════════════════════
+
+  function renderChildSelector() {
+    if (children.length <= 1) return '';
+    const chips = children.map(c => {
+      const isActive = c.child_id === selectedChild?.child_id;
+      const emoji = c.avatar_emoji || c.emoji || '🧒';
+      const bal = c.balance != null ? `<span class="saldo-mini">${formatKr(c.balance)} kr</span>` : '';
+      return `<button class="child-chip${isActive ? ' active' : ''}" data-child-id="${c.child_id}"><span class="child-avatar">${emoji}</span> ${esc(c.child_name || c.name)} ${bal}</button>`;
+    }).join('');
+    return `<div class="child-selector">${chips}<button class="child-chip add-child-chip" id="add-child-btn-mobile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tilknyt</button></div>`;
+  }
+
+  function renderBalanceAmount(balance) {
+    const b = parseFloat(balance || 0);
+    const whole = Math.floor(Math.abs(b));
+    const dec = Math.round((Math.abs(b) - whole) * 100);
+    const sign = b < 0 ? '-' : '';
+    if (dec === 0) return `${sign}${whole} <span class="currency">kr</span>`;
+    return `${sign}${whole}<span style="font-size:32px">,${dec.toString().padStart(2, '0')}</span> <span class="currency">kr</span>`;
+  }
+
+  function renderEventsSection() {
+    const events = eventsData?.events || eventsData || [];
+    if (!events || events.length === 0) {
+      return `
+        <div class="section" id="section-events">
+          <div class="section-header">
+            <div class="section-title-row"><div class="section-icon" style="background:var(--negative-light)">📅</div><div><div class="section-title">Kommende arrangementer</div><div class="section-subtitle">Ingen kommende arrangementer</div></div></div>
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="section-body"><div class="section-body-inner"><div class="section-content">
+            <div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-text">Ingen kommende arrangementer</div></div>
+          </div></div></div>
+        </div>`;
+    }
+
+    const eventCards = events.map(ev => {
+      const d = new Date(ev.event_date);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+      const month = months[d.getMonth()];
+      const day = d.getDate();
+      const time = ev.start_time ? formatTime(ev.start_time) + (ev.end_time ? '–' + formatTime(ev.end_time) : '') : '';
+      const price = ev.price > 0 ? `${formatKr(ev.price)} kr` : 'Gratis';
+      const meta = [time, price].filter(Boolean).join(' · ');
+      const spotsLeft = ev.remaining != null ? ev.remaining : null;
+      const spotsStr = spotsLeft != null ? `${spotsLeft} plads${spotsLeft !== 1 ? 'er' : ''} tilbage` : '';
+
+      // Determine registration state
+      const reg = ev.registration || {};
+      const regStatus = ev.registration_status || reg.registration_status;
+      const payStatus = ev.payment_status || reg.payment_status;
+      const isRegistered = regStatus === 'registered';
+      const isCancelled = regStatus === 'cancelled';
+      const isFull = spotsLeft != null && spotsLeft <= 0 && !isRegistered;
+
+      let badgeHTML = '';
+      let actionsHTML = '';
+
+      if (isRegistered) {
+        if (payStatus === 'paid' || payStatus === 'not_required') {
+          badgeHTML = '<span class="event-badge paid">✓ Tilmeldt & Betalt</span>';
+        } else if (payStatus === 'not_paid') {
+          badgeHTML = '<span class="event-badge pending">Afventer betaling</span>';
+          actionsHTML += `<button class="event-pay-btn" data-event-id="${ev.id}" data-event-price="${ev.price}">Betal nu</button>`;
+        } else {
+          badgeHTML = '<span class="event-badge registered">✓ Tilmeldt</span>';
+        }
+        actionsHTML += `<button class="event-cancel-btn" data-event-id="${ev.id}">Frameld</button>`;
+      } else if (isCancelled) {
+        badgeHTML = '<span class="event-badge cancelled">Afmeldt</span>';
+        actionsHTML = `<button class="event-action-btn" data-event-id="${ev.id}">Tilmeld igen</button>`;
+      } else if (isFull) {
+        badgeHTML = '<span class="event-badge" style="background:#f1f5f9;color:#64748b">Fuldt booket</span>';
+      } else {
+        actionsHTML = `<button class="event-action-btn" data-event-id="${ev.id}" data-event-price="${ev.price || 0}">Tilmeld</button>`;
+      }
+
+      return `<div class="event-card">
+        <div class="event-date-badge"><div class="event-month">${month}</div><div class="event-day">${day}</div></div>
+        <div class="event-info">
+          <div class="event-title">${esc(ev.title)}</div>
+          <div class="event-meta">${esc(meta)}${spotsStr ? ' · ' + spotsStr : ''}</div>
+          ${badgeHTML ? '<div style="margin-top:4px">' + badgeHTML + '</div>' : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">${actionsHTML}</div>
+      </div>`;
+    }).join('');
+
+    return `
+      <div class="section" id="section-events">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--negative-light)">📅</div><div><div class="section-title">Kommende arrangementer</div><div class="section-subtitle">${events.length} arrangement${events.length !== 1 ? 'er' : ''}</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${eventCards}
+        </div></div></div>
+      </div>`;
+  }
+
+  let ppCurrentPeriod = '30';
+  let ppCurrentSort = 'antal';
+  const ppCylinderColors = [
+    { bg: 'linear-gradient(90deg, #3b82f6 0%, #60a5fa 35%, #93c5fd 50%, #60a5fa 65%, #3b82f6 100%)', shadow: '#1e40af', cap: 'linear-gradient(180deg, #bfdbfe 0%, #3b82f6 100%)' },
+    { bg: 'linear-gradient(90deg, #22c55e 0%, #4ade80 35%, #86efac 50%, #4ade80 65%, #22c55e 100%)', shadow: '#16a34a', cap: 'linear-gradient(180deg, #dcfce7 0%, #4ade80 100%)' },
+    { bg: 'linear-gradient(90deg, #f9a825 0%, #ffc107 35%, #ffeb3b 50%, #ffc107 65%, #f9a825 100%)', shadow: '#f57f17', cap: 'linear-gradient(180deg, #fff59d 0%, #ffca28 100%)' },
+    { bg: 'linear-gradient(90deg, #ec4899 0%, #f472b6 35%, #fbcfe8 50%, #f472b6 65%, #ec4899 100%)', shadow: '#be185d', cap: 'linear-gradient(180deg, #fce7f3 0%, #f472b6 100%)' },
+    { bg: 'linear-gradient(90deg, #8b5cf6 0%, #a78bfa 35%, #c4b5fd 50%, #a78bfa 65%, #8b5cf6 100%)', shadow: '#6d28d9', cap: 'linear-gradient(180deg, #ede9fe 0%, #a78bfa 100%)' },
+    { bg: 'linear-gradient(90deg, #14b8a6 0%, #2dd4bf 35%, #99f6e4 50%, #2dd4bf 65%, #14b8a6 100%)', shadow: '#0f766e', cap: 'linear-gradient(180deg, #ccfbf1 0%, #2dd4bf 100%)' },
+    { bg: 'linear-gradient(90deg, #0ea5e9 0%, #38bdf8 35%, #7dd3fc 50%, #38bdf8 65%, #0ea5e9 100%)', shadow: '#0369a1', cap: 'linear-gradient(180deg, #e0f2fe 0%, #38bdf8 100%)' },
+    { bg: 'linear-gradient(90deg, #f97316 0%, #fb923c 35%, #fdba74 50%, #fb923c 65%, #f97316 100%)', shadow: '#c2410c', cap: 'linear-gradient(180deg, #ffedd5 0%, #fb923c 100%)' },
+    { bg: 'linear-gradient(90deg, #ef4444 0%, #f87171 35%, #fca5a5 50%, #f87171 65%, #ef4444 100%)', shadow: '#b91c1c', cap: 'linear-gradient(180deg, #fee2e2 0%, #f87171 100%)' },
+    { bg: 'linear-gradient(90deg, #64748b 0%, #94a3b8 35%, #cbd5e1 50%, #94a3b8 65%, #64748b 100%)', shadow: '#334155', cap: 'linear-gradient(180deg, #e2e8f0 0%, #94a3b8 100%)' },
+  ];
+
+  function renderPurchaseProfileSection() {
+    return `
+      <div class="section" id="section-profile">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">📊</div><div><div class="section-title">Købsprofil</div><div class="section-subtitle">Mest købte produkter</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div id="purchase-profile-content">
+            <div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">Tryk for at indlæse købsprofil</div></div>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderHistorySection() {
+    const transactions = childData?.recent_transactions || childData?.history || [];
+    let txHTML = '';
+    if (transactions.length === 0) {
+      txHTML = '<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">Ingen transaktioner endnu</div></div>';
+    } else {
+      txHTML = transactions.slice(0, 10).map(tx => {
+        const type = tx.type || tx.event_type || 'SALE';
+        let icon = '🧃', iconCls = 'purchase', amountCls = 'negative', sign = '-';
+        if (type === 'DEPOSIT' || type === 'TOPUP') { icon = '💳'; iconCls = 'topup'; amountCls = 'positive'; sign = '+'; }
+        else if (type === 'BALANCE_EDIT' || type === 'ADJUSTMENT') { icon = '⚙️'; iconCls = 'adjust'; amountCls = parseFloat(tx.amount) >= 0 ? 'positive' : 'negative'; sign = parseFloat(tx.amount) >= 0 ? '+' : '-'; }
+        else if (type === 'SALE_UNDO') { icon = '↩️'; iconCls = 'topup'; amountCls = 'positive'; sign = '+'; }
+        const title = tx.description || tx.product_names || type;
+        const dateStr = tx.created_at || tx.date || '';
+        const date = dateStr ? formatDateTime(dateStr) : '';
+        const amount = Math.abs(parseFloat(tx.amount || tx.total_amount || 0));
+        return `<div class="tx-row"><div class="tx-icon ${iconCls}">${icon}</div><div class="tx-info"><div class="tx-title">${esc(title)}</div><div class="tx-date">${esc(date)}</div></div><div class="tx-amount ${amountCls}">${sign}${formatKr(amount)} kr</div></div>`;
+      }).join('');
+    }
+
+    return `
+      <div class="section" id="section-history">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📜</div><div><div class="section-title">Historik</div><div class="section-subtitle">Seneste transaktioner</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${txHTML}
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderSortimentSection() {
+    let listHTML = '';
+    if (!products || products.length === 0) {
+      listHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Ingen produkter tilgængelige</div></div>';
+    } else {
+      listHTML = products.filter(p => p.is_visible === true && p.is_enabled !== false).map(p => {
+        const emoji = p.emoji || '🍽️';
+        const isPermanent = p.is_permanent === true || p.core_assortment === true;
+        const badge = isPermanent ? '<span class="product-badge permanent">Fast</span>' : (p.is_daily_special ? '<span class="product-badge daily">Dagens</span>' : '');
+        return `<div class="product-list-item"><div class="product-emoji">${emoji}</div><div class="product-name">${esc(cleanProductName(p.name))}${badge}</div><div class="product-price">${formatKr(p.price)} kr</div></div>`;
+      }).join('');
+    }
+
+    return `
+      <div class="section" id="section-sortiment">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--positive-light)">📋</div><div><div class="section-title">Dagens sortiment</div><div class="section-subtitle">Hvad kan købes i cafeen</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${listHTML}
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderTopupSection() {
+    const name = getChildName();
+    return `
+      <div class="section" id="section-topup">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">💳</div><div><div class="section-title">Vælg beløb</div><div class="section-subtitle">Optank ${esc(name)}s saldo</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div class="topup-grid">
+            <button class="topup-option" data-amount="50"><div class="topup-option-amount">50 kr</div><div class="topup-option-label">Lille optankning</div></button>
+            <button class="topup-option selected" data-amount="100"><div class="topup-option-amount">100 kr</div><div class="topup-option-label">Anbefalet</div></button>
+            <button class="topup-option" data-amount="150"><div class="topup-option-amount">150 kr</div><div class="topup-option-label">Stor optankning</div></button>
+            <button class="topup-option custom" data-amount="custom"><div class="topup-option-amount">Andet</div><div class="topup-option-label">Vælg selv</div></button>
+          </div>
+          <div class="topup-method-section">
+            <div class="topup-method-title">Betal med</div>
+            <button class="topup-method-btn stripe" id="pay-stripe"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Kort (Stripe)</button>
+            <button class="topup-method-btn mobilepay" id="pay-mobilepay"><span style="font-size:18px">📱</span>MobilePay</button>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderSpendingLimitSection() {
+    const limit = childData?.daily_spend_limit || selectedChild?.daily_spend_limit;
+    const instLimit = childData?.institution_daily_limit || featureFlags.spending_limit_amount;
+    return `
+      <div class="section" id="section-spending-limit">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">💰</div><div><div class="section-title">Daglig beløbsgrænse</div><div class="section-subtitle">Maks forbrug per dag</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${instLimit ? `<div class="hint-box info" style="margin-bottom:var(--s3)"><span class="hint-icon">🏫</span><span>Institutionens daglige grænse: <strong>${formatKr(instLimit)} kr</strong></span></div>` : ''}
+          ${limit ? `<div class="hint-box green" style="margin-bottom:var(--s3)"><span class="hint-icon">👤</span><span>Din daglige grænse: <strong>${formatKr(limit)} kr</strong></span></div>` : ''}
+          <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s2)">Vælg hvor meget ${esc(getChildName())} maksimalt må bruge om dagen. Den strengeste grænse (din eller institutionens) gælder altid.</p>
+          <div class="chip-group" id="spending-limit-chips">
+            <button class="chip${limit == 20 ? ' active' : ''}" data-limit="20">20 kr</button>
+            <button class="chip${limit == 30 ? ' active' : ''}" data-limit="30">30 kr</button>
+            <button class="chip${limit == 40 ? ' active' : ''}" data-limit="40">40 kr</button>
+            <button class="chip${limit == 50 ? ' active' : ''}" data-limit="50">50 kr</button>
+            <button class="chip${!limit || ![20,30,40,50].includes(Number(limit)) ? ' active' : ''}" data-limit="custom">Andet...</button>
+          </div>
+          <div class="hint-box neutral" style="margin-top:var(--s3)"><span class="hint-icon">💡</span><span>${esc(getChildName())} kan stadig købe, men cafeen giver besked hvis grænsen overskrides.</span></div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderProductLimitsSection() {
+    const limitProducts = products.filter(p => p.is_visible === true && p.is_enabled !== false);
+    let listHTML = '';
+    if (limitProducts.length === 0) {
+      listHTML = '<div class="empty-state"><div class="empty-state-text">Ingen produkter tilgængelige</div></div>';
+    } else {
+      listHTML = limitProducts.map(p => {
+        const emoji = p.emoji || '🍽️';
+        const currentLimit = p.parent_limit ?? '∞';
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--s3) 0${p !== limitProducts[0] ? ';border-top:1px solid var(--border)' : ''}">
+            <div style="display:flex;align-items:center;gap:var(--s3)"><span style="font-size:20px">${emoji}</span><span style="font-weight:600;font-size:14px">${esc(cleanProductName(p.name))}</span></div>
+            <div class="stepper" data-product-id="${p.id}"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${currentLimit}</div><button class="stepper-btn stepper-plus">+</button></div>
+          </div>`;
+      }).join('');
+    }
+
+    return `
+      <div class="section" id="section-product-limits">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--caution-light)">🛒</div><div><div class="section-title">Købsgrænser pr. produkt</div><div class="section-subtitle">Begræns antal af specifikke varer</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">💡</span><span>Hvis institutionen har sat en grænse, gælder den strengeste.</span></div>
+          ${listHTML}
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderSugarPolicySection() {
+    const sp = childData?.sugar_policy || {};
+    const instSugarText = featureFlags.sugar_policy_text || featureFlags.parent_portal_sugar_policy_text;
+    return `
+      <div class="section" id="section-sugar">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:#fce7f3">🍬</div><div><div class="section-title">Sukkerpolitik</div><div class="section-subtitle">Kontrollér usunde varer</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${instSugarText ? `<div class="hint-box purple" style="margin-bottom:var(--s3)"><span class="hint-icon">🏫</span><span>${esc(instSugarText)}</span></div>` : ''}
+          <div class="setting-row" id="sugar-block-row">
+            <div class="setting-info"><div class="setting-label">Bloker alle usunde varer</div><div class="setting-desc">${esc(getChildName())} kan kun købe sunde varer</div></div>
+            <label class="toggle"><input type="checkbox" id="sugar-block-toggle" ${sp.block_unhealthy ? 'checked' : ''}><span class="toggle-track"></span></label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info"><div class="setting-label">Max usunde pr. dag</div><div class="setting-desc">Begræns antal usunde varer samlet</div></div>
+            <div class="stepper" id="sugar-max-stepper"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${sp.max_unhealthy_per_day ?? '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info"><div class="setting-label">Max af hvert usundt produkt</div><div class="setting-desc">Pr. produkt (fx maks 1 chokolade)</div></div>
+            <div class="stepper" id="sugar-per-product-stepper"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${sp.max_per_product_per_day ?? '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderDietSection() {
+    const sp = childData?.sugar_policy || {};
+    return `
+      <div class="section" id="section-diet">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--positive-light)">🥗</div><div><div class="section-title">Kostpræferencer</div><div class="section-subtitle">Vegetarisk, svinekød m.m.</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Kun vegetarisk</div><div class="setting-desc">Vis kun vegetariske produkter</div></div><label class="toggle"><input type="checkbox" id="diet-vegetarian" ${sp.vegetarian_only ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Ingen svinekød</div><div class="setting-desc">Bloker produkter med svinekød</div></div><label class="toggle"><input type="checkbox" id="diet-no-pork" ${sp.no_pork ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderAllergensSection() {
+    const allergens = [
+      { key: 'peanuts', emoji: '🥜', name: 'Jordnødder' },
+      { key: 'tree_nuts', emoji: '🌰', name: 'Trænødder' },
+      { key: 'milk', emoji: '🥛', name: 'Mælk' },
+      { key: 'gluten', emoji: '🌾', name: 'Gluten' },
+      { key: 'egg', emoji: '🥚', name: 'Æg' },
+      { key: 'fish', emoji: '🐟', name: 'Fisk' },
+      { key: 'shellfish', emoji: '🦐', name: 'Skaldyr' },
+      { key: 'sesame', emoji: '🌿', name: 'Sesam' },
+      { key: 'soy', emoji: '🫘', name: 'Soja' },
+    ];
+
+    const settings = childData?.allergen_settings || {};
+    const grid = allergens.map(a => {
+      const policy = settings[a.key] || 'allow';
+      let cls = '', label = 'Tilladt';
+      if (policy === 'block') { cls = ' blocked'; label = 'Blokeret'; }
+      else if (policy === 'warn') { cls = ' warn'; label = 'Advarsel'; }
+      return `<div class="allergen-item${cls}" data-allergen="${a.key}"><span class="allergen-emoji">${a.emoji}</span><span class="allergen-name">${a.name}</span><span class="allergen-status">${label}</span></div>`;
+    }).join('');
+
+    return `
+      <div class="section" id="section-allergens">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--caution-light)">🥜</div><div><div class="section-title">Allergier & madbegrænsninger</div><div class="section-subtitle">Tryk for at ændre status</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <p style="font-size:12px;color:var(--ink-muted);margin-bottom:var(--s2)">Tryk for at skifte: Tilladt → Advarsel → Blokeret</p>
+          <div class="allergen-grid" id="allergen-grid">${grid}</div>
+          <p class="disclaimer">Ingrediens- og allergenoplysninger i systemet er vejledende og kan indeholde fejl eller mangler, da produkter og opskrifter løbende ændres af personalet. Institutionen og systemet kan ikke garantere fuldstændig korrekthed. Forældre til børn med allergi bør altid tale direkte med personalet.</p>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderScreentimeSection() {
+    const st = screentimeData || childData?.screentime || {};
+    const remaining = st.remaining_minutes ?? st.balance_minutes ?? '—';
+    const used = st.used_today ?? '—';
+    const instDaily = st.institution_daily_limit ?? st.default_balance_minutes ?? '—';
+    const instSession = st.institution_max_session ?? st.max_session_minutes ?? '—';
+    const personalDaily = st.personal_daily_limit ?? st.max_daily_minutes ?? '';
+    const personalSession = st.personal_max_session ?? st.max_session_minutes_override ?? '';
+    const consent = st.extra_time_consent ?? true;
+
+    return `
+      <div class="section" id="section-screentime">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">🕹️</div><div><div class="section-title">Daglig spilletid</div><div class="section-subtitle">Grænser og samtykke</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div class="screentime-overview">
+            <div class="st-stat-card remaining"><div class="st-stat-value">${remaining} min</div><div class="st-stat-label">Tilbage i dag</div></div>
+            <div class="st-stat-card used"><div class="st-stat-value">${used} min</div><div class="st-stat-label">Brugt i dag</div></div>
+          </div>
+          <div class="hint-box info" style="margin-bottom:var(--s3)"><span class="hint-icon">📋</span><span>Institutionens regler: ${instDaily} min/dag, maks ${instSession} min pr. session</span></div>
+          <div class="setting-row">
+            <div class="setting-info"><div class="setting-label">Personlig daglig grænse</div><div class="setting-desc">Kan ikke overstige institutionens regler</div></div>
+            <div class="stepper" id="st-daily-stepper"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalDaily || '—'}</div><button class="stepper-btn stepper-plus">+</button></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info"><div class="setting-label">Maks pr. session</div><div class="setting-desc">Hvor lang tid ad gangen (minutter)</div></div>
+            <div class="stepper" id="st-session-stepper"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalSession || '—'}</div><button class="stepper-btn stepper-plus">+</button></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info"><div class="setting-label">Samtykke til forlænget spilletid</div><div class="setting-desc">Giv personalet lov til undtagelsesvis at forlænge.</div></div>
+            <label class="toggle"><input type="checkbox" id="st-consent-toggle" ${consent ? 'checked' : ''}><span class="toggle-track"></span></label>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderGamesSection() {
+    const games = screentimeData?.games || childData?.games || [];
+    let gamesHTML = '';
+    if (games.length === 0) {
+      gamesHTML = '<div class="empty-state"><div class="empty-state-icon">🎮</div><div class="empty-state-text">Ingen spil tilgængelige</div></div>';
+    } else {
+      gamesHTML = games.map(g => {
+        const blocked = g.institution_blocked;
+        const approved = g.parent_approved !== false;
+        const disabledAttr = blocked ? ' style="opacity:.4;pointer-events:none"' : '';
+        return `
+          <div class="game-row">
+            <div class="game-icon">${g.icon || '🎮'}</div>
+            <div class="game-info">
+              <div class="game-name">${esc(g.name)}</div>
+              ${blocked ? '<div class="game-blocked">Blokeret af institutionen</div>' : `<div class="game-platform">${esc(g.platform || '')}</div>`}
+            </div>
+            <label class="toggle"${disabledAttr}><input type="checkbox" data-game-id="${g.id}" ${approved && !blocked ? 'checked' : ''} ${blocked ? 'disabled' : ''}><span class="toggle-track"></span></label>
+          </div>`;
+      }).join('');
+    }
+
+    return `
+      <div class="section" id="section-games">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--positive-light)">🎮</div><div><div class="section-title">Godkend spil</div><div class="section-subtitle">Vælg hvilke spil ${esc(getChildName())} må spille</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${gamesHTML}
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderScreentimeChartSection() {
+    const sessions = screentimeData?.sessions || screentimeData?.usage_history || screentimeData?.skaermtid_sessions || [];
+    const instDaily = screentimeData?.institution_daily_limit ?? screentimeData?.default_balance_minutes ?? null;
+
+    // Group sessions by date (last 7 days)
+    const today = new Date();
+    const days = [];
+    const dayNames = ['Søn', 'Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør'];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      days.push({ key: key, label: i === 0 ? 'I dag' : dayNames[d.getDay()], minutes: 0 });
+    }
+
+    // Sum minutes per day
+    sessions.forEach(function (s) {
+      const sDate = (s.date || s.started_at || s.created_at || '').split('T')[0];
+      const dayEntry = days.find(function (d) { return d.key === sDate; });
+      if (dayEntry) {
+        dayEntry.minutes += Number(s.duration_minutes || s.minutes || s.duration || 0);
+      }
+    });
+
+    const maxMin = Math.max(...days.map(function (d) { return d.minutes; }), instDaily || 30, 1);
+
+    let chartHTML = '';
+    if (sessions.length === 0) {
+      chartHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">Ingen spillehistorik endnu</div></div>';
+    } else {
+      const barsHTML = days.map(function (d) {
+        const pct = Math.round((d.minutes / maxMin) * 100);
+        const h = Math.max(4, pct);
+        const isHigh = instDaily && d.minutes > instDaily;
+        return '<div class="st-usage-bar-wrap">'
+          + '<div class="st-usage-bar-val">' + Math.round(d.minutes) + '</div>'
+          + '<div class="st-usage-bar' + (isHigh ? ' high' : '') + '" style="height:' + h + 'px"></div>'
+          + '<div class="st-usage-bar-label">' + d.label + '</div>'
+          + '</div>';
+      }).join('');
+
+      chartHTML = '<div class="st-usage-chart">' + barsHTML + '</div>';
+      if (instDaily) {
+        chartHTML += '<div style="text-align:center;margin-top:8px;font-size:11px;color:var(--ink-muted)">Daglig grænse: ' + instDaily + ' min</div>';
+      }
+    }
+
+    return `
+      <div class="section" id="section-st-chart">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📊</div><div><div class="section-title">Spilletidsoversigt</div><div class="section-subtitle">Forbrug de seneste 7 dage</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${chartHTML}
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderNotificationsSection() {
+    const notif = childData?.notifications || {};
+    return `
+      <div class="section" id="section-notifications">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📧</div><div><div class="section-title">E-mail notifikationer</div><div class="section-subtitle">Få besked om lav saldo</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${notif.notify_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${notif.notify_low !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderFeedbackSection() {
+    const instName = getInstitutionName() || 'klubben';
+    return `
+      <div class="section" id="section-feedback">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">💬</div><div><div class="section-title">Feedback & Support</div><div class="section-subtitle">Skriv til ${esc(instName)} eller Flango</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div class="feedback-tabs" id="feedback-tabs">
+            <button class="feedback-tab active" data-target="fb-club">🏫 Til ${esc(instName)}</button>
+            <button class="feedback-tab" data-target="fb-flango">🍊 Til Flango</button>
+          </div>
+          <div class="feedback-panel" id="fb-club">
+            <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Send en besked direkte til ${esc(instName)}.</p>
+            <textarea class="feedback-textarea" placeholder="Skriv din besked her..." rows="4"></textarea>
+            <button class="save-btn full">Send til ${esc(instName)}</button>
+          </div>
+          <div class="feedback-panel" id="fb-flango" style="display:none">
+            <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Hjælp os med at gøre Flango bedre — eller rapporter en fejl.</p>
+            <textarea class="feedback-textarea" placeholder="Beskriv problemet eller din ide..." rows="4"></textarea>
+            <div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">🔒</span><span>Din besked sendes anonymt medmindre du vælger at inkludere din e-mail.</span></div>
+            <button class="save-btn full">Send til Flango</button>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderPinSection() {
+    return `
+      <div class="section" id="section-pin">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--surface-sunken)">🔑</div><div><div class="section-title">Skift adgangskode</div><div class="section-subtitle">Minimum 6 tegn</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div style="display:flex;flex-direction:column;gap:var(--s2);margin-top:var(--s2)">
+            <input type="password" id="pin-new" class="input-field" placeholder="Ny adgangskode (mindst 6 tegn)">
+            <input type="password" id="pin-confirm" class="input-field" placeholder="Gentag ny adgangskode">
+            <button class="save-btn full" id="pin-save-btn" style="margin-top:var(--s1)">Gem ny adgangskode</button>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderAddChildModal() {
+    // Build institution options from existing children (unique institutions)
+    const instMap = new Map();
+    children.forEach(c => {
+      if (c.institution_id && !instMap.has(c.institution_id)) {
+        instMap.set(c.institution_id, c.institution_name || getInstitutionName() || 'Institution');
+      }
+    });
+    let instOptions = '';
+    if (instMap.size > 0) {
+      instOptions = [...instMap.entries()].map(([id, name]) =>
+        `<option value="${id}">${esc(name)}</option>`
+      ).join('');
+    }
+
+    return `
+      <div class="modal-overlay" id="add-child-modal">
+        <div class="modal" style="position:relative">
+          <button class="modal-close" id="modal-close-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          <div class="modal-title">Tilknyt barn</div>
+          <div class="modal-subtitle">Indtast den 8-cifrede kode fra institutionen</div>
+          <div class="modal-field">
+            <label>Institution</label>
+            <select id="link-institution" class="input-field">
+              ${instOptions || '<option value="">Vælg institution...</option>'}
+            </select>
+          </div>
+          <div class="modal-field">
+            <label>Portalkode</label>
+            <input type="text" id="link-code" class="input-field" placeholder="fx ABC12345" maxlength="8" style="text-transform:uppercase">
+          </div>
+          <div class="login-error" id="link-error"></div>
+          <button class="save-btn full" id="link-btn" style="margin-top:var(--s3)">Tilknyt</button>
+        </div>
+      </div>`;
+  }
+
+  // ═══════════════════════════════════════
+  //  SIDEBAR
+  // ═══════════════════════════════════════
+
+  function renderSidebarChildren() {
+    const container = document.getElementById('sidebar-children');
+    if (!container) return;
+    const items = children.map(c => {
+      const isActive = c.child_id === selectedChild?.child_id;
+      const emoji = c.avatar_emoji || c.emoji || '🧒';
+      const bal = c.balance != null ? `${formatKr(c.balance)} kr` : '';
+      return `<div class="sidebar-child-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}"><div class="sidebar-child-avatar">${emoji}</div><div><div class="sidebar-child-name">${esc(c.child_name || c.name)}</div><div class="sidebar-child-saldo">${bal}</div></div></div>`;
+    }).join('');
+    container.innerHTML = items + `<div class="sidebar-add-child" id="add-child-btn-sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tilknyt barn</div>`;
+  }
+
+  function renderSidebarNav() {
+    const nav = document.getElementById('sidebar-nav');
+    if (!nav) return;
+    const showScreentime = featureFlags.skaermtid_enabled === true;
+    const items = [
+      { id: 'section-balance', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', label: 'Overblik' },
+      { id: 'section-events', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', label: 'Arrangementer' },
+      { id: 'section-profile', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>', label: 'Købsprofil' },
+      { id: 'section-history', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', label: 'Historik' },
+      { id: 'section-sortiment', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>', label: 'Sortiment' },
+      { id: 'section-topup', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', label: 'Indbetaling' },
+      { id: 'section-spending-limit', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>', label: 'Daglig grænse' },
+      { id: 'section-product-limits', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>', label: 'Købsgrænser' },
+      { id: 'section-sugar', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>', label: 'Sukkerpolitik' },
+      { id: 'section-diet', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg>', label: 'Kostpræferencer' },
+      { id: 'section-allergens', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>', label: 'Allergier' },
+    ];
+    if (showScreentime) {
+      items.push(
+        { id: 'section-screentime', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>', label: 'Skærmtid' },
+        { id: 'section-games', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="17" cy="10" r="1"/><circle cx="15" cy="13" r="1"/></svg>', label: 'Godkend spil' },
+        { id: 'section-st-chart', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label: 'Spilletidsoversigt' },
+      );
+    }
+    items.push(
+      { id: 'section-notifications', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Notifikationer' },
+      { id: 'section-feedback', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>', label: 'Feedback' },
+      { id: 'section-pin', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>', label: 'Adgangskode' },
+    );
+
+    nav.innerHTML = items.map((item, i) =>
+      `<div class="sidebar-nav-item${i === 0 ? ' active' : ''}" data-scroll="${item.id}">${item.icon}${item.label}</div>`
+    ).join('');
+  }
+
+  // ═══════════════════════════════════════
+  //  EVENT BINDING
+  // ═══════════════════════════════════════
+
+  let _docListenersBound = false;
+  let _sectionToggling = false;
+
+  function bindDocumentListeners() {
+    if (_docListenersBound) return;
+    _docListenersBound = true;
+
+    // Section toggle (accordion) — delegated, only bind once
+    document.addEventListener('click', function (e) {
+      const header = e.target.closest('.section-header');
+      if (!header) return;
+      const section = header.closest('.section');
+      if (!section) return;
+
+      // Debounce: prevent double-fire from rapid clicks or bubbling
+      if (_sectionToggling) return;
+      _sectionToggling = true;
+      setTimeout(function () { _sectionToggling = false; }, 300);
+
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      toggleSection(section);
+
+      // Lazy-load purchase profile
+      if (section.id === 'section-profile' && !purchaseProfile) {
+        loadPurchaseProfile();
+      }
+    }, true); // use capture phase to fire first
+
+    // Sidebar child selector — delegated, only bind once
+    document.addEventListener('click', function (e) {
+      const item = e.target.closest('.sidebar-child-item[data-child-id]');
+      if (!item) return;
+      const childId = item.dataset.childId;
+      const child = children.find(c => c.child_id === childId);
+      if (child) switchChild(child);
+    });
+
+    // Mobile child chip selector — delegated, only bind once
+    document.addEventListener('click', function (e) {
+      const chip = e.target.closest('.child-chip[data-child-id]');
+      if (!chip) return;
+      const childId = chip.dataset.childId;
+      const child = children.find(c => c.child_id === childId);
+      if (child) switchChild(child);
+    });
+
+    // Event registration — delegated, only bind once
+    document.addEventListener('click', function (e) {
+      const regBtn = e.target.closest('.event-action-btn[data-event-id]');
+      if (regBtn) {
+        e.stopPropagation();
+        handleEventRegister(regBtn.dataset.eventId, Number(regBtn.dataset.eventPrice) || 0);
+        return;
+      }
+      const cancelBtn = e.target.closest('.event-cancel-btn[data-event-id]');
+      if (cancelBtn) {
+        e.stopPropagation();
+        handleEventCancel(cancelBtn.dataset.eventId);
+        return;
+      }
+      const payBtn = e.target.closest('.event-pay-btn[data-event-id]');
+      if (payBtn) {
+        e.stopPropagation();
+        handleEventPay(payBtn.dataset.eventId, Number(payBtn.dataset.eventPrice) || 0);
+        return;
+      }
+    });
+
+    // Stepper buttons — delegated, only bind once
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('.stepper-btn');
+      if (!btn) return;
+      const stepper = btn.closest('.stepper');
+      const valEl = stepper.querySelector('.stepper-val');
+      const isMinus = btn.classList.contains('stepper-minus');
+      let val = parseInt(valEl.textContent);
+      if (isNaN(val)) val = 0;
+      val = isMinus ? Math.max(0, val - 1) : val + 1;
+      valEl.textContent = val === 0 ? '∞' : val;
+    });
+  }
+
+  function bindEvents() {
+    // Delegated document-level listeners (only added once)
+    bindDocumentListeners();
+
+    // Bottom nav
+    document.querySelectorAll('.bnav-item[data-tab]').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    // Quick actions
+    document.querySelectorAll('[data-qa-scroll]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sectionId = btn.dataset.qaScroll;
+        const tabId = btn.dataset.qaTab;
+        if (isMobile() && tabId) {
+          switchTab(tabId);
+          requestAnimationFrame(() => { setTimeout(() => scrollToSection(sectionId), 80); });
+        } else { scrollToSection(sectionId); }
+      });
+    });
+
+    // Balance card nav buttons
+    document.querySelectorAll('[data-nav-tab]').forEach(btn => {
+      btn.addEventListener('click', () => { isMobile() ? switchTab(btn.dataset.navTab) : scrollToSection('section-topup'); });
+    });
+
+    // Desktop sidebar nav
+    document.querySelectorAll('.sidebar-nav-item[data-scroll]').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        const target = item.dataset.scroll;
+        if (target === 'section-balance') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          scrollToSection(target);
+        }
+      });
+    });
+
+    // Desktop sidebar scroll tracking
+    if (!isMobile()) {
+      const sectionIds = [...document.querySelectorAll('.sidebar-nav-item[data-scroll]')].map(i => i.dataset.scroll);
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            document.querySelectorAll('.sidebar-nav-item').forEach(i => {
+              i.classList.toggle('active', i.dataset.scroll === entry.target.id);
+            });
+          }
+        });
+      }, { rootMargin: '-20% 0px -60% 0px' });
+      sectionIds.forEach(id => { const el = document.getElementById(id); if (el) observer.observe(el); });
+    }
+
+
+    // Chip groups (spending limit, etc.)
+    document.querySelectorAll('.chip-group').forEach(group => {
+      group.addEventListener('click', e => {
+        const chip = e.target.closest('.chip');
+        if (!chip) return;
+        group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+
+        // Handle spending limit save
+        if (group.id === 'spending-limit-chips') {
+          const limit = chip.dataset.limit;
+          if (limit && limit !== 'custom' && selectedChild) {
+            saveDailyLimit(Number(limit));
+          }
+        }
+      });
+    });
+
+    // Period toggles
+    document.querySelectorAll('.period-toggle').forEach(toggle => {
+      toggle.addEventListener('click', e => {
+        const btn = e.target.closest('.period-btn');
+        if (!btn) return;
+        toggle.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // Topup option selection
+    document.querySelectorAll('.topup-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        opt.closest('.topup-grid').querySelectorAll('.topup-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+      });
+    });
+
+    // Stripe payment
+    const stripeBtn = document.getElementById('pay-stripe');
+    if (stripeBtn) stripeBtn.addEventListener('click', handleStripeTopup);
+
+    // Allergen cycling
+    const allergenGrid = document.getElementById('allergen-grid');
+    if (allergenGrid) {
+      allergenGrid.addEventListener('click', e => {
+        const item = e.target.closest('.allergen-item');
+        if (!item) return;
+        cycleAllergen(item);
+      });
+    }
+
+    // Sugar policy toggles
+    const sugarBlock = document.getElementById('sugar-block-toggle');
+    if (sugarBlock) sugarBlock.addEventListener('change', () => saveSugarPolicy());
+
+    // Diet toggles
+    const dietVeg = document.getElementById('diet-vegetarian');
+    const dietPork = document.getElementById('diet-no-pork');
+    if (dietVeg) dietVeg.addEventListener('change', () => saveSugarPolicy());
+    if (dietPork) dietPork.addEventListener('change', () => saveSugarPolicy());
+
+    // Notification toggles
+    const notifZero = document.getElementById('notif-zero');
+    const notifLow = document.getElementById('notif-low');
+    if (notifZero) notifZero.addEventListener('change', () => saveNotifications());
+    if (notifLow) notifLow.addEventListener('change', () => saveNotifications());
+
+    // PIN save
+    const pinBtn = document.getElementById('pin-save-btn');
+    if (pinBtn) pinBtn.addEventListener('click', handlePinChange);
+
+    // Feedback tabs
+    const feedbackTabs = document.getElementById('feedback-tabs');
+    if (feedbackTabs) {
+      feedbackTabs.addEventListener('click', e => {
+        const tab = e.target.closest('.feedback-tab');
+        if (!tab) return;
+        feedbackTabs.querySelectorAll('.feedback-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.feedback-panel').forEach(p => p.style.display = 'none');
+        const target = document.getElementById(tab.dataset.target);
+        if (target) target.style.display = '';
+      });
+    }
+
+    // Logout
+    const sidebarLogout = document.getElementById('sidebar-logout');
+    if (sidebarLogout) sidebarLogout.addEventListener('click', handleLogout);
+    const navLogout = document.getElementById('nav-logout-btn');
+    if (navLogout) navLogout.addEventListener('click', handleLogout);
+
+    // Add child modal triggers
+    bindAddChildModal();
+  }
+
+  function bindAddChildModal() {
+    const modal = document.getElementById('add-child-modal');
+    if (!modal) return;
+
+    // Open triggers
+    const openBtns = [
+      document.getElementById('add-child-btn-mobile'),
+      document.getElementById('add-child-btn-sidebar'),
+    ];
+    openBtns.forEach(btn => {
+      if (btn) btn.addEventListener('click', () => modal.classList.add('visible'));
+    });
+
+    // Close
+    const closeBtn = document.getElementById('modal-close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.remove('visible'));
+    modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('visible'); });
+
+    // Link child
+    const linkBtn = document.getElementById('link-btn');
+    if (linkBtn) linkBtn.addEventListener('click', handleLinkChild);
+  }
+
+  // ═══════════════════════════════════════
+  //  ACTIONS / HANDLERS
+  // ═══════════════════════════════════════
+
+  function toggleSection(sectionEl) {
+    if (!sectionEl) return;
+    const isOpen = sectionEl.classList.contains('open');
+    document.querySelectorAll('.section.open').forEach(s => s.classList.remove('open'));
+    if (!isOpen) {
+      sectionEl.classList.add('open');
+      setTimeout(() => sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 260);
+    }
+  }
+
+  function switchTab(tabId) {
+    if (!isMobile()) return;
+    document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
+    const tab = document.getElementById(tabId);
+    if (tab) { tab.classList.add('active'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    const navBtn = document.querySelector(`.bnav-item[data-tab="${tabId}"]`);
+    if (navBtn) navBtn.classList.add('active');
+  }
+
+  function scrollToSection(sectionId, openIt) {
+    if (openIt === undefined) openIt = true;
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    if (openIt) {
+      document.querySelectorAll('.section.open').forEach(s => s.classList.remove('open'));
+      section.classList.add('open');
+    }
+    setTimeout(() => {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      section.classList.remove('highlight-flash');
+      void section.offsetWidth;
+      section.classList.add('highlight-flash');
+    }, 260);
+  }
+
+  function cycleAllergen(el) {
+    const states = [{ cls: '', label: 'Tilladt', policy: 'allow' }, { cls: 'warn', label: 'Advarsel', policy: 'warn' }, { cls: 'blocked', label: 'Blokeret', policy: 'block' }];
+    const current = el.classList.contains('blocked') ? 2 : el.classList.contains('warn') ? 1 : 0;
+    const next = (current + 1) % 3;
+    el.classList.remove('warn', 'blocked');
+    if (states[next].cls) el.classList.add(states[next].cls);
+    el.querySelector('.allergen-status').textContent = states[next].label;
+    // Auto-save allergens
+    saveAllergens();
+  }
+
+  async function loadPurchaseProfile(period, sortBy) {
+    if (!selectedChild) return;
+    const container = document.getElementById('purchase-profile-content');
+    if (!container) return;
+    ppCurrentPeriod = period || ppCurrentPeriod || '30';
+    ppCurrentSort = sortBy || ppCurrentSort || 'antal';
+    container.innerHTML = '<div style="text-align:center;padding:var(--s4)"><div class="portal-loading-spinner" style="margin:0 auto"></div></div>';
+    try {
+      const periodMap = { 'all': 'all', '30': '30d', '7': '7d' };
+      purchaseProfile = await API.getPurchaseProfile(selectedChild.child_id, periodMap[ppCurrentPeriod] || '30d', ppCurrentSort);
+      renderPurchaseProfileContent(container, purchaseProfile);
+    } catch (err) {
+      console.error('[Portal] Purchase profile error:', err);
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Kunne ikke indlæse købsprofil</div></div>';
+    }
+  }
+
+  function ppFormatKr(val) {
+    if (val == null) return '0 kr';
+    return Number(val).toLocaleString('da-DK', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' kr';
+  }
+
+  function renderPurchaseProfileContent(container, data) {
+    if (!data) { container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Ingen data</div></div>'; return; }
+    const total = data.total_spent || data.total_amount || data.total || 0;
+    const count = data.total_count || data.purchase_count || 0;
+    const avg = count > 0 ? (total / count) : 0;
+    const chartData = data.chartData || data.products || data.top_products || [];
+
+    // Period & sort buttons
+    const periodBtns = ['all', '30', '7'].map(p => {
+      const labels = { 'all': 'Alt', '30': '30 dage', '7': '7 dage' };
+      return `<button class="pp-period-btn${ppCurrentPeriod === p ? ' active' : ''}" data-period="${p}">${labels[p]}</button>`;
+    }).join('');
+    const sortBtns = ['antal', 'kr'].map(s => {
+      const labels = { 'antal': 'Antal', 'kr': 'Beløb' };
+      return `<button class="pp-sort-btn${ppCurrentSort === s ? ' active' : ''}" data-sort="${s}">${labels[s]}</button>`;
+    }).join('');
+
+    const controlsHTML = `
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">
+        <div class="pp-btn-group">${periodBtns}</div>
+        <div class="pp-btn-group">${sortBtns}</div>
+      </div>`;
+
+    const summaryHTML = `
+      <div class="chart-summary">
+        <div class="chart-stat"><div class="chart-stat-value">${formatKr(total)} kr</div><div class="chart-stat-label">Samlet forbrug</div></div>
+        <div class="chart-stat"><div class="chart-stat-value">${count}</div><div class="chart-stat-label">Antal køb</div></div>
+        <div class="chart-stat"><div class="chart-stat-value">${formatKr(avg)} kr</div><div class="chart-stat-label">Gns. pr. køb</div></div>
+      </div>`;
+
+    if (!chartData || chartData.length === 0) {
+      container.innerHTML = controlsHTML + summaryHTML + '<div class="empty-state"><div class="empty-state-text">Ingen købsdata i denne periode</div></div>';
+      bindPPButtons(container);
+      return;
+    }
+
+    // Build cylinder chart
+    const chartContainer = document.createElement('div');
+    chartContainer.className = 'purchase-profile-chart';
+    chartContainer.style.cssText = 'display:flex;flex-direction:row;align-items:flex-end;gap:14px;padding:40px 20px 20px;background:#f8fafc;border-radius:16px;border:1px solid #e2e8f0;overflow-x:auto;-webkit-overflow-scrolling:touch;min-height:200px;';
+
+    const maxVal = Math.max(...chartData.map(item => item.normalizedHeight || item.quantity || item.count || item.antal || 0));
+    const fragment = document.createDocumentFragment();
+
+    chartData.forEach(function (item, index) {
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'display:flex;flex-direction:column;align-items:center;position:relative;min-width:52px;flex:0 0 auto;';
+
+      // Display value
+      const displayValue = item.displayValue || (ppCurrentSort === 'kr' ? ppFormatKr(item.kr || item.amount || 0) : (item.antal || item.quantity || item.count || 0) + ' stk');
+      const valueLabel = document.createElement('div');
+      valueLabel.style.cssText = 'font-size:12px;font-weight:800;color:#1e293b;margin-bottom:6px;white-space:nowrap;';
+      valueLabel.textContent = displayValue;
+
+      // Bar height
+      const normalizedHeight = item.normalizedHeight || (maxVal > 0 ? ((item.antal || item.quantity || item.count || 0) / maxVal * 100) : 0);
+      const minH = 25, maxH = 170;
+      const calcHeight = minH + (normalizedHeight / 100) * (maxH - minH);
+      const colors = ppCylinderColors[index % ppCylinderColors.length];
+
+      // Bar (cylinder body)
+      const bar = document.createElement('div');
+      bar.style.cssText = 'position:relative;width:38px;height:0;border-radius:19px 19px 6px 6px;transition:height 0.8s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 8px 20px rgba(0,0,0,0.15);cursor:pointer;';
+      bar.style.setProperty('--final-height', Math.round(calcHeight) + 'px');
+      bar.style.background = colors.bg;
+      bar.style.boxShadow = '3px 0 0 ' + colors.shadow + ', 0 8px 16px rgba(0,0,0,0.15)';
+
+      // Cap (top ellipse)
+      const cap = document.createElement('div');
+      cap.style.cssText = 'position:absolute;top:-7px;left:0;width:38px;height:14px;border-radius:50%;z-index:3;';
+      cap.style.background = colors.cap;
+      bar.appendChild(cap);
+
+      // Tooltip
+      const itemName = cleanProductName(item.name || '');
+      const tooltip = document.createElement('div');
+      tooltip.style.cssText = 'position:absolute;bottom:calc(100% + 16px);left:50%;transform:translateX(-50%);background:#1e293b;color:white;padding:10px 14px;border-radius:10px;font-size:13px;white-space:nowrap;opacity:0;visibility:hidden;transition:all 0.2s ease;z-index:100;pointer-events:none;';
+      tooltip.innerHTML = '<div style="font-weight:800;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:3px;margin-bottom:3px;">' + esc(itemName) + '</div>'
+        + '<div style="display:flex;justify-content:space-between;gap:12px"><span>Antal:</span><span style="font-weight:700">' + (item.antal || item.quantity || item.count || 0) + '</span></div>'
+        + '<div style="display:flex;justify-content:space-between;gap:12px"><span>Beløb:</span><span style="font-weight:700">' + ppFormatKr(item.kr || item.amount || 0) + '</span></div>';
+      bar.appendChild(tooltip);
+
+      // Hover events for tooltip
+      bar.addEventListener('mouseenter', function () { tooltip.style.opacity = '1'; tooltip.style.visibility = 'visible'; });
+      bar.addEventListener('mouseleave', function () { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; });
+      bar.addEventListener('click', function () {
+        const isVis = tooltip.style.opacity === '1';
+        tooltip.style.opacity = isVis ? '0' : '1';
+        tooltip.style.visibility = isVis ? 'hidden' : 'visible';
+      });
+
+      // Icon
+      const iconWrap = document.createElement('div');
+      iconWrap.style.cssText = 'margin-top:10px;width:32px;height:32px;background:white;border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,0.08);border:1px solid #e2e8f0;overflow:hidden;';
+      const icon = item.icon || item.emoji;
+      if (item.isDagensRet) {
+        iconWrap.innerHTML = '<span style="font-size:18px">🍽️</span>';
+      } else if (item.isAndreVarer) {
+        iconWrap.innerHTML = '<span style="font-size:18px">📦</span>';
+      } else if (icon && (icon.startsWith('http') || icon.includes('.webp') || icon.includes('.png'))) {
+        iconWrap.innerHTML = '<img src="' + icon + '" alt="" style="width:24px;height:24px;object-fit:contain">';
+      } else if (icon) {
+        iconWrap.innerHTML = '<span style="font-size:18px">' + icon + '</span>';
+      } else {
+        iconWrap.innerHTML = '<span style="font-size:18px">🛒</span>';
+      }
+
+      // Name label
+      const nameLabel = document.createElement('div');
+      nameLabel.style.cssText = 'margin-top:6px;font-size:11px;font-weight:700;color:#475569;text-align:center;max-width:62px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      nameLabel.textContent = itemName;
+      nameLabel.title = itemName;
+
+      wrapper.appendChild(valueLabel);
+      wrapper.appendChild(bar);
+      wrapper.appendChild(iconWrap);
+      wrapper.appendChild(nameLabel);
+      fragment.appendChild(wrapper);
+    });
+
+    chartContainer.appendChild(fragment);
+    container.innerHTML = controlsHTML + summaryHTML;
+    container.appendChild(chartContainer);
+
+    // Animate bars
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        const bars = chartContainer.querySelectorAll('[style*="--final-height"]');
+        bars.forEach(function (b, i) {
+          setTimeout(function () {
+            b.style.height = b.style.getPropertyValue('--final-height');
+          }, i * 80);
+        });
+      });
+    });
+
+    bindPPButtons(container);
+  }
+
+  function bindPPButtons(container) {
+    container.querySelectorAll('.pp-period-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { loadPurchaseProfile(btn.dataset.period, ppCurrentSort); });
+    });
+    container.querySelectorAll('.pp-sort-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { loadPurchaseProfile(ppCurrentPeriod, btn.dataset.sort); });
+    });
+  }
+
+  async function saveDailyLimit(limit) {
+    if (!selectedChild) return;
+    try {
+      await API.saveDailyLimit(selectedChild.child_id, limit);
+      showToast('Daglig grænse gemt', 'success');
+    } catch (err) {
+      console.error('[Portal] Save daily limit error:', err);
+      showToast('Kunne ikke gemme grænse', 'error');
+    }
+  }
+
+  async function saveSugarPolicy() {
+    if (!selectedChild) return;
+    const blockEl = document.getElementById('sugar-block-toggle');
+    const vegEl = document.getElementById('diet-vegetarian');
+    const porkEl = document.getElementById('diet-no-pork');
+    const maxDayEl = document.querySelector('#sugar-max-stepper .stepper-val');
+    const maxPerEl = document.querySelector('#sugar-per-product-stepper .stepper-val');
+
+    const policy = {
+      block_unhealthy: blockEl ? blockEl.checked : false,
+      vegetarian_only: vegEl ? vegEl.checked : false,
+      no_pork: porkEl ? porkEl.checked : false,
+    };
+    if (maxDayEl) {
+      const v = parseInt(maxDayEl.textContent);
+      if (!isNaN(v) && v > 0) policy.max_unhealthy_per_day = v;
+    }
+    if (maxPerEl) {
+      const v = parseInt(maxPerEl.textContent);
+      if (!isNaN(v) && v > 0) policy.max_per_product_per_day = v;
+    }
+
+    try {
+      await API.saveSugarPolicy(selectedChild.child_id, policy);
+      showToast('Kostindstillinger gemt', 'success');
+    } catch (err) {
+      console.error('[Portal] Save sugar policy error:', err);
+      showToast('Kunne ikke gemme', 'error');
+    }
+  }
+
+  async function saveAllergens() {
+    if (!selectedChild) return;
+    const items = document.querySelectorAll('#allergen-grid .allergen-item');
+    const settings = {};
+    items.forEach(item => {
+      const key = item.dataset.allergen;
+      if (item.classList.contains('blocked')) settings[key] = 'block';
+      else if (item.classList.contains('warn')) settings[key] = 'warn';
+      else settings[key] = 'allow';
+    });
+    try {
+      await API.saveAllergySettings(selectedChild.child_id, settings);
+      showToast('Allergi-indstillinger gemt', 'success');
+    } catch (err) {
+      console.error('[Portal] Save allergens error:', err);
+      showToast('Kunne ikke gemme', 'error');
+    }
+  }
+
+  async function saveNotifications() {
+    if (!selectedChild) return;
+    const zeroEl = document.getElementById('notif-zero');
+    const lowEl = document.getElementById('notif-low');
+    try {
+      await API.saveNotification(selectedChild.child_id, {
+        notify_zero: zeroEl ? zeroEl.checked : true,
+        notify_low: lowEl ? lowEl.checked : true,
+      });
+      showToast('Notifikationer gemt', 'success');
+    } catch (err) {
+      console.error('[Portal] Save notifications error:', err);
+      showToast('Kunne ikke gemme', 'error');
+    }
+  }
+
+  // ─── Event handlers ───
+
+  async function handleEventRegister(eventId, price) {
+    if (!selectedChild) return;
+    if (price > 0) {
+      showEventPaymentOverlay(eventId, price, false);
+      return;
+    }
+    // Free event — register directly
+    try {
+      showToast('Tilmelder...', '');
+      await API.registerForEvent(selectedChild.child_id, eventId);
+      showToast('Tilmeldt!', 'success');
+      await reloadEvents();
+    } catch (err) {
+      console.error('[Portal] Event register error:', err);
+      showToast('Kunne ikke tilmelde', 'error');
+    }
+  }
+
+  async function handleEventCancel(eventId) {
+    if (!selectedChild) return;
+    if (!confirm('Er du sikker på, at du vil framelde?')) return;
+    try {
+      showToast('Framelder...', '');
+      await API.cancelEvent(selectedChild.child_id, eventId);
+      showToast('Frameldt', 'success');
+      await reloadEvents();
+      // Reload balance in case of refund
+      try {
+        const viewData = await API.getParentView(selectedChild.child_id);
+        if (viewData) childData = viewData;
+        const balEl = document.querySelector('.balance-amount');
+        if (balEl && childData?.balance != null) balEl.textContent = formatKr(childData.balance) + ' kr';
+      } catch (_) {}
+    } catch (err) {
+      console.error('[Portal] Event cancel error:', err);
+      showToast('Kunne ikke framelde', 'error');
+    }
+  }
+
+  async function handleEventPay(eventId, price) {
+    showEventPaymentOverlay(eventId, price, true);
+  }
+
+  function showEventPaymentOverlay(eventId, price, isPayingExisting) {
+    const balance = childData?.balance || 0;
+    const canPayBalance = balance >= price;
+    const childName = getChildName();
+    const overlay = document.createElement('div');
+    overlay.className = 'event-payment-overlay';
+    overlay.innerHTML = `
+      <div class="event-payment-modal">
+        <h3>${isPayingExisting ? 'Betal tilmelding' : 'Tilmeld & betal'} — ${formatKr(price)} kr</h3>
+        <button class="pay-option" data-method="balance" ${!canPayBalance ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''}>
+          <span class="pay-icon">💰</span>
+          <span>Betal med ${esc(childName)}s saldo${canPayBalance ? ' (' + formatKr(balance) + ' kr)' : ' (ikke nok)'}</span>
+        </button>
+        <button class="pay-option" data-method="later" ${isPayingExisting ? 'style="display:none"' : ''}>
+          <span class="pay-icon">⏳</span>
+          <span>Betal senere</span>
+        </button>
+        <button class="pay-cancel">Annuller</button>
+      </div>`;
+
+    overlay.querySelector('.pay-cancel').addEventListener('click', function () { overlay.remove(); });
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
+
+    overlay.querySelectorAll('.pay-option').forEach(function (opt) {
+      opt.addEventListener('click', async function () {
+        if (opt.disabled) return;
+        const method = opt.dataset.method;
+        overlay.remove();
+        try {
+          showToast(method === 'later' ? 'Tilmelder...' : 'Tilmelder og betaler...', '');
+          if (isPayingExisting) {
+            // Pay existing registration with balance
+            await API.registerForEvent(selectedChild.child_id, eventId, true, 'balance');
+          } else if (method === 'balance') {
+            await API.registerForEvent(selectedChild.child_id, eventId, true, 'balance');
+          } else {
+            // Pay later
+            await API.registerForEvent(selectedChild.child_id, eventId, false);
+          }
+          showToast(method === 'later' ? 'Tilmeldt! (betaling afventer)' : 'Tilmeldt & betalt!', 'success');
+          await reloadEvents();
+          // Reload balance
+          try {
+            const viewData = await API.getParentView(selectedChild.child_id);
+            if (viewData) childData = viewData;
+            const balEl = document.querySelector('.balance-amount');
+            if (balEl && childData?.balance != null) balEl.textContent = formatKr(childData.balance) + ' kr';
+          } catch (_) {}
+        } catch (err) {
+          console.error('[Portal] Event pay error:', err);
+          showToast('Betaling fejlede: ' + (err.message || 'Ukendt fejl'), 'error');
+        }
+      });
+    });
+
+    document.body.appendChild(overlay);
+  }
+
+  async function reloadEvents() {
+    if (!selectedChild) return;
+    try {
+      eventsData = await API.getParentEvents(selectedChild.child_id);
+      // Re-render events section in-place
+      const evSection = document.getElementById('section-events');
+      if (evSection) {
+        const wasOpen = evSection.classList.contains('open');
+        const temp = document.createElement('div');
+        temp.innerHTML = renderEventsSection();
+        const newSection = temp.firstElementChild;
+        if (wasOpen) newSection.classList.add('open');
+        evSection.replaceWith(newSection);
+      }
+    } catch (err) {
+      console.error('[Portal] Reload events error:', err);
+    }
+  }
+
+  async function handleStripeTopup() {
+    if (!selectedChild) return;
+    const selected = document.querySelector('.topup-option.selected');
+    if (!selected) { showToast('Vælg et beløb', 'error'); return; }
+    const amount = selected.dataset.amount;
+    if (!amount || amount === 'custom') { showToast('Vælg et beløb', 'error'); return; }
+    const amountDkk = Number(amount);
+
+    try {
+      showToast('Opretter betaling...', '');
+      const result = await API.createTopup(selectedChild.child_id, amountDkk);
+
+      if (!result?.clientSecret) {
+        showToast('Betaling kunne ikke oprettes', 'error');
+        return;
+      }
+
+      // Load Stripe.js if not already loaded
+      if (!window.Stripe) {
+        await new Promise(function (resolve, reject) {
+          const s = document.createElement('script');
+          s.src = 'https://js.stripe.com/v3/';
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+
+      const stripeKey = result.stripe_publishable_key;
+      if (!stripeKey) {
+        showToast('Stripe er ikke konfigureret', 'error');
+        return;
+      }
+
+      const stripe = window.Stripe(stripeKey);
+      const elements = stripe.elements({ clientSecret: result.clientSecret, appearance: { theme: 'stripe' } });
+      const paymentElement = elements.create('payment');
+
+      // Show payment overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'event-payment-overlay';
+      overlay.innerHTML = `
+        <div class="event-payment-modal" style="max-width:420px">
+          <h3>Betal ${formatKr(amountDkk)} kr</h3>
+          <div id="topup-payment-element" style="min-height:200px;margin-bottom:var(--s3)"></div>
+          <div id="topup-error" style="color:var(--negative);font-size:13px;margin-bottom:var(--s2);display:none"></div>
+          <button class="save-btn full" id="topup-confirm-btn" style="margin-bottom:var(--s2)">Betal ${formatKr(amountDkk)} kr</button>
+          <button class="pay-cancel" id="topup-cancel-btn">Annuller</button>
+        </div>`;
+
+      document.body.appendChild(overlay);
+      paymentElement.mount('#topup-payment-element');
+
+      overlay.querySelector('#topup-cancel-btn').addEventListener('click', function () { overlay.remove(); });
+      overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
+
+      overlay.querySelector('#topup-confirm-btn').addEventListener('click', async function () {
+        const confirmBtn = overlay.querySelector('#topup-confirm-btn');
+        const errorEl = overlay.querySelector('#topup-error');
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Behandler...';
+        errorEl.style.display = 'none';
+
+        try {
+          const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+            elements: elements,
+            confirmParams: {},
+            redirect: 'if_required',
+          });
+
+          if (stripeError) {
+            errorEl.textContent = stripeError.message || 'Betaling fejlede';
+            errorEl.style.display = 'block';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Betal ' + formatKr(amountDkk) + ' kr';
+            return;
+          }
+
+          if (paymentIntent && paymentIntent.status === 'succeeded') {
+            try {
+              const confirmResult = await API.confirmTopup(selectedChild.child_id, paymentIntent.id);
+              if (confirmResult && confirmResult.new_balance != null) {
+                const balEl = document.querySelector('.balance-amount');
+                if (balEl) balEl.textContent = formatKr(confirmResult.new_balance) + ' kr';
+                if (childData) childData.balance = confirmResult.new_balance;
+              }
+            } catch (_) {}
+            overlay.remove();
+            showToast('Betaling gennemført!', 'success');
+            // Reload balance
+            try {
+              const viewData = await API.getParentView(selectedChild.child_id);
+              if (viewData) {
+                childData = viewData;
+                const balEl = document.querySelector('.balance-amount');
+                if (balEl && childData.balance != null) balEl.textContent = formatKr(childData.balance) + ' kr';
+              }
+            } catch (_) {}
+          } else {
+            errorEl.textContent = 'Betaling blev ikke gennemført.';
+            errorEl.style.display = 'block';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Betal ' + formatKr(amountDkk) + ' kr';
+          }
+        } catch (err) {
+          errorEl.textContent = 'Betaling fejlede: ' + (err.message || 'Ukendt fejl');
+          errorEl.style.display = 'block';
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Betal ' + formatKr(amountDkk) + ' kr';
+        }
+      });
+
+    } catch (err) {
+      console.error('[Portal] Stripe topup error:', err);
+      showToast('Betaling fejlede: ' + (err.message || 'Ukendt fejl'), 'error');
+    }
+  }
+
+  async function handlePinChange() {
+    const pw = document.getElementById('pin-new').value;
+    const pw2 = document.getElementById('pin-confirm').value;
+    if (pw.length < 6) { showToast('Mindst 6 tegn', 'error'); return; }
+    if (pw !== pw2) { showToast('Adgangskoderne matcher ikke', 'error'); return; }
+    try {
+      await API.updatePassword(pw);
+      showToast('Adgangskode opdateret', 'success');
+      document.getElementById('pin-new').value = '';
+      document.getElementById('pin-confirm').value = '';
+    } catch (err) {
+      console.error('[Portal] PIN change error:', err);
+      showToast('Kunne ikke opdatere adgangskode', 'error');
+    }
+  }
+
+  async function handleLinkChild() {
+    const codeEl = document.getElementById('link-code');
+    const instEl = document.getElementById('link-institution');
+    const errorEl = document.getElementById('link-error');
+    const code = (codeEl.value || '').trim().toUpperCase();
+    const institutionId = instEl ? instEl.value : selectedChild?.institution_id;
+
+    if (!institutionId) {
+      errorEl.textContent = 'Vælg en institution';
+      errorEl.classList.add('visible');
+      return;
+    }
+    if (!code || code.length < 8) {
+      errorEl.textContent = 'Indtast den 8-cifrede kode';
+      errorEl.classList.add('visible');
+      return;
+    }
+    errorEl.classList.remove('visible');
+    try {
+      await API.linkSiblingByCode(code, institutionId);
+      showToast('Barn tilknyttet!', 'success');
+      document.getElementById('add-child-modal').classList.remove('visible');
+      await loadChildren();
+    } catch (err) {
+      console.error('[Portal] Link child error:', err);
+      errorEl.textContent = 'Koden er ugyldig eller allerede brugt';
+      errorEl.classList.add('visible');
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      await API.signOut();
+      currentSession = null;
+      children = [];
+      selectedChild = null;
+      renderLogin();
+    } catch (err) {
+      console.error('[Portal] Logout error:', err);
+      showToast('Kunne ikke logge ud', 'error');
+    }
+  }
+
+  // ─── Clean product name (strip ::icon:: markup) ───
+  function cleanProductName(name) {
+    if (!name) return 'Ukendt';
+    if (name.startsWith('::icon::')) return 'Custom produkt';
+    return name;
+  }
+
+  // ─── HTML escape helper ───
+  function esc(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+  }
+
+  // ═══════════════════════════════════════
+  //  START
+  // ═══════════════════════════════════════
+
+  // Listen for auth state changes (login/logout from other tabs)
+  window.portalSupabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') {
+      currentSession = null;
+      renderLogin();
+    }
+  });
+
+  // Go!
+  init();
+
+})();
