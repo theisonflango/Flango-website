@@ -3864,15 +3864,22 @@ export function setupToolbarHistoryButton() {
     historyBtn.onclick = async (event) => {
         event.preventDefault();
         try {
-            const { openHistorikModal } = await import('./historik-modal.js');
-            openHistorikModal();
+            const { openHistorikV3 } = await import('./historik-v3.js');
+            openHistorikV3();
         } catch (err) {
-            console.error('Kunne ikke åbne Historik v2:', err);
-            // Fallback til gammelt system
-            if (typeof window.__flangoOpenSalesHistory === 'function') {
-                window.__flangoOpenSalesHistory();
-            } else {
-                notifyToolbarUser('Historik-funktionen er ikke klar.');
+            console.error('Kunne ikke åbne Historik v3:', err);
+            // Fallback til v2
+            try {
+                const { openHistorikModal } = await import('./historik-modal.js');
+                openHistorikModal();
+            } catch (err2) {
+                console.error('Kunne ikke åbne Historik v2:', err2);
+                // Fallback til v1
+                if (typeof window.__flangoOpenSalesHistory === 'function') {
+                    window.__flangoOpenSalesHistory();
+                } else {
+                    notifyToolbarUser('Historik-funktionen er ikke klar.');
+                }
             }
         }
     };

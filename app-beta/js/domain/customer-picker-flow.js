@@ -79,6 +79,7 @@ export function setupCustomerPickerFlow({
 
     // Pick mode: allows external callers to open the modal and get a user back
     let pickResolve = null;
+    const userListContainer = document.getElementById('modal-user-list');
 
     const handleUserModalClick = async (event) => {
         const clickedActionIcon = event.target.closest('.action-icon');
@@ -98,6 +99,13 @@ export function setupCustomerPickerFlow({
                 return;
             }
 
+            // Safety: if modal is in pick mode but pickResolve was lost, don't selectUser
+            if (userModal.dataset.pickMode === 'true') {
+                userModal.style.display = 'none';
+                delete userModal.dataset.pickMode;
+                return;
+            }
+
             // Normal café mode
             await selectUser(userId);
             userModal.style.display = 'none';
@@ -110,15 +118,45 @@ export function setupCustomerPickerFlow({
     window.__flangoPickUser = () => {
         return new Promise((resolve) => {
             pickResolve = resolve;
+            userModal.dataset.pickMode = 'true';
             openCustomerSelectionModal();
+
+            // Direct click handler on userListContainer — fires BEFORE the delegated
+            // handler on userModal and uses stopPropagation to prevent café-mode selectUser.
+            // This mirrors the proven pattern from clerk-login-modal.js.
+            const handlePickClick = (evt) => {
+                const target = evt.target.closest('.modal-entry-info');
+                if (!target) return;
+
+                evt.stopPropagation(); // Prevent handleUserModalClick on userModal
+
+                const userId = target.dataset.userId;
+                const allUsers = getAllUsers();
+                const user = allUsers.find(u => u.id === userId);
+
+                userModal.style.display = 'none';
+                cleanupPick();
+                resolve(user || null);
+            };
+
+            const cleanupPick = () => {
+                pickResolve = null;
+                delete userModal.dataset.pickMode;
+                if (userListContainer) {
+                    userListContainer.removeEventListener('click', handlePickClick);
+                }
+                observer.disconnect();
+            };
+
+            if (userListContainer) {
+                userListContainer.addEventListener('click', handlePickClick);
+            }
 
             // Watch for modal close (close button, backdrop click, Escape) → resolve null
             const observer = new MutationObserver(() => {
                 if (userModal.style.display === 'none' && pickResolve) {
-                    const r = pickResolve;
-                    pickResolve = null;
-                    observer.disconnect();
-                    r(null);
+                    cleanupPick();
+                    resolve(null);
                 }
             });
             observer.observe(userModal, { attributes: true, attributeFilter: ['style'] });

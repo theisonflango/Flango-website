@@ -26,6 +26,8 @@
   --hv2-info-light: #EFF6FF;
   --hv2-purple: #7C3AED;
   --hv2-purple-light: #F5F3FF;
+  --hv2-teal: #0D9488;
+  --hv2-teal-light: #F0FDFA;
 }
 
 /* ─── BACKDROP + MODAL SHELL ─── */
@@ -247,6 +249,7 @@
 .hv2-tag.orange { background: var(--hv2-caution-light); color: var(--hv2-caution); }
 .hv2-tag.red { background: var(--hv2-negative-light); color: var(--hv2-negative); }
 .hv2-tag.purple { background: var(--hv2-purple-light); color: var(--hv2-purple); }
+.hv2-tag.teal { background: var(--hv2-teal-light); color: var(--hv2-teal); }
 .hv2-tag.gray { background: var(--hv2-surface-sunken); color: var(--hv2-ink-muted); }
 
 /* ─── ROW ACCENTS ─── */
@@ -256,6 +259,7 @@
 .hv2-row-undo td:first-child { border-left: 3px solid var(--hv2-negative); }
 .hv2-row-undo td { text-decoration: line-through; opacity: .5; }
 .hv2-row-balance td:first-child { border-left: 3px solid var(--hv2-purple); }
+.hv2-row-event td:first-child { border-left: 3px solid var(--hv2-teal); }
 
 /* ─── EXPAND ROWS ─── */
 .hv2-expand-row { display: none; }
@@ -656,6 +660,67 @@
 /* ─── Periodespecifik graf-kort (højre) ─── */
 .hv2-period-chart-card {
   min-height: 180px;
+}
+
+/* ─── Inline chart controls (pill-groups) ─── */
+.hv2-chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.hv2-chart-pill-group {
+  display: flex;
+  gap: 0;
+  background: var(--hv2-surface);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--hv2-border);
+}
+.hv2-chart-pill {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--hv2-ink-muted);
+  transition: all .15s ease;
+  line-height: 1.4;
+}
+.hv2-chart-pill:hover {
+  color: var(--hv2-ink);
+  background: rgba(0,0,0,.03);
+}
+.hv2-chart-pill.active {
+  background: var(--hv2-flango);
+  color: #fff;
+}
+
+/* ─── Line chart (SVG linje/area-graf) ─── */
+.hv2-line-chart {
+  position: relative;
+  overflow: hidden;
+}
+.hv2-line-chart svg {
+  display: block;
+}
+.hv2-line-dot {
+  transition: r .15s ease;
+  cursor: pointer;
+}
+.hv2-line-tooltip {
+  position: absolute;
+  background: var(--hv2-ink);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
 }
 
 /* ─── Axis Chart (Y-akse + søjler + X-akse) ─── */

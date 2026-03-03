@@ -55,6 +55,32 @@ async function filterTestUsers(rows, userIdField, includeTestUsers) {
   return rows.filter(r => !testIds.has(r[userIdField]));
 }
 
+/** Hent dato for institutionens første salg (ekskl. testbrugere). Cached pr. session. */
+let _firstSaleDateCache = null;
+export async function getFirstSaleDate() {
+  if (_firstSaleDateCache) return _firstSaleDateCache;
+  try {
+    const testIds = await getTestUserIds();
+    // Hent ældste salg, sortér ASC, limit 1
+    let query = supabaseClient
+      .from('sales')
+      .select('created_at, customer_id')
+      .eq('institution_id', instId())
+      .order('created_at', { ascending: true })
+      .limit(50); // hent lidt ekstra så vi kan filtrere testbrugere client-side
+    const { data, error } = await query;
+    if (error) { console.error('getFirstSaleDate', error); return null; }
+    const rows = (data || []).filter(r => !testIds.size || !testIds.has(r.customer_id));
+    if (!rows.length) return null;
+    const d = new Date(rows[0].created_at);
+    _firstSaleDateCache = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    return _firstSaleDateCache;
+  } catch (err) {
+    console.error('getFirstSaleDate', err);
+    return null;
+  }
+}
+
 /** Beregn from/to for en periode-streng ('idag','uge','maaned','altid'). */
 export function periodRange(period) {
   const now = new Date();
@@ -334,6 +360,44 @@ export async function getDailyRevenue(from, to, includeTestUsers = false) {
     return result;
   } catch (err) {
     console.error('getDailyRevenue', err);
+    return [];
+  }
+}
+
+/** Hent omsætning kun for dage med salg (ingen 0-dage). Til "Altid + Graf". */
+export async function getDailyRevenueActive(from, to, includeTestUsers = false) {
+  try {
+    const rawRows = await fetchAllRows(() =>
+      supabaseClient
+        .from('sales')
+        .select('total_amount, created_at, customer_id')
+        .eq('institution_id', instId())
+        .gte('created_at', from.toISOString())
+        .lte('created_at', to.toISOString())
+    );
+    const rows = await filterTestUsers(rawRows, 'customer_id', includeTestUsers);
+
+    const byDay = {};
+    rows.forEach(r => {
+      const d = new Date(r.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      byDay[key] = (byDay[key] || 0) + Number(r.total_amount || 0);
+    });
+
+    const today = new Date();
+    // Kun dage med mindst ét salg — sorteret kronologisk
+    return Object.keys(byDay).sort().map(key => {
+      const [y, m, d] = key.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      return {
+        label: `${d}/${m}`,
+        subLabel: date.toLocaleDateString('da-DK', { weekday: 'short' }),
+        value: byDay[key],
+        highlight: date.toDateString() === today.toDateString(),
+      };
+    });
+  } catch (err) {
+    console.error('getDailyRevenueActive', err);
     return [];
   }
 }

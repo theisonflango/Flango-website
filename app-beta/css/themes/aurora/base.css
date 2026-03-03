@@ -395,6 +395,7 @@ body[data-theme="aurora"] {
     --hv2-negative-light: rgba(220, 38, 38, 0.15);
     --hv2-info-light: rgba(37, 99, 235, 0.15);
     --hv2-purple-light: rgba(124, 58, 237, 0.15);
+    --hv2-teal-light: rgba(13, 148, 136, 0.15);
 }
 
 /* ============================================================

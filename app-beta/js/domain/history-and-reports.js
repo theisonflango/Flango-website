@@ -333,6 +333,10 @@ function getEventAmount(event) {
         return safeNumber(details.amount);
     }
 
+    if (event.event_type === 'EVENT_PAYMENT' || event.event_type === 'EVENT_REFUND') {
+        return safeNumber(details.amount);
+    }
+
     return 0;
 }
 
@@ -385,6 +389,7 @@ function renderSalesHistory(salesData, errorMessage = null, eventTypeFilter = nu
                     // Map event types til checkbox values
                     if (eventType === 'BALANCE_EDIT') return checkedEventTypes.includes('BALANCE_ADJUSTMENT');
                     if (eventType === 'SALE_ADJUSTMENT') return checkedEventTypes.includes('SALE_EDIT');
+                    if (eventType === 'EVENT_REFUND') return checkedEventTypes.includes('EVENT_PAYMENT');
                     return checkedEventTypes.includes(eventType);
                 });
             }
@@ -861,6 +866,10 @@ function buildSalesHistoryEntryElement(event, options = {}) {
     } else if (event.event_type === 'SALE_ADJUSTMENT') {
         // Modpostering for et tidligere salg (justering)
         actionLabel = isFullReversal ? '↩️ Salg fortrudt' : '🔧 Justering af salg';
+    } else if (event.event_type === 'EVENT_PAYMENT') {
+        actionLabel = '🎫 Arrangement-betaling:';
+    } else if (event.event_type === 'EVENT_REFUND') {
+        actionLabel = '🎫 Arrangement-refund:';
     } else if (isSaleUndo) {
         actionLabel = '<span class="voided-badge">FORTRUDT</span> Salg til:';
         // Brug customer_name fra details hvis target_user_name ikke findes
@@ -872,6 +881,13 @@ function buildSalesHistoryEntryElement(event, options = {}) {
     if (event.event_type === 'DEPOSIT' || event.event_type === 'BALANCE_EDIT') {
         // Vis "Indbetaling" for DEPOSIT og BALANCE_EDIT events i stedet for "Produkter: —"
         itemsText = 'Indbetaling';
+    } else if (event.event_type === 'EVENT_PAYMENT') {
+        const eventTitle = event.details?.event_title || 'Ukendt arrangement';
+        itemsText = `🎫 ${eventTitle}`;
+    } else if (event.event_type === 'EVENT_REFUND') {
+        const eventTitle = event.details?.event_title || 'Ukendt arrangement';
+        const note = event.details?.note || 'Refunderet';
+        itemsText = `🎫 ${eventTitle} (${note})`;
     } else if (event.event_type === 'SALE' && event.items && Array.isArray(event.items) && event.items.length > 0) {
         itemsText = event.items.map(item => {
             const iconInfo = getProductIconInfo(item);
@@ -2520,6 +2536,7 @@ async function fetchHistoryInSummary() {
             // Map event types til checkbox values (samme som i renderSalesHistory)
             if (eventType === 'BALANCE_EDIT') return selectedEventTypes.includes('BALANCE_ADJUSTMENT');
             if (eventType === 'SALE_ADJUSTMENT') return selectedEventTypes.includes('SALE_EDIT');
+            if (eventType === 'EVENT_REFUND') return selectedEventTypes.includes('EVENT_PAYMENT');
             return selectedEventTypes.includes(eventType);
         });
 
@@ -2568,7 +2585,7 @@ async function fetchOverviewData() {
     // Get selected event types
     let selectedEventTypes = filterCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
     if (selectedEventTypes.length === 0) {
-        selectedEventTypes = ['SALE', 'DEPOSIT', 'BALANCE_ADJUSTMENT'];
+        selectedEventTypes = ['SALE', 'DEPOSIT', 'BALANCE_ADJUSTMENT', 'EVENT_PAYMENT'];
     }
 
     // Load history from database
@@ -2593,6 +2610,7 @@ async function fetchOverviewData() {
         // Map database event types to checkbox values
         if (eventType === 'BALANCE_EDIT') return selectedEventTypes.includes('BALANCE_ADJUSTMENT');
         if (eventType === 'SALE_ADJUSTMENT') return selectedEventTypes.includes('SALE_EDIT');
+        if (eventType === 'EVENT_REFUND') return selectedEventTypes.includes('EVENT_PAYMENT');
         return selectedEventTypes.includes(eventType);
     });
 
@@ -2673,6 +2691,7 @@ function renderSalesHistoryInSummary(history, searchQuery = null, eventTypeFilte
                     const eventType = e.event_type;
                     if (eventType === 'BALANCE_EDIT') return checkedEventTypes.includes('BALANCE_ADJUSTMENT');
                     if (eventType === 'SALE_ADJUSTMENT') return checkedEventTypes.includes('SALE_EDIT');
+                    if (eventType === 'EVENT_REFUND') return checkedEventTypes.includes('EVENT_PAYMENT');
                     return checkedEventTypes.includes(eventType);
                 });
             }

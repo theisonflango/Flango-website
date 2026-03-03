@@ -4,15 +4,15 @@ import {
   periodRange, fmtDate, fmtDateTime, fmtMinutes, fmtKr, fmtDayDate, getLevel,
   getMyRevenue, getMyTransactionCount, getMyTransactionSplit, getClubStats, getTotalDeposits,
   getMyMinutesWorked, getTotalBalances, getTopProducts, getDailyClerks,
-  getWeekRevenue, getHourlyRevenue, getDailyRevenue, getMonthlyRevenue,
+  getWeekRevenue, getHourlyRevenue, getDailyRevenue, getDailyRevenueActive, getMonthlyRevenue,
   getTransactions, getSaleItems,
   getDailySummary, getWeeklySummary, getMonthlySummary,
   getEmployeeSummary, getAdminSalesSplit, getAdminTimeSplit, getAdminDeposits,
   getTopClerks, getTopCustomers,
   getRevenueByDay, getBalanceDistribution, getProductsIconMap,
-  undoSale, registerSaleAdjustment,
+  undoSale, registerSaleAdjustment, getFirstSaleDate,
 } from '../domain/historik-data.js';
-import { renderBarChart, renderDailyRevenueChart, renderBalanceChart, renderAxisChart } from './historik-charts.js';
+import { renderBarChart, renderDailyRevenueChart, renderBalanceChart, renderAxisChart, renderLineChart } from './historik-charts.js';
 import { exportSalesReport, exportAllBalances, exportNegativeBalances, exportTransactionsCsv, exportClerkReport, exportPeriodReport } from './historik-export.js';
 import { showConfirmModal } from './confirm-modals.js';
 import { showCustomAlert } from './sound-and-alerts.js';
@@ -52,6 +52,9 @@ let currentFrom = null;
 let currentTo = null;
 let includeTestUsers = false;
 let activeTab = 'tab-overview';
+// Chart state (uafhængigt af global period)
+let chartPeriod = null; // null = følger currentPeriod
+let chartView = 'bars'; // 'bars' | 'graph'
 // Transaktioner state
 let txTypeFilter = 'alle';
 let txSearch = '';
@@ -266,6 +269,9 @@ function bindPeriodToggle(id, onReload) {
 // ═══════════════════════════════════════════════════
 
 async function loadOverview() {
+  // Nulstil chart-state så den følger global period igen
+  chartPeriod = null;
+
   const panel = document.getElementById('hv2-tab-overview');
   panel.innerHTML = makePeriodToggle('ov-period', loadOverview) + '<div id="ov-body" class="hv2-loading">Indlæser overblik...</div>';
   bindPeriodToggle('ov-period', loadOverview);
@@ -277,6 +283,7 @@ async function loadOverview() {
   try {
     // Parallel data fetching (respektér includeTestUsers)
     const incTest = includeTestUsers;
+    const allTimeRange = periodRange('altid');
     const promises = [
       /* 0 */ getMyTransactionSplit(currentFrom, currentTo, incTest),
       /* 1 */ getClubStats(currentFrom, currentTo, incTest),
@@ -298,21 +305,21 @@ async function loadOverview() {
     }
     // Altid hent ugeoversigt (kompakt kort)
     promises.push(/* 7 */ getWeekRevenue(new Date(), incTest));
-    // Periodespecifik graf-data
-    if (currentPeriod === 'idag') {
-      promises.push(/* 8 */ getHourlyRevenue(new Date(), incTest));
-    } else if (currentPeriod === 'uge') {
-      promises.push(/* 8 */ Promise.resolve(null)); // genbruger weekData
-    } else if (currentPeriod === 'maaned') {
-      promises.push(/* 8 */ getDailyRevenue(currentFrom, currentTo, incTest));
-    } else {
-      promises.push(/* 8 */ getMonthlyRevenue(currentFrom, currentTo, incTest));
-    }
+    // Chart-data hentes uafhængigt i loadOverviewChart()
+    promises.push(/* 8 */ Promise.resolve(null));
+    // All-time club stats for avg calculation (always last — index 9)
+    promises.push(/* 9 */ isAltid
+      ? Promise.resolve(null)
+      : getClubStats(allTimeRange.from, allTimeRange.to, incTest)
+    );
 
-    const [txSplit, club, deposits, topProds, myMinutes, clerks, balances, weekData, periodChartData] = await Promise.all(promises);
+    const results = await Promise.all(promises);
+    const [txSplit, club, deposits, topProds, myMinutes, clerks, balances, weekData, periodChartData] = results;
+    // All-time stats for average: dedicated fetch (index 9), or period stats when viewing "altid"
+    const clubAllTime = results[9] || club;
 
-    const clubAvgPerDay = club.cafeDays ? Math.round(club.totalRevenue / club.cafeDays) : 0;
-    const clubAvgSalesPerDay = club.cafeDays ? Math.round(club.saleCount / club.cafeDays) : 0;
+    const clubAvgPerDay = clubAllTime.cafeDays ? Math.round(clubAllTime.totalRevenue / clubAllTime.cafeDays) : 0;
+    const clubAvgSalesPerDay = clubAllTime.cafeDays ? Math.round(clubAllTime.saleCount / clubAllTime.cafeDays) : 0;
 
     // Compare badges (vs. club avg)
     const revPct = clubAvgPerDay ? Math.round(((txSplit.totalRevenue - clubAvgPerDay) / clubAvgPerDay) * 100) : 0;
@@ -436,15 +443,7 @@ async function loadOverview() {
     html += `<div class="hv2-context-row" style="grid-template-columns:repeat(${contextCards.length},1fr)">${contextCards.join('')}</div>`;
 
     // ═══ GRAF-SEKTION: Kompakt ugeoversigt + Periodespecifik graf ═══
-    const periodChartTitles = { idag: '📈 Salg i dag (pr. time)', uge: '📈 Omsætning denne uge', maaned: '📈 Omsætning denne måned', altid: '📈 Omsætning over tid' };
     const hasWeek = weekData && weekData.days.length;
-
-    // Forbered periode-graf data (for "uge" genbruger vi weekData)
-    let chartData = periodChartData;
-    if (currentPeriod === 'uge' && hasWeek) {
-      chartData = weekData.days.map(d => ({ label: d.label, value: d.revenue, highlight: d.isToday }));
-    }
-    const hasChartData = chartData && chartData.length && chartData.some(d => d.value > 0);
 
     html += `<div class="hv2-charts-row${!hasWeek ? ' hv2-charts-row-full' : ''}">`;
 
@@ -471,13 +470,28 @@ async function loadOverview() {
         </div>`;
     }
 
-    // RIGHT: Periodespecifik graf med Y-akse
+    // RIGHT: Periodespecifik graf med eget inline filter + view toggle
+    const effChartPeriod = chartPeriod || currentPeriod;
+    const chartPeriodLabels = { idag: 'I dag', uge: 'Uge', maaned: 'Måned', altid: 'Altid' };
+    const chartViewLabels = { bars: 'Søjler', graph: 'Graf' };
     html += `
       <div class="hv2-chart-card hv2-period-chart-card">
-        <div class="hv2-chart-header">
-          <div class="hv2-chart-title" style="font-size:13px">${periodChartTitles[currentPeriod] || '📈 Omsætning'}</div>
+        <div class="hv2-chart-header" style="flex-wrap:wrap;gap:8px">
+          <div class="hv2-chart-title" style="font-size:13px" id="ov-chart-title">📈 Omsætning</div>
+          <div class="hv2-chart-controls">
+            <div class="hv2-chart-pill-group" id="ov-chart-period-pills">
+              ${['idag', 'uge', 'maaned', 'altid'].map(p =>
+                `<button class="hv2-chart-pill${p === effChartPeriod ? ' active' : ''}" data-period="${p}">${chartPeriodLabels[p]}</button>`
+              ).join('')}
+            </div>
+            <div class="hv2-chart-pill-group" id="ov-chart-view-pills">
+              ${['bars', 'graph'].map(v =>
+                `<button class="hv2-chart-pill${v === chartView ? ' active' : ''}" data-view="${v}">${chartViewLabels[v]}</button>`
+              ).join('')}
+            </div>
+          </div>
         </div>
-        <div id="ov-period-chart"></div>
+        <div id="ov-period-chart" style="min-height:140px"><div style="text-align:center;padding:40px 0;color:var(--hv2-ink-muted);font-size:13px">Indlæser graf...</div></div>
       </div>`;
 
     html += `</div>`; // end charts-row
@@ -519,8 +533,9 @@ async function loadOverview() {
     body.className = '';
     body.innerHTML = html;
 
-    // Render periodespecifik axis chart
-    renderAxisChart('ov-period-chart', { data: chartData || [], emptyText: 'Ingen salg i perioden.' });
+    // Bind inline chart controls + render chart
+    bindOverviewChartControls();
+    loadOverviewChart();
 
     // Render bar charts
     const colors = ['flango', 'green', 'blue', 'purple', 'orange'];
@@ -538,11 +553,96 @@ async function loadOverview() {
   }
 }
 
+// ─── Overblik: Uafhængig chart med eget filter ───
+
+function bindOverviewChartControls() {
+  const periodPills = document.getElementById('ov-chart-period-pills');
+  const viewPills = document.getElementById('ov-chart-view-pills');
+  if (periodPills) {
+    periodPills.querySelectorAll('.hv2-chart-pill').forEach(btn => {
+      btn.onclick = () => {
+        periodPills.querySelectorAll('.hv2-chart-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        chartPeriod = btn.dataset.period;
+        loadOverviewChart();
+      };
+    });
+  }
+  if (viewPills) {
+    viewPills.querySelectorAll('.hv2-chart-pill').forEach(btn => {
+      btn.onclick = () => {
+        viewPills.querySelectorAll('.hv2-chart-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        chartView = btn.dataset.view;
+        loadOverviewChart();
+      };
+    });
+  }
+}
+
+async function loadOverviewChart() {
+  const el = document.getElementById('ov-period-chart');
+  const titleEl = document.getElementById('ov-chart-title');
+  if (!el) return;
+
+  const period = chartPeriod || currentPeriod;
+  const incTest = includeTestUsers;
+
+  const periodChartTitles = {
+    idag: '📈 Salg i dag (pr. time)',
+    uge: '📈 Omsætning denne uge',
+    maaned: '📈 Omsætning denne måned',
+    altid: '📈 Omsætning over tid',
+  };
+  if (titleEl) titleEl.textContent = periodChartTitles[period] || '📈 Omsætning';
+
+  el.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--hv2-ink-muted);font-size:13px">Indlæser graf...</div>';
+
+  try {
+    let chartData = [];
+    let { from, to } = periodRange(period);
+
+    // "Altid" → start fra institutionens første reelle salg (ikke 2020)
+    if (period === 'altid') {
+      const firstSale = await getFirstSaleDate();
+      if (firstSale) from = firstSale;
+    }
+
+    if (period === 'idag') {
+      chartData = await getHourlyRevenue(new Date(), incTest);
+    } else if (period === 'uge') {
+      const wd = await getWeekRevenue(new Date(), incTest);
+      chartData = (wd.days || []).map(d => ({ label: d.label, value: d.revenue, highlight: d.isToday }));
+    } else if (period === 'maaned') {
+      chartData = await getDailyRevenue(from, to, incTest);
+    } else {
+      // altid: bars → monthly, graph → kun aktive dage (ingen 0-dage)
+      if (chartView === 'graph') {
+        chartData = await getDailyRevenueActive(from, to, incTest);
+      } else {
+        chartData = await getMonthlyRevenue(from, to, incTest);
+      }
+    }
+
+    if (chartView === 'graph') {
+      renderLineChart('ov-period-chart', { data: chartData || [], emptyText: 'Ingen salg i perioden.' });
+    } else {
+      renderAxisChart('ov-period-chart', { data: chartData || [], emptyText: 'Ingen salg i perioden.' });
+    }
+  } catch (err) {
+    console.error('loadOverviewChart', err);
+    el.innerHTML = '<div style="color:var(--hv2-ink-muted);font-size:13px;text-align:center;padding:32px 0">Kunne ikke indlæse graf.</div>';
+  }
+}
+
 // ═══════════════════════════════════════════════════
 // TAB 2: TRANSAKTIONER
 // ═══════════════════════════════════════════════════
 
 async function loadTransactions() {
+  // Reset filter + search state so UI and data stay in sync
+  txTypeFilter = 'alle';
+  txSearch = '';
   const panel = document.getElementById('hv2-tab-transactions');
   panel.innerHTML = `
     ${makePeriodToggle('tx-period', loadTransactions)}
@@ -554,6 +654,7 @@ async function loadTransactions() {
         <button class="hv2-period-btn" data-filter="SALE">Salg</button>
         <button class="hv2-period-btn" data-filter="DEPOSIT">Indbet.</button>
         <button class="hv2-period-btn" data-filter="SALE_ADJUSTMENT">Just.</button>
+        <button class="hv2-period-btn" data-filter="EVENT">🎫 Arr.</button>
       </div>
       <div class="hv2-spacer"></div>
       <span class="hv2-count" id="tx-count">…</span>
@@ -598,6 +699,8 @@ function renderTransactionRows() {
     // Inkluder SALE_UNDO ved "SALE"-filter
     if (txTypeFilter === 'SALE') {
       filtered = filtered.filter(e => e.event_type === 'SALE' || e.event_type === 'SALE_UNDO');
+    } else if (txTypeFilter === 'EVENT') {
+      filtered = filtered.filter(e => e.event_type === 'EVENT_PAYMENT' || e.event_type === 'EVENT_REFUND');
     } else {
       filtered = filtered.filter(e => e.event_type === txTypeFilter);
     }
@@ -618,6 +721,8 @@ function renderTransactionRows() {
       case 'SALE_ADJUSTMENT': return '<span class="hv2-tag orange">Justering</span>';
       case 'SALE_UNDO': return '<span class="hv2-tag red">Fortrudt</span>';
       case 'BALANCE_EDIT': return '<span class="hv2-tag purple">Saldo</span>';
+      case 'EVENT_PAYMENT': return '<span class="hv2-tag teal">🎫 Arrangement</span>';
+      case 'EVENT_REFUND': return '<span class="hv2-tag teal">🎫 Refund</span>';
       default: return `<span class="hv2-tag gray">${type}</span>`;
     }
   };
@@ -629,6 +734,8 @@ function renderTransactionRows() {
       case 'SALE_ADJUSTMENT': return 'hv2-row-adjustment';
       case 'SALE_UNDO': return 'hv2-row-undo';
       case 'BALANCE_EDIT': return 'hv2-row-balance';
+      case 'EVENT_PAYMENT': return 'hv2-row-event';
+      case 'EVENT_REFUND': return 'hv2-row-event';
       default: return '';
     }
   };
@@ -648,6 +755,8 @@ function renderTransactionRows() {
         const diff = (d.new_balance || 0) - (d.old_balance || 0);
         return `<strong style="color:var(--hv2-info)">+${fmtKr(Math.abs(diff))}</strong>`;
       }
+      case 'EVENT_PAYMENT': return `<strong>${fmtKr(d.amount || 0)}</strong>`;
+      case 'EVENT_REFUND': return `<strong style="color:var(--hv2-positive)">+${fmtKr(d.amount || 0)}</strong>`;
       default: return '—';
     }
   };
@@ -660,6 +769,11 @@ function renderTransactionRows() {
       }
       if (e.event_type === 'SALE_ADJUSTMENT') {
         return `<span style="font-size:12px;color:var(--hv2-ink-soft)">Justering</span>`;
+      }
+      if (e.event_type === 'EVENT_PAYMENT' || e.event_type === 'EVENT_REFUND') {
+        const title = e.details?.event_title || 'Ukendt arrangement';
+        const note = e.event_type === 'EVENT_REFUND' && e.details?.note ? ` (${e.details.note})` : '';
+        return `<span style="font-size:12px;color:var(--hv2-ink-soft)">🎫 ${title}${note}</span>`;
       }
       return '<span style="color:var(--hv2-ink-muted)">—</span>';
     }
