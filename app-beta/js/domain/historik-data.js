@@ -957,6 +957,121 @@ export async function getAdminDeposits(adminUserId, from, to) {
   }
 }
 
+/**
+ * Café-dage for a single admin: per-day breakdown with hours, sales, revenue, dish.
+ * A day is "qualified" if ≥1 hour (60 min) AND 20+ sales.
+ * @param {string} adminUserId
+ * @param {Date|null} from  — null = all time
+ * @param {Date|null} to
+ * @param {boolean} [includeTestUsers=false]
+ * @returns {Promise<Array<{date:string, dayLabel:string, hours:number, sales:number, revenue:number, dish:string, qualified:boolean}>>}
+ */
+export async function getAdminCafeDays(adminUserId, from, to, includeTestUsers = false) {
+  try {
+    const WEEKDAYS_DA = ['Søn', 'Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør'];
+
+    // 1) Fetch all sales where this admin was clerk or session_admin
+    const fromIso = from ? from.toISOString() : null;
+    const toIso = to ? to.toISOString() : null;
+    const fromDate = from ? fmtDate(from) : null;
+    const toDate = to ? fmtDate(to) : null;
+    const iid = instId();
+
+    const rawSalesRows = await fetchAllRows(() => {
+      let q = supabaseClient
+        .from('sales')
+        .select('id, total_amount, created_at, clerk_user_id, customer_id, sale_items(product_id, quantity, product_name_at_purchase)')
+        .eq('institution_id', iid)
+        .or(`clerk_user_id.eq.${adminUserId},admin_user_id.eq.${adminUserId}`);
+      if (fromIso) q = q.gte('created_at', fromIso);
+      if (toIso) q = q.lte('created_at', toIso);
+      return q;
+    });
+    const salesRows = await filterTestUsers(rawSalesRows, 'customer_id', includeTestUsers);
+
+    // 2) Fetch user_daily_stats for this admin (hours worked per day)
+    const statsRows = await fetchAllRows(() => {
+      let q = supabaseClient
+        .from('user_daily_stats')
+        .select('stats_date, minutes_worked')
+        .eq('institution_id', iid)
+        .eq('user_id', adminUserId);
+      if (fromDate) q = q.gte('stats_date', fromDate);
+      if (toDate) q = q.lte('stats_date', toDate);
+      return q;
+    });
+
+    // 3) Fetch products to detect daily specials
+    const { data: productsData } = await supabaseClient
+      .from('products')
+      .select('id, name, is_daily_special')
+      .eq('institution_id', iid);
+    const dailySpecialIds = new Set((productsData || []).filter(p => p.is_daily_special).map(p => p.id));
+    const productNameMap = {};
+    (productsData || []).forEach(p => { productNameMap[p.id] = p.name; });
+
+    // 4) Aggregate sales per day
+    const dayMap = {}; // date-string → { sales, revenue, dishCounts: { name: qty } }
+    salesRows.forEach(sale => {
+      const dateStr = sale.created_at.slice(0, 10); // YYYY-MM-DD
+      if (!dayMap[dateStr]) dayMap[dateStr] = { sales: 0, revenue: 0, dishCounts: {} };
+      const day = dayMap[dateStr];
+      const items = sale.sale_items || [];
+      items.forEach(item => {
+        const qty = item.quantity || 1;
+        day.sales += qty;
+        // Track daily special dishes
+        if (dailySpecialIds.has(item.product_id)) {
+          const dName = item.product_name_at_purchase || productNameMap[item.product_id] || 'Dagens ret';
+          day.dishCounts[dName] = (day.dishCounts[dName] || 0) + qty;
+        }
+      });
+      day.revenue += Number(sale.total_amount || 0);
+    });
+
+    // 5) Aggregate minutes per day
+    const minutesMap = {};
+    statsRows.forEach(s => {
+      minutesMap[s.stats_date] = (minutesMap[s.stats_date] || 0) + Number(s.minutes_worked || 0);
+    });
+
+    // 6) Merge: every date that appears in either sales or stats
+    const allDates = new Set([...Object.keys(dayMap), ...Object.keys(minutesMap)]);
+    const result = [];
+    allDates.forEach(dateStr => {
+      const sales = dayMap[dateStr]?.sales || 0;
+      const revenue = Math.round(dayMap[dateStr]?.revenue || 0);
+      const minutes = minutesMap[dateStr] || 0;
+      const hours = Math.round((minutes / 60) * 100) / 100; // 2 decimals
+
+      // Qualified: ≥60 min AND ≥20 sales
+      const qualified = minutes >= 60 && sales >= 20;
+
+      // Best dish = most sold daily special that day, or empty
+      let dish = '';
+      const dc = dayMap[dateStr]?.dishCounts || {};
+      const dishEntries = Object.entries(dc);
+      if (dishEntries.length) {
+        dishEntries.sort((a, b) => b[1] - a[1]);
+        dish = dishEntries[0][0];
+      }
+
+      // Day label: "Man 3/3"
+      const d = new Date(dateStr + 'T12:00:00');
+      const dayLabel = `${WEEKDAYS_DA[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
+
+      result.push({ date: dateStr, dayLabel, hours, sales, dish, revenue, qualified });
+    });
+
+    // Sort by date descending (newest first)
+    result.sort((a, b) => b.date.localeCompare(a.date));
+    return result;
+  } catch (err) {
+    console.error('getAdminCafeDays', err);
+    return [];
+  }
+}
+
 /** Cached map: product_id → { emoji, icon_url }. Invalideres ved nyt inst. */
 let _iconCache = null;
 let _iconCacheInst = null;
@@ -1053,6 +1168,95 @@ export async function getTopCustomers(from, to, limit = 5, includeTestUsers = fa
     return Object.values(agg).sort((a, b) => b.forbrugt - a.forbrugt).slice(0, limit);
   } catch (err) {
     console.error('getTopCustomers', err);
+    return [];
+  }
+}
+
+/**
+ * Hent detaljeret kundeoversigt: alle børn med saldo, forbrug, favorit, indbetalinger.
+ * Bruges i Toplister → Kunder tab.
+ */
+export async function getCustomerStats(from, to, includeTestUsers = false) {
+  try {
+    const iid = instId();
+    const fromIso = from.toISOString();
+    const toIso = to.toISOString();
+    const fromDate = fmtDate(from);
+    const toDate = fmtDate(to);
+
+    // 1) All kunder (non-admin) med saldo
+    const { data: usersData } = await supabaseClient
+      .from('users')
+      .select('id, name, balance, role, is_test_user')
+      .eq('institution_id', iid)
+      .eq('role', 'kunde');
+
+    let allUsers = usersData || [];
+    if (!includeTestUsers) allUsers = allUsers.filter(u => !u.is_test_user);
+
+    // 2) Salg i perioden — med sale_items for favorit-beregning
+    const rawSales = await fetchAllRows(() =>
+      supabaseClient
+        .from('sales')
+        .select('id, total_amount, customer_id, sale_items(product_id, quantity, product_name_at_purchase)')
+        .eq('institution_id', iid)
+        .not('customer_id', 'is', null)
+        .gte('created_at', fromIso)
+        .lte('created_at', toIso)
+    );
+    const sales = await filterTestUsers(rawSales, 'customer_id', includeTestUsers);
+
+    // 3) Indbetalinger (DEPOSIT events) i perioden
+    const rawDeposits = await fetchAllRows(() =>
+      supabaseClient
+        .from('events')
+        .select('details, target_user_id')
+        .eq('institution_id', iid)
+        .eq('event_type', 'DEPOSIT')
+        .gte('created_at', fromIso)
+        .lte('created_at', toIso)
+    );
+    const deposits = await filterTestUsers(rawDeposits, 'target_user_id', includeTestUsers);
+
+    // 4) Aggregér pr. kunde
+    const custMap = {};
+    allUsers.forEach(u => {
+      custMap[u.id] = { id: u.id, name: u.name || 'Ukendt', saldo: Math.round(Number(u.balance || 0)), forbrug: 0, koeb: 0, favorit: '', indbetalinger: 0, indbetKr: 0, productCounts: {} };
+    });
+
+    sales.forEach(s => {
+      const c = custMap[s.customer_id];
+      if (!c) return;
+      c.koeb++;
+      c.forbrug += Math.round(Number(s.total_amount || 0));
+      const items = s.sale_items || [];
+      items.forEach(item => {
+        const qty = item.quantity || 1;
+        const name = item.product_name_at_purchase || '?';
+        c.productCounts[name] = (c.productCounts[name] || 0) + qty;
+      });
+    });
+
+    deposits.forEach(d => {
+      const c = custMap[d.target_user_id];
+      if (!c) return;
+      c.indbetalinger++;
+      c.indbetKr += Math.round(Number(d.details?.amount || 0));
+    });
+
+    // 5) Beregn favorit (mest-købt produkt)
+    Object.values(custMap).forEach(c => {
+      const entries = Object.entries(c.productCounts);
+      if (entries.length) {
+        entries.sort((a, b) => b[1] - a[1]);
+        c.favorit = entries[0][0];
+      }
+      delete c.productCounts;
+    });
+
+    return Object.values(custMap).sort((a, b) => b.forbrug - a.forbrug);
+  } catch (err) {
+    console.error('getCustomerStats', err);
     return [];
   }
 }

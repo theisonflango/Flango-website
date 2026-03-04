@@ -161,11 +161,13 @@ export function renderBarChart(data, opts = {}) {
     yTickSuffix = '',
     partialLast = false,
     barRadius = 6,
+    xLabelFontSize = null, // override x-axis label font-size
+    xLabelAngle = 0, // rotate x-axis labels (degrees, negative = counter-clockwise)
   } = opts;
 
   if (!data || !data.length) return '<div class="hv3-loading">Ingen data</div>';
 
-  const pad = { top: 20, right: 15, bottom: 28, left: 45 };
+  const pad = { top: 20, right: 15, bottom: xLabelAngle ? 40 : 28, left: 45 };
   const cw = width - pad.left - pad.right;
   const ch = height - pad.top - pad.bottom;
 
@@ -224,7 +226,12 @@ export function renderBarChart(data, opts = {}) {
       clip-path="url(#${clipId})" data-idx="${i}" class="hv3-chart-bar"/>`;
 
     // X label
-    xLabelsHtml += `<text x="${x + barW / 2}" y="${pad.top + ch + 18}" text-anchor="middle" fill="#917f6c" font-size="${data.length > 10 ? 10 : data.length <= 5 ? 12 : 11}" font-weight="600">${escHtml(d.label)}</text>`;
+    const xlFs = xLabelFontSize || (data.length > 10 ? 10 : data.length <= 5 ? 12 : 11);
+    const xlX = x + barW / 2;
+    const xlY = pad.top + ch + 18;
+    const xlTransform = xLabelAngle ? ` transform="rotate(${xLabelAngle}, ${xlX}, ${xlY})"` : '';
+    const xlAnchor = xLabelAngle ? 'end' : 'middle';
+    xLabelsHtml += `<text x="${xlX}" y="${xlY}" text-anchor="${xlAnchor}" fill="#917f6c" font-size="${xlFs}" font-weight="600"${xlTransform}>${escHtml(d.label)}</text>`;
   });
 
   // Hover rects

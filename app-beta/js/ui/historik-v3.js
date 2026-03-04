@@ -1,6 +1,7 @@
-// Ansvar: Historik v3 — modal lifecycle, sidebar, page routing, alle 7 page-render funktioner.
+// Ansvar: Historik v3 — modal lifecycle, sidebar, page routing, alle 8 page-render funktioner.
 // Genbruger data-laget fra historik-data.js og eksport fra historik-export.js.
-import { getCurrentAdmin } from '../domain/session-store.js';
+import { getCurrentAdmin, getInstitutionId } from '../domain/session-store.js';
+import { initPurchaseProfiles, getChartData as ppGetChartData } from '../domain/purchase-profiles.js';
 import {
   periodRange, fmtDate, fmtDateTime, fmtMinutes, fmtKr, fmtDayDate, getLevel,
   getMyRevenue, getMyTransactionCount, getMyTransactionSplit, getClubStats, getTotalDeposits,
@@ -8,9 +9,14 @@ import {
   getWeekRevenue, getHourlyRevenue, getDailyRevenue, getDailyRevenueActive, getMonthlyRevenue,
   getTopClerks, getTopCustomers,
   getRevenueByDay, getBalanceDistribution, getProductsIconMap,
-  getFirstSaleDate,
+  getTransactions, getSaleItems, undoSale, registerSaleAdjustment,
+  getEmployeeSummary, getAdminSalesSplit, getAdminTimeSplit, getAdminDeposits,
+  getFirstSaleDate, getAdminCafeDays, getCustomerStats,
 } from '../domain/historik-data.js';
 import { exportSalesReport, exportAllBalances, exportNegativeBalances, exportTransactionsCsv, exportClerkReport, exportPeriodReport } from './historik-export.js';
+import { showConfirmModal } from './confirm-modals.js';
+import { showCustomAlert } from './sound-and-alerts.js';
+import { invalidateTodaysSalesCache } from '../domain/purchase-limits.js';
 import {
   renderAreaChart, renderBarChart, renderHorizontalBars, renderDonutChart,
   renderGauge, attachChartTooltips, progressBar, renderRankingList,
@@ -40,9 +46,12 @@ const NAV_ITEMS = [
   { id: 'overview', icon: '📈', label: 'Overblik', section: 'HISTORIK' },
   { id: 'toplists', icon: '🏆', label: 'Toplister', section: 'ANALYSE' },
   { id: 'stats', icon: '📊', label: 'Statistik', section: 'ANALYSE' },
+  { id: 'profiles', icon: '🛍️', label: 'Købsprofiler', section: 'ANALYSE' },
+  { id: 'transactions', icon: '📋', label: 'Transaktioner', section: 'DATA' },
   { id: 'timesaved', icon: '⏱️', label: 'Tidsbesparelse', section: 'INDSIGT' },
   { id: 'reconcile', icon: '⚖️', label: 'Afstemning', section: 'ØKONOMI' },
   { id: 'reports', icon: '📁', label: 'Rapporter', section: 'EKSPORT' },
+  { id: 'v2', icon: '🕰️', label: 'Historik V2', section: 'ANDET' },
 ];
 
 const PAGE_TITLES = {
@@ -50,10 +59,25 @@ const PAGE_TITLES = {
   overview: 'Overblik',
   toplists: 'Toplister',
   stats: 'Statistik',
+  profiles: 'Købsprofiler',
+  transactions: 'Transaktioner',
   timesaved: 'Tidsbesparelse',
   reconcile: 'Afstemning',
   reports: 'Eksportér data',
 };
+
+// ─── PAGE DATA CACHE (60 s TTL) ───
+const _pageCache = new Map();
+const CACHE_TTL = 60_000;
+function _ck(...p) { return p.join('|'); }
+function getCached(key) {
+  const e = _pageCache.get(key);
+  if (!e) return null;
+  if (Date.now() - e.ts > CACHE_TTL) { _pageCache.delete(key); return null; }
+  return e.data;
+}
+function setCache(key, data) { _pageCache.set(key, { data, ts: Date.now() }); }
+function invalidateAllCaches() { _pageCache.clear(); kundeCached = null; cdCachedDays = null; }
 
 // ─── STATE ───
 let activePage = 'today';
@@ -70,6 +94,29 @@ let reportPeriod = 'Alt';
 let reportFrom = null;
 let reportTo = null;
 let afstemningTab = 'mobilepay';
+let personnelView = 'ekspedienter';
+let txTypeFilter = 'alle';
+let txSearch = '';
+let allTransactions = [];
+let _txIconMap = {};
+let txPeriod = '30 dage';
+let ppSelectedUserId = null;
+let ppSelectedUserName = '';
+let ppPeriod = 'Altid';
+let ppSortBy = 'Antal';
+let ppInitDone = false;
+// Café-dage drilldown state (Personale tab)
+let cdSelectedPerson = null; // { clerk_id, clerk_name }
+let cdSortCol = 'date';
+let cdSortDir = 'desc';
+let cdCachedDays = null; // cached result of getAdminCafeDays
+
+// Kunder tab state
+let kundeSortCol = 'forbrug';
+let kundeSortDir = 'desc';
+let kundeSearch = '';
+let kundeSaldoFilter = 'alle'; // alle | negativ | nul | positiv
+let kundeCached = null; // cached getCustomerStats result
 
 // ─── MODAL LIFECYCLE ───
 
@@ -91,7 +138,13 @@ export function openHistorikV3() {
 
   // Sidebar nav
   backdrop.querySelectorAll('.hv3-sidebar-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
+      if (btn.dataset.page === 'v2') {
+        closeHistorikV3();
+        const { openHistorikModal } = await import('./historik-modal.js');
+        openHistorikModal();
+        return;
+      }
       activePage = btn.dataset.page;
       updateSidebarActive();
       renderActivePage();
@@ -218,6 +271,14 @@ async function renderActivePage() {
         setPageTitle('Statistik', subtitle);
         await renderPageStatistik();
         break;
+      case 'profiles':
+        setPageTitle('Købsprofiler', subtitle);
+        await renderPageKoebsprofiler();
+        break;
+      case 'transactions':
+        setPageTitle('Transaktioner', subtitle);
+        await renderPageTransaktioner();
+        break;
       case 'timesaved':
         setPageTitle('Tidsbesparelse', subtitle);
         await renderPageTidsbesparelse();
@@ -246,7 +307,7 @@ async function renderActivePage() {
 // ═══════════════════════════════════════════
 
 function statCard(label, value, opts = {}) {
-  const { icon = '', trend = '', trendUp = true, sub = '' } = opts;
+  const { icon = '', trend = '', trendUp = true, sub = '', rank = '' } = opts;
   let badgeHtml = '';
   if (trend) {
     const cls = trendUp ? 'hv3-badge-green' : 'hv3-badge-red';
@@ -263,7 +324,7 @@ function statCard(label, value, opts = {}) {
     </div>
     <div class="hv3-stat-footer">
       ${badgeHtml}
-      ${sub ? `<span class="hv3-stat-sub">${escHtml(sub)}</span>` : ''}
+      ${sub ? `<span class="hv3-stat-sub">${escHtml(sub)}${rank ? `<br>${escHtml(rank)}` : ''}</span>` : (rank ? `<span class="hv3-stat-sub">${escHtml(rank)}</span>` : '')}
     </div>
   </div>`;
 }
@@ -284,22 +345,27 @@ function filterPills(options, active, onClickFnName, small = false) {
 
 async function renderPageToday() {
   const { from, to } = periodRange('idag');
-
-  // All-time for average calculation
-  const firstSaleDate = await getFirstSaleDate();
-  const allTimeFrom = firstSaleDate || new Date('2020-01-01');
-  const allTimeTo = new Date(); allTimeTo.setHours(23, 59, 59, 999);
-
-  const [split, clubToday, clubAllTime, deposits, minutesWorked, hourly, week, clerks] = await Promise.all([
-    getMyTransactionSplit(from, to, includeTestUsers),
-    getClubStats(from, to, includeTestUsers),
-    getClubStats(allTimeFrom, allTimeTo, includeTestUsers),
-    getTotalDeposits(from, to, includeTestUsers),
-    getMyMinutesWorked(from, to),
-    getHourlyRevenue(new Date(), includeTestUsers),
-    getWeekRevenue(new Date(), includeTestUsers),
-    getDailyClerks(from, to, includeTestUsers),
-  ]);
+  const todayKey = from.toISOString().slice(0, 10);
+  const ck = _ck('today', todayKey, includeTestUsers);
+  let d = getCached(ck);
+  if (!d) {
+    const firstSaleDate = await getFirstSaleDate();
+    const allTimeFrom = firstSaleDate || new Date('2020-01-01');
+    const allTimeTo = new Date(); allTimeTo.setHours(23, 59, 59, 999);
+    const [split, clubToday, clubAllTime, deposits, minutesWorked, hourly, week, clerks] = await Promise.all([
+      getMyTransactionSplit(from, to, includeTestUsers),
+      getClubStats(from, to, includeTestUsers),
+      getClubStats(allTimeFrom, allTimeTo, includeTestUsers),
+      getTotalDeposits(from, to, includeTestUsers),
+      getMyMinutesWorked(from, to),
+      getHourlyRevenue(new Date(), includeTestUsers),
+      getWeekRevenue(new Date(), includeTestUsers),
+      getDailyClerks(from, to, includeTestUsers),
+    ]);
+    d = { split, clubToday, clubAllTime, deposits, minutesWorked, hourly, week, clerks };
+    setCache(ck, d);
+  }
+  const { split, clubToday, clubAllTime, deposits, minutesWorked, hourly, week, clerks } = d;
 
   const todayRev = clubToday.totalRevenue;
   const avgDaily = clubAllTime.cafeDays > 0 ? Math.round(clubAllTime.totalRevenue / clubAllTime.cafeDays) : 0;
@@ -428,20 +494,22 @@ async function renderPageOverblik() {
   const from = new Date(now); from.setDate(from.getDate() - days + 1); from.setHours(0, 0, 0, 0);
   const to = new Date(now); to.setHours(23, 59, 59, 999);
 
-  // Use getDailyRevenueActive for "Alt" range, getDailyRevenue for shorter ranges
-  let dailyData;
-  if (overviewRange === 'Alt') {
+  const ck = _ck('overview', overviewRange, includeTestUsers);
+  let cached = getCached(ck);
+  if (!cached) {
     const firstDate = await getFirstSaleDate();
     const altFrom = firstDate || new Date('2020-01-01');
-    dailyData = await getDailyRevenueActive(altFrom, to, includeTestUsers);
-  } else {
-    dailyData = await getDailyRevenue(from, to, includeTestUsers);
-  }
 
-  // Monthly data
-  const firstDate = await getFirstSaleDate();
-  const monthFrom = firstDate || new Date('2020-01-01');
-  const monthlyData = await getMonthlyRevenue(monthFrom, to, includeTestUsers);
+    const [dailyData, monthlyData] = await Promise.all([
+      overviewRange === 'Alt'
+        ? getDailyRevenueActive(altFrom, to, includeTestUsers)
+        : getDailyRevenue(from, to, includeTestUsers),
+      getMonthlyRevenue(altFrom, to, includeTestUsers),
+    ]);
+    cached = { dailyData, monthlyData };
+    setCache(ck, cached);
+  }
+  const { dailyData, monthlyData } = cached;
 
   // Compute stats
   let filtered = dailyData;
@@ -519,9 +587,42 @@ async function renderPageOverblik() {
 // PAGE: TOPLISTER
 // ═══════════════════════════════════════════
 
-window.__hv3SetToplistTab = (tab) => { toplistTab = tab; renderPageToplister(); };
-window.__hv3SetToplistPeriod = (p) => { toplistPeriod = p; renderPageToplister(); };
+window.__hv3SetToplistTab = (tab) => { toplistTab = tab; cdSelectedPerson = null; cdCachedDays = null; kundeCached = null; renderPageToplister(); };
+window.__hv3SetToplistPeriod = (p) => { toplistPeriod = p; cdCachedDays = null; kundeCached = null; renderPageToplister(); };
 window.__hv3SetToplistSort = (s) => { toplistSort = s; renderPageToplister(); };
+window.__hv3SetPersonnelView = (v) => { personnelView = v; renderPageToplister(); };
+// Café-dage drilldown handlers
+window.__hv3CdSelectPerson = async (clerkId, clerkName) => {
+  if (cdSelectedPerson && cdSelectedPerson.clerk_id === clerkId) {
+    cdSelectedPerson = null; cdCachedDays = null;
+  } else {
+    cdSelectedPerson = { clerk_id: clerkId, clerk_name: clerkName };
+    cdCachedDays = null; // force re-fetch
+  }
+  cdSortCol = 'date'; cdSortDir = 'desc';
+  renderPageToplister();
+};
+window.__hv3CdSort = (col) => {
+  if (cdSortCol === col) cdSortDir = cdSortDir === 'desc' ? 'asc' : 'desc';
+  else { cdSortCol = col; cdSortDir = 'desc'; }
+  renderPageToplister();
+};
+
+// Kunder tab handlers
+window.__hv3KundeSort = (col) => {
+  if (kundeSortCol === col) kundeSortDir = kundeSortDir === 'desc' ? 'asc' : 'desc';
+  else { kundeSortCol = col; kundeSortDir = 'desc'; }
+  renderPageToplister();
+};
+window.__hv3KundeSearch = (q) => { kundeSearch = q; renderPageToplister(); };
+window.__hv3KundeSaldoFilter = (f) => { kundeSaldoFilter = kundeSaldoFilter === f ? 'alle' : f; renderPageToplister(); };
+window.__hv3GoToProfile = (userId, userName) => {
+  ppSelectedUserId = userId;
+  ppSelectedUserName = userName;
+  activePage = 'profiles';
+  updateSidebarActive();
+  renderActivePage();
+};
 
 function toplistPeriodRange() {
   const map = { 'I dag': 'idag', 'Uge': 'uge', 'Måned': 'maaned', 'Altid': 'altid' };
@@ -540,6 +641,7 @@ async function renderPageToplister() {
       <button class="hv3-tab-btn${toplistTab === 'produkter' ? ' active' : ''}" onclick="__hv3SetToplistTab('produkter')"><span class="hv3-tab-btn-icon">🛒</span>Produkter</button>
       <button class="hv3-tab-btn${toplistTab === 'ekspedienter' ? ' active' : ''}" onclick="__hv3SetToplistTab('ekspedienter')"><span class="hv3-tab-btn-icon">🧑‍💼</span>Ekspedienter</button>
       <button class="hv3-tab-btn${toplistTab === 'kunder' ? ' active' : ''}" onclick="__hv3SetToplistTab('kunder')"><span class="hv3-tab-btn-icon">👦</span>Kunder</button>
+      <button class="hv3-tab-btn${toplistTab === 'personale' ? ' active' : ''}" onclick="__hv3SetToplistTab('personale')"><span class="hv3-tab-btn-icon">👨‍💼</span>Personale</button>
     </div>
     ${filterPills(['I dag', 'Uge', 'Måned', 'Altid'], toplistPeriod, '__hv3SetToplistPeriod', true)}
   </div>`;
@@ -550,7 +652,8 @@ async function renderPageToplister() {
   const contentEl = document.getElementById('hv3-toplist-content');
 
   if (toplistTab === 'produkter') {
-    const products = await getTopProducts(from, to, 10, includeTestUsers);
+    const ck = _ck('tl-prod', toplistPeriod, includeTestUsers);
+    const products = getCached(ck) || await (async () => { const d = await getTopProducts(from, to, 10, includeTestUsers); setCache(ck, d); return d; })();
     const totalRev = products.reduce((s, p) => s + (p.beloeb || p.total_revenue || 0), 0);
 
     // Normalize field names
@@ -611,7 +714,17 @@ async function renderPageToplister() {
         </div>
       </div>`;
   } else if (toplistTab === 'ekspedienter') {
-    const clerks = await getTopClerks(from, to, 10, includeTestUsers);
+    const ck = _ck('tl-eksp', toplistPeriod, includeTestUsers);
+    let _ec = getCached(ck);
+    if (!_ec) {
+      const [clerks, empData] = await Promise.all([
+        getTopClerks(from, to, 10, includeTestUsers),
+        getEmployeeSummary(from, to, 'kunde', includeTestUsers),
+      ]);
+      _ec = { clerks, empData };
+      setCache(ck, _ec);
+    }
+    const { clerks, empData } = _ec;
     const normalized = clerks.map(cl => ({
       name: cl.name || 'Ukendt',
       sales: cl.antal_salg || 0,
@@ -619,67 +732,447 @@ async function renderPageToplister() {
     }));
 
     const donutId = 'hv3-clerk-donut-' + Date.now();
-    const totalSales = normalized.reduce((s, c) => s + c.sales, 0);
+
+    // Prepare employee table rows with level + saldo
+    const empRows = empData.map(d => {
+      const level = getLevel(d.total_sales_cumulative, d.total_minutes);
+      const saldoClass = d.balance < 0 ? 'hv3-saldo-neg' : d.balance > 0 ? 'hv3-saldo-pos' : 'hv3-saldo-zero';
+      return { ...d, level, saldoClass };
+    });
 
     contentEl.innerHTML = `
-      <div class="hv3-card" style="padding:22px 24px">
-        ${sectionTitle('⭐ Top ekspedienter (salg)')}
-        ${renderRankingList(normalized, { valueKey: 'sales', valueLabel: 'salg', subKey: 'revenue', subLabel: 'kr' })}
-      </div>
       <div class="hv3-grid-2">
+        <div class="hv3-card" style="padding:22px 24px">
+          ${sectionTitle('⭐ Top ekspedienter (salg)')}
+          ${renderRankingList(normalized, { valueKey: 'sales', valueLabel: 'salg', subKey: 'revenue', subLabel: 'kr' })}
+        </div>
         <div class="hv3-card">
           ${sectionTitle('📊 Salg fordeling')}
           ${renderDonutChart(normalized.map(c => ({ label: c.name, value: c.sales })), { id: donutId })}
         </div>
-        <div class="hv3-card">
-          ${sectionTitle('📋 Ekspedient detaljer')}
+      </div>
+
+      <div class="hv3-card" style="padding:22px 24px">
+        ${sectionTitle('🛒 Ekspedienter')}
+        <div style="overflow-x:auto">
           <table class="hv3-table" style="font-size:12px">
-            <thead><tr>${['#', 'Navn', 'Salg', 'Omsætning', 'Gns./salg'].map(h => `<th style="padding:8px 6px">${h}</th>`).join('')}</tr></thead>
-            <tbody>${normalized.map((cl, i) => `<tr>
-              <td style="padding:8px 6px;font-weight:700;color:${i < 3 ? 'var(--hv3-accent)' : 'var(--hv3-text-light)'}">${i + 1}</td>
-              <td style="padding:8px 6px;font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(cl.name)}</td>
-              <td style="padding:8px 6px;font-weight:600">${cl.sales}</td>
-              <td style="padding:8px 6px">${fmtKr(cl.revenue)}</td>
-              <td style="padding:8px 6px;color:var(--hv3-text-muted)">${cl.sales > 0 ? (cl.revenue / cl.sales).toFixed(1) : 0} kr</td>
+            <thead><tr>${['Navn', 'Saldo', 'Tid som eksp.', 'Antal salg', 'Produkter solgt', 'Salg beløb', 'Flango Level'].map(h => `<th style="padding:8px 10px">${h}</th>`).join('')}</tr></thead>
+            <tbody>${empRows.map(d => `<tr>
+              <td style="padding:8px 10px;font-weight:600">${escHtml(d.clerk_name)}</td>
+              <td style="padding:8px 10px" class="${d.saldoClass}">${d.balance != null ? fmtKr(d.balance) : '—'}</td>
+              <td style="padding:8px 10px">${fmtMinutes(d.total_minutes)}</td>
+              <td style="padding:8px 10px;font-weight:600">${d.total_sales || 0}</td>
+              <td style="padding:8px 10px">${d.total_items_sold || 0}</td>
+              <td style="padding:8px 10px;font-weight:600">${fmtKr(d.total_revenue || 0)}</td>
+              <td style="padding:8px 10px"><span class="hv3-level-badge">${escHtml(d.level)}</span></td>
             </tr>`).join('')}</tbody>
+            <tfoot><tr>
+              <td style="padding:8px 10px;font-weight:700">Total (${empData.length})</td>
+              <td style="padding:8px 10px">—</td>
+              <td style="padding:8px 10px">${fmtMinutes(empData.reduce((s, d) => s + (d.total_minutes || 0), 0))}</td>
+              <td style="padding:8px 10px;font-weight:700">${empData.reduce((s, d) => s + (d.total_sales || 0), 0)}</td>
+              <td style="padding:8px 10px">${empData.reduce((s, d) => s + (d.total_items_sold || 0), 0)}</td>
+              <td style="padding:8px 10px;font-weight:700">${fmtKr(empData.reduce((s, d) => s + Number(d.total_revenue || 0), 0))}</td>
+              <td style="padding:8px 10px">—</td>
+            </tr></tfoot>
           </table>
         </div>
       </div>`;
-  } else {
-    // Kunder
-    const customers = await getTopCustomers(from, to, 10, includeTestUsers);
-    const normalized = customers.map(cu => ({
-      name: cu.name || 'Ukendt',
-      spent: cu.forbrugt || 0,
-      purchases: cu.antal_koeb || 0,
-    }));
+  } else if (toplistTab === 'personale') {
+    // ─── Personale (admin) view — enrich with splits + deposits ───
+    const ck = _ck('tl-pers', toplistPeriod, includeTestUsers);
+    let enriched = getCached(ck);
+    if (!enriched) {
+      const data = await getEmployeeSummary(from, to, 'admin', includeTestUsers);
+      contentEl.innerHTML = '<div class="hv3-loading"><div class="hv3-spinner"></div>Indlæser personale...</div>';
+      enriched = await Promise.all(data.map(async d => {
+        const [split, timeSplit, deposits, cafeDays] = await Promise.all([
+          getAdminSalesSplit(d.clerk_id, from, to),
+          getAdminTimeSplit(d.clerk_id, from, to),
+          getAdminDeposits(d.clerk_id, from, to),
+          getAdminCafeDays(d.clerk_id, from, to, includeTestUsers),
+        ]);
+        const totalCafeMinutes = timeSplit.selfMinutes + timeSplit.childMinutes;
+        const qualifiedDays = cafeDays.filter(day => day.qualified);
+        const bestDay = qualifiedDays.length ? qualifiedDays.reduce((best, day) => day.revenue > best.revenue ? day : best) : null;
+        return { ...d, ...split, ...timeSplit, totalCafeMinutes, ...deposits, bestDay, cafeDays };
+      }));
+      setCache(ck, enriched);
+    }
 
-    const donutId = 'hv3-cust-donut-' + Date.now();
+    // ── Café-dage drilldown data ──
+    let drilldownHtml = '';
+    if (cdSelectedPerson) {
+      // Use enriched cafeDays if available, otherwise fetch
+      if (!cdCachedDays) {
+        const match = enriched.find(d => d.clerk_id === cdSelectedPerson.clerk_id);
+        cdCachedDays = match?.cafeDays || await getAdminCafeDays(cdSelectedPerson.clerk_id, from, to, includeTestUsers);
+      }
+      const allDays = cdCachedDays;
+      const personDage = allDays.filter(d => d.qualified);
+
+      if (personDage.length > 0) {
+        // Sort
+        const sortedDage = [...personDage].sort((a, b) => {
+          if (cdSortCol === 'date') return cdSortDir === 'desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+          if (cdSortCol === 'revenue') return cdSortDir === 'desc' ? b.revenue - a.revenue : a.revenue - b.revenue;
+          if (cdSortCol === 'sales') return cdSortDir === 'desc' ? b.sales - a.sales : a.sales - b.sales;
+          if (cdSortCol === 'hours') return cdSortDir === 'desc' ? b.hours - a.hours : a.hours - b.hours;
+          return 0;
+        });
+
+        const bestDay = personDage.reduce((best, d) => d.revenue > best.revenue ? d : best);
+        const nonZeroDage = personDage.filter(d => d.revenue > 0);
+        const worstDay = nonZeroDage.length ? nonZeroDage.reduce((worst, d) => d.revenue < worst.revenue ? d : worst) : null;
+        const avgRevenue = Math.round(personDage.reduce((s, d) => s + d.revenue, 0) / personDage.length);
+        const totalHours = personDage.reduce((s, d) => s + d.hours, 0);
+        const totalSales = personDage.reduce((s, d) => s + d.sales, 0);
+        const totalRevenue = personDage.reduce((s, d) => s + d.revenue, 0);
+
+        // SortHeader helper
+        const sortHdr = (col, label) => {
+          const isActive = cdSortCol === col;
+          const arrow = isActive ? (cdSortDir === 'desc' ? ' ↓' : ' ↑') : '';
+          return `<th class="hv3-cd-sort-th${isActive ? ' active' : ''}" onclick="__hv3CdSort('${col}')">${escHtml(label)}${arrow}</th>`;
+        };
+
+        // Bar chart data — chronological order
+        const chronoDage = [...sortedDage].sort((a, b) => a.date.localeCompare(b.date));
+        const chartBarId = 'hv3-cd-chart-' + Date.now();
+
+        drilldownHtml = `
+          <!-- Stat cards -->
+          <div class="hv3-stats-row" style="margin-top:20px">
+            ${statCard('Café-dage', String(personDage.length), { icon: '📅', sub: 'kvalificerede dage' })}
+            ${statCard('Gns. omsætning', fmtKr(avgRevenue), { icon: '📊', sub: 'pr. café-dag' })}
+            <div class="hv3-stat hv3-cd-stat-best">
+              <div class="hv3-stat-top">
+                <div>
+                  <div class="hv3-stat-label" style="color:#16a34a">BEDSTE DAG</div>
+                  <div class="hv3-stat-value" style="color:#15803d">${fmtKr(bestDay.revenue)}</div>
+                </div>
+                <span class="hv3-stat-icon" style="opacity:0.3">🏆</span>
+              </div>
+              <div style="font-size:11px;color:#16a34a;margin-top:6px">${escHtml(bestDay.dayLabel)} · ${escHtml(bestDay.dish || '—')}</div>
+            </div>
+            ${worstDay ? `<div class="hv3-stat hv3-cd-stat-worst">
+              <div class="hv3-stat-top">
+                <div>
+                  <div class="hv3-stat-label" style="color:#dc2626">LAVESTE DAG</div>
+                  <div class="hv3-stat-value" style="color:#b91c1c">${fmtKr(worstDay.revenue)}</div>
+                </div>
+                <span class="hv3-stat-icon" style="opacity:0.3">📉</span>
+              </div>
+              <div style="font-size:11px;color:#dc2626;margin-top:6px">${escHtml(worstDay.dayLabel)} · ${escHtml(worstDay.dish || '—')}</div>
+            </div>` : ''}
+          </div>
+
+          <!-- Bar chart -->
+          <div class="hv3-card" style="margin-top:16px">
+            ${sectionTitle('📈 Omsætning pr. café-dag — ' + escHtml(cdSelectedPerson.clerk_name))}
+            ${renderBarChart(chronoDage.map(d => ({
+              label: d.dayLabel,
+              value: d.revenue,
+              subLabel: `${d.sales} salg · ${d.hours}t${d.dish ? ' · 🍽️ ' + d.dish : ''}`,
+            })), {
+              id: chartBarId, height: 180, maxBarWidth: 28, barRadius: 5,
+              xLabelFontSize: 9, xLabelAngle: -30,
+              refLine: avgRevenue,
+              colorFn: (d) => {
+                if (d.value === bestDay.revenue) return '#22c55e';
+                if (worstDay && d.value === worstDay.revenue) return '#ef4444';
+                return '#e67e22';
+              },
+            })}
+            <div style="text-align:center;font-size:10px;color:var(--hv3-text-light);margin-top:4px">— Gns. ${fmtKr(avgRevenue)} · Grøn = bedste · Rød = laveste</div>
+          </div>
+
+          <!-- Sortable table -->
+          <div class="hv3-card" style="margin-top:16px">
+            ${sectionTitle('📋 Café-dage historik — ' + escHtml(cdSelectedPerson.clerk_name),
+              '<span style="font-size:11px;color:var(--hv3-text-light)">Krav: min. 1 time og 20+ salg</span>'
+            )}
+            <div style="overflow-x:auto">
+              <table class="hv3-table hv3-cd-table" style="font-size:13px">
+                <thead><tr>
+                  ${sortHdr('date', 'Dato')}
+                  ${sortHdr('hours', 'Timer')}
+                  ${sortHdr('sales', 'Antal salg')}
+                  <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--hv3-text-light);text-transform:uppercase;letter-spacing:0.5px">Dagens ret</th>
+                  ${sortHdr('revenue', 'Omsætning')}
+                  <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--hv3-text-light);text-transform:uppercase;letter-spacing:0.5px">vs. gns.</th>
+                </tr></thead>
+                <tbody>${sortedDage.map(d => {
+                  const diff = d.revenue - avgRevenue;
+                  const isBest = d.revenue === bestDay.revenue;
+                  const isWorst = worstDay && d.revenue === worstDay.revenue;
+                  const rowClass = isBest ? ' class="hv3-cd-row-best"' : isWorst ? ' class="hv3-cd-row-worst"' : '';
+                  return `<tr${rowClass}>
+                    <td style="padding:10px 12px;font-weight:600">${escHtml(d.dayLabel)}${isBest ? ' <span style="font-size:12px">🏆</span>' : ''}${isWorst ? ' <span style="font-size:12px">📉</span>' : ''}</td>
+                    <td style="padding:10px 12px;color:var(--hv3-text-muted)">${d.hours}t</td>
+                    <td style="padding:10px 12px;font-weight:600">${d.sales}</td>
+                    <td style="padding:10px 12px;color:var(--hv3-text-muted)">${escHtml(d.dish || '—')}</td>
+                    <td style="padding:10px 12px;font-weight:700">${fmtKr(d.revenue)}</td>
+                    <td style="padding:10px 12px"><span class="hv3-cd-diff-badge ${diff >= 0 ? 'positive' : 'negative'}">${diff >= 0 ? '+' : ''}${diff} kr</span></td>
+                  </tr>`;
+                }).join('')}</tbody>
+                <tfoot><tr>
+                  <td style="padding:12px 12px;font-weight:700;font-size:12px">Total (${personDage.length} dage)</td>
+                  <td style="padding:12px 12px;font-weight:600;font-size:12px">${totalHours.toFixed(1)}t</td>
+                  <td style="padding:12px 12px;font-weight:600;font-size:12px">${totalSales}</td>
+                  <td style="padding:12px 12px"></td>
+                  <td style="padding:12px 12px;font-weight:800;font-size:13px">${fmtKr(totalRevenue)}</td>
+                  <td style="padding:12px 12px;font-size:11px;color:var(--hv3-text-light)">gns. ${fmtKr(avgRevenue)}</td>
+                </tr></tfoot>
+              </table>
+            </div>
+          </div>`;
+      } else {
+        drilldownHtml = `
+          <div style="text-align:center;padding:32px 24px;color:var(--hv3-text-light)">
+            <div style="font-size:28px;margin-bottom:8px;opacity:0.3">📊</div>
+            <div style="font-size:14px;font-weight:600;color:var(--hv3-text-muted)">Ingen kvalificerede café-dage fundet for ${escHtml(cdSelectedPerson.clerk_name)}</div>
+            <div style="font-size:12px;margin-top:4px">Krav: min. 1 time logget ind og 20+ salg</div>
+          </div>`;
+      }
+    } else {
+      drilldownHtml = `
+        <div style="text-align:center;padding:48px 24px;color:var(--hv3-text-light)">
+          <div style="font-size:36px;margin-bottom:12px;opacity:0.3">👆</div>
+          <div style="font-size:14px;font-weight:600;color:var(--hv3-text-muted)">Klik på en medarbejder for at se deres café-dage historik</div>
+          <div style="font-size:12px;margin-top:4px">Oversigten viser alle dage med min. 1 time logget ind og 20+ salg</div>
+        </div>`;
+    }
 
     contentEl.innerHTML = `
+      <!-- Niveau 1: Personaleoversigt (altid synlig) -->
       <div class="hv3-card" style="padding:22px 24px">
-        ${sectionTitle('👦 Top kunder (forbrug)')}
-        ${renderRankingList(normalized, { valueKey: 'spent', valueLabel: 'kr', subKey: 'purchases', subLabel: 'køb' })}
-      </div>
-      <div class="hv3-grid-2">
-        <div class="hv3-card">
-          ${sectionTitle('📊 Forbrug fordeling')}
-          ${renderDonutChart(normalized.map(c => ({ label: c.name, value: c.spent })), { id: donutId })}
-        </div>
-        <div class="hv3-card">
-          ${sectionTitle('📋 Kundedetaljer')}
-          <table class="hv3-table" style="font-size:12px">
-            <thead><tr>${['#', 'Navn', 'Forbrug', 'Køb', 'Gns./køb'].map(h => `<th style="padding:8px 6px">${h}</th>`).join('')}</tr></thead>
-            <tbody>${normalized.map((cu, i) => `<tr>
-              <td style="padding:8px 6px;font-weight:700;color:${i < 3 ? 'var(--hv3-accent)' : 'var(--hv3-text-light)'}">${i + 1}</td>
-              <td style="padding:8px 6px;font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(cu.name)}</td>
-              <td style="padding:8px 6px;font-weight:700">${fmtKr(cu.spent)}</td>
-              <td style="padding:8px 6px">${cu.purchases} køb</td>
-              <td style="padding:8px 6px;color:var(--hv3-text-muted)">${cu.purchases > 0 ? (cu.spent / cu.purchases).toFixed(1) : 0} kr</td>
-            </tr>`).join('')}</tbody>
+        ${sectionTitle('👨‍💼 Personale')}
+        <div style="overflow-x:auto">
+          <table class="hv3-table hv3-cd-personnel-table" style="font-size:12px">
+            <thead><tr style="border-bottom:2px solid var(--hv3-card-border)">${['Navn', 'Tid i caféen', 'Selv eksp.', 'Børn eksp.', 'Antal salg', 'Antal prod.', 'Indbetalinger', 'Selv salg', 'Assist. salg', 'Salg i alt', 'Rekord'].map(h => `<th style="padding:8px 8px;text-align:left;font-size:9px;font-weight:700;color:var(--hv3-text-light);text-transform:uppercase;letter-spacing:0.4px;white-space:nowrap">${h}</th>`).join('')}</tr></thead>
+            <tbody>${enriched.map(d => {
+              const isSelected = cdSelectedPerson && cdSelectedPerson.clerk_id === d.clerk_id;
+              return `<tr class="hv3-cd-person-row${isSelected ? ' selected' : ''}" onclick="__hv3CdSelectPerson('${d.clerk_id}', '${escHtml(d.clerk_name).replace(/'/g, "\\'")}')">
+              <td style="padding:10px 8px;font-weight:700;white-space:nowrap">
+                <span style="color:${isSelected ? 'var(--hv3-accent)' : 'var(--hv3-text)'}">${escHtml(d.clerk_name)}</span>
+                ${isSelected ? '<span style="margin-left:6px;font-size:10px">▼</span>' : ''}
+              </td>
+              <td style="padding:10px 8px;color:var(--hv3-text-muted)">${fmtMinutes(d.totalCafeMinutes)}</td>
+              <td style="padding:10px 8px;color:var(--hv3-text-muted)">${fmtMinutes(d.selfMinutes)}</td>
+              <td style="padding:10px 8px;color:var(--hv3-text-muted)">${fmtMinutes(d.childMinutes)}</td>
+              <td style="padding:10px 8px;font-weight:600">${(d.total_sales || 0).toLocaleString('da-DK')}</td>
+              <td style="padding:10px 8px;color:var(--hv3-text-muted)">${(d.total_items_sold || 0).toLocaleString('da-DK')}</td>
+              <td style="padding:10px 8px;color:var(--hv3-text-muted)">${d.depositCount || 0} (${fmtKr(d.depositAmount || 0)})</td>
+              <td style="padding:10px 8px;color:var(--hv3-text-muted)">${fmtKr(d.selfSales)}</td>
+              <td style="padding:10px 8px;color:var(--hv3-text-muted)">${fmtKr(d.assistedSales)}</td>
+              <td style="padding:10px 8px;font-weight:800;font-size:13px">${fmtKr(d.total_revenue || 0)}</td>
+              <td style="padding:10px 8px;white-space:nowrap">${d.bestDay ? `<span style="font-weight:700;color:#15803d">${fmtKr(d.bestDay.revenue)}</span> <span style="font-size:10px;color:var(--hv3-text-light)">${escHtml(d.bestDay.dayLabel)}</span>` : '<span style="color:var(--hv3-text-light)">—</span>'}</td>
+            </tr>`;
+            }).join('')}</tbody>
+            <tfoot><tr style="background:#faf8f5;border-top:2px solid var(--hv3-card-border)">
+              <td style="padding:10px 8px;font-weight:700;font-size:11px">Total (${enriched.length})</td>
+              <td style="padding:10px 8px;font-weight:600;font-size:11px">${fmtMinutes(enriched.reduce((s, d) => s + d.totalCafeMinutes, 0))}</td>
+              <td style="padding:10px 8px;font-weight:600;font-size:11px">${fmtMinutes(enriched.reduce((s, d) => s + d.selfMinutes, 0))}</td>
+              <td style="padding:10px 8px;font-weight:600;font-size:11px">${fmtMinutes(enriched.reduce((s, d) => s + d.childMinutes, 0))}</td>
+              <td style="padding:10px 8px;font-weight:700;font-size:11px">${enriched.reduce((s, d) => s + (d.total_sales || 0), 0).toLocaleString('da-DK')}</td>
+              <td style="padding:10px 8px;font-weight:600;font-size:11px">${enriched.reduce((s, d) => s + (d.total_items_sold || 0), 0).toLocaleString('da-DK')}</td>
+              <td style="padding:10px 8px;font-weight:600;font-size:11px">${enriched.reduce((s, d) => s + (d.depositCount || 0), 0)} (${fmtKr(enriched.reduce((s, d) => s + (d.depositAmount || 0), 0))})</td>
+              <td style="padding:10px 8px;font-weight:600;font-size:11px">${fmtKr(enriched.reduce((s, d) => s + d.selfSales, 0))}</td>
+              <td style="padding:10px 8px;font-weight:600;font-size:11px">${fmtKr(enriched.reduce((s, d) => s + d.assistedSales, 0))}</td>
+              <td style="padding:10px 8px;font-weight:800;font-size:12px">${fmtKr(enriched.reduce((s, d) => s + Number(d.total_revenue || 0), 0))}</td>
+              <td style="padding:10px 8px;font-weight:700;font-size:11px">${(() => { const best = enriched.filter(d => d.bestDay).reduce((b, d) => !b || d.bestDay.revenue > b.revenue ? d.bestDay : b, null); return best ? `🏆 ${fmtKr(best.revenue)}` : '—'; })()}</td>
+            </tr></tfoot>
           </table>
         </div>
-      </div>`;
+      </div>
+      <!-- Niveau 2: Café-dage drilldown -->
+      ${drilldownHtml}`;
+
+    // Attach chart tooltips for café-dage bar chart
+    if (cdSelectedPerson && cdCachedDays) {
+      const chartEl = contentEl.querySelector('[id^="hv3-cd-chart-"]');
+      if (chartEl) {
+        attachChartTooltips(chartEl.id, {
+          valueSuffix: ' kr',
+          customFormat: (d) => `
+            <div class="hv3-chart-tooltip-value">${fmtNum(d.v)} kr</div>
+            <div class="hv3-chart-tooltip-label">${escHtml(d.l || '')}</div>
+            ${d.s ? `<div class="hv3-chart-tooltip-sub" style="opacity:0.6;font-size:11px">${escHtml(d.s)}</div>` : ''}`,
+        });
+      }
+    }
+  } else {
+    // ─── Kunder (full table with search, saldo filter, sorting) ───
+    if (!kundeCached) {
+      contentEl.innerHTML = '<div class="hv3-loading"><div class="hv3-spinner"></div>Indlæser kunder...</div>';
+      kundeCached = await getCustomerStats(from, to, includeTestUsers);
+    }
+    const allKunder = kundeCached;
+
+    // Filter: search
+    let filtered = [...allKunder];
+    if (kundeSearch.trim()) {
+      const q = kundeSearch.toLowerCase();
+      filtered = filtered.filter(k => k.name.toLowerCase().includes(q));
+    }
+    // Filter: saldo
+    if (kundeSaldoFilter === 'negativ') filtered = filtered.filter(k => k.saldo < 0);
+    else if (kundeSaldoFilter === 'nul') filtered = filtered.filter(k => k.saldo === 0);
+    else if (kundeSaldoFilter === 'positiv') filtered = filtered.filter(k => k.saldo > 0);
+
+    // Sort
+    filtered.sort((a, b) => {
+      const av = a[kundeSortCol], bv = b[kundeSortCol];
+      if (kundeSortCol === 'name' || kundeSortCol === 'favorit') {
+        return kundeSortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+      }
+      return kundeSortDir === 'desc' ? bv - av : av - bv;
+    });
+
+    // Aggregated stats
+    const totalForbrug = allKunder.reduce((s, k) => s + k.forbrug, 0);
+    const totalKoeb = allKunder.reduce((s, k) => s + k.koeb, 0);
+    const avgForbrug = allKunder.length ? Math.round(totalForbrug / allKunder.length) : 0;
+    const negSaldo = allKunder.filter(k => k.saldo < 0);
+    const totalNegSaldo = negSaldo.reduce((s, k) => s + k.saldo, 0);
+    const maxForbrug = Math.max(...allKunder.map(k => k.forbrug), 1);
+
+    // SortHeader helper
+    const ksHdr = (col, label, align) => {
+      const isActive = kundeSortCol === col;
+      const arrow = isActive ? (kundeSortDir === 'desc' ? ' ↓' : ' ↑') : '';
+      return `<th onclick="__hv3KundeSort('${col}')" style="padding:10px 10px;text-align:${align || 'left'};font-size:9px;font-weight:700;color:${isActive ? 'var(--hv3-accent)' : 'var(--hv3-text-light)'};text-transform:uppercase;letter-spacing:0.4px;cursor:pointer;user-select:none;white-space:nowrap;transition:color 0.15s">${escHtml(label)}${arrow}</th>`;
+    };
+
+    // Saldo badge helper
+    const saldoBadge = (saldo) => {
+      const isNeg = saldo < 0;
+      const isZero = saldo === 0;
+      const prefix = isNeg ? '' : isZero ? '' : '+';
+      return `<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;white-space:nowrap;background:${isNeg ? '#fee2e2' : isZero ? '#f3ede5' : '#dcfce7'};color:${isNeg ? '#dc2626' : isZero ? 'var(--hv3-text-muted)' : '#16a34a'}">${prefix}${saldo} kr</span>`;
+    };
+
+    // Favorit badge helper
+    const favBadge = (product) => {
+      if (!product) return '<span style="color:var(--hv3-text-light)">—</span>';
+      return `<span style="font-size:11px;font-weight:500;padding:3px 9px;border-radius:6px;background:#f8f4ef;color:var(--hv3-text-muted);white-space:nowrap;display:inline-flex;align-items:center;gap:4px"><span style="font-size:12px">🍽️</span>${escHtml(product)}</span>`;
+    };
+
+    // Saldo filter button helper
+    const saldoBtn = (id, label, color) => {
+      const isActive = kundeSaldoFilter === id;
+      let bg, border, clr;
+      if (isActive) {
+        border = `1.5px solid ${color || 'var(--hv3-accent)'}`;
+        bg = color === '#dc2626' ? '#fee2e2' : color === '#16a34a' ? '#dcfce7' : 'var(--hv3-accent-light)';
+        clr = color || 'var(--hv3-accent-dark)';
+      } else {
+        border = '1.5px solid var(--hv3-card-border)';
+        bg = 'transparent';
+        clr = 'var(--hv3-text-muted)';
+      }
+      return `<button onclick="__hv3KundeSaldoFilter('${id}')" style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;border:${border};background:${bg};color:${clr}">${label}</button>`;
+    };
+
+    contentEl.innerHTML = `
+      <!-- KPI cards -->
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        ${statCard('Kunder i alt', String(allKunder.length), { icon: '👦', sub: 'aktive konti' })}
+        ${statCard('Samlet forbrug', fmtKr(totalForbrug), { icon: '💰', sub: totalKoeb.toLocaleString('da-DK') + ' køb i alt' })}
+        ${statCard('Gns. forbrug', fmtKr(avgForbrug), { icon: '📊', sub: 'pr. kunde' })}
+        ${negSaldo.length > 0 ? `<div class="hv3-stat" style="background:linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);border:1px solid #fecaca">
+          <div class="hv3-stat-top">
+            <div>
+              <div class="hv3-stat-label" style="color:#dc2626">Negativ saldo</div>
+              <div class="hv3-stat-value" style="font-size:24px;color:#b91c1c">${negSaldo.length} børn</div>
+            </div>
+            <span style="font-size:18px;opacity:0.2">⚠️</span>
+          </div>
+          <div style="font-size:11px;color:#dc2626;margin-top:6px">I alt ${totalNegSaldo.toLocaleString('da-DK')} kr</div>
+        </div>` : statCard('Negativ saldo', '0 børn', { icon: '⚠️', sub: 'Ingen negativ saldo' })}
+      </div>
+
+      <!-- Search + filters -->
+      <div class="hv3-card" style="padding:16px 20px">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <div style="position:relative;flex:1;min-width:200px">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;opacity:0.3">🔍</span>
+            <input type="text" class="hv3-kunde-search" placeholder="Søg efter barn..." value="${escHtml(kundeSearch)}" oninput="__hv3KundeSearch(this.value)" style="width:100%;padding:9px 12px 9px 36px;border-radius:10px;border:1.5px solid var(--hv3-card-border);font-size:13px;outline:none;background:#faf8f5;box-sizing:border-box;transition:border-color 0.15s" onfocus="this.style.borderColor='var(--hv3-accent)'" onblur="this.style.borderColor='var(--hv3-card-border)'">
+          </div>
+          <div style="display:flex;gap:4px">
+            ${saldoBtn('alle', 'Alle', null)}
+            ${saldoBtn('negativ', '⚠️ Negativ', '#dc2626')}
+            ${saldoBtn('nul', '0 kr', null)}
+            ${saldoBtn('positiv', '✓ Positiv', '#16a34a')}
+          </div>
+          <span style="font-size:11px;color:var(--hv3-text-light);font-weight:500">${filtered.length} af ${allKunder.length} kunder</span>
+        </div>
+      </div>
+
+      <!-- Main table -->
+      <div class="hv3-card" style="padding:22px 24px">
+        ${sectionTitle('👦 Alle kunder')}
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="border-bottom:2px solid var(--hv3-card-border)">
+                <th style="padding:10px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--hv3-text-light);text-transform:uppercase;letter-spacing:0.4px;width:30px">#</th>
+                ${ksHdr('name', 'Navn')}
+                <th style="padding:10px 10px;text-align:left;font-size:9px;font-weight:700;color:var(--hv3-text-light);text-transform:uppercase;letter-spacing:0.4px;min-width:120px">Forbrug</th>
+                ${ksHdr('forbrug', 'Beløb', 'right')}
+                ${ksHdr('koeb', 'Køb', 'right')}
+                ${ksHdr('saldo', 'Saldo', 'right')}
+                ${ksHdr('favorit', 'Favorit')}
+                ${ksHdr('indbetalinger', 'Indbetalt', 'right')}
+              </tr>
+            </thead>
+            <tbody>${filtered.map((k, i) => {
+              const barPct = (k.forbrug / maxForbrug) * 100;
+              const colorIdx = i % BAR_COLORS.length;
+              const isNeg = k.saldo < 0;
+              const safeName = (k.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+              return `<tr class="hv3-kunde-row${isNeg ? ' hv3-kunde-row-neg' : ''}" style="border-bottom:1px solid var(--hv3-card-border);cursor:pointer" onclick="__hv3GoToProfile('${k.id}','${safeName}')">
+                <td style="padding:11px 10px;font-size:12px;text-align:center">${kundeSortCol === 'forbrug' && kundeSortDir === 'desc' && i < 3 ? `<span style="font-size:14px">${['🥇','🥈','🥉'][i]}</span>` : `<span style="font-weight:600;color:var(--hv3-text-light)">${i + 1}</span>`}</td>
+                <td style="padding:11px 10px;font-weight:600;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(k.name)}</td>
+                <td style="padding:11px 10px"><div style="height:10px;background:#f3ede5;border-radius:99px;overflow:hidden;min-width:80px"><div style="width:${barPct}%;height:100%;border-radius:99px;background:linear-gradient(90deg, ${BAR_COLORS[colorIdx]}, ${BAR_COLORS[colorIdx]}cc);transition:width 0.5s ease"></div></div></td>
+                <td style="padding:11px 10px;font-weight:700;text-align:right;white-space:nowrap">${k.forbrug.toLocaleString('da-DK')} kr</td>
+                <td style="padding:11px 10px;text-align:right;color:var(--hv3-text-muted)">${k.koeb} køb</td>
+                <td style="padding:11px 10px;text-align:right">${saldoBadge(k.saldo)}</td>
+                <td style="padding:11px 10px">${favBadge(k.favorit)}</td>
+                <td style="padding:11px 10px;text-align:right;white-space:nowrap"><span style="font-weight:600">${k.indbetKr.toLocaleString('da-DK')} kr</span><span style="font-size:10px;color:var(--hv3-text-light);margin-left:4px">(${k.indbetalinger}×)</span></td>
+              </tr>`;
+            }).join('')}</tbody>
+            <tfoot>
+              <tr style="background:#faf8f5;border-top:2px solid var(--hv3-card-border)">
+                <td style="padding:12px 10px"></td>
+                <td style="padding:12px 10px;font-weight:700;font-size:11px">Total (${filtered.length})</td>
+                <td style="padding:12px 10px"></td>
+                <td style="padding:12px 10px;font-weight:800;font-size:12px;text-align:right">${filtered.reduce((s, k) => s + k.forbrug, 0).toLocaleString('da-DK')} kr</td>
+                <td style="padding:12px 10px;font-weight:600;font-size:11px;text-align:right">${filtered.reduce((s, k) => s + k.koeb, 0).toLocaleString('da-DK')} køb</td>
+                <td style="padding:12px 10px;font-weight:600;font-size:11px;text-align:right">${filtered.reduce((s, k) => s + k.saldo, 0).toLocaleString('da-DK')} kr</td>
+                <td style="padding:12px 10px"></td>
+                <td style="padding:12px 10px;font-weight:700;font-size:11px;text-align:right">${filtered.reduce((s, k) => s + k.indbetKr, 0).toLocaleString('da-DK')} kr</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      ${negSaldo.length > 0 ? `<!-- Negativ saldo insight -->
+      <div class="hv3-card" style="padding:18px 22px;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg, #1c1812 0%, #2d261c 100%);border:none">
+        <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;background:rgba(220,38,38,0.15);display:flex;align-items:center;justify-content:center;font-size:18px">⚠️</div>
+        <div>
+          <h4 style="margin:0 0 3px;font-size:13px;font-weight:700;color:#fff">${negSaldo.length} børn har negativ saldo</h4>
+          <p style="margin:0;font-size:11px;color:#b8a998;line-height:1.5">Samlet underskud: ${Math.abs(totalNegSaldo).toLocaleString('da-DK')} kr. Overvej at sende påmindelse til forældre via Rapporter → Negativ saldo.</p>
+        </div>
+      </div>` : ''}`;
+
+    // Restore search focus after innerHTML replacement
+    if (kundeSearch) {
+      const si = contentEl.querySelector('.hv3-kunde-search');
+      if (si) { si.focus(); si.setSelectionRange(si.value.length, si.value.length); }
+    }
   }
 
   animateChartEntrance(contentEl);
@@ -697,6 +1190,9 @@ async function renderPageStatistik() {
   const from = new Date(now); from.setDate(from.getDate() - days + 1); from.setHours(0, 0, 0, 0);
   const to = new Date(now); to.setHours(23, 59, 59, 999);
 
+  const ck = _ck('stats', statsRange, includeTestUsers);
+  let _sc = getCached(ck);
+  if (!_sc) {
   const [club, deposits, balances, dailyData, saldoDist, revenueByDay] = await Promise.all([
     getClubStats(from, to, includeTestUsers),
     getTotalDeposits(from, to, includeTestUsers),
@@ -705,6 +1201,10 @@ async function renderPageStatistik() {
     getBalanceDistribution(includeTestUsers),
     getRevenueByDay(from, to, includeTestUsers),
   ]);
+  _sc = { club, deposits, balances, dailyData, saldoDist, revenueByDay };
+  setCache(ck, _sc);
+  }
+  const { club, deposits, balances, dailyData, saldoDist, revenueByDay } = _sc;
 
   const dailyChartId = 'hv3-stats-daily-' + Date.now();
   const weekdayChartId = 'hv3-stats-weekday-' + Date.now();
@@ -780,6 +1280,805 @@ async function renderPageStatistik() {
   attachChartTooltips(dailyChartId, { valueSuffix: ' kr' });
   attachChartTooltips(weekdayChartId, { valueSuffix: ' kr' });
   animateChartEntrance(c);
+}
+
+// ═══════════════════════════════════════════
+// PAGE: TRANSAKTIONER
+// ═══════════════════════════════════════════
+
+function productIconById(iconMap, productId, size = 16) {
+  const info = iconMap?.[productId];
+  if (!info) return '';
+  return productIcon(info.emoji, info.icon_url, size);
+}
+
+// ═══════════════════════════════════════════
+// KØBSPROFILER
+// ═══════════════════════════════════════════
+
+/** Count weekdays (Mon-Fri) between two dates, inclusive of both ends. */
+function countWeekdays(startDate, endDate) {
+  let count = 0;
+  const d = new Date(startDate);
+  d.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+  while (d <= end) {
+    const dow = d.getDay();
+    if (dow >= 1 && dow <= 5) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+
+const PP_CYLINDER_COLORS = [
+  { bg: 'linear-gradient(90deg, #00838f 0%, #00bcd4 35%, #4dd0e1 50%, #00bcd4 65%, #00838f 100%)', shadow: '#006064', cap: 'linear-gradient(180deg, #80deea 0%, #26c6da 100%)' },
+  { bg: 'linear-gradient(90deg, #1565c0 0%, #2196f3 35%, #64b5f6 50%, #2196f3 65%, #1565c0 100%)', shadow: '#0d47a1', cap: 'linear-gradient(180deg, #90caf9 0%, #42a5f5 100%)' },
+  { bg: 'linear-gradient(90deg, #f9a825 0%, #ffc107 35%, #ffeb3b 50%, #ffc107 65%, #f9a825 100%)', shadow: '#f57f17', cap: 'linear-gradient(180deg, #fff59d 0%, #ffca28 100%)' },
+  { bg: 'linear-gradient(90deg, #c2185b 0%, #e91e63 35%, #f06292 50%, #e91e63 65%, #c2185b 100%)', shadow: '#880e4f', cap: 'linear-gradient(180deg, #f8bbd9 0%, #ec407a 100%)' },
+  { bg: 'linear-gradient(90deg, #6a1b9a 0%, #9c27b0 35%, #ba68c8 50%, #9c27b0 65%, #6a1b9a 100%)', shadow: '#4a148c', cap: 'linear-gradient(180deg, #ce93d8 0%, #ab47bc 100%)' },
+  { bg: 'linear-gradient(90deg, #512da8 0%, #673ab7 35%, #9575cd 50%, #673ab7 65%, #512da8 100%)', shadow: '#311b92', cap: 'linear-gradient(180deg, #b39ddb 0%, #7e57c2 100%)' },
+  { bg: 'linear-gradient(90deg, #00796b 0%, #009688 35%, #4db6ac 50%, #009688 65%, #00796b 100%)', shadow: '#004d40', cap: 'linear-gradient(180deg, #80cbc4 0%, #26a69a 100%)' },
+  { bg: 'linear-gradient(90deg, #0277bd 0%, #03a9f4 35%, #4fc3f7 50%, #03a9f4 65%, #0277bd 100%)', shadow: '#01579b', cap: 'linear-gradient(180deg, #81d4fa 0%, #29b6f6 100%)' },
+  { bg: 'linear-gradient(90deg, #ef6c00 0%, #ff9800 35%, #ffb74d 50%, #ff9800 65%, #ef6c00 100%)', shadow: '#e65100', cap: 'linear-gradient(180deg, #ffcc80 0%, #ffa726 100%)' },
+  { bg: 'linear-gradient(90deg, #c62828 0%, #f44336 35%, #e57373 50%, #f44336 65%, #c62828 100%)', shadow: '#b71c1c', cap: 'linear-gradient(180deg, #ef9a9a 0%, #ef5350 100%)' },
+  { bg: 'linear-gradient(90deg, #546e7a 0%, #78909c 35%, #b0bec5 50%, #78909c 65%, #546e7a 100%)', shadow: '#37474f', cap: 'linear-gradient(180deg, #cfd8dc 0%, #90a4ae 100%)' },
+];
+
+window.__hv3PpSelectUser = (userId, userName) => {
+  ppSelectedUserId = userId;
+  ppSelectedUserName = userName;
+  renderPageKoebsprofiler();
+};
+window.__hv3PpClearUser = () => {
+  ppSelectedUserId = null;
+  ppSelectedUserName = '';
+  renderPageKoebsprofiler();
+};
+window.__hv3SetPpPeriod = (label) => {
+  ppPeriod = label;
+  renderPageKoebsprofiler();
+};
+window.__hv3SetPpSort = (label) => {
+  ppSortBy = label;
+  renderPageKoebsprofiler();
+};
+
+async function renderPageKoebsprofiler() {
+  const c = getPageContainer();
+  if (!c) return;
+
+  // Init purchase profiles domain module once
+  if (!ppInitDone) {
+    const instId = getInstitutionId();
+    if (instId) initPurchaseProfiles(instId);
+    ppInitDone = true;
+  }
+
+  // Get all users for picker
+  const allUsers = typeof window.__flangoGetAllUsers === 'function' ? window.__flangoGetAllUsers() : [];
+  const customers = allUsers
+    .filter(u => u && u.role !== 'admin')
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  // Period / sort mapping
+  const periodMap = { 'Altid': 'all', '30 dage': '30', '7 dage': '7' };
+  const sortMap = { 'Antal': 'antal', 'Beløb': 'kr' };
+  const apiPeriod = periodMap[ppPeriod] || 'all';
+  const apiSort = sortMap[ppSortBy] || 'antal';
+
+  // Build user picker HTML
+  const pickerHtml = ppSelectedUserId
+    ? `<div class="hv3-pp-selected-chip">
+        <span>👤 ${escHtml(ppSelectedUserName)}</span>
+        <button class="hv3-pp-clear-btn" onclick="__hv3PpClearUser()">✕</button>
+      </div>`
+    : `<div class="hv3-pp-user-picker">
+        <input type="text" class="hv3-pp-search" placeholder="🔍 Søg bruger (navn eller nummer)..." id="hv3-pp-search-input" autocomplete="off">
+        <div class="hv3-pp-dropdown" id="hv3-pp-dropdown" style="display:none">
+          ${customers.map(u => {
+            const num = u.number ? ` #${u.number}` : '';
+            return `<div class="hv3-pp-dropdown-item" data-id="${u.id}" data-name="${escHtml(u.name || 'Uden navn')}">${escHtml(u.name || 'Uden navn')}${num}</div>`;
+          }).join('')}
+        </div>
+      </div>`;
+
+  // Controls (only when user is selected)
+  const controlsHtml = ppSelectedUserId ? `
+    <div class="hv3-pp-controls" style="margin-top:16px">
+      ${filterPills(['Altid', '30 dage', '7 dage'], ppPeriod, '__hv3SetPpPeriod', true)}
+      ${filterPills(['Antal', 'Beløb'], ppSortBy, '__hv3SetPpSort', true)}
+    </div>` : '';
+
+  if (!ppSelectedUserId) {
+    // Empty state — no user selected
+    c.innerHTML = `<div class="hv3-page">
+      <div class="hv3-card" style="padding:22px 24px">
+        ${sectionTitle('🛍️ Købsprofiler')}
+        <p style="font-size:13px;color:var(--hv3-text-muted);margin:4px 0 16px">Vælg en bruger for at se deres mest købte produkter</p>
+        ${pickerHtml}
+      </div>
+      <div class="hv3-pp-empty">
+        <div style="font-size:48px;margin-bottom:16px">🛍️</div>
+        <div style="font-size:15px;font-weight:600">Vælg en bruger ovenfor</div>
+        <div style="font-size:13px;margin-top:4px">for at se købsprofil og mest købte produkter</div>
+      </div>
+    </div>`;
+    wirePpUserPicker(customers);
+    return;
+  }
+
+  // Show loading while fetching data
+  c.innerHTML = `<div class="hv3-page">
+    <div class="hv3-card" style="padding:22px 24px">
+      ${sectionTitle('🛍️ Købsprofiler')}
+      ${pickerHtml}
+      ${controlsHtml}
+    </div>
+    <div class="hv3-loading"><div class="hv3-spinner"></div>Indlæser købsprofil...</div>
+  </div>`;
+
+  try {
+    // Fetch chart data + all customers' spending for comparison — in parallel
+    const periodDateMap = { 'all': 'altid', '30': 'maaned', '7': 'uge' };
+    const { from: pFrom, to: pTo } = periodRange(periodDateMap[apiPeriod] || 'altid');
+
+    // "Active customers" = those with ≥1 sale within last 4 weeks (used for avg comparisons)
+    const fourWeeksAgo = new Date();
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+    const fourWeeksTo = new Date();
+    fourWeeksTo.setHours(23, 59, 59, 999);
+
+    // Cache customer spending per period + active customers (4-week window)
+    const spendCk = _ck('pp-spend', apiPeriod, includeTestUsers);
+    const activeCk = _ck('pp-active', includeTestUsers);
+    const chartCk = _ck('pp-chart', ppSelectedUserId, apiPeriod, apiSort);
+
+    let allCustomerSpending = getCached(spendCk);
+    let activeCustomers = getCached(activeCk);
+    let chartResult = getCached(chartCk);
+
+    // Fetch only what's missing — in parallel
+    const fetches = [];
+    if (!chartResult) fetches.push(ppGetChartData(ppSelectedUserId, apiPeriod, apiSort).then(r => { chartResult = r; setCache(chartCk, r); }));
+    if (!allCustomerSpending) fetches.push(getTopCustomers(pFrom, pTo, 9999, includeTestUsers).then(r => { allCustomerSpending = r; setCache(spendCk, r); }));
+    if (!activeCustomers) fetches.push(getTopCustomers(fourWeeksAgo, fourWeeksTo, 9999, includeTestUsers).then(r => { activeCustomers = r; setCache(activeCk, r); }));
+    if (fetches.length) await Promise.all(fetches);
+
+    const { total, chartData, error } = chartResult;
+
+    if (error) {
+      c.innerHTML = `<div class="hv3-page">
+        <div class="hv3-card" style="padding:22px 24px">
+          ${sectionTitle('🛍️ Købsprofiler')}
+          ${pickerHtml}
+          ${controlsHtml}
+        </div>
+        <div class="hv3-card" style="padding:40px;text-align:center;color:var(--hv3-red)">Fejl: ${escHtml(error)}</div>
+      </div>`;
+      wirePpUserPicker(customers);
+      return;
+    }
+
+    // ── Stat card data ──
+    // Build set of active customer names (≥1 sale in last 4 weeks) for balance avg
+    const activeNames = new Set(activeCustomers.map(ac => ac.name));
+    const activeUserBalances = customers.filter(u => activeNames.has(u.name)).map(u => Number(u.balance || 0));
+    const activeBalanceSum = activeUserBalances.reduce((s, b) => s + b, 0);
+    const activeBalanceCount = activeUserBalances.length || 1;
+
+    // 1) Saldo — compared to avg of active customers only
+    const selectedUser = allUsers.find(u => u.id === ppSelectedUserId);
+    const userBalance = selectedUser ? Number(selectedUser.balance || 0) : 0;
+    const avgBalance = Math.round(activeBalanceSum / activeBalanceCount);
+    const balancePct = avgBalance !== 0 ? Math.round(((userBalance - avgBalance) / Math.abs(avgBalance)) * 100) : 0;
+    const balancePctAbs = Math.abs(balancePct);
+
+    // 2) Forbrug i alt — this user vs avg of active customers in same period
+    // allCustomerSpending already only includes customers with sales in the selected period
+    const allSpendingTotal = allCustomerSpending.reduce((s, cs) => s + (cs.forbrugt || 0), 0);
+    const customerCount = allCustomerSpending.length || 1;
+    const avgSpending = allSpendingTotal / customerCount;
+    const spendPct = avgSpending > 0 ? Math.round(((total - avgSpending) / avgSpending) * 100) : 0;
+    const spendPctAbs = Math.abs(spendPct);
+
+    // 3) Gennemsnitsforbrug per hverdag (man-fre) siden brugerens oprettelse
+    const userCreated = selectedUser?.created_at ? new Date(selectedUser.created_at) : null;
+    let rangeStart;
+    if (apiPeriod === '7') {
+      const d = new Date(); d.setDate(d.getDate() - 7);
+      rangeStart = userCreated && userCreated > d ? userCreated : d;
+    } else if (apiPeriod === '30') {
+      const d = new Date(); d.setDate(d.getDate() - 30);
+      rangeStart = userCreated && userCreated > d ? userCreated : d;
+    } else {
+      rangeStart = userCreated || pFrom;
+    }
+    const weekdays = countWeekdays(rangeStart, new Date());
+    const periodDays = Math.max(1, weekdays);
+    const perLabel = 'hverdag';
+    const userAvgPerDay = total / periodDays;
+    const clubAvgPerDay = avgSpending / periodDays;
+    const avgPct = clubAvgPerDay > 0 ? Math.round(((userAvgPerDay - clubAvgPerDay) / clubAvgPerDay) * 100) : 0;
+    const avgPctAbs = Math.abs(avgPct);
+
+    // Rank — position among all customers sorted by spending (no new DB calls)
+    const spendRank = allCustomerSpending.filter(cs => cs.forbrugt > total).length + 1;
+
+    // Period label for stat card
+    const periodLabel = ppPeriod === '7 dage' ? '7 dage' : ppPeriod === '30 dage' ? '30 dage' : 'altid';
+
+    // Build stat cards — comparisons are vs. active customers (≥1 køb inden for 4 uger)
+    const activeLabel = `${activeUserBalances.length} aktive`;
+    const statsHtml = `<div class="hv3-stats-row">
+      ${statCard('Saldo', fmtKr(userBalance), {
+        icon: '💰',
+        trend: balancePctAbs > 0 ? `${balancePctAbs}% ${balancePct > 0 ? 'over' : 'under'} gns.` : 'som gns.',
+        trendUp: balancePct >= 0,
+        sub: `Gns. (${activeLabel}): ${fmtKr(avgBalance)}`
+      })}
+      ${statCard(`Forbrug (${periodLabel})`, fmtKr(total), {
+        icon: '🛒',
+        trend: spendPctAbs > 0 ? `${spendPctAbs}% ${spendPct > 0 ? 'over' : 'under'} gns.` : 'som gns.',
+        trendUp: spendPct >= 0,
+        sub: `Gns. (${customerCount} kunder): ${fmtKr(avgSpending)}`,
+        rank: `#${spendRank} af ${customerCount}`
+      })}
+      ${statCard(`Gns. pr. ${perLabel} (${periodLabel})`, fmtKr(userAvgPerDay), {
+        icon: '📊',
+        trend: avgPctAbs > 0 ? `${avgPctAbs}% ${avgPct > 0 ? 'over' : 'under'} gns.` : 'som gns.',
+        trendUp: avgPct >= 0,
+        sub: `Gns. (${customerCount} kunder): ${fmtKr(clubAvgPerDay)} / ${perLabel}`
+      })}
+    </div>`;
+
+    const count = chartData.reduce((s, d) => s + d.antal, 0);
+
+    // Build chart bars HTML
+    let chartHtml = '';
+    if (chartData.length === 0) {
+      chartHtml = `<div class="hv3-pp-empty" style="padding:40px 20px">
+        <div style="font-size:36px;margin-bottom:12px">📭</div>
+        <div style="font-size:14px;font-weight:600">Ingen købsdata i denne periode</div>
+      </div>`;
+    } else {
+      const minH = 30, maxH = 200;
+      chartHtml = `<div class="hv3-pp-chart" id="hv3-pp-chart">
+        ${chartData.map((item, i) => {
+          const colors = PP_CYLINDER_COLORS[i % PP_CYLINDER_COLORS.length];
+          const h = Math.round(minH + (item.normalizedHeight / 100) * (maxH - minH));
+          const displayVal = apiSort === 'kr' ? `${fmtKr(item.kr)}` : `${item.antal} stk`;
+          // Icon
+          let iconHtml = '<span style="font-size:22px;line-height:1">🛒</span>';
+          if (item.isDagensRet) iconHtml = '<span style="font-size:22px;line-height:1">🍽️</span>';
+          else if (item.isAndreVarer) iconHtml = '<span style="font-size:22px;line-height:1">📦</span>';
+          else if (item.icon) {
+            if (item.icon.startsWith('http') || item.icon.includes('.webp') || item.icon.includes('.png'))
+              iconHtml = `<img src="${item.icon}" style="width:26px;height:26px;object-fit:contain" alt="">`;
+            else
+              iconHtml = `<span style="font-size:22px;line-height:1">${item.icon}</span>`;
+          }
+
+          return `<div class="hv3-pp-bar-wrapper">
+            <div class="hv3-pp-bar-value">${displayVal}</div>
+            <div class="hv3-pp-bar" data-height="${h}"
+                 style="background:${colors.bg};box-shadow:4px 0 0 ${colors.shadow}, 0 8px 20px rgba(0,0,0,0.2)">
+              <div class="hv3-pp-bar-cap" style="background:${colors.cap}"></div>
+              <div class="hv3-pp-bar-tooltip">
+                <div style="font-weight:800;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:4px;margin-bottom:4px">${escHtml(item.name)}</div>
+                <div style="display:flex;justify-content:space-between;gap:15px"><span>Antal:</span><span style="font-weight:700">${item.antal}</span></div>
+                <div style="display:flex;justify-content:space-between;gap:15px"><span>Beløb:</span><span style="font-weight:700">${fmtKr(item.kr)}</span></div>
+              </div>
+            </div>
+            <div class="hv3-pp-bar-icon">${iconHtml}</div>
+            <div class="hv3-pp-bar-name" title="${escHtml(item.name)}">${escHtml(item.name)}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+
+    c.innerHTML = `<div class="hv3-page">
+      <div class="hv3-card" style="padding:22px 24px">
+        ${sectionTitle('🛍️ Købsprofiler')}
+        ${pickerHtml}
+        ${controlsHtml}
+      </div>
+
+      ${statsHtml}
+
+      <div class="hv3-card" style="padding:0;overflow:hidden">
+        ${chartHtml}
+      </div>
+    </div>`;
+
+    wirePpUserPicker(customers);
+
+    // Animate bars entrance
+    const chartEl = document.getElementById('hv3-pp-chart');
+    if (chartEl) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          chartEl.querySelectorAll('.hv3-pp-bar').forEach((bar, i) => {
+            setTimeout(() => { bar.style.height = bar.dataset.height + 'px'; }, i * 80);
+          });
+        });
+      });
+    }
+  } catch (err) {
+    console.error('renderPageKoebsprofiler', err);
+    c.innerHTML = `<div class="hv3-page">
+      <div class="hv3-card" style="padding:40px;text-align:center;color:var(--hv3-red)">
+        <p style="font-size:16px;font-weight:700">Fejl ved indlæsning</p>
+        <p style="font-size:13px;color:var(--hv3-text-muted)">${escHtml(err.message)}</p>
+      </div>
+    </div>`;
+  }
+}
+
+function wirePpUserPicker(customers) {
+  const input = document.getElementById('hv3-pp-search-input');
+  const dropdown = document.getElementById('hv3-pp-dropdown');
+  if (!input || !dropdown) return;
+
+  const items = dropdown.querySelectorAll('.hv3-pp-dropdown-item');
+
+  input.addEventListener('focus', () => { dropdown.style.display = 'block'; filterDropdown(''); });
+  input.addEventListener('input', () => filterDropdown(input.value));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { dropdown.style.display = 'none'; input.blur(); }
+    if (e.key === 'Enter') {
+      const visible = dropdown.querySelector('.hv3-pp-dropdown-item:not([style*="display: none"])');
+      if (visible) visible.click();
+    }
+  });
+
+  // Click outside closes dropdown
+  document.addEventListener('click', function ppOutside(e) {
+    if (!e.target.closest('.hv3-pp-user-picker')) {
+      dropdown.style.display = 'none';
+      document.removeEventListener('click', ppOutside);
+    }
+  }, true);
+
+  // Item click
+  dropdown.addEventListener('click', (e) => {
+    const item = e.target.closest('.hv3-pp-dropdown-item');
+    if (item) {
+      window.__hv3PpSelectUser(item.dataset.id, item.dataset.name);
+    }
+  });
+
+  function filterDropdown(query) {
+    const q = (query || '').toLowerCase().trim();
+    items.forEach(el => {
+      const text = el.textContent.toLowerCase();
+      el.style.display = (!q || text.includes(q)) ? '' : 'none';
+    });
+    dropdown.style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════
+// TRANSAKTIONER
+// ═══════════════════════════════════════════
+
+async function renderPageTransaktioner() {
+  const c = getPageContainer();
+  if (!c) return;
+
+  // Reset filters on full page render
+  txTypeFilter = 'alle';
+  txSearch = '';
+
+  // Compute period
+  const { from, to } = periodRange(txPeriod === '7 dage' ? 'uge' : txPeriod === '30 dage' ? 'maaned' : 'altid');
+
+  c.innerHTML = `
+  <div class="hv3-tx-toolbar">
+    ${filterPills(['7 dage', '30 dage', 'Alt'], txPeriod, '__hv3SetTxPeriod', true)}
+    <div style="flex:1"></div>
+    <input type="text" class="hv3-tx-search" id="hv3-tx-search" placeholder="Søg barn, ekspedient...">
+    <span class="hv3-tx-count" id="hv3-tx-count">…</span>
+  </div>
+  <div class="hv3-tx-type-filter" style="margin-bottom:16px">
+    ${filterPills(['Alle', 'Salg', 'Indbet.', 'Just.', '🎫 Arr.'], 'Alle', '__hv3SetTxType', true)}
+  </div>
+  <div class="hv3-card" style="padding:0;overflow:hidden">
+    <div id="hv3-tx-table-wrap"><div class="hv3-loading"><div class="hv3-spinner"></div>Indlæser transaktioner...</div></div>
+  </div>`;
+
+  // Wire search
+  const searchEl = document.getElementById('hv3-tx-search');
+  if (searchEl) {
+    searchEl.value = txSearch;
+    searchEl.oninput = () => { txSearch = searchEl.value.toLowerCase().trim(); renderTxRows(); };
+  }
+
+  // Wire type filter via window handler
+  window.__hv3SetTxType = (label) => {
+    const map = { 'Alle': 'alle', 'Salg': 'SALE', 'Indbet.': 'DEPOSIT', 'Just.': 'SALE_ADJUSTMENT', '🎫 Arr.': 'EVENT' };
+    txTypeFilter = map[label] || 'alle';
+    // Update pill active states
+    const filterWrap = c.querySelector('.hv3-tx-type-filter');
+    if (filterWrap) {
+      filterWrap.innerHTML = filterPills(['Alle', 'Salg', 'Indbet.', 'Just.', '🎫 Arr.'], label, '__hv3SetTxType', true);
+    }
+    renderTxRows();
+  };
+
+  // Period handler
+  window.__hv3SetTxPeriod = (p) => { txPeriod = p; renderPageTransaktioner(); };
+
+  // Load data (cached per period)
+  try {
+    const ck = _ck('tx', txPeriod, includeTestUsers);
+    let _tc = getCached(ck);
+    if (!_tc) {
+      const [txData, iconMap] = await Promise.all([
+        getTransactions(from, to, includeTestUsers),
+        getProductsIconMap(),
+      ]);
+      _tc = { txData, iconMap };
+      setCache(ck, _tc);
+    }
+    allTransactions = _tc.txData;
+    _txIconMap = _tc.iconMap;
+    renderTxRows();
+  } catch (err) {
+    console.error('renderPageTransaktioner', err);
+    document.getElementById('hv3-tx-table-wrap').innerHTML = '<div style="padding:40px;text-align:center;color:var(--hv3-red)">Fejl ved indlæsning af transaktioner.</div>';
+  }
+}
+
+function renderTxRows() {
+  const wrap = document.getElementById('hv3-tx-table-wrap');
+  if (!wrap) return;
+
+  let filtered = allTransactions;
+  if (txTypeFilter !== 'alle') {
+    if (txTypeFilter === 'SALE') {
+      filtered = filtered.filter(e => e.event_type === 'SALE' || e.event_type === 'SALE_UNDO');
+    } else if (txTypeFilter === 'EVENT') {
+      filtered = filtered.filter(e => e.event_type === 'EVENT_PAYMENT' || e.event_type === 'EVENT_REFUND');
+    } else {
+      filtered = filtered.filter(e => e.event_type === txTypeFilter);
+    }
+  }
+  if (txSearch) {
+    filtered = filtered.filter(e => {
+      const text = [e.target?.name, e.clerk?.name, e.admin?.name, e.session_admin_name].filter(Boolean).join(' ').toLowerCase();
+      return text.includes(txSearch);
+    });
+  }
+
+  const countEl = document.getElementById('hv3-tx-count');
+  if (countEl) countEl.textContent = `${filtered.length} hændelser`;
+
+  const typeTag = (type) => {
+    switch (type) {
+      case 'SALE': return '<span class="hv3-tx-tag hv3-tx-tag-green">Salg</span>';
+      case 'DEPOSIT': return '<span class="hv3-tx-tag hv3-tx-tag-blue">Indbetaling</span>';
+      case 'SALE_ADJUSTMENT': return '<span class="hv3-tx-tag hv3-tx-tag-orange">Justering</span>';
+      case 'SALE_UNDO': return '<span class="hv3-tx-tag hv3-tx-tag-red">Fortrudt</span>';
+      case 'BALANCE_EDIT': return '<span class="hv3-tx-tag hv3-tx-tag-purple">Saldo</span>';
+      case 'EVENT_PAYMENT': return '<span class="hv3-tx-tag hv3-tx-tag-teal">🎫 Arrangement</span>';
+      case 'EVENT_REFUND': return '<span class="hv3-tx-tag hv3-tx-tag-teal">🎫 Refund</span>';
+      default: return `<span class="hv3-tx-tag hv3-tx-tag-gray">${escHtml(type)}</span>`;
+    }
+  };
+
+  const rowClass = (type) => {
+    switch (type) {
+      case 'SALE': return 'hv3-tx-row-sale';
+      case 'DEPOSIT': return 'hv3-tx-row-deposit';
+      case 'SALE_ADJUSTMENT': return 'hv3-tx-row-adjustment';
+      case 'SALE_UNDO': return 'hv3-tx-row-undo';
+      case 'BALANCE_EDIT': return 'hv3-tx-row-balance';
+      case 'EVENT_PAYMENT': return 'hv3-tx-row-event';
+      case 'EVENT_REFUND': return 'hv3-tx-row-event';
+      default: return '';
+    }
+  };
+
+  const amountDisplay = (e) => {
+    const d = e.details || {};
+    switch (e.event_type) {
+      case 'SALE': {
+        const amt = d.total_amount || 0;
+        if (amt === 0) return `<span style="color:var(--hv3-text-muted)">0 kr</span>`;
+        return `<strong>${fmtKr(amt)}</strong>`;
+      }
+      case 'DEPOSIT': return `<strong style="color:#2563eb">+${fmtKr(d.amount)}</strong>`;
+      case 'SALE_ADJUSTMENT': return `<strong style="color:var(--hv3-green)">+${fmtKr(Math.abs(d.adjustment_amount || 0))}</strong>`;
+      case 'SALE_UNDO': return `<strong>${fmtKr(d.refunded_amount || 0)}</strong>`;
+      case 'BALANCE_EDIT': {
+        const diff = (d.new_balance || 0) - (d.old_balance || 0);
+        return `<strong style="color:#2563eb">+${fmtKr(Math.abs(diff))}</strong>`;
+      }
+      case 'EVENT_PAYMENT': return `<strong>${fmtKr(d.amount || 0)}</strong>`;
+      case 'EVENT_REFUND': return `<strong style="color:var(--hv3-green)">+${fmtKr(d.amount || 0)}</strong>`;
+      default: return '—';
+    }
+  };
+
+  const productsDisplay = (e) => {
+    if (e.event_type !== 'SALE') {
+      if (e.event_type === 'BALANCE_EDIT') {
+        const d = e.details || {};
+        return `<span style="font-size:12px;color:var(--hv3-text-muted)">${fmtKr(d.old_balance)} → ${fmtKr(d.new_balance)}</span>`;
+      }
+      if (e.event_type === 'SALE_ADJUSTMENT') {
+        return `<span style="font-size:12px;color:var(--hv3-text-muted)">Justering</span>`;
+      }
+      if (e.event_type === 'EVENT_PAYMENT' || e.event_type === 'EVENT_REFUND') {
+        const title = e.details?.event_title || 'Ukendt arrangement';
+        const note = e.event_type === 'EVENT_REFUND' && e.details?.note ? ` (${e.details.note})` : '';
+        return `<span style="font-size:12px;color:var(--hv3-text-muted)">🎫 ${escHtml(title)}${escHtml(note)}</span>`;
+      }
+      return '<span style="color:var(--hv3-text-light)">—</span>';
+    }
+    const items = e.details?.items || [];
+    if (!items.length) return '<span style="color:var(--hv3-text-light)">×0</span>';
+    return items.map(i => {
+      const icon = productIconById(_txIconMap, i.product_id, 16);
+      const qty = i.quantity || 1;
+      return `<span class="hv3-tx-product">${icon || ''}<span class="hv3-tx-product-name">${escHtml(i.product_name || '')}</span><span class="hv3-tx-product-qty">×${qty}</span></span>`;
+    }).join(' ');
+  };
+
+  const clerkDisplay = (e) => {
+    if (e.clerk) {
+      const badge = e.clerk.role === 'kunde' ? ' <span style="font-size:10px;color:var(--hv3-green)">(barn)</span>' : '';
+      return escHtml(e.clerk.name) + badge;
+    }
+    return escHtml(e.admin?.name || '—');
+  };
+
+  wrap.innerHTML = `<div style="overflow-x:auto"><table class="hv3-table hv3-tx-table">
+    <thead><tr><th>Tid</th><th>Type</th><th>Kunde</th><th>Produkter</th><th>Beløb</th><th>Ekspedient</th><th>Ansvarlig</th><th></th></tr></thead>
+    <tbody>${filtered.map(e => `
+      <tr class="${rowClass(e.event_type)} hv3-tx-row" data-id="${e.id}">
+        <td>${fmtDateTime(e.created_at)}</td>
+        <td>${typeTag(e.event_type)}</td>
+        <td>${escHtml(e.target?.name || '—')}</td>
+        <td>${productsDisplay(e)}</td>
+        <td>${amountDisplay(e)}</td>
+        <td>${clerkDisplay(e)}</td>
+        <td>${escHtml(e.session_admin_name || e.admin?.name || '—')}</td>
+        <td style="text-align:right">${e.event_type === 'SALE' ? '<button class="hv3-tx-expand-btn">⋯</button>' : ''}</td>
+      </tr>
+      ${e.event_type === 'SALE' ? `<tr class="hv3-tx-expand-row" id="hv3-tx-expand-${e.id}"><td colspan="8" class="hv3-tx-expand-cell"><div style="padding:16px 20px;color:var(--hv3-text-muted);font-size:13px">Indlæser detaljer...</div></td></tr>` : ''}
+    `).join('')}</tbody>
+  </table></div>`;
+
+  // Row click → expand
+  wrap.querySelectorAll('.hv3-tx-row').forEach(row => {
+    row.style.cursor = 'pointer';
+    row.onclick = (ev) => {
+      if (ev.target.closest('button') && !ev.target.classList.contains('hv3-tx-expand-btn')) return;
+      const id = row.dataset.id;
+      const expandRow = document.getElementById(`hv3-tx-expand-${id}`);
+      if (expandRow) {
+        const isOpen = expandRow.classList.toggle('open');
+        if (isOpen) loadTxExpandDetails(id, expandRow);
+      }
+    };
+  });
+}
+
+async function loadTxExpandDetails(eventId, expandRow) {
+  const event = allTransactions.find(e => e.id === eventId);
+  if (!event) return;
+  const saleId = event.details?.sale_id;
+  if (!saleId) {
+    expandRow.querySelector('td').innerHTML = '<div style="padding:20px;color:var(--hv3-text-muted);font-style:italic">Ingen detaljer tilgængelige.</div>';
+    return;
+  }
+  try {
+    const items = await getSaleItems(saleId);
+    const customerId = event.target_user_id || event.details?.customer_id;
+    const customerName = event.target?.name || 'Kunden';
+    const originalTotal = Number(event.details?.total_amount || 0);
+
+    expandRow.querySelector('td').innerHTML = `
+    <div class="hv3-tx-adjust-panel">
+      <!-- Left: Receipt -->
+      <div class="hv3-tx-adjust-details">
+        <div class="hv3-tx-adjust-section-title">Kvittering</div>
+        <div class="hv3-tx-adjust-items">
+          ${items.map(i => `<div class="hv3-tx-adjust-item">
+            <span class="hv3-tx-adjust-item-name">${productIcon(i.emoji, i.icon_url)} ${escHtml(i.name)}</span>
+            <span class="hv3-tx-adjust-item-qty">×${i.quantity}</span>
+            <span class="hv3-tx-adjust-item-price">${fmtKr(i.quantity * i.price_at_purchase)}</span>
+          </div>`).join('')}
+          <div class="hv3-tx-adjust-item hv3-tx-adjust-total-line">
+            <span class="hv3-tx-adjust-item-name"><strong>Total</strong></span>
+            <span></span>
+            <span class="hv3-tx-adjust-item-price"><strong>${fmtKr(originalTotal)}</strong></span>
+          </div>
+        </div>
+        <div class="hv3-tx-adjust-meta">
+          <span>Ekspedient: <strong>${escHtml(event.clerk?.name || event.admin?.name || '—')}</strong>${event.clerk?.role === 'kunde' ? ' (barn)' : ''}</span>
+          <span>Ansvarlig: <strong>${escHtml(event.session_admin_name || event.admin?.name || '—')}</strong></span>
+        </div>
+      </div>
+
+      <!-- Right: Adjustment controls -->
+      <div class="hv3-tx-adjust-controls">
+        <div class="hv3-tx-adjust-section-title">Justér salg</div>
+
+        <div class="hv3-tx-adjust-qty-section">
+          ${items.map((i, idx) => `<div class="hv3-tx-adjust-qty-row" data-idx="${idx}">
+            <span class="hv3-tx-adjust-qty-name">${productIcon(i.emoji, i.icon_url)} ${escHtml(i.name)}</span>
+            <div class="hv3-tx-adjust-qty-controls">
+              <button class="hv3-tx-qty-btn hv3-tx-qty-minus" data-idx="${idx}">−</button>
+              <span class="hv3-tx-qty-diff" data-idx="${idx}">0</span>
+              <button class="hv3-tx-qty-btn hv3-tx-qty-plus" data-idx="${idx}">+</button>
+            </div>
+            <span class="hv3-tx-adjust-qty-delta" data-idx="${idx}">0 kr</span>
+          </div>`).join('')}
+        </div>
+
+        <div class="hv3-tx-adjust-manual">
+          <span class="hv3-tx-adjust-manual-label">Manuel korrektion</span>
+          <div class="hv3-tx-adjust-qty-controls">
+            <button class="hv3-tx-qty-btn hv3-tx-manual-minus">−1</button>
+            <span class="hv3-tx-manual-display">0 kr</span>
+            <button class="hv3-tx-qty-btn hv3-tx-manual-plus">+1</button>
+          </div>
+        </div>
+
+        <div class="hv3-tx-adjust-summary">
+          <div class="hv3-tx-adjust-summary-row">
+            <span>Varekorrektion</span>
+            <span class="hv3-tx-items-delta">0 kr</span>
+          </div>
+          <div class="hv3-tx-adjust-summary-row">
+            <span>Manuel</span>
+            <span class="hv3-tx-manual-delta">0 kr</span>
+          </div>
+          <div class="hv3-tx-adjust-summary-row hv3-tx-adjust-summary-total">
+            <span>Total justering</span>
+            <span class="hv3-tx-total-delta">0 kr</span>
+          </div>
+        </div>
+
+        <div class="hv3-tx-adjust-actions">
+          <button class="hv3-tx-adjust-save" disabled>Gem justering</button>
+          <button class="hv3-tx-adjust-undo">Fortryd hele salget</button>
+        </div>
+      </div>
+    </div>`;
+
+    wireTxAdjustmentPanel(expandRow, items, { saleId, customerId, customerName, originalTotal, eventId });
+
+  } catch (err) {
+    console.error('loadTxExpandDetails', err);
+    expandRow.querySelector('td').innerHTML = '<div style="padding:20px;color:var(--hv3-red);font-style:italic">Fejl ved indlæsning af detaljer.</div>';
+  }
+}
+
+function wireTxAdjustmentPanel(expandRow, items, ctx) {
+  const panel = expandRow.querySelector('.hv3-tx-adjust-panel');
+  if (!panel) return;
+
+  const corrections = items.map(i => ({ diffQty: 0, unitPrice: Number(i.price_at_purchase) || 0, name: i.name }));
+  let manualAdj = 0;
+
+  function recalc() {
+    let itemsDelta = 0;
+    corrections.forEach((c, idx) => {
+      const d = c.diffQty * c.unitPrice;
+      itemsDelta += d;
+      const diffEl = panel.querySelector(`.hv3-tx-qty-diff[data-idx="${idx}"]`);
+      const deltaEl = panel.querySelector(`.hv3-tx-adjust-qty-delta[data-idx="${idx}"]`);
+      if (diffEl) diffEl.textContent = c.diffQty > 0 ? `+${c.diffQty}` : String(c.diffQty);
+      if (deltaEl) {
+        const kr = d === 0 ? '0 kr' : `${d > 0 ? '+' : ''}${fmtKr(d)}`;
+        deltaEl.textContent = kr;
+        deltaEl.style.color = d < 0 ? 'var(--hv3-green)' : d > 0 ? 'var(--hv3-red)' : '';
+      }
+    });
+    const total = itemsDelta + manualAdj;
+    panel.querySelector('.hv3-tx-items-delta').textContent = itemsDelta === 0 ? '0 kr' : `${itemsDelta > 0 ? '+' : ''}${fmtKr(itemsDelta)}`;
+    panel.querySelector('.hv3-tx-manual-delta').textContent = manualAdj === 0 ? '0 kr' : `${manualAdj > 0 ? '+' : ''}${fmtKr(manualAdj)}`;
+    const totalEl = panel.querySelector('.hv3-tx-total-delta');
+    totalEl.textContent = total === 0 ? '0 kr' : `${total > 0 ? '+' : ''}${fmtKr(total)}`;
+    totalEl.style.color = total < 0 ? 'var(--hv3-green)' : total > 0 ? 'var(--hv3-red)' : '';
+    panel.querySelector('.hv3-tx-adjust-save').disabled = (total === 0);
+  }
+
+  // Qty +/- buttons
+  panel.querySelectorAll('.hv3-tx-qty-minus').forEach(btn => {
+    btn.onclick = (e) => { e.stopPropagation(); corrections[btn.dataset.idx].diffQty--; recalc(); };
+  });
+  panel.querySelectorAll('.hv3-tx-qty-plus').forEach(btn => {
+    btn.onclick = (e) => { e.stopPropagation(); corrections[btn.dataset.idx].diffQty++; recalc(); };
+  });
+
+  // Manual +/- buttons
+  panel.querySelector('.hv3-tx-manual-minus').onclick = (e) => {
+    e.stopPropagation();
+    manualAdj -= 1;
+    panel.querySelector('.hv3-tx-manual-display').textContent = `${manualAdj} kr`;
+    recalc();
+  };
+  panel.querySelector('.hv3-tx-manual-plus').onclick = (e) => {
+    e.stopPropagation();
+    manualAdj += 1;
+    panel.querySelector('.hv3-tx-manual-display').textContent = `${manualAdj} kr`;
+    recalc();
+  };
+
+  // Save adjustment
+  panel.querySelector('.hv3-tx-adjust-save').onclick = async (e) => {
+    e.stopPropagation();
+    const itemsDelta = corrections.reduce((sum, c) => sum + c.diffQty * c.unitPrice, 0);
+    const delta = itemsDelta + manualAdj;
+    if (delta === 0) return;
+
+    const refundOrCharge = delta < 0
+      ? `${ctx.customerName} får ${fmtKr(Math.abs(delta))} retur på saldoen.`
+      : `${ctx.customerName} trækkes ${fmtKr(delta)} ekstra fra saldoen.`;
+
+    const confirmed = await showConfirmModal({
+      title: 'Bekræft justering',
+      message: `Du er ved at justere et salg.\n\n${refundOrCharge}\n\nVil du fortsætte?`,
+      confirmText: 'Gem justering',
+      cancelText: 'Annuller',
+    });
+    if (!confirmed) return;
+
+    try {
+      const payload = {
+        adjusted_sale_id: ctx.saleId,
+        old_total: ctx.originalTotal,
+        new_total: ctx.originalTotal + delta,
+        edited_items: corrections.filter(c => c.diffQty !== 0).map(c => ({
+          productName: c.name, diffQty: c.diffQty, unitPrice: c.unitPrice,
+        })),
+        manual_adjustment: manualAdj,
+      };
+      await registerSaleAdjustment(ctx.customerId, delta, payload);
+      invalidateAllCaches();
+      invalidateTodaysSalesCache();
+      if (typeof window.__flangoRefreshSugarPolicy === 'function') {
+        try { await window.__flangoRefreshSugarPolicy(); } catch (_) {}
+      }
+      showCustomAlert('Justering gemt', `${ctx.customerName} ${delta < 0 ? `har fået ${fmtKr(Math.abs(delta))} retur.` : `er trukket ${fmtKr(delta)} ekstra.`}`);
+      renderPageTransaktioner();
+    } catch (err) {
+      console.error('registerSaleAdjustment', err);
+      showCustomAlert('Fejl', 'Kunne ikke gemme justering: ' + (err.message || err));
+    }
+  };
+
+  // Undo entire sale
+  panel.querySelector('.hv3-tx-adjust-undo').onclick = async (e) => {
+    e.stopPropagation();
+    const itemsList = items.map(i => `${i.name} × ${i.quantity}`).join('\n');
+    const confirmed = await showConfirmModal({
+      title: 'Fortryd hele salget?',
+      message: `Er du sikker?\n\nKunde: ${ctx.customerName}\nBeløb: ${fmtKr(ctx.originalTotal)}\n\nProdukter:\n${itemsList}\n\n${ctx.customerName} får ${fmtKr(ctx.originalTotal)} retur på saldoen.\n\nSalget slettes permanent.`,
+      confirmText: 'Ja, fortryd salget',
+      cancelText: 'Annuller',
+    });
+    if (!confirmed) return;
+
+    try {
+      const refunded = await undoSale(ctx.saleId);
+      invalidateAllCaches();
+      invalidateTodaysSalesCache();
+      if (typeof window.__flangoRefreshSugarPolicy === 'function') {
+        try { await window.__flangoRefreshSugarPolicy(); } catch (_) {}
+      }
+      showCustomAlert('Salg fortrudt', `${ctx.customerName} har fået ${fmtKr(refunded || ctx.originalTotal)} retur.`);
+      renderPageTransaktioner();
+    } catch (err) {
+      console.error('undoSale', err);
+      showCustomAlert('Fejl', 'Kunne ikke fortryde salget: ' + (err.message || err));
+    }
+  };
 }
 
 // ═══════════════════════════════════════════
