@@ -2,6 +2,7 @@
 // Alle Supabase-kald og RPC-wrappere for tilmeldingsmodulet.
 
 import { supabaseClient } from '../core/config-and-supabase.js';
+import { getCurrentSessionAdmin } from './session-store.js';
 
 // ============================================================================
 // Helpers: datetime-local ↔ (event_date, start_time / end_time) konvertering
@@ -196,10 +197,12 @@ export async function updateEvent(eventId, updates) {
  * Returnerer JSONB med { success, error?, registration_id?, ... }.
  */
 export async function registerUserForEvent(eventId, userId, adminOverride = false) {
+    const sessionAdmin = getCurrentSessionAdmin?.();
     const { data, error } = await supabaseClient.rpc('register_for_event', {
         p_event_id: eventId,
         p_user_id: userId,
         p_admin_override: adminOverride,
+        p_registered_by: sessionAdmin?.id || null,
     });
     if (error) return { success: false, error: error.message };
     return data; // JSONB: { success, error?, registration_id?, ... }
@@ -210,9 +213,11 @@ export async function registerUserForEvent(eventId, userId, adminOverride = fals
  * Returnerer JSONB med { success, refunded, refund_amount }.
  */
 export async function cancelRegistration(eventId, userId) {
+    const sessionAdmin = getCurrentSessionAdmin?.();
     const { data, error } = await supabaseClient.rpc('cancel_event_registration', {
         p_event_id: eventId,
         p_user_id: userId,
+        p_admin_id: sessionAdmin?.id || null,
     });
     if (error) return { success: false, error: error.message };
     return data;
@@ -224,11 +229,13 @@ export async function cancelRegistration(eventId, userId) {
  * 'manual' (kontant/manuelt) mappes til 'other'.
  */
 export async function payRegistration(registrationId, paymentType = 'balance') {
+    const sessionAdmin = getCurrentSessionAdmin?.();
     const allowed = ['balance', 'stripe', 'mobilepay', 'other'];
     const pType = allowed.includes(paymentType) ? paymentType : 'other';
     const { data, error } = await supabaseClient.rpc('pay_event_registration', {
         p_registration_id: registrationId,
         p_payment_type: pType,
+        p_admin_id: sessionAdmin?.id || null,
     });
     if (error) return { success: false, error: error.message };
     return data;
@@ -239,8 +246,10 @@ export async function payRegistration(registrationId, paymentType = 'balance') {
  * Returnerer JSONB med { success, refund_count, total_refunded }.
  */
 export async function cancelEventWithRefunds(eventId) {
+    const sessionAdmin = getCurrentSessionAdmin?.();
     const { data, error } = await supabaseClient.rpc('cancel_event_with_mass_refund', {
         p_event_id: eventId,
+        p_admin_id: sessionAdmin?.id || null,
     });
     if (error) return { success: false, error: error.message };
     return data;

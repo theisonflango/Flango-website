@@ -846,6 +846,246 @@ async function getPreviewUsers(institutionId) {
 }
 
 // ═════════════════════════════════════════════════════════════════
+//  6. SAMLET RPC: get_parent_admin_overview
+// ═════════════════════════════════════════════════════════════════
+
+/**
+ * Hent alt forældre-administrationsdata via én RPC (erstatter 9+ parallelle queries).
+ * Returnerer { stats, parentList, adoption } i samme format som de individuelle funktioner.
+ * @param {string} [institutionId]
+ * @returns {Promise<{stats: Object, parentList: Array, adoption: Object}|null>}
+ */
+async function getParentAdminOverview(institutionId) {
+  const client = db();
+  const instId = resolveInstitutionId(institutionId);
+  if (!client || !instId) return null;
+
+  try {
+    console.log('[portal-data] Kalder get_parent_admin_overview RPC...');
+    const { data, error } = await client.rpc('get_parent_admin_overview', {
+      p_institution_id: instId,
+    });
+
+    if (error) {
+      console.error('[portal-data] RPC fejl:', error.message);
+      return null;
+    }
+
+    if (!data || data.error) {
+      console.error('[portal-data] RPC returnerede fejl:', data?.error);
+      return null;
+    }
+
+    const rpcStats = data.stats || {};
+    const rpcChildren = data.children || [];
+
+    // ── Transform stats til eksisterende format ──
+    const totalChildren = rpcStats.totalChildren || 0;
+    const totalParents = rpcStats.totalParents || 0;
+    const notifsEnabled = rpcStats.notifsEnabled || 0;
+    const totalPurchaseCount = rpcStats.totalPurchaseCount || 0;
+
+    const stats = {
+      totalChildren,
+      totalParents,
+      childrenWithCode: rpcStats.childrenWithCode || 0,
+      childrenWithPortalCode: rpcStats.childrenWithPortalCode || 0,
+      adoptionRate: rpcStats.adoptionRate || 0,
+      missingParents: totalChildren - totalParents,
+
+      activeParents30d: rpcStats.activeParents30d || 0,
+      activeParents7d: rpcStats.activeParents7d || 0,
+      activeParentsToday: rpcStats.activeParentsToday || 0,
+      neverLoggedIn: rpcStats.neverLoggedIn || 0,
+
+      avgBalance: rpcStats.avgBalance || 0,
+      totalBalance: rpcStats.totalBalance || 0,
+      zeroBalanceCount: rpcStats.zeroBalanceCount || 0,
+
+      noLimitsSet: rpcStats.noLimitsSet || 0,
+
+      notifsEnabled,
+      notifsDisabled: totalChildren - notifsEnabled,
+      notifRate: totalChildren > 0 ? Math.round((notifsEnabled / totalChildren) * 100) : 0,
+
+      totalDepositAmount: rpcStats.totalDepositAmount || 0,
+      monthlyDepositAmount: rpcStats.monthlyDepositAmount || 0,
+      weeklyDepositAmount: rpcStats.weeklyDepositAmount || 0,
+      totalDepositCount: rpcStats.totalDepositCount || 0,
+      weeklyDepositCount: 0, // Ikke i RPC — kan tilføjes senere
+      totalPurchaseCount,
+      monthlyPurchaseCount: rpcStats.monthlyPurchaseCount || 0,
+      avgPurchasesPerChild: totalChildren > 0
+        ? Math.round((totalPurchaseCount / totalChildren) * 10) / 10
+        : 0,
+    };
+
+    // ── Transform children til parentList format ──
+    const parentList = rpcChildren.map(function (c) {
+      // Kostpræferencer-sammenfatning
+      const dietPrefs = [];
+      if (c.vegetarianOnly) dietPrefs.push('Vegetar');
+      if (c.noPork) dietPrefs.push('Ingen svinekød');
+      if (c.blockUnhealthy) dietPrefs.push('Ingen usunde');
+      if (c.maxUnhealthyPerDay != null) dietPrefs.push('Max ' + c.maxUnhealthyPerDay + ' usunde/dag');
+
+      // Flags til filtrering
+      const flags = [];
+      if (!c.login) flags.push('never');
+      if ((parseFloat(c.saldo) || 0) <= 0) flags.push('zero');
+      if (c.limitKr == null && !c.hasProductLimits) flags.push('nolimit');
+      if (!c.hasCode && !c.parent) flags.push('nocode');
+      if (c.login && new Date(c.login) >= new Date(Date.now() - 30 * 86400000)) flags.push('active');
+      if (c.isCustomCode) flags.push('code');
+
+      return {
+        childId: c.childId,
+        child: c.child || 'Ukendt',
+        childNumber: c.childNumber,
+        parent: c.parent || null,
+        saldo: parseFloat(c.saldo) || 0,
+        login: c.login || null,
+        code: !!c.hasCode,
+        pcode: !!c.isCustomCode,
+        portalCode: c.portalCode || null,
+        portalCodeUsedAt: c.portalCodeUsedAt || null,
+        portalCodeGeneratedAt: c.portalCodeGeneratedAt || null,
+        limit: c.limitKr != null ? Math.round(c.limitKr) + ' kr' : null,
+        limitRaw: c.limitKr != null ? parseFloat(c.limitKr) : null,
+        hasProductLimits: !!c.hasProductLimits,
+        spent: parseFloat(c.spent) || 0,
+        purchases: c.purchases || 0,
+        purchasesMonth: c.purchasesMonth || 0,
+        deposited: parseFloat(c.deposited) || 0,
+        depositCount: c.depositCount || 0,
+        lastDeposit: null, // Ikke i RPC — kan tilføjes senere
+        diet: dietPrefs.length > 0 ? dietPrefs.join(', ') : null,
+        allergenCount: c.allergenCount || 0,
+        notif: !!(c.notifyAtZero || c.notifyAtTen),
+        notifDetails: { notify_at_zero: !!c.notifyAtZero, notify_at_ten: !!c.notifyAtTen },
+        gradeLevel: c.gradeLevel,
+        created: c.created,
+        flags: flags.join(' '),
+      };
+    });
+
+    // ── Beregn adoption-stats fra children data ──
+    const childrenWithParent = parentList.filter(c => !!c.parent);
+    const totalWithParent = childrenWithParent.length;
+
+    const makeStat = (count) => ({
+      count,
+      total: totalWithParent,
+      pct: totalWithParent > 0 ? Math.round((count / totalWithParent) * 100) : 0,
+    });
+
+    const limitsCount = childrenWithParent.filter(c => c.limitRaw != null || c.hasProductLimits).length;
+    const allergensCount = childrenWithParent.filter(c => c.allergenCount > 0).length;
+
+    const adoption = {
+      limitsSet: makeStat(limitsCount),
+      allergensSet: makeStat(allergensCount),
+      screentimeSet: makeStat(0), // Skærmtid parent_overrides ikke i RPC
+    };
+
+    console.log('[portal-data] RPC data hentet:', stats.totalChildren, 'børn,', parentList.length, 'i liste');
+    return { stats, parentList, adoption };
+  } catch (e) {
+    console.error('[portal-data] Fejl i getParentAdminOverview:', e);
+    return null;
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════
+//  7. PORTAL-KODE GENERERING
+// ═════════════════════════════════════════════════════════════════
+
+/**
+ * Generer portal-kode for ét barn via RPC.
+ * @param {string} childId - UUID af barnet
+ * @returns {Promise<{success: boolean, code?: string, child_name?: string, error?: string}|null>}
+ */
+async function generateSinglePortalCode(childId) {
+  const client = db();
+  if (!client || !childId) return null;
+
+  try {
+    const { data, error } = await client.rpc('generate_single_portal_code', {
+      p_child_id: childId,
+    });
+
+    if (error) {
+      console.error('[portal-data] generate_single_portal_code fejl:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    return data || { success: false, error: 'Intet svar fra server.' };
+  } catch (e) {
+    console.error('[portal-data] Fejl i generateSinglePortalCode:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * Generer portal-koder for alle børn uden kode via batch RPC.
+ * @param {string} [institutionId]
+ * @returns {Promise<{success: boolean, generated_count?: number, error?: string}|null>}
+ */
+async function generatePortalCodesBatch(institutionId) {
+  const client = db();
+  const instId = resolveInstitutionId(institutionId);
+  if (!client || !instId) return null;
+
+  try {
+    const { data, error } = await client.rpc('generate_portal_codes_batch', {
+      p_institution_id: instId,
+    });
+
+    if (error) {
+      console.error('[portal-data] generate_portal_codes_batch fejl:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    return data || { success: false, error: 'Intet svar fra server.' };
+  } catch (e) {
+    console.error('[portal-data] Fejl i generatePortalCodesBatch:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * Hent Aula-beskedskabelon for institutionen.
+ * @param {string} [institutionId]
+ * @returns {Promise<string|null>}
+ */
+async function getAulaMessageTemplate(institutionId) {
+  const client = db();
+  const instId = resolveInstitutionId(institutionId);
+  if (!client || !instId) return null;
+
+  try {
+    const { data, error } = await client
+      .from('institutions')
+      .select('parent_portal_message_template, name')
+      .eq('id', instId)
+      .single();
+
+    if (error) {
+      console.error('[portal-data] Fejl ved hentning af Aula-skabelon:', error.message);
+      return null;
+    }
+
+    return {
+      template: data?.parent_portal_message_template || null,
+      institutionName: data?.name || null,
+    };
+  } catch (e) {
+    console.error('[portal-data] Fejl i getAulaMessageTemplate:', e);
+    return null;
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════
 //  EKSPONÉR PÅ WINDOW (så IIFE-scripts kan tilgå PortalData)
 // ═════════════════════════════════════════════════════════════════
 
@@ -857,6 +1097,10 @@ window.PortalData = {
   getParentList,
   getAdoptionStats,
   getPreviewUsers,
+  getParentAdminOverview,
+  generateSinglePortalCode,
+  generatePortalCodesBatch,
+  getAulaMessageTemplate,
 };
 
 console.log('[portal-data] PortalData modul registreret på window.PortalData');

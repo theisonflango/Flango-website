@@ -41,6 +41,7 @@
   let adoptionData = null;
   let parentListData = [];
   let previewUsers = [];
+  let currentDetailChild = null; // Current child shown in detail modal
 
   // ─── Demo / placeholder data ───────────────────────────────────
 
@@ -148,6 +149,25 @@
     return parentListData.length > 0 ? parentListData : DEMO_PARENT_LIST;
   }
 
+  /** Formatér en ISO-dato til dansk-venlig visning (relativ eller dato) */
+  function formatLoginDate(isoStr) {
+    if (!isoStr) return 'Aldrig';
+    try {
+      var d = new Date(isoStr);
+      if (isNaN(d.getTime())) return String(isoStr);
+      var now = new Date();
+      var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      var dateOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      var diffDays = Math.floor((today - dateOnly) / 86400000);
+      var timeStr = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      if (diffDays === 0) return 'I dag ' + timeStr;
+      if (diffDays === 1) return 'I går ' + timeStr;
+      return d.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' });
+    } catch (e) {
+      return String(isoStr);
+    }
+  }
+
   // ─── Main overlay structure ────────────────────────────────────
 
   function buildOverlayHTML() {
@@ -158,6 +178,7 @@
         <!-- ══════ ADMIN BAR ══════ -->
         <div class="admin-bar" id="pv2-admin-bar">
           <div class="admin-bar-left">
+            <button class="admin-bar-back-btn" id="pv2-back-to-cafe" title="Tilbage til café-app">&#8592; Café-app</button>
             <div class="admin-bar-label">Admin</div>
             <div class="admin-bar-institution" id="pv2-institution-name">${esc(institutionName)}</div>
           </div>
@@ -193,7 +214,8 @@
               <div class="pl-topbar-back" id="pv2-pl-back">\u2190 Tilbage</div>
               <div class="pl-topbar-title" id="pv2-pl-title">For\u00e6ldreliste \u2014 ${esc(institutionName)}</div>
             </div>
-            <div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="pl-action-btn" style="border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.7)" id="pv2-pl-batch-codes">&#128273; Generer alle koder</button>
               <button class="pl-action-btn" style="border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.7)" id="pv2-pl-export">&#128229; Eksporter CSV</button>
             </div>
           </div>
@@ -225,8 +247,7 @@
             <div class="pl-modal-body" id="pv2-pl-m-body"></div>
             <div class="pl-modal-actions">
               <button id="pv2-pl-m-close2">Luk</button>
-              <button class="primary">&#128273; Generer ny kode</button>
-              <button class="primary">&#128232; Send p\u00e5mindelse</button>
+              <button class="primary" id="pv2-pl-m-generate-code">&#128273; Generer ny kode</button>
             </div>
           </div>
         </div>
@@ -608,7 +629,7 @@
   function getFilteredParentData() {
     var q = parentListSearchQuery.toLowerCase();
     var rows = getParentListRows().filter(function (d) {
-      if (q && !(d.child.toLowerCase().indexOf(q) >= 0 || d.parent.toLowerCase().indexOf(q) >= 0)) return false;
+      if (q && !((d.child || '').toLowerCase().indexOf(q) >= 0 || (d.parent || '').toLowerCase().indexOf(q) >= 0)) return false;
       if (parentListFilter && d.flags.indexOf(parentListFilter) < 0) return false;
       return true;
     });
@@ -652,10 +673,10 @@
         var saldoCls = d.saldo === 0 ? 'red' : d.saldo < 20 ? 'orange' : 'green';
         return '<tr data-row-idx="' + ri + '">' +
           '<td><span class="pl-child-avatar">' + esc(d.child[0]) + '</span>' + esc(d.child) + '</td>' +
-          '<td>' + (d.parent === '\u2014' ? '<span class="pl-no">\u2014</span>' : esc(d.parent)) + '</td>' +
+          '<td>' + (!d.parent || d.parent === '\u2014' ? '<span class="pl-no">\u2014</span>' : esc(d.parent)) + '</td>' +
           '<td><span class="pl-tag ' + saldoCls + '">' + d.saldo + ' kr</span></td>' +
-          '<td>' + (d.login === 'Aldrig' || d.login === '\u2014' ? '<span class="pl-tag red">' + esc(d.login) + '</span>' : esc(d.login)) + '</td>' +
-          '<td>' + (d.limit === '\u2014' ? '<span class="pl-tag gray">Ikke sat</span>' : '<span class="pl-tag blue">' + esc(d.limit) + '</span>') + '</td>' +
+          '<td>' + (!d.login || d.login === 'Aldrig' || d.login === '\u2014' ? '<span class="pl-tag red">' + (d.login ? esc(d.login) : 'Aldrig') + '</span>' : esc(formatLoginDate(d.login))) + '</td>' +
+          '<td>' + (!d.limit || d.limit === '\u2014' ? '<span class="pl-tag gray">Ikke sat</span>' : '<span class="pl-tag blue">' + esc(d.limit) + '</span>') + '</td>' +
           '<td>' + d.spent + ' kr</td>' +
           '<td>' + d.purchases + '</td>' +
           '<td>' + (d.notif ? ck : no) + '</td>' +
@@ -696,6 +717,7 @@
   function openParentDetailModal(rowIdx) {
     var d = getFilteredParentData()[rowIdx];
     if (!d) return;
+    currentDetailChild = d;
 
     var nameEl = overlayEl.querySelector('#pv2-pl-m-name');
     if (nameEl) nameEl.textContent = d.child;
@@ -707,31 +729,38 @@
       return '<div class="pl-modal-row"><span style="font-size:13px;color:var(--ink-soft)">' + label + '</span><span style="font-size:13px;font-weight:600">' + value + '</span></div>';
     }
 
+    var loginDisplay = (!d.login || d.login === 'Aldrig') ? 'Aldrig' : formatLoginDate(d.login);
+    var createdDisplay = d.created ? (typeof d.created === 'string' && d.created.length > 10 ? new Date(d.created).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }) : d.created) : '\u2014';
+
     var html = '';
     html += '<div class="pl-modal-sec"><div class="pl-modal-sec-title">\ud83d\udc64 Konto</div>';
-    html += row('Barn', esc(d.child));
-    html += row('For\u00e6lder', esc(d.parent));
-    html += row('Oprettet', esc(d.created));
+    html += row('Barn', esc(d.child || '\u2014'));
+    html += row('For\u00e6lder', d.parent ? esc(d.parent) : '<span style="color:var(--ink-muted)">\u2014</span>');
+    html += row('Oprettet', esc(createdDisplay));
     html += row('Har kode', d.code ? ck : no);
-    html += row('Sidste login', d.login === 'Aldrig' ? '<span class="pl-tag red">Aldrig</span>' : esc(d.login));
+    html += row('Portal-kode', d.portalCode ? '<code style="font-size:12px;background:var(--surface-raised,#f1f5f9);padding:2px 6px;border-radius:4px">' + esc(d.portalCode) + '</code>' + (d.portalCodeUsedAt ? ' <span class="pl-tag green" style="font-size:10px">Brugt</span>' : '') : '<span style="color:var(--ink-muted)">\u2014</span>');
+    html += row('Sidste login', loginDisplay === 'Aldrig' ? '<span class="pl-tag red">Aldrig</span>' : esc(loginDisplay));
     html += '</div>';
 
     html += '<div class="pl-modal-sec"><div class="pl-modal-sec-title">\ud83d\udcb0 \u00d8konomi</div>';
     var saldoCls = d.saldo === 0 ? 'red' : d.saldo < 20 ? 'orange' : 'green';
     html += row('Saldo', '<span class="pl-tag ' + saldoCls + '">' + d.saldo + ' kr</span>');
-    html += row('Daglig gr\u00e6nse', d.limit === '\u2014' ? '<span class="pl-tag gray">Ikke sat</span>' : '<span class="pl-tag blue">' + esc(d.limit) + '</span>');
-    html += row('Forbrug denne m\u00e5ned', d.spent + ' kr');
-    html += row('Antal k\u00f8b', '' + d.purchases);
-    html += row('Indbetalt i alt', d.deposited + ' kr');
-    html += row('Sidste indbetaling', esc(d.lastdep));
+    html += row('Daglig gr\u00e6nse', (!d.limit || d.limit === '\u2014') ? '<span class="pl-tag gray">Ikke sat</span>' : '<span class="pl-tag blue">' + esc(d.limit) + '</span>');
+    html += row('Forbrug denne m\u00e5ned', (d.spent || 0) + ' kr');
+    html += row('Antal k\u00f8b', '' + (d.purchases || 0));
+    html += row('Indbetalt i alt', (d.deposited || 0) + ' kr');
+    html += row('Sidste indbetaling', d.lastDeposit ? esc(d.lastDeposit) : (d.lastdep ? esc(d.lastdep) : '<span style="color:var(--ink-muted)">\u2014</span>'));
     html += '</div>';
 
     html += '<div class="pl-modal-sec"><div class="pl-modal-sec-title">\ud83e\udd57 Kost & allergi</div>';
-    html += row('Kostpr\u00e6ference', d.diet === '\u2014' ? '<span style="color:var(--ink-muted)">Ingen</span>' : '<span class="pl-tag blue">' + esc(d.diet) + '</span>');
+    html += row('Kostpr\u00e6ference', (!d.diet || d.diet === '\u2014') ? '<span style="color:var(--ink-muted)">Ingen</span>' : '<span class="pl-tag blue">' + esc(d.diet) + '</span>');
+    if (d.allergenCount > 0) {
+      html += row('Allergener', '<span class="pl-tag orange">' + d.allergenCount + ' allergener konfigureret</span>');
+    }
     html += '</div>';
 
     html += '<div class="pl-modal-sec"><div class="pl-modal-sec-title">\ud83d\udda5\ufe0f Sk\u00e6rmtid</div>';
-    html += row('Daglig gr\u00e6nse', d.screentime !== '\u2014' ? esc(d.screentime) : '<span style="color:var(--ink-muted)">\u2014</span>');
+    html += row('Daglig gr\u00e6nse', d.screentime && d.screentime !== '\u2014' ? esc(d.screentime) : '<span style="color:var(--ink-muted)">\u2014</span>');
     html += '</div>';
 
     var bodyEl = overlayEl.querySelector('#pv2-pl-m-body');
@@ -766,6 +795,156 @@
     URL.revokeObjectURL(url);
   }
 
+  // ─── Portal-kode generering + Aula-besked ───────────────────────
+
+  /**
+   * Generer en portal-kode for ét barn og vis kode + Aula-besked popup.
+   * @param {object} childData - Row data fra parentListData (childId, child, portalCode, etc.)
+   */
+  async function handleGenerateCode(childData) {
+    if (!childData || !childData.childId) return;
+
+    // Generer kode via RPC
+    var result = await PortalData.generateSinglePortalCode(childData.childId);
+    if (!result || !result.success) {
+      alert('Kunne ikke generere kode: ' + (result ? result.error : 'Ukendt fejl'));
+      return;
+    }
+
+    var newCode = result.code;
+    var childName = result.child_name || childData.child;
+
+    // Opdater lokalt cache
+    for (var i = 0; i < parentListData.length; i++) {
+      if (parentListData[i].childId === childData.childId) {
+        parentListData[i].portalCode = newCode;
+        parentListData[i].portalCodeGeneratedAt = new Date().toISOString();
+        break;
+      }
+    }
+
+    // Vis kode-popup med Aula-besked
+    showCodePopup(childName, newCode);
+  }
+
+  /**
+   * Vis popup med genereret kode, Aula-besked og kopierings-knapper.
+   */
+  async function showCodePopup(childName, code) {
+    // Hent Aula-skabelon
+    var aulaData = await PortalData.getAulaMessageTemplate();
+    var template = (aulaData && aulaData.template)
+      ? aulaData.template
+      : 'Kære forælder,\n\nDit barn {{child_name}} har fået en kode til Flango Forældreportal.\n\nKode: {{pin}}\n\nGå til flango.dk/forældre for at oprette din konto.\n\nVenlig hilsen\n{{institution}}';
+
+    // Erstat placeholders (støtter både {{x}} og {x} formater)
+    var instName = (aulaData && aulaData.institutionName) || institutionName || 'Institutionen';
+    var messageText = template
+      .replace(/\{\{child_name\}\}/gi, childName)
+      .replace(/\{\{barnets_navn\}\}/gi, childName)
+      .replace(/\{barnets_navn\}/gi, childName)
+      .replace(/\{\{pin\}\}/gi, code)
+      .replace(/\{\{kode\}\}/gi, code)
+      .replace(/\{kode\}/gi, code)
+      .replace(/\{\{institution\}\}/gi, instName)
+      .replace(/\{institution\}/gi, instName);
+
+    // Opret popup
+    var popupOverlay = document.createElement('div');
+    popupOverlay.className = 'pv2-code-popup-overlay';
+    popupOverlay.innerHTML =
+      '<div class="pv2-code-popup">' +
+        '<div class="pv2-code-popup-header">' +
+          '<div style="font-size:18px;font-weight:700">Portal-kode oprettet</div>' +
+          '<button class="pv2-code-popup-close">&times;</button>' +
+        '</div>' +
+        '<div class="pv2-code-popup-body">' +
+          '<p style="margin:0 0 4px 0">Ny portal-kode til <strong>' + esc(childName) + '</strong>:</p>' +
+          '<div class="pv2-code-display">' + esc(code) + '</div>' +
+          '<div style="display:flex;gap:8px;margin-bottom:16px">' +
+            '<button class="pv2-code-copy-btn" id="pv2-copy-code-btn">\ud83d\udccb Kopier kode</button>' +
+          '</div>' +
+          '<div class="pv2-code-aula-section">' +
+            '<div style="font-size:13px;font-weight:600;margin-bottom:6px">\ud83d\udce8 Aula-besked til for\u00e6lderen:</div>' +
+            '<div class="pv2-code-aula-text">' + esc(messageText).replace(/\n/g, '<br>') + '</div>' +
+            '<button class="pv2-code-copy-btn" id="pv2-copy-aula-btn" style="margin-top:8px">\ud83d\udccb Kopier Aula-besked</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    // Bind events
+    var closeBtn = popupOverlay.querySelector('.pv2-code-popup-close');
+    if (closeBtn) closeBtn.addEventListener('click', function () { popupOverlay.remove(); renderParentListTable(); });
+    popupOverlay.addEventListener('click', function (e) { if (e.target === popupOverlay) { popupOverlay.remove(); renderParentListTable(); } });
+
+    var copyCodeBtn = popupOverlay.querySelector('#pv2-copy-code-btn');
+    if (copyCodeBtn) {
+      copyCodeBtn.addEventListener('click', function () {
+        navigator.clipboard.writeText(code).then(function () {
+          copyCodeBtn.textContent = '\u2705 Kopieret!';
+          setTimeout(function () { copyCodeBtn.textContent = '\ud83d\udccb Kopier kode'; }, 1500);
+        }).catch(function () {
+          copyCodeBtn.textContent = '\u274c Kunne ikke kopiere';
+          setTimeout(function () { copyCodeBtn.textContent = '\ud83d\udccb Kopier kode'; }, 1500);
+        });
+      });
+    }
+
+    var copyAulaBtn = popupOverlay.querySelector('#pv2-copy-aula-btn');
+    if (copyAulaBtn) {
+      copyAulaBtn.addEventListener('click', function () {
+        navigator.clipboard.writeText(messageText).then(function () {
+          copyAulaBtn.textContent = '\u2705 Kopieret!';
+          setTimeout(function () { copyAulaBtn.textContent = '\ud83d\udccb Kopier Aula-besked'; }, 1500);
+        }).catch(function () {
+          copyAulaBtn.textContent = '\u274c Kunne ikke kopiere';
+          setTimeout(function () { copyAulaBtn.textContent = '\ud83d\udccb Kopier Aula-besked'; }, 1500);
+        });
+      });
+    }
+
+    // Append to overlay
+    if (overlayEl) {
+      overlayEl.appendChild(popupOverlay);
+    } else {
+      document.body.appendChild(popupOverlay);
+    }
+  }
+
+  /**
+   * Batch-generer portal-koder for alle børn uden kode.
+   */
+  async function handleBatchGenerateCodes() {
+    // Tæl børn uden kode
+    var missingCount = parentListData.filter(function (d) { return !d.portalCode; }).length;
+    if (missingCount === 0) {
+      alert('Alle børn har allerede en portal-kode.');
+      return;
+    }
+
+    if (!confirm('Generer portal-koder for ' + missingCount + ' børn uden kode?\n\nDette kan ikke fortrydes.')) {
+      return;
+    }
+
+    var result = await PortalData.generatePortalCodesBatch();
+    if (!result || !result.success) {
+      alert('Fejl ved batch-generering: ' + (result ? result.error : 'Ukendt fejl'));
+      return;
+    }
+
+    alert(result.generated_count + ' portal-koder genereret!');
+
+    // Genindlæs data for at få de nye koder
+    var overview = await PortalData.getParentAdminOverview();
+    if (overview) {
+      statsData = overview.stats;
+      parentListData = overview.parentList || [];
+      adoptionData = overview.adoption || null;
+    }
+    renderParentListTable();
+    renderParentListSummary();
+  }
+
   // ─── Insights sidebar scroll navigation ────────────────────────
 
   function scrollInsightTo(targetId) {
@@ -792,11 +971,17 @@
     // Preview toggle
     overlayEl.querySelector('#pv2-preview-toggle').addEventListener('click', togglePreview);
 
-    // Close portal
+    // Close portal (footer link)
     overlayEl.querySelector('#pv2-close-link').addEventListener('click', function (e) {
       e.preventDefault();
       closePortal();
     });
+
+    // Close portal (admin bar back button)
+    var backToCafe = overlayEl.querySelector('#pv2-back-to-cafe');
+    if (backToCafe) {
+      backToCafe.addEventListener('click', function () { closePortal(); });
+    }
 
     // Insights sidebar: page navigation
     overlayEl.querySelectorAll('.pv2-insight-page-nav').forEach(function (el) {
@@ -850,6 +1035,9 @@
     overlayEl.querySelector('#pv2-flt-nolimit').addEventListener('click', function () { toggleParentListFilter('nolimit'); });
     overlayEl.querySelector('#pv2-flt-nocode').addEventListener('click', function () { toggleParentListFilter('nocode'); });
 
+    // Parent list: batch generate codes
+    overlayEl.querySelector('#pv2-pl-batch-codes').addEventListener('click', handleBatchGenerateCodes);
+
     // Parent list: CSV export
     overlayEl.querySelector('#pv2-pl-export').addEventListener('click', exportParentListCSV);
 
@@ -861,10 +1049,22 @@
       if (!isNaN(idx)) sortParentListBy(idx);
     });
 
-    // Parent list: table row click (open detail)
+    // Parent list: table row click (open detail) + action buttons
     overlayEl.querySelector('#pv2-pl-tbody').addEventListener('click', function (e) {
-      // Ignore clicks on action buttons
-      if (e.target.closest('.pv2-pl-action-btn')) return;
+      // "Ny kode" action button
+      var actionBtn = e.target.closest('.pv2-pl-action-btn');
+      if (actionBtn) {
+        var tr = actionBtn.closest('tr');
+        if (tr) {
+          var idx = parseInt(tr.dataset.rowIdx, 10);
+          if (!isNaN(idx)) {
+            var childRow = getFilteredParentData()[idx];
+            if (childRow) handleGenerateCode(childRow);
+          }
+        }
+        return;
+      }
+      // Row click opens detail modal
       var tr = e.target.closest('tr');
       if (!tr) return;
       var idx = parseInt(tr.dataset.rowIdx, 10);
@@ -874,6 +1074,17 @@
     // Parent list: detail modal close
     overlayEl.querySelector('#pv2-pl-m-close').addEventListener('click', closeParentDetailModal);
     overlayEl.querySelector('#pv2-pl-m-close2').addEventListener('click', closeParentDetailModal);
+
+    // Parent list: detail modal "Generer ny kode" button
+    var genCodeBtn = overlayEl.querySelector('#pv2-pl-m-generate-code');
+    if (genCodeBtn) {
+      genCodeBtn.addEventListener('click', function () {
+        if (currentDetailChild) {
+          closeParentDetailModal();
+          handleGenerateCode(currentDetailChild);
+        }
+      });
+    }
 
     // Parent list: modal overlay click-to-close
     overlayEl.querySelector('#pv2-pl-modal').addEventListener('click', function (e) {
@@ -960,29 +1171,55 @@
     // Load real data if PortalData is available
     try {
       if (typeof PortalData !== 'undefined') {
+        // Hent settings + preview-brugere parallelt med RPC
         var settingsPromise = PortalData.getInstitutionSettings();
-        var statsPromise = PortalData.getParentStats();
-        var listPromise = typeof PortalData.getParentList === 'function' ? PortalData.getParentList() : Promise.resolve([]);
-        var adoptionPromise = typeof PortalData.getAdoptionStats === 'function' ? PortalData.getAdoptionStats() : Promise.resolve(null);
         var previewUsersPromise = typeof PortalData.getPreviewUsers === 'function' ? PortalData.getPreviewUsers() : Promise.resolve([]);
 
-        var results = await Promise.all([settingsPromise, statsPromise, listPromise, adoptionPromise, previewUsersPromise]);
+        // Brug samlet RPC hvis tilgængelig (erstatter 9+ parallelle queries)
+        var overviewPromise = typeof PortalData.getParentAdminOverview === 'function'
+          ? PortalData.getParentAdminOverview()
+          : null;
 
-        if (results[0]) {
-          institutionSettings = results[0];
-          if (results[0].name) institutionName = results[0].name;
-        }
-        if (results[1]) {
-          statsData = results[1];
-        }
-        if (results[2] && results[2].length > 0) {
-          parentListData = results[2];
-        }
-        if (results[3]) {
-          adoptionData = results[3];
-        }
-        if (results[4] && results[4].length > 0) {
-          previewUsers = results[4];
+        if (overviewPromise) {
+          // Ny RPC-baseret datahentning
+          var results = await Promise.all([settingsPromise, overviewPromise, previewUsersPromise]);
+
+          if (results[0]) {
+            institutionSettings = results[0];
+            if (results[0].name) institutionName = results[0].name;
+          }
+          if (results[1]) {
+            statsData = results[1].stats;
+            parentListData = results[1].parentList || [];
+            adoptionData = results[1].adoption || null;
+          }
+          if (results[2] && results[2].length > 0) {
+            previewUsers = results[2];
+          }
+        } else {
+          // Fallback: individuelle queries (legacy)
+          var statsPromise = PortalData.getParentStats();
+          var listPromise = typeof PortalData.getParentList === 'function' ? PortalData.getParentList() : Promise.resolve([]);
+          var adoptionPromise = typeof PortalData.getAdoptionStats === 'function' ? PortalData.getAdoptionStats() : Promise.resolve(null);
+
+          var results = await Promise.all([settingsPromise, statsPromise, listPromise, adoptionPromise, previewUsersPromise]);
+
+          if (results[0]) {
+            institutionSettings = results[0];
+            if (results[0].name) institutionName = results[0].name;
+          }
+          if (results[1]) {
+            statsData = results[1];
+          }
+          if (results[2] && results[2].length > 0) {
+            parentListData = results[2];
+          }
+          if (results[3]) {
+            adoptionData = results[3];
+          }
+          if (results[4] && results[4].length > 0) {
+            previewUsers = results[4];
+          }
         }
       }
     } catch (err) {

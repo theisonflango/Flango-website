@@ -714,21 +714,27 @@ body[data-theme="pastel-pop"] .settings-modal {
 }
 
 .coverflow-nav {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    border: none;
-    background: #fde68a;
+    border: 1.5px solid #7dd3fc;
+    background: rgba(255,255,255,0.85);
+    color: #0284c7;
     font-size: 18px;
     cursor: pointer;
     flex-shrink: 0;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    box-shadow: 0 2px 8px rgba(2,132,199,0.14);
+    transition: all 0.15s;
+}
+.coverflow-nav:hover {
+    background: #fff;
+    transform: scale(1.1);
 }
 
 .coverflow-stage {
     flex: 1;
-    perspective: 1100px;
-    height: 240px;
+    perspective: 800px;
+    height: 160px;
     position: relative;
     touch-action: pan-y;
     overflow: hidden;
@@ -746,9 +752,15 @@ body[data-theme="pastel-pop"] .settings-modal {
     top: 45%;
     left: 50%;
     transform-style: preserve-3d;
-    transition: transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.45s ease, filter 0.45s ease;
+    transition: transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.38s ease, filter 0.38s ease;
     opacity: 0;
     pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    will-change: transform, opacity;
+    cursor: pointer;
 }
 
 .coverflow-slide .badge-display-item {
@@ -762,32 +774,33 @@ body[data-theme="pastel-pop"] .settings-modal {
 }
 
 .coverflow-slide.state-center {
-    transform: translate(-50%, -50%) translateZ(90px);
+    transform: translate(-50%, -50%) scale(1) translateZ(0px);
     opacity: 1;
-    filter: blur(0);
+    filter: none;
     z-index: 3;
     pointer-events: auto;
 }
 
 .coverflow-slide.state-left {
-    transform: translate(-115%, -50%) rotateY(28deg) translateZ(-55px);
-    opacity: 0.65;
-    filter: blur(1px);
+    transform: translate(-115%, -50%) scale(0.68) rotateY(30deg) translateZ(-40px);
+    opacity: 0.55;
+    filter: blur(0.5px) brightness(0.9);
     z-index: 2;
 }
 
 .coverflow-slide.state-right {
-    transform: translate(15%, -50%) rotateY(-28deg) translateZ(-55px);
-    opacity: 0.65;
-    filter: blur(1px);
+    transform: translate(15%, -50%) scale(0.68) rotateY(-30deg) translateZ(-40px);
+    opacity: 0.55;
+    filter: blur(0.5px) brightness(0.9);
     z-index: 2;
 }
 
 .coverflow-slide.state-hidden {
     opacity: 0;
-    transform: translate(-50%, -50%) translateZ(-160px);
+    transform: translate(-50%, -50%) scale(0.3) translateZ(-120px);
     filter: blur(4px);
-    z-index: 1;
+    z-index: 0;
+    pointer-events: none;
 }
 
 .badge-display-item {

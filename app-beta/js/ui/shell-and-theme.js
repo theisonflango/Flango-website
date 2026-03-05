@@ -1781,6 +1781,15 @@ async function openInstitutionPreferences() {
         openMobilePayImportModal();
     });
 
+    // Betalingsmetoder knap
+    const betalingsmetodeBtn = document.createElement('button');
+    betalingsmetodeBtn.className = 'settings-item-btn';
+    betalingsmetodeBtn.innerHTML = prefRow('Kasseapparat.webp', 'Betalingsmetoder', 'Stripe Connect, MobilePay og gebyrfordeling for forældreportalen.');
+    betalingsmetodeBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openPaymentMethodsModal();
+    });
+
     // Ikon-deling knap
     const iconSharingBtn = document.createElement('button');
     iconSharingBtn.className = 'settings-item-btn';
@@ -1791,6 +1800,7 @@ async function openInstitutionPreferences() {
     });
 
     contentEl.appendChild(parentPortalBtn);
+    contentEl.appendChild(betalingsmetodeBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(sugarPolicyBtn);
     contentEl.appendChild(iconSharingBtn);
@@ -2406,9 +2416,11 @@ async function openPaymentMethodsModal() {
     let paymentSettings = {};
     if (data?.parent_portal_payment) {
         try {
-            paymentSettings = typeof data.parent_portal_payment === 'string' 
-                ? JSON.parse(data.parent_portal_payment) 
+            const raw = typeof data.parent_portal_payment === 'string'
+                ? JSON.parse(data.parent_portal_payment)
                 : data.parent_portal_payment;
+            // Guard: if the DB value is a primitive (e.g. boolean true) instead of an object, ignore it
+            paymentSettings = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
         } catch (e) {
             console.warn('[payment-methods] Failed to parse payment settings:', e);
         }
@@ -3787,6 +3799,23 @@ export function openSettingsModal() {
                 notifyToolbarUser('Fejlrapport-funktionen er ikke klar. Prøv at genindlæse siden.');
             }
         }, 'settings-bug-report-btn', 'Rapporter en fejl eller uhensigtsmæssighed.', 'Flueben.webp');
+        if (isAdmin) {
+            // Separator
+            const sep = document.createElement('div');
+            sep.style.cssText = 'border-top: 1px solid rgba(255,255,255,0.08); margin: 8px 0;';
+            contentEl.appendChild(sep);
+
+            const resetBtn = document.createElement('button');
+            resetBtn.className = 'settings-item-btn';
+            resetBtn.id = 'settings-reset-request-btn';
+            resetBtn.innerHTML = `<span class="settings-item-text"><strong style="color: var(--negative, #ef4444)">Anmod om nulstilling af system</strong><div class="settings-item-desc" style="color: var(--negative, #ef4444); opacity: 0.7">Anmod om at al data i systemet nulstilles permanent.</div></span>`;
+            resetBtn.addEventListener('click', () => {
+                backdrop.style.display = 'none';
+                openResetRequestDialog();
+            });
+            contentEl.appendChild(resetBtn);
+        }
+
         addDiverseItem('Log ud', () => {
             callButtonById('logout-btn') || notifyToolbarUser('Log ud-knappen er ikke tilgængelig.');
         }, '', 'Afslut din session.', 'Logout.webp');
@@ -3806,6 +3835,14 @@ export function openSettingsModal() {
             backdrop.style.display = 'none';
             window.__flangoOpenEventAdmin?.();
         }, '', false, 'Opret og administrer kommende begivenheder, tilmeldinger og betalinger.', 'Star.webp');
+        addItem('Forældreportal', () => {
+            backdrop.style.display = 'none';
+            if (window.isV2Enabled && window.isV2Enabled()) {
+                window.openAdminPortalV2();
+            } else {
+                openParentPortalSettingsModal();
+            }
+        }, '', false, 'Forældreindsigt, forældre-liste, kode-administration og portal-preview.', 'Bruger.webp');
         addItem('Institutionens Præferencer', () => {
             settingsModalPushParent(openSettingsModal);
             openInstitutionPreferences();
@@ -3820,6 +3857,108 @@ export function openSettingsModal() {
 
     backdrop.style.display = 'flex';
     updateSettingsModalBackVisibility();
+}
+
+// ── Reset Request Dialog ──
+
+async function openResetRequestDialog() {
+    const institutionId = getInstitutionId();
+    if (!institutionId) {
+        notifyToolbarUser('Kunne ikke finde institutions-ID.');
+        return;
+    }
+
+    // Create modal overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-alert-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);';
+
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--surface-color, #1a1d27);border-radius:16px;padding:24px;max-width:420px;width:90%;color:var(--text-color, #e4e6eb);box-shadow:0 20px 60px rgba(0,0,0,0.5);';
+
+    card.innerHTML = `
+        <h2 style="margin-bottom:8px;font-size:18px;color:var(--negative, #ef4444);">Anmod om nulstilling</h2>
+        <p style="font-size:13px;color:var(--text-secondary, #8b8fa3);margin-bottom:16px;line-height:1.5;">
+            Ved nulstilling slettes <strong>al</strong> cafédata permanent: brugere, salg, produkter, arrangementer og statistik.
+            Din admin-konto og institutionen bevares.<br><br>
+            Anmodningen sendes til Flango-teamet, som behandler den manuelt.
+        </p>
+        <textarea id="reset-reason-input" placeholder="Beskriv kort hvorfor (valgfrit)" rows="3"
+            style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border-color, #2d3040);
+            background:var(--surface-sunken, #252830);color:var(--text-color, #e4e6eb);font-size:13px;
+            font-family:inherit;resize:vertical;margin-bottom:16px;"></textarea>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button id="reset-cancel-btn" style="padding:10px 20px;border-radius:8px;border:none;
+                background:var(--surface-sunken, #252830);color:var(--text-color, #e4e6eb);cursor:pointer;font-size:14px;">
+                Annuller
+            </button>
+            <button id="reset-confirm-btn" style="padding:10px 20px;border-radius:8px;border:none;
+                background:var(--negative, #ef4444);color:white;cursor:pointer;font-size:14px;font-weight:600;">
+                Send anmodning
+            </button>
+        </div>
+        <p id="reset-status-msg" style="font-size:12px;margin-top:12px;display:none;"></p>
+    `;
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    card.querySelector('#reset-cancel-btn').addEventListener('click', () => overlay.remove());
+
+    card.querySelector('#reset-confirm-btn').addEventListener('click', async () => {
+        const reason = card.querySelector('#reset-reason-input').value.trim();
+        const confirmBtn = card.querySelector('#reset-confirm-btn');
+        const statusMsg = card.querySelector('#reset-status-msg');
+
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Sender…';
+        statusMsg.style.display = 'none';
+
+        try {
+            const session = await supabaseClient.auth.getSession();
+            const token = session?.data?.session?.access_token;
+            if (!token) throw new Error('Ikke logget ind');
+
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/request-institution-reset`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'apikey': SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({ institution_id: institutionId, reason }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                statusMsg.style.color = 'var(--negative, #ef4444)';
+                statusMsg.textContent = result.error || 'Der opstod en fejl.';
+                statusMsg.style.display = 'block';
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Send anmodning';
+                return;
+            }
+
+            statusMsg.style.color = 'var(--positive, #22c55e)';
+            statusMsg.textContent = 'Anmodning sendt! Flango-teamet vil behandle den hurtigst muligt.';
+            statusMsg.style.display = 'block';
+            confirmBtn.style.display = 'none';
+
+            setTimeout(() => overlay.remove(), 3000);
+        } catch (err) {
+            statusMsg.style.color = 'var(--negative, #ef4444)';
+            statusMsg.textContent = 'Fejl: ' + err.message;
+            statusMsg.style.display = 'block';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Send anmodning';
+        }
+    });
 }
 
 export function setupSettingsModal() {

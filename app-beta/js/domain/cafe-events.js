@@ -4,6 +4,7 @@
 import { supabaseClient } from '../core/config-and-supabase.js';
 import { checkClassMatch, registerUserForEvent, formatEventDate, formatTime } from './event-management.js';
 import { updateInstitutionCache } from './institution-store.js';
+import { getCurrentSessionAdmin } from './session-store.js';
 
 // ============================================================================
 // In-memory cache: childId → { events, fetchedAt }
@@ -212,9 +213,11 @@ export async function cafeRegisterForEvent(eventId, childId, payNow = false) {
 
     if (payNow && registrationId) {
         // Trin 2: Betal med saldo
+        const sessionAdmin = getCurrentSessionAdmin?.();
         const { data: payData, error: payError } = await supabaseClient.rpc('pay_event_registration', {
             p_registration_id: registrationId,
             p_payment_type: 'balance',
+            p_admin_id: sessionAdmin?.id || null,
         });
 
         if (payError) {
@@ -257,9 +260,11 @@ export async function cafeRegisterForEvent(eventId, childId, payNow = false) {
  * @returns {Promise<{ success: boolean, payment_status: string, new_balance?: number, error?: string }>}
  */
 export async function cafePayExistingRegistration(registrationId) {
+    const sessionAdmin = getCurrentSessionAdmin?.();
     const { data: payData, error: payError } = await supabaseClient.rpc('pay_event_registration', {
         p_registration_id: registrationId,
         p_payment_type: 'balance',
+        p_admin_id: sessionAdmin?.id || null,
     });
 
     if (payError) {

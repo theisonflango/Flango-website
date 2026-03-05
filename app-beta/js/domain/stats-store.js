@@ -87,6 +87,33 @@ const aggregateSalesForClerk = (rows, clerkProfile) => {
     };
 };
 
+// Roterende Hr. Flango-beskeder pr. niveau (index 0–4 svarer til levels-arrayet)
+export const FLANGO_LEVEL_MESSAGES = [
+    [
+        'Du er i gang med at lære, hvordan man arbejder i en café.',
+        'Alle starter et sted. Du er allerede i gang – godt klaret!',
+    ],
+    [
+        'Du kan klare opgaver selvstændigt.',
+        'Du har fundet rytmen. Kunderne er i gode hænder hos dig.',
+        'Øvet ekspedient – det er noget at være stolt af!',
+    ],
+    [
+        'Du er rutineret og har overblik.',
+        'Expert-niveau! Du ved hvad du laver – og det viser sig.',
+        'Du har overblikket. Det er ikke alle forundt.',
+    ],
+    [
+        'Dine evner som Flango-ekspedient sidder nu på rygraden, og du løser opgaverne naturligt og med godt overblik.',
+        'Tre stjerner – du fortjener dem alle tre.',
+    ],
+    [
+        'Du har nået det højeste Level i Flango! Det kræver styrke og vedholdenhed – og ikke mindst en lyst til at hjælpe. Det er en fantastisk evne. Måske kunne dit næste mål være at hjælpe nogen med at nå hertil?',
+        'Legendarisk. Ikke mange når hertil. Du er en af dem.',
+        'Du er et forbillede for andre ekspedienter. Stærkt gået!',
+    ],
+];
+
 export function calculateCurrentStats({ clerkProfile, sessionStartTime, sessionSalesCount, remoteStats = null }) {
     const profile = clerkProfile || window.__flangoCurrentClerkProfile || {};
     const levels = [
