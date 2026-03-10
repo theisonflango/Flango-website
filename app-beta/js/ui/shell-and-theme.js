@@ -2367,11 +2367,13 @@ async function openRestaurantModeSettingsModal() {
             // Opdater cache
             updateInstitutionCache(institutionId, updates);
 
-            // Opdater header badge + køkken-knap synlighed
+            // Opdater header badge + køkken-knap synlighed (institution + per-enhed)
+            const deviceRm = localStorage.getItem('flango_device_restaurant_mode') === 'true';
+            const showRm = updates.restaurant_mode_enabled && deviceRm;
             const badge = document.getElementById('restaurant-mode-badge');
             const kitchenBtn = document.getElementById('kitchen-btn');
-            if (badge) badge.style.display = updates.restaurant_mode_enabled ? '' : 'none';
-            if (kitchenBtn) kitchenBtn.style.display = updates.restaurant_mode_enabled ? '' : 'none';
+            if (badge) badge.style.display = showRm ? '' : 'none';
+            if (kitchenBtn) kitchenBtn.style.display = showRm ? '' : 'none';
 
             settingsModalGoBack();
         } catch (err) {
