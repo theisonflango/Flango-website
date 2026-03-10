@@ -998,9 +998,10 @@ export async function handleCompletePurchase({
         }
     }
 
-    // Hent restaurant mode settings fra institution cache
+    // Hent restaurant mode settings fra institution cache + per-enhed override
     const instData = window.__flangoGetInstitutionById?.(customer.institution_id);
-    const restaurantMode = instData?.restaurant_mode_enabled ? {
+    const deviceRestaurantMode = localStorage.getItem('flango_device_restaurant_mode') === 'true';
+    const restaurantMode = (instData?.restaurant_mode_enabled && deviceRestaurantMode) ? {
         enabled: true,
         tableNumbersEnabled: instData.restaurant_table_numbers_enabled === true,
         tableCount: instData.restaurant_table_count || 9,

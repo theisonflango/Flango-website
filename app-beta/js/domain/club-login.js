@@ -102,6 +102,14 @@ export async function setupLockedScreen(clubLoginCode = null) {
     const switchClubBtn = document.getElementById('switch-club-btn');
     const adminSelect = document.getElementById('admin-user-select');
 
+    // Per-enhed restaurant mode checkbox
+    const rmLabel = document.getElementById('restaurant-mode-login-label');
+    const rmCheckbox = document.getElementById('restaurant-mode-login-checkbox');
+    if (rmLabel && rmCheckbox) {
+        rmLabel.style.display = club.restaurant_mode_enabled ? '' : 'none';
+        rmCheckbox.checked = localStorage.getItem('flango_device_restaurant_mode') === 'true';
+    }
+
     if (clubLabel) {
         clubLabel.textContent = `Aktiv klub: ${club.name}`;
     }
@@ -291,6 +299,9 @@ export async function setupLockedScreen(clubLoginCode = null) {
         const { success } = await performLogin(email, password);
 
         if (success) {
+            // Gem per-enhed restaurant mode valg før reload
+            const rmCb = document.getElementById('restaurant-mode-login-checkbox');
+            localStorage.setItem('flango_device_restaurant_mode', rmCb?.checked ? 'true' : 'false');
             location.reload();
         } else {
             errorEl.textContent = 'Forkert adgangskode. Prøv igen.';
@@ -307,6 +318,9 @@ export async function setupLockedScreen(clubLoginCode = null) {
         const { success } = await performLogin('authadmin@flango.dk', '123456');
 
         if (success) {
+            // Gem per-enhed restaurant mode valg før reload
+            const rmCb = document.getElementById('restaurant-mode-login-checkbox');
+            localStorage.setItem('flango_device_restaurant_mode', rmCb?.checked ? 'true' : 'false');
             location.reload();
         } else {
             errorEl.textContent = 'Developer login fejlede. Er brugeren oprettet?';

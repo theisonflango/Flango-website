@@ -197,6 +197,26 @@ export function setupClerkLoginButton({
                       Sæt bytte-timer
                     </button>
                   </div>` : '';
+
+            // Per-enhed restaurant mode checkbox (kun vis hvis institution har RM aktiveret)
+            const instData = window.__flangoGetInstitutionById?.(adminProfile.institution_id);
+            const showRmCheckbox = instData?.restaurant_mode_enabled === true;
+            const rmChecked = localStorage.getItem('flango_device_restaurant_mode') === 'true';
+            const restaurantModeHtml = showRmCheckbox ? `
+                  <label style="
+                    display: flex; align-items: center; gap: 10px; margin-top: 16px;
+                    padding: 10px 14px; background: linear-gradient(135deg, #eff6ff, #dbeafe);
+                    border: 1.5px solid #93c5fd; border-radius: 10px; cursor: pointer;
+                  ">
+                    <input type="checkbox" id="clerk-restaurant-mode-checkbox" ${rmChecked ? 'checked' : ''} style="
+                      width: 20px; height: 20px; cursor: pointer; accent-color: #3b82f6;
+                    ">
+                    <div>
+                      <strong style="font-size: 14px;">🍽️ Aktivér restaurant-mode</strong>
+                      <div style="font-size: 11px; color: #666; margin-top: 2px;">Bordvalg og køkkennote vises ved hvert køb</div>
+                    </div>
+                  </label>` : '';
+
             const welcomeBody = `
               <div style="display: flex; align-items: center; gap: 20px;">
                 <img src="Icons/webp/Avatar/Ekspedient-mand-Flango1.webp" alt="Hr. Flango" style="width: 120px; height: auto; flex-shrink: 0;">
@@ -205,10 +225,17 @@ export function setupClerkLoginButton({
                   Dit job er at sørge for, at kunderne betaler det rigtige – hverken mere eller mindre.<br><br>
                   Når du er logget ind, er det kun dig, der må bruge systemet. Hvis nogen laver fejl på din konto, er det dit ansvar.<br><br>
                   Husk derfor altid at logge ud, når du er færdig – Flango husker ALT! 😎<br><br>
-                  Hav en super god dag i caféen! 🍪☕${shiftTimerButtonHtml}
+                  Hav en super god dag i caféen! 🍪☕${shiftTimerButtonHtml}${restaurantModeHtml}
                 </div>
               </div>`;
             await showCustomAlert(welcomeTitle, welcomeBody);
+
+            // Gem per-enhed restaurant mode valg fra clerk-velkomst
+            const clerkRmCheckbox = document.getElementById('clerk-restaurant-mode-checkbox');
+            if (clerkRmCheckbox) {
+                localStorage.setItem('flango_device_restaurant_mode', clerkRmCheckbox.checked ? 'true' : 'false');
+            }
+
             if (typeof onClerkLoggedIn === 'function') {
                 onClerkLoggedIn(clerk);
             }

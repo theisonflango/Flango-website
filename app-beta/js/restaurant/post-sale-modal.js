@@ -15,9 +15,10 @@ import { getProductIconInfo } from '../domain/products-and-cart.js';
  * @returns {Promise<void>}
  */
 export async function showRestaurantPostSaleModal(institutionId, customer, orderSnapshot) {
-    // Check if restaurant mode is enabled
+    // Check if restaurant mode is enabled (institution + per-enhed)
     const inst = window.__flangoGetInstitutionById?.(institutionId);
-    if (!inst?.restaurant_mode_enabled) return;
+    const deviceRestaurantMode = localStorage.getItem('flango_device_restaurant_mode') === 'true';
+    if (!inst?.restaurant_mode_enabled || !deviceRestaurantMode) return;
 
     // Fetch the most recent sale for this customer to get sale_id
     const { data: recentSale } = await supabaseClient

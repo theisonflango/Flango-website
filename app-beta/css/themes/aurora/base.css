@@ -264,6 +264,42 @@ h3 {
     color: #cbd5e1;
 }
 
+/* Per-enhed restaurant mode checkbox i login-skærm */
+.restaurant-mode-login-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin: 6px 0;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.2), rgba(59, 130, 246, 0.15));
+    border: 1.5px solid rgba(96, 165, 250, 0.4);
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 400;
+    text-align: left;
+    box-sizing: border-box;
+}
+.restaurant-mode-login-toggle span {
+    font-size: 14px;
+    font-weight: 600;
+    color: #93c5fd;
+}
+.restaurant-mode-login-toggle small {
+    display: block;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+    font-weight: 400;
+}
+.restaurant-mode-login-toggle input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    cursor: pointer;
+    accent-color: #60a5fa;
+}
+
 /* ============================================================
    LOGIN SCREEN
    ============================================================ */
