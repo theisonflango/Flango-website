@@ -122,7 +122,7 @@ export function setupClerkLoginButton({
         if (searchInput) {
             searchInput.addEventListener('input', handleSearch);
             searchInput.addEventListener('keydown', handleKeyNavigation);
-            setTimeout(() => searchInput.focus(), 50);
+            searchInput.focus(); // Synkront — iOS kræver gesture-kæden for tastatur
         }
 
         const handleListKeyNavigation = (evt) => {

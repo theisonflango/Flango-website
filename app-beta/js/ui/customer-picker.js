@@ -181,14 +181,14 @@ export function openCustomerSelectionModalUI(options) {
     // Vis modal
     userModal.style.display = 'flex';
 
-    // Giv lidt tid til layout, derefter fokus i søgefeltet
-    setTimeout(() => {
-        try {
-            searchInput.focus();
-        } catch (e) {
-            // Ignorer hvis elementet ikke kan fokuseres
-        }
-    }, 50);
+    // Fokusér søgefeltet synkront — iOS kræver focus() inden for
+    // bruger-gesture kæden (click/tap) for at vise tastaturet.
+    // setTimeout bryder gesture-kæden og tastaturet popper ikke op på iPad.
+    try {
+        searchInput.focus();
+    } catch (e) {
+        // Ignorer hvis elementet ikke kan fokuseres
+    }
 }
 
 export function setupCustomerPickerControls(options) {
