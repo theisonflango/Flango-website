@@ -169,6 +169,8 @@ body {
 }
 .kitchen-ctrl-btn:hover { background: #e2e8f0; border-color: #cbd5e1; }
 .kitchen-ctrl-btn:active { transform: scale(0.97); }
+.kitchen-ctrl-back { color: #3b82f6; border-color: #bfdbfe; text-decoration: none; display: inline-flex; align-items: center; }
+.kitchen-ctrl-back:hover { background: #eff6ff; border-color: #93c5fd; }
 .kitchen-ctrl-logout { color: #ef4444; border-color: #fecaca; }
 .kitchen-ctrl-logout:hover { background: #fef2f2; border-color: #fca5a5; }
 
