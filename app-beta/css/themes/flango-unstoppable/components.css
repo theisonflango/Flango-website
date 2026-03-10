@@ -1315,6 +1315,19 @@
     border-radius: var(--unstoppable-radius-sm);
 }
 
+.confirm-product-row .cp-icon {
+    font-size: 1.8rem;
+    width: 44px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.confirm-product-row .cp-icon img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+}
+
 .confirm-modal-summary {
     border-top-color: rgba(168, 85, 247, 0.15);
 }
