@@ -27,6 +27,10 @@ const $ = (sel) => document.querySelector(sel);
 // ─── Bootstrap ───────────────────────────────────────────────────────────────
 
 export async function initKitchenView() {
+    // Kitchen screen runs as anon — sign out any stale admin session
+    // so the Supabase client uses the anon key instead of an expired JWT.
+    await supabaseClient.auth.signOut().catch(() => {});
+
     try {
         const auth = await authenticateKitchen();
         institutionId = auth.institutionId;
