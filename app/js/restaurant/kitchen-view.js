@@ -36,12 +36,9 @@ export async function initKitchenView() {
         return;
     }
 
-    // Check if restaurant mode is enabled
+    // Check if restaurant mode is enabled (uses RPC to bypass RLS for anon access)
     const { data: inst } = await supabaseClient
-        .from('institutions')
-        .select('restaurant_mode_enabled, restaurant_sound')
-        .eq('id', institutionId)
-        .single();
+        .rpc('get_restaurant_config', { p_institution_id: institutionId });
 
     if (!inst?.restaurant_mode_enabled) {
         showGuardScreen();
