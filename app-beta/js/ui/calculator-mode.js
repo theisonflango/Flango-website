@@ -46,6 +46,13 @@ export function toggleCalculatorMode(forceState) {
     const toggleBtn = document.getElementById('calculator-mode-toggle');
 
     if (newState) {
+        // Mutual exclusion: close kitchen panel if open
+        if (body.classList.contains('kitchen-mode')) {
+            if (typeof window.__flangoToggleKitchenPanel === 'function') {
+                window.__flangoToggleKitchenPanel(false);
+            }
+        }
+
         body.classList.add('calculator-mode');
         if (toggleBtn) {
             toggleBtn.classList.add('active');

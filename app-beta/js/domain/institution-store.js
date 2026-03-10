@@ -60,7 +60,8 @@ export async function fetchInstitutions(forceRefresh = false) {
                     spending_limit_enabled, spending_limit_amount,
                     spending_limit_applies_to_regular_users, spending_limit_applies_to_admins,
                     spending_limit_applies_to_test_users,
-                    show_admins_in_user_list, admins_purchase_free, shift_timer_enabled
+                    show_admins_in_user_list, admins_purchase_free, shift_timer_enabled,
+                    restaurant_mode_enabled, restaurant_table_numbers_enabled, restaurant_sound
                 `)
                 .order('name'));
         } else {

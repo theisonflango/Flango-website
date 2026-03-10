@@ -19,6 +19,7 @@ import { escapeHtml } from '../core/escape-html.js';
 import { formatKr } from '../ui/confirm-modals.js';
 import { processEventItemsInCheckout } from '../ui/cafe-event-strip.js';
 
+
 // ============================================================================
 // HELPER FUNKTIONER FOR handleCompletePurchase (OPT-6)
 // ============================================================================
@@ -109,9 +110,10 @@ function groupOrderItems(order) {
  * @param {number} finalTotal - Totalt beløb
  * @param {number} newBalance - Ny balance
  * @param {boolean} isFreeAdminPurchase - Om dette er et gratis admin-køb
+ * @param {Object|null} restaurantMode - { enabled, tableNumbersEnabled, tableCount } eller null
  * @returns {string} HTML string til bekræftelsesdialog
  */
-function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isFreeAdminPurchase = false) {
+function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isFreeAdminPurchase = false, restaurantMode = null) {
     // Grupper items efter produkt ID
     const itemCounts = groupOrderItems(currentOrder);
 
@@ -250,6 +252,58 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
     }
 
     root.appendChild(summaryDiv);
+
+    // === Restaurant Mode: bordnummer-grid + kommentar ===
+    if (restaurantMode?.enabled) {
+        const section = document.createElement('div');
+        section.className = 'confirm-restaurant-section';
+        section.id = 'confirm-restaurant-section';
+
+        // Bordnummer-grid
+        if (restaurantMode.tableNumbersEnabled) {
+            const tableCount = Math.min(Math.max(restaurantMode.tableCount || 9, 1), 9);
+            const label = document.createElement('div');
+            label.className = 'confirm-restaurant-label';
+            label.innerHTML = '🍽️ Vælg bord';
+            section.appendChild(label);
+
+            const grid = document.createElement('div');
+            grid.className = 'confirm-table-grid';
+            for (let i = 1; i <= tableCount; i++) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'confirm-table-btn';
+                btn.textContent = i;
+                btn.dataset.table = i;
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Toggle selection
+                    const wasSelected = btn.classList.contains('selected');
+                    grid.querySelectorAll('.confirm-table-btn').forEach(b => b.classList.remove('selected'));
+                    if (!wasSelected) btn.classList.add('selected');
+                });
+                grid.appendChild(btn);
+            }
+            section.appendChild(grid);
+        }
+
+        // Kommentar-felt (altid synligt i restaurant mode)
+        const noteLabel = document.createElement('div');
+        noteLabel.className = 'confirm-restaurant-label';
+        noteLabel.innerHTML = '📝 Kommentar til køkken';
+        section.appendChild(noteLabel);
+
+        const note = document.createElement('textarea');
+        note.className = 'confirm-kitchen-note';
+        note.id = 'confirm-kitchen-note';
+        note.maxLength = 200;
+        note.rows = 2;
+        note.placeholder = 'Valgfrit — fx "uden løg", "allergiker" ...';
+        section.appendChild(note);
+
+        root.appendChild(section);
+    }
 
     return root.innerHTML;
 }
@@ -946,6 +1000,14 @@ export async function handleCompletePurchase({
         }
     }
 
+    // Hent restaurant mode settings fra institution cache
+    const instData = window.__flangoGetInstitutionById?.(customer.institution_id);
+    const restaurantMode = instData?.restaurant_mode_enabled ? {
+        enabled: true,
+        tableNumbersEnabled: instData.restaurant_table_numbers_enabled === true,
+        tableCount: instData.restaurant_table_count || 9,
+    } : null;
+
     // OPTIMERING: Brug helper funktion til at bygge bekræftelsesdialog
     // Flight recorder: log modal build
     logDebugEvent('confirmation_modal_building', {
@@ -955,7 +1017,7 @@ export async function handleCompletePurchase({
         finalTotal,
         newBalance,
     });
-    const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance, shouldBeFreePurchase);
+    const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance, shouldBeFreePurchase, restaurantMode);
     logDebugEvent('confirmation_modal_showing', { bodyLength: confirmationBody?.length });
     const confirmed = await showCustomAlert('Bekræft Køb', confirmationBody, {
         type: 'confirm',
@@ -964,6 +1026,15 @@ export async function handleCompletePurchase({
     });
     logDebugEvent('confirmation_modal_closed', { confirmed, cartLengthAfter: orderSnapshot?.length });
     if (!confirmed) return;
+
+    // Læs restaurant-info fra modal DOM (inden den genbruges)
+    let selectedTableNumber = null;
+    let kitchenNoteText = null;
+    if (restaurantMode?.enabled) {
+        const selectedBtn = document.querySelector('#confirm-restaurant-section .confirm-table-btn.selected');
+        selectedTableNumber = selectedBtn?.dataset?.table || null;
+        kitchenNoteText = document.querySelector('#confirm-kitchen-note')?.value?.trim() || null;
+    }
 
     // OPTIMERING: Brug helper funktion til at sætte knap state
     setButtonLoadingState(completePurchaseBtn, 'loading');
@@ -1079,6 +1150,39 @@ export async function handleCompletePurchase({
         if (eventItems.length > 0) {
             logDebugEvent('purchase_event_items_after_normal', { eventCount: eventItems.length });
             await processEventItemsInCheckout(eventItems, customer);
+        }
+
+        // Restaurant Mode: gem bordnummer + kommentar (fire-and-forget)
+        if (restaurantMode?.enabled && (selectedTableNumber || kitchenNoteText)) {
+            const saleId = rpcData?.sale_id || rpcData?.[0]?.sale_id || rpcData?.id;
+            if (saleId) {
+                supabaseClient.rpc('update_sale_restaurant_info', {
+                    p_sale_id: saleId,
+                    p_institution_id: customer.institution_id,
+                    p_table_number: selectedTableNumber,
+                    p_kitchen_note: kitchenNoteText,
+                }).catch(err => console.error('[restaurant] Error updating sale info:', err));
+            } else {
+                // Fallback: hent seneste sale
+                supabaseClient
+                    .from('sales')
+                    .select('id')
+                    .eq('institution_id', customer.institution_id)
+                    .eq('customer_id', customer.id)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single()
+                    .then(({ data }) => {
+                        if (data?.id) {
+                            supabaseClient.rpc('update_sale_restaurant_info', {
+                                p_sale_id: data.id,
+                                p_institution_id: customer.institution_id,
+                                p_table_number: selectedTableNumber,
+                                p_kitchen_note: kitchenNoteText,
+                            }).catch(err => console.error('[restaurant] Error updating sale info:', err));
+                        }
+                    });
+            }
         }
 
         let nextOrder = clearOrder();

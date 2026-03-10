@@ -421,12 +421,85 @@ body.calculator-mode .calculator-panel {
     padding: 4px 0;
 }
 
+/* === Grid Override: 3-delt tilstand (kitchen) === */
+body.kitchen-mode #main-app {
+    grid-template-columns: 1fr 400px 380px;
+    grid-template-areas:
+        "header     header      header"
+        "products   kitchen     sidebar";
+}
+
+body.kitchen-mode #kitchen-panel {
+    grid-area: kitchen;
+}
+
+/* === Kitchen Panel base — Aurora dark style === */
+.kitchen-panel {
+    display: none;
+    flex-direction: column;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    border-left: 1px solid rgba(168, 85, 247, 0.2);
+    border-right: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: var(--aurora-radius-lg, 16px);
+    overflow: hidden;
+    box-shadow: var(--aurora-shadow, 0 4px 20px rgba(0, 0, 0, 0.3));
+}
+
+body.kitchen-mode .kitchen-panel {
+    display: flex;
+    animation: kitchenSlideIn 300ms ease forwards;
+}
+
+@keyframes kitchenSlideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* === Kitchen: kompakt produktgrid === */
+body.kitchen-mode #products {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    align-content: start;
+}
+
+body.kitchen-mode .product-btn {
+    min-height: 70px;
+    aspect-ratio: unset;
+    padding: 8px;
+}
+
+body.kitchen-mode .product-btn .pc-icon,
+body.kitchen-mode .product-btn .product-emoji {
+    font-size: 1.75rem;
+}
+
+body.kitchen-mode .product-btn .pc-bar {
+    padding: 4px 8px;
+    font-size: 0.65rem;
+}
+
+body.kitchen-mode #cafe-event-strip {
+    display: none;
+}
+
+body.kitchen-mode .product-shortcut {
+    display: none;
+}
+
 /* === Toggle-knap aktiv tilstand === */
 .calculator-toggle.active {
     background: linear-gradient(135deg, #a855f7, #7c3aed) !important;
     color: #fff !important;
     border-color: rgba(168, 85, 247, 0.5) !important;
     box-shadow: 0 2px 12px rgba(168, 85, 247, 0.4);
+}
+
+#kitchen-btn.active {
+    background: linear-gradient(135deg, #a855f7, #7c3aed) !important;
+    color: #fff !important;
+    border-color: rgba(168, 85, 247, 0.5) !important;
+    box-shadow: 0 2px 12px rgba(168, 85, 247, 0.4);
+    border-radius: 6px;
 }
 
 /* === Kompakt produktgrid === */
@@ -627,6 +700,16 @@ body.calculator-mode .calculator-panel {
     body.calculator-mode #products-area {
         display: none !important;
     }
+
+    body.kitchen-mode #main-app {
+        grid-template-columns: 1fr 400px !important;
+        grid-template-areas:
+            "header     header"
+            "kitchen    sidebar" !important;
+    }
+    body.kitchen-mode #products-area {
+        display: none !important;
+    }
 }
 
 @media (max-width: 767px) {
@@ -641,6 +724,19 @@ body.calculator-mode .calculator-panel {
     }
     body.calculator-mode #products-area,
     body.calculator-mode #sidebar {
+        display: none !important;
+    }
+
+    body.kitchen-mode .kitchen-panel {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        border: none;
+        overflow-y: auto;
+        border-radius: 0;
+    }
+    body.kitchen-mode #products-area,
+    body.kitchen-mode #sidebar {
         display: none !important;
     }
 }

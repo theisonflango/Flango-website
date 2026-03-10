@@ -614,6 +614,47 @@ export async function startApp() {
         initShiftTimer(sessionBanner);
     }
 
+    // 3.6) Restaurant Mode: badge + køkken-knap
+    {
+        const inst = window.__flangoGetInstitutionById?.(getInstitutionId());
+        const rmEnabled = inst?.restaurant_mode_enabled === true;
+        const badge = document.getElementById('restaurant-mode-badge');
+        const kitchenBtn = document.getElementById('kitchen-btn');
+        if (badge) badge.style.display = rmEnabled ? '' : 'none';
+        if (kitchenBtn) {
+            kitchenBtn.style.display = rmEnabled ? '' : 'none';
+            let pressTimer = null;
+            let isLongPress = false;
+            const startPress = () => {
+                isLongPress = false;
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    kitchenBtn.style.transform = 'scale(1.1)';
+                    setTimeout(() => { kitchenBtn.style.transform = ''; }, 200);
+                    window.open('restaurant.html', '_blank');
+                }, 500);
+            };
+            const endPress = (e) => {
+                clearTimeout(pressTimer);
+                if (!isLongPress) {
+                    // Short tap: toggle inline kitchen panel
+                    if (typeof window.__flangoToggleKitchenPanel === 'function') {
+                        window.__flangoToggleKitchenPanel();
+                    } else {
+                        // Fallback: open in new tab if inline panel not loaded yet
+                        window.open('restaurant.html', '_blank');
+                    }
+                }
+                e.preventDefault();
+            };
+            kitchenBtn.addEventListener('mousedown', startPress);
+            kitchenBtn.addEventListener('mouseup', endPress);
+            kitchenBtn.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+            kitchenBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startPress(); }, { passive: false });
+            kitchenBtn.addEventListener('touchend', endPress);
+        }
+    }
+
     // Make selected-user-info box clickable to open customer selection
     const selectedUserInfoBox = document.getElementById('selected-user-info');
     if (selectedUserInfoBox) {

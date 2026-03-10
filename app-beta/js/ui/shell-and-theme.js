@@ -1799,10 +1799,20 @@ async function openInstitutionPreferences() {
         openIconSharingSettingsModal();
     });
 
+    // Restaurant Mode knap
+    const restaurantModeBtn = document.createElement('button');
+    restaurantModeBtn.className = 'settings-item-btn';
+    restaurantModeBtn.innerHTML = prefRow('🍽️', 'Restaurant Mode', 'Køkkenskærm, bordnumre og noter til salg.');
+    restaurantModeBtn.addEventListener('click', () => {
+        settingsModalPushParent(openInstitutionPreferences);
+        openRestaurantModeSettingsModal();
+    });
+
     contentEl.appendChild(parentPortalBtn);
     contentEl.appendChild(betalingsmetodeBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(sugarPolicyBtn);
+    contentEl.appendChild(restaurantModeBtn);
     contentEl.appendChild(iconSharingBtn);
     contentEl.appendChild(editAdminsBtn);
     contentEl.appendChild(mobilePayImportBtn);
@@ -2167,6 +2177,205 @@ async function openShiftTimerSettingsModal() {
             settingsModalGoBack();
         } catch (err) {
             console.error('[shift-timer-settings] Unexpected error:', err);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Gem';
+        }
+    });
+
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
+}
+
+/**
+ * Åbner Restaurant Mode indstillinger modal
+ */
+async function openRestaurantModeSettingsModal() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+
+    titleEl.textContent = 'Restaurant Mode';
+    contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Indlæser...</div>';
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
+
+    // Hent nuværende værdier
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('restaurant_mode_enabled, restaurant_table_numbers_enabled, restaurant_table_count, restaurant_sound')
+        .eq('id', institutionId)
+        .single();
+
+    if (error || !data) {
+        contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #ef4444;">Kunne ikke hente indstillinger.</div>';
+        return;
+    }
+
+    const modeEnabled = data.restaurant_mode_enabled === true;
+    const tableEnabled = data.restaurant_table_numbers_enabled === true;
+    const tableCount = data.restaurant_table_count || 9;
+    const currentSound = data.restaurant_sound || '';
+
+    // Lyd-valgmuligheder (genbruger café-appens eksisterende lyde)
+    const soundOptions = [
+        { value: '', label: 'Ingen lyd' },
+        { value: 'sounds/Accept/accepter-1.mp3', label: 'Accepter 1' },
+        { value: 'sounds/Accept/accepter-2.mp3', label: 'Accepter 2' },
+        { value: 'sounds/Accept/accepter-3.mp3', label: 'Accepter 3' },
+        { value: 'sounds/Accept/accepter-4.mp3', label: 'Accepter 4' },
+        { value: 'sounds/Accept/accepter-5.mp3', label: 'Accepter 5' },
+        { value: 'sounds/Accept/accepter-6.mp3', label: 'Accepter 6' },
+        { value: 'sounds/Accept/accepter-7.mp3', label: 'Accepter 7' },
+        { value: 'sounds/Login/Login1.mp3', label: 'Login 1' },
+        { value: 'sounds/Login/Login2.mp3', label: 'Login 2' },
+    ];
+    const soundOptionsHtml = soundOptions.map(o =>
+        `<option value="${o.value}"${o.value === currentSound ? ' selected' : ''}>${o.label}</option>`
+    ).join('');
+
+    const container = document.createElement('div');
+    container.style.cssText = 'padding: 20px;';
+    container.innerHTML = `
+        <div style="margin-bottom: 20px;">
+            <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin-bottom: 16px;">
+                Restaurant Mode tilføjer en køkkenskærm der viser nye ordrer i realtid.
+                Efter hvert salg kan tjeneren tilføje bordnummer og besked til køkkenet.
+            </p>
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 16px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; border: 2px solid #f59e0b;">
+                <input type="checkbox" id="restaurant-mode-checkbox" ${modeEnabled ? 'checked' : ''} style="width: 22px; height: 22px; cursor: pointer; accent-color: #d97706;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <strong style="color: #92400e; font-size: 16px;">Aktivér Restaurant Mode</strong>
+                        <span id="restaurant-mode-status" style="padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; ${modeEnabled ? 'background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534;' : 'background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b;'}">
+                            ${modeEnabled ? '✓ Aktiv' : '✗ Inaktiv'}
+                        </span>
+                    </div>
+                    <div style="font-size: 13px; color: #6b7280;">Vis køkken-knap i headeren og aktiver post-salg modal</div>
+                </div>
+            </label>
+        </div>
+        <div id="restaurant-sub-settings" style="margin-bottom: 20px; ${modeEnabled ? '' : 'opacity: 0.5; pointer-events: none;'}">
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 14px 16px; background: #f9fafb; border-radius: 12px 12px ${tableEnabled ? '0 0' : '12px 12px'}; border: 1px solid #e5e7eb; margin-bottom: 0;" id="restaurant-table-label">
+                <input type="checkbox" id="restaurant-table-checkbox" ${tableEnabled ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer; accent-color: #d97706;">
+                <div style="flex: 1;">
+                    <strong style="color: #374151; font-size: 15px;">Bordnumre</strong>
+                    <div style="font-size: 13px; color: #6b7280;">Vis bordnummer-knapper i bekræftelsesmodalen</div>
+                </div>
+            </label>
+            <div id="restaurant-table-count-wrap" style="padding: 12px 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; margin-bottom: 12px; ${tableEnabled ? '' : 'display: none;'}">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 13px; color: #6b7280; white-space: nowrap;">Antal borde:</span>
+                    <input type="range" id="restaurant-table-count" min="1" max="9" value="${tableCount}" style="flex: 1; accent-color: #d97706;">
+                    <span id="restaurant-table-count-display" style="font-size: 16px; font-weight: 700; color: #374151; min-width: 20px; text-align: center;">${tableCount}</span>
+                </div>
+            </div>
+            <div style="padding: 14px 16px; background: #f9fafb; border-radius: 12px; border: 1px solid #e5e7eb;">
+                <div style="margin-bottom: 8px;">
+                    <strong style="color: #374151; font-size: 15px;">Lyd ved ny ordre</strong>
+                    <div style="font-size: 13px; color: #6b7280;">Afspilles i køkkenskærmen når der kommer en ny ordre</div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="restaurant-sound-select" style="flex: 1; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: white;">
+                        ${soundOptionsHtml}
+                    </select>
+                    <button id="restaurant-sound-preview" style="padding: 10px 14px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; font-size: 16px;" title="Afspil">🔊</button>
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button id="restaurant-save-btn" style="flex: 1; padding: 14px 20px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer;">Gem</button>
+        </div>
+    `;
+    contentEl.innerHTML = '';
+    contentEl.appendChild(container);
+
+    const modeCheckbox = container.querySelector('#restaurant-mode-checkbox');
+    const statusLabel = container.querySelector('#restaurant-mode-status');
+    const subSettings = container.querySelector('#restaurant-sub-settings');
+    const tableCheckbox = container.querySelector('#restaurant-table-checkbox');
+    const tableCountWrap = container.querySelector('#restaurant-table-count-wrap');
+    const tableCountInput = container.querySelector('#restaurant-table-count');
+    const tableCountDisplay = container.querySelector('#restaurant-table-count-display');
+    const tableLabel = container.querySelector('#restaurant-table-label');
+    const soundSelect = container.querySelector('#restaurant-sound-select');
+    const previewBtn = container.querySelector('#restaurant-sound-preview');
+    const saveBtn = container.querySelector('#restaurant-save-btn');
+
+    // Toggle sub-settings enabled/disabled
+    modeCheckbox.addEventListener('change', () => {
+        const on = modeCheckbox.checked;
+        subSettings.style.opacity = on ? '1' : '0.5';
+        subSettings.style.pointerEvents = on ? '' : 'none';
+        statusLabel.textContent = on ? '✓ Aktiv' : '✗ Inaktiv';
+        statusLabel.style.cssText = `padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; ${on ? 'background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534;' : 'background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b;'}`;
+    });
+
+    // Toggle table count slider
+    tableCheckbox.addEventListener('change', () => {
+        const on = tableCheckbox.checked;
+        if (tableCountWrap) tableCountWrap.style.display = on ? '' : 'none';
+        if (tableLabel) tableLabel.style.borderRadius = on ? '12px 12px 0 0' : '12px';
+    });
+
+    // Table count slider live update
+    if (tableCountInput && tableCountDisplay) {
+        tableCountInput.addEventListener('input', () => {
+            tableCountDisplay.textContent = tableCountInput.value;
+        });
+    }
+
+    // Preview sound
+    let previewAudio = null;
+    previewBtn.addEventListener('click', () => {
+        const src = soundSelect.value;
+        if (!src) return;
+        if (previewAudio) { previewAudio.pause(); }
+        previewAudio = new Audio(src);
+        previewAudio.volume = 0.7;
+        previewAudio.play().catch(() => {});
+    });
+
+    // Save
+    saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Gemmer...';
+
+        const updates = {
+            restaurant_mode_enabled: modeCheckbox.checked,
+            restaurant_table_numbers_enabled: tableCheckbox.checked,
+            restaurant_table_count: parseInt(tableCountInput?.value) || 9,
+            restaurant_sound: soundSelect.value || null,
+        };
+
+        try {
+            const { error: saveError } = await supabaseClient
+                .from('institutions')
+                .update(updates)
+                .eq('id', institutionId);
+
+            if (saveError) {
+                alert('Kunne ikke gemme. Prøv igen.');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Gem';
+                return;
+            }
+
+            // Opdater cache
+            updateInstitutionCache(institutionId, updates);
+
+            // Opdater header badge + køkken-knap synlighed
+            const badge = document.getElementById('restaurant-mode-badge');
+            const kitchenBtn = document.getElementById('kitchen-btn');
+            if (badge) badge.style.display = updates.restaurant_mode_enabled ? '' : 'none';
+            if (kitchenBtn) kitchenBtn.style.display = updates.restaurant_mode_enabled ? '' : 'none';
+
+            settingsModalGoBack();
+        } catch (err) {
+            console.error('[restaurant-settings] Error:', err);
             saveBtn.disabled = false;
             saveBtn.textContent = 'Gem';
         }
