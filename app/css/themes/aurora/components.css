@@ -1335,6 +1335,100 @@
     color: #991b1b;
 }
 
+/* ─── Restaurant-sektion i bekræftelsesmodal ─────────────────────────────── */
+
+.confirm-restaurant-section {
+    margin-top: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--aurora-border, #e5e7eb);
+}
+
+.confirm-restaurant-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--aurora-fg-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.confirm-table-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.confirm-table-grid-compact {
+    gap: 6px;
+}
+
+.confirm-table-btn {
+    padding: 14px 8px;
+    border: 2px solid var(--aurora-border, #e5e7eb);
+    border-radius: var(--aurora-radius-sm, 12px);
+    background: var(--aurora-bg-inset, #f9fafb);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--aurora-fg, #374151);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.confirm-table-btn:hover {
+    border-color: #d1d5db;
+    background: #f3f4f6;
+}
+
+.confirm-table-btn:active {
+    transform: scale(0.95);
+}
+
+.confirm-table-btn.selected {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+}
+
+.confirm-table-btn.compact {
+    padding: 10px 4px;
+    font-size: 15px;
+    border-radius: 10px;
+    border-width: 1.5px;
+}
+
+.confirm-table-btn.compact.selected {
+    border-width: 2px;
+}
+
+.confirm-kitchen-note {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid var(--aurora-border, #e5e7eb);
+    border-radius: var(--aurora-radius-sm, 10px);
+    font-size: 14px;
+    resize: none;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.confirm-kitchen-note:focus {
+    border-color: #f59e0b;
+}
+
+.confirm-kitchen-note::placeholder {
+    color: #9ca3af;
+}
+
 /* Knapper i bekræftelsesmodal — 2-kolonne grid */
 #custom-alert-content:has(.confirm-modal-header) #custom-alert-buttons {
     display: grid;
