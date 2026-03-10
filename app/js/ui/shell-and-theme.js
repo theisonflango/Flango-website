@@ -2240,6 +2240,8 @@ async function openRestaurantModeSettingsModal() {
     const soundOptionsHtml = buildSoundOptionsHtml(currentSound);
     const serveSoundOptionsHtml = buildSoundOptionsHtml(currentServeSound);
 
+    const deviceRmEnabled = localStorage.getItem('flango_device_restaurant_mode') === 'true';
+
     const container = document.createElement('div');
     container.style.cssText = 'padding: 20px;';
     container.innerHTML = `
@@ -2257,7 +2259,19 @@ async function openRestaurantModeSettingsModal() {
                             ${modeEnabled ? '✓ Aktiv' : '✗ Inaktiv'}
                         </span>
                     </div>
-                    <div style="font-size: 13px; color: #6b7280;">Vis køkken-knap i headeren og aktiver post-salg modal</div>
+                    <div style="font-size: 13px; color: #6b7280;">Gør restaurant mode tilgængelig for alle enheder på denne institution</div>
+                </div>
+            </label>
+            <label id="restaurant-device-toggle" style="display: ${modeEnabled ? 'flex' : 'none'}; align-items: center; gap: 12px; cursor: pointer; padding: 14px 16px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border-radius: 12px; border: 1.5px solid #93c5fd; margin-top: 10px;">
+                <input type="checkbox" id="restaurant-device-checkbox" ${deviceRmEnabled ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer; accent-color: #3b82f6;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                        <strong style="color: #1e40af; font-size: 15px;">🍽️ Denne enhed er tjener</strong>
+                        <span id="restaurant-device-status" style="padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; ${deviceRmEnabled ? 'background: #dbeafe; color: #1d4ed8;' : 'background: #f1f5f9; color: #64748b;'}">
+                            ${deviceRmEnabled ? '✓ Til' : '✗ Fra'}
+                        </span>
+                    </div>
+                    <div style="font-size: 12px; color: #6b7280;">Bordvalg og køkkennote vises ved hvert køb på denne enhed</div>
                 </div>
             </label>
         </div>
@@ -2310,6 +2324,9 @@ async function openRestaurantModeSettingsModal() {
 
     const modeCheckbox = container.querySelector('#restaurant-mode-checkbox');
     const statusLabel = container.querySelector('#restaurant-mode-status');
+    const deviceToggle = container.querySelector('#restaurant-device-toggle');
+    const deviceCheckbox = container.querySelector('#restaurant-device-checkbox');
+    const deviceStatus = container.querySelector('#restaurant-device-status');
     const subSettings = container.querySelector('#restaurant-sub-settings');
     const tableCheckbox = container.querySelector('#restaurant-table-checkbox');
     const tableCountWrap = container.querySelector('#restaurant-table-count-wrap');
@@ -2322,6 +2339,15 @@ async function openRestaurantModeSettingsModal() {
     const servePreviewBtn = container.querySelector('#restaurant-serve-sound-preview');
     const saveBtn = container.querySelector('#restaurant-save-btn');
 
+    // Helper: opdater header badge + køkken-knap baseret på institution + enhed
+    const updateHeaderVisibility = (instOn, deviceOn) => {
+        const showRm = instOn && deviceOn;
+        const badge = document.getElementById('restaurant-mode-badge');
+        const kitchenBtn = document.getElementById('kitchen-btn');
+        if (badge) badge.style.display = showRm ? '' : 'none';
+        if (kitchenBtn) kitchenBtn.style.display = showRm ? '' : 'none';
+    };
+
     // Toggle sub-settings enabled/disabled
     modeCheckbox.addEventListener('change', () => {
         const on = modeCheckbox.checked;
@@ -2329,6 +2355,17 @@ async function openRestaurantModeSettingsModal() {
         subSettings.style.pointerEvents = on ? '' : 'none';
         statusLabel.textContent = on ? '✓ Aktiv' : '✗ Inaktiv';
         statusLabel.style.cssText = `padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; ${on ? 'background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534;' : 'background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b;'}`;
+        // Vis/skjul per-enhed toggle
+        if (deviceToggle) deviceToggle.style.display = on ? 'flex' : 'none';
+    });
+
+    // Per-enhed toggle — gemmer til localStorage med det samme
+    deviceCheckbox.addEventListener('change', () => {
+        const on = deviceCheckbox.checked;
+        localStorage.setItem('flango_device_restaurant_mode', on ? 'true' : 'false');
+        deviceStatus.textContent = on ? '✓ Til' : '✗ Fra';
+        deviceStatus.style.cssText = `padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; ${on ? 'background: #dbeafe; color: #1d4ed8;' : 'background: #f1f5f9; color: #64748b;'}`;
+        updateHeaderVisibility(modeCheckbox.checked, on);
     });
 
     // Toggle table count slider
@@ -2386,13 +2423,8 @@ async function openRestaurantModeSettingsModal() {
             // Opdater cache
             updateInstitutionCache(institutionId, updates);
 
-            // Opdater header badge + køkken-knap synlighed (institution + per-enhed)
-            const deviceRm = localStorage.getItem('flango_device_restaurant_mode') === 'true';
-            const showRm = updates.restaurant_mode_enabled && deviceRm;
-            const badge = document.getElementById('restaurant-mode-badge');
-            const kitchenBtn = document.getElementById('kitchen-btn');
-            if (badge) badge.style.display = showRm ? '' : 'none';
-            if (kitchenBtn) kitchenBtn.style.display = showRm ? '' : 'none';
+            // Opdater header badge + køkken-knap synlighed
+            updateHeaderVisibility(updates.restaurant_mode_enabled, deviceCheckbox.checked);
 
             settingsModalGoBack();
         } catch (err) {
