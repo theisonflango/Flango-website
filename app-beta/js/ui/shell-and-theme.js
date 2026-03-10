@@ -2269,7 +2269,7 @@ async function openRestaurantModeSettingsModal() {
             <div id="restaurant-table-count-wrap" style="padding: 12px 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; margin-bottom: 12px; ${tableEnabled ? '' : 'display: none;'}">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <span style="font-size: 13px; color: #6b7280; white-space: nowrap;">Antal borde:</span>
-                    <input type="range" id="restaurant-table-count" min="1" max="9" value="${tableCount}" style="flex: 1; accent-color: #d97706;">
+                    <input type="range" id="restaurant-table-count" min="1" max="16" value="${tableCount}" style="flex: 1; accent-color: #d97706;">
                     <span id="restaurant-table-count-display" style="font-size: 16px; font-weight: 700; color: #374151; min-width: 20px; text-align: center;">${tableCount}</span>
                 </div>
             </div>

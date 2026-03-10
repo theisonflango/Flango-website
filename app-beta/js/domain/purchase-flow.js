@@ -261,7 +261,7 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
 
         // Bordnummer-grid
         if (restaurantMode.tableNumbersEnabled) {
-            const tableCount = Math.min(Math.max(restaurantMode.tableCount || 9, 1), 9);
+            const tableCount = Math.min(Math.max(restaurantMode.tableCount || 9, 1), 16);
             const label = document.createElement('div');
             label.className = 'confirm-restaurant-label';
             label.innerHTML = '🍽️ Vælg bord';
@@ -269,20 +269,18 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
 
             const grid = document.createElement('div');
             grid.className = 'confirm-table-grid';
+            // Adaptivt grid: ≤9 borde → 3 kolonner, 10-16 → 2 rækker med ceil(n/2) kolonner
+            if (tableCount > 9) {
+                const cols = Math.ceil(tableCount / 2);
+                grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                grid.classList.add('confirm-table-grid-compact');
+            }
             for (let i = 1; i <= tableCount; i++) {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = 'confirm-table-btn';
+                btn.className = 'confirm-table-btn' + (tableCount > 9 ? ' compact' : '');
                 btn.textContent = i;
                 btn.dataset.table = i;
-                btn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Toggle selection
-                    const wasSelected = btn.classList.contains('selected');
-                    grid.querySelectorAll('.confirm-table-btn').forEach(b => b.classList.remove('selected'));
-                    if (!wasSelected) btn.classList.add('selected');
-                });
                 grid.appendChild(btn);
             }
             section.appendChild(grid);
@@ -1019,11 +1017,29 @@ export async function handleCompletePurchase({
     });
     const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance, shouldBeFreePurchase, restaurantMode);
     logDebugEvent('confirmation_modal_showing', { bodyLength: confirmationBody?.length });
-    const confirmed = await showCustomAlert('Bekræft Køb', confirmationBody, {
+    // showCustomAlert indsætter HTML synkront via innerHTML — await ikke endnu
+    // så vi kan vedhæfte event listeners til DOM-elementer der blev oprettet
+    const alertPromise = showCustomAlert('Bekræft Køb', confirmationBody, {
         type: 'confirm',
         okText: 'Bekræft Køb',
         cancelText: 'Annullér',
     });
+
+    // Re-attach bordknap click-handlers (tabt under innerHTML serialisering i buildConfirmationUI)
+    if (restaurantMode?.enabled && restaurantMode.tableNumbersEnabled) {
+        document.querySelectorAll('#confirm-restaurant-section .confirm-table-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const wasSelected = btn.classList.contains('selected');
+                const grid = btn.closest('.confirm-table-grid');
+                if (grid) grid.querySelectorAll('.confirm-table-btn').forEach(b => b.classList.remove('selected'));
+                if (!wasSelected) btn.classList.add('selected');
+            });
+        });
+    }
+
+    const confirmed = await alertPromise;
     logDebugEvent('confirmation_modal_closed', { confirmed, cartLengthAfter: orderSnapshot?.length });
     if (!confirmed) return;
 
