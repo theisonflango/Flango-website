@@ -632,7 +632,17 @@ export async function startApp() {
                     isLongPress = true;
                     kitchenBtn.style.transform = 'scale(1.1)';
                     setTimeout(() => { kitchenBtn.style.transform = ''; }, 200);
-                    window.open('restaurant.html', '_blank');
+                    // Open fullscreen kitchen overlay (embedded in POS, no separate login)
+                    if (typeof window.__flangoToggleKitchenFullscreen === 'function') {
+                        window.__flangoToggleKitchenFullscreen();
+                    } else {
+                        // Lazy-load kitchen-fullscreen module
+                        import('../restaurant/kitchen-fullscreen.js').then(() => {
+                            window.__flangoToggleKitchenFullscreen?.();
+                        }).catch(() => {
+                            window.open('restaurant.html', '_blank');
+                        });
+                    }
                 }, 500);
             };
             const endPress = (e) => {
