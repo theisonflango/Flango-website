@@ -617,7 +617,8 @@ export async function startApp() {
     // 3.6) Restaurant Mode: badge + køkken-knap
     {
         const inst = window.__flangoGetInstitutionById?.(getInstitutionId());
-        const rmEnabled = inst?.restaurant_mode_enabled === true;
+        const deviceRm = localStorage.getItem('flango_device_restaurant_mode') === 'true';
+        const rmEnabled = inst?.restaurant_mode_enabled === true && deviceRm;
         const badge = document.getElementById('restaurant-mode-badge');
         const kitchenBtn = document.getElementById('kitchen-btn');
         if (badge) badge.style.display = rmEnabled ? '' : 'none';
