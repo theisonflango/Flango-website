@@ -2206,7 +2206,7 @@ async function openRestaurantModeSettingsModal() {
     // Hent nuværende værdier
     const { data, error } = await supabaseClient
         .from('institutions')
-        .select('restaurant_mode_enabled, restaurant_table_numbers_enabled, restaurant_table_count, restaurant_sound')
+        .select('restaurant_mode_enabled, restaurant_table_numbers_enabled, restaurant_table_count, restaurant_sound, restaurant_serve_sound')
         .eq('id', institutionId)
         .single();
 
@@ -2219,6 +2219,7 @@ async function openRestaurantModeSettingsModal() {
     const tableEnabled = data.restaurant_table_numbers_enabled === true;
     const tableCount = data.restaurant_table_count || 9;
     const currentSound = data.restaurant_sound || '';
+    const currentServeSound = data.restaurant_serve_sound || '';
 
     // Lyd-valgmuligheder (genbruger café-appens eksisterende lyde)
     const soundOptions = [
@@ -2233,9 +2234,11 @@ async function openRestaurantModeSettingsModal() {
         { value: 'sounds/Login/Login1.mp3', label: 'Login 1' },
         { value: 'sounds/Login/Login2.mp3', label: 'Login 2' },
     ];
-    const soundOptionsHtml = soundOptions.map(o =>
-        `<option value="${o.value}"${o.value === currentSound ? ' selected' : ''}>${o.label}</option>`
+    const buildSoundOptionsHtml = (selected) => soundOptions.map(o =>
+        `<option value="${o.value}"${o.value === selected ? ' selected' : ''}>${o.label}</option>`
     ).join('');
+    const soundOptionsHtml = buildSoundOptionsHtml(currentSound);
+    const serveSoundOptionsHtml = buildSoundOptionsHtml(currentServeSound);
 
     const container = document.createElement('div');
     container.style.cssText = 'padding: 20px;';
@@ -2273,7 +2276,7 @@ async function openRestaurantModeSettingsModal() {
                     <span id="restaurant-table-count-display" style="font-size: 16px; font-weight: 700; color: #374151; min-width: 20px; text-align: center;">${tableCount}</span>
                 </div>
             </div>
-            <div style="padding: 14px 16px; background: #f9fafb; border-radius: 12px; border: 1px solid #e5e7eb;">
+            <div style="padding: 14px 16px; background: #f9fafb; border-radius: 12px 12px 0 0; border: 1px solid #e5e7eb;">
                 <div style="margin-bottom: 8px;">
                     <strong style="color: #374151; font-size: 15px;">Lyd ved ny ordre</strong>
                     <div style="font-size: 13px; color: #6b7280;">Afspilles i køkkenskærmen når der kommer en ny ordre</div>
@@ -2283,6 +2286,18 @@ async function openRestaurantModeSettingsModal() {
                         ${soundOptionsHtml}
                     </select>
                     <button id="restaurant-sound-preview" style="padding: 10px 14px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; font-size: 16px;" title="Afspil">🔊</button>
+                </div>
+            </div>
+            <div style="padding: 14px 16px; background: #f9fafb; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
+                <div style="margin-bottom: 8px;">
+                    <strong style="color: #374151; font-size: 15px;">Lyd ved servering</strong>
+                    <div style="font-size: 13px; color: #6b7280;">Afspilles når en ordre markeres som serveret</div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="restaurant-serve-sound-select" style="flex: 1; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: white;">
+                        ${serveSoundOptionsHtml}
+                    </select>
+                    <button id="restaurant-serve-sound-preview" style="padding: 10px 14px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; font-size: 16px;" title="Afspil">🔊</button>
                 </div>
             </div>
         </div>
@@ -2303,6 +2318,8 @@ async function openRestaurantModeSettingsModal() {
     const tableLabel = container.querySelector('#restaurant-table-label');
     const soundSelect = container.querySelector('#restaurant-sound-select');
     const previewBtn = container.querySelector('#restaurant-sound-preview');
+    const serveSoundSelect = container.querySelector('#restaurant-serve-sound-select');
+    const servePreviewBtn = container.querySelector('#restaurant-serve-sound-preview');
     const saveBtn = container.querySelector('#restaurant-save-btn');
 
     // Toggle sub-settings enabled/disabled
@@ -2328,16 +2345,17 @@ async function openRestaurantModeSettingsModal() {
         });
     }
 
-    // Preview sound
+    // Preview sounds
     let previewAudio = null;
-    previewBtn.addEventListener('click', () => {
-        const src = soundSelect.value;
+    const playPreview = (src) => {
         if (!src) return;
         if (previewAudio) { previewAudio.pause(); }
         previewAudio = new Audio(src);
         previewAudio.volume = 0.7;
         previewAudio.play().catch(() => {});
-    });
+    };
+    previewBtn.addEventListener('click', () => playPreview(soundSelect.value));
+    servePreviewBtn.addEventListener('click', () => playPreview(serveSoundSelect.value));
 
     // Save
     saveBtn.addEventListener('click', async () => {
@@ -2349,6 +2367,7 @@ async function openRestaurantModeSettingsModal() {
             restaurant_table_numbers_enabled: tableCheckbox.checked,
             restaurant_table_count: parseInt(tableCountInput?.value) || 9,
             restaurant_sound: soundSelect.value || null,
+            restaurant_serve_sound: serveSoundSelect.value || null,
         };
 
         try {

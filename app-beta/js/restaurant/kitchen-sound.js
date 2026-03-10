@@ -14,23 +14,25 @@ let isMuted = false;
 
 /**
  * Initialize kitchen sounds.
- * @param {string|null} defaultSoundFile - Default sound from institution settings (fallback)
+ * @param {string|null} defaultOrderSound - Default order sound from institution settings (fallback)
+ * @param {string|null} defaultServeSound - Default serve sound from institution settings (fallback)
  */
-export function initKitchenSound(defaultSoundFile) {
+export function initKitchenSound(defaultOrderSound, defaultServeSound) {
     isMuted = localStorage.getItem(MUTE_KEY) === 'true';
 
     // Order sound: use localStorage override, else institution default
     const orderFile = localStorage.getItem(ORDER_SOUND_KEY);
-    const effectiveOrderFile = orderFile !== null ? orderFile : defaultSoundFile;
+    const effectiveOrderFile = orderFile !== null ? orderFile : defaultOrderSound;
     if (effectiveOrderFile) {
         orderAudio = new Audio(effectiveOrderFile);
         orderAudio.preload = 'auto';
     }
 
-    // Serve sound: only from localStorage (no institution default)
+    // Serve sound: use localStorage override, else institution default
     const serveFile = localStorage.getItem(SERVE_SOUND_KEY);
-    if (serveFile) {
-        serveAudio = new Audio(serveFile);
+    const effectiveServeFile = serveFile !== null ? serveFile : defaultServeSound;
+    if (effectiveServeFile) {
+        serveAudio = new Audio(effectiveServeFile);
         serveAudio.preload = 'auto';
     }
 }
