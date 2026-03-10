@@ -36,7 +36,9 @@ function compareVersions(a, b) {
 async function fetchRemoteVersion() {
     try {
         const timestamp = Date.now();
-        const response = await fetch(`/version.json?_=${timestamp}`, {
+        // Brug relativ path så beta henter sin egen version.json (ikke prod's)
+        const basePath = window.location.pathname.includes('/app-beta') ? '/app-beta/' : '/app/';
+        const response = await fetch(`${basePath}version.json?_=${timestamp}`, {
             cache: 'no-store',
             headers: {
                 'Cache-Control': 'no-cache',
