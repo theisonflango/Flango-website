@@ -1384,6 +1384,22 @@ body[data-theme="pastel-pop"] .settings-modal {
     box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
 }
 
+/* Kompakt variant til 10-16 borde (2 rækker) */
+.confirm-table-grid-compact {
+    gap: 6px;
+}
+
+.confirm-table-btn.compact {
+    padding: 10px 4px;
+    font-size: 15px;
+    border-radius: 10px;
+    border-width: 1.5px;
+}
+
+.confirm-table-btn.compact.selected {
+    border-width: 2px;
+}
+
 .confirm-kitchen-note {
     width: 100%;
     padding: 10px 12px;
