@@ -51,7 +51,11 @@ export async function initKitchenView() {
 
     // Init sound
     const soundFile = inst.restaurant_sound || null;
-    initKitchenSound(soundFile ? `sounds/${soundFile}` : null);
+    const serveSoundFile = inst.restaurant_serve_sound || null;
+    initKitchenSound(
+        soundFile ? `sounds/${soundFile}` : null,
+        serveSoundFile ? `sounds/${serveSoundFile}` : null
+    );
 
     // Set institution name in header
     const nameEl = $('#kitchen-institution-name');

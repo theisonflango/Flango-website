@@ -65,7 +65,11 @@ async function openPanel() {
 
     // Init sound if configured
     const soundFile = instData.restaurant_sound || null;
-    initKitchenSound(soundFile ? `sounds/${soundFile}` : null);
+    const serveSoundFile = instData.restaurant_serve_sound || null;
+    initKitchenSound(
+        soundFile ? `sounds/${soundFile}` : null,
+        serveSoundFile ? `sounds/${serveSoundFile}` : null
+    );
 
     isOpen = true;
     document.body.classList.add('kitchen-mode');
