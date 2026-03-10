@@ -752,13 +752,13 @@ export async function fetchPersonaleData() {
             const selfSales = selfSalesAggregates[admin.id] || 0;
             const assistedSales = assistedSalesAggregates[admin.id] || 0;
             const clerkTime = admin.total_minutes_worked || 0;
-            
-            // Supervisor time: use calculated or fallback to clerk time
-            // NOTE: This is a v1 approximation. Ideally we'd have explicit supervisor session tracking.
-            const supervisorTime = supervisorTimeMap[admin.id] || clerkTime;
-            
-            // Total cafe time = max of clerk time and supervisor time (they overlap)
-            const totalTime = Math.max(clerkTime, supervisorTime);
+
+            // Supervisor time: use calculated value, or 0 if no events found
+            // supervisorTimeMap contains minutes from LOGIN/LOGOUT and CAFE_UNLOCKED/CAFE_LOCKED events
+            const supervisorTime = supervisorTimeMap[admin.id] != null ? supervisorTimeMap[admin.id] : 0;
+
+            // Total cafe time = sum of clerk time and supervisor time (separate roles)
+            const totalTime = clerkTime + supervisorTime;
             
             return {
                 id: admin.id,

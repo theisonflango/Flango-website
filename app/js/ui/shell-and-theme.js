@@ -1756,7 +1756,11 @@ async function openInstitutionPreferences() {
     parentPortalBtn.innerHTML = prefRow('Bruger.webp', 'Forældreportalen', 'Konfigurer funktioner tilgængelige i forældreportalen.');
     parentPortalBtn.addEventListener('click', () => {
         backdrop.style.display = 'none';
-        openParentPortalSettingsModal();
+        if (window.isV2Enabled && window.isV2Enabled()) {
+            window.openAdminPortalV2();
+        } else {
+            openParentPortalSettingsModal();
+        }
     });
 
     // Rediger Admin (Voksen konto'er) knap
@@ -1777,16 +1781,163 @@ async function openInstitutionPreferences() {
         openMobilePayImportModal();
     });
 
-    // Bytte-timer og Tilmelding (Arrangementer) er flyttet til hovedmenuen (Indstillinger)
-    window.__flangoOpenCafeEventSettings = openCafeEventSettingsModal;
+    // Betalingsmetoder knap
+    const betalingsmetodeBtn = document.createElement('button');
+    betalingsmetodeBtn.className = 'settings-item-btn';
+    betalingsmetodeBtn.innerHTML = prefRow('Kasseapparat.webp', 'Betalingsmetoder', 'Stripe Connect, MobilePay og gebyrfordeling for forældreportalen.');
+    betalingsmetodeBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openPaymentMethodsModal();
+    });
+
+    // Ikon-deling knap
+    const iconSharingBtn = document.createElement('button');
+    iconSharingBtn.className = 'settings-item-btn';
+    iconSharingBtn.innerHTML = prefRow('🎨', 'Produktikoner – Deling', 'Del jeres ikoner med andre institutioner og brug andres delte ikoner.');
+    iconSharingBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openIconSharingSettingsModal();
+    });
+
+    // Restaurant Mode knap
+    const restaurantModeBtn = document.createElement('button');
+    restaurantModeBtn.className = 'settings-item-btn';
+    restaurantModeBtn.innerHTML = prefRow('🍽️', 'Restaurant Mode', 'Køkkenskærm, bordnumre og noter til salg.');
+    restaurantModeBtn.addEventListener('click', () => {
+        settingsModalPushParent(openInstitutionPreferences);
+        openRestaurantModeSettingsModal();
+    });
 
     contentEl.appendChild(parentPortalBtn);
+    contentEl.appendChild(betalingsmetodeBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(sugarPolicyBtn);
+    contentEl.appendChild(restaurantModeBtn);
+    contentEl.appendChild(iconSharingBtn);
     contentEl.appendChild(editAdminsBtn);
     contentEl.appendChild(mobilePayImportBtn);
     backdrop.style.display = 'flex';
     updateSettingsModalBackVisibility();
+}
+
+/**
+ * Åbner Ikon-deling indstillinger modal
+ */
+async function openIconSharingSettingsModal() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+
+    titleEl.textContent = 'Produktikoner – Deling';
+    contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Indlæser...</div>';
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
+
+    // Fetch current settings
+    const { data: settings, error } = await supabaseClient
+        .from('institutions')
+        .select('icon_sharing_enabled, icon_use_shared_enabled, icon_limit')
+        .eq('id', institutionId)
+        .single();
+
+    if (error || !settings) {
+        contentEl.innerHTML = '<div style="color: red; padding: 20px;">Kunne ikke hente indstillinger.</div>';
+        return;
+    }
+
+    contentEl.innerHTML = '';
+
+    const group = document.createElement('div');
+    group.style.cssText = 'display: flex; flex-direction: column; gap: 15px; padding: 10px 0;';
+
+    // Description
+    const desc = document.createElement('p');
+    desc.style.cssText = 'color: #64748b; font-size: 13px; margin: 0;';
+    desc.textContent = 'Vælg om jeres ikoner skal være tilgængelige for andre institutioner, og om I vil kunne se andres delte ikoner.';
+    group.appendChild(desc);
+
+    // Toggle 1: Share outward
+    const shareRow = document.createElement('div');
+    shareRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f8f9fa; border-radius: 8px;';
+    const shareLabel = document.createElement('div');
+    shareLabel.innerHTML = '<strong>Del jeres ikoner</strong><div style="font-size: 12px; color: #64748b;">Andre institutioner kan bruge jeres ikoner</div>';
+    const shareCheckbox = document.createElement('input');
+    shareCheckbox.type = 'checkbox';
+    shareCheckbox.checked = settings.icon_sharing_enabled;
+    shareCheckbox.style.cssText = 'width: 22px; height: 22px; cursor: pointer; flex-shrink: 0;';
+    shareRow.appendChild(shareLabel);
+    shareRow.appendChild(shareCheckbox);
+    group.appendChild(shareRow);
+
+    // Toggle 2: Use shared
+    const useRow = document.createElement('div');
+    useRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f8f9fa; border-radius: 8px;';
+    const useLabel = document.createElement('div');
+    useLabel.innerHTML = '<strong>Brug andres ikoner</strong><div style="font-size: 12px; color: #64748b;">Se og brug ikoner delt af andre institutioner</div>';
+    const useCheckbox = document.createElement('input');
+    useCheckbox.type = 'checkbox';
+    useCheckbox.checked = settings.icon_use_shared_enabled;
+    useCheckbox.style.cssText = 'width: 22px; height: 22px; cursor: pointer; flex-shrink: 0;';
+    useRow.appendChild(useLabel);
+    useRow.appendChild(useCheckbox);
+    group.appendChild(useRow);
+
+    contentEl.appendChild(group);
+
+    // "Vis ikoner" button — opens the icon management modal
+    const viewIconsBtn = document.createElement('button');
+    viewIconsBtn.className = 'event-save-btn';
+    viewIconsBtn.style.cssText = 'margin-top: 12px; width: 100%; background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white; border: none;';
+    viewIconsBtn.innerHTML = '🎨 Vis jeres ikoner';
+    viewIconsBtn.addEventListener('click', () => {
+        // Close this settings modal
+        backdrop.style.display = 'none';
+        // Open the icon management modal
+        const iconMgmtModal = document.getElementById('icon-management-modal');
+        if (iconMgmtModal) {
+            iconMgmtModal.style.display = 'flex';
+            // Trigger load of the icon management grid
+            if (typeof window.__flangoLoadIconManagementGrid === 'function') {
+                window.__flangoLoadIconManagementGrid();
+            }
+        }
+    });
+    contentEl.appendChild(viewIconsBtn);
+
+    // Save button
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'event-save-btn';
+    saveBtn.textContent = 'Gem';
+    saveBtn.style.cssText = 'margin-top: 16px; width: 100%;';
+    contentEl.appendChild(saveBtn);
+
+    saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Gemmer...';
+
+        const { error: updateError } = await supabaseClient
+            .from('institutions')
+            .update({
+                icon_sharing_enabled: shareCheckbox.checked,
+                icon_use_shared_enabled: useCheckbox.checked,
+            })
+            .eq('id', institutionId);
+
+        if (updateError) {
+            saveBtn.textContent = 'Fejl – prøv igen';
+            saveBtn.disabled = false;
+            return;
+        }
+
+        saveBtn.textContent = '✅ Gemt!';
+        setTimeout(() => {
+            backdrop.style.display = 'none';
+        }, 800);
+    });
 }
 
 /**
@@ -1862,6 +2013,21 @@ async function openCafeEventSettingsModal() {
     daysRow.appendChild(daysInput);
     group.appendChild(daysRow);
 
+    // Toggle: Vis som produkter
+    const displayRow = document.createElement('div');
+    displayRow.className = 'cafe-event-settings-row';
+    const displayLabel = document.createElement('label');
+    displayLabel.textContent = 'Vis arrangementer på samme måde som produkter';
+    displayLabel.htmlFor = 'cafe-events-display';
+    const displayCheckbox = document.createElement('input');
+    displayCheckbox.type = 'checkbox';
+    displayCheckbox.id = 'cafe-events-display';
+    displayCheckbox.checked = settings.cafe_events_as_products;
+    displayCheckbox.style.cssText = 'width: 20px; height: 20px; cursor: pointer;';
+    displayRow.appendChild(displayLabel);
+    displayRow.appendChild(displayCheckbox);
+    group.appendChild(displayRow);
+
     contentEl.appendChild(group);
 
     // Gem knap
@@ -1873,6 +2039,7 @@ async function openCafeEventSettingsModal() {
 
     saveBtn.addEventListener('click', async () => {
         const enabled = toggleCheckbox.checked;
+        const asProducts = displayCheckbox.checked;
         const days = Math.max(1, Math.min(90, parseInt(daysInput.value, 10) || 14));
         saveBtn.disabled = true;
         saveBtn.textContent = 'Gemmer...';
@@ -1880,6 +2047,7 @@ async function openCafeEventSettingsModal() {
         const { error } = await saveCafeEventSettings(institutionId, {
             cafe_events_enabled: enabled,
             cafe_events_days_ahead: days,
+            cafe_events_as_products: asProducts,
         });
 
         if (error) {
@@ -1894,6 +2062,7 @@ async function openCafeEventSettingsModal() {
         if (window.__flangoInstitutionSettings) {
             window.__flangoInstitutionSettings.cafeEventsEnabled = enabled;
             window.__flangoInstitutionSettings.cafeEventsDaysAhead = days;
+            window.__flangoInstitutionSettings.cafeEventsAsProducts = asProducts;
         }
 
         settingsModalGoBack();
@@ -1902,6 +2071,7 @@ async function openCafeEventSettingsModal() {
     backdrop.style.display = 'flex';
     updateSettingsModalBackVisibility();
 }
+window.__flangoOpenCafeEventSettings = openCafeEventSettingsModal;
 
 /**
  * Åbner Bytte-timer indstillinger modal
@@ -2007,6 +2177,205 @@ async function openShiftTimerSettingsModal() {
             settingsModalGoBack();
         } catch (err) {
             console.error('[shift-timer-settings] Unexpected error:', err);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Gem';
+        }
+    });
+
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
+}
+
+/**
+ * Åbner Restaurant Mode indstillinger modal
+ */
+async function openRestaurantModeSettingsModal() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+
+    titleEl.textContent = 'Restaurant Mode';
+    contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Indlæser...</div>';
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
+
+    // Hent nuværende værdier
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('restaurant_mode_enabled, restaurant_table_numbers_enabled, restaurant_table_count, restaurant_sound')
+        .eq('id', institutionId)
+        .single();
+
+    if (error || !data) {
+        contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #ef4444;">Kunne ikke hente indstillinger.</div>';
+        return;
+    }
+
+    const modeEnabled = data.restaurant_mode_enabled === true;
+    const tableEnabled = data.restaurant_table_numbers_enabled === true;
+    const tableCount = data.restaurant_table_count || 9;
+    const currentSound = data.restaurant_sound || '';
+
+    // Lyd-valgmuligheder (genbruger café-appens eksisterende lyde)
+    const soundOptions = [
+        { value: '', label: 'Ingen lyd' },
+        { value: 'sounds/Accept/accepter-1.mp3', label: 'Accepter 1' },
+        { value: 'sounds/Accept/accepter-2.mp3', label: 'Accepter 2' },
+        { value: 'sounds/Accept/accepter-3.mp3', label: 'Accepter 3' },
+        { value: 'sounds/Accept/accepter-4.mp3', label: 'Accepter 4' },
+        { value: 'sounds/Accept/accepter-5.mp3', label: 'Accepter 5' },
+        { value: 'sounds/Accept/accepter-6.mp3', label: 'Accepter 6' },
+        { value: 'sounds/Accept/accepter-7.mp3', label: 'Accepter 7' },
+        { value: 'sounds/Login/Login1.mp3', label: 'Login 1' },
+        { value: 'sounds/Login/Login2.mp3', label: 'Login 2' },
+    ];
+    const soundOptionsHtml = soundOptions.map(o =>
+        `<option value="${o.value}"${o.value === currentSound ? ' selected' : ''}>${o.label}</option>`
+    ).join('');
+
+    const container = document.createElement('div');
+    container.style.cssText = 'padding: 20px;';
+    container.innerHTML = `
+        <div style="margin-bottom: 20px;">
+            <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin-bottom: 16px;">
+                Restaurant Mode tilføjer en køkkenskærm der viser nye ordrer i realtid.
+                Efter hvert salg kan tjeneren tilføje bordnummer og besked til køkkenet.
+            </p>
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 16px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; border: 2px solid #f59e0b;">
+                <input type="checkbox" id="restaurant-mode-checkbox" ${modeEnabled ? 'checked' : ''} style="width: 22px; height: 22px; cursor: pointer; accent-color: #d97706;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <strong style="color: #92400e; font-size: 16px;">Aktivér Restaurant Mode</strong>
+                        <span id="restaurant-mode-status" style="padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; ${modeEnabled ? 'background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534;' : 'background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b;'}">
+                            ${modeEnabled ? '✓ Aktiv' : '✗ Inaktiv'}
+                        </span>
+                    </div>
+                    <div style="font-size: 13px; color: #6b7280;">Vis køkken-knap i headeren og aktiver post-salg modal</div>
+                </div>
+            </label>
+        </div>
+        <div id="restaurant-sub-settings" style="margin-bottom: 20px; ${modeEnabled ? '' : 'opacity: 0.5; pointer-events: none;'}">
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 14px 16px; background: #f9fafb; border-radius: 12px 12px ${tableEnabled ? '0 0' : '12px 12px'}; border: 1px solid #e5e7eb; margin-bottom: 0;" id="restaurant-table-label">
+                <input type="checkbox" id="restaurant-table-checkbox" ${tableEnabled ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer; accent-color: #d97706;">
+                <div style="flex: 1;">
+                    <strong style="color: #374151; font-size: 15px;">Bordnumre</strong>
+                    <div style="font-size: 13px; color: #6b7280;">Vis bordnummer-knapper i bekræftelsesmodalen</div>
+                </div>
+            </label>
+            <div id="restaurant-table-count-wrap" style="padding: 12px 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; margin-bottom: 12px; ${tableEnabled ? '' : 'display: none;'}">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 13px; color: #6b7280; white-space: nowrap;">Antal borde:</span>
+                    <input type="range" id="restaurant-table-count" min="1" max="9" value="${tableCount}" style="flex: 1; accent-color: #d97706;">
+                    <span id="restaurant-table-count-display" style="font-size: 16px; font-weight: 700; color: #374151; min-width: 20px; text-align: center;">${tableCount}</span>
+                </div>
+            </div>
+            <div style="padding: 14px 16px; background: #f9fafb; border-radius: 12px; border: 1px solid #e5e7eb;">
+                <div style="margin-bottom: 8px;">
+                    <strong style="color: #374151; font-size: 15px;">Lyd ved ny ordre</strong>
+                    <div style="font-size: 13px; color: #6b7280;">Afspilles i køkkenskærmen når der kommer en ny ordre</div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="restaurant-sound-select" style="flex: 1; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: white;">
+                        ${soundOptionsHtml}
+                    </select>
+                    <button id="restaurant-sound-preview" style="padding: 10px 14px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; font-size: 16px;" title="Afspil">🔊</button>
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button id="restaurant-save-btn" style="flex: 1; padding: 14px 20px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer;">Gem</button>
+        </div>
+    `;
+    contentEl.innerHTML = '';
+    contentEl.appendChild(container);
+
+    const modeCheckbox = container.querySelector('#restaurant-mode-checkbox');
+    const statusLabel = container.querySelector('#restaurant-mode-status');
+    const subSettings = container.querySelector('#restaurant-sub-settings');
+    const tableCheckbox = container.querySelector('#restaurant-table-checkbox');
+    const tableCountWrap = container.querySelector('#restaurant-table-count-wrap');
+    const tableCountInput = container.querySelector('#restaurant-table-count');
+    const tableCountDisplay = container.querySelector('#restaurant-table-count-display');
+    const tableLabel = container.querySelector('#restaurant-table-label');
+    const soundSelect = container.querySelector('#restaurant-sound-select');
+    const previewBtn = container.querySelector('#restaurant-sound-preview');
+    const saveBtn = container.querySelector('#restaurant-save-btn');
+
+    // Toggle sub-settings enabled/disabled
+    modeCheckbox.addEventListener('change', () => {
+        const on = modeCheckbox.checked;
+        subSettings.style.opacity = on ? '1' : '0.5';
+        subSettings.style.pointerEvents = on ? '' : 'none';
+        statusLabel.textContent = on ? '✓ Aktiv' : '✗ Inaktiv';
+        statusLabel.style.cssText = `padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; ${on ? 'background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534;' : 'background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b;'}`;
+    });
+
+    // Toggle table count slider
+    tableCheckbox.addEventListener('change', () => {
+        const on = tableCheckbox.checked;
+        if (tableCountWrap) tableCountWrap.style.display = on ? '' : 'none';
+        if (tableLabel) tableLabel.style.borderRadius = on ? '12px 12px 0 0' : '12px';
+    });
+
+    // Table count slider live update
+    if (tableCountInput && tableCountDisplay) {
+        tableCountInput.addEventListener('input', () => {
+            tableCountDisplay.textContent = tableCountInput.value;
+        });
+    }
+
+    // Preview sound
+    let previewAudio = null;
+    previewBtn.addEventListener('click', () => {
+        const src = soundSelect.value;
+        if (!src) return;
+        if (previewAudio) { previewAudio.pause(); }
+        previewAudio = new Audio(src);
+        previewAudio.volume = 0.7;
+        previewAudio.play().catch(() => {});
+    });
+
+    // Save
+    saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Gemmer...';
+
+        const updates = {
+            restaurant_mode_enabled: modeCheckbox.checked,
+            restaurant_table_numbers_enabled: tableCheckbox.checked,
+            restaurant_table_count: parseInt(tableCountInput?.value) || 9,
+            restaurant_sound: soundSelect.value || null,
+        };
+
+        try {
+            const { error: saveError } = await supabaseClient
+                .from('institutions')
+                .update(updates)
+                .eq('id', institutionId);
+
+            if (saveError) {
+                alert('Kunne ikke gemme. Prøv igen.');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Gem';
+                return;
+            }
+
+            // Opdater cache
+            updateInstitutionCache(institutionId, updates);
+
+            // Opdater header badge + køkken-knap synlighed
+            const badge = document.getElementById('restaurant-mode-badge');
+            const kitchenBtn = document.getElementById('kitchen-btn');
+            if (badge) badge.style.display = updates.restaurant_mode_enabled ? '' : 'none';
+            if (kitchenBtn) kitchenBtn.style.display = updates.restaurant_mode_enabled ? '' : 'none';
+
+            settingsModalGoBack();
+        } catch (err) {
+            console.error('[restaurant-settings] Error:', err);
             saveBtn.disabled = false;
             saveBtn.textContent = 'Gem';
         }
@@ -2256,9 +2625,11 @@ async function openPaymentMethodsModal() {
     let paymentSettings = {};
     if (data?.parent_portal_payment) {
         try {
-            paymentSettings = typeof data.parent_portal_payment === 'string' 
-                ? JSON.parse(data.parent_portal_payment) 
+            const raw = typeof data.parent_portal_payment === 'string'
+                ? JSON.parse(data.parent_portal_payment)
                 : data.parent_portal_payment;
+            // Guard: if the DB value is a primitive (e.g. boolean true) instead of an object, ignore it
+            paymentSettings = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
         } catch (e) {
             console.warn('[payment-methods] Failed to parse payment settings:', e);
         }
@@ -2845,7 +3216,7 @@ async function openParentPortalFeaturesModal() {
     // Load current settings
     const { data, error } = await supabaseClient
         .from('institutions')
-        .select('parent_portal_email_notifications, parent_portal_spending_limit, parent_portal_allergens, parent_portal_product_limit, parent_portal_sugar_policy')
+        .select('parent_portal_email_notifications, parent_portal_spending_limit, parent_portal_allergens, parent_portal_product_limit, parent_portal_sugar_policy, parent_portal_vegetarian_only, parent_portal_no_pork, institution_contact_phone, institution_contact_phone_enabled, sugar_policy_info_text, sugar_policy_info_enabled, parent_portal_daily_special, parent_portal_daily_special_price')
         .eq('id', institutionId)
         .single();
 
@@ -2859,6 +3230,16 @@ async function openParentPortalFeaturesModal() {
     const allergens = document.getElementById('parent-portal-allergens');
     const productLimit = document.getElementById('parent-portal-product-limit');
     const sugarPolicy = document.getElementById('parent-portal-sugar-policy');
+    const contactPhoneInput = document.getElementById('institution-contact-phone-input');
+    const contactPhoneEnabled = document.getElementById('institution-contact-phone-enabled');
+    const vegetarianOnly = document.getElementById('parent-portal-vegetarian-only');
+    const noPork = document.getElementById('parent-portal-no-pork');
+    const sugarPolicyInfoText = document.getElementById('sugar-policy-info-text');
+    const sugarPolicyInfoEnabled = document.getElementById('sugar-policy-info-enabled');
+    const sugarPolicyInfoSettings = document.getElementById('sugar-policy-info-settings');
+    const dailySpecial = document.getElementById('parent-portal-daily-special');
+    const dailySpecialPrice = document.getElementById('parent-portal-daily-special-price');
+    const dailySpecialSettings = document.getElementById('daily-special-portal-settings');
 
     if (data) {
         if (emailNotifications) emailNotifications.checked = data.parent_portal_email_notifications !== false;
@@ -2866,20 +3247,111 @@ async function openParentPortalFeaturesModal() {
         if (allergens) allergens.checked = data.parent_portal_allergens !== false;
         if (productLimit) productLimit.checked = data.parent_portal_product_limit === true;
         if (sugarPolicy) sugarPolicy.checked = data.parent_portal_sugar_policy === true;
+        if (contactPhoneInput) contactPhoneInput.value = data.institution_contact_phone || '';
+        if (contactPhoneEnabled) contactPhoneEnabled.checked = data.institution_contact_phone_enabled === true;
+        if (vegetarianOnly) vegetarianOnly.checked = data.parent_portal_vegetarian_only !== false;
+        if (noPork) noPork.checked = data.parent_portal_no_pork !== false;
+        if (sugarPolicyInfoText) sugarPolicyInfoText.value = data.sugar_policy_info_text || '';
+        if (sugarPolicyInfoEnabled) sugarPolicyInfoEnabled.checked = data.sugar_policy_info_enabled !== false;
+        if (dailySpecial) dailySpecial.checked = data.parent_portal_daily_special !== false;
+        if (dailySpecialPrice) dailySpecialPrice.value = data.parent_portal_daily_special_price || '';
     }
 
-    // Save button
+    // Vis/skjul info-boks indstillinger baseret på sukkerpolitik-checkbox
+    const toggleInfoSettings = () => {
+        if (sugarPolicyInfoSettings) {
+            sugarPolicyInfoSettings.style.display = sugarPolicy?.checked ? 'block' : 'none';
+        }
+    };
+    toggleInfoSettings();
+    if (sugarPolicy) sugarPolicy.addEventListener('change', toggleInfoSettings);
+
+    // Vis/skjul dagens ret indstillinger baseret på produktgrænse-checkbox
+    const toggleDailySpecialSettings = () => {
+        if (dailySpecialSettings) {
+            dailySpecialSettings.style.display = productLimit?.checked ? 'block' : 'none';
+        }
+    };
+    toggleDailySpecialSettings();
+    if (productLimit) productLimit.addEventListener('change', toggleDailySpecialSettings);
+
+    // Save button – disabled when no changes, shows confirmation on save
     const saveBtn = document.getElementById('save-parent-portal-features-btn');
     if (saveBtn) {
         const newSaveBtn = saveBtn.cloneNode(true);
         saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+        // Snapshot initial state for dirty-checking
+        const initialState = () => ({
+            emailNotifications: emailNotifications?.checked,
+            spendingLimit: spendingLimit?.checked,
+            allergens: allergens?.checked,
+            productLimit: productLimit?.checked,
+            sugarPolicy: sugarPolicy?.checked,
+            contactPhone: contactPhoneInput?.value.trim() || '',
+            contactPhoneEnabled: contactPhoneEnabled?.checked,
+            vegetarianOnly: vegetarianOnly?.checked,
+            noPork: noPork?.checked,
+            sugarPolicyInfoText: sugarPolicyInfoText?.value.trim() || '',
+            sugarPolicyInfoEnabled: sugarPolicyInfoEnabled?.checked,
+            dailySpecial: dailySpecial?.checked,
+            dailySpecialPrice: dailySpecialPrice?.value.trim() || ''
+        });
+        let savedState = initialState();
+
+        const currentState = () => ({
+            emailNotifications: emailNotifications?.checked,
+            spendingLimit: spendingLimit?.checked,
+            allergens: allergens?.checked,
+            productLimit: productLimit?.checked,
+            sugarPolicy: sugarPolicy?.checked,
+            contactPhone: contactPhoneInput?.value.trim() || '',
+            contactPhoneEnabled: contactPhoneEnabled?.checked,
+            vegetarianOnly: vegetarianOnly?.checked,
+            noPork: noPork?.checked,
+            sugarPolicyInfoText: sugarPolicyInfoText?.value.trim() || '',
+            sugarPolicyInfoEnabled: sugarPolicyInfoEnabled?.checked,
+            dailySpecial: dailySpecial?.checked,
+            dailySpecialPrice: dailySpecialPrice?.value.trim() || ''
+        });
+
+        const hasChanges = () => JSON.stringify(savedState) !== JSON.stringify(currentState());
+
+        const updateSaveBtn = () => {
+            const dirty = hasChanges();
+            newSaveBtn.disabled = !dirty;
+            newSaveBtn.style.opacity = dirty ? '1' : '0.45';
+            newSaveBtn.style.cursor = dirty ? 'pointer' : 'default';
+        };
+        updateSaveBtn();
+
+        // Listen for changes on all inputs
+        const inputs = [emailNotifications, spendingLimit, allergens, productLimit, sugarPolicy, contactPhoneEnabled, vegetarianOnly, noPork, sugarPolicyInfoEnabled, dailySpecial];
+        inputs.forEach(cb => { if (cb) cb.addEventListener('change', updateSaveBtn); });
+        if (contactPhoneInput) contactPhoneInput.addEventListener('input', updateSaveBtn);
+        if (sugarPolicyInfoText) sugarPolicyInfoText.addEventListener('input', updateSaveBtn);
+        if (dailySpecialPrice) dailySpecialPrice.addEventListener('input', updateSaveBtn);
+
         newSaveBtn.addEventListener('click', async () => {
+            if (!hasChanges()) return;
+
+            newSaveBtn.disabled = true;
+            newSaveBtn.textContent = 'Gemmer...';
+
             const updates = {
                 parent_portal_email_notifications: emailNotifications?.checked !== false,
                 parent_portal_spending_limit: spendingLimit?.checked !== false,
                 parent_portal_allergens: allergens?.checked !== false,
                 parent_portal_product_limit: productLimit?.checked === true,
-                parent_portal_sugar_policy: sugarPolicy?.checked === true
+                parent_portal_sugar_policy: sugarPolicy?.checked === true,
+                institution_contact_phone: contactPhoneInput?.value.trim() || null,
+                institution_contact_phone_enabled: contactPhoneEnabled?.checked === true,
+                parent_portal_vegetarian_only: vegetarianOnly?.checked !== false,
+                parent_portal_no_pork: noPork?.checked !== false,
+                sugar_policy_info_text: sugarPolicyInfoText?.value.trim() || null,
+                sugar_policy_info_enabled: sugarPolicyInfoEnabled?.checked !== false,
+                parent_portal_daily_special: dailySpecial?.checked !== false,
+                parent_portal_daily_special_price: dailySpecialPrice?.value.trim() || null
             };
 
             const { error } = await supabaseClient
@@ -2889,9 +3361,16 @@ async function openParentPortalFeaturesModal() {
 
             if (error) {
                 console.error('[parent-portal-features] Error saving:', error);
-                alert('Fejl ved gemning af indstillinger');
+                newSaveBtn.textContent = 'Fejl – prøv igen';
+                newSaveBtn.disabled = false;
+                newSaveBtn.style.opacity = '1';
+                newSaveBtn.style.cursor = 'pointer';
+                setTimeout(() => { newSaveBtn.textContent = 'Gem'; }, 2000);
             } else {
-                modal.style.display = 'none';
+                savedState = currentState();
+                updateSaveBtn();
+                newSaveBtn.textContent = '✓ Gemt';
+                setTimeout(() => { newSaveBtn.textContent = 'Gem'; }, 1500);
                 if (typeof window.__flangoFetchAndRenderProducts === 'function') {
                     window.__flangoFetchAndRenderProducts();
                 }
@@ -3529,6 +4008,23 @@ export function openSettingsModal() {
                 notifyToolbarUser('Fejlrapport-funktionen er ikke klar. Prøv at genindlæse siden.');
             }
         }, 'settings-bug-report-btn', 'Rapporter en fejl eller uhensigtsmæssighed.', 'Flueben.webp');
+        if (isAdmin) {
+            // Separator
+            const sep = document.createElement('div');
+            sep.style.cssText = 'border-top: 1px solid rgba(255,255,255,0.08); margin: 8px 0;';
+            contentEl.appendChild(sep);
+
+            const resetBtn = document.createElement('button');
+            resetBtn.className = 'settings-item-btn';
+            resetBtn.id = 'settings-reset-request-btn';
+            resetBtn.innerHTML = `<span class="settings-item-text"><strong style="color: var(--negative, #ef4444)">Anmod om nulstilling af system</strong><div class="settings-item-desc" style="color: var(--negative, #ef4444); opacity: 0.7">Anmod om at al data i systemet nulstilles permanent.</div></span>`;
+            resetBtn.addEventListener('click', () => {
+                backdrop.style.display = 'none';
+                openResetRequestDialog();
+            });
+            contentEl.appendChild(resetBtn);
+        }
+
         addDiverseItem('Log ud', () => {
             callButtonById('logout-btn') || notifyToolbarUser('Log ud-knappen er ikke tilgængelig.');
         }, '', 'Afslut din session.', 'Logout.webp');
@@ -3548,6 +4044,14 @@ export function openSettingsModal() {
             backdrop.style.display = 'none';
             window.__flangoOpenEventAdmin?.();
         }, '', false, 'Opret og administrer kommende begivenheder, tilmeldinger og betalinger.', 'Star.webp');
+        addItem('Forældreportal', () => {
+            backdrop.style.display = 'none';
+            if (window.isV2Enabled && window.isV2Enabled()) {
+                window.openAdminPortalV2();
+            } else {
+                openParentPortalSettingsModal();
+            }
+        }, '', false, 'Forældreindsigt, forældre-liste, kode-administration og portal-preview.', 'Bruger.webp');
         addItem('Institutionens Præferencer', () => {
             settingsModalPushParent(openSettingsModal);
             openInstitutionPreferences();
@@ -3562,6 +4066,108 @@ export function openSettingsModal() {
 
     backdrop.style.display = 'flex';
     updateSettingsModalBackVisibility();
+}
+
+// ── Reset Request Dialog ──
+
+async function openResetRequestDialog() {
+    const institutionId = getInstitutionId();
+    if (!institutionId) {
+        notifyToolbarUser('Kunne ikke finde institutions-ID.');
+        return;
+    }
+
+    // Create modal overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-alert-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);';
+
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--surface-color, #1a1d27);border-radius:16px;padding:24px;max-width:420px;width:90%;color:var(--text-color, #e4e6eb);box-shadow:0 20px 60px rgba(0,0,0,0.5);';
+
+    card.innerHTML = `
+        <h2 style="margin-bottom:8px;font-size:18px;color:var(--negative, #ef4444);">Anmod om nulstilling</h2>
+        <p style="font-size:13px;color:var(--text-secondary, #8b8fa3);margin-bottom:16px;line-height:1.5;">
+            Ved nulstilling slettes <strong>al</strong> cafédata permanent: brugere, salg, produkter, arrangementer og statistik.
+            Din admin-konto og institutionen bevares.<br><br>
+            Anmodningen sendes til Flango-teamet, som behandler den manuelt.
+        </p>
+        <textarea id="reset-reason-input" placeholder="Beskriv kort hvorfor (valgfrit)" rows="3"
+            style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border-color, #2d3040);
+            background:var(--surface-sunken, #252830);color:var(--text-color, #e4e6eb);font-size:13px;
+            font-family:inherit;resize:vertical;margin-bottom:16px;"></textarea>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button id="reset-cancel-btn" style="padding:10px 20px;border-radius:8px;border:none;
+                background:var(--surface-sunken, #252830);color:var(--text-color, #e4e6eb);cursor:pointer;font-size:14px;">
+                Annuller
+            </button>
+            <button id="reset-confirm-btn" style="padding:10px 20px;border-radius:8px;border:none;
+                background:var(--negative, #ef4444);color:white;cursor:pointer;font-size:14px;font-weight:600;">
+                Send anmodning
+            </button>
+        </div>
+        <p id="reset-status-msg" style="font-size:12px;margin-top:12px;display:none;"></p>
+    `;
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    card.querySelector('#reset-cancel-btn').addEventListener('click', () => overlay.remove());
+
+    card.querySelector('#reset-confirm-btn').addEventListener('click', async () => {
+        const reason = card.querySelector('#reset-reason-input').value.trim();
+        const confirmBtn = card.querySelector('#reset-confirm-btn');
+        const statusMsg = card.querySelector('#reset-status-msg');
+
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Sender…';
+        statusMsg.style.display = 'none';
+
+        try {
+            const session = await supabaseClient.auth.getSession();
+            const token = session?.data?.session?.access_token;
+            if (!token) throw new Error('Ikke logget ind');
+
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/request-institution-reset`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'apikey': SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({ institution_id: institutionId, reason }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                statusMsg.style.color = 'var(--negative, #ef4444)';
+                statusMsg.textContent = result.error || 'Der opstod en fejl.';
+                statusMsg.style.display = 'block';
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Send anmodning';
+                return;
+            }
+
+            statusMsg.style.color = 'var(--positive, #22c55e)';
+            statusMsg.textContent = 'Anmodning sendt! Flango-teamet vil behandle den hurtigst muligt.';
+            statusMsg.style.display = 'block';
+            confirmBtn.style.display = 'none';
+
+            setTimeout(() => overlay.remove(), 3000);
+        } catch (err) {
+            statusMsg.style.color = 'var(--negative, #ef4444)';
+            statusMsg.textContent = 'Fejl: ' + err.message;
+            statusMsg.style.display = 'block';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Send anmodning';
+        }
+    });
 }
 
 export function setupSettingsModal() {
@@ -3603,12 +4209,26 @@ export function setupToolbarGearMenu() {
 export function setupToolbarHistoryButton() {
     const historyBtn = document.getElementById('toolbar-history-btn');
     if (!historyBtn) return;
-    historyBtn.onclick = (event) => {
+    historyBtn.onclick = async (event) => {
         event.preventDefault();
-        if (typeof window.__flangoOpenSalesHistory === 'function') {
-            window.__flangoOpenSalesHistory();
-        } else {
-            notifyToolbarUser('Historik-funktionen er ikke klar.');
+        try {
+            const { openHistorikV3 } = await import('./historik-v3.js');
+            openHistorikV3();
+        } catch (err) {
+            console.error('Kunne ikke åbne Historik v3:', err);
+            // Fallback til v2
+            try {
+                const { openHistorikModal } = await import('./historik-modal.js');
+                openHistorikModal();
+            } catch (err2) {
+                console.error('Kunne ikke åbne Historik v2:', err2);
+                // Fallback til v1
+                if (typeof window.__flangoOpenSalesHistory === 'function') {
+                    window.__flangoOpenSalesHistory();
+                } else {
+                    notifyToolbarUser('Historik-funktionen er ikke klar.');
+                }
+            }
         }
     };
 }

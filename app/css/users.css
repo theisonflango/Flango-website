@@ -138,6 +138,7 @@
 #avatar-picker-scroll-wrapper {
     overflow-y: auto;
     flex-grow: 1;
+    min-height: 0;          /* Allow flex child to shrink below content size → enables scroll */
     padding: 15px 10px 0 10px;
     margin: 0 -10px;
 }

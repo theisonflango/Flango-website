@@ -618,7 +618,8 @@ export function createParentPortalAdminUI(options = {}) {
         const confirmed = await showConfirmNewParentPin(child, !!hasExistingPin);
         if (!confirmed) return;
 
-        const newPin = String(Math.floor(100000 + Math.random() * 900000)); // 6-cifret kode
+        // 8-cifret PIN (kun tal 0-9, længde 8)
+        const newPin = String(Math.floor(10000000 + Math.random() * 90000000));
 
         try {
             const { data: invokeData, error: invokeError } = await supabaseClient.functions.invoke('update-parent-pin', {
@@ -631,7 +632,26 @@ export function createParentPortalAdminUI(options = {}) {
 
             if (invokeError || !invokeData || invokeData.success !== true) {
                 console.error('Fejl ved update-parent-pin (settings):', invokeError, invokeData);
-                showAlert?.('Kunne ikke opdatere forældre-koden. Prøv igen, eller kontakt udvikleren.');
+                // Prøv at få den detaljerede fejlbesked fra response
+                let errorDetails = 'Ukendt fejl';
+                if (invokeData) {
+                    errorDetails = invokeData.details || invokeData.error || JSON.stringify(invokeData);
+                } else if (invokeError) {
+                    errorDetails = invokeError.message || invokeError.toString();
+                    // Hvis det er en HTTP fejl, prøv at få response body
+                    if (invokeError.context && invokeError.context.body) {
+                        try {
+                            const body = JSON.parse(invokeError.context.body);
+                            errorDetails = body.details || body.error || errorDetails;
+                        } catch (e) {
+                            // Ignorer parse fejl
+                        }
+                    }
+                }
+                console.error('Fejl detaljer:', errorDetails);
+                console.error('Fuld error objekt:', invokeError);
+                console.error('Fuld data objekt:', invokeData);
+                showAlert?.(`Kunne ikke opdatere forældre-koden: ${errorDetails}. Prøv igen, eller kontakt udvikleren.`);
                 return;
             }
 

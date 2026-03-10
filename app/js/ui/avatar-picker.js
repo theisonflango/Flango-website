@@ -276,106 +276,157 @@ export async function setupAvatarPicker(options) {
         const style = document.createElement('style');
         style.id = 'flango-timer-styles';
         style.textContent = `
-            .duration-display-container {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 4px;
-            }
-            .live-timer {
-                display: flex;
-                gap: 4px;
-                align-items: baseline;
-                font-family: 'Roboto Mono', monospace;
-                background-color: var(--background-color-offset);
-                padding: 4px 8px;
-                border-radius: 6px;
-                border: 1px solid var(--border-color);
-            }
-            .time-segment {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                line-height: 1;
-            }
-            .time-value {
-                font-size: 1.4em;
-                font-weight: 700;
-                color: var(--primary-color);
-            }
-            .time-label {
-                font-size: 0.7em;
-                text-transform: uppercase;
-                color: var(--text-color-muted);
-            }
-            .time-separator {
-                font-size: 1.2em;
-                font-weight: 700;
-                color: var(--primary-color);
-            }
-            /* Ny stil for modal-headeren */
+            /* ── Modal header ─────────────────────────────── */
             #avatar-picker-modal .modal-header {
                 display: flex;
                 align-items: center;
-                gap: 12px;
+                gap: 14px;
+                position: relative;
             }
-            #avatar-picker-modal .header-avatar {
-                width: 40px;
-                height: 40px;
+            #avatar-picker-modal .header-avatar-ring {
+                width: 46px;
+                height: 46px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #f59e0b, #fb923c);
+                padding: 2.5px;
+                flex-shrink: 0;
+                box-shadow: 0 2px 10px rgba(245,158,11,0.35);
+            }
+            #avatar-picker-modal .header-avatar-ring img {
+                width: 100%;
+                height: 100%;
                 border-radius: 50%;
                 object-fit: cover;
-                border: 2px solid var(--primary-color);
-                background-color: var(--background-color);
+                background: #fff8ed;
+                display: block;
+            }
+            #avatar-picker-modal .modal-header h2 {
+                font-family: 'Nunito', sans-serif;
+                font-size: 21px;
+                font-weight: 900;
+                color: #111827;
+                letter-spacing: -0.3px;
+                flex: 1;
+                text-align: center;
             }
 
-            /* --- Dashboard Grid Layout --- */
+            /* ── Dashboard Grid Layout ────────────────────── */
             .flango-status-grid {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
-                grid-auto-rows: 1fr; /* Sørger for at rækker har samme højde */
-                gap: 20px;
-                height: 78vh; /* Justerbar højde for hele dashboardet */
+                gap: 12px;
             }
 
-            /* --- Card Base Style --- */
+            /* ── Card Base Style ──────────────────────────── */
             .flango-status-card {
-                background-color: var(--background-color);
-                border: 1px solid var(--border-color);
-                border-radius: 12px;
-                padding: 16px;
+                border-radius: 20px;
+                padding: 16px 18px;
                 display: flex;
                 flex-direction: column;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-                transition: transform 0.2s ease-in-out;
-            }
-            .flango-status-card h3, .flango-status-card h4 {
-                margin-top: 0;
+                gap: 10px;
+                position: relative;
+                overflow: hidden;
             }
 
-            /* --- Card Color Variations --- */
-            .flango-status-card.card-a { background-color: #fff4e3; } /* Lys orange */
-            .flango-status-card.card-b { background-color: #e3f2fd; } /* Lys blå */
-            .flango-status-card.card-c { background-color: #e8f5e9; } /* Lys grøn */
-            .flango-status-card.card-d { background-color: #f3e5f5; } /* Lys lilla */
-
-            /* --- Scrollable Card Rules --- */
-            .flango-status-card.scrollable {
-                overflow-y: auto;
-                max-height: 40vh; /* Max højde for de nederste kort */
+            /* ── Card Eyebrow ─────────────────────────────── */
+            .card-eyebrow {
+                font-size: 10.5px;
+                font-weight: 800;
+                letter-spacing: 0.09em;
+                text-transform: uppercase;
+                text-align: center;
             }
 
-            /* --- Responsive Grid --- */
-            @media (max-width: 1024px) {
-                .flango-status-grid {
-                    grid-template-columns: 1fr; /* Enkelt kolonne på mindre skærme */
-                    height: auto;
-                }
-                .flango-status-card.scrollable {
-                    max-height: 300px; /* Juster max-højde for scroll på mindre skærme */
-                }
+            /* ── Card A: Status ───────────────────────────── */
+            .flango-status-card.card-a {
+                background: linear-gradient(150deg, #fffbeb 0%, #fef3c7 55%, #fde68a 100%);
+                border: 1.5px solid #fcd34d;
+                box-shadow: 0 2px 12px rgba(251,191,36,0.18), inset 0 1px 0 rgba(255,255,255,0.8);
+            }
+            .flango-status-card.card-a .card-eyebrow { color: #b45309; margin-bottom: 4px; }
+
+            .level-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                background: linear-gradient(135deg, #f59e0b, #fbbf24);
+                border-radius: 999px;
+                padding: 7px 16px 7px 10px;
+                width: fit-content;
+                box-shadow: 0 4px 14px rgba(245,158,11,0.35);
+                margin-bottom: 2px;
+                align-self: center;
+            }
+            .level-pill-stars { font-size: 16px; line-height: 1; }
+            .level-pill-name {
+                font-family: 'Nunito', sans-serif;
+                font-size: 17px;
+                font-weight: 900;
+                color: #fff;
+                letter-spacing: -0.3px;
+                text-shadow: 0 1px 3px rgba(0,0,0,0.18);
             }
 
-            /* --- Specific Content Styling --- */
+            .progress-wrap { display: flex; flex-direction: column; gap: 5px; }
+            .progress-row { display: flex; justify-content: space-between; align-items: center; }
+            .progress-label { font-size: 11px; font-weight: 600; color: #78350f; }
+            .progress-pct {
+                font-family: 'Nunito', sans-serif;
+                font-size: 12px;
+                font-weight: 900;
+                color: #d97706;
+            }
+            .progress-track {
+                height: 8px;
+                background: rgba(180,83,9,0.12);
+                border-radius: 999px;
+                overflow: hidden;
+            }
+            .progress-fill {
+                height: 100%;
+                background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 60%, #fde68a 100%);
+                border-radius: 999px;
+                box-shadow: 0 0 8px rgba(245,158,11,0.6);
+                animation: prog-in 1.2s cubic-bezier(0.22,0.61,0.36,1) both;
+            }
+            @keyframes prog-in { from { width: 0%; } }
+            .progress-hint { font-size: 10.5px; color: #92400e; opacity: 0.75; }
+
+            .speaker {
+                display: flex;
+                align-items: flex-end;
+                gap: 10px;
+                margin-top: 4px;
+            }
+            .speaker-avatar {
+                width: 96px;
+                height: 110px;
+                flex-shrink: 0;
+                object-fit: cover;
+                object-position: center top;
+                filter: drop-shadow(0 4px 10px rgba(0,0,0,0.16));
+            }
+            .speech-bubble {
+                background: rgba(255,255,255,0.82);
+                border: 1.5px solid rgba(251,191,36,0.4);
+                border-radius: 4px 16px 16px 16px;
+                padding: 9px 12px;
+                font-size: 12px;
+                font-style: italic;
+                color: #78350f;
+                line-height: 1.55;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+                flex: 1;
+            }
+
+            /* ── Card B: Badges ───────────────────────────── */
+            .flango-status-card.card-b {
+                background: linear-gradient(150deg, #f0f9ff 0%, #e0f2fe 55%, #bae6fd 100%);
+                border: 1.5px solid #7dd3fc;
+                box-shadow: 0 2px 12px rgba(14,165,233,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+            }
+            .flango-status-card.card-b .card-eyebrow { color: #0369a1; }
+
             .badge-panel {
                 flex-grow: 1;
                 display: flex;
@@ -387,31 +438,215 @@ export async function setupAvatarPicker(options) {
                 align-items: center;
                 justify-content: center;
             }
-            .status-header-section {
-                display: flex;
-                align-items: flex-start;
-                gap: 20px;
+
+            /* Coverflow nav override for badges card */
+            .flango-status-card.card-b .coverflow-nav {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                border: 1.5px solid #7dd3fc;
+                background: rgba(255,255,255,0.85);
+                color: #0284c7;
+                font-size: 18px;
+                cursor: pointer;
+                flex-shrink: 0;
+                box-shadow: 0 2px 8px rgba(2,132,199,0.14);
+                transition: all 0.15s;
             }
-            .status-header-section.vertical {
+            .flango-status-card.card-b .coverflow-nav:hover {
+                background: #fff;
+                transform: scale(1.1);
+            }
+
+            /* ── Card C: I dag ────────────────────────────── */
+            .flango-status-card.card-c {
+                background: linear-gradient(150deg, #f0fdf4 0%, #dcfce7 55%, #bbf7d0 100%);
+                border: 1.5px solid #6ee7b7;
+                box-shadow: 0 2px 12px rgba(16,185,129,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+                overflow-y: auto;
+                max-height: 280px;
+            }
+            .flango-status-card.card-c .card-eyebrow { color: #065f46; }
+            .flango-status-card.card-c::-webkit-scrollbar { width: 3px; }
+            .flango-status-card.card-c::-webkit-scrollbar-thumb { background: #6ee7b7; border-radius: 99px; }
+
+            /* Timer box */
+            .timer-box {
+                display: inline-flex;
+                align-items: center;
+                background: rgba(255,255,255,0.70);
+                border: 1.5px solid rgba(255,255,255,0.9);
+                border-radius: 14px;
+                padding: 10px 16px;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9);
+                width: fit-content;
+                align-self: center;
+            }
+            .tseg { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 46px; }
+            .tval {
+                font-family: 'Nunito', sans-serif;
+                font-size: 32px;
+                font-weight: 900;
+                color: #065f46;
+                line-height: 1;
+                font-variant-numeric: tabular-nums;
+                letter-spacing: -1px;
+            }
+            .tlbl {
+                font-size: 8.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: #059669;
+                opacity: 0.75;
+            }
+            .tcolon {
+                font-family: 'Nunito', sans-serif;
+                font-size: 26px;
+                font-weight: 900;
+                color: #6ee7b7;
+                padding: 0 2px;
+                margin-bottom: 10px;
+                animation: blink 1s step-start infinite;
+            }
+            @keyframes blink {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.2; }
+            }
+
+            /* Stat chips */
+            .chips {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 7px;
+            }
+            .chip {
+                background: rgba(255,255,255,0.65);
+                border: 1.5px solid rgba(255,255,255,0.9);
+                border-radius: 12px;
+                padding: 9px 6px 7px;
+                text-align: center;
+                display: flex;
                 flex-direction: column;
                 align-items: center;
+                justify-content: center;
+                gap: 2px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+                min-height: 62px;
+            }
+            .chip-val {
+                font-family: 'Nunito', sans-serif;
+                font-size: 22px;
+                font-weight: 900;
+                line-height: 1;
+                color: #065f46;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .chip-val.kr { font-size: 16px; }
+            .chip-lbl {
+                font-size: 9.5px;
+                font-weight: 700;
+                letter-spacing: 0.07em;
+                text-transform: uppercase;
+                color: #374151;
+                opacity: 0.45;
+            }
+
+            /* Product rows */
+            .product-rows { display: flex; flex-direction: column; }
+            .prow {
+                display: grid;
+                grid-template-columns: 38px 20px 1fr auto;
+                gap: 6px;
+                align-items: center;
+                padding: 5px 2px;
+                border-bottom: 1px dashed rgba(0,0,0,0.07);
+                font-size: 12.5px;
+            }
+            .prow:last-child { border-bottom: none; }
+            .pqty { font-size: 11px; font-weight: 700; color: #6b7280; white-space: nowrap; }
+            .pname { color: #1f2937; }
+            .pprice { font-weight: 700; color: #374151; text-align: right; white-space: nowrap; }
+            .empty-msg {
+                font-size: 12px;
+                color: #9ca3af;
+                font-style: italic;
                 text-align: center;
+                padding: 6px 0 2px;
             }
-            .status-avatar {
-                width: 100px;
-                height: 100px;
-                object-fit: contain;
-                flex-shrink: 0;
+
+            /* ── Card D: Sammenlagt ───────────────────────── */
+            .flango-status-card.card-d {
+                background: linear-gradient(150deg, #faf5ff 0%, #ede9fe 55%, #ddd6fe 100%);
+                border: 1.5px solid #c4b5fd;
+                box-shadow: 0 2px 12px rgba(124,58,237,0.10), inset 0 1px 0 rgba(255,255,255,0.8);
+                overflow-y: auto;
+                max-height: 280px;
             }
-            .status-avatar.hr-flango {
-                margin-top: 16px;
+            .flango-status-card.card-d .card-eyebrow { color: #4c1d95; }
+            .flango-status-card.card-d::-webkit-scrollbar { width: 3px; }
+            .flango-status-card.card-d::-webkit-scrollbar-thumb { background: #c4b5fd; border-radius: 99px; }
+            .flango-status-card.card-d .chip-val { color: #4c1d95; }
+
+            .hours-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: rgba(255,255,255,0.65);
+                border: 1.5px solid rgba(255,255,255,0.9);
+                border-radius: 999px;
+                padding: 5px 12px;
+                font-size: 12.5px;
+                font-weight: 600;
+                color: #4c1d95;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.05);
             }
-            .status-header-text {
-                flex-grow: 1;
+
+            /* ── Section Divider ──────────────────────────── */
+            .flango-section-divider {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin: 8px 0 4px;
             }
-            .status-header-text p {
-                margin: 0 0 8px 0;
+            .flango-section-divider .divider-line {
+                flex: 1;
+                height: 1px;
+                background: #e5e7eb;
             }
+            .flango-section-divider .divider-label {
+                font-size: 10.5px;
+                font-weight: 800;
+                letter-spacing: 0.09em;
+                text-transform: uppercase;
+                color: #9ca3af;
+                white-space: nowrap;
+            }
+
+            /* ── Responsive Grid ──────────────────────────── */
+            @media (max-width: 1024px) {
+                .flango-status-grid {
+                    grid-template-columns: 1fr;
+                }
+                .flango-status-card.card-c,
+                .flango-status-card.card-d {
+                    max-height: 300px;
+                }
+            }
+
+            /* ── No badges message ────────────────────────── */
+            .no-badges-message {
+                font-size: 12px;
+                color: #64748b;
+                text-align: center;
+                line-height: 1.55;
+                padding: 8px 4px;
+            }
+
+            /* ── Backward compat: logout accordion stats ── */
             .stats-grid {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
@@ -420,38 +655,53 @@ export async function setupAvatarPicker(options) {
                 text-align: center;
             }
             .stat-item {
-                background-color: var(--background-color-offset);
-                border-radius: 8px;
-                padding: 8px;
-                border: 1px solid var(--border-color);
+                background: rgba(255,255,255,0.65);
+                border-radius: 12px;
+                padding: 9px 6px 7px;
+                border: 1.5px solid rgba(255,255,255,0.9);
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
+                gap: 2px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.04);
             }
             .stat-value {
-                font-size: 1.5em;
-                font-weight: 700;
-                color: var(--primary-color);
-                line-height: 1.2;
+                font-family: 'Nunito', sans-serif;
+                font-size: 22px;
+                font-weight: 900;
+                line-height: 1;
+                color: #065f46;
             }
             .stat-label {
-                font-size: 0.8em;
-                color: var(--text-color-muted);
+                font-size: 9.5px;
+                font-weight: 700;
+                letter-spacing: 0.07em;
                 text-transform: uppercase;
+                color: #374151;
+                opacity: 0.45;
             }
             .product-summary-line {
-                font-size: 0.9em;
+                font-size: 12.5px;
                 display: grid;
-                grid-template-columns: 50px 25px 1fr auto;
-                gap: 8px;
+                grid-template-columns: 38px 20px 1fr auto;
+                gap: 6px;
                 align-items: center;
-                padding: 4px 0;
-                border-bottom: 1px solid var(--background-color-offset);
+                padding: 5px 2px;
+                border-bottom: 1px dashed rgba(0,0,0,0.07);
             }
+            .product-summary-line:last-child { border-bottom: none; }
             .product-summary-line .summary-price {
-                font-weight: 600;
+                font-weight: 700;
+                color: #374151;
                 text-align: right;
+            }
+
+            /* ── Logout status layout ─────────────────────── */
+            .logout-status-layout {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
             }
         `;
         document.head.appendChild(style);
@@ -467,19 +717,23 @@ export async function setupAvatarPicker(options) {
     window.__flangoOpenAvatarPicker = async () => {
         injectTimerStyles();
 
-        // Opdater modal-titlen til "Min Flango" og indsæt den valgte avatar
+        // Opdater modal-headeren med avatar-ring og titel
         const modalHeader = modal.querySelector('.modal-header');
         if (modalHeader) {
             const headerTitle = modalHeader.querySelector('h2');
             if (headerTitle) {
                 headerTitle.textContent = 'Min Flango';
             }
-            // Fjern eventuel gammel avatar og tilføj den nye
+            // Fjern eventuel gammel avatar-ring/avatar og tilføj ny ring
+            modalHeader.querySelector('.header-avatar-ring')?.remove();
             modalHeader.querySelector('.header-avatar')?.remove();
+            const ring = document.createElement('div');
+            ring.className = 'header-avatar-ring';
             const avatarImg = document.createElement('img');
             avatarImg.src = getCurrentAvatarSrc();
-            avatarImg.className = 'header-avatar';
-            modalHeader.prepend(avatarImg);
+            avatarImg.alt = 'Avatar';
+            ring.appendChild(avatarImg);
+            modalHeader.prepend(ring);
         }
 
         const remoteStatsRaw = await loadFlangoAdminStats();
@@ -623,7 +877,7 @@ export async function setupAvatarPicker(options) {
         updateSelectedAvatarUI();
 
         // Opdater også avataren i "Min Flango"-vinduets header med det samme.
-        const modalHeaderAvatar = modal.querySelector('.header-avatar');
+        const modalHeaderAvatar = modal.querySelector('.header-avatar-ring img') || modal.querySelector('.header-avatar');
         if (modalHeaderAvatar) {
             modalHeaderAvatar.src = avatarUrl;
         }

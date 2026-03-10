@@ -490,14 +490,22 @@ export function initShiftTimer(sessionBanner) {
     `;
     pillElement.addEventListener('click', openModal);
 
-    // Insert into session banner - BETWEEN clerk-note and adult-note
-    if (sessionBanner) {
+    // Insert pill into the appropriate location based on theme
+    const headerActions = document.querySelector('.sidebar-main-header .header-actions');
+    if (headerActions) {
+        // Klart theme: Insert into header-actions bar, before the avatar
+        const avatarBtn = headerActions.querySelector('#logged-in-user-avatar-container');
+        if (avatarBtn) {
+            headerActions.insertBefore(pillElement, avatarBtn);
+        } else {
+            headerActions.prepend(pillElement);
+        }
+    } else if (sessionBanner) {
+        // Other themes: Insert into session banner BETWEEN clerk-note and adult-note
         const adultNote = sessionBanner.querySelector('.adult-note');
         if (adultNote) {
-            // Insert BEFORE adult-note (so it's between clerk and adult)
             sessionBanner.insertBefore(pillElement, adultNote);
         } else {
-            // Fallback: append if no sticky notes
             sessionBanner.appendChild(pillElement);
         }
     }

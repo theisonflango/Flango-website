@@ -3,6 +3,7 @@ import {
     loadFlangoAdminStats,
     addWorkMinutesForToday,
     mergeRemoteStatsWithSession,
+    FLANGO_LEVEL_MESSAGES,
 } from './stats-store.js';
 import { getProductIconInfo } from './products-and-cart.js';
 
@@ -77,6 +78,7 @@ export {
     loadFlangoAdminStats,
     addWorkMinutesForToday,
     mergeRemoteStatsWithSession,
+    FLANGO_LEVEL_MESSAGES,
 };
 
 export const formatDurationWithSeconds = (totalSeconds) => {
@@ -222,6 +224,10 @@ export function getStatsAccordionSectionsHTML(statsData, options = {}, clerkProf
     };
 }
 
+// Helper: Find level-index baseret på currentLevel.hours-tærskel
+const LEVEL_HOURS_TO_INDEX = { 0: 0, 6: 1, 12: 2, 18: 3, 30: 4 };
+const getLevelIndex = (level) => LEVEL_HOURS_TO_INDEX[level?.hours] ?? 0;
+
 // 3) UI: Min Flango Status (stats + badges)
 export function getStatsSummaryHTML(statsData, options = {}, clerkProfile) {
     const {
@@ -229,7 +235,7 @@ export function getStatsSummaryHTML(statsData, options = {}, clerkProfile) {
         sessionMinutes = 0,
         totalMinutes = 0,
         totalHours = 0,
-        todayMinutes: todayMinutesFromStats = 0, // Omdøb for klarhed
+        todayMinutes: todayMinutesFromStats = 0,
         totalSales = 0,
         currentLevel,
         nextLevel,
@@ -254,7 +260,7 @@ export function getStatsSummaryHTML(statsData, options = {}, clerkProfile) {
 
     const fallbackTodayMinutes = sessionMinutes;
     const fallbackTotalMinutes = totalMinutes || (totalHours * 60);
-    const todayMinutes = Math.max(0, Math.round(todayMinutesFromStats)); // Brug den beregnede værdi direkte!
+    const todayMinutes = Math.max(0, Math.round(todayMinutesFromStats));
     const totalMinutesDisplay = Math.max(0, Math.round(cloneStats?.total?.minutes_worked ?? fallbackTotalMinutes));
     const todayCustomers = cloneStats?.today?.customers ?? 0;
     const totalCustomers = cloneStats?.total?.customers ?? totalSales;
@@ -286,98 +292,73 @@ export function getStatsSummaryHTML(statsData, options = {}, clerkProfile) {
             .replace(/>/g, '&gt;');
     };
 
-    const formatAmount = (value) => {
-        const num = typeof value === 'number' ? value : 0;
-        return num.toLocaleString('da-DK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' kr';
-    };
-
-    const productsToHTML = (items, emptyText, totalAmount) => {
+    const productsToHTML = (items, emptyText, amount) => {
         if (!Array.isArray(items) || items.length === 0) {
-            const showEmpty = !totalAmount || totalAmount <= 0;
-            return showEmpty ? `<p class="product-summary-line">${emptyText}</p>` : '';
+            const showEmpty = !amount || amount <= 0;
+            return showEmpty ? `<p class="empty-msg">${emptyText}</p>` : '';
         }
-        return items.map(entry => {
+        return `<div class="product-rows">${items.map(entry => {
             const qty = entry.quantity ?? entry.count ?? entry.amount ?? entry.qty ?? 0;
-            const label = escapeText(entry.product_name || entry.name || entry.title || entry.name || 'Ukendt vare');
-            
+            const label = escapeText(entry.product_name || entry.name || entry.title || 'Ukendt vare');
             const iconInfo = getProductIconInfo({ name: label, emoji: entry.emoji });
             let visualMarkup = '';
             if (iconInfo) {
-                visualMarkup = `<img src="${iconInfo.path}" alt="${label}" class="product-icon-small"> `;
+                visualMarkup = `<img src="${iconInfo.path}" alt="${label}" class="product-icon-small">`;
             } else if (entry.emoji) {
-                visualMarkup = `${entry.emoji} `;
+                visualMarkup = entry.emoji;
             }
-
-            const lineTotal = typeof entry.totalAmountForProduct === 'number'
-                ? entry.totalAmountForProduct
-                : 0;
-            return `<div class="product-summary-line">
-                        <span class="summary-qty">${qty} stk</span>
-                        <span class="summary-visual">${visualMarkup}</span>
-                        <span class="summary-name">${label}</span>
-                        <span class="summary-price">${formatAmount(lineTotal)}</span>
+            const lineTotal = typeof entry.totalAmountForProduct === 'number' ? entry.totalAmountForProduct : 0;
+            return `<div class="prow">
+                        <span class="pqty">${qty} stk</span>
+                        <span>${visualMarkup}</span>
+                        <span class="pname">${label}</span>
+                        <span class="pprice">${formatCurrency(lineTotal)}</span>
                     </div>`;
-        }).join('');
+        }).join('')}</div>`;
     };
 
     const isLogoutScreen = badgeDisplay === 'simple';
 
-    const todayStatsHTML = `
-        <div class="stats-section">
-            <h4>I dag har du:</h4>
-            <ul>
-                ${isLogoutScreen
-                    ? `<li>Arbejdet i caféen i ${formatDuration(todayMinutes)}</li>`
-                    : `<li class="duration-display-container">
-                           <span>Arbejdet i caféen i:</span>
-                           <div id="stats-duration-today" class="live-timer">${formatDurationToHTML(todayMinutes * 60)}</div>
-                       </li>`
-                }
-            </ul>
-            <div class="stats-grid">
-                <div class="stat-item"><span class="stat-value">${todayCustomers}</span><span class="stat-label">Kunder</span></div>
-                <div class="stat-item"><span class="stat-value">${todayItems}</span><span class="stat-label">Varer</span></div>
-                <div class="stat-item"><span class="stat-value">${formatCurrency(todayAmount)}</span><span class="stat-label">Omsat</span></div>
-            </div>
-            ${productsToHTML(todayProducts, 'Ingen varer registreret endnu i dag.', todayAmount)}
-        </div>`;
+    // ── Hr. Flango roterende besked ──
+    const levelIndex = getLevelIndex(currentLevel);
+    const msgs = FLANGO_LEVEL_MESSAGES[levelIndex] || FLANGO_LEVEL_MESSAGES[0];
+    const flangoDescription = msgs[Math.floor(Math.random() * msgs.length)];
 
-    const totalStatsHTML = `
-        <div class="stats-section">
-            <h4>Sammenlagt har du:</h4>
-            <ul>
-                <li>Arbejdet i caféen i ${formatDuration(totalMinutesDisplay)}</li>
-            </ul>
-            <div class="stats-grid">
-                <div class="stat-item"><span class="stat-value">${totalCustomers}</span><span class="stat-label">Kunder</span></div>
-                <div class="stat-item"><span class="stat-value">${totalItems}</span><span class="stat-label">Varer</span></div>
-                <div class="stat-item"><span class="stat-value">${formatCurrency(totalAmount)}</span><span class="stat-label">Omsat</span></div>
-            </div>
-            ${productsToHTML(totalProducts, 'Ingen samlede varedata endnu.', totalAmount)}
-        </div>`;
-
-    const progressHTML = nextLevel === currentLevel
-        ? `Du har nået det højeste niveau – stærkt gået! 🏆<br><br>`
-        : `Du mangler ca. <strong>${remainingHours}</strong> timer eller <strong>${remainingSales}</strong> salg
-           for at nå <strong>${nextLevel.name} ${nextLevel.stars}</strong>.<br><br>
-           <div style="margin-top:8px;">
-             <div style="width:100%;height:10px;background:#ddd;border-radius:999px;overflow:hidden;">
-               <div style="width:${progressPercent}%;height:100%;background:#4caf50;"></div>
-             </div>
-             <div style="font-size:12px;margin-top:4px;">
-               Fremskridt mod næste niveau: <strong>${progressPercent}%</strong>
-             </div>
+    // ── Card A: Status + Level ──
+    const isMaxLevel = nextLevel === currentLevel;
+    const progressHTML = isMaxLevel
+        ? ''
+        : `<div class="progress-wrap">
+              <div class="progress-row">
+                  <span class="progress-label">Næste: ${escapeText(nextLevel.name)} ${nextLevel.stars}</span>
+                  <span class="progress-pct">${progressPercent}%</span>
+              </div>
+              <div class="progress-track">
+                  <div class="progress-fill" style="width:${progressPercent}%"></div>
+              </div>
+              <span class="progress-hint">Ca. ${remainingHours} timer eller ${remainingSales} salg mere</span>
            </div>`;
 
+    const cardAHTML = `
+        <div class="flango-status-card card-a">
+            <span class="card-eyebrow">Dit niveau</span>
+            <div class="level-pill">
+                ${currentLevel.stars ? `<span class="level-pill-stars">${currentLevel.stars}</span>` : ''}
+                <span class="level-pill-name">${escapeText(currentLevel.name)}</span>
+            </div>
+            ${progressHTML}
+            <div class="speaker">
+                <img src="${DEFAULT_LEVEL_IMAGE}" alt="Hr. Flango" class="speaker-avatar">
+                <div class="speech-bubble">${flangoDescription}</div>
+            </div>
+        </div>`;
+
+    // ── Card B: Badges ──
     const getBadgesHTML = () => {
         if (badgeDisplay === 'simple') {
             const emptyMsg = profile?.role === 'admin'
-                ? `Du har desværre ingen badges endnu – men jeg er sikker på, at du fortjener et.<br>
-                   Selv voksne har brug for anerkendelse, men nogle gange glemmer vi at rose hinanden 😊<br>
-                   Bed en kollega om at tildele dig et badge – du kan nemlig ikke tildele et badge til dig selv.<br>
-                   Du kan tildele badges til andre brugere under: <strong>Indstillinger → Rediger Brugere</strong>.`
-                : `Du har desværre ikke fået nogle badges endnu.<br>
-                   Du kan spørge den voksne i caféen, om du har fortjent et badge 😊`;
+                ? 'Du har desværre ingen badges endnu – men jeg er sikker på, at du fortjener et.<br>Selv voksne har brug for anerkendelse, men nogle gange glemmer vi at rose hinanden 😊<br>Bed en kollega om at tildele dig et badge – du kan nemlig ikke tildele et badge til dig selv.<br>Du kan tildele badges til andre brugere under: <strong>Indstillinger → Rediger Brugere</strong>.'
+                : 'Du har desværre ikke fået nogle badges endnu.<br>Du kan spørge den voksne i caféen, om du har fortjent et badge 😊';
             return renderSimpleBadgeDisplay(badgeList, { emptyMessage: emptyMsg });
         }
         const encodedBadgeList = badgeList.map(b => encodeURIComponent(b)).join(',');
@@ -391,44 +372,69 @@ export function getStatsSummaryHTML(statsData, options = {}, clerkProfile) {
                    </div>`;
         }
         const emptyMsg = profile?.role === 'admin'
-            ? `Du har desværre ingen badges endnu – men jeg er sikker på, at du fortjener et.<br>
-               Selv voksne har brug for anerkendelse, men nogle gange glemmer vi at rose hinanden 😊<br>
-               Bed en kollega om at tildele dig et badge – du kan nemlig ikke tildele et badge til dig selv.<br>
-               Du kan tildele badges til andre brugere under: <strong>Indstillinger → Rediger Brugere</strong>.`
-            : `Du har desværre ikke fået nogle badges endnu.<br>
-               Du kan spørge den voksne i caféen, om du har fortjent et badge 😊`;
+            ? 'Du har desværre ingen badges endnu – men jeg er sikker på, at du fortjener et.<br>Selv voksne har brug for anerkendelse, men nogle gange glemmer vi at rose hinanden 😊<br>Bed en kollega om at tildele dig et badge – du kan nemlig ikke tildele et badge til dig selv.<br>Du kan tildele badges til andre brugere under: <strong>Indstillinger → Rediger Brugere</strong>.'
+            : 'Du har desværre ikke fået nogle badges endnu.<br>Du kan spørge den voksne i caféen, om du har fortjent et badge 😊';
         return `<p class="no-badges-message">${emptyMsg}</p>`;
     };
+
+    const cardBHTML = `
+        <div class="flango-status-card card-b">
+            <span class="card-eyebrow">Mine Badges</span>
+            <div class="badge-panel">
+              ${getBadgesHTML()}
+            </div>
+        </div>`;
+
+    // ── Card C: I dag ──
+    const timerHTML = isLogoutScreen
+        ? `<div class="timer-box">
+              <div class="tseg"><span class="tval">${String(Math.floor(todayMinutes / 60)).padStart(2, '0')}</span><span class="tlbl">timer</span></div>
+              <span class="tcolon">:</span>
+              <div class="tseg"><span class="tval">${String(todayMinutes % 60).padStart(2, '0')}</span><span class="tlbl">min</span></div>
+              <span class="tcolon">:</span>
+              <div class="tseg"><span class="tval">00</span><span class="tlbl">sek</span></div>
+           </div>`
+        : `<div id="stats-duration-today" class="timer-box">
+              <div class="tseg"><span class="tval" data-unit="h">${String(Math.floor((todayMinutes * 60) / 3600)).padStart(2, '0')}</span><span class="tlbl">timer</span></div>
+              <span class="tcolon">:</span>
+              <div class="tseg"><span class="tval" data-unit="m">${String(Math.floor(((todayMinutes * 60) % 3600) / 60)).padStart(2, '0')}</span><span class="tlbl">min</span></div>
+              <span class="tcolon">:</span>
+              <div class="tseg"><span class="tval" data-unit="s">00</span><span class="tlbl">sek</span></div>
+           </div>`;
+
+    const cardCHTML = `
+        <div class="flango-status-card card-c">
+            <span class="card-eyebrow">I dag</span>
+            ${timerHTML}
+            <div class="chips">
+                <div class="chip"><span class="chip-val">${todayCustomers}</span><span class="chip-lbl">Kunder</span></div>
+                <div class="chip"><span class="chip-val">${todayItems}</span><span class="chip-lbl">Varer</span></div>
+                <div class="chip"><span class="chip-val kr">${formatCurrency(todayAmount)}</span><span class="chip-lbl">Omsat</span></div>
+            </div>
+            ${productsToHTML(todayProducts, 'Ingen varer registreret endnu i dag.', todayAmount)}
+        </div>`;
+
+    // ── Card D: Sammenlagt ──
+    const cardDHTML = `
+        <div class="flango-status-card card-d">
+            <span class="card-eyebrow">Sammenlagt</span>
+            <div class="hours-pill">🕐 ${formatDuration(totalMinutesDisplay)} i caféen</div>
+            <div class="chips">
+                <div class="chip"><span class="chip-val">${totalCustomers}</span><span class="chip-lbl">Kunder</span></div>
+                <div class="chip"><span class="chip-val">${totalItems}</span><span class="chip-lbl">Varer</span></div>
+                <div class="chip"><span class="chip-val kr">${formatCurrency(totalAmount)}</span><span class="chip-lbl">Omsat</span></div>
+            </div>
+            ${productsToHTML(totalProducts, 'Ingen samlede varedata endnu.', totalAmount)}
+        </div>`;
 
     const isLogoutLayout = badgeDisplay === 'simple';
     const rootLayoutClass = isLogoutLayout ? 'logout-status-layout' : 'flango-status-grid';
     return `
       <div class="${rootLayoutClass}">
-        <div class="flango-status-card card-a">
-            <div class="status-header-section vertical">
-              <div class="status-header-text">
-                <h4>Din nuværende status</h4>
-                <p><strong>${currentLevel.name} ${currentLevel.stars}</strong></p>
-                ${currentLevel.description ? `<p class="status-level-description">${currentLevel.description}</p>` : ''}
-                <div class="status-progress-container">
-                  ${progressHTML}
-                </div>
-              </div>
-              <img src="${DEFAULT_LEVEL_IMAGE}" alt="Hr. Flango" class="status-avatar hr-flango">
-            </div>
-        </div>
-        <div class="flango-status-card card-b">
-            <div class="badge-panel">
-              <h3>Mine Badges</h3>
-              ${getBadgesHTML()}
-            </div>
-        </div>
-        <div class="flango-status-card card-c scrollable">
-            ${todayStatsHTML}
-        </div>
-        <div class="flango-status-card card-d scrollable">
-            ${totalStatsHTML}
-        </div>
+        ${cardAHTML}
+        ${cardBHTML}
+        ${cardCHTML}
+        ${cardDHTML}
       </div>
     `;
 }

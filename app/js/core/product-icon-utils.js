@@ -81,7 +81,7 @@ export function getStandardIconPath(product) {
 }
 
 /**
- * Process image file: resize to 256x256, convert to WebP, compress
+ * Process image file: resize to 512x512, convert to WebP, compress
  * @param {File} file - Original image file
  * @returns {Promise<Blob>} Processed WebP blob
  */
@@ -97,11 +97,11 @@ export async function processImageForUpload(file) {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
 
-                    const TARGET_SIZE = 256;
+                    const TARGET_SIZE = 512;
                     canvas.width = TARGET_SIZE;
                     canvas.height = TARGET_SIZE;
 
-                    // Calculate crop to cover 256x256 (center crop)
+                    // Calculate crop to cover 512x512 (center crop)
                     const sourceAspect = img.width / img.height;
                     let sx = 0, sy = 0, sWidth = img.width, sHeight = img.height;
 
@@ -258,6 +258,129 @@ export async function removeProductIcon(productId) {
             success: false,
             error: error.message || 'Kunne ikke fjerne ikon',
         };
+    }
+}
+
+/**
+ * Fetch icon library for the current institution (both uploaded + AI-generated)
+ * @param {string} institutionId - Institution UUID
+ * @returns {Promise<Array<{id: string, name: string, icon_url: string, source: string, created_at: string}>>}
+ */
+export async function fetchInstitutionIconLibrary(institutionId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('institution_icons')
+            .select('id, name, icon_url, source, created_at')
+            .eq('institution_id', institutionId)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('[fetchInstitutionIconLibrary] Error:', error);
+            return [];
+        }
+
+        return data || [];
+    } catch (err) {
+        console.error('[fetchInstitutionIconLibrary] Error:', err);
+        return [];
+    }
+}
+
+/**
+ * Fetch shared icons from other institutions (where icon_sharing_enabled = true)
+ * @param {string} currentInstitutionId - Current institution UUID (to exclude own icons)
+ * @returns {Promise<Array<{id: string, name: string, icon_url: string, source: string, institution_id: string, created_at: string}>>}
+ */
+export async function fetchSharedIconLibrary(currentInstitutionId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('institution_icons')
+            .select('id, name, icon_url, source, institution_id, created_at')
+            .neq('institution_id', currentInstitutionId)
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        if (error) {
+            console.error('[fetchSharedIconLibrary] Error:', error);
+            return [];
+        }
+
+        // RLS policy ensures only icons from institutions with icon_sharing_enabled=true are returned
+        return data || [];
+    } catch (err) {
+        console.error('[fetchSharedIconLibrary] Error:', err);
+        return [];
+    }
+}
+
+/**
+ * Get icon count for an institution
+ * @param {string} institutionId - Institution UUID
+ * @returns {Promise<number>}
+ */
+export async function getInstitutionIconCount(institutionId) {
+    try {
+        const { data, error } = await supabaseClient
+            .rpc('get_institution_icon_count', { p_institution_id: institutionId });
+
+        if (error) {
+            console.error('[getInstitutionIconCount] Error:', error);
+            return 0;
+        }
+
+        return data || 0;
+    } catch (err) {
+        console.error('[getInstitutionIconCount] Error:', err);
+        return 0;
+    }
+}
+
+/**
+ * Delete an icon from institution library
+ * @param {string} iconId - Icon UUID
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function deleteInstitutionIcon(iconId) {
+    try {
+        const { error } = await supabaseClient
+            .from('institution_icons')
+            .delete()
+            .eq('id', iconId);
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        console.log('[deleteInstitutionIcon] Deleted icon:', iconId);
+        return { success: true };
+    } catch (err) {
+        console.error('[deleteInstitutionIcon] Error:', err);
+        return { success: false, error: err.message || 'Kunne ikke slette ikon' };
+    }
+}
+
+/**
+ * Fetch institution icon sharing settings
+ * @param {string} institutionId - Institution UUID
+ * @returns {Promise<{icon_sharing_enabled: boolean, icon_use_shared_enabled: boolean, icon_limit: number}>}
+ */
+export async function fetchIconSharingSettings(institutionId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('institutions')
+            .select('icon_sharing_enabled, icon_use_shared_enabled, icon_limit')
+            .eq('id', institutionId)
+            .single();
+
+        if (error) {
+            console.error('[fetchIconSharingSettings] Error:', error);
+            return { icon_sharing_enabled: false, icon_use_shared_enabled: false, icon_limit: 50 };
+        }
+
+        return data;
+    } catch (err) {
+        console.error('[fetchIconSharingSettings] Error:', err);
+        return { icon_sharing_enabled: false, icon_use_shared_enabled: false, icon_limit: 50 };
     }
 }
 

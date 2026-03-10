@@ -66,6 +66,119 @@ export async function refetchAllUsers() {
     return data;
 }
 
+const REFRESH_BALANCES_THROTTLE_MS = 2 * 60 * 1000; // 2 min
+let lastRefreshBalancesAt = 0;
+
+/**
+ * Refresh only id+balance for all users in current institution (lightweight fallback for realtime).
+ * Throttled: max 1 call per REFRESH_BALANCES_THROTTLE_MS.
+ * @returns {Promise<boolean>} true if ran, false if skipped (throttle) or error
+ */
+export async function refreshBalances() {
+    const now = Date.now();
+    if (now - lastRefreshBalancesAt < REFRESH_BALANCES_THROTTLE_MS) {
+        console.log('[data-refetch] refreshBalances throttled');
+        return false;
+    }
+    lastRefreshBalancesAt = now;
+    const adminProfile = window.__flangoCurrentAdminProfile;
+    const institutionId = adminProfile?.institution_id;
+    if (!institutionId) {
+        console.warn('[data-refetch] refreshBalances: No institution ID');
+        return false;
+    }
+    const result = await safeDbCall(
+        'refreshBalances',
+        () => runWithAuthRetry('refreshBalances', () => supabaseClient
+            .from('users')
+            .select('id, balance')
+            .eq('institution_id', institutionId)),
+        { retry: 1, critical: false }
+    );
+    if (!result.ok) {
+        console.warn('[data-refetch] refreshBalances error:', result.error);
+        return false;
+    }
+    const rows = result.data || [];
+    const setAllUsers = window.__flangoSetAllUsers;
+    if (typeof setAllUsers !== 'function') return true;
+    const allUsers = window.__flangoAllUsers;
+    if (!Array.isArray(allUsers)) return true;
+    let changed = false;
+    const next = allUsers.map((u) => {
+        const row = rows.find((r) => r.id === u.id);
+        if (!row || row.balance === u.balance) return u;
+        changed = true;
+        return { ...u, balance: row.balance };
+    });
+    if (changed) {
+        setAllUsers(next);
+        console.log('[data-refetch] refreshBalances merged', rows.length, 'rows');
+    }
+    return true;
+}
+
+const REFRESH_PRODUCTS_THROTTLE_MS = 2 * 60 * 1000; // 2 min
+let lastRefreshProductsAt = 0;
+
+/**
+ * Refresh products + daily assortment (throttled fallback for realtime).
+ * Max 1 call per REFRESH_PRODUCTS_THROTTLE_MS.
+ * @returns {Promise<Array|null>}
+ */
+export async function refreshProductsAndAssortment() {
+    const now = Date.now();
+    if (now - lastRefreshProductsAt < REFRESH_PRODUCTS_THROTTLE_MS) {
+        console.log('[data-refetch] refreshProductsAndAssortment throttled');
+        return null;
+    }
+    lastRefreshProductsAt = now;
+    return refetchAllProducts();
+}
+
+/**
+ * Merge one product into in-memory cache (realtime INSERT/UPDATE).
+ * Does not refetch; triggers UI re-render via window.__flangoRenderProductsFromCache.
+ * @param {Object} product - Full product row
+ */
+export function mergeProductIntoCache(product) {
+    if (!product || product.id == null) return;
+    const getter = window.__flangoGetAllProducts;
+    const setter = window.__flangoSetAllProducts;
+    if (typeof getter !== 'function' || typeof setter !== 'function') return;
+    const list = getter() || [];
+    const id = String(product.id);
+    const idx = list.findIndex((p) => String(p?.id) === id);
+    const next = idx >= 0
+        ? list.map((p, i) => (i === idx ? { ...p, ...product } : p))
+        : [...list, { ...product }];
+    setter(next);
+    console.log('[data-refetch] mergeProductIntoCache', id, idx >= 0 ? 'UPDATE' : 'INSERT');
+    if (typeof window.__flangoRenderProductsFromCache === 'function') {
+        window.__flangoRenderProductsFromCache().catch((err) => console.warn('[data-refetch] render after merge:', err));
+    }
+}
+
+/**
+ * Remove one product from in-memory cache (realtime DELETE).
+ * @param {string} productId
+ */
+export function removeProductFromCache(productId) {
+    if (!productId) return;
+    const getter = window.__flangoGetAllProducts;
+    const setter = window.__flangoSetAllProducts;
+    if (typeof getter !== 'function' || typeof setter !== 'function') return;
+    const list = getter() || [];
+    const id = String(productId);
+    const next = list.filter((p) => String(p?.id) !== id);
+    if (next.length === list.length) return;
+    setter(next);
+    console.log('[data-refetch] removeProductFromCache', id);
+    if (typeof window.__flangoRenderProductsFromCache === 'function') {
+        window.__flangoRenderProductsFromCache().catch((err) => console.warn('[data-refetch] render after remove:', err));
+    }
+}
+
 /**
  * Refetch all products for current institution from database
  * Updates allProducts cache via window.__flangoSetAllProducts

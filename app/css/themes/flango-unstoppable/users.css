@@ -27,7 +27,7 @@
 /* Sticky note base style for both notes - horizontal layout */
 .session-sticky-note {
     flex: 1;
-    max-width: 160px;
+    max-width: 210px;
     padding: 16px 12px 10px 12px;
     border-radius: 3px;
     position: relative;
@@ -116,7 +116,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 90px;
+    max-width: 120px;
 }
 
 /* ============================================================
@@ -162,12 +162,13 @@
     border-radius: 4px;
     margin-bottom: clamp(14px, 2.5vw, 20px);
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: auto 1fr auto;
     gap: 10px;
     text-align: center;
     position: relative;
     z-index: 10;
     transform: rotate(1.5deg);
+    overflow: visible;
     box-shadow:
         2px 3px 10px rgba(0, 0, 0, 0.12),
         inset 0 0 20px rgba(0, 0, 0, 0.02);

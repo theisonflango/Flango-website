@@ -4,6 +4,7 @@
 import { supabaseClient } from '../core/config-and-supabase.js';
 import { checkClassMatch, registerUserForEvent, formatEventDate, formatTime } from './event-management.js';
 import { updateInstitutionCache } from './institution-store.js';
+import { getCurrentSessionAdmin } from './session-store.js';
 
 // ============================================================================
 // In-memory cache: childId → { events, fetchedAt }
@@ -13,10 +14,10 @@ const cafeEventsCache = new Map();
 /**
  * Henter café event display settings fra institutions-tabellen.
  * @param {string} institutionId
- * @returns {Promise<{ cafe_events_enabled: boolean, cafe_events_days_ahead: number }>}
+ * @returns {Promise<{ cafe_events_enabled: boolean, cafe_events_days_ahead: number, cafe_events_as_products: boolean }>}
  */
 export async function getCafeEventSettings(institutionId) {
-    if (!institutionId) return { cafe_events_enabled: false, cafe_events_days_ahead: 14 };
+    if (!institutionId) return { cafe_events_enabled: false, cafe_events_days_ahead: 14, cafe_events_as_products: false };
 
     // Tjek window cache først
     const cached = typeof window !== 'undefined' && typeof window.__flangoGetInstitutionById === 'function'
@@ -27,29 +28,32 @@ export async function getCafeEventSettings(institutionId) {
         return {
             cafe_events_enabled: cached.cafe_events_enabled === true,
             cafe_events_days_ahead: cached.cafe_events_days_ahead ?? 14,
+            cafe_events_as_products: cached.cafe_events_as_products === true,
         };
     }
 
     // Fallback: hent fra DB
     const { data, error } = await supabaseClient
         .from('institutions')
-        .select('cafe_events_enabled, cafe_events_days_ahead')
+        .select('cafe_events_enabled, cafe_events_days_ahead, cafe_events_as_products')
         .eq('id', institutionId)
         .single();
 
     if (error || !data) {
-        return { cafe_events_enabled: false, cafe_events_days_ahead: 14 };
+        return { cafe_events_enabled: false, cafe_events_days_ahead: 14, cafe_events_as_products: false };
     }
 
     // Opdater cache
     updateInstitutionCache(institutionId, {
         cafe_events_enabled: data.cafe_events_enabled,
         cafe_events_days_ahead: data.cafe_events_days_ahead,
+        cafe_events_as_products: data.cafe_events_as_products,
     });
 
     return {
         cafe_events_enabled: data.cafe_events_enabled === true,
         cafe_events_days_ahead: data.cafe_events_days_ahead ?? 14,
+        cafe_events_as_products: data.cafe_events_as_products === true,
     };
 }
 
@@ -62,6 +66,7 @@ export async function saveCafeEventSettings(institutionId, settings) {
         .update({
             cafe_events_enabled: settings.cafe_events_enabled,
             cafe_events_days_ahead: settings.cafe_events_days_ahead,
+            cafe_events_as_products: settings.cafe_events_as_products,
         })
         .eq('id', institutionId);
 
@@ -69,6 +74,7 @@ export async function saveCafeEventSettings(institutionId, settings) {
         updateInstitutionCache(institutionId, {
             cafe_events_enabled: settings.cafe_events_enabled,
             cafe_events_days_ahead: settings.cafe_events_days_ahead,
+            cafe_events_as_products: settings.cafe_events_as_products,
         });
     }
 
@@ -207,9 +213,11 @@ export async function cafeRegisterForEvent(eventId, childId, payNow = false) {
 
     if (payNow && registrationId) {
         // Trin 2: Betal med saldo
+        const sessionAdmin = getCurrentSessionAdmin?.();
         const { data: payData, error: payError } = await supabaseClient.rpc('pay_event_registration', {
             p_registration_id: registrationId,
             p_payment_type: 'balance',
+            p_admin_id: sessionAdmin?.id || null,
         });
 
         if (payError) {
@@ -252,9 +260,11 @@ export async function cafeRegisterForEvent(eventId, childId, payNow = false) {
  * @returns {Promise<{ success: boolean, payment_status: string, new_balance?: number, error?: string }>}
  */
 export async function cafePayExistingRegistration(registrationId) {
+    const sessionAdmin = getCurrentSessionAdmin?.();
     const { data: payData, error: payError } = await supabaseClient.rpc('pay_event_registration', {
         p_registration_id: registrationId,
         p_payment_type: 'balance',
+        p_admin_id: sessionAdmin?.id || null,
     });
 
     if (payError) {

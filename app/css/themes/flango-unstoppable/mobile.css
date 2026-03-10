@@ -30,6 +30,17 @@
         padding: 15px !important;
     }
 
+    /* 1 produkt → centreret, begrænset størrelse */
+    #products:has(> .product-btn:first-child:last-child) {
+        grid-template-columns: 1fr !important;
+        justify-items: center !important;
+    }
+
+    #products:has(> .product-btn:first-child:last-child) > .product-btn {
+        max-width: calc((100% - 12px) / 2) !important;
+        width: 100% !important;
+    }
+
     #products:has(> .product-btn:nth-child(2):last-child),
     #products:has(> .product-btn:nth-child(3):last-child),
     #products:has(> .product-btn:nth-child(4):last-child),
@@ -131,10 +142,10 @@
     }
 
     .header-action-btn {
-        width: 32px !important;
-        height: 32px !important;
-        min-width: 32px !important;
-        min-height: 32px !important;
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+        min-height: 40px !important;
         padding: 4px !important;
         flex-shrink: 0 !important;
         background: rgba(255, 255, 255, 0.15) !important;
@@ -143,8 +154,8 @@
     }
 
     .header-action-btn img {
-        width: 24px !important;
-        height: 24px !important;
+        width: 30px !important;
+        height: 30px !important;
         filter: brightness(0) invert(1) !important;
     }
 

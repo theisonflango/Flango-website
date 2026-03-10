@@ -212,7 +212,9 @@ export function setupEventAdminModule(config) {
             const capacityText = event.capacity ? `${event._registeredCount}/${event.capacity}` : `${event._registeredCount}`;
             const priceText = parseFloat(event.price) > 0 ? `${parseFloat(event.price).toFixed(2)} kr.` : 'Gratis';
 
-            const today = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const nowTime = now.toTimeString().substring(0, 5);
             let statusClass = 'upcoming';
             let statusLabel = 'Kommende';
             if (event.status === 'cancelled') {
@@ -221,6 +223,12 @@ export function setupEventAdminModule(config) {
             } else if (event.event_date < today || event.status === 'archived') {
                 statusClass = 'past';
                 statusLabel = 'Afsluttet';
+            } else if (event.event_date === today) {
+                const endOrStart = event.end_time ? event.end_time.substring(0, 5) : event.start_time ? event.start_time.substring(0, 5) : null;
+                if (endOrStart && endOrStart <= nowTime) {
+                    statusClass = 'past';
+                    statusLabel = 'Afsluttet';
+                }
             }
 
             item.innerHTML = `
@@ -681,13 +689,14 @@ export function setupEventAdminModule(config) {
 
         // Register
         const result = await registerUserForEvent(eventId, selectedUser.id, adminOverride);
-        if (!result.success) {
-            showAlert(result.error || 'Kunne ikke tilmelde bruger.');
+        console.log('[event-admin] registerUserForEvent result:', result);
+        if (!result || !result.success) {
+            showAlert(result?.error || 'Kunne ikke tilmelde bruger.');
             return;
         }
 
+        await openEventDetail(eventId); // Refresh listen FØRST — så brugeren ser den nye tilmelding
         showCustomAlert('Tilmeldt', `${selectedUser.name} er tilmeldt!`);
-        openEventDetail(eventId); // Refresh
     }
 
     // ========================================================================

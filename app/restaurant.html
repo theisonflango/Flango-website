@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <title>Flango Køkkenskærm</title>
+    <link rel="icon" type="image/png" href="Icons/webp/Assets/FlangoFruitLogo.webp">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/restaurant.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Login screen -->
+    <div id="kitchen-login" class="kitchen-screen"></div>
+
+    <!-- Guard screen (restaurant mode disabled) -->
+    <div id="kitchen-guard" class="kitchen-screen" style="display:none;"></div>
+
+    <!-- Main kitchen app -->
+    <div id="kitchen-app" class="kitchen-app" style="display:none;">
+        <!-- Header -->
+        <header class="kitchen-header">
+            <div class="kitchen-header-left">
+                <span class="kitchen-logo">🍽️</span>
+                <span class="kitchen-title">Køkkenskærm</span>
+                <span class="kitchen-divider">·</span>
+                <span id="kitchen-institution-name" class="kitchen-inst-name"></span>
+            </div>
+            <div class="kitchen-header-center">
+                <div class="kitchen-stat-group">
+                    <div class="kitchen-stat kitchen-stat-active">
+                        <span id="kitchen-order-count" class="kitchen-stat-number">0</span>
+                        <span class="kitchen-stat-label">aktive</span>
+                    </div>
+                    <div class="kitchen-stat kitchen-stat-total">
+                        <span id="kitchen-total-orders" class="kitchen-stat-number">0</span>
+                        <span class="kitchen-stat-label">i dag</span>
+                    </div>
+                    <div class="kitchen-stat kitchen-stat-revenue">
+                        <span id="kitchen-daily-revenue" class="kitchen-stat-number">0 kr</span>
+                        <span class="kitchen-stat-label">omsætning</span>
+                    </div>
+                </div>
+            </div>
+            <div class="kitchen-header-right">
+                <button id="kitchen-settings-btn" class="kitchen-ctrl-btn" title="Lydindstillinger">⚙️</button>
+                <button id="kitchen-sound-btn" class="kitchen-ctrl-btn" title="Lyd">🔊</button>
+                <button id="kitchen-fullscreen-btn" class="kitchen-ctrl-btn" title="Fuld skærm">⛶</button>
+                <button id="kitchen-served-toggle" class="kitchen-ctrl-btn" title="Serveret: bund">⬇ Bund</button>
+                <button id="kitchen-logout-btn" class="kitchen-ctrl-btn kitchen-ctrl-logout" title="Log ud">Log ud</button>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="kitchen-content layout-bottom">
+            <div id="kitchen-active-zone" class="kitchen-zone kitchen-zone-active">
+                <div class="kitchen-zone-header">
+                    <h2>Aktive ordrer</h2>
+                </div>
+                <div id="kitchen-active-orders" class="kitchen-orders-container"></div>
+            </div>
+
+            <div id="kitchen-served-zone" class="kitchen-zone kitchen-zone-served">
+                <div class="kitchen-zone-header">
+                    <h2>Serveret</h2>
+                </div>
+                <div id="kitchen-served-orders" class="kitchen-orders-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DB instrumentation stub (required by config-and-supabase.js) -->
+    <script type="module">
+        if (!window.__dbInstrumentStub) {
+            window.__dbInstrumentStub = true;
+        }
+    </script>
+    <script type="module" src="js/restaurant/kitchen-view.js"></script>
+</body>
+</html>

@@ -22,41 +22,78 @@ export async function fetchInstitutions(forceRefresh = false) {
         return institutionsCache;
     }
 
-    try {
+    const doFetch = async (retryCount = 0) => {
         // VIGTIGT SIKKERHED:
         // - login_code må ikke hentes til klienten.
         // - For "klub login" (ingen auth session) henter vi kun id/name/is_active.
         // - Efter admin-login (auth session) henter vi institutions settings (stadig uden login_code).
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        const isAuthed = !!session;
+        let isAuthed = false;
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            isAuthed = !!session;
+        } catch (sessionErr) {
+            // Hvis getSession fejler med AbortError, prøv igen efter kort pause
+            const isAbort = sessionErr?.name === 'AbortError' || (sessionErr?.message || '').includes('aborted');
+            if (isAbort && retryCount < 2) {
+                console.warn(`[institution-store] getSession AbortError, retry ${retryCount + 1}/2...`);
+                await new Promise(r => setTimeout(r, 300 * (retryCount + 1)));
+                return doFetch(retryCount + 1);
+            }
+            // Fallback: antag ikke-authed og fortsæt med minimal query
+            console.warn('[institution-store] getSession fejlede, fortsætter som anon:', sessionErr?.message);
+            isAuthed = false;
+        }
 
-        const { data, error } = await supabaseClient
-            .from('institutions')
-            .select(isAuthed ? `
-                id, name, is_active,
-                sugar_policy_enabled, sugar_policy_max_unhealthy_per_day,
-                sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled,
-                sugar_policy_max_per_product_enabled,
-                balance_limit_enabled, balance_limit_amount,
-                balance_limit_exempt_admins, balance_limit_exempt_test_users,
-                spending_limit_enabled, spending_limit_amount,
-                spending_limit_applies_to_regular_users, spending_limit_applies_to_admins,
-                spending_limit_applies_to_test_users,
-                show_admins_in_user_list, admins_purchase_free, shift_timer_enabled
-            ` : `
-                id, name, is_active
-            `)
-            .order('name');
+        // For anon (login-flow): brug RPC der filtrerer på institution_apps (kun café-aktiverede)
+        // For authed (efter admin-login): hent fuld settings for valgt institution
+        let data, error;
+        if (isAuthed) {
+            ({ data, error } = await supabaseClient
+                .from('institutions')
+                .select(`
+                    id, name, is_active,
+                    sugar_policy_enabled, sugar_policy_max_unhealthy_per_day,
+                    sugar_policy_max_per_product_per_day, sugar_policy_max_unhealthy_enabled,
+                    sugar_policy_max_per_product_enabled,
+                    balance_limit_enabled, balance_limit_amount,
+                    balance_limit_exempt_admins, balance_limit_exempt_test_users,
+                    spending_limit_enabled, spending_limit_amount,
+                    spending_limit_applies_to_regular_users, spending_limit_applies_to_admins,
+                    spending_limit_applies_to_test_users,
+                    show_admins_in_user_list, admins_purchase_free, shift_timer_enabled,
+                    restaurant_mode_enabled, restaurant_table_numbers_enabled, restaurant_sound
+                `)
+                .order('name'));
+        } else {
+            ({ data, error } = await supabaseClient
+                .rpc('get_institutions_for_app', { p_app_name: 'cafe' }));
+        }
+
         if (error) {
+            // Hvis query fejler med AbortError, prøv igen
+            const isAbort = error?.name === 'AbortError' || (error?.message || '').includes('aborted');
+            if (isAbort && retryCount < 2) {
+                console.warn(`[institution-store] Query AbortError, retry ${retryCount + 1}/2...`);
+                await new Promise(r => setTimeout(r, 300 * (retryCount + 1)));
+                return doFetch(retryCount + 1);
+            }
             console.error('[institution-store] Supabase fejl:', error);
             throw error;
         }
-        const result = data || [];
+        return data ?? [];
+    };
+
+    try {
+        const result = await doFetch();
         institutionsCache = result;
         console.log(`[institution-store] Hentet ${result.length} institutioner`);
         return result;
     } catch (err) {
-        console.error('[institution-store] Kunne ikke hente institutioner:', err);
+        const isAbort = err?.name === 'AbortError' || (err?.message || '').includes('aborted');
+        console.error('[institution-store] Kunne ikke hente institutioner:', err?.message || err);
+        if (isAbort) {
+            console.warn('[institution-store] AbortError – har du flere faner med Flango/forældreportal åbne? Luk andre faner og prøv igen.');
+        }
         console.error('[institution-store] Fejl detaljer:', {
             message: err?.message,
             code: err?.code,

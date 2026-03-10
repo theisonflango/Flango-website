@@ -76,11 +76,19 @@ function renderProgressBar(registered, capacity) {
 // Render
 // ============================================================================
 
-function renderStrip(events, container) {
-    container.innerHTML = '';
+function renderStrip(events, container, asProducts) {
+    // Fjern evt. tidligere tilføjede events fra produkterne
+    const productsGrid = document.getElementById('products');
+    if (productsGrid) {
+        productsGrid.querySelectorAll('.cafe-event-card').forEach(el => el.remove());
+    }
+
+    if (!asProducts) {
+        container.innerHTML = '';
+    }
 
     if (!events || events.length === 0) {
-        hideStrip();
+        hideStrip(asProducts);
         return;
     }
 
@@ -88,7 +96,7 @@ function renderStrip(events, container) {
 
     events.forEach(event => {
         const card = document.createElement('div');
-        card.className = 'cafe-event-card';
+        card.className = asProducts ? 'cafe-event-card product-btn' : 'cafe-event-card';
         card.dataset.eventId = event.id;
 
         // States
@@ -140,26 +148,43 @@ function renderStrip(events, container) {
         fragment.appendChild(card);
     });
 
-    container.appendChild(fragment);
-    showStrip();
+    if (asProducts && productsGrid) {
+        productsGrid.appendChild(fragment);
+        showStrip(true);
+    } else {
+        container.appendChild(fragment);
+        showStrip(false);
+    }
 }
 
-function showStrip() {
+function showStrip(asProducts) {
     const strip = document.getElementById('cafe-event-strip');
     const productsArea = document.getElementById('products-area');
-    if (strip) strip.classList.add('visible');
-    if (productsArea) productsArea.classList.add('event-strip-active');
+    if (asProducts) {
+        if (strip) strip.classList.remove('visible');
+        if (productsArea) productsArea.classList.remove('event-strip-active');
+    } else {
+        if (strip) strip.classList.add('visible');
+        if (productsArea) productsArea.classList.add('event-strip-active');
+    }
     stripVisible = true;
 }
 
-function hideStrip() {
+function hideStrip(asProducts) {
     const strip = document.getElementById('cafe-event-strip');
     const productsArea = document.getElementById('products-area');
     if (strip) {
         strip.classList.remove('visible');
-        strip.innerHTML = '';
+        if (!asProducts) strip.innerHTML = '';
     }
     if (productsArea) productsArea.classList.remove('event-strip-active');
+    
+    // Fjern evt. tidligere tilføjede events fra produkterne
+    const productsGrid = document.getElementById('products');
+    if (productsGrid) {
+        productsGrid.querySelectorAll('.cafe-event-card').forEach(el => el.remove());
+    }
+    
     stripVisible = false;
 }
 
@@ -314,9 +339,9 @@ export function initCafeEventStrip(config = {}) {
     onEventAddedToCart = config.onEventAddedToCart || null;
     onEventRegistered = config.onEventRegistered || null;
 
-    const strip = document.getElementById('cafe-event-strip');
-    if (strip) {
-        strip.addEventListener('click', handleEventCardClick);
+    const stripArea = document.getElementById('products-area');
+    if (stripArea) {
+        stripArea.addEventListener('click', handleEventCardClick);
     }
 }
 
@@ -363,7 +388,7 @@ export async function refreshCafeEventStrip({ institutionId, childId, childGrade
     }
 
     currentEvents = events;
-    renderStrip(events, strip);
+    renderStrip(events, strip, settings.cafe_events_as_products);
 }
 
 /**

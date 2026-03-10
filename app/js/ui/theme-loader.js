@@ -1,6 +1,6 @@
 // js/ui/theme-loader.js
-// Theme Pack Loader for Flango Unstoppable
-// Swaps between default CSS and Unstoppable theme-pack CSS files
+// Theme Pack Loader for Flango
+// Swaps between default CSS and theme-pack CSS files (Unstoppable, Klart)
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 
@@ -12,16 +12,17 @@ const THEME_CSS_FILES = [
     'products.css',
     'users.css',
     'features.css',
+    'calculator.css',
 ];
 
 // Mobile CSS is separate
 const MOBILE_CSS_FILE = 'mobile.css';
 
 // Themes that use a complete theme-pack (CSS file replacement)
-const THEME_PACK_THEMES = ['flango-unstoppable'];
+const THEME_PACK_THEMES = ['flango-unstoppable', 'klart', 'aurora'];
 
 // All valid themes
-const ALL_VALID_THEMES = ['flango-unstoppable'];
+const ALL_VALID_THEMES = ['flango-unstoppable', 'klart', 'aurora'];
 
 /**
  * Check if a theme uses a theme-pack (complete CSS replacement)
@@ -142,20 +143,11 @@ export function switchTheme(themeName) {
     // Save to localStorage
     localStorage.setItem(THEME_STORAGE_KEY, themeName);
 
-    // For theme-pack themes, we need to reload the page
-    // to properly swap all CSS files
-    if (isThemePackTheme(themeName) || isThemePackTheme(document.body.dataset.theme)) {
-        // Set theme before reload so it loads correctly
-        document.body.dataset.theme = themeName;
-
-        // Reload page to swap CSS
-        window.location.reload();
-        return;
-    }
-
-    // For non-theme-pack themes (default, pastel-pop, pos-pro)
-    // Just change the data-theme attribute
+    // Update data-theme attribute
     document.body.dataset.theme = themeName;
+
+    // Swap CSS dynamically — no reload needed
+    loadThemePack(themeName);
 }
 
 /**

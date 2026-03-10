@@ -23,6 +23,7 @@ import { showPinModal } from '../ui/user-modals.js';
 import { setupAvatarPicker } from '../ui/avatar-picker.js';
 import { setupKeyboardShortcuts } from '../ui/keyboard-shortcuts.js';
 import { setupRuntimeUIEvents } from '../ui/runtime-ui-events.js';
+import { initCalculatorMode } from '../ui/calculator-mode.js';
 // VIGTIGT: shift-timer importeres FØR clerk-login-modal for at sætte window.__flangoOpenShiftTimer
 import { initShiftTimer } from './shift-timer.js';
 import { setupClerkLoginButton } from '../ui/clerk-login-modal.js';
@@ -32,6 +33,8 @@ import {
     handleUndoPreviousSale,
 } from './purchase-flow.js';
 import { onBalanceChange } from '../core/balance-manager.js';
+import { startRealtimeSync } from '../core/realtime-sync.js';
+import { initToastNotifications, clearAllToasts } from '../ui/toast-notifications.js';
 import { setupCustomerPickerFlow } from './customer-picker-flow.js';
 import { setupAdminFlow, loadUsersAndNotifications } from './admin-flow.js';
 import { setupProductAssortmentFlow } from './product-assortment-flow.js';
@@ -551,6 +554,11 @@ export async function startApp() {
         onOrderChanged: refreshProductLocks,
     });
 
+    // 8) Lommeregner-mode
+    initCalculatorMode();
+    window.__flangoRefreshProductLocks = refreshProductLocks;
+    window.__flangoAddToOrder = (product) => addToOrderWithLocks(product, currentOrder, orderList, totalPriceEl, updateSelectedUserInfo, { onOrderChanged: refreshProductLocks });
+
     const getAllUsers = () => allUsers;
     const setAllUsers = (next) => {
         allUsers = next;
@@ -604,6 +612,47 @@ export async function startApp() {
     const sessionBanner = document.getElementById('user-session-banner');
     if (sessionBanner) {
         initShiftTimer(sessionBanner);
+    }
+
+    // 3.6) Restaurant Mode: badge + køkken-knap
+    {
+        const inst = window.__flangoGetInstitutionById?.(getInstitutionId());
+        const rmEnabled = inst?.restaurant_mode_enabled === true;
+        const badge = document.getElementById('restaurant-mode-badge');
+        const kitchenBtn = document.getElementById('kitchen-btn');
+        if (badge) badge.style.display = rmEnabled ? '' : 'none';
+        if (kitchenBtn) {
+            kitchenBtn.style.display = rmEnabled ? '' : 'none';
+            let pressTimer = null;
+            let isLongPress = false;
+            const startPress = () => {
+                isLongPress = false;
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    kitchenBtn.style.transform = 'scale(1.1)';
+                    setTimeout(() => { kitchenBtn.style.transform = ''; }, 200);
+                    window.open('restaurant.html', '_blank');
+                }, 500);
+            };
+            const endPress = (e) => {
+                clearTimeout(pressTimer);
+                if (!isLongPress) {
+                    // Short tap: toggle inline kitchen panel
+                    if (typeof window.__flangoToggleKitchenPanel === 'function') {
+                        window.__flangoToggleKitchenPanel();
+                    } else {
+                        // Fallback: open in new tab if inline panel not loaded yet
+                        window.open('restaurant.html', '_blank');
+                    }
+                }
+                e.preventDefault();
+            };
+            kitchenBtn.addEventListener('mousedown', startPress);
+            kitchenBtn.addEventListener('mouseup', endPress);
+            kitchenBtn.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+            kitchenBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startPress(); }, { passive: false });
+            kitchenBtn.addEventListener('touchend', endPress);
+        }
     }
 
     // Make selected-user-info box clickable to open customer selection
@@ -772,6 +821,12 @@ export async function startApp() {
     // 12) Første produkt-load
     await productAssortment.fetchAndRenderProducts();
 
+    // 12.5) Toast notifications system
+    initToastNotifications();
+
+    // 12.6) Realtime sync: balance (forældre topup) + produkter/sortiment (create/toggle) + events (toast)
+    startRealtimeSync();
+
     async function selectUser(userId) {
         // Flight recorder: log user selection
         const prevCustomer = getCurrentCustomer();
@@ -790,12 +845,13 @@ export async function startApp() {
             return;
         }
 
-        // Ryd den gamle ordre og sukkerpolitik FØR vi sætter en ny bruger.
-        // Dette sikrer, at `applyProductLimitsToButtons` ikke bruger forældede data.
-        currentOrder = [];
+        // Bevar calculator-items i kurven ved brugerskift (bruger kan have fyldt kurv før kundevalg).
+        // Normale produkter ryddes fordi de kan have bruger-specifikke grænser.
+        const calcItems = currentOrder.filter(item => item.is_calculator_item);
+        currentOrder = calcItems;
         currentSugarData = null;
-        setOrder([]); // KRITISK: Sync order-store module state så getOrderTotal() returnerer 0
-        logDebugEvent('cart_cleared_on_user_switch', { newUserId: userId });
+        setOrder([...calcItems]); // Sync order-store — bevar calc-items
+        logDebugEvent('cart_cleared_on_user_switch', { newUserId: userId, preservedCalcItems: calcItems.length });
         clearEvaluation(); // Ryd evaluation cache så "Ny Saldo" vises korrekt
         renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
 
@@ -960,6 +1016,14 @@ export async function startApp() {
             await refreshProductLocks({ force: true });
         }
         return ok;
+    };
+
+    // Expose clear cart function globally (used by Klart theme "Ryd kurv" button)
+    window.__flangoClearCart = () => {
+        currentOrder = [];
+        setOrder([]);
+        renderOrder(orderList, currentOrder, totalPriceEl, updateSelectedUserInfo);
+        updateSelectedUserInfo();
     };
 
     // KRITISK: Initialiser selected-user-info boksen ved app start

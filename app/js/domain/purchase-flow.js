@@ -12,12 +12,13 @@ import {
 } from './cafe-session-store.js';
 import { renderOrder } from './order-ui.js';
 import { getProductIconInfo, getBulkDiscountedUnitPrice, getBulkDiscountSummary } from './products-and-cart.js';
-import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild } from './purchase-limits.js';
+import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild, getChildSugarPolicySnapshot } from './purchase-limits.js';
 import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
 import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
 import { escapeHtml } from '../core/escape-html.js';
 import { formatKr } from '../ui/confirm-modals.js';
 import { processEventItemsInCheckout } from '../ui/cafe-event-strip.js';
+
 
 // ============================================================================
 // HELPER FUNKTIONER FOR handleCompletePurchase (OPT-6)
@@ -108,74 +109,201 @@ function groupOrderItems(order) {
  * @param {Array} currentOrder - Ordre
  * @param {number} finalTotal - Totalt beløb
  * @param {number} newBalance - Ny balance
+ * @param {boolean} isFreeAdminPurchase - Om dette er et gratis admin-køb
+ * @param {Object|null} restaurantMode - { enabled, tableNumbersEnabled, tableCount } eller null
  * @returns {string} HTML string til bekræftelsesdialog
  */
-function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance) {
+function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isFreeAdminPurchase = false, restaurantMode = null) {
     // Grupper items efter produkt ID
     const itemCounts = groupOrderItems(currentOrder);
 
-    // Byg DOM først (undgår innerHTML injection fra produkt-/kundenavne)
+    // Byg DOM med ny Klart v5c-struktur
     const root = document.createElement('div');
 
-    const title = document.createElement('strong');
-    title.textContent = customer?.name || 'Ukendt';
-    root.appendChild(title);
-    root.appendChild(document.createTextNode(' køber:'));
-    root.appendChild(document.createElement('br'));
+    // === Header: kundenavn ===
+    const header = document.createElement('div');
+    header.className = 'confirm-modal-header';
+    const h3 = document.createElement('h3');
+    h3.textContent = 'Bekræft køb';
+    header.appendChild(h3);
+    const customerHighlight = document.createElement('div');
+    customerHighlight.className = 'customer-highlight';
+    customerHighlight.textContent = `${customer?.name || 'Ukendt'} køber:`;
+    header.appendChild(customerHighlight);
+    root.appendChild(header);
+
+    // === Produktrækker ===
+    const productsContainer = document.createElement('div');
+    productsContainer.className = 'confirm-modal-products';
 
     Object.values(itemCounts).forEach((item) => {
-        const line = document.createElement('div');
-        line.className = 'confirm-product-line';
+        const row = document.createElement('div');
+        row.className = 'confirm-product-row';
 
+        // Ikon (billede eller emoji)
+        const iconWrap = document.createElement('span');
+        iconWrap.className = 'cp-icon';
         const iconInfo = getProductIconInfo(item);
         if (iconInfo?.path) {
             const img = document.createElement('img');
             img.src = iconInfo.path;
             img.alt = item?.name || 'Produkt';
-            img.className = 'confirm-product-icon';
-            line.appendChild(img);
+            iconWrap.appendChild(img);
         } else {
-            const emoji = document.createElement('span');
-            emoji.className = 'confirm-product-emoji';
-            emoji.textContent = item?.emoji || '❓';
-            line.appendChild(emoji);
+            iconWrap.textContent = item?.emoji || '❓';
         }
+        row.appendChild(iconWrap);
 
-        const text = document.createElement('span');
-        text.textContent = `${item.count} x ${item.name || 'Ukendt'}`;
-        line.appendChild(text);
+        // Info (navn + antal)
+        const info = document.createElement('div');
+        info.className = 'cp-info';
+        const name = document.createElement('div');
+        name.className = 'cp-name';
+        name.textContent = item.name || 'Ukendt';
+        info.appendChild(name);
+        const qty = document.createElement('div');
+        qty.className = 'cp-qty';
+        qty.textContent = `${item.count} stk.`;
+        info.appendChild(qty);
+        row.appendChild(info);
 
-        root.appendChild(line);
+        // Pris (pr. linje, efter evt. rabat)
+        const unitPrice = getBulkDiscountedUnitPrice(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
+        const lineTotal = unitPrice * item.count;
+        const price = document.createElement('div');
+        price.className = 'cp-price';
+        price.textContent = formatKr(lineTotal);
+        row.appendChild(price);
 
+        productsContainer.appendChild(row);
+
+        // Bulk-rabat info under produktrækken
         const summary = getBulkDiscountSummary(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
         if (summary.discountAmount > 0) {
-            const discountLine = document.createElement('div');
-            discountLine.className = 'confirm-product-line';
-            discountLine.style.color = '#64748b';
+            const discountRow = document.createElement('div');
+            discountRow.className = 'confirm-discount-row';
             const bundleLabel = summary.bundlePrice != null
                 ? formatKr(summary.bundlePrice).replace(' kr', '')
                 : '';
             const label = bundleLabel
                 ? `🏷️ Rabat (${summary.qtyRule} for ${bundleLabel})`
                 : '🏷️ Rabat';
-            discountLine.textContent = `${label}: -${formatKr(summary.discountAmount)}`;
-            root.appendChild(discountLine);
+            discountRow.textContent = `${label}: -${formatKr(summary.discountAmount)}`;
+            productsContainer.appendChild(discountRow);
         }
     });
 
-    // Byg negativ balance advarsel hvis relevant
-    let negativeBalanceWarning = '';
-    if (newBalance < 0) {
-        if (customer.balance < 0) {
-            negativeBalanceWarning = `<p style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #f5c6cb;"><strong>Advarsel:</strong> Er du helt sikker på, at du vil gå endnu mere i minus?</p>`;
-        } else {
-            negativeBalanceWarning = `<p style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #f5c6cb;"><strong>Advarsel:</strong> Er du helt sikker på, du vil gå i minus?</p>`;
+    root.appendChild(productsContainer);
+
+    // === Summary sektion ===
+    const summaryDiv = document.createElement('div');
+    summaryDiv.className = 'confirm-modal-summary';
+
+    if (isFreeAdminPurchase) {
+        // Gratis admin-køb
+        const normalTotal = Object.values(itemCounts).reduce((sum, item) => {
+            const unitPrice = getBulkDiscountedUnitPrice(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
+            return sum + (unitPrice * item.count);
+        }, 0);
+
+        const freeBox = document.createElement('div');
+        freeBox.className = 'admin-free-confirm-box';
+        freeBox.innerHTML = '<span style="font-size: 20px;">&#x267E;</span><span>GRATIS ADMIN-K\u00D8B</span>';
+        summaryDiv.appendChild(freeBox);
+
+        const normalPriceRow = document.createElement('div');
+        normalPriceRow.className = 'confirm-summary-row';
+        normalPriceRow.innerHTML = `<span class="label">Normalpris</span><span class="value" style="text-decoration: line-through; color: #94a3b8;">${escapeHtml(formatKr(normalTotal))}</span>`;
+        summaryDiv.appendChild(normalPriceRow);
+
+        const balanceRow = document.createElement('div');
+        balanceRow.className = 'confirm-summary-row';
+        balanceRow.innerHTML = `<span class="label">Saldo (u\u00e6ndret)</span><span class="value">${escapeHtml(formatKr(customer.balance))}</span>`;
+        summaryDiv.appendChild(balanceRow);
+    } else {
+        // Normal køb — Total, Nuværende saldo, Ny saldo
+        const totalRow = document.createElement('div');
+        totalRow.className = 'confirm-summary-row total';
+        totalRow.innerHTML = `<span class="label">Total</span><span class="value">${escapeHtml(formatKr(finalTotal))}</span>`;
+        summaryDiv.appendChild(totalRow);
+
+        const currentBalRow = document.createElement('div');
+        currentBalRow.className = 'confirm-summary-row';
+        currentBalRow.innerHTML = `<span class="label">Nuv\u00e6rende saldo</span><span class="value">${escapeHtml(formatKr(customer.balance))}</span>`;
+        summaryDiv.appendChild(currentBalRow);
+
+        const newBalClass = newBalance >= 0 ? 'positive' : 'negative';
+        const newBalRow = document.createElement('div');
+        newBalRow.className = 'confirm-summary-row';
+        newBalRow.innerHTML = `<span class="label">Ny saldo</span><span class="value ${newBalClass}">${escapeHtml(formatKr(newBalance))}</span>`;
+        summaryDiv.appendChild(newBalRow);
+
+        // Negativ balance advarsel
+        if (newBalance < 0) {
+            const warning = document.createElement('div');
+            warning.className = 'confirm-negative-warning';
+            if (customer.balance < 0) {
+                warning.innerHTML = '<strong>Advarsel:</strong> Er du helt sikker p\u00e5, at du vil g\u00e5 endnu mere i minus?';
+            } else {
+                warning.innerHTML = '<strong>Advarsel:</strong> Er du helt sikker p\u00e5, du vil g\u00e5 i minus?';
+            }
+            summaryDiv.appendChild(warning);
         }
     }
 
-    // Append totals section (as HTML string for formatting; names are escaped)
-    const totalsHtml = `<br>for <strong>${formatKr(finalTotal)}</strong><hr style="margin: 15px 0; border: 1px solid #eee;">${escapeHtml(customer?.name || 'Ukendt')} har <strong>${formatKr(newBalance)}</strong> tilbage.${negativeBalanceWarning}`;
-    root.insertAdjacentHTML('beforeend', totalsHtml);
+    root.appendChild(summaryDiv);
+
+    // === Restaurant Mode: bordnummer-grid + kommentar ===
+    if (restaurantMode?.enabled) {
+        const section = document.createElement('div');
+        section.className = 'confirm-restaurant-section';
+        section.id = 'confirm-restaurant-section';
+
+        // Bordnummer-grid
+        if (restaurantMode.tableNumbersEnabled) {
+            const tableCount = Math.min(Math.max(restaurantMode.tableCount || 9, 1), 9);
+            const label = document.createElement('div');
+            label.className = 'confirm-restaurant-label';
+            label.innerHTML = '🍽️ Vælg bord';
+            section.appendChild(label);
+
+            const grid = document.createElement('div');
+            grid.className = 'confirm-table-grid';
+            for (let i = 1; i <= tableCount; i++) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'confirm-table-btn';
+                btn.textContent = i;
+                btn.dataset.table = i;
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Toggle selection
+                    const wasSelected = btn.classList.contains('selected');
+                    grid.querySelectorAll('.confirm-table-btn').forEach(b => b.classList.remove('selected'));
+                    if (!wasSelected) btn.classList.add('selected');
+                });
+                grid.appendChild(btn);
+            }
+            section.appendChild(grid);
+        }
+
+        // Kommentar-felt (altid synligt i restaurant mode)
+        const noteLabel = document.createElement('div');
+        noteLabel.className = 'confirm-restaurant-label';
+        noteLabel.innerHTML = '📝 Kommentar til køkken';
+        section.appendChild(noteLabel);
+
+        const note = document.createElement('textarea');
+        note.className = 'confirm-kitchen-note';
+        note.id = 'confirm-kitchen-note';
+        note.maxLength = 200;
+        note.rows = 2;
+        note.placeholder = 'Valgfrit — fx "uden løg", "allergiker" ...';
+        section.appendChild(note);
+
+        root.appendChild(section);
+    }
 
     return root.innerHTML;
 }
@@ -471,6 +599,54 @@ export async function enforceSugarPolicy({ customer, currentOrder, allProducts }
     return true; // All checks passed
 }
 
+/**
+ * Håndhæver kostpræferencer (vegetarisk, svinekød) sat af forældre.
+ * Blokerer køb hvis produkter i kurven overtræder barnets kostpræferencer.
+ */
+export async function enforceDietaryRestrictions({ customer, currentOrder, allProducts }) {
+    if (!customer?.id) return true;
+
+    // Hent barnets dietary preferences via cached sugar policy snapshot
+    let policyData;
+    try {
+        policyData = await getChildSugarPolicySnapshot(customer.id);
+    } catch (e) {
+        console.warn('[enforceDietaryRestrictions] Could not fetch policy:', e);
+        return true; // Fail-open ved fejl
+    }
+
+    const policy = policyData?.policy;
+    if (!policy) return true; // Ingen policy sat
+
+    const vegetarianOnly = policy.vegetarianOnly === true;
+    const noPork = policy.noPork === true;
+
+    if (!vegetarianOnly && !noPork) return true; // Ingen kostpræferencer sat
+
+    for (const item of currentOrder) {
+        const product = allProducts.find(p => p.id === item.id);
+        if (!product) continue;
+
+        if (vegetarianOnly && product.is_vegetarian !== true) {
+            await showCustomAlert(
+                'Køb Blokeret',
+                `Hov, ${escapeHtml(customer.name)} må kun købe vegetariske produkter.<br><br><strong>${escapeHtml(product.name)}</strong> er ikke markeret som vegetarisk.`
+            );
+            return false;
+        }
+
+        if (noPork && product.contains_pork === true) {
+            await showCustomAlert(
+                'Køb Blokeret',
+                `Hov, ${escapeHtml(customer.name)} må ikke købe produkter med svinekød.<br><br><strong>${escapeHtml(product.name)}</strong> indeholder svinekød.`
+            );
+            return false;
+        }
+    }
+
+    return true;
+}
+
 let purchaseInFlight = false;
 
 export async function handleCompletePurchase({
@@ -630,6 +806,9 @@ export async function handleCompletePurchase({
     const sugarOk = await enforceSugarPolicy({ customer, currentOrder: orderSnapshot, allProducts });
     if (!sugarOk) return;
 
+    const dietaryOk = await enforceDietaryRestrictions({ customer, currentOrder: orderSnapshot, allProducts });
+    if (!dietaryOk) return;
+
     try {
         const childId = customer.id;
 
@@ -640,6 +819,8 @@ export async function handleCompletePurchase({
             return productId == null ? count + 1 : count;
         }, 0);
         const checkPromises = orderSnapshot.map(async (line) => {
+            // Calculator-items har ingen rigtig product_id — skip DB-validering
+            if (line.is_calculator_item) return { allowed: true };
             const productId = line.product_id || line.productId || line.id;
             const product = allProducts.find(p => p.id === productId);
             if (!productId) return { allowed: true };
@@ -819,6 +1000,14 @@ export async function handleCompletePurchase({
         }
     }
 
+    // Hent restaurant mode settings fra institution cache
+    const instData = window.__flangoGetInstitutionById?.(customer.institution_id);
+    const restaurantMode = instData?.restaurant_mode_enabled ? {
+        enabled: true,
+        tableNumbersEnabled: instData.restaurant_table_numbers_enabled === true,
+        tableCount: instData.restaurant_table_count || 9,
+    } : null;
+
     // OPTIMERING: Brug helper funktion til at bygge bekræftelsesdialog
     // Flight recorder: log modal build
     logDebugEvent('confirmation_modal_building', {
@@ -828,11 +1017,24 @@ export async function handleCompletePurchase({
         finalTotal,
         newBalance,
     });
-    const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance);
+    const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance, shouldBeFreePurchase, restaurantMode);
     logDebugEvent('confirmation_modal_showing', { bodyLength: confirmationBody?.length });
-    const confirmed = await showCustomAlert('Bekræft Køb', confirmationBody, 'confirm');
+    const confirmed = await showCustomAlert('Bekræft Køb', confirmationBody, {
+        type: 'confirm',
+        okText: 'Bekræft Køb',
+        cancelText: 'Annullér',
+    });
     logDebugEvent('confirmation_modal_closed', { confirmed, cartLengthAfter: orderSnapshot?.length });
     if (!confirmed) return;
+
+    // Læs restaurant-info fra modal DOM (inden den genbruges)
+    let selectedTableNumber = null;
+    let kitchenNoteText = null;
+    if (restaurantMode?.enabled) {
+        const selectedBtn = document.querySelector('#confirm-restaurant-section .confirm-table-btn.selected');
+        selectedTableNumber = selectedBtn?.dataset?.table || null;
+        kitchenNoteText = document.querySelector('#confirm-kitchen-note')?.value?.trim() || null;
+    }
 
     // OPTIMERING: Brug helper funktion til at sætte knap state
     setButtonLoadingState(completePurchaseBtn, 'loading');
@@ -843,6 +1045,19 @@ export async function handleCompletePurchase({
         const effectiveUnitPrice = shouldBeFreePurchase
             ? 0
             : getBulkDiscountedUnitPrice(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
+        // Calculator items: gem med custom_price/custom_name, product_id kan være null
+        if (item.is_calculator_item) {
+            return {
+                product_id: item.quick_product_id || null,
+                quantity: item.count,
+                price: shouldBeFreePurchase ? 0 : item.price,
+                is_refill: false,
+                product_name: item.name,
+                custom_price: item.price,
+                custom_name: item.name,
+                is_calculator_item: true,
+            };
+        }
         return {
             product_id: item.id,
             quantity: item.count,
@@ -935,6 +1150,39 @@ export async function handleCompletePurchase({
         if (eventItems.length > 0) {
             logDebugEvent('purchase_event_items_after_normal', { eventCount: eventItems.length });
             await processEventItemsInCheckout(eventItems, customer);
+        }
+
+        // Restaurant Mode: gem bordnummer + kommentar (fire-and-forget)
+        if (restaurantMode?.enabled && (selectedTableNumber || kitchenNoteText)) {
+            const saleId = rpcData?.sale_id || rpcData?.[0]?.sale_id || rpcData?.id;
+            if (saleId) {
+                supabaseClient.rpc('update_sale_restaurant_info', {
+                    p_sale_id: saleId,
+                    p_institution_id: customer.institution_id,
+                    p_table_number: selectedTableNumber,
+                    p_kitchen_note: kitchenNoteText,
+                }).catch(err => console.error('[restaurant] Error updating sale info:', err));
+            } else {
+                // Fallback: hent seneste sale
+                supabaseClient
+                    .from('sales')
+                    .select('id')
+                    .eq('institution_id', customer.institution_id)
+                    .eq('customer_id', customer.id)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single()
+                    .then(({ data }) => {
+                        if (data?.id) {
+                            supabaseClient.rpc('update_sale_restaurant_info', {
+                                p_sale_id: data.id,
+                                p_institution_id: customer.institution_id,
+                                p_table_number: selectedTableNumber,
+                                p_kitchen_note: kitchenNoteText,
+                            }).catch(err => console.error('[restaurant] Error updating sale info:', err));
+                        }
+                    });
+            }
         }
 
         let nextOrder = clearOrder();
