@@ -1103,6 +1103,13 @@ export async function handleCompletePurchase({
     if (clerkId) {
         salePayload.p_clerk_id = clerkId;
     }
+    // Restaurant Mode: inkludér bordnummer + note direkte i salget (atomisk)
+    if (selectedTableNumber) {
+        salePayload.p_table_number = selectedTableNumber;
+    }
+    if (kitchenNoteText) {
+        salePayload.p_kitchen_note = kitchenNoteText;
+    }
     const balanceUpdateNonce = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
     const { data: rpcData, error } = await runWithAuthRetry(
@@ -1168,38 +1175,8 @@ export async function handleCompletePurchase({
             await processEventItemsInCheckout(eventItems, customer);
         }
 
-        // Restaurant Mode: gem bordnummer + kommentar (fire-and-forget)
-        if (restaurantMode?.enabled && (selectedTableNumber || kitchenNoteText)) {
-            const saleId = rpcData?.sale_id || rpcData?.[0]?.sale_id || rpcData?.id;
-            if (saleId) {
-                supabaseClient.rpc('update_sale_restaurant_info', {
-                    p_sale_id: saleId,
-                    p_institution_id: customer.institution_id,
-                    p_table_number: selectedTableNumber,
-                    p_kitchen_note: kitchenNoteText,
-                }).catch(err => console.error('[restaurant] Error updating sale info:', err));
-            } else {
-                // Fallback: hent seneste sale
-                supabaseClient
-                    .from('sales')
-                    .select('id')
-                    .eq('institution_id', customer.institution_id)
-                    .eq('customer_id', customer.id)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .single()
-                    .then(({ data }) => {
-                        if (data?.id) {
-                            supabaseClient.rpc('update_sale_restaurant_info', {
-                                p_sale_id: data.id,
-                                p_institution_id: customer.institution_id,
-                                p_table_number: selectedTableNumber,
-                                p_kitchen_note: kitchenNoteText,
-                            }).catch(err => console.error('[restaurant] Error updating sale info:', err));
-                        }
-                    });
-            }
-        }
+        // Restaurant Mode: bordnummer + note gemmes nu atomisk via process_sale
+        // (p_table_number og p_kitchen_note inkluderet i salePayload)
 
         let nextOrder = clearOrder();
         try {
