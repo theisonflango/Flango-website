@@ -614,9 +614,11 @@ function openSettingsOverlay() {
         ).join('');
     }
 
+    const activeCount = allOrders.filter(o => !o.kitchen_served).length;
+
     overlay.innerHTML = `
         <div class="kitchen-settings-header">
-            <span>⚙️ Lydindstillinger</span>
+            <span>⚙️ Indstillinger</span>
             <button class="kitchen-settings-close">✕</button>
         </div>
         <div class="kitchen-settings-body">
@@ -633,6 +635,13 @@ function openSettingsOverlay() {
                     <select id="ks-serve-sound">${buildSelect('ks-serve-sound', serveSound)}</select>
                     <button class="kitchen-settings-preview" data-target="ks-serve-sound">▶</button>
                 </div>
+            </div>
+            <div class="kitchen-settings-divider"></div>
+            <div class="kitchen-settings-row">
+                <label>Handlinger</label>
+                <button id="ks-clear-list" class="kitchen-settings-action-btn kitchen-settings-action-clear"${activeCount === 0 ? ' disabled' : ''}>
+                    🧹 Ryd liste (${activeCount} aktive)
+                </button>
             </div>
         </div>
     `;
@@ -662,6 +671,15 @@ function openSettingsOverlay() {
             previewAudio.volume = 0.7;
             previewAudio.play().catch(() => {});
         });
+    });
+
+    // Clear list button
+    overlay.querySelector('#ks-clear-list')?.addEventListener('click', () => {
+        const active = allOrders.filter(o => !o.kitchen_served);
+        if (active.length === 0) return;
+        if (!confirm(`Markér alle ${active.length} aktive ordrer som serveret?`)) return;
+        clearAllOrders();
+        closeSettingsOverlay();
     });
 
     // Close on click outside (delayed)
@@ -730,6 +748,46 @@ async function unmarkServed(saleId) {
         console.error('[kitchen] Error unmarking served:', error);
         order.kitchen_served = true;
         order.kitchen_served_at = new Date().toISOString();
+        renderOrders();
+    }
+}
+
+// ─── Clear all (mark all active as served) ───────────────────────────────────
+
+async function clearAllOrders() {
+    const active = allOrders.filter(o => !o.kitchen_served);
+    if (active.length === 0) return;
+
+    // Optimistic UI
+    const now = new Date().toISOString();
+    for (const o of active) {
+        o.kitchen_served = true;
+        o.kitchen_served_at = now;
+    }
+    renderOrders();
+
+    // Batch RPC calls
+    const results = await Promise.allSettled(
+        active.map(o =>
+            supabaseClient.rpc('mark_sale_served', {
+                p_sale_id: o.id,
+                p_institution_id: institutionId,
+            })
+        )
+    );
+
+    // Rollback failed ones
+    let anyFailed = false;
+    results.forEach((r, i) => {
+        if (r.status === 'rejected' || r.value?.error) {
+            anyFailed = true;
+            active[i].kitchen_served = false;
+            active[i].kitchen_served_at = null;
+        }
+    });
+
+    if (anyFailed) {
+        console.error('[kitchen] Some orders failed to clear');
         renderOrders();
     }
 }

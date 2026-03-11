@@ -643,6 +643,40 @@ body {
 }
 .kitchen-settings-preview:hover { background: #e2e8f0; border-color: #cbd5e1; }
 
+.kitchen-settings-divider {
+    height: 1px;
+    background: #e2e8f0;
+    margin: 2px 0;
+}
+
+.kitchen-settings-action-btn {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    background: #f8fafc;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    min-height: 44px;
+    transition: all 0.15s;
+    touch-action: manipulation;
+}
+.kitchen-settings-action-btn:hover:not(:disabled) { background: #e2e8f0; border-color: #cbd5e1; }
+.kitchen-settings-action-btn:active:not(:disabled) { transform: scale(0.97); }
+.kitchen-settings-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.kitchen-settings-action-clear {
+    color: #dc2626;
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+.kitchen-settings-action-clear:hover:not(:disabled) {
+    background: #fee2e2;
+    border-color: #f87171;
+}
+
 /* ─── Responsive — iPad landscape (1024px) ────────────────────────────────── */
 
 @media (max-width: 1024px) {
