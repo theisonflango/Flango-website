@@ -3472,12 +3472,13 @@ body.kitchen-fullscreen-mode {
 .rv-help { font-size: 12px; color: #71717a; margin-bottom: 8px; }
 
 /* ─── Per-produkt varianter + note i bekræftelsesmodal ────────────────── */
-/* Prisen justeres til toppen når info-kolonnen vokser */
-.confirm-product-row:has(.confirm-item-extras) .cp-price { align-self: flex-start; padding-top: 2px; }
-/* Extras inde i .cp-info — under produktnavn/qty */
+/* cp-info kryber til naturlig bredde så extras fylder midten */
+.confirm-product-row:has(.confirm-item-extras) .cp-info { flex: 0 0 auto; }
+/* Extras: flex-fill mellem cp-info og cp-price */
 .confirm-item-extras {
-    display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
-    margin-top: 3px;
+    flex: 1; min-width: 0;
+    display: flex; flex-wrap: wrap; gap: 4px;
+    align-items: center; justify-content: flex-end;
 }
 .confirm-variant-badges { display: flex; flex-wrap: wrap; gap: 3px; }
 .confirm-variant-badge {
@@ -3490,7 +3491,7 @@ body.kitchen-fullscreen-mode {
     background: #7c3aed; border-color: #7c3aed; color: #fff;
 }
 .confirm-item-note {
-    flex: 1; min-width: 80px; max-width: 160px; padding: 2px 6px;
+    width: 140px; max-width: 160px; padding: 2px 6px;
     border: 1px solid #e5e7eb; border-radius: 5px; font-size: 11px;
     background: #fafafa; height: 22px;
 }
