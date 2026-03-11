@@ -1972,3 +1972,32 @@ body.kitchen-fullscreen-mode {
     .kfs-content.layout-side .kitchen-table th:nth-child(3),
     .kfs-content.layout-side .kitchen-table td:nth-child(3) { display: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Restaurant Varianter — Klart tema-overrides (grøn accent)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Variant-manager (produkt-modal) */
+.rv-tag { background: rgba(26, 138, 110, 0.12); color: #1a8a6e; }
+.rv-tag-remove { color: #1a8a6e; }
+.rv-add-btn { background: var(--accent, #1a8a6e); }
+
+/* Bekræftelsesmodal — valgt variant-badge */
+.confirm-variant-badge.selected {
+    background: var(--accent, #1a8a6e);
+    border-color: var(--accent, #1a8a6e);
+    color: #fff;
+}
+
+/* Køkkenskærm — variant-badge + note */
+.kitchen-item-variant {
+    background: rgba(26, 138, 110, 0.12);
+    color: #1a8a6e;
+}
+.krc-item-variant { color: var(--accent, #1a8a6e); }
+
+/* Fullscreen køkken — variant-badge */
+.kitchen-fullscreen-overlay .kitchen-item-variant {
+    background: rgba(26, 138, 110, 0.12);
+    color: #1a8a6e;
+}

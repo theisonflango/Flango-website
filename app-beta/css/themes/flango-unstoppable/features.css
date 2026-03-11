@@ -1846,3 +1846,32 @@ body.kitchen-fullscreen-mode {
     .kfs-content.layout-side .kitchen-table th:nth-child(3),
     .kfs-content.layout-side .kitchen-table td:nth-child(3) { display: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Restaurant Varianter — Flango Unstoppable tema-overrides (lilla accent)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Variant-manager (produkt-modal) */
+.rv-tag { background: rgba(168, 85, 247, 0.1); color: #7c3aed; }
+.rv-tag-remove { color: #a855f7; }
+.rv-add-btn { background: #a855f7; }
+
+/* Bekræftelsesmodal — valgt variant-badge */
+.confirm-variant-badge.selected {
+    background: #a855f7;
+    border-color: #a855f7;
+    color: #fff;
+}
+
+/* Køkkenskærm — variant-badge + note */
+.kitchen-item-variant {
+    background: rgba(168, 85, 247, 0.12);
+    color: #7c3aed;
+}
+.krc-item-variant { color: #a855f7; }
+
+/* Fullscreen køkken — variant-badge */
+.kitchen-fullscreen-overlay .kitchen-item-variant {
+    background: rgba(168, 85, 247, 0.12);
+    color: #7c3aed;
+}

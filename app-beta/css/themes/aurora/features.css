@@ -2056,3 +2056,32 @@ body.kitchen-fullscreen-mode {
     .kfs-content.layout-side .kitchen-table th:nth-child(3),
     .kfs-content.layout-side .kitchen-table td:nth-child(3) { display: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Restaurant Varianter — Aurora tema-overrides (lilla accent, mørk baggrund)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Variant-manager (produkt-modal) */
+.rv-tag { background: rgba(168, 85, 247, 0.18); color: #c084fc; }
+.rv-tag-remove { color: #c084fc; }
+.rv-add-btn { background: #a855f7; }
+
+/* Bekræftelsesmodal — valgt variant-badge */
+.confirm-variant-badge.selected {
+    background: #a855f7;
+    border-color: #a855f7;
+    color: #fff;
+}
+
+/* Køkkenskærm — variant-badge + note */
+.kitchen-item-variant {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+}
+.krc-item-variant { color: #c084fc; }
+
+/* Fullscreen køkken — variant-badge */
+.kitchen-fullscreen-overlay .kitchen-item-variant {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+}

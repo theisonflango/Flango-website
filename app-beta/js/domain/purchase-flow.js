@@ -191,6 +191,40 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
             discountRow.textContent = `${label}: -${formatKr(summary.discountAmount)}`;
             productsContainer.appendChild(discountRow);
         }
+
+        // Per-produkt varianter + kommentar (kun restaurant mode)
+        if (restaurantMode?.enabled) {
+            const variants = item.restaurant_variants || [];
+            const perItemSection = document.createElement('div');
+            perItemSection.className = 'confirm-item-extras';
+            perItemSection.dataset.productId = item.id;
+
+            // Variant-badges (valgbare, maks 1 pr. produkt)
+            if (variants.length > 0) {
+                const badgesWrap = document.createElement('div');
+                badgesWrap.className = 'confirm-variant-badges';
+                variants.forEach(v => {
+                    const badge = document.createElement('button');
+                    badge.type = 'button';
+                    badge.className = 'confirm-variant-badge';
+                    badge.textContent = v;
+                    badge.dataset.variant = v;
+                    badgesWrap.appendChild(badge);
+                });
+                perItemSection.appendChild(badgesWrap);
+            }
+
+            // Per-produkt kommentar
+            const noteInput = document.createElement('input');
+            noteInput.type = 'text';
+            noteInput.className = 'confirm-item-note';
+            noteInput.dataset.productId = item.id;
+            noteInput.placeholder = 'Note til dette produkt...';
+            noteInput.maxLength = 100;
+            perItemSection.appendChild(noteInput);
+
+            productsContainer.appendChild(perItemSection);
+        }
     });
 
     root.appendChild(productsContainer);
@@ -285,6 +319,15 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
             }
             section.appendChild(grid);
         }
+
+        // Genbrug-badge
+        const reuseBadge = document.createElement('button');
+        reuseBadge.type = 'button';
+        reuseBadge.className = 'confirm-reuse-badge';
+        reuseBadge.id = 'confirm-reuse-badge';
+        reuseBadge.textContent = '♻️ Genbrug';
+        reuseBadge.title = 'Markér at der bruges genbrugstallerkner/service';
+        section.appendChild(reuseBadge);
 
         // Kommentar-felt (altid synligt i restaurant mode)
         const noteLabel = document.createElement('div');
@@ -1040,6 +1083,28 @@ export async function handleCompletePurchase({
         });
     }
 
+    // Re-attach variant-badge + genbrug click-handlers (restaurant mode)
+    if (restaurantMode?.enabled) {
+        // Per-produkt variant badges: toggle selected (1 pr. produkt)
+        document.querySelectorAll('.confirm-item-extras').forEach(section => {
+            section.querySelectorAll('.confirm-variant-badge').forEach(badge => {
+                badge.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const wasSelected = badge.classList.contains('selected');
+                    section.querySelectorAll('.confirm-variant-badge').forEach(b => b.classList.remove('selected'));
+                    if (!wasSelected) badge.classList.add('selected');
+                });
+            });
+        });
+        // Genbrug-badge toggle
+        document.getElementById('confirm-reuse-badge')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.target.classList.toggle('selected');
+        });
+    }
+
     const confirmed = await alertPromise;
     logDebugEvent('confirmation_modal_closed', { confirmed, cartLengthAfter: orderSnapshot?.length });
     if (!confirmed) return;
@@ -1047,10 +1112,30 @@ export async function handleCompletePurchase({
     // Læs restaurant-info fra modal DOM (inden den genbruges)
     let selectedTableNumber = null;
     let kitchenNoteText = null;
+    let itemExtras = {}; // Per-produkt variant + note
     if (restaurantMode?.enabled) {
         const selectedBtn = document.querySelector('#confirm-restaurant-section .confirm-table-btn.selected');
         selectedTableNumber = selectedBtn?.dataset?.table || null;
         kitchenNoteText = document.querySelector('#confirm-kitchen-note')?.value?.trim() || null;
+
+        // Per-produkt varianter og noter
+        document.querySelectorAll('.confirm-item-extras').forEach(section => {
+            const prodId = section.dataset.productId;
+            const selectedBadge = section.querySelector('.confirm-variant-badge.selected');
+            const noteInput = section.querySelector('.confirm-item-note');
+            itemExtras[prodId] = {
+                variant: selectedBadge?.dataset?.variant || null,
+                note: noteInput?.value?.trim() || null,
+            };
+        });
+
+        // Genbrug-badge → prepend til kitchen note
+        const reuseSelected = document.getElementById('confirm-reuse-badge')?.classList.contains('selected');
+        if (reuseSelected) {
+            kitchenNoteText = kitchenNoteText
+                ? `♻️ Genbrug · ${kitchenNoteText}`
+                : '♻️ Genbrug';
+        }
     }
 
     // OPTIMERING: Brug helper funktion til at sætte knap state
@@ -1081,7 +1166,10 @@ export async function handleCompletePurchase({
             // Hvis admin skal købe gratis, sæt pris til 0. Ellers brug mængderabat (hvis aktiv).
             price: effectiveUnitPrice,
             is_refill: item._isRefill || false, // Marker hvis det er et refill-køb
-            product_name: item._effectiveName || item.name // Gem effektivt navn (fx "Saft Refill")
+            product_name: item._effectiveName || item.name, // Gem effektivt navn (fx "Saft Refill")
+            // Restaurant mode: per-item variant og note
+            item_variant: itemExtras[item.id]?.variant || null,
+            item_note: itemExtras[item.id]?.note || null,
         };
     });
 
