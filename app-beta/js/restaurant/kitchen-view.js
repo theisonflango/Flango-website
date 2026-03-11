@@ -370,7 +370,18 @@ function buildOrderTable(orders, isServed) {
         } else {
             row.style.cursor = 'pointer';
             row.title = 'Klik for at markere som ikke-serveret';
-            row.addEventListener('click', () => confirmUnserve(sale));
+            row.addEventListener('click', (e) => {
+                if (e.target.closest('.kitchen-delete-btn')) return;
+                confirmUnserve(sale);
+            });
+        }
+        // Delete button
+        const deleteBtn = row.querySelector('.kitchen-delete-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                confirmRemoveOrder(sale);
+            });
         }
         tbody.appendChild(row);
     }
@@ -450,7 +461,19 @@ function buildMergedTable(orders) {
         if (sale.kitchen_served) {
             row.style.cursor = 'pointer';
             row.title = 'Klik for at markere som ikke-serveret';
-            row.addEventListener('click', () => confirmUnserve(sale));
+            row.addEventListener('click', (e) => {
+                if (e.target.closest('.kitchen-delete-btn')) return;
+                confirmUnserve(sale);
+            });
+        }
+
+        // Delete button
+        const deleteBtn = row.querySelector('.kitchen-delete-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                confirmRemoveOrder(sale);
+            });
         }
 
         tbody.appendChild(row);
@@ -816,6 +839,14 @@ async function serveAllOrders() {
         console.error('[kitchen] Some orders failed to serve');
         renderOrders();
     }
+}
+
+/** Remove a single order from view (UI only — stays in DB) */
+function confirmRemoveOrder(sale) {
+    if (!confirm(`Fjern "${sale.customer_name}" fra listen?`)) return;
+    allOrders = allOrders.filter(o => o.id !== sale.id);
+    updateStats();
+    renderOrders();
 }
 
 /** Remove served orders from view (UI only — stays in DB) */

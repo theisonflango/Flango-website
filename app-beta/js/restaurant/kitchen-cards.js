@@ -135,9 +135,10 @@ function renderTableRow(sale) {
         : '—';
 
     // Action column
+    const deleteBtn = `<button class="kitchen-delete-btn" title="Fjern fra listen">🗑️</button>`;
     const actionHtml = sale.kitchen_served
-        ? `<span class="kitchen-served-label">✓</span>`
-        : `<button class="kitchen-serve-btn">Servér ✓</button>`;
+        ? `<span class="kitchen-served-label">✓</span>${deleteBtn}`
+        : `<button class="kitchen-serve-btn">Servér ✓</button>${deleteBtn}`;
 
     row.innerHTML = `
         <td class="kitchen-col-time" data-created="${sale.created_at}">

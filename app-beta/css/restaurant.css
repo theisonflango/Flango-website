@@ -455,6 +455,28 @@ body {
 
 .kitchen-serve-btn:active { transform: scale(0.96); }
 
+.kitchen-col-action {
+    white-space: nowrap;
+}
+
+.kitchen-delete-btn {
+    padding: 4px 6px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0.3;
+    transition: opacity 0.15s, transform 0.15s;
+    vertical-align: middle;
+    margin-left: 4px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+.kitchen-row:hover .kitchen-delete-btn,
+.kitchen-row.served .kitchen-delete-btn { opacity: 0.6; }
+.kitchen-delete-btn:hover { opacity: 1; }
+.kitchen-delete-btn:active { transform: scale(0.9); }
+
 .kitchen-served-label {
     color: #10b981;
     font-size: 16px;
