@@ -667,12 +667,38 @@ body {
 .kitchen-settings-action-btn:active:not(:disabled) { transform: scale(0.97); }
 .kitchen-settings-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.kitchen-settings-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.kitchen-settings-action-serve {
+    color: #16a34a;
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+.kitchen-settings-action-serve:hover:not(:disabled) {
+    background: #dcfce7;
+    border-color: #4ade80;
+}
+
 .kitchen-settings-action-clear {
+    color: #d97706;
+    border-color: #fde68a;
+    background: #fffbeb;
+}
+.kitchen-settings-action-clear:hover:not(:disabled) {
+    background: #fef3c7;
+    border-color: #fbbf24;
+}
+
+.kitchen-settings-action-reset {
     color: #dc2626;
     border-color: #fecaca;
     background: #fef2f2;
 }
-.kitchen-settings-action-clear:hover:not(:disabled) {
+.kitchen-settings-action-reset:hover:not(:disabled) {
     background: #fee2e2;
     border-color: #f87171;
 }

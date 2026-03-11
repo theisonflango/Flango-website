@@ -615,6 +615,7 @@ function openSettingsOverlay() {
     }
 
     const activeCount = allOrders.filter(o => !o.kitchen_served).length;
+    const servedCount = allOrders.filter(o => o.kitchen_served).length;
 
     overlay.innerHTML = `
         <div class="kitchen-settings-header">
@@ -639,9 +640,17 @@ function openSettingsOverlay() {
             <div class="kitchen-settings-divider"></div>
             <div class="kitchen-settings-row">
                 <label>Handlinger</label>
-                <button id="ks-clear-list" class="kitchen-settings-action-btn kitchen-settings-action-clear"${activeCount === 0 ? ' disabled' : ''}>
-                    🧹 Ryd liste (${activeCount} aktive)
-                </button>
+                <div class="kitchen-settings-actions">
+                    <button id="ks-serve-all" class="kitchen-settings-action-btn kitchen-settings-action-serve"${activeCount === 0 ? ' disabled' : ''}>
+                        ✓ Servér alle (${activeCount})
+                    </button>
+                    <button id="ks-clear-served" class="kitchen-settings-action-btn kitchen-settings-action-clear"${servedCount === 0 ? ' disabled' : ''}>
+                        🧹 Ryd serveret (${servedCount})
+                    </button>
+                    <button id="ks-reset-all" class="kitchen-settings-action-btn kitchen-settings-action-reset"${allOrders.length === 0 ? ' disabled' : ''}>
+                        🔄 Nulstil alt
+                    </button>
+                </div>
             </div>
         </div>
     `;
@@ -673,12 +682,28 @@ function openSettingsOverlay() {
         });
     });
 
-    // Clear list button
-    overlay.querySelector('#ks-clear-list')?.addEventListener('click', () => {
+    // Serve all active orders
+    overlay.querySelector('#ks-serve-all')?.addEventListener('click', () => {
         const active = allOrders.filter(o => !o.kitchen_served);
         if (active.length === 0) return;
         if (!confirm(`Markér alle ${active.length} aktive ordrer som serveret?`)) return;
-        clearAllOrders();
+        serveAllOrders();
+        closeSettingsOverlay();
+    });
+
+    // Clear served orders from view
+    overlay.querySelector('#ks-clear-served')?.addEventListener('click', () => {
+        const served = allOrders.filter(o => o.kitchen_served);
+        if (served.length === 0) return;
+        if (!confirm(`Fjern ${served.length} serverede ordrer fra listen?`)) return;
+        clearServedOrders();
+        closeSettingsOverlay();
+    });
+
+    // Reset everything
+    overlay.querySelector('#ks-reset-all')?.addEventListener('click', () => {
+        if (!confirm('Nulstil hele listen og statistikken?\n\nOrdrer forsvinder kun fra køkkenskærmen — ikke fra databasen.')) return;
+        resetAll();
         closeSettingsOverlay();
     });
 
@@ -752,9 +777,10 @@ async function unmarkServed(saleId) {
     }
 }
 
-// ─── Clear all (mark all active as served) ───────────────────────────────────
+// ─── Batch actions ────────────────────────────────────────────────────────────
 
-async function clearAllOrders() {
+/** Mark all active orders as served (DB + UI) */
+async function serveAllOrders() {
     const active = allOrders.filter(o => !o.kitchen_served);
     if (active.length === 0) return;
 
@@ -787,9 +813,23 @@ async function clearAllOrders() {
     });
 
     if (anyFailed) {
-        console.error('[kitchen] Some orders failed to clear');
+        console.error('[kitchen] Some orders failed to serve');
         renderOrders();
     }
+}
+
+/** Remove served orders from view (UI only — stays in DB) */
+function clearServedOrders() {
+    allOrders = allOrders.filter(o => !o.kitchen_served);
+    updateStats();
+    renderOrders();
+}
+
+/** Clear entire list + reset stats (UI only — stays in DB) */
+function resetAll() {
+    allOrders = [];
+    updateStats();
+    renderOrders();
 }
 
 // ─── Realtime ────────────────────────────────────────────────────────────────
