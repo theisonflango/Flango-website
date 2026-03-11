@@ -3472,9 +3472,12 @@ body.kitchen-fullscreen-mode {
 .rv-help { font-size: 12px; color: #71717a; margin-bottom: 8px; }
 
 /* ─── Per-produkt varianter + note i bekræftelsesmodal ────────────────── */
+/* Produkt-rækken wrapper når extras er indsat */
+.confirm-product-row:has(.confirm-item-extras) { flex-wrap: wrap; }
+/* Extras nu INDE i produktboksen — fuld bredde, indryk forbi ikonet */
 .confirm-item-extras {
-    padding: 4px 0 8px 42px; display: flex; flex-wrap: wrap;
-    gap: 6px; align-items: center;
+    width: 100%; padding: 4px 0 0 56px; display: flex; flex-wrap: wrap;
+    gap: 5px; align-items: center; margin-top: -2px;
 }
 .confirm-variant-badges { display: flex; flex-wrap: wrap; gap: 4px; }
 .confirm-variant-badge {

@@ -223,7 +223,7 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
             noteInput.maxLength = 100;
             perItemSection.appendChild(noteInput);
 
-            productsContainer.appendChild(perItemSection);
+            row.appendChild(perItemSection);
         }
     });
 
