@@ -136,6 +136,7 @@ async function loadOrders() {
             kitchen_served, kitchen_served_at, total_amount,
             sale_items (
                 id, product_id, quantity, price_at_purchase,
+                item_variant, item_note,
                 products:product_id ( name, emoji, icon_url )
             ),
             users:customer_id ( name )
@@ -159,6 +160,8 @@ function normalizeSale(sale) {
         emoji: si.products?.emoji || '🍽️',
         icon_url: si.products?.icon_url || null,
         quantity: si.quantity || 1,
+        item_variant: si.item_variant || null,
+        item_note: si.item_note || null,
     }));
 
     return {
@@ -304,6 +307,7 @@ async function handleInsert(payload) {
             kitchen_served, kitchen_served_at, total_amount,
             sale_items (
                 id, product_id, quantity, price_at_purchase,
+                item_variant, item_note,
                 products:product_id ( name, emoji, icon_url )
             ),
             users:customer_id ( name )

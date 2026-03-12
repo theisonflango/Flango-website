@@ -701,6 +701,27 @@ body.calculator-mode .calculator-panel {
 }
 .calc-add-btn.success { animation: calcAddSuccess 400ms ease; }
 
+/* === Kitchen-mode overlay på tablet/iPad === */
+@media (max-width: 1199px) and (min-width: 768px) {
+    body.kitchen-mode #main-app {
+        grid-template-columns: 1fr 460px !important;
+        grid-template-areas:
+            "products sidebar-header"
+            "products user-banner"
+            "products sidebar" !important;
+    }
+    body.kitchen-mode .kitchen-panel {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        bottom: 20px;
+        width: min(380px, calc(100vw - 500px));
+        z-index: 50;
+        border-radius: var(--radius-lg, 16px);
+        box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15), 0 0 0 1px var(--border, #e0ddd7);
+    }
+}
+
 /* === Responsivt === */
 @media (max-width: 1024px) {
     body.calculator-mode #main-app {
@@ -711,17 +732,6 @@ body.calculator-mode .calculator-panel {
             "calculator sidebar" !important;
     }
     body.calculator-mode #products-area {
-        display: none !important;
-    }
-
-    body.kitchen-mode #main-app {
-        grid-template-columns: 1fr 400px !important;
-        grid-template-areas:
-            "kitchen sidebar-header"
-            "kitchen user-banner"
-            "kitchen sidebar" !important;
-    }
-    body.kitchen-mode #products-area {
         display: none !important;
     }
 }

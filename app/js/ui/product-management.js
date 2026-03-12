@@ -781,7 +781,7 @@ export function createProductManagementUI(options = {}) {
         // Load parent portal settings and sugar policy to determine which fields to show
         const { data: portalSettings } = await supabaseClient
             .from('institutions')
-            .select('parent_portal_allergens, parent_portal_vegetarian_only, parent_portal_no_pork, sugar_policy_enabled')
+            .select('parent_portal_allergens, parent_portal_vegetarian_only, parent_portal_no_pork, sugar_policy_enabled, restaurant_mode_enabled')
             .eq('id', institutionId)
             .single();
 
@@ -790,6 +790,11 @@ export function createProductManagementUI(options = {}) {
         const showPork = portalSettings?.parent_portal_no_pork !== false;
         // Only show "Usund Vare" checkbox if sugar policy is enabled
         const showUnhealthy = portalSettings?.sugar_policy_enabled === true;
+        const showRestaurantVariants = portalSettings?.restaurant_mode_enabled === true;
+        // Hent eksisterende varianter fra produktet
+        let restaurantVariantsArray = isEditing && Array.isArray(product?.restaurant_variants)
+            ? [...product.restaurant_variants]
+            : [];
 
         const allergenOptions = [
             { value: 'peanuts', label: '🥜 Jordnødder (peanuts)' },
@@ -889,6 +894,20 @@ export function createProductManagementUI(options = {}) {
                         <input type="number" id="product-refill-max-input" data-placeholder-base="Antal" placeholder="Antal (0 = ubegrænset)" min="0" step="1" value="${existingRefillMaxRefills}">
                     </div>
                 </div>
+                ${showRestaurantVariants ? `
+                <div class="collapsible-section">
+                    <h4 class="collapsible-header" data-target="restaurant-variants-content" style="cursor: pointer; user-select: none; padding: 10px; background: var(--secondary-bg, #f5f5f5); border-radius: 8px; margin: 10px 0;">
+                        <span class="collapse-arrow" style="display: inline-block; transition: transform 0.2s; margin-right: 8px;">▶</span> 🍽️ Restaurant-varianter
+                    </h4>
+                    <div id="restaurant-variants-content" class="collapsible-content" style="display: none; padding: 10px 0;">
+                        <div class="rv-help">Opret faste varianter som tjeneren kan vælge ved bestilling (fx "gul", "grøn" for myslibar).</div>
+                        <div class="rv-tags" id="rv-tags-container"></div>
+                        <div class="rv-add-row">
+                            <input type="text" id="rv-new-tag-input" placeholder="Ny variant (fx 'gul')" maxlength="30">
+                            <button type="button" id="rv-add-tag-btn" class="rv-add-btn">+ Tilføj</button>
+                        </div>
+                    </div>
+                </div>` : ''}
                 <div class="collapsible-section">
                     <h4 class="collapsible-header" data-target="icon-section-content" style="cursor: pointer; user-select: none; padding: 10px; background: var(--secondary-bg, #f5f5f5); border-radius: 8px; margin: 10px 0;">
                         <span class="collapse-arrow" style="display: inline-block; transition: transform 0.2s; margin-right: 8px;">▶</span> Produktikon
@@ -1049,6 +1068,50 @@ export function createProductManagementUI(options = {}) {
                 }
             });
         });
+
+        // ── Restaurant-varianter tag-manager ──
+        const rvTagsContainer = document.getElementById('rv-tags-container');
+        const rvNewTagInput = document.getElementById('rv-new-tag-input');
+        const rvAddTagBtn = document.getElementById('rv-add-tag-btn');
+
+        function renderVariantTags() {
+            if (!rvTagsContainer) return;
+            rvTagsContainer.innerHTML = '';
+            restaurantVariantsArray.forEach((tag, idx) => {
+                const span = document.createElement('span');
+                span.className = 'rv-tag';
+                span.innerHTML = `${tag} <button type="button" class="rv-tag-remove" data-idx="${idx}">✕</button>`;
+                rvTagsContainer.appendChild(span);
+            });
+            // Attach remove handlers
+            rvTagsContainer.querySelectorAll('.rv-tag-remove').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.idx, 10);
+                    restaurantVariantsArray.splice(idx, 1);
+                    renderVariantTags();
+                });
+            });
+        }
+
+        function addVariantTag() {
+            if (!rvNewTagInput) return;
+            const val = rvNewTagInput.value.trim();
+            if (!val) return;
+            if (restaurantVariantsArray.includes(val)) {
+                rvNewTagInput.value = '';
+                return; // Undgå dubletter
+            }
+            restaurantVariantsArray.push(val);
+            rvNewTagInput.value = '';
+            renderVariantTags();
+            rvNewTagInput.focus();
+        }
+
+        if (rvAddTagBtn) rvAddTagBtn.addEventListener('click', addVariantTag);
+        if (rvNewTagInput) rvNewTagInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addVariantTag(); }
+        });
+        renderVariantTags(); // Render eksisterende tags
 
         // Prefill allergener ved redigering
         if (isEditing) {
@@ -1887,6 +1950,7 @@ export function createProductManagementUI(options = {}) {
                 refillPrice,
                 refillTimeLimitMinutes,
                 refillMaxRefills,
+                restaurantVariants: restaurantVariantsArray.length > 0 ? [...restaurantVariantsArray] : null,
             };
         };
 
@@ -1969,6 +2033,7 @@ export function createProductManagementUI(options = {}) {
             refillPrice = null,
             refillTimeLimitMinutes = null,
             refillMaxRefills = null,
+            restaurantVariants = null,
         } = productData;
         const price = parseFloat(priceStr.replace(",", "."));
         if (isNaN(price)) return showAlert("Ugyldig pris.");
@@ -1993,6 +2058,7 @@ export function createProductManagementUI(options = {}) {
             refill_price: refillEnabledValue ? refillPrice : null,
             refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
             refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
+            restaurant_variants: restaurantVariants,
             institution_id: adminProfile.institution_id,
             sort_order: products.length,
             is_visible: true,  // FIX: Sæt is_visible til true som standard, så nye produkter er synlige
@@ -2041,6 +2107,7 @@ export function createProductManagementUI(options = {}) {
             bulkDiscountEnabled = false,
             bulkDiscountQty = null,
             bulkDiscountPriceOre = null,
+            restaurantVariants = null,
             refillEnabled = false,
             refillPrice = null,
             refillTimeLimitMinutes = null,
@@ -2071,6 +2138,7 @@ export function createProductManagementUI(options = {}) {
             refill_price: refillEnabledValue ? refillPrice : null,
             refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
             refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
+            restaurant_variants: restaurantVariants,
             }).eq("id", productId)
         );
         if (error) return showAlert(`Fejl: ${error.message}`);
@@ -2091,6 +2159,7 @@ export function createProductManagementUI(options = {}) {
             refill_price: refillEnabledValue ? refillPrice : null,
             refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
             refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
+            restaurant_variants: restaurantVariants,
         });
         await saveProductAllergens(productId, allergens);
         if (institutionId) {

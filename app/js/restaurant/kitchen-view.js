@@ -198,6 +198,7 @@ async function loadOrders() {
             kitchen_served, kitchen_served_at, total_amount,
             sale_items (
                 id, product_id, quantity, price_at_purchase,
+                item_variant, item_note,
                 products:product_id ( name, emoji, icon_url )
             ),
             users:customer_id ( name ),
@@ -225,6 +226,8 @@ function normalizeSale(sale) {
         icon_url: si.products?.icon_url || null,
         quantity: si.quantity || 1,
         unit_price: si.price_at_purchase,
+        item_variant: si.item_variant || null,
+        item_note: si.item_note || null,
     }));
 
     return {
@@ -367,7 +370,18 @@ function buildOrderTable(orders, isServed) {
         } else {
             row.style.cursor = 'pointer';
             row.title = 'Klik for at markere som ikke-serveret';
-            row.addEventListener('click', () => confirmUnserve(sale));
+            row.addEventListener('click', (e) => {
+                if (e.target.closest('.kitchen-delete-btn')) return;
+                confirmUnserve(sale);
+            });
+        }
+        // Delete button
+        const deleteBtn = row.querySelector('.kitchen-delete-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                confirmRemoveOrder(sale);
+            });
         }
         tbody.appendChild(row);
     }
@@ -447,7 +461,19 @@ function buildMergedTable(orders) {
         if (sale.kitchen_served) {
             row.style.cursor = 'pointer';
             row.title = 'Klik for at markere som ikke-serveret';
-            row.addEventListener('click', () => confirmUnserve(sale));
+            row.addEventListener('click', (e) => {
+                if (e.target.closest('.kitchen-delete-btn')) return;
+                confirmUnserve(sale);
+            });
+        }
+
+        // Delete button
+        const deleteBtn = row.querySelector('.kitchen-delete-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                confirmRemoveOrder(sale);
+            });
         }
 
         tbody.appendChild(row);
@@ -611,9 +637,12 @@ function openSettingsOverlay() {
         ).join('');
     }
 
+    const activeCount = allOrders.filter(o => !o.kitchen_served).length;
+    const servedCount = allOrders.filter(o => o.kitchen_served).length;
+
     overlay.innerHTML = `
         <div class="kitchen-settings-header">
-            <span>⚙️ Lydindstillinger</span>
+            <span>⚙️ Indstillinger</span>
             <button class="kitchen-settings-close">✕</button>
         </div>
         <div class="kitchen-settings-body">
@@ -629,6 +658,21 @@ function openSettingsOverlay() {
                 <div class="kitchen-settings-select-row">
                     <select id="ks-serve-sound">${buildSelect('ks-serve-sound', serveSound)}</select>
                     <button class="kitchen-settings-preview" data-target="ks-serve-sound">▶</button>
+                </div>
+            </div>
+            <div class="kitchen-settings-divider"></div>
+            <div class="kitchen-settings-row">
+                <label>Handlinger</label>
+                <div class="kitchen-settings-actions">
+                    <button id="ks-serve-all" class="kitchen-settings-action-btn kitchen-settings-action-serve"${activeCount === 0 ? ' disabled' : ''}>
+                        ✓ Servér alle (${activeCount})
+                    </button>
+                    <button id="ks-clear-served" class="kitchen-settings-action-btn kitchen-settings-action-clear"${servedCount === 0 ? ' disabled' : ''}>
+                        🧹 Ryd serveret (${servedCount})
+                    </button>
+                    <button id="ks-reset-all" class="kitchen-settings-action-btn kitchen-settings-action-reset"${allOrders.length === 0 ? ' disabled' : ''}>
+                        🔄 Nulstil alt
+                    </button>
                 </div>
             </div>
         </div>
@@ -659,6 +703,31 @@ function openSettingsOverlay() {
             previewAudio.volume = 0.7;
             previewAudio.play().catch(() => {});
         });
+    });
+
+    // Serve all active orders
+    overlay.querySelector('#ks-serve-all')?.addEventListener('click', () => {
+        const active = allOrders.filter(o => !o.kitchen_served);
+        if (active.length === 0) return;
+        if (!confirm(`Markér alle ${active.length} aktive ordrer som serveret?`)) return;
+        serveAllOrders();
+        closeSettingsOverlay();
+    });
+
+    // Clear served orders from view
+    overlay.querySelector('#ks-clear-served')?.addEventListener('click', () => {
+        const served = allOrders.filter(o => o.kitchen_served);
+        if (served.length === 0) return;
+        if (!confirm(`Fjern ${served.length} serverede ordrer fra listen?`)) return;
+        clearServedOrders();
+        closeSettingsOverlay();
+    });
+
+    // Reset everything
+    overlay.querySelector('#ks-reset-all')?.addEventListener('click', () => {
+        if (!confirm('Nulstil hele listen og statistikken?\n\nOrdrer forsvinder kun fra køkkenskærmen — ikke fra databasen.')) return;
+        resetAll();
+        closeSettingsOverlay();
     });
 
     // Close on click outside (delayed)
@@ -731,6 +800,69 @@ async function unmarkServed(saleId) {
     }
 }
 
+// ─── Batch actions ────────────────────────────────────────────────────────────
+
+/** Mark all active orders as served (DB + UI) */
+async function serveAllOrders() {
+    const active = allOrders.filter(o => !o.kitchen_served);
+    if (active.length === 0) return;
+
+    // Optimistic UI
+    const now = new Date().toISOString();
+    for (const o of active) {
+        o.kitchen_served = true;
+        o.kitchen_served_at = now;
+    }
+    renderOrders();
+
+    // Batch RPC calls
+    const results = await Promise.allSettled(
+        active.map(o =>
+            supabaseClient.rpc('mark_sale_served', {
+                p_sale_id: o.id,
+                p_institution_id: institutionId,
+            })
+        )
+    );
+
+    // Rollback failed ones
+    let anyFailed = false;
+    results.forEach((r, i) => {
+        if (r.status === 'rejected' || r.value?.error) {
+            anyFailed = true;
+            active[i].kitchen_served = false;
+            active[i].kitchen_served_at = null;
+        }
+    });
+
+    if (anyFailed) {
+        console.error('[kitchen] Some orders failed to serve');
+        renderOrders();
+    }
+}
+
+/** Remove a single order from view (UI only — stays in DB) */
+function confirmRemoveOrder(sale) {
+    if (!confirm(`Fjern "${sale.customer_name}" fra listen?`)) return;
+    allOrders = allOrders.filter(o => o.id !== sale.id);
+    updateStats();
+    renderOrders();
+}
+
+/** Remove served orders from view (UI only — stays in DB) */
+function clearServedOrders() {
+    allOrders = allOrders.filter(o => !o.kitchen_served);
+    updateStats();
+    renderOrders();
+}
+
+/** Clear entire list + reset stats (UI only — stays in DB) */
+function resetAll() {
+    allOrders = [];
+    updateStats();
+    renderOrders();
+}
+
 // ─── Realtime ────────────────────────────────────────────────────────────────
 
 function subscribeRealtime() {
@@ -774,6 +906,7 @@ async function handleInsert(payload) {
             kitchen_served, kitchen_served_at, total_amount,
             sale_items (
                 id, product_id, quantity, price_at_purchase,
+                item_variant, item_note,
                 products:product_id ( name, emoji, icon_url )
             ),
             users:customer_id ( name ),

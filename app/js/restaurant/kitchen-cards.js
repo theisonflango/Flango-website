@@ -58,14 +58,15 @@ function renderCompactRow(sale) {
 
     const tc = getTimeColor(sale.created_at);
 
-    // Items inline: emoji+qty (🍔x2 🍟x1)
+    // Items inline: emoji+qty (🍔x2 🍟x1) + variant suffix
     const items = sale.items || [];
     const itemsHtml = items.map(item => {
         const icon = item.icon_url
             ? `<img src="${escapeHtml(item.icon_url)}" class="krc-item-icon" alt="">`
             : `<span class="krc-item-emoji">${item.emoji || '🍽️'}</span>`;
         const qty = item.quantity > 1 ? `x${item.quantity}` : '';
-        return `<span class="krc-item">${icon}${qty}</span>`;
+        const variant = item.item_variant ? `<span class="krc-item-variant">·${escapeHtml(item.item_variant)}</span>` : '';
+        return `<span class="krc-item">${icon}${qty}${variant}</span>`;
     }).join('');
 
     // Table badge (compact: "B3")
@@ -106,14 +107,18 @@ function renderTableRow(sale) {
 
     const tc = getTimeColor(sale.created_at);
 
-    // Items summary
+    // Items summary — med variant-badge og per-item note
     const items = sale.items || [];
     const itemsSummary = items.map(item => {
         const icon = item.icon_url
             ? `<img src="${escapeHtml(item.icon_url)}" class="kitchen-item-icon" alt="">`
             : `<span class="kitchen-item-emoji">${item.emoji || '🍽️'}</span>`;
         const qty = item.quantity > 1 ? ` x${item.quantity}` : '';
-        return `<span class="kitchen-item-inline">${icon} ${escapeHtml(item.name || 'Produkt')}${qty}</span>`;
+        const variantHtml = item.item_variant
+            ? ` <span class="kitchen-item-variant">${escapeHtml(item.item_variant)}</span>` : '';
+        const noteHtml = item.item_note
+            ? `<div class="kitchen-item-note">📝 ${escapeHtml(item.item_note)}</div>` : '';
+        return `<div class="kitchen-item-block"><span class="kitchen-item-inline">${icon} ${escapeHtml(item.name || 'Produkt')}${qty}${variantHtml}</span>${noteHtml}</div>`;
     }).join('');
 
     // Clerk/admin info
@@ -130,9 +135,10 @@ function renderTableRow(sale) {
         : '—';
 
     // Action column
+    const deleteBtn = `<button class="kitchen-delete-btn" title="Fjern fra listen">🗑️</button>`;
     const actionHtml = sale.kitchen_served
-        ? `<span class="kitchen-served-label">✓</span>`
-        : `<button class="kitchen-serve-btn">Servér ✓</button>`;
+        ? `<span class="kitchen-served-label">✓</span>${deleteBtn}`
+        : `<button class="kitchen-serve-btn">Servér ✓</button>${deleteBtn}`;
 
     row.innerHTML = `
         <td class="kitchen-col-time" data-created="${sale.created_at}">
