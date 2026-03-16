@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <title>Privatlivspolitik – Flango</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Privatlivspolitik for Flango – hvilke personoplysninger vi behandler, hvorfor, hvor de opbevares, og hvilke rettigheder du har." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5f5fb;
+      --bg-soft: #ffffff;
+      --accent: #ff7a3c;
+      --accent-dark: #e0521f;
+      --text-main: #111827;
+      --text-muted: #4b5563;
+      --border-soft: #e5e7eb;
+      --radius-lg: 18px;
+      --green: #059669;
+      --blue: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: radial-gradient(circle at top, #ffe8d6 0, #f5f5fb 38%, #f9fafb 100%); color: var(--text-main); }
+    a { color: inherit; text-decoration: none; }
+    .page { min-height: 100vh; max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 40px; }
+
+    /* ── Header ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 14px 16px; margin: 0 -16px 0;
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-soft); flex-wrap: wrap;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .logo-mark { width: 34px; height: 34px; border-radius: 14px; background: radial-gradient(circle at 30% 20%, #ffe8d6 0, #ff7a3c 42%, #ff4b73 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 25px rgba(248,113,113,0.55); }
+    .logo-mark span { font-family: 'Baloo 2', cursive; font-size: 20px; color: #fff; transform: translateY(-1px); }
+    .logo-text-main { font-family: 'Baloo 2', cursive; font-size: 22px; line-height: 1; }
+    .logo-sub { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+    nav { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; flex-wrap: wrap; }
+    .nav-link { padding: 6px 12px; border-radius: 999px; color: var(--text-muted); white-space: nowrap; transition: color 0.15s, background 0.15s; }
+    .nav-link:hover { color: var(--text-main); background: rgba(0,0,0,0.04); }
+    .nav-link.here { color: var(--accent-dark); }
+    .nav-cta { padding: 8px 14px; border-radius: 999px; background: #111827; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 12px 30px rgba(15,23,42,0.45); white-space: nowrap; }
+    .nav-cta:hover { background: #1f2937; }
+    @media (max-width: 830px) { header { flex-direction: column; align-items: flex-start; } nav { gap: 8px; } }
+    @media (max-width: 640px) { .nav-link { padding: 5px 10px; font-size: 12px; } .nav-cta { padding: 6px 12px; font-size: 12px; } }
+
+    /* ── Content ── */
+    .page-title { margin: 0; font-size: clamp(24px,4vw,30px); font-family: 'Baloo 2', cursive; }
+    .page-intro { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); max-width: 65ch; line-height: 1.55; }
+    .page-meta { font-size: 13px; color: #9ca3af; margin: 4px 0 0; }
+    .section-heading { margin: 0 0 16px; font-size: 20px; font-family: 'Baloo 2', cursive; }
+    .divider { margin: 32px 0; border: none; height: 0; border-top: 1px solid var(--border-soft); }
+    .about-section { max-width: 65ch; }
+    .about-section p { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+    .about-section p:last-child { margin-bottom: 0; }
+    .about-section ul { margin: 12px 0 0; padding-left: 1.25em; font-size: 15px; color: var(--text-muted); line-height: 1.55; list-style: none; }
+    .about-section li { margin-bottom: 8px; position: relative; padding-left: 4px; }
+    .about-section li::before { content: ''; position: absolute; left: -16px; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    .about-section h3 { margin: 20px 0 8px; font-size: 16px; font-weight: 700; color: var(--text-main); }
+
+    /* ── Tech table ── */
+    .tech-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    .tech-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: #111827;
+      color: #fff;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .tech-table th:first-child { border-radius: 8px 0 0 0; }
+    .tech-table th:last-child { border-radius: 0 8px 0 0; }
+    .tech-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-soft);
+      vertical-align: top;
+      color: var(--text-muted);
+    }
+    .tech-table tr:nth-child(even) td { background: #fafafa; }
+
+    /* ── Callout ── */
+    .callout {
+      background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+      border-left: 4px solid var(--green);
+      border-radius: 0 10px 10px 0;
+      padding: 16px 20px;
+      margin: 20px 0;
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+    .callout strong { color: var(--text-main); }
+    .callout a { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
+    .callout-orange {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef9e7 100%);
+      border-left-color: var(--accent);
+    }
+    .callout-blue {
+      background: linear-gradient(135deg, #eff6ff 0%, #f0f7ff 100%);
+      border-left-color: var(--blue);
+    }
+
+    /* ── Role cards ── */
+    .role-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    @media (max-width: 500px) { .role-grid { grid-template-columns: 1fr; } }
+    .role-card {
+      background: var(--bg-soft);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .role-card .role-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px;
+    }
+    .role-card .role-name { font-size: 17px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+    .role-card .role-detail { font-size: 13px; color: var(--text-muted); line-height: 1.45; }
+
+    /* ── Contact box ── */
+    .contact-box {
+      background: var(--bg-soft);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 16px 0;
+    }
+    .contact-box p { margin: 0 0 4px; font-size: 14px; color: var(--text-muted); }
+    .contact-box strong { color: var(--text-main); }
+    .contact-box a { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
+
+    footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-soft); font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <a href="/" class="logo" aria-label="Flango – forsiden">
+        <div class="logo-mark"><span>F</span></div>
+        <div>
+          <div class="logo-text-main">Flango</div>
+          <div class="logo-sub">SFO'ernes cafésystem</div>
+        </div>
+      </a>
+      <nav>
+        <a class="nav-link" href="/">FORSIDE</a>
+        <a class="nav-link" href="/pris/">PRISER</a>
+        <a class="nav-link" href="/gaming/">GAMING</a>
+        <a class="nav-link" href="/event/">EVENT</a>
+        <a class="nav-link" href="/prov-flango/">PRØV FLANGO</a>
+        <a class="nav-link" href="/om-flango/">OM FLANGO</a>
+        <a class="nav-link" href="/forældre/">FORÆLDRE PORTAL</a>
+        <a class="nav-link" href="/kontakt/">KONTAKT</a>
+        <a class="nav-cta" href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango">Book en snak</a>
+      </nav>
+    </header>
+
+    <!-- ══════════════════════════════════ -->
+    <!--  HERO                              -->
+    <!-- ══════════════════════════════════ -->
+    <section>
+      <h1 class="page-title">Privatlivspolitik</h1>
+      <p class="page-intro">Denne privatlivspolitik beskriver hvordan Flango behandler personoplysninger i forbindelse med cafédrift, skærmtidsstyring og forældreportal i danske institutioner.</p>
+      <p class="page-meta">Gældende fra 17. marts 2026 · Version 1.0</p>
+    </section>
+
+    <div class="callout">
+      <strong>Kort version:</strong> Flango behandler kun de oplysninger der er nødvendige for at drive institutionens café og skærmtidsstyring. Alle data opbevares i EU (Irland). Vi sælger aldrig data og deler kun med de underbehandlere der er nødvendige for driften. Børn, forældre og personale har fuld ret til indsigt, berigtigelse og sletning.
+    </div>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  1. DATAANSVARLIG                  -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">1. Dataansvarlig og databehandler</h2>
+      <div class="role-grid">
+        <div class="role-card">
+          <div class="role-label">Dataansvarlig</div>
+          <div class="role-name">Institutionen / kommunen</div>
+          <div class="role-detail">Bestemmer formål og midler for behandling af persondata. Ansvarlig for information til forældre og registrerede.</div>
+        </div>
+        <div class="role-card">
+          <div class="role-label">Databehandler</div>
+          <div class="role-name">Theison (CVR 34360642)</div>
+          <div class="role-detail">Behandler data på vegne af den dataansvarlige i henhold til databehandleraftale.<br><a href="mailto:kontakt@flango.dk" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;">kontakt@flango.dk</a></div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  2. PERSONOPLYSNINGER              -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">2. Hvilke personoplysninger behandler vi</h2>
+
+      <h3>Børn (elever i institutionen)</h3>
+      <table class="tech-table">
+        <thead><tr><th>Datapunkt</th><th>Formål</th></tr></thead>
+        <tbody>
+          <tr><td>Fornavn</td><td>Identifikation i café-appen</td></tr>
+          <tr><td>Kontonummer (pr. institution)</td><td>Unik identifikation</td></tr>
+          <tr><td>Klassetrin</td><td>Filtrering ved arrangementer</td></tr>
+          <tr><td>PIN-kode (krypteret)</td><td>Bekræftelse af køb</td></tr>
+          <tr><td>Saldo (DKK)</td><td>Digital pengepung</td></tr>
+          <tr><td>Købshistorik</td><td>Overblik over forbrug</td></tr>
+          <tr><td>Allergen-indstillinger</td><td>Fødevaresikkerhed (forældrerapporteret)</td></tr>
+          <tr><td>Kostpræferencer</td><td>Filtrering af produkter (vegetar, sukkerpolitik mv.)</td></tr>
+          <tr><td>Skærmtidssessioner</td><td>Tidsstyring i spillerum</td></tr>
+          <tr><td>Ekspedient-aktivitet</td><td>Pædagogisk værktøj (gamification)</td></tr>
+          <tr><td>Avatar og badges</td><td>Gamification (motivering af medansvar)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Forældre</h3>
+      <table class="tech-table">
+        <thead><tr><th>Datapunkt</th><th>Formål</th></tr></thead>
+        <tbody>
+          <tr><td>E-mailadresse</td><td>Login, notifikationer</td></tr>
+          <tr><td>Kodeord (krypteret)</td><td>Autentifikation</td></tr>
+          <tr><td>Google-konto (valgfrit)</td><td>Alternativ login via SSO</td></tr>
+          <tr><td>Barn-tilknytning</td><td>Adgang til egne børns data</td></tr>
+          <tr><td>Betalingshistorik</td><td>Optankning af barnets saldo (beløb og tidspunkt)</td></tr>
+          <tr><td>Indstillinger</td><td>Forbrugsgrænser, allergener, skærmtid, notifikationer</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Personale</h3>
+      <table class="tech-table">
+        <thead><tr><th>Datapunkt</th><th>Formål</th></tr></thead>
+        <tbody>
+          <tr><td>E-mailadresse</td><td>Login</td></tr>
+          <tr><td>Kodeord (krypteret)</td><td>Autentifikation</td></tr>
+          <tr><td>Rolle</td><td>Adgangsstyring</td></tr>
+          <tr><td>Handlingslog</td><td>Sporbarhed og audit</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout-orange callout">
+        <strong>Hvad vi IKKE behandler:</strong> Flango behandler ikke CPR-numre, helbredsoplysninger, religiøs overbevisning, etnisk oprindelse, biometriske data eller andre særligt følsomme personoplysninger (GDPR artikel 9). Allergen-indstillinger er forældrerapporterede præferencer – ikke medicinske data.
+      </div>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  3. FORMÅL OG RETSGRUNDLAG         -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">3. Formål og retsgrundlag</h2>
+      <table class="tech-table">
+        <thead><tr><th>Formål</th><th>Retsgrundlag (GDPR)</th></tr></thead>
+        <tbody>
+          <tr><td>Cafédrift (salg, saldo, produkter)</td><td>Art. 6(1)(e) opgave i samfundets interesse / art. 6(1)(b) kontrakt</td></tr>
+          <tr><td>Forældreportal (indsigt, indstillinger)</td><td>Art. 6(1)(a) samtykke + art. 6(1)(b) kontrakt</td></tr>
+          <tr><td>Skærmtidsstyring</td><td>Art. 6(1)(e) institutionens drift / art. 6(1)(f) legitim interesse</td></tr>
+          <tr><td>Fødevaresikkerhed (allergener)</td><td>Art. 6(1)(f) legitim interesse + art. 6(1)(d) vital interesse</td></tr>
+          <tr><td>Gamification (pædagogisk)</td><td>Art. 6(1)(f) legitim interesse</td></tr>
+          <tr><td>Betaling via Stripe</td><td>Art. 6(1)(b) kontrakt</td></tr>
+          <tr><td>Administration og audit</td><td>Art. 6(1)(f) legitim interesse (compliance)</td></tr>
+        </tbody>
+      </table>
+      <p>Den dataansvarlige institution eller kommune fastlægger det konkrete retsgrundlag.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  4. OPBEVARING                     -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">4. Hvor opbevares data</h2>
+      <p>Alle personoplysninger opbevares i <strong>EU</strong>:</p>
+      <ul>
+        <li><strong>Database, autentifikation og backend:</strong> Supabase (PostgreSQL) på AWS eu-west-1 (Irland)</li>
+        <li><strong>Betalingsdata:</strong> Stripe (PCI DSS Level 1 certificeret). Flango håndterer aldrig kortdata – det sker udelukkende hos Stripe.</li>
+        <li><strong>Frontend:</strong> GitHub Pages (statiske filer, ingen persondata)</li>
+      </ul>
+      <p>Data overføres ikke til lande uden for EU, medmindre det er dækket af EU-godkendte overførselsmekanismer (Standard Contractual Clauses).</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  5. UNDERBEHANDLERE                -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">5. Underbehandlere</h2>
+      <table class="tech-table">
+        <thead><tr><th>Underbehandler</th><th>Formål</th><th>Data</th><th>Placering</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Supabase, Inc. (AWS)</td>
+            <td>Database, auth, backend, realtime, fillagring</td>
+            <td>Alle persondata</td>
+            <td>EU (Irland)</td>
+          </tr>
+          <tr>
+            <td>Stripe, Inc.</td>
+            <td>Betalingshåndtering</td>
+            <td>E-mail, beløb, Stripe-tokens (aldrig kortdata)</td>
+            <td>EU / global</td>
+          </tr>
+          <tr>
+            <td>GitHub / Microsoft</td>
+            <td>Hosting af statiske filer</td>
+            <td>Ingen persondata</td>
+            <td>CDN (globalt)</td>
+          </tr>
+          <tr>
+            <td>Google (OAuth)</td>
+            <td>Valgfrit login for forældre</td>
+            <td>E-mail, navn (kun ved Google-login)</td>
+            <td>EU / global</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Der er indgået databehandleraftale (DPA) med Supabase (marts 2026). Stripe er PCI DSS Level 1 certificeret.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  6. SIKKERHED                      -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">6. Sikkerhedsforanstaltninger</h2>
+      <ul>
+        <li><strong>Kryptering i transit:</strong> Al kommunikation krypteres via TLS 1.2+ (HTTPS).</li>
+        <li><strong>Kryptering at rest:</strong> Alle data krypteres på disk med AES-256. Nøgler beskyttes via FIPS 140-2 HSM'er.</li>
+        <li><strong>Adgangskontrol:</strong> Row Level Security (RLS) på alle hovedtabeller sikrer at brugere kun ser data de har adgang til.</li>
+        <li><strong>Institutionsisolation:</strong> Data er strengt adskilt pr. institution — det er teknisk umuligt at tilgå andre institutioners data.</li>
+        <li><strong>Kodeord og PIN:</strong> Alle kodeord og PIN-koder krypteres med bcrypt (envejskryptering). De kan aldrig genskabes.</li>
+        <li><strong>Audit-log:</strong> Alle transaktioner og administrative handlinger logges med tidspunkt og udfører i en append-only log.</li>
+        <li><strong>Backup:</strong> Daglige automatiske backups med punkt-i-tid gendannelse. Backups er krypteret.</li>
+      </ul>
+      <p>Læs mere på <a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;">Sikkerhed og databeskyttelse</a>.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  7. RETTIGHEDER                    -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">7. Dine rettigheder</h2>
+      <p>Som registreret (barn, forælder eller personalemedlem) har du følgende rettigheder i henhold til GDPR:</p>
+      <table class="tech-table">
+        <thead><tr><th>Rettighed</th><th>Beskrivelse</th></tr></thead>
+        <tbody>
+          <tr><td>Ret til indsigt (art. 15)</td><td>Se hvilke oplysninger der behandles om dig eller dit barn. Forældre har live-indsigt via forældreportalen.</td></tr>
+          <tr><td>Ret til berigtigelse (art. 16)</td><td>Få rettet forkerte oplysninger.</td></tr>
+          <tr><td>Ret til sletning (art. 17)</td><td>Få slettet dine oplysninger, medmindre lovmæssigt grundlag kræver opbevaring.</td></tr>
+          <tr><td>Ret til begrænsning (art. 18)</td><td>Begrænse behandlingen af dine data.</td></tr>
+          <tr><td>Ret til dataportabilitet (art. 20)</td><td>Få udleveret dine data i maskinlæsbart format (JSON).</td></tr>
+          <tr><td>Ret til indsigelse (art. 21)</td><td>Gøre indsigelse mod behandling baseret på legitim interesse.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout-blue callout">
+        <strong>Sådan udøver du dine rettigheder:</strong> Kontakt den institution eller kommune der anvender Flango — de er dataansvarlige. De kan kontakte Flango for teknisk assistance. Du kan også skrive direkte til <a href="mailto:kontakt@flango.dk">kontakt@flango.dk</a>.
+      </div>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  8. OPBEVARINGSPERIODE             -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">8. Opbevaringsperiode og sletning</h2>
+      <ul>
+        <li>Personoplysninger opbevares så længe barnet er tilknyttet institutionen, eller indtil den dataansvarlige anmoder om sletning.</li>
+        <li>Ved ophør af samarbejde eksporteres alle data til den dataansvarlige, og data slettes derefter fra Flango.</li>
+        <li>Flango understøtter komplet datasletning med obligatorisk datadump inden sletning.</li>
+        <li>Historiske transaktionsdata kan opbevares i anonymiseret form til statistiske formål.</li>
+      </ul>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  9. BØRNS DATA                     -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">9. Særligt om børns data</h2>
+      <p>Flango behandler primært børns personoplysninger. Vi er særligt opmærksomme på:</p>
+      <ul>
+        <li>Vi indsamler kun oplysninger der er strengt nødvendige for cafédrift og skærmtidsstyring.</li>
+        <li>Børn identificeres ved fornavn og kontonummer – ikke ved CPR-nummer eller fuldt navn.</li>
+        <li>Forældre har fuld indsigt og kontrol via forældreportalen.</li>
+        <li>Gamification-data (levels, badges) er baseret på simple tællere – ikke profilering eller automatiseret beslutningstagning.</li>
+        <li>Allergen-indstillinger er forældrerapporterede præferencer til fødevaresikkerhed, ikke medicinske diagnoser.</li>
+      </ul>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  10. COOKIES                       -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">10. Cookies</h2>
+      <p>Flangos webapplikationer bruger kun teknisk nødvendige cookies til autentifikation (login-session). Der bruges ingen tracking-cookies, markedsføringscookies eller tredjepartscookies til analyseformål.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  11. AUTOMATISERET BESLUTNING      -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">11. Automatiseret beslutningstagning</h2>
+      <p>Flango foretager ikke automatiseret individuel beslutningstagning eller profilering i GDPR's forstand (artikel 22). Gamification-systemets levels er baseret på simple tællere (antal salg, minutter som ekspedient) og har ingen konsekvenser for barnet ud over kosmetiske elementer (avatar, badges).</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  12. KLAGE                         -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">12. Klage</h2>
+      <p>Hvis du mener at behandlingen af dine personoplysninger er i strid med databeskyttelsesreglerne, kan du klage til:</p>
+      <div class="contact-box">
+        <p><strong>Datatilsynet</strong></p>
+        <p>Carl Jacobsens Vej 35, 2500 Valby</p>
+        <p>Telefon: 33 19 32 00</p>
+        <p>E-mail: <a href="mailto:dt@datatilsynet.dk">dt@datatilsynet.dk</a></p>
+        <p>Web: <a href="https://datatilsynet.dk" target="_blank">datatilsynet.dk</a></p>
+      </div>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  13. KONTAKT                       -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">13. Kontakt</h2>
+      <p>Spørgsmål om denne privatlivspolitik eller om behandling af personoplysninger i Flango:</p>
+      <div class="contact-box">
+        <p><strong>Theison</strong></p>
+        <p>CVR: 34360642</p>
+        <p>E-mail: <a href="mailto:kontakt@flango.dk">kontakt@flango.dk</a></p>
+        <p>Web: <a href="https://flango.dk">flango.dk</a></p>
+      </div>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  14. ÆNDRINGER                     -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">14. Ændringer til denne politik</h2>
+      <p>Denne privatlivspolitik kan opdateres i takt med ændringer i lovgivning eller i Flangos funktionalitet. Ved væsentlige ændringer informeres den dataansvarlige institution. Den seneste version er altid tilgængelig på denne side.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <!-- ══════════════════════════════════ -->
+    <!--  LINKS                             -->
+    <!-- ══════════════════════════════════ -->
+    <section class="about-section">
+      <h2 class="section-heading">Relaterede sider</h2>
+      <ul>
+        <li><a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>Sikkerhed</strong></a> — teknisk arkitektur, kryptering, adgangskontrol og infrastruktur</li>
+        <li><a href="/gdpr/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>GDPR og databeskyttelse</strong></a> — overblik over roller, ansvar og rettigheder</li>
+      </ul>
+      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 17. marts 2026 · Version 1.0</p>
+    </section>
+
+    <footer>
+      <div>© <span id="year"></span> Flango – SFO'ernes cafésystem</div>
+      <div>
+        <a href="/forældre/">Forældre Portal</a> ·
+        <a href="/pris/">Priser</a> ·
+        <a href="/om-flango/">Om Flango</a> ·
+        <a href="/sikkerhed/">Sikkerhed</a> ·
+        <a href="/privatlivspolitik/">Privatlivspolitik</a> ·
+        <a href="/gdpr/">GDPR</a> ·
+        <a href="/kontakt/">Kontakt</a>
+      </div>
+    </footer>
+  </main>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
