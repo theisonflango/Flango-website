@@ -14,6 +14,7 @@ import {
     deleteInstitutionIcon,
     fetchIconSharingSettings,
     processImageForUpload,
+    takeProductPhoto,
 } from '../core/product-icon-utils.js';
 
 // Sæt til true ved fejlsøgning; hold false i prod for mindre console-støj
@@ -939,12 +940,17 @@ export function createProductManagementUI(options = {}) {
                                 <div style="font-size: 20px; margin-bottom: 3px;">🌐</div>
                                 <div style="font-weight: 600; font-size: 11px;">Fra andre</div>
                             </label>
-                            <label class="icon-type-card" style="flex: 1 1 calc(50% - 4px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                <input type="radio" name="icon-type" value="camera" style="display: none;">
+                                <div style="font-size: 20px; margin-bottom: 3px;">📸</div>
+                                <div style="font-weight: 600; font-size: 11px;">Tag Billede</div>
+                            </label>
+                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
                                 <input type="radio" name="icon-type" value="custom" style="display: none;">
                                 <div style="font-size: 20px; margin-bottom: 3px;">📤</div>
                                 <div style="font-weight: 600; font-size: 11px;">Upload</div>
                             </label>
-                            <label class="icon-type-card" style="flex: 1 1 calc(50% - 4px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
                                 <input type="radio" name="icon-type" value="ai" style="display: none;">
                                 <div style="font-size: 20px; margin-bottom: 3px;">🪄</div>
                                 <div style="font-weight: 600; font-size: 11px;">AI Generer</div>
@@ -976,6 +982,40 @@ export function createProductManagementUI(options = {}) {
                             <div id="shared-icons-grid" class="custom-icon-grid"></div>
                             <div id="shared-icons-empty" style="display: none; padding: 15px; text-align: center; color: #94a3b8; font-size: 13px; background: #f8f9fa; border-radius: 8px;">
                                 Ingen delte ikoner tilgængelige.
+                            </div>
+                        </div>
+
+                        <!-- Camera Capture Section -->
+                        <div id="camera-section" style="display: none;">
+                            <div id="camera-preview-area" style="text-align: center;">
+                                <div id="camera-placeholder" style="border: 2px dashed #60a5fa; border-radius: 12px; padding: 30px 20px; background: #eff6ff; cursor: pointer; transition: all 0.2s;">
+                                    <div style="font-size: 40px; margin-bottom: 10px;">📸</div>
+                                    <div style="font-weight: 600; margin-bottom: 5px; color: #1e40af;">Klik for at tage billede</div>
+                                    <div style="font-size: 12px; color: #64748b;">Billedet konverteres automatisk til ikon-format</div>
+                                </div>
+                                <div id="camera-captured-preview" style="display: none; margin-top: 12px;">
+                                    <div style="position: relative; display: inline-block;">
+                                        <img id="camera-captured-img" style="width: 120px; height: 120px; object-fit: cover; border-radius: 12px; border: 3px solid #60a5fa;">
+                                        <button type="button" id="camera-retake-btn" style="position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%; background: #ef4444; color: white; border: none; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center;">&#10005;</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="camera-actions" style="display: none; margin-top: 15px; flex-direction: column; gap: 10px;">
+                                <button type="button" id="camera-use-as-icon-btn" style="display: none; width: 100%; padding: 12px 20px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s;">
+                                    Brug som ikon
+                                </button>
+                                <button type="button" id="camera-use-as-ai-ref-btn" style="display: none; width: 100%; padding: 12px 20px; background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s;">
+                                    Brug som AI-reference
+                                </button>
+                            </div>
+
+                            <div id="camera-progress" style="display: none; margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 14px; color: #1976d2;">Behandler billede...</div>
+                            </div>
+
+                            <div id="camera-error" style="display: none; margin-top: 15px; padding: 15px; background: #ffebee; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 14px; color: #c62828;"></div>
                             </div>
                         </div>
 
@@ -1216,8 +1256,9 @@ export function createProductManagementUI(options = {}) {
             iconStatus.textContent = statusText;
         };
 
-        // Switch between standard, institution, shared, custom, and AI icon sections
+        // Switch between standard, institution, shared, camera, custom, and AI icon sections
         const aiIconSection = document.getElementById('ai-icon-section');
+        const cameraSection = document.getElementById('camera-section');
         const switchIconType = (type) => {
             iconTypeCards.forEach(card => {
                 const radio = card.querySelector('input[type="radio"]');
@@ -1230,6 +1271,7 @@ export function createProductManagementUI(options = {}) {
             standardIconSection.style.display = type === 'standard' ? 'block' : 'none';
             if (institutionIconsSection) institutionIconsSection.style.display = type === 'institution' ? 'block' : 'none';
             if (sharedIconsSection) sharedIconsSection.style.display = type === 'shared' ? 'block' : 'none';
+            if (cameraSection) cameraSection.style.display = type === 'camera' ? 'block' : 'none';
             customUploadSection.style.display = type === 'custom' ? 'block' : 'none';
             if (aiIconSection) aiIconSection.style.display = type === 'ai' ? 'block' : 'none';
 
@@ -1508,6 +1550,118 @@ export function createProductManagementUI(options = {}) {
             }
         });
 
+        // ===== CAMERA CAPTURE HANDLERS =====
+        const cameraPlaceholder = document.getElementById('camera-placeholder');
+        const cameraCapturedPreview = document.getElementById('camera-captured-preview');
+        const cameraCapturedImg = document.getElementById('camera-captured-img');
+        const cameraRetakeBtn = document.getElementById('camera-retake-btn');
+        const cameraUseAsIconBtn = document.getElementById('camera-use-as-icon-btn');
+        const cameraUseAsAiRefBtn = document.getElementById('camera-use-as-ai-ref-btn');
+        const cameraActions = document.getElementById('camera-actions');
+        const cameraProgress = document.getElementById('camera-progress');
+        const cameraError = document.getElementById('camera-error');
+        let cameraCapturedFile = null;
+        let _injectPhotoToAiRef = null; // Set later when AI section initializes
+
+        const resetCameraUI = () => {
+            cameraCapturedFile = null;
+            if (cameraCapturedImg?.src?.startsWith('blob:')) URL.revokeObjectURL(cameraCapturedImg.src);
+            if (cameraCapturedImg) cameraCapturedImg.src = '';
+            if (cameraCapturedPreview) cameraCapturedPreview.style.display = 'none';
+            if (cameraPlaceholder) cameraPlaceholder.style.display = 'block';
+            if (cameraActions) cameraActions.style.display = 'none';
+            if (cameraUseAsIconBtn) cameraUseAsIconBtn.style.display = 'none';
+            if (cameraUseAsAiRefBtn) cameraUseAsAiRefBtn.style.display = 'none';
+            if (cameraProgress) cameraProgress.style.display = 'none';
+            if (cameraError) cameraError.style.display = 'none';
+        };
+
+        const showCameraPreview = (file) => {
+            cameraCapturedFile = file;
+            if (cameraCapturedImg) cameraCapturedImg.src = URL.createObjectURL(file);
+            if (cameraCapturedPreview) cameraCapturedPreview.style.display = 'block';
+            if (cameraPlaceholder) cameraPlaceholder.style.display = 'none';
+            if (cameraActions) cameraActions.style.display = 'flex';
+            if (cameraUseAsIconBtn) cameraUseAsIconBtn.style.display = 'block';
+            if (cameraUseAsAiRefBtn) cameraUseAsAiRefBtn.style.display = 'block';
+        };
+
+        const triggerCameraCapture = async () => {
+            if (cameraError) cameraError.style.display = 'none';
+            try {
+                const file = await takeProductPhoto({ showCustomAlert });
+                if (file) showCameraPreview(file);
+            } catch (err) {
+                console.error('[cameraCapture] Error:', err);
+                if (cameraError) {
+                    cameraError.style.display = 'block';
+                    const errDiv = cameraError.querySelector('div');
+                    if (errDiv) errDiv.textContent = 'Kunne ikke tage billede: ' + (err.message || 'Ukendt fejl');
+                }
+            }
+        };
+
+        cameraPlaceholder?.addEventListener('click', triggerCameraCapture);
+        cameraRetakeBtn?.addEventListener('click', () => {
+            resetCameraUI();
+            triggerCameraCapture();
+        });
+
+        // "Brug som ikon" — process + upload directly
+        cameraUseAsIconBtn?.addEventListener('click', async () => {
+            if (!cameraCapturedFile || !isEditing || !currentProduct?.id) {
+                if (!isEditing) showCustomAlert('Gem produkt', 'Produktet skal gemmes inden du kan tilfoeje et ikon.');
+                return;
+            }
+            if (cameraError) cameraError.style.display = 'none';
+            if (cameraProgress) cameraProgress.style.display = 'block';
+            cameraUseAsIconBtn.disabled = true;
+            cameraUseAsAiRefBtn.disabled = true;
+
+            try {
+                const adminUserId = adminProfile?.user_id;
+                if (!adminUserId) throw new Error('Admin bruger ID ikke fundet');
+
+                const processedBlob = await processImageForUpload(cameraCapturedFile);
+                const processedFile = new File([processedBlob], `${currentProduct.id}.webp`, { type: 'image/webp' });
+                const result = await uploadProductIcon(processedFile, institutionId, currentProduct.id, adminUserId);
+
+                if (result.success) {
+                    currentIconUrl = result.icon_url;
+                    currentIconUpdatedAt = result.icon_updated_at;
+                    updateIconPreview();
+                    playSound?.('success');
+                    loadInstitutionIcons();
+                    resetCameraUI();
+                } else {
+                    throw new Error(result.error || 'Upload fejlede');
+                }
+            } catch (err) {
+                console.error('[cameraUseAsIcon] Error:', err);
+                if (cameraError) {
+                    cameraError.style.display = 'block';
+                    const errDiv = cameraError.querySelector('div');
+                    if (errDiv) errDiv.textContent = err.message || 'Kunne ikke uploade billede';
+                }
+                playSound?.('error');
+            } finally {
+                if (cameraProgress) cameraProgress.style.display = 'none';
+                cameraUseAsIconBtn.disabled = false;
+                cameraUseAsAiRefBtn.disabled = false;
+            }
+        });
+
+        // "Brug som AI-reference" — switch to AI tab and insert the captured photo
+        cameraUseAsAiRefBtn?.addEventListener('click', () => {
+            if (!cameraCapturedFile) return;
+            // Switch to AI tab
+            switchIconType('ai');
+            // Insert captured file into AI photo reference using the existing showPhotoPreview
+            // (showPhotoPreview is defined in the AI photo reference section below)
+            if (_injectPhotoToAiRef) _injectPhotoToAiRef(cameraCapturedFile);
+            resetCameraUI();
+        });
+
         // ===== AI ICON GENERATION =====
         const aiIconInput = document.getElementById('ai-icon-input');
         const aiGenerateBtn = document.getElementById('ai-generate-btn');
@@ -1538,6 +1692,9 @@ export function createProductManagementUI(options = {}) {
             aiReferencePreview.style.display = 'block';
             aiPhotoDropzone.style.display = 'none';
         };
+
+        // Bridge: allows camera section to inject a captured photo into the AI reference
+        _injectPhotoToAiRef = showPhotoPreview;
 
         const removePhotoPreview = () => {
             aiSelectedPhoto = null;

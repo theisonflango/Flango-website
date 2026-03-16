@@ -13,6 +13,7 @@ let institutionId = null;
 let institutionName = null;
 let allOrders = [];
 let realtimeChannel = null;
+let settingsChannel = null;
 let timeTickerInterval = null;
 
 // Sort state
@@ -75,8 +76,9 @@ export async function initKitchenView() {
     // Load today's orders
     await loadOrders();
 
-    // Subscribe to realtime
+    // Subscribe to realtime (sales + institution settings)
     subscribeRealtime();
+    subscribeSettingsRealtime();
 
     // Start time ticker (update relative times every 15s)
     timeTickerInterval = setInterval(() => {
@@ -206,6 +208,7 @@ async function loadOrders() {
             admin:admin_user_id ( name )
         `)
         .eq('institution_id', institutionId)
+        .eq('is_restaurant_order', true)
         .gte('created_at', todayStart.toISOString())
         .order('created_at', { ascending: false });
 
@@ -893,9 +896,44 @@ function subscribeRealtime() {
         .subscribe();
 }
 
+function subscribeSettingsRealtime() {
+    if (settingsChannel) {
+        supabaseClient.removeChannel(settingsChannel);
+    }
+
+    settingsChannel = supabaseClient
+        .channel('kitchen-settings')
+        .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'institutions',
+            filter: `id=eq.${institutionId}`,
+        }, (payload) => {
+            const updated = payload.new;
+            if (updated && updated.restaurant_mode_enabled === false) {
+                // Restaurant mode was disabled — tear down and show guard screen
+                if (realtimeChannel) {
+                    supabaseClient.removeChannel(realtimeChannel);
+                    realtimeChannel = null;
+                }
+                if (settingsChannel) {
+                    supabaseClient.removeChannel(settingsChannel);
+                    settingsChannel = null;
+                }
+                if (timeTickerInterval) {
+                    clearInterval(timeTickerInterval);
+                    timeTickerInterval = null;
+                }
+                showGuardScreen();
+            }
+        })
+        .subscribe();
+}
+
 async function handleInsert(payload) {
     const newSale = payload.new;
     if (!newSale?.id) return;
+    if (!newSale.is_restaurant_order) return; // Ignorér ikke-restaurant ordrer
     if (allOrders.some(o => o.id === newSale.id)) return;
 
     const { data: fullSale } = await supabaseClient
