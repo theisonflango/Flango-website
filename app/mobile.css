@@ -4,6 +4,50 @@
    ============================================================ */
 
 /* ============================================================
+   SAFE AREA + NATIVE APP COMPAT
+   Backwards-compatible: env() med 0px fallback påvirker ikke desktop
+   ============================================================ */
+
+/* Forhindrer overscroll bounce (native + web) */
+html {
+    overscroll-behavior: none;
+}
+
+/* Input zoom prevention — iOS zoomer til felter under 16px */
+input, select, textarea {
+    font-size: max(16px, inherit);
+}
+
+/* Safe area: header top (iPhone notch/Dynamic Island) */
+@media (max-width: 767px) {
+    #header {
+        padding-top: calc(6px + env(safe-area-inset-top, 0px));
+    }
+}
+
+/* Safe area: login-skærme */
+.login-screen,
+.club-login-screen,
+#screen-club-login,
+#screen-admin-login {
+    padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Safe area: venstre/højre (iPad multitasking, iPhone landscape) */
+#main-app {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Safe area: modaler */
+.modal-overlay {
+    padding: env(safe-area-inset-top, 0px)
+             env(safe-area-inset-right, 0px)
+             env(safe-area-inset-bottom, 0px)
+             env(safe-area-inset-left, 0px);
+}
+
+/* ============================================================
    DESKTOP - over 767px
    ============================================================ */
 @media (min-width: 768px) {

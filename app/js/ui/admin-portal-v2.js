@@ -13,6 +13,21 @@
 (function () {
   'use strict';
 
+  // Helpers der bruger showCustomAlert (fra ES6 module) med fallback til native
+  function _alert(msg) {
+    if (window.__flangoShowCustomAlert) {
+      window.__flangoShowCustomAlert('Besked', msg);
+    } else {
+      alert(msg);
+    }
+  }
+  function _confirm(msg) {
+    if (window.__flangoShowCustomAlert) {
+      return window.__flangoShowCustomAlert('Bekræft', msg, 'confirm');
+    }
+    return Promise.resolve(confirm(msg));
+  }
+
   // ─── Version toggle ────────────────────────────────────────────
   const PORTAL_VERSION_KEY = 'flango_portal_version';
 
@@ -807,7 +822,7 @@
     // Generer kode via RPC
     var result = await PortalData.generateSinglePortalCode(childData.childId);
     if (!result || !result.success) {
-      alert('Kunne ikke generere kode: ' + (result ? result.error : 'Ukendt fejl'));
+      _alert('Kunne ikke generere kode: ' + (result ? result.error : 'Ukendt fejl'));
       return;
     }
 
@@ -918,21 +933,21 @@
     // Tæl børn uden kode
     var missingCount = parentListData.filter(function (d) { return !d.portalCode; }).length;
     if (missingCount === 0) {
-      alert('Alle børn har allerede en portal-kode.');
+      _alert('Alle børn har allerede en portal-kode.');
       return;
     }
 
-    if (!confirm('Generer portal-koder for ' + missingCount + ' børn uden kode?\n\nDette kan ikke fortrydes.')) {
+    if (!await _confirm('Generer portal-koder for ' + missingCount + ' børn uden kode?\n\nDette kan ikke fortrydes.')) {
       return;
     }
 
     var result = await PortalData.generatePortalCodesBatch();
     if (!result || !result.success) {
-      alert('Fejl ved batch-generering: ' + (result ? result.error : 'Ukendt fejl'));
+      _alert('Fejl ved batch-generering: ' + (result ? result.error : 'Ukendt fejl'));
       return;
     }
 
-    alert(result.generated_count + ' portal-koder genereret!');
+    _alert(result.generated_count + ' portal-koder genereret!');
 
     // Genindlæs data for at få de nye koder
     var overview = await PortalData.getParentAdminOverview();

@@ -1,6 +1,7 @@
 // Controller for Summary/Opsummering feature
 import { fetchSummaryData, invalidateSummaryData } from './summary-data.js';
 import { renderSummaryTable } from '../ui/summary-ui.js';
+import { showCustomAlert } from '../ui/sound-and-alerts.js';
 import {
     setSummaryViewMode,
     setSummaryDateRange,
@@ -197,12 +198,12 @@ export function setupSummaryModal(currentInstitutionId, options = {}) {
         const to = toDateInput.value;
 
         if (!from || !to) {
-            alert('Vælg venligst både fra- og til-dato');
+            showCustomAlert('Validering', 'Vælg venligst både fra- og til-dato');
             return;
         }
 
         if (new Date(from) > new Date(to)) {
-            alert('Fra-dato skal være før til-dato');
+            showCustomAlert('Validering', 'Fra-dato skal være før til-dato');
             return;
         }
 
@@ -266,7 +267,7 @@ export async function openSummaryModal(currentInstitutionId, initialView = 'over
 
     if (!institutionId) {
         console.error('[summary-controller] No institution ID provided');
-        alert('Kunne ikke finde institution ID');
+        showCustomAlert('Fejl', 'Kunne ikke finde institution ID');
         return;
     }
 
@@ -451,7 +452,7 @@ export function exportToCSV() {
     const { data, viewMode } = state;
 
     if (!data || data.length === 0) {
-        alert('Ingen data at eksportere');
+        showCustomAlert('Info', 'Ingen data at eksportere');
         return;
     }
 

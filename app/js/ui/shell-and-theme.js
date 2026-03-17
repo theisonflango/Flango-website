@@ -536,6 +536,24 @@ function renderProductRulesTable() {
         let purchaseLimit = productRulesState.productLimits.get(product.id) || 0;
         let currentPrice = product.price || 0;
 
+        // 0. Dagens sortiment (toggle for visibility in cafe - FØRST fordi det bruges dagligt)
+        const isVisible = product.is_visible !== false; // Default true if undefined
+        setOriginalValue(product.id, 'is_visible', isVisible);
+        const tdInAssortment = document.createElement('td');
+        tdInAssortment.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center; background: ' + (isVisible ? '#e8f5e9' : '#fff3e0') + ';';
+        const inAssortmentToggle = document.createElement('input');
+        inAssortmentToggle.type = 'checkbox';
+        inAssortmentToggle.checked = isVisible;
+        inAssortmentToggle.style.cssText = 'width: 22px; height: 22px; cursor: pointer; accent-color: #4caf50;';
+        inAssortmentToggle.title = isVisible ? 'Vises i caféen' : 'Skjult fra caféen';
+        inAssortmentToggle.addEventListener('change', () => {
+            setDraftValue(product.id, 'is_visible', inAssortmentToggle.checked);
+            inAssortmentToggle.title = inAssortmentToggle.checked ? 'Vises i caféen' : 'Skjult fra caféen';
+            tdInAssortment.style.background = inAssortmentToggle.checked ? '#e8f5e9' : '#fff3e0';
+        });
+        tdInAssortment.appendChild(inAssortmentToggle);
+        tr.appendChild(tdInAssortment);
+
         // 1. Ikon
         const tdIcon = document.createElement('td');
         tdIcon.style.cssText = 'padding: 8px; vertical-align: middle;';
@@ -703,22 +721,7 @@ function renderProductRulesTable() {
         tdCoreAssortment.appendChild(coreAssortmentToggle);
         tr.appendChild(tdCoreAssortment);
 
-        // 6b. Dagens sortiment (toggle for visibility in cafe - uses is_visible)
-        const isVisible = product.is_visible !== false; // Default true if undefined
-        setOriginalValue(product.id, 'is_visible', isVisible);
-        const tdInAssortment = document.createElement('td');
-        tdInAssortment.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
-        const inAssortmentToggle = document.createElement('input');
-        inAssortmentToggle.type = 'checkbox';
-        inAssortmentToggle.checked = isVisible;
-        inAssortmentToggle.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
-        inAssortmentToggle.title = isVisible ? 'Vises i caféen' : 'Skjult fra caféen';
-        inAssortmentToggle.addEventListener('change', () => {
-            setDraftValue(product.id, 'is_visible', inAssortmentToggle.checked);
-            inAssortmentToggle.title = inAssortmentToggle.checked ? 'Vises i caféen' : 'Skjult fra caféen';
-        });
-        tdInAssortment.appendChild(inAssortmentToggle);
-        tr.appendChild(tdInAssortment);
+        // (Dagens sortiment er allerede tilføjet som kolonne 0 øverst)
 
         // 7. Usund (toggle - conditional visibility)
         setOriginalValue(product.id, 'unhealthy', isUnhealthy);
@@ -1543,7 +1546,7 @@ async function openSpendingLimitModal() {
 
     if (error) {
         console.error('[spending-limit] Error loading settings:', error);
-        alert('Fejl ved indlæsning af indstillinger: ' + error.message);
+        showCustomAlert('Fejl', 'Fejl ved indlæsning af indstillinger: ' + error.message);
         return;
     }
 
@@ -1682,10 +1685,10 @@ async function openSpendingLimitModal() {
 
         if (error) {
             console.error('[spending-limit] Error saving settings:', error);
-            alert('Fejl ved gemning af indstillinger: ' + error.message);
+            showCustomAlert('Fejl', 'Fejl ved gemning af indstillinger: ' + error.message);
         } else {
             console.log('[spending-limit] Gemt succesfuldt!');
-            alert('Indstillinger gemt!');
+            showCustomAlert('Succes', 'Indstillinger gemt!');
             modal.style.display = 'none';
         }
     });
@@ -2052,7 +2055,7 @@ async function openCafeEventSettingsModal() {
 
         if (error) {
             console.error('[cafe-event-settings] Error saving:', error);
-            alert('Kunne ikke gemme indstillingen. Prøv igen.');
+            showCustomAlert('Fejl', 'Kunne ikke gemme indstillingen. Prøv igen.');
             saveBtn.disabled = false;
             saveBtn.textContent = 'Gem';
             return;
@@ -2153,7 +2156,7 @@ async function openShiftTimerSettingsModal() {
 
             if (error) {
                 console.error('[shift-timer-settings] Error saving:', error);
-                alert('Kunne ikke gemme indstillingen. Prøv igen.');
+                showCustomAlert('Fejl', 'Kunne ikke gemme indstillingen. Prøv igen.');
                 saveBtn.disabled = false;
                 saveBtn.textContent = 'Gem';
                 return;
@@ -2414,7 +2417,7 @@ async function openRestaurantModeSettingsModal() {
                 .eq('id', institutionId);
 
             if (saveError) {
-                alert('Kunne ikke gemme. Prøv igen.');
+                showCustomAlert('Fejl', 'Kunne ikke gemme. Prøv igen.');
                 saveBtn.disabled = false;
                 saveBtn.textContent = 'Gem';
                 return;
@@ -2991,14 +2994,14 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
                 configBtn.addEventListener('click', () => {
                     if (method.id === 'mobilepay_api') {
                         // TODO: Implement MobilePay API configuration
-                        alert('MobilePay API konfiguration kommer snart.');
+                        showCustomAlert('Info', 'MobilePay API konfiguration kommer snart.');
                     } else if (method.id === 'mobilepay_csv') {
                         // Open existing CSV import modal
                         if (typeof openMobilePayImportModal === 'function') {
                             modal.style.display = 'none';
                             openMobilePayImportModal();
                         } else {
-                            alert('CSV-import funktion findes ikke.');
+                            showCustomAlert('Fejl', 'CSV-import funktion findes ikke.');
                         }
                     }
                 });
@@ -3171,7 +3174,7 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
                     
                     if (legacyError) {
                         console.error('[payment-methods] Error saving to legacy columns:', legacyError);
-                        alert('Fejl ved gemning af indstillinger. Kolonnen parent_portal_payment findes ikke. Kør migration: supabase migration up');
+                        showCustomAlert('Fejl', 'Fejl ved gemning af indstillinger. Kolonnen parent_portal_payment findes ikke. Kør migration: supabase migration up');
                         newSaveBtn.disabled = false;
                         newSaveBtn.textContent = originalText;
                         return;
@@ -3184,7 +3187,7 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
 
                 if (error) {
                     console.error('[payment-methods] Error saving:', error);
-                    alert('Fejl ved gemning af indstillinger: ' + (error.message || 'Ukendt fejl'));
+                    showCustomAlert('Fejl', 'Fejl ved gemning af indstillinger: ' + (error.message || 'Ukendt fejl'));
                     newSaveBtn.disabled = false;
                     newSaveBtn.textContent = originalText;
                 } else {
@@ -3197,7 +3200,7 @@ I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetaling
                 }
             } catch (err) {
                 console.error('[payment-methods] Unexpected error:', err);
-                alert('Uventet fejl ved gemning: ' + (err.message || 'Ukendt fejl'));
+                showCustomAlert('Fejl', 'Uventet fejl ved gemning: ' + (err.message || 'Ukendt fejl'));
                 newSaveBtn.disabled = false;
                 newSaveBtn.textContent = 'GEM';
             }
@@ -3474,11 +3477,7 @@ async function startStripeOnboarding(institutionId) {
             window.open(result.onboarding_url, '_blank');
             
             // Show success message
-            if (typeof showCustomAlert === 'function') {
-                showCustomAlert('Onboarding startet', 'Stripe onboarding er åbnet i nyt vindue. Efterfuldførelse, klik "Opdater status" for at opdatere status.');
-            } else {
-                alert('Onboarding startet! Efterfuldførelse, klik "Opdater status" for at opdatere status.');
-            }
+            showCustomAlert('Onboarding startet', 'Stripe onboarding er åbnet i nyt vindue. Efterfuldførelse, klik "Opdater status" for at opdatere status.');
 
             // Reload modal to show updated status
             setTimeout(() => {
@@ -3487,7 +3486,7 @@ async function startStripeOnboarding(institutionId) {
         }
     } catch (err) {
         console.error('[stripe-onboarding] Error starting onboarding:', err);
-        alert('Fejl ved start af onboarding: ' + (err.message || 'Ukendt fejl'));
+        showCustomAlert('Fejl', 'Fejl ved start af onboarding: ' + (err.message || 'Ukendt fejl'));
     }
 }
 
@@ -3684,7 +3683,7 @@ async function syncStripeStatus(institutionId) {
         }
     } catch (err) {
         console.error('[stripe-status-sync] Error:', err);
-        alert('Fejl ved opdatering af status: ' + (err.message || 'Ukendt fejl'));
+        showCustomAlert('Fejl', 'Fejl ved opdatering af status: ' + (err.message || 'Ukendt fejl'));
         
         const syncBtn = document.getElementById('stripe-status-sync-btn');
         if (syncBtn) {
@@ -3767,7 +3766,7 @@ async function openStripeOnboardingModal(currentStripeData, institutionId, onSav
                 }
             } catch (err) {
                 console.error('[stripe-onboarding] Error:', err);
-                alert('Fejl ved gemning: ' + (err.message || 'Ukendt fejl'));
+                showCustomAlert('Fejl', 'Fejl ved gemning: ' + (err.message || 'Ukendt fejl'));
                 newSaveBtn.disabled = false;
                 newSaveBtn.textContent = 'Start opsætning';
             }
@@ -3859,7 +3858,7 @@ async function openAdminRulesModal() {
 
         if (saveError) {
             console.error('[admin-rules] Error saving settings:', saveError);
-            alert('Fejl ved gemning af indstillinger');
+            showCustomAlert('Fejl', 'Fejl ved gemning af indstillinger');
         } else {
             modal.style.display = 'none';
         }

@@ -11,6 +11,7 @@
  */
 import { supabaseClient } from '../core/config-and-supabase.js';
 import { escapeHtml } from '../core/escape-html.js';
+import { showCustomAlert } from '../ui/sound-and-alerts.js';
 import { renderKitchenCard, updateAllCardTimes } from './kitchen-cards.js';
 import { sortOrdersByColumn } from './kitchen-sort.js';
 import {
@@ -522,8 +523,8 @@ async function markServed(saleId) {
     }
 }
 
-function confirmUnserve(sale) {
-    if (!confirm(`Markér "${sale.customer_name}" som IKKE serveret?`)) return;
+async function confirmUnserve(sale) {
+    if (!await showCustomAlert('Bekræft', `Markér "${sale.customer_name}" som IKKE serveret?`, 'confirm')) return;
     unmarkServed(sale.id);
 }
 
