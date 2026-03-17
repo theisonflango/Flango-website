@@ -280,6 +280,7 @@ async function loadOrders() {
             admin:admin_user_id ( name )
         `)
         .eq('institution_id', institutionId)
+        .eq('is_restaurant_order', true)
         .gte('created_at', todayStart.toISOString())
         .order('created_at', { ascending: false });
 
@@ -578,7 +579,8 @@ function subscribeRealtime() {
 
 async function handleInsert(payload) {
     const newSale = payload.new;
-    if (!newSale?.id || allOrders.some(o => o.id === newSale.id)) return;
+    if (!newSale?.id || !newSale.is_restaurant_order) return; // Ignorér ikke-restaurant ordrer
+    if (allOrders.some(o => o.id === newSale.id)) return;
 
     const { data: fullSale } = await supabaseClient
         .from('sales')

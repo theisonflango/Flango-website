@@ -1193,6 +1193,9 @@ export async function handleCompletePurchase({
         salePayload.p_clerk_id = clerkId;
     }
     // Restaurant Mode: inkludér bordnummer + note direkte i salget (atomisk)
+    if (restaurantMode?.enabled) {
+        salePayload.p_is_restaurant_order = true;
+    }
     if (selectedTableNumber) {
         salePayload.p_table_number = selectedTableNumber;
     }

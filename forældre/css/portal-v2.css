@@ -103,6 +103,111 @@ a { color: inherit; text-decoration: none; }
 .login-forgot { display: block; text-align: center; font-size: 13px; color: var(--ink-muted); margin-top: var(--s3); }
 .login-forgot:hover { color: var(--flango); }
 
+/* Login links row (forgot + signup) */
+.login-links {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: var(--s3); gap: var(--s3);
+}
+.login-links a {
+  font-size: 13px; color: var(--ink-muted); text-decoration: none;
+}
+.login-links a:hover { color: var(--flango); }
+.login-links .login-link-bold { font-weight: 600; color: var(--info); }
+.login-links .login-link-bold:hover { color: var(--flango); }
+
+/* Login success message */
+.login-success {
+  color: var(--positive); font-size: 13px; font-weight: 600;
+  text-align: center; margin-bottom: var(--s3); display: none;
+}
+.login-success.visible { display: block; }
+
+/* Signup code input */
+.signup-code-input { letter-spacing: 3px; text-align: center; font-size: 18px !important; }
+
+/* Signup confirmation overlay */
+.signup-confirm-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center; z-index: 10000;
+}
+.signup-confirm-card {
+  background: var(--surface-raised); border-radius: var(--r-xl);
+  padding: var(--s6); max-width: 360px; width: 90%;
+  text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+.signup-confirm-card h3 {
+  margin: 0 0 var(--s3) 0; font-size: 20px; color: var(--ink);
+}
+.signup-confirm-card p {
+  margin: 0 0 var(--s2) 0; font-size: 15px; color: var(--ink-soft);
+}
+.signup-child-name {
+  font-size: 24px; font-weight: 700; color: var(--info);
+  margin: var(--s4) 0; padding: var(--s3);
+  background: var(--info-light); border-radius: var(--r-sm);
+}
+.signup-confirm-note {
+  font-size: 14px; color: var(--ink-muted);
+  margin: var(--s3) 0 var(--s5) 0;
+}
+.signup-confirm-buttons {
+  display: flex; gap: var(--s3);
+}
+.signup-confirm-buttons button {
+  flex: 1; padding: var(--s3); border-radius: var(--r-sm);
+  font-size: 15px; font-weight: 600; cursor: pointer; border: none;
+}
+.signup-confirm-cancel {
+  background: var(--surface-sunken); color: var(--ink-soft);
+}
+.signup-confirm-cancel:hover { background: var(--border); }
+.signup-confirm-ok {
+  background: var(--flango); color: #fff;
+}
+.signup-confirm-ok:hover { background: var(--flango-dark); }
+
+/* ─── Google button ─── */
+.google-btn {
+  display: flex; align-items: center; justify-content: center; gap: var(--s3);
+  width: 100%; padding: 12px var(--s5); border-radius: var(--r-md);
+  font-family: var(--font); font-size: 15px; font-weight: 600;
+  background: var(--surface-raised); color: var(--ink);
+  border: 1.5px solid var(--border-strong);
+  cursor: pointer; transition: all .15s ease;
+  box-shadow: var(--shadow-xs);
+}
+.google-btn:hover { background: var(--surface-hover); border-color: var(--ink-muted); box-shadow: var(--shadow-sm); }
+.google-btn:active { transform: scale(.98); }
+.google-btn svg { flex-shrink: 0; }
+
+/* ─── Login divider ("eller") ─── */
+.login-divider {
+  display: flex; align-items: center; gap: var(--s3);
+  margin: var(--s4) 0; color: var(--ink-muted); font-size: 12px; font-weight: 500;
+}
+.login-divider::before, .login-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ─── Signup verified info card ─── */
+.signup-verified-info {
+  background: var(--positive-light); border: 1.5px solid var(--positive);
+  border-radius: var(--r-md); padding: var(--s4);
+  margin-bottom: var(--s4);
+}
+.signup-verified-child {
+  display: flex; align-items: center; gap: var(--s3);
+}
+.signup-verified-emoji {
+  font-size: 28px; line-height: 1;
+}
+.signup-verified-name {
+  font-size: 16px; font-weight: 700; color: var(--ink);
+}
+.signup-verified-inst {
+  font-size: 13px; color: var(--ink-soft);
+}
+
 /* ─── LAYOUT SHELL ─── */
 .app { min-height: 100dvh; display: flex; flex-direction: column; background: var(--surface); }
 
@@ -304,6 +409,7 @@ a { color: inherit; text-decoration: none; }
 .save-btn:active { transform: scale(.97); }
 .save-btn.full { width: 100%; }
 .save-btn:disabled { opacity: .5; cursor: not-allowed; }
+.save-btn.compact { font-size: 13px; padding: 8px 14px; border-radius: 10px; }
 
 /* ─── CHARTS ─── */
 .chart-bar-group { display: flex; align-items: flex-end; gap: 3px; height: 100px; padding-top: var(--s2); }
@@ -412,6 +518,18 @@ a { color: inherit; text-decoration: none; }
 .game-name { font-weight: 600; font-size: 14px; }
 .game-platform { font-size: 11px; color: var(--ink-muted); font-weight: 500; }
 .game-blocked { font-size: 11px; color: var(--negative); font-weight: 600; }
+
+/* Overview comparison card (Min dag vs. Klubbens gns.) */
+.overview-comparison {
+  display: flex; align-items: center; justify-content: center; gap: var(--s4);
+  padding: var(--s4); margin-bottom: var(--s4);
+  background: linear-gradient(135deg, var(--flango-light) 0%, #FFF8F0 100%);
+  border-radius: var(--r-lg); border: 1px solid var(--flango-mid);
+}
+.overview-stat { text-align: center; flex: 1; }
+.overview-stat-label { font-size: 12px; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px; }
+.overview-stat-value { font-size: 20px; font-weight: 800; color: var(--ink); }
+.overview-vs { font-size: 13px; font-weight: 700; color: var(--ink-muted); flex-shrink: 0; }
 
 .tx-row { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) 0; }
 .tx-row + .tx-row { border-top: 1px solid var(--border); }
@@ -706,6 +824,37 @@ a { color: inherit; text-decoration: none; }
 .event-payment-modal .pay-option:hover { border-color:var(--flango); background:var(--flango-light); }
 .event-payment-modal .pay-option .pay-icon { font-size:22px; }
 .event-payment-modal .pay-cancel { display:block; width:100%; text-align:center; border:none; background:transparent; color:var(--ink-soft); padding:10px; cursor:pointer; font-size:13px; margin-top:4px; }
+
+/* ─── Purchase Profile Graph ─── */
+.pp-graph-container {
+  position: relative;
+  background: #f8fafc;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 0;
+  min-height: 220px;
+}
+.pp-graph-dot {
+  transition: r 0.15s ease;
+}
+.pp-graph-dot:hover {
+  r: 6;
+}
+.pp-graph-tooltip {
+  position: absolute;
+  background: #1e293b;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,.2);
+}
 
 /* ─── Screentime usage chart ─── */
 .st-usage-chart { display:flex; flex-direction:row; align-items:flex-end; gap:6px; padding:16px 12px 8px; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0; overflow-x:auto; min-height:120px; }

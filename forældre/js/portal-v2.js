@@ -23,6 +23,7 @@
   let screentimeData = null;
   let eventsData = null;
   let featureFlags = {};      // from institution
+  let clubAvgPerDay = null;   // all-time club avg daily spend
 
   // ═══════════════════════════════════════
   //  INIT
@@ -42,6 +43,9 @@
         renderPasswordRecovery();
         return;
       }
+
+      // Check for pending signup link (after Google redirect or email confirmation)
+      await checkPendingSignupLink();
 
       await loadChildren();
     } catch (err) {
@@ -72,14 +76,16 @@
     const childId = selectedChild.child_id;
     const instId = selectedChild.institution_id;
     try {
-      const [view, prods, events] = await Promise.all([
+      const [view, prods, events, clubAvg] = await Promise.all([
         API.getParentView(childId).catch(e => { console.error('[Portal] getParentView:', e); return null; }),
         API.getProducts(instId, childId).catch(e => { console.error('[Portal] getProducts:', e); return []; }),
         API.getParentEvents(childId).catch(e => { console.error('[Portal] getEvents:', e); return null; }),
+        API.getClubAvgDailySpend(instId).catch(e => { console.error('[Portal] getClubAvg:', e); return null; }),
       ]);
       childData = view;
       products = prods?.products || prods || [];
       eventsData = events;
+      clubAvgPerDay = clubAvg;
       featureFlags = childData?.institution || childData?.feature_flags || {};
 
       // Load screentime data if enabled
@@ -176,38 +182,167 @@
   function getInstitutionName() { return childData?.institution_name || childData?.institution?.name || ''; }
 
   // ═══════════════════════════════════════
-  //  RENDER: LOGIN
+  //  RENDER: LOGIN / SIGNUP / FORGOT PASSWORD
   // ═══════════════════════════════════════
 
-  function renderLogin() {
-    root.innerHTML = `
-      <div class="login-screen">
-        <div class="login-card">
-          <div class="login-brand">
-            <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;box-shadow:0 8px 20px rgba(245,150,10,.3)">🍊</div>
-            <div class="login-brand-name">Flango</div>
-          </div>
-          <div class="login-title">Forældreportal</div>
-          <div class="login-subtitle">Log ind med din e-mail og adgangskode</div>
-          <div class="login-error" id="login-error"></div>
-          <div class="login-field">
-            <label for="login-email">E-mail</label>
-            <input type="email" id="login-email" class="input-field" placeholder="din@email.dk" autocomplete="email">
-          </div>
-          <div class="login-field">
-            <label for="login-password">Adgangskode</label>
-            <input type="password" id="login-password" class="input-field" placeholder="Din adgangskode" autocomplete="current-password">
-          </div>
-          <button class="save-btn full" id="login-btn" style="margin-top:var(--s4)">Log ind</button>
-          <a href="#" class="login-forgot" id="forgot-link">Glemt adgangskode?</a>
-        </div>
-      </div>`;
+  let loginView = 'login'; // 'login' | 'signup-code' | 'signup-auth' | 'forgot'
+  let signupVerifiedData = null; // { child_name, child_id, institution_name, institution_id } from code verification
 
-    document.getElementById('login-btn').addEventListener('click', handleLogin);
-    document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
-    document.getElementById('forgot-link').addEventListener('click', handleForgotPassword);
+  function showLoginView(view) {
+    loginView = view;
+    renderLogin();
   }
 
+  const googleIconSVG = `<svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.997 8.997 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58Z" fill="#EA4335"/></svg>`;
+
+  function renderLogin() {
+    const brandHTML = `
+      <div class="login-brand">
+        <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;box-shadow:0 8px 20px rgba(245,150,10,.3)">🍊</div>
+        <div class="login-brand-name">Flango</div>
+      </div>`;
+
+    if (loginView === 'signup-code') {
+      // ─── STEP 1: Enter portal code ───
+      root.innerHTML = `
+        <div class="login-screen">
+          <div class="login-card">
+            ${brandHTML}
+            <div class="login-title">Opret forældrekonto</div>
+            <div class="login-subtitle">Indtast den 8-tegns kode du har modtaget fra institutionen via Aula.</div>
+            <div class="login-error" id="signup-code-error"></div>
+            <div class="login-field">
+              <label for="signup-portal-code">Portal-kode</label>
+              <input type="text" id="signup-portal-code" class="input-field signup-code-input" placeholder="F.eks. A1B2C3D4" maxlength="8" autocomplete="off" style="text-transform:uppercase;letter-spacing:3px;font-size:20px;text-align:center;font-weight:700">
+            </div>
+            <button class="save-btn full" id="verify-code-btn" style="margin-top:var(--s4)">Verificer kode</button>
+            <div class="login-links">
+              <a href="#" id="back-to-login-from-code">Har du allerede en konto? Log ind</a>
+            </div>
+          </div>
+        </div>`;
+
+      document.getElementById('verify-code-btn').addEventListener('click', handleVerifyPortalCode);
+      document.getElementById('signup-portal-code').addEventListener('keydown', e => { if (e.key === 'Enter') handleVerifyPortalCode(); });
+      document.getElementById('back-to-login-from-code').addEventListener('click', e => { e.preventDefault(); showLoginView('login'); });
+      // Auto-focus
+      setTimeout(() => document.getElementById('signup-portal-code')?.focus(), 100);
+
+    } else if (loginView === 'signup-auth') {
+      // ─── STEP 2: Choose auth method (after code verified) ───
+      const childName = signupVerifiedData?.child_name || 'dit barn';
+      const instName = signupVerifiedData?.institution_name || '';
+      root.innerHTML = `
+        <div class="login-screen">
+          <div class="login-card">
+            ${brandHTML}
+            <div class="login-title">Opret konto</div>
+            <div class="signup-verified-info">
+              <div class="signup-verified-child">
+                <span class="signup-verified-emoji">🧒</span>
+                <div>
+                  <div class="signup-verified-name">${childName}</div>
+                  <div class="signup-verified-inst">${instName}</div>
+                </div>
+              </div>
+            </div>
+            <div class="login-subtitle">Vælg hvordan du vil oprette din konto.</div>
+            <div class="login-error" id="signup-auth-error"></div>
+            <div class="login-success" id="signup-auth-success"></div>
+            <button class="google-btn full" id="signup-google-btn">
+              ${googleIconSVG}
+              <span>Fortsæt med Google</span>
+            </button>
+            <div class="login-divider"><span>eller</span></div>
+            <div class="login-field">
+              <label for="signup-email">E-mail</label>
+              <input type="email" id="signup-email" class="input-field" placeholder="din@email.dk" autocomplete="email">
+            </div>
+            <div class="login-field">
+              <label for="signup-password">Adgangskode</label>
+              <input type="password" id="signup-password" class="input-field" placeholder="Min. 6 tegn" minlength="6" autocomplete="new-password">
+            </div>
+            <div class="login-field">
+              <label for="signup-password-confirm">Bekræft adgangskode</label>
+              <input type="password" id="signup-password-confirm" class="input-field" placeholder="Gentag adgangskode" minlength="6" autocomplete="new-password">
+            </div>
+            <button class="save-btn full" id="signup-email-btn" style="margin-top:var(--s3)">Opret med e-mail</button>
+            <div class="login-links">
+              <a href="#" id="back-to-code-step">Tilbage</a>
+              <a href="#" id="goto-login-from-signup">Har du allerede en konto? Log ind</a>
+            </div>
+          </div>
+        </div>`;
+
+      document.getElementById('signup-google-btn').addEventListener('click', handleSignupWithGoogle);
+      document.getElementById('signup-email-btn').addEventListener('click', handleSignupWithEmail);
+      document.getElementById('signup-password-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') handleSignupWithEmail(); });
+      document.getElementById('back-to-code-step').addEventListener('click', e => { e.preventDefault(); showLoginView('signup-code'); });
+      document.getElementById('goto-login-from-signup').addEventListener('click', e => { e.preventDefault(); showLoginView('login'); });
+
+    } else if (loginView === 'forgot') {
+      root.innerHTML = `
+        <div class="login-screen">
+          <div class="login-card">
+            ${brandHTML}
+            <div class="login-title">Nulstil adgangskode</div>
+            <div class="login-subtitle">Indtast din e-mail, så sender vi et link til at vælge en ny adgangskode.</div>
+            <div class="login-error" id="forgot-error"></div>
+            <div class="login-success" id="forgot-success"></div>
+            <div class="login-field">
+              <label for="forgot-email">E-mail</label>
+              <input type="email" id="forgot-email" class="input-field" placeholder="din@email.dk" autocomplete="email">
+            </div>
+            <button class="save-btn full" id="forgot-btn" style="margin-top:var(--s4)">Send nulstillingslink</button>
+            <div class="login-links">
+              <a href="#" id="back-to-login-link">Tilbage til login</a>
+            </div>
+          </div>
+        </div>`;
+
+      document.getElementById('forgot-btn').addEventListener('click', handleForgotSubmit);
+      document.getElementById('forgot-email').addEventListener('keydown', e => { if (e.key === 'Enter') handleForgotSubmit(); });
+      document.getElementById('back-to-login-link').addEventListener('click', e => { e.preventDefault(); showLoginView('login'); });
+
+    } else {
+      // ─── Default: login view ───
+      root.innerHTML = `
+        <div class="login-screen">
+          <div class="login-card">
+            ${brandHTML}
+            <div class="login-title">Forældreportal</div>
+            <div class="login-subtitle">Log ind med din konto for at se saldo, sætte grænser og mere.</div>
+            <div class="login-error" id="login-error"></div>
+            <button class="google-btn full" id="login-google-btn">
+              ${googleIconSVG}
+              <span>Fortsæt med Google</span>
+            </button>
+            <div class="login-divider"><span>eller</span></div>
+            <div class="login-field">
+              <label for="login-email">E-mail</label>
+              <input type="email" id="login-email" class="input-field" placeholder="din@email.dk" autocomplete="email">
+            </div>
+            <div class="login-field">
+              <label for="login-password">Adgangskode</label>
+              <input type="password" id="login-password" class="input-field" placeholder="Din adgangskode" autocomplete="current-password">
+            </div>
+            <button class="save-btn full" id="login-btn" style="margin-top:var(--s4)">Log ind</button>
+            <div class="login-links">
+              <a href="#" id="forgot-link">Glemt adgangskode?</a>
+              <a href="#" id="goto-signup-link" class="login-link-bold">Opret konto</a>
+            </div>
+          </div>
+        </div>`;
+
+      document.getElementById('login-google-btn').addEventListener('click', handleGoogleLogin);
+      document.getElementById('login-btn').addEventListener('click', handleLogin);
+      document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+      document.getElementById('forgot-link').addEventListener('click', e => { e.preventDefault(); showLoginView('forgot'); });
+      document.getElementById('goto-signup-link').addEventListener('click', e => { e.preventDefault(); showLoginView('signup-code'); });
+    }
+  }
+
+  // ─── Login handler (email/password) ───
   async function handleLogin() {
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
@@ -236,20 +371,243 @@
     }
   }
 
-  async function handleForgotPassword(e) {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value.trim();
+  // ─── Login handler (Google OAuth) ───
+  async function handleGoogleLogin() {
+    const errorEl = document.getElementById('login-error');
+    if (errorEl) errorEl.classList.remove('visible');
+    try {
+      await API.signInWithGoogle();
+      // Redirect happens automatically — Supabase handles the OAuth flow
+    } catch (err) {
+      console.error('[Portal] Google login fejl:', err);
+      if (errorEl) {
+        errorEl.textContent = 'Kunne ikke starte Google login. Prøv igen.';
+        errorEl.classList.add('visible');
+      }
+    }
+  }
+
+  // ─── Forgot password handler ───
+  async function handleForgotSubmit() {
+    const email = document.getElementById('forgot-email').value.trim();
+    const errorEl = document.getElementById('forgot-error');
+    const successEl = document.getElementById('forgot-success');
+    const btn = document.getElementById('forgot-btn');
+
+    errorEl.classList.remove('visible');
+    successEl.classList.remove('visible');
+
     if (!email) {
-      const errorEl = document.getElementById('login-error');
-      errorEl.textContent = 'Indtast din e-mail ovenfor';
+      errorEl.textContent = 'Indtast din e-mail.';
       errorEl.classList.add('visible');
       return;
     }
+
+    btn.disabled = true;
+    btn.textContent = 'Sender...';
+
     try {
       await API.resetPassword(email);
-      showToast('Nulstillingslink sendt til ' + email, 'success');
+      successEl.textContent = 'Hvis e-mailen findes i systemet, har vi sendt et link til at nulstille din adgangskode.';
+      successEl.classList.add('visible');
     } catch (err) {
-      showToast('Kunne ikke sende nulstillingslink', 'error');
+      errorEl.textContent = 'Kunne ikke sende nulstillingslink. Prøv igen.';
+      errorEl.classList.add('visible');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Send nulstillingslink';
+    }
+  }
+
+  // ─── Signup STEP 1: Verify portal code ───
+  async function handleVerifyPortalCode() {
+    const errorEl = document.getElementById('signup-code-error');
+    const btn = document.getElementById('verify-code-btn');
+    const codeInput = document.getElementById('signup-portal-code');
+
+    errorEl.classList.remove('visible');
+    const code = (codeInput?.value || '').trim().toUpperCase();
+
+    if (!code || code.length !== 8) {
+      errorEl.textContent = 'Koden skal være præcis 8 tegn.';
+      errorEl.classList.add('visible');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Verificerer...';
+
+    try {
+      const result = await API.verifyPortalCodeForSignup(code);
+      if (!result?.valid) {
+        errorEl.textContent = result?.error || 'Ugyldig kode. Tjek koden og prøv igen.';
+        errorEl.classList.add('visible');
+        return;
+      }
+
+      // Code verified — save data and proceed to auth step
+      signupVerifiedData = {
+        code: code,
+        child_name: result.child_name,
+        child_id: result.child_id,
+        institution_name: result.institution_name,
+        institution_id: result.institution_id,
+      };
+      showLoginView('signup-auth');
+
+    } catch (err) {
+      console.error('[signup] Code verification error:', err);
+      errorEl.textContent = err?.message || 'Kunne ikke verificere koden. Prøv igen.';
+      errorEl.classList.add('visible');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Verificer kode';
+    }
+  }
+
+  // ─── Signup STEP 2a: Create account with Google ───
+  async function handleSignupWithGoogle() {
+    const errorEl = document.getElementById('signup-auth-error');
+    if (errorEl) errorEl.classList.remove('visible');
+
+    if (!signupVerifiedData) {
+      showLoginView('signup-code');
+      return;
+    }
+
+    // Save verified data to sessionStorage so we can link after Google redirect
+    try {
+      sessionStorage.setItem('flango_signup_pending', JSON.stringify(signupVerifiedData));
+    } catch (e) {
+      console.warn('[signup] Could not save to sessionStorage:', e);
+    }
+
+    try {
+      await API.signInWithGoogle();
+      // Redirect happens automatically
+    } catch (err) {
+      console.error('[signup] Google signup error:', err);
+      if (errorEl) {
+        errorEl.textContent = 'Kunne ikke starte Google login. Prøv igen.';
+        errorEl.classList.add('visible');
+      }
+    }
+  }
+
+  // ─── Signup STEP 2b: Create account with email/password ───
+  async function handleSignupWithEmail() {
+    const errorEl = document.getElementById('signup-auth-error');
+    const successEl = document.getElementById('signup-auth-success');
+    const btn = document.getElementById('signup-email-btn');
+
+    errorEl.classList.remove('visible');
+    successEl.classList.remove('visible');
+
+    if (!signupVerifiedData) {
+      showLoginView('signup-code');
+      return;
+    }
+
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    const passwordConfirm = document.getElementById('signup-password-confirm').value;
+
+    if (!email || !password) {
+      errorEl.textContent = 'Udfyld e-mail og adgangskode.';
+      errorEl.classList.add('visible');
+      return;
+    }
+    if (password !== passwordConfirm) {
+      errorEl.textContent = 'Adgangskoderne er ikke ens.';
+      errorEl.classList.add('visible');
+      return;
+    }
+    if (password.length < 6) {
+      errorEl.textContent = 'Adgangskoden skal være mindst 6 tegn.';
+      errorEl.classList.add('visible');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Opretter konto...';
+
+    try {
+      // Create auth user
+      let signUpData;
+      try {
+        signUpData = await API.signUp(email, password);
+      } catch (signUpErr) {
+        let msg = signUpErr?.message || '';
+        if (msg.includes('already registered')) {
+          errorEl.innerHTML = 'Denne e-mail er allerede registreret. <a href="#" id="goto-login-from-error" style="color:var(--info);text-decoration:underline;font-weight:600">Log ind</a> for at tilknytte flere børn.';
+          errorEl.classList.add('visible');
+          const loginLink = errorEl.querySelector('#goto-login-from-error');
+          if (loginLink) loginLink.addEventListener('click', e => { e.preventDefault(); showLoginView('login'); });
+          return;
+        }
+        errorEl.textContent = msg || 'Kunne ikke oprette konto. Prøv igen.';
+        errorEl.classList.add('visible');
+        return;
+      }
+
+      // If email confirmation required (no immediate session)
+      if (!signUpData.session) {
+        // Save pending link data for after email confirmation
+        try {
+          sessionStorage.setItem('flango_signup_pending', JSON.stringify(signupVerifiedData));
+        } catch (e) { /* ignore */ }
+        successEl.textContent = 'Tjek din e-mail for at bekræfte din konto. Klik på linket i mailen, og log derefter ind.';
+        successEl.classList.add('visible');
+        setTimeout(() => showLoginView('login'), 4000);
+        return;
+      }
+
+      // Link child to parent using the portal code
+      btn.textContent = 'Tilknytter barn...';
+      try {
+        await API.linkChildByPortalCode(signupVerifiedData.code);
+      } catch (linkErr) {
+        console.error('[signup] Link error:', linkErr);
+        // Fall through — attempt to continue
+      }
+
+      // Clear pending data
+      signupVerifiedData = null;
+      try { sessionStorage.removeItem('flango_signup_pending'); } catch (e) { /* ignore */ }
+
+      // Enter portal
+      currentSession = await API.getSession();
+      await loadChildren();
+
+    } catch (err) {
+      console.error('[signup] Email signup error:', err);
+      errorEl.textContent = err?.message || 'Der opstod en fejl. Prøv igen.';
+      errorEl.classList.add('visible');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Opret med e-mail';
+    }
+  }
+
+  // ─── Check for pending signup after Google redirect ───
+  async function checkPendingSignupLink() {
+    let pending = null;
+    try {
+      const raw = sessionStorage.getItem('flango_signup_pending');
+      if (raw) pending = JSON.parse(raw);
+    } catch (e) { return; }
+
+    if (!pending?.child_id || !pending?.institution_id) return;
+
+    console.log('[signup] Found pending signup link, attempting to link child...');
+    try {
+      // Link child using the stored portal code
+      await API.linkChildByPortalCode(pending.code);
+      console.log('[signup] Child linked successfully after Google redirect');
+    } catch (err) {
+      console.error('[signup] Pending link error:', err);
+    } finally {
+      try { sessionStorage.removeItem('flango_signup_pending'); } catch (e) { /* ignore */ }
     }
   }
 
@@ -408,10 +766,10 @@
 
             <!-- Quick Actions -->
             <div class="quick-actions">
+              ${showEvents ? '<button class="qa-item" data-qa-scroll="section-events" data-qa-tab="tab-home"><div class="qa-icon red">📅</div><div class="qa-label">Events</div></button>' : '<button class="qa-item" data-qa-scroll="section-sortiment" data-qa-tab="tab-home"><div class="qa-icon red">📋</div><div class="qa-label">Sortiment</div></button>'}
               <button class="qa-item" data-qa-scroll="section-spending-limit" data-qa-tab="tab-limits"><div class="qa-icon orange">💰</div><div class="qa-label">Daglig grænse</div></button>
               <button class="qa-item" data-qa-scroll="section-allergens" data-qa-tab="tab-limits"><div class="qa-icon green">🥗</div><div class="qa-label">Kost & Allergi</div></button>
               ${showScreentime ? '<button class="qa-item" data-qa-scroll="section-screentime" data-qa-tab="tab-screen"><div class="qa-icon blue">🕹️</div><div class="qa-label">Skærmtid</div></button>' : ''}
-              ${showEvents ? '<button class="qa-item" data-qa-scroll="section-events" data-qa-tab="tab-home"><div class="qa-icon red">📅</div><div class="qa-label">Events</div></button>' : '<button class="qa-item" data-qa-scroll="section-sortiment" data-qa-tab="tab-home"><div class="qa-icon red">📋</div><div class="qa-label">Sortiment</div></button>'}
             </div>
 
             ${showEvents ? renderEventsSection() : ''}
@@ -472,6 +830,9 @@
     renderSidebarChildren();
     renderSidebarNav();
     bindEvents();
+
+    // Auto-load purchase profile (always open by default)
+    loadPurchaseProfile();
   }
 
   // ═══════════════════════════════════════
@@ -577,8 +938,9 @@
       </div>`;
   }
 
-  let ppCurrentPeriod = '30';
+  let ppCurrentPeriod = 'all';
   let ppCurrentSort = 'antal';
+  let ppCurrentView = 'bars'; // 'bars' | 'graph'
   const ppCylinderColors = [
     { bg: 'linear-gradient(90deg, #3b82f6 0%, #60a5fa 35%, #93c5fd 50%, #60a5fa 65%, #3b82f6 100%)', shadow: '#1e40af', cap: 'linear-gradient(180deg, #bfdbfe 0%, #3b82f6 100%)' },
     { bg: 'linear-gradient(90deg, #22c55e 0%, #4ade80 35%, #86efac 50%, #4ade80 65%, #22c55e 100%)', shadow: '#16a34a', cap: 'linear-gradient(180deg, #dcfce7 0%, #4ade80 100%)' },
@@ -594,21 +956,54 @@
 
   function renderPurchaseProfileSection() {
     return `
-      <div class="section" id="section-profile">
+      <div class="section open" id="section-profile">
         <div class="section-header">
           <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">📊</div><div><div class="section-title">Købsprofil</div><div class="section-subtitle">Mest købte produkter</div></div></div>
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div id="purchase-profile-content">
-            <div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">Tryk for at indlæse købsprofil</div></div>
+            <div style="text-align:center;padding:var(--s4)"><div class="portal-loading-spinner" style="margin:0 auto"></div></div>
           </div>
         </div></div></div>
       </div>`;
   }
 
+  function getSpentToday() {
+    const transactions = childData?.recent_transactions || childData?.history || [];
+    const today = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
+    let spent = 0;
+    transactions.forEach(tx => {
+      const type = tx.type || tx.event_type || '';
+      const dateStr = tx.created_at || tx.date || '';
+      if (!dateStr) return;
+      const txDate = new Date(dateStr).toLocaleDateString('sv-SE');
+      if (txDate !== today) return;
+      if (type === 'SALE') spent += Math.abs(parseFloat(tx.amount || tx.total_amount || 0));
+      else if (type === 'SALE_UNDO' || type === 'UNDO_SALE') spent -= Math.abs(parseFloat(tx.amount || tx.total_amount || 0));
+    });
+    return Math.max(0, spent);
+  }
+
   function renderHistorySection() {
     const transactions = childData?.recent_transactions || childData?.history || [];
+    const spentToday = getSpentToday();
+    const clubAvg = clubAvgPerDay != null ? Number(clubAvgPerDay) : null;
+
+    // "Min dag vs. Klubbens gns." comparison card
+    const comparisonHTML = `
+      <div class="overview-comparison">
+        <div class="overview-stat">
+          <div class="overview-stat-label">Min dag</div>
+          <div class="overview-stat-value">${formatKr(spentToday)} kr</div>
+        </div>
+        <div class="overview-vs">vs.</div>
+        <div class="overview-stat">
+          <div class="overview-stat-label">Klubbens gns.</div>
+          <div class="overview-stat-value">${clubAvg != null ? formatKr(clubAvg) + ' kr/dag' : '—'}</div>
+        </div>
+      </div>`;
+
     let txHTML = '';
     if (transactions.length === 0) {
       txHTML = '<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">Ingen transaktioner endnu</div></div>';
@@ -630,10 +1025,11 @@
     return `
       <div class="section" id="section-history">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📜</div><div><div class="section-title">Historik</div><div class="section-subtitle">Seneste transaktioner</div></div></div>
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📊</div><div><div class="section-title">Overblik</div><div class="section-subtitle">Din dagsoversigt</div></div></div>
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${comparisonHTML}
           ${txHTML}
         </div></div></div>
       </div>`;
@@ -953,7 +1349,19 @@
   }
 
   function renderNotificationsSection() {
-    const notif = childData?.notifications || {};
+    const notif = childData?.notification_settings || {};
+    // Get parent login email from session
+    var parentEmail = '';
+    try { parentEmail = window.portalSupabase?.auth?.session?.()?.data?.session?.user?.email || ''; } catch (_e) { /* ignore */ }
+    if (!parentEmail) {
+      try {
+        var _sd = JSON.parse(localStorage.getItem('sb-jbknjgbpghrbrstqwoxj-auth-token') || '{}');
+        parentEmail = _sd?.user?.email || _sd?.currentSession?.user?.email || '';
+      } catch (_e2) { /* ignore */ }
+    }
+    if (!parentEmail && notif.email) parentEmail = notif.email;
+    var secondaryEmail = notif.secondary_email || '';
+    var notifyPrimary = notif.notify_primary_email !== false;
     return `
       <div class="section" id="section-notifications">
         <div class="section-header">
@@ -961,8 +1369,20 @@
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${notif.notify_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${notif.notify_low !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${notif.notify_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${notif.notify_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)">
+            <div class="setting-label" style="margin-bottom:var(--s2);font-weight:600">Modtagere</div>
+            <div class="setting-row"><div class="setting-info"><div class="setting-label">Kontoe-mail${parentEmail ? ' <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(' + esc(parentEmail) + ')</span>' : ''}</div><div class="setting-desc">Send notifikationer til din login-e-mail</div></div><label class="toggle"><input type="checkbox" id="notif-primary-email" ${notifyPrimary ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+            <div style="margin-top:var(--s2)">
+              <div class="setting-label" style="margin-bottom:6px">Ekstra e-mail <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(valgfri)</span></div>
+              <div class="setting-desc" style="margin-bottom:8px">Send notifikationer til en anden e-mail, fx den anden forælder</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="email" id="notif-secondary-email" class="input-field" placeholder="fx partner@mail.dk" value="${esc(secondaryEmail)}" style="flex:1;margin:0">
+                <button class="save-btn compact" id="notif-save-email-btn" style="white-space:nowrap;padding:10px 16px">Gem</button>
+              </div>
+            </div>
+          </div>
         </div></div></div>
       </div>`;
   }
@@ -1073,7 +1493,7 @@
       { id: 'section-balance', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', label: 'Overblik' },
       { id: 'section-events', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', label: 'Arrangementer' },
       { id: 'section-profile', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>', label: 'Købsprofil' },
-      { id: 'section-history', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', label: 'Historik' },
+      { id: 'section-history', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', label: 'Overblik' },
       { id: 'section-sortiment', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>', label: 'Sortiment' },
       { id: 'section-topup', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', label: 'Indbetaling' },
       { id: 'section-spending-limit', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>', label: 'Daglig grænse' },
@@ -1307,8 +1727,12 @@
     // Notification toggles
     const notifZero = document.getElementById('notif-zero');
     const notifLow = document.getElementById('notif-low');
+    const notifPrimaryEmail = document.getElementById('notif-primary-email');
+    const notifSaveEmailBtn = document.getElementById('notif-save-email-btn');
     if (notifZero) notifZero.addEventListener('change', () => saveNotifications());
     if (notifLow) notifLow.addEventListener('change', () => saveNotifications());
+    if (notifPrimaryEmail) notifPrimaryEmail.addEventListener('change', () => saveNotifications());
+    if (notifSaveEmailBtn) notifSaveEmailBtn.addEventListener('click', () => saveNotifications());
 
     // PIN save
     const pinBtn = document.getElementById('pin-save-btn');
@@ -1412,16 +1836,18 @@
     saveAllergens();
   }
 
-  async function loadPurchaseProfile(period, sortBy) {
+  async function loadPurchaseProfile(period, sortBy, view) {
     if (!selectedChild) return;
     const container = document.getElementById('purchase-profile-content');
     if (!container) return;
-    ppCurrentPeriod = period || ppCurrentPeriod || '30';
+    ppCurrentPeriod = period || ppCurrentPeriod || 'all';
     ppCurrentSort = sortBy || ppCurrentSort || 'antal';
+    ppCurrentView = view || ppCurrentView || 'bars';
     container.innerHTML = '<div style="text-align:center;padding:var(--s4)"><div class="portal-loading-spinner" style="margin:0 auto"></div></div>';
     try {
-      const periodMap = { 'all': 'all', '30': '30d', '7': '7d' };
-      purchaseProfile = await API.getPurchaseProfile(selectedChild.child_id, periodMap[ppCurrentPeriod] || '30d', ppCurrentSort);
+      const periodMap = { 'today': 'today', '7': '7', '30': '30', 'all': 'all' };
+      const needDaily = ppCurrentView === 'graph';
+      purchaseProfile = await API.getPurchaseProfile(selectedChild.child_id, periodMap[ppCurrentPeriod] || 'all', ppCurrentSort, needDaily);
       renderPurchaseProfileContent(container, purchaseProfile);
     } catch (err) {
       console.error('[Portal] Purchase profile error:', err);
@@ -1437,33 +1863,55 @@
   function renderPurchaseProfileContent(container, data) {
     if (!data) { container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Ingen data</div></div>'; return; }
     const total = data.total_spent || data.total_amount || data.total || 0;
-    const count = data.total_count || data.purchase_count || 0;
+    const count = data.totalCount || data.total_count || data.purchase_count || 0;
     const avg = count > 0 ? (total / count) : 0;
     const chartData = data.chartData || data.products || data.top_products || [];
 
-    // Period & sort buttons
-    const periodBtns = ['all', '30', '7'].map(p => {
-      const labels = { 'all': 'Alt', '30': '30 dage', '7': '7 dage' };
-      return `<button class="pp-period-btn${ppCurrentPeriod === p ? ' active' : ''}" data-period="${p}">${labels[p]}</button>`;
-    }).join('');
-    const sortBtns = ['antal', 'kr'].map(s => {
-      const labels = { 'antal': 'Antal', 'kr': 'Beløb' };
-      return `<button class="pp-sort-btn${ppCurrentSort === s ? ' active' : ''}" data-sort="${s}">${labels[s]}</button>`;
+    // Period buttons (I dag / Uge / Måned / Altid)
+    const periodBtns = ['today', '7', '30', 'all'].map(function (p) {
+      var labels = { 'today': 'I dag', '7': 'Uge', '30': 'Måned', 'all': 'Altid' };
+      return '<button class="pp-period-btn' + (ppCurrentPeriod === p ? ' active' : '') + '" data-period="' + p + '">' + labels[p] + '</button>';
     }).join('');
 
-    const controlsHTML = `
-      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">
-        <div class="pp-btn-group">${periodBtns}</div>
-        <div class="pp-btn-group">${sortBtns}</div>
-      </div>`;
+    // View toggle (Søjler / Graf)
+    var viewBtns = ['bars', 'graph'].map(function (v) {
+      var labels = { 'bars': 'Søjler', 'graph': 'Graf' };
+      return '<button class="pp-view-btn' + (ppCurrentView === v ? ' active' : '') + '" data-view="' + v + '">' + labels[v] + '</button>';
+    }).join('');
 
-    const summaryHTML = `
-      <div class="chart-summary">
-        <div class="chart-stat"><div class="chart-stat-value">${formatKr(total)} kr</div><div class="chart-stat-label">Samlet forbrug</div></div>
-        <div class="chart-stat"><div class="chart-stat-value">${count}</div><div class="chart-stat-label">Antal køb</div></div>
-        <div class="chart-stat"><div class="chart-stat-value">${formatKr(avg)} kr</div><div class="chart-stat-label">Gns. pr. køb</div></div>
-      </div>`;
+    // Sort buttons (only visible in bars mode)
+    var sortBtns = ['antal', 'kr'].map(function (s) {
+      var labels = { 'antal': 'Antal', 'kr': 'Beløb' };
+      return '<button class="pp-sort-btn' + (ppCurrentSort === s ? ' active' : '') + '" data-sort="' + s + '">' + labels[s] + '</button>';
+    }).join('');
 
+    var controlsHTML = '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">'
+      + '<div class="pp-btn-group">' + periodBtns + '</div>'
+      + '<div class="pp-btn-group">' + viewBtns + '</div>'
+      + (ppCurrentView === 'bars' ? '<div class="pp-btn-group">' + sortBtns + '</div>' : '')
+      + '</div>';
+
+    var summaryHTML = '<div class="chart-summary">'
+      + '<div class="chart-stat"><div class="chart-stat-value">' + formatKr(total) + ' kr</div><div class="chart-stat-label">Samlet forbrug</div></div>'
+      + '<div class="chart-stat"><div class="chart-stat-value">' + count + '</div><div class="chart-stat-label">Antal køb</div></div>'
+      + '<div class="chart-stat"><div class="chart-stat-value">' + formatKr(avg) + ' kr</div><div class="chart-stat-label">Gns. pr. køb</div></div>'
+      + '</div>';
+
+    // ── GRAPH VIEW ──
+    if (ppCurrentView === 'graph') {
+      var dailyData = data.dailyData || [];
+      if (!dailyData || dailyData.length === 0) {
+        container.innerHTML = controlsHTML + summaryHTML + '<div class="empty-state"><div class="empty-state-text">Ingen daglig data i denne periode</div></div>';
+        bindPPButtons(container);
+        return;
+      }
+      container.innerHTML = controlsHTML + summaryHTML;
+      renderPurchaseProfileGraph(container, dailyData);
+      bindPPButtons(container);
+      return;
+    }
+
+    // ── BARS VIEW ──
     if (!chartData || chartData.length === 0) {
       container.innerHTML = controlsHTML + summaryHTML + '<div class="empty-state"><div class="empty-state-text">Ingen købsdata i denne periode</div></div>';
       bindPPButtons(container);
@@ -1471,45 +1919,45 @@
     }
 
     // Build cylinder chart
-    const chartContainer = document.createElement('div');
+    var chartContainer = document.createElement('div');
     chartContainer.className = 'purchase-profile-chart';
     chartContainer.style.cssText = 'display:flex;flex-direction:row;align-items:flex-end;gap:14px;padding:40px 20px 20px;background:#f8fafc;border-radius:16px;border:1px solid #e2e8f0;overflow-x:auto;-webkit-overflow-scrolling:touch;min-height:200px;';
 
-    const maxVal = Math.max(...chartData.map(item => item.normalizedHeight || item.quantity || item.count || item.antal || 0));
-    const fragment = document.createDocumentFragment();
+    var maxVal = Math.max.apply(null, chartData.map(function (item) { return item.normalizedHeight || item.quantity || item.count || item.antal || 0; }));
+    var fragment = document.createDocumentFragment();
 
     chartData.forEach(function (item, index) {
-      const wrapper = document.createElement('div');
+      var wrapper = document.createElement('div');
       wrapper.style.cssText = 'display:flex;flex-direction:column;align-items:center;position:relative;min-width:52px;flex:0 0 auto;';
 
       // Display value
-      const displayValue = item.displayValue || (ppCurrentSort === 'kr' ? ppFormatKr(item.kr || item.amount || 0) : (item.antal || item.quantity || item.count || 0) + ' stk');
-      const valueLabel = document.createElement('div');
+      var displayValue = item.displayValue || (ppCurrentSort === 'kr' ? ppFormatKr(item.kr || item.amount || 0) : (item.antal || item.quantity || item.count || 0) + ' stk');
+      var valueLabel = document.createElement('div');
       valueLabel.style.cssText = 'font-size:12px;font-weight:800;color:#1e293b;margin-bottom:6px;white-space:nowrap;';
       valueLabel.textContent = displayValue;
 
       // Bar height
-      const normalizedHeight = item.normalizedHeight || (maxVal > 0 ? ((item.antal || item.quantity || item.count || 0) / maxVal * 100) : 0);
-      const minH = 25, maxH = 170;
-      const calcHeight = minH + (normalizedHeight / 100) * (maxH - minH);
-      const colors = ppCylinderColors[index % ppCylinderColors.length];
+      var normalizedHeight = item.normalizedHeight || (maxVal > 0 ? ((item.antal || item.quantity || item.count || 0) / maxVal * 100) : 0);
+      var minH = 25, maxH = 170;
+      var calcHeight = minH + (normalizedHeight / 100) * (maxH - minH);
+      var colors = ppCylinderColors[index % ppCylinderColors.length];
 
       // Bar (cylinder body)
-      const bar = document.createElement('div');
+      var bar = document.createElement('div');
       bar.style.cssText = 'position:relative;width:38px;height:0;border-radius:19px 19px 6px 6px;transition:height 0.8s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 8px 20px rgba(0,0,0,0.15);cursor:pointer;';
       bar.style.setProperty('--final-height', Math.round(calcHeight) + 'px');
       bar.style.background = colors.bg;
       bar.style.boxShadow = '3px 0 0 ' + colors.shadow + ', 0 8px 16px rgba(0,0,0,0.15)';
 
       // Cap (top ellipse)
-      const cap = document.createElement('div');
+      var cap = document.createElement('div');
       cap.style.cssText = 'position:absolute;top:-7px;left:0;width:38px;height:14px;border-radius:50%;z-index:3;';
       cap.style.background = colors.cap;
       bar.appendChild(cap);
 
       // Tooltip
-      const itemName = cleanProductName(item.name || '');
-      const tooltip = document.createElement('div');
+      var itemName = cleanProductName(item.name || '');
+      var tooltip = document.createElement('div');
       tooltip.style.cssText = 'position:absolute;bottom:calc(100% + 16px);left:50%;transform:translateX(-50%);background:#1e293b;color:white;padding:10px 14px;border-radius:10px;font-size:13px;white-space:nowrap;opacity:0;visibility:hidden;transition:all 0.2s ease;z-index:100;pointer-events:none;';
       tooltip.innerHTML = '<div style="font-weight:800;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:3px;margin-bottom:3px;">' + esc(itemName) + '</div>'
         + '<div style="display:flex;justify-content:space-between;gap:12px"><span>Antal:</span><span style="font-weight:700">' + (item.antal || item.quantity || item.count || 0) + '</span></div>'
@@ -1520,15 +1968,15 @@
       bar.addEventListener('mouseenter', function () { tooltip.style.opacity = '1'; tooltip.style.visibility = 'visible'; });
       bar.addEventListener('mouseleave', function () { tooltip.style.opacity = '0'; tooltip.style.visibility = 'hidden'; });
       bar.addEventListener('click', function () {
-        const isVis = tooltip.style.opacity === '1';
+        var isVis = tooltip.style.opacity === '1';
         tooltip.style.opacity = isVis ? '0' : '1';
         tooltip.style.visibility = isVis ? 'hidden' : 'visible';
       });
 
       // Icon
-      const iconWrap = document.createElement('div');
+      var iconWrap = document.createElement('div');
       iconWrap.style.cssText = 'margin-top:10px;width:32px;height:32px;background:white;border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,0.08);border:1px solid #e2e8f0;overflow:hidden;';
-      const icon = item.icon || item.emoji;
+      var icon = item.icon || item.emoji;
       if (item.isDagensRet) {
         iconWrap.innerHTML = '<span style="font-size:18px">🍽️</span>';
       } else if (item.isAndreVarer) {
@@ -1542,7 +1990,7 @@
       }
 
       // Name label
-      const nameLabel = document.createElement('div');
+      var nameLabel = document.createElement('div');
       nameLabel.style.cssText = 'margin-top:6px;font-size:11px;font-weight:700;color:#475569;text-align:center;max-width:62px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
       nameLabel.textContent = itemName;
       nameLabel.title = itemName;
@@ -1561,7 +2009,7 @@
     // Animate bars
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
-        const bars = chartContainer.querySelectorAll('[style*="--final-height"]');
+        var bars = chartContainer.querySelectorAll('[style*="--final-height"]');
         bars.forEach(function (b, i) {
           setTimeout(function () {
             b.style.height = b.style.getPropertyValue('--final-height');
@@ -1573,12 +2021,193 @@
     bindPPButtons(container);
   }
 
+  // ── SVG Line/Area Graph for Purchase Profile ──
+  function renderPurchaseProfileGraph(container, dailyData) {
+    if (!dailyData || dailyData.length === 0) return;
+
+    var sortBy = ppCurrentSort === 'kr' ? 'kr' : 'antal';
+    var values = dailyData.map(function (d) { return d[sortBy] || 0; });
+    var maxY = Math.max.apply(null, values);
+    if (maxY === 0) maxY = 1;
+
+    // Dimensions
+    var paddingLeft = 52, paddingRight = 16, paddingTop = 20, paddingBottom = 44;
+    var minWidthPerPoint = 24;
+    var chartWidth = Math.max(paddingLeft + paddingRight + dailyData.length * minWidthPerPoint, 320);
+    var chartHeight = 220;
+    var drawW = chartWidth - paddingLeft - paddingRight;
+    var drawH = chartHeight - paddingTop - paddingBottom;
+
+    // Outer scrollable container
+    var outer = document.createElement('div');
+    outer.className = 'pp-graph-container';
+
+    // SVG
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', chartWidth);
+    svg.setAttribute('height', chartHeight);
+    svg.setAttribute('viewBox', '0 0 ' + chartWidth + ' ' + chartHeight);
+    svg.style.display = 'block';
+
+    // Defs (gradient)
+    var defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    var grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+    grad.setAttribute('id', 'ppAreaGrad');
+    grad.setAttribute('x1', '0'); grad.setAttribute('y1', '0');
+    grad.setAttribute('x2', '0'); grad.setAttribute('y2', '1');
+    var stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+    stop1.setAttribute('offset', '0%'); stop1.setAttribute('stop-color', '#3b82f6'); stop1.setAttribute('stop-opacity', '0.3');
+    var stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+    stop2.setAttribute('offset', '100%'); stop2.setAttribute('stop-color', '#3b82f6'); stop2.setAttribute('stop-opacity', '0.02');
+    grad.appendChild(stop1); grad.appendChild(stop2);
+    defs.appendChild(grad);
+    svg.appendChild(defs);
+
+    // Y-axis grid lines (5 lines)
+    var gridLines = 5;
+    for (var gi = 0; gi <= gridLines; gi++) {
+      var yVal = (maxY / gridLines) * gi;
+      var yPos = paddingTop + drawH - (gi / gridLines) * drawH;
+
+      var gridLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      gridLine.setAttribute('x1', paddingLeft);
+      gridLine.setAttribute('x2', chartWidth - paddingRight);
+      gridLine.setAttribute('y1', yPos);
+      gridLine.setAttribute('y2', yPos);
+      gridLine.setAttribute('stroke', '#e2e8f0');
+      gridLine.setAttribute('stroke-width', '1');
+      svg.appendChild(gridLine);
+
+      var yLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      yLabel.setAttribute('x', paddingLeft - 6);
+      yLabel.setAttribute('y', yPos + 4);
+      yLabel.setAttribute('text-anchor', 'end');
+      yLabel.setAttribute('font-size', '10');
+      yLabel.setAttribute('font-weight', '600');
+      yLabel.setAttribute('fill', '#94a3b8');
+      yLabel.textContent = sortBy === 'kr' ? Math.round(yVal) + ' kr' : Math.round(yVal);
+      svg.appendChild(yLabel);
+    }
+
+    // Build points
+    var points = [];
+    for (var i = 0; i < dailyData.length; i++) {
+      var x = paddingLeft + (dailyData.length > 1 ? (i / (dailyData.length - 1)) * drawW : drawW / 2);
+      var y = paddingTop + drawH - ((values[i] / maxY) * drawH);
+      points.push({ x: x, y: y, data: dailyData[i], value: values[i] });
+    }
+
+    // Area path
+    if (points.length > 1) {
+      var areaD = 'M' + points[0].x + ',' + points[0].y;
+      for (var ai = 1; ai < points.length; ai++) {
+        areaD += ' L' + points[ai].x + ',' + points[ai].y;
+      }
+      areaD += ' L' + points[points.length - 1].x + ',' + (paddingTop + drawH);
+      areaD += ' L' + points[0].x + ',' + (paddingTop + drawH) + ' Z';
+
+      var areaPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      areaPath.setAttribute('d', areaD);
+      areaPath.setAttribute('fill', 'url(#ppAreaGrad)');
+      svg.appendChild(areaPath);
+
+      // Line path
+      var lineD = 'M' + points[0].x + ',' + points[0].y;
+      for (var li = 1; li < points.length; li++) {
+        lineD += ' L' + points[li].x + ',' + points[li].y;
+      }
+      var linePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      linePath.setAttribute('d', lineD);
+      linePath.setAttribute('fill', 'none');
+      linePath.setAttribute('stroke', '#3b82f6');
+      linePath.setAttribute('stroke-width', '2.5');
+      linePath.setAttribute('stroke-linejoin', 'round');
+      linePath.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(linePath);
+    }
+
+    // X-axis labels (adaptive)
+    var labelEvery = 1;
+    if (dailyData.length > 60) labelEvery = 7;
+    else if (dailyData.length > 20) labelEvery = Math.ceil(dailyData.length / 15);
+
+    for (var xi = 0; xi < points.length; xi++) {
+      if (xi % labelEvery !== 0 && xi !== points.length - 1) continue;
+      var dateObj = new Date(dailyData[xi].date + 'T00:00:00');
+      var xLabelText;
+      if (dailyData.length <= 7) {
+        xLabelText = dateObj.toLocaleDateString('da-DK', { weekday: 'short' });
+      } else {
+        xLabelText = dateObj.getDate() + '. ' + dateObj.toLocaleDateString('da-DK', { month: 'short' });
+      }
+      var xLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      xLabel.setAttribute('x', points[xi].x);
+      xLabel.setAttribute('y', chartHeight - 6);
+      xLabel.setAttribute('text-anchor', 'middle');
+      xLabel.setAttribute('font-size', '10');
+      xLabel.setAttribute('font-weight', '600');
+      xLabel.setAttribute('fill', '#94a3b8');
+      xLabel.textContent = xLabelText;
+      svg.appendChild(xLabel);
+    }
+
+    // Dots + tooltip
+    var tooltipDiv = document.createElement('div');
+    tooltipDiv.className = 'pp-graph-tooltip';
+    tooltipDiv.style.display = 'none';
+
+    points.forEach(function (pt, idx) {
+      var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', pt.x);
+      circle.setAttribute('cy', pt.y);
+      circle.setAttribute('r', '4');
+      circle.setAttribute('fill', '#3b82f6');
+      circle.setAttribute('stroke', '#fff');
+      circle.setAttribute('stroke-width', '2');
+      circle.setAttribute('class', 'pp-graph-dot');
+      circle.style.cursor = 'pointer';
+
+      function showTip(e) {
+        var d = pt.data;
+        var dateObj2 = new Date(d.date + 'T00:00:00');
+        var dateStr = dateObj2.toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' });
+        tooltipDiv.innerHTML = '<div style="font-weight:700;margin-bottom:4px">' + dateStr + '</div>'
+          + '<div>Beløb: <strong>' + ppFormatKr(d.kr) + '</strong></div>'
+          + '<div>Antal: <strong>' + d.antal + ' stk</strong></div>';
+        tooltipDiv.style.display = 'block';
+        // Position tooltip near the dot
+        var rect = outer.getBoundingClientRect();
+        var tipX = pt.x - outer.scrollLeft;
+        var tipY = pt.y - 10;
+        tooltipDiv.style.left = tipX + 'px';
+        tooltipDiv.style.top = tipY + 'px';
+        tooltipDiv.style.transform = 'translate(-50%, -100%)';
+      }
+      function hideTip() {
+        tooltipDiv.style.display = 'none';
+      }
+      circle.addEventListener('mouseenter', showTip);
+      circle.addEventListener('mouseleave', hideTip);
+      circle.addEventListener('click', function (e) {
+        if (tooltipDiv.style.display === 'block') { hideTip(); } else { showTip(e); }
+      });
+      svg.appendChild(circle);
+    });
+
+    outer.appendChild(svg);
+    outer.appendChild(tooltipDiv);
+    container.appendChild(outer);
+  }
+
   function bindPPButtons(container) {
     container.querySelectorAll('.pp-period-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () { loadPurchaseProfile(btn.dataset.period, ppCurrentSort); });
+      btn.addEventListener('click', function () { loadPurchaseProfile(btn.dataset.period, ppCurrentSort, ppCurrentView); });
     });
     container.querySelectorAll('.pp-sort-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () { loadPurchaseProfile(ppCurrentPeriod, btn.dataset.sort); });
+      btn.addEventListener('click', function () { loadPurchaseProfile(ppCurrentPeriod, btn.dataset.sort, ppCurrentView); });
+    });
+    container.querySelectorAll('.pp-view-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { loadPurchaseProfile(ppCurrentPeriod, ppCurrentSort, btn.dataset.view); });
     });
   }
 
@@ -1645,13 +2274,30 @@
 
   async function saveNotifications() {
     if (!selectedChild) return;
-    const zeroEl = document.getElementById('notif-zero');
-    const lowEl = document.getElementById('notif-low');
+    var zeroEl = document.getElementById('notif-zero');
+    var lowEl = document.getElementById('notif-low');
+    var primaryEl = document.getElementById('notif-primary-email');
+    var secondaryEl = document.getElementById('notif-secondary-email');
+    var secondaryVal = secondaryEl ? secondaryEl.value.trim() : '';
+    // Validate secondary email if provided
+    if (secondaryVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(secondaryVal)) {
+      showToast('Ugyldig e-mailadresse', 'error');
+      return;
+    }
     try {
       await API.saveNotification(selectedChild.child_id, {
-        notify_zero: zeroEl ? zeroEl.checked : true,
-        notify_low: lowEl ? lowEl.checked : true,
+        notify_at_zero: zeroEl ? zeroEl.checked : true,
+        notify_at_ten: lowEl ? lowEl.checked : true,
+        notify_primary_email: primaryEl ? primaryEl.checked : true,
+        secondary_email: secondaryVal || null,
       });
+      // Update local cache so re-renders reflect the change
+      if (childData && childData.notification_settings) {
+        childData.notification_settings.notify_at_zero = zeroEl ? zeroEl.checked : true;
+        childData.notification_settings.notify_at_ten = lowEl ? lowEl.checked : true;
+        childData.notification_settings.notify_primary_email = primaryEl ? primaryEl.checked : true;
+        childData.notification_settings.secondary_email = secondaryVal || null;
+      }
       showToast('Notifikationer gemt', 'success');
     } catch (err) {
       console.error('[Portal] Save notifications error:', err);

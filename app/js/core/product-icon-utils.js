@@ -174,6 +174,243 @@ export async function processImageForUpload(file) {
 }
 
 /**
+ * Detect if the device is mobile (touch + small screen)
+ * @returns {boolean}
+ */
+function isMobileDevice() {
+    return (
+        ('ontouchstart' in window || navigator.maxTouchPoints > 0) &&
+        window.innerWidth <= 1024
+    );
+}
+
+/**
+ * Take a product photo using the best available method:
+ * 1. Capacitor Camera plugin (native app)
+ * 2. Mobile file input with capture="camera" (mobile browser)
+ * 3. Desktop webcam via getUserMedia (desktop browser)
+ *
+ * @param {object} options
+ * @param {HTMLElement} [options.modalContainer] - Container element to append webcam modal into
+ * @param {Function} [options.showCustomAlert] - Custom alert function for error messages
+ * @returns {Promise<File|null>} A File object ready for processImageForUpload(), or null if cancelled
+ */
+export async function takeProductPhoto({ modalContainer, showCustomAlert } = {}) {
+    // Method 1: Capacitor Camera plugin (native app)
+    if (window.Capacitor?.isNativePlatform?.()) {
+        try {
+            const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera');
+            const image = await Camera.getPhoto({
+                quality: 90,
+                allowEditing: false,
+                resultType: CameraResultType.DataUrl,
+                source: CameraSource.Camera,
+                width: 1024,
+                height: 1024,
+            });
+            if (!image?.dataUrl) return null;
+            const response = await fetch(image.dataUrl);
+            const blob = await response.blob();
+            return new File([blob], 'camera-photo.jpg', { type: blob.type || 'image/jpeg' });
+        } catch (err) {
+            // User cancelled or plugin not available
+            if (err?.message?.includes('cancelled') || err?.message?.includes('User')) return null;
+            console.warn('[takeProductPhoto] Capacitor Camera error, falling back:', err);
+        }
+    }
+
+    // Method 2: Mobile file input with capture="camera"
+    if (isMobileDevice()) {
+        return new Promise((resolve) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.capture = 'environment';
+            input.style.display = 'none';
+            document.body.appendChild(input);
+
+            input.addEventListener('change', () => {
+                const file = input.files?.[0] || null;
+                input.remove();
+                resolve(file);
+            });
+
+            // Handle cancel (input won't fire change if cancelled on some browsers)
+            // Use focus return as a heuristic
+            const handleFocusBack = () => {
+                setTimeout(() => {
+                    if (!input.files?.length) {
+                        input.remove();
+                        resolve(null);
+                    }
+                    window.removeEventListener('focus', handleFocusBack);
+                }, 500);
+            };
+            window.addEventListener('focus', handleFocusBack);
+
+            input.click();
+        });
+    }
+
+    // Method 3: Desktop webcam via getUserMedia
+    return _openWebcamModal({ modalContainer, showCustomAlert });
+}
+
+/**
+ * Opens a webcam modal for desktop browsers.
+ * Returns a File from a canvas snapshot, or null if cancelled.
+ * @private
+ */
+function _openWebcamModal({ modalContainer, showCustomAlert } = {}) {
+    return new Promise((resolve) => {
+        let stream = null;
+
+        const stopStream = () => {
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
+        };
+
+        const cleanup = (result) => {
+            stopStream();
+            if (overlay.parentNode) overlay.remove();
+            resolve(result);
+        };
+
+        // Build modal overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'webcam-capture-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;';
+
+        const modal = document.createElement('div');
+        modal.style.cssText = 'background:#fff;border-radius:16px;padding:20px;max-width:480px;width:90%;text-align:center;position:relative;';
+
+        const title = document.createElement('div');
+        title.textContent = 'Tag billede';
+        title.style.cssText = 'font-weight:700;font-size:16px;margin-bottom:12px;color:#1e293b;';
+
+        const videoContainer = document.createElement('div');
+        videoContainer.style.cssText = 'position:relative;width:100%;aspect-ratio:1;background:#000;border-radius:12px;overflow:hidden;margin-bottom:12px;';
+
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = true;
+        video.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+
+        const loadingMsg = document.createElement('div');
+        loadingMsg.textContent = 'Starter kamera...';
+        loadingMsg.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:14px;';
+
+        videoContainer.appendChild(video);
+        videoContainer.appendChild(loadingMsg);
+
+        const btnRow = document.createElement('div');
+        btnRow.style.cssText = 'display:flex;gap:10px;justify-content:center;flex-wrap:wrap;';
+
+        const captureBtn = document.createElement('button');
+        captureBtn.type = 'button';
+        captureBtn.textContent = 'Tag billede';
+        captureBtn.style.cssText = 'padding:10px 24px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;';
+        captureBtn.disabled = true;
+
+        const fileBtn = document.createElement('button');
+        fileBtn.type = 'button';
+        fileBtn.textContent = 'Vaelg fil i stedet';
+        fileBtn.style.cssText = 'padding:10px 24px;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;border-radius:10px;font-weight:500;font-size:14px;cursor:pointer;';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.style.cssText = 'position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;background:#f1f5f9;border:none;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748b;';
+        closeBtn.textContent = '\u2715';
+
+        // Assemble modal
+        btnRow.appendChild(captureBtn);
+        btnRow.appendChild(fileBtn);
+        modal.appendChild(closeBtn);
+        modal.appendChild(title);
+        modal.appendChild(videoContainer);
+        modal.appendChild(btnRow);
+        overlay.appendChild(modal);
+
+        // Prevent clicks on overlay background from propagating
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) cleanup(null);
+        });
+
+        closeBtn.addEventListener('click', () => cleanup(null));
+
+        // Capture snapshot from video
+        captureBtn.addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            const size = Math.min(video.videoWidth, video.videoHeight);
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Center-crop to square
+            const sx = (video.videoWidth - size) / 2;
+            const sy = (video.videoHeight - size) / 2;
+            ctx.drawImage(video, sx, sy, size, size, 0, 0, size, size);
+
+            canvas.toBlob((blob) => {
+                if (blob) {
+                    cleanup(new File([blob], 'webcam-photo.jpg', { type: 'image/jpeg' }));
+                } else {
+                    cleanup(null);
+                }
+            }, 'image/jpeg', 0.9);
+        });
+
+        // File picker fallback
+        fileBtn.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.style.display = 'none';
+            document.body.appendChild(input);
+            input.addEventListener('change', () => {
+                const file = input.files?.[0] || null;
+                input.remove();
+                if (file) cleanup(file);
+            });
+            input.click();
+        });
+
+        // Mount modal
+        (modalContainer || document.body).appendChild(overlay);
+
+        // Start webcam
+        if (!navigator.mediaDevices?.getUserMedia) {
+            // No webcam API — show file picker fallback message
+            loadingMsg.textContent = 'Kamera ikke tilgaengeligt';
+            videoContainer.style.aspectRatio = 'auto';
+            videoContainer.style.padding = '30px 20px';
+            video.style.display = 'none';
+            captureBtn.style.display = 'none';
+            return;
+        }
+
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1024 }, height: { ideal: 1024 } } })
+            .then((mediaStream) => {
+                stream = mediaStream;
+                video.srcObject = stream;
+                loadingMsg.style.display = 'none';
+                captureBtn.disabled = false;
+            })
+            .catch((err) => {
+                console.warn('[takeProductPhoto] getUserMedia error:', err);
+                loadingMsg.textContent = 'Kunne ikke starte kamera';
+                video.style.display = 'none';
+                videoContainer.style.aspectRatio = 'auto';
+                videoContainer.style.padding = '30px 20px';
+                captureBtn.style.display = 'none';
+            });
+    });
+}
+
+/**
  * Upload a product icon to Supabase Storage via Edge Function
  * @param {File} file - Image file to upload
  * @param {string} institutionId - Institution UUID

@@ -14,6 +14,7 @@ import {
     deleteInstitutionIcon,
     fetchIconSharingSettings,
     processImageForUpload,
+    takeProductPhoto,
 } from '../core/product-icon-utils.js';
 
 // Sæt til true ved fejlsøgning; hold false i prod for mindre console-støj
@@ -939,12 +940,17 @@ export function createProductManagementUI(options = {}) {
                                 <div style="font-size: 20px; margin-bottom: 3px;">🌐</div>
                                 <div style="font-weight: 600; font-size: 11px;">Fra andre</div>
                             </label>
-                            <label class="icon-type-card" style="flex: 1 1 calc(50% - 4px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                <input type="radio" name="icon-type" value="camera" style="display: none;">
+                                <div style="font-size: 20px; margin-bottom: 3px;">📸</div>
+                                <div style="font-weight: 600; font-size: 11px;">Tag Billede</div>
+                            </label>
+                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
                                 <input type="radio" name="icon-type" value="custom" style="display: none;">
                                 <div style="font-size: 20px; margin-bottom: 3px;">📤</div>
                                 <div style="font-weight: 600; font-size: 11px;">Upload</div>
                             </label>
-                            <label class="icon-type-card" style="flex: 1 1 calc(50% - 4px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
                                 <input type="radio" name="icon-type" value="ai" style="display: none;">
                                 <div style="font-size: 20px; margin-bottom: 3px;">🪄</div>
                                 <div style="font-weight: 600; font-size: 11px;">AI Generer</div>
@@ -976,6 +982,40 @@ export function createProductManagementUI(options = {}) {
                             <div id="shared-icons-grid" class="custom-icon-grid"></div>
                             <div id="shared-icons-empty" style="display: none; padding: 15px; text-align: center; color: #94a3b8; font-size: 13px; background: #f8f9fa; border-radius: 8px;">
                                 Ingen delte ikoner tilgængelige.
+                            </div>
+                        </div>
+
+                        <!-- Camera Capture Section -->
+                        <div id="camera-section" style="display: none;">
+                            <div id="camera-preview-area" style="text-align: center;">
+                                <div id="camera-placeholder" style="border: 2px dashed #60a5fa; border-radius: 12px; padding: 30px 20px; background: #eff6ff; cursor: pointer; transition: all 0.2s;">
+                                    <div style="font-size: 40px; margin-bottom: 10px;">📸</div>
+                                    <div style="font-weight: 600; margin-bottom: 5px; color: #1e40af;">Klik for at tage billede</div>
+                                    <div style="font-size: 12px; color: #64748b;">Billedet konverteres automatisk til ikon-format</div>
+                                </div>
+                                <div id="camera-captured-preview" style="display: none; margin-top: 12px;">
+                                    <div style="position: relative; display: inline-block;">
+                                        <img id="camera-captured-img" style="width: 120px; height: 120px; object-fit: cover; border-radius: 12px; border: 3px solid #60a5fa;">
+                                        <button type="button" id="camera-retake-btn" style="position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%; background: #ef4444; color: white; border: none; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center;">&#10005;</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="camera-actions" style="display: none; margin-top: 15px; flex-direction: column; gap: 10px;">
+                                <button type="button" id="camera-use-as-icon-btn" style="display: none; width: 100%; padding: 12px 20px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s;">
+                                    Brug som ikon
+                                </button>
+                                <button type="button" id="camera-use-as-ai-ref-btn" style="display: none; width: 100%; padding: 12px 20px; background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s;">
+                                    Brug som AI-reference
+                                </button>
+                            </div>
+
+                            <div id="camera-progress" style="display: none; margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 14px; color: #1976d2;">Behandler billede...</div>
+                            </div>
+
+                            <div id="camera-error" style="display: none; margin-top: 15px; padding: 15px; background: #ffebee; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 14px; color: #c62828;"></div>
                             </div>
                         </div>
 
@@ -1016,9 +1056,30 @@ export function createProductManagementUI(options = {}) {
                             <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Produktnavn</label>
                             <input type="text" id="ai-icon-input" placeholder="fx Pasta med kødsovs" maxlength="100" style="width: 100%; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; margin-bottom: 12px; box-sizing: border-box;">
 
+                            <!-- Stil-vaelger (Clay / Pixar / Fri prompt) -->
+                            <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Stil</label>
+                            <div id="ai-style-selector" style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                <button type="button" class="ai-style-btn" data-style="clay" style="flex: 1; padding: 10px 12px; border: 2px solid #7c3aed; background: #f5f3ff; border-radius: 10px; cursor: pointer; text-align: center; font-weight: 600; font-size: 13px; color: #7c3aed; transition: all 0.2s;">
+                                    Clay
+                                </button>
+                                <button type="button" class="ai-style-btn" data-style="pixar" style="flex: 1; padding: 10px 12px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; font-weight: 600; font-size: 13px; color: #64748b; transition: all 0.2s;">
+                                    Pixar
+                                </button>
+                                <button type="button" class="ai-style-btn" data-style="custom" style="flex: 1; padding: 10px 12px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; font-weight: 600; font-size: 13px; color: #64748b; transition: all 0.2s;">
+                                    Fri prompt
+                                </button>
+                            </div>
+
+                            <!-- Fri prompt textarea (kun synlig naar 'custom' er valgt) -->
+                            <div id="ai-custom-prompt-section" style="display: none; margin-bottom: 12px;">
+                                <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Din prompt</label>
+                                <textarea id="ai-custom-prompt" maxlength="500" placeholder="A golden crispy croissant floating in space with sparkles" style="width: 100%; min-height: 80px; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box;"></textarea>
+                                <div style="font-size: 10px; color: #94a3b8; margin-top: 4px;">Prompten sendes direkte til AI — ingen automatisk stil tilføjes</div>
+                            </div>
+
                             <!-- Foto-reference (valgfrit) -->
                             <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                                📷 Foto som reference
+                                📷 Foto
                                 <span style="font-size: 11px; font-weight: 500; color: #94a3b8; background: #f1f5f9; padding: 1px 8px; border-radius: 8px;">valgfrit</span>
                             </label>
                             <div id="ai-photo-upload-area" style="margin-bottom: 12px;">
@@ -1030,9 +1091,25 @@ export function createProductManagementUI(options = {}) {
                                     <img id="ai-reference-img" style="width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 2px solid #e0e0e0;">
                                     <button type="button" id="ai-remove-photo-btn" style="position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #ef4444; color: white; border: none; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">✕</button>
                                 </div>
-                                <p style="font-size: 11px; color: #94a3b8; margin: 4px 0 0 0;">
-                                    AI'en bruger fotoet til at forstå maden — ikonet genereres i Flango-stil
-                                </p>
+                            </div>
+
+                            <!-- Foto-tilstand (Reference / Motiv) — kun synlig naar foto er uploadet -->
+                            <div id="ai-photo-mode-selector" style="display: none; margin-bottom: 12px;">
+                                <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Foto-tilstand</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <button type="button" class="ai-photo-mode-btn" data-mode="reference" style="flex: 1; padding: 8px 10px; border: 2px solid #7c3aed; background: #f5f3ff; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                        <div style="font-weight: 600; font-size: 12px; color: #7c3aed;">Reference</div>
+                                        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Identificer maden</div>
+                                    </button>
+                                    <button type="button" class="ai-photo-mode-btn" data-mode="motiv" style="flex: 1; padding: 8px 10px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                        <div style="font-weight: 600; font-size: 12px; color: #64748b;">Motiv</div>
+                                        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Genskab komposition</div>
+                                    </button>
+                                    <button type="button" class="ai-photo-mode-btn" data-mode="portrait" style="flex: 1; padding: 8px 10px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                        <div style="font-weight: 600; font-size: 12px; color: #64748b;">Portræt</div>
+                                        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Animeret version</div>
+                                    </button>
+                                </div>
                             </div>
 
                             <button type="button" id="ai-generate-btn" style="width: 100%; padding: 12px 20px; background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s; margin-bottom: 12px; position: relative; z-index: 2; -webkit-tap-highlight-color: rgba(124, 58, 237, 0.3); touch-action: manipulation;">
@@ -1216,8 +1293,9 @@ export function createProductManagementUI(options = {}) {
             iconStatus.textContent = statusText;
         };
 
-        // Switch between standard, institution, shared, custom, and AI icon sections
+        // Switch between standard, institution, shared, camera, custom, and AI icon sections
         const aiIconSection = document.getElementById('ai-icon-section');
+        const cameraSection = document.getElementById('camera-section');
         const switchIconType = (type) => {
             iconTypeCards.forEach(card => {
                 const radio = card.querySelector('input[type="radio"]');
@@ -1230,6 +1308,7 @@ export function createProductManagementUI(options = {}) {
             standardIconSection.style.display = type === 'standard' ? 'block' : 'none';
             if (institutionIconsSection) institutionIconsSection.style.display = type === 'institution' ? 'block' : 'none';
             if (sharedIconsSection) sharedIconsSection.style.display = type === 'shared' ? 'block' : 'none';
+            if (cameraSection) cameraSection.style.display = type === 'camera' ? 'block' : 'none';
             customUploadSection.style.display = type === 'custom' ? 'block' : 'none';
             if (aiIconSection) aiIconSection.style.display = type === 'ai' ? 'block' : 'none';
 
@@ -1285,6 +1364,9 @@ export function createProductManagementUI(options = {}) {
 
             selectedStandardIcon = option.dataset.path;
             emojiInput.value = `${CUSTOM_ICON_PREFIX}${selectedStandardIcon}`;
+            // Clear custom icon_url so the selected standard/institution/shared icon takes priority in preview
+            currentIconUrl = null;
+            currentIconUpdatedAt = null;
             updateStandardIconSelection();
             updateIconPreview();
         };
@@ -1508,6 +1590,118 @@ export function createProductManagementUI(options = {}) {
             }
         });
 
+        // ===== CAMERA CAPTURE HANDLERS =====
+        const cameraPlaceholder = document.getElementById('camera-placeholder');
+        const cameraCapturedPreview = document.getElementById('camera-captured-preview');
+        const cameraCapturedImg = document.getElementById('camera-captured-img');
+        const cameraRetakeBtn = document.getElementById('camera-retake-btn');
+        const cameraUseAsIconBtn = document.getElementById('camera-use-as-icon-btn');
+        const cameraUseAsAiRefBtn = document.getElementById('camera-use-as-ai-ref-btn');
+        const cameraActions = document.getElementById('camera-actions');
+        const cameraProgress = document.getElementById('camera-progress');
+        const cameraError = document.getElementById('camera-error');
+        let cameraCapturedFile = null;
+        let _injectPhotoToAiRef = null; // Set later when AI section initializes
+
+        const resetCameraUI = () => {
+            cameraCapturedFile = null;
+            if (cameraCapturedImg?.src?.startsWith('blob:')) URL.revokeObjectURL(cameraCapturedImg.src);
+            if (cameraCapturedImg) cameraCapturedImg.src = '';
+            if (cameraCapturedPreview) cameraCapturedPreview.style.display = 'none';
+            if (cameraPlaceholder) cameraPlaceholder.style.display = 'block';
+            if (cameraActions) cameraActions.style.display = 'none';
+            if (cameraUseAsIconBtn) cameraUseAsIconBtn.style.display = 'none';
+            if (cameraUseAsAiRefBtn) cameraUseAsAiRefBtn.style.display = 'none';
+            if (cameraProgress) cameraProgress.style.display = 'none';
+            if (cameraError) cameraError.style.display = 'none';
+        };
+
+        const showCameraPreview = (file) => {
+            cameraCapturedFile = file;
+            if (cameraCapturedImg) cameraCapturedImg.src = URL.createObjectURL(file);
+            if (cameraCapturedPreview) cameraCapturedPreview.style.display = 'block';
+            if (cameraPlaceholder) cameraPlaceholder.style.display = 'none';
+            if (cameraActions) cameraActions.style.display = 'flex';
+            if (cameraUseAsIconBtn) cameraUseAsIconBtn.style.display = 'block';
+            if (cameraUseAsAiRefBtn) cameraUseAsAiRefBtn.style.display = 'block';
+        };
+
+        const triggerCameraCapture = async () => {
+            if (cameraError) cameraError.style.display = 'none';
+            try {
+                const file = await takeProductPhoto({ showCustomAlert });
+                if (file) showCameraPreview(file);
+            } catch (err) {
+                console.error('[cameraCapture] Error:', err);
+                if (cameraError) {
+                    cameraError.style.display = 'block';
+                    const errDiv = cameraError.querySelector('div');
+                    if (errDiv) errDiv.textContent = 'Kunne ikke tage billede: ' + (err.message || 'Ukendt fejl');
+                }
+            }
+        };
+
+        cameraPlaceholder?.addEventListener('click', triggerCameraCapture);
+        cameraRetakeBtn?.addEventListener('click', () => {
+            resetCameraUI();
+            triggerCameraCapture();
+        });
+
+        // "Brug som ikon" — process + upload directly
+        cameraUseAsIconBtn?.addEventListener('click', async () => {
+            if (!cameraCapturedFile || !isEditing || !currentProduct?.id) {
+                if (!isEditing) showCustomAlert('Gem produkt', 'Produktet skal gemmes inden du kan tilfoeje et ikon.');
+                return;
+            }
+            if (cameraError) cameraError.style.display = 'none';
+            if (cameraProgress) cameraProgress.style.display = 'block';
+            cameraUseAsIconBtn.disabled = true;
+            cameraUseAsAiRefBtn.disabled = true;
+
+            try {
+                const adminUserId = adminProfile?.user_id;
+                if (!adminUserId) throw new Error('Admin bruger ID ikke fundet');
+
+                const processedBlob = await processImageForUpload(cameraCapturedFile);
+                const processedFile = new File([processedBlob], `${currentProduct.id}.webp`, { type: 'image/webp' });
+                const result = await uploadProductIcon(processedFile, institutionId, currentProduct.id, adminUserId);
+
+                if (result.success) {
+                    currentIconUrl = result.icon_url;
+                    currentIconUpdatedAt = result.icon_updated_at;
+                    updateIconPreview();
+                    playSound?.('success');
+                    loadInstitutionIcons();
+                    resetCameraUI();
+                } else {
+                    throw new Error(result.error || 'Upload fejlede');
+                }
+            } catch (err) {
+                console.error('[cameraUseAsIcon] Error:', err);
+                if (cameraError) {
+                    cameraError.style.display = 'block';
+                    const errDiv = cameraError.querySelector('div');
+                    if (errDiv) errDiv.textContent = err.message || 'Kunne ikke uploade billede';
+                }
+                playSound?.('error');
+            } finally {
+                if (cameraProgress) cameraProgress.style.display = 'none';
+                cameraUseAsIconBtn.disabled = false;
+                cameraUseAsAiRefBtn.disabled = false;
+            }
+        });
+
+        // "Brug som AI-reference" — switch to AI tab and insert the captured photo
+        cameraUseAsAiRefBtn?.addEventListener('click', () => {
+            if (!cameraCapturedFile) return;
+            // Switch to AI tab
+            switchIconType('ai');
+            // Insert captured file into AI photo reference using the existing showPhotoPreview
+            // (showPhotoPreview is defined in the AI photo reference section below)
+            if (_injectPhotoToAiRef) _injectPhotoToAiRef(cameraCapturedFile);
+            resetCameraUI();
+        });
+
         // ===== AI ICON GENERATION =====
         const aiIconInput = document.getElementById('ai-icon-input');
         const aiGenerateBtn = document.getElementById('ai-generate-btn');
@@ -1523,6 +1717,95 @@ export function createProductManagementUI(options = {}) {
             aiIconInput.value = product.name;
         }
 
+        // ===== AI STYLE SELECTOR (Clay / Pixar / Fri prompt) =====
+        let aiSelectedStyle = 'clay'; // 'clay', 'pixar', or 'custom'
+        const aiStyleBtns = document.querySelectorAll('.ai-style-btn');
+        const aiCustomPromptSection = document.getElementById('ai-custom-prompt-section');
+        const aiCustomPromptInput = document.getElementById('ai-custom-prompt');
+        const aiProductNameSection = document.getElementById('ai-icon-input')?.parentElement ? document.getElementById('ai-icon-input') : null;
+        const aiProductNameLabel = aiProductNameSection?.previousElementSibling;
+        const aiPhotoUploadArea = document.getElementById('ai-photo-upload-area');
+        const aiPhotoLabel = aiPhotoUploadArea?.previousElementSibling;
+
+        const updateStyleBtns = () => {
+            aiStyleBtns.forEach(btn => {
+                const isActive = btn.dataset.style === aiSelectedStyle;
+                btn.style.borderColor = isActive ? '#7c3aed' : '#e0e0e0';
+                btn.style.background = isActive ? '#f5f3ff' : '#fff';
+                btn.style.color = isActive ? '#7c3aed' : '#64748b';
+            });
+            // Show/hide custom prompt section
+            const isCustom = aiSelectedStyle === 'custom';
+            if (aiCustomPromptSection) aiCustomPromptSection.style.display = isCustom ? 'block' : 'none';
+            // Hide product name input when custom (user writes full prompt)
+            if (aiProductNameSection) aiProductNameSection.style.display = isCustom ? 'none' : '';
+            if (aiProductNameLabel) aiProductNameLabel.style.display = isCustom ? 'none' : '';
+            // Photo upload stays visible in custom mode (optional photo)
+            // But photo label text changes
+            if (aiPhotoLabel && aiPhotoLabel.tagName === 'LABEL') {
+                const photoLabelSpan = aiPhotoLabel.querySelector('span');
+                if (photoLabelSpan) photoLabelSpan.textContent = 'valgfrit';
+            }
+            // Hide photo-mode selector when custom
+            updatePhotoModeVisibility(!!aiSelectedPhoto);
+            // If portrait was selected but we switched to Clay, reset to reference
+            updatePortraitAvailability();
+        };
+        aiStyleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                aiSelectedStyle = btn.dataset.style;
+                updateStyleBtns();
+            });
+        });
+
+        // ===== AI PHOTO MODE SELECTOR (Reference / Motiv / Portrait) =====
+        let aiSelectedPhotoMode = 'reference';
+        const aiPhotoModeSelector = document.getElementById('ai-photo-mode-selector');
+        const aiPhotoModeBtns = document.querySelectorAll('.ai-photo-mode-btn');
+        const portraitBtn = document.querySelector('.ai-photo-mode-btn[data-mode="portrait"]');
+
+        const updatePortraitAvailability = () => {
+            // Portrait is only available with Pixar style (or custom — hidden anyway)
+            if (portraitBtn) {
+                const isAvailable = aiSelectedStyle === 'pixar';
+                portraitBtn.style.display = isAvailable ? '' : 'none';
+                // If portrait was selected but Clay is now active, reset to reference
+                if (!isAvailable && aiSelectedPhotoMode === 'portrait') {
+                    aiSelectedPhotoMode = 'reference';
+                }
+            }
+            updatePhotoModeBtns();
+        };
+
+        const updatePhotoModeBtns = () => {
+            aiPhotoModeBtns.forEach(btn => {
+                if (btn.style.display === 'none') return; // skip hidden portrait
+                const isActive = btn.dataset.mode === aiSelectedPhotoMode;
+                btn.style.borderColor = isActive ? '#7c3aed' : '#e0e0e0';
+                btn.style.background = isActive ? '#f5f3ff' : '#fff';
+                const titleDiv = btn.querySelector('div:first-child');
+                if (titleDiv) titleDiv.style.color = isActive ? '#7c3aed' : '#64748b';
+            });
+        };
+        aiPhotoModeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                aiSelectedPhotoMode = btn.dataset.mode;
+                updatePhotoModeBtns();
+            });
+        });
+
+        // Show/hide photo-mode selector when photo is added/removed
+        const updatePhotoModeVisibility = (hasPhoto) => {
+            if (aiPhotoModeSelector) {
+                // Hide when custom mode or no photo
+                const show = hasPhoto && aiSelectedStyle !== 'custom';
+                aiPhotoModeSelector.style.display = show ? 'block' : 'none';
+            }
+        };
+
+        // Initial portrait availability
+        updatePortraitAvailability();
+
         // ===== PHOTO REFERENCE HANDLERS =====
         const aiReferenceFile = document.getElementById('ai-reference-file');
         const aiPhotoDropzone = document.getElementById('ai-photo-dropzone');
@@ -1537,13 +1820,18 @@ export function createProductManagementUI(options = {}) {
             aiReferenceImg.src = URL.createObjectURL(file);
             aiReferencePreview.style.display = 'block';
             aiPhotoDropzone.style.display = 'none';
+            updatePhotoModeVisibility(true);
         };
+
+        // Bridge: allows camera section to inject a captured photo into the AI reference
+        _injectPhotoToAiRef = showPhotoPreview;
 
         const removePhotoPreview = () => {
             aiSelectedPhoto = null;
             if (aiReferenceFile) aiReferenceFile.value = '';
             if (aiReferencePreview) aiReferencePreview.style.display = 'none';
             if (aiPhotoDropzone) aiPhotoDropzone.style.display = 'block';
+            updatePhotoModeVisibility(false);
             if (aiReferenceImg) {
                 if (aiReferenceImg.src.startsWith('blob:')) URL.revokeObjectURL(aiReferenceImg.src);
                 aiReferenceImg.src = '';
@@ -1628,10 +1916,17 @@ export function createProductManagementUI(options = {}) {
                     saveBtn.textContent = 'Gem Produkt';
                 }
             }
+            const isCustomMode = aiSelectedStyle === 'custom';
             const name = aiIconInput?.value?.trim();
+            const customPrompt = aiCustomPromptInput?.value?.trim();
             const referenceFile = aiSelectedPhoto || aiReferenceFile?.files?.[0] || null;
 
-            if (!name && !referenceFile) {
+            if (isCustomMode) {
+                if (!customPrompt) {
+                    showAlert?.('Skriv en prompt i tekstfeltet');
+                    return;
+                }
+            } else if (!name && !referenceFile) {
                 showAlert?.('Skriv et produktnavn eller upload et foto');
                 return;
             }
@@ -1665,13 +1960,31 @@ export function createProductManagementUI(options = {}) {
                     body.append('product_id', currentProduct.id);
                     body.append('product_name', name || '');
                     body.append('reference_image', referenceFile);
+                    if (isCustomMode) {
+                        body.append('prompt_mode', 'custom');
+                        body.append('custom_prompt', customPrompt);
+                    } else {
+                        body.append('style', aiSelectedStyle);
+                        body.append('photo_mode', aiSelectedPhotoMode);
+                    }
                 } else {
                     // Text-mode: JSON (backward compatible)
                     headers['Content-Type'] = 'application/json';
-                    body = JSON.stringify({
-                        product_name: name,
-                        product_id: currentProduct.id,
-                    });
+                    if (isCustomMode) {
+                        body = JSON.stringify({
+                            product_id: currentProduct.id,
+                            product_name: name || '',
+                            prompt_mode: 'custom',
+                            custom_prompt: customPrompt,
+                        });
+                    } else {
+                        body = JSON.stringify({
+                            product_name: name,
+                            product_id: currentProduct.id,
+                            style: aiSelectedStyle,
+                            photo_mode: aiSelectedPhotoMode,
+                        });
+                    }
                 }
 
                 const response = await fetch(
@@ -1686,12 +1999,25 @@ export function createProductManagementUI(options = {}) {
                 currentIconUrl = result.icon_url;
                 currentIconUpdatedAt = result.icon_updated_at;
 
-                // Show preview
+                // Show preview — build mode label
                 const timestamp = result.icon_updated_at ? new Date(result.icon_updated_at).getTime() : Date.now();
+                let modeLabel;
+                if (result.prompt_mode === 'custom') {
+                    modeLabel = result.mode?.includes('photo') ? '🎨 Fri prompt + foto' : '🎨 Fri prompt';
+                } else if (result.mode === 'photo-portrait') {
+                    modeLabel = '🎭 Portræt';
+                } else if (result.mode === 'photo-reference') {
+                    modeLabel = '📷 Reference';
+                } else if (result.mode === 'photo-motiv') {
+                    modeLabel = '📷 Motiv';
+                } else {
+                    modeLabel = '✏️ Tekst';
+                }
+                const styleLabel = result.prompt_mode === 'custom' ? '' : ` · ${result.style === 'pixar' ? '🎬 Pixar' : '🏺 Clay'}`;
                 aiIconPreview.innerHTML = `
                     <div style="padding: 15px; background: #f8f9fa; border-radius: 12px; text-align: center;">
-                        <img src="${result.icon_url}?v=${timestamp}" alt="${name}" style="width: 128px; height: 128px; border-radius: 12px; background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">${result.mode === 'photo' ? '📷 Genereret fra foto' : '✏️ Genereret fra tekst'}</div>
+                        <img src="${result.icon_url}?v=${timestamp}" alt="${name || customPrompt}" style="width: 128px; height: 128px; border-radius: 12px; background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">${modeLabel}${styleLabel}</div>
                     </div>`;
                 aiIconActions.style.display = 'flex';
                 updateIconPreview();

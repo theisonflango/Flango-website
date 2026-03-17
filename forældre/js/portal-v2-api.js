@@ -110,6 +110,79 @@
       if (error) throw error;
     },
 
+    /** Sign up a new parent account */
+    async signUp(email, password) {
+      const { data, error } = await window.portalSupabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin + window.location.pathname,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+
+    /** Sign in with Google OAuth */
+    async signInWithGoogle() {
+      const { data, error } = await window.portalSupabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + window.location.pathname,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+
+    // ─── Signup helpers (RPC) ───
+
+    /** Get list of public institutions (for signup dropdown) */
+    async getPublicInstitutions() {
+      const { data, error } = await window.portalSupabase.rpc('get_public_institutions');
+      if (error) throw error;
+      return data || [];
+    },
+
+    /** Verify portal code for signup (before account creation) */
+    async verifyPortalCodeForSignup(code, institutionLoginCode) {
+      const { data, error } = await window.portalSupabase.rpc('verify_portal_code_for_signup', {
+        p_code: code,
+        p_institution_login_code: institutionLoginCode || null,
+      });
+      if (error) throw error;
+      return data;
+    },
+
+    /** Verify 8-digit PIN and get child info */
+    async verifyPinAndGetChildInfo(pin, institutionId) {
+      const { data, error } = await window.portalSupabase.rpc('verify_pin_and_get_child_info', {
+        p_pin: pin,
+        p_institution_id: institutionId,
+      });
+      if (error) throw error;
+      return data;
+    },
+
+    /** Link child to parent account via 8-digit PIN */
+    async verifyParentCodeAndLinkChild(code, institutionId) {
+      const { data, error } = await window.portalSupabase.rpc('verify_parent_code_and_link_child', {
+        p_code: code,
+        p_institution_id: institutionId,
+      });
+      if (error) throw error;
+      return data;
+    },
+
+    /** Link child to parent account via portal code (8-char alphanumeric). Also marks code as used. */
+    async linkChildByPortalCode(portalCode) {
+      const { data, error } = await window.portalSupabase.rpc('link_child_by_portal_code', {
+        p_portal_code: portalCode,
+      });
+      if (error) throw error;
+      return data;
+    },
+
     // ─── Children ───
 
     /** Get all children for the logged-in parent */
@@ -124,6 +197,15 @@
       return invokeFunction('get-parent-view', { child_id: childId });
     },
 
+    /** Get club average daily spend (all-time) */
+    async getClubAvgDailySpend(institutionId) {
+      const { data, error } = await window.portalSupabase.rpc('get_club_avg_daily_spend', {
+        p_institution_id: institutionId,
+      });
+      if (error) throw error;
+      return data || 0;
+    },
+
     // ─── Products ───
 
     /** Get products for a child's institution */
@@ -134,11 +216,12 @@
     // ─── Purchase Profile ───
 
     /** Get purchase profile (spending history, product breakdown) */
-    async getPurchaseProfile(childId, period, sortBy) {
+    async getPurchaseProfile(childId, period, sortBy, includeDailyData) {
       return invokeFunction('get-purchase-profile', {
         child_id: childId,
         period: period || '30d',
         sort_by: sortBy || 'antal',
+        include_daily: !!includeDailyData,
       });
     },
 
