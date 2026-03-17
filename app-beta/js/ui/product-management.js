@@ -1056,7 +1056,7 @@ export function createProductManagementUI(options = {}) {
                             <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Produktnavn</label>
                             <input type="text" id="ai-icon-input" placeholder="fx Pasta med kødsovs" maxlength="100" style="width: 100%; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; margin-bottom: 12px; box-sizing: border-box;">
 
-                            <!-- Stil-vaelger (Clay / Pixar) -->
+                            <!-- Stil-vaelger (Clay / Pixar / Fri prompt) -->
                             <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Stil</label>
                             <div id="ai-style-selector" style="display: flex; gap: 8px; margin-bottom: 12px;">
                                 <button type="button" class="ai-style-btn" data-style="clay" style="flex: 1; padding: 10px 12px; border: 2px solid #7c3aed; background: #f5f3ff; border-radius: 10px; cursor: pointer; text-align: center; font-weight: 600; font-size: 13px; color: #7c3aed; transition: all 0.2s;">
@@ -1065,6 +1065,16 @@ export function createProductManagementUI(options = {}) {
                                 <button type="button" class="ai-style-btn" data-style="pixar" style="flex: 1; padding: 10px 12px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; font-weight: 600; font-size: 13px; color: #64748b; transition: all 0.2s;">
                                     Pixar
                                 </button>
+                                <button type="button" class="ai-style-btn" data-style="custom" style="flex: 1; padding: 10px 12px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; font-weight: 600; font-size: 13px; color: #64748b; transition: all 0.2s;">
+                                    Fri prompt
+                                </button>
+                            </div>
+
+                            <!-- Fri prompt textarea (kun synlig naar 'custom' er valgt) -->
+                            <div id="ai-custom-prompt-section" style="display: none; margin-bottom: 12px;">
+                                <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Din prompt</label>
+                                <textarea id="ai-custom-prompt" maxlength="500" placeholder="A golden crispy croissant floating in space with sparkles" style="width: 100%; min-height: 80px; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box;"></textarea>
+                                <div style="font-size: 10px; color: #94a3b8; margin-top: 4px;">Prompten sendes direkte til AI — ingen automatisk stil tilføjes</div>
                             </div>
 
                             <!-- Foto-reference (valgfrit) -->
@@ -1704,9 +1714,16 @@ export function createProductManagementUI(options = {}) {
             aiIconInput.value = product.name;
         }
 
-        // ===== AI STYLE SELECTOR (Clay / Pixar) =====
-        let aiSelectedStyle = 'clay';
+        // ===== AI STYLE SELECTOR (Clay / Pixar / Fri prompt) =====
+        let aiSelectedStyle = 'clay'; // 'clay', 'pixar', or 'custom'
         const aiStyleBtns = document.querySelectorAll('.ai-style-btn');
+        const aiCustomPromptSection = document.getElementById('ai-custom-prompt-section');
+        const aiCustomPromptInput = document.getElementById('ai-custom-prompt');
+        const aiProductNameSection = document.getElementById('ai-icon-input')?.parentElement ? document.getElementById('ai-icon-input') : null;
+        const aiProductNameLabel = aiProductNameSection?.previousElementSibling;
+        const aiPhotoUploadArea = document.getElementById('ai-photo-upload-area');
+        const aiPhotoLabel = aiPhotoUploadArea?.previousElementSibling;
+
         const updateStyleBtns = () => {
             aiStyleBtns.forEach(btn => {
                 const isActive = btn.dataset.style === aiSelectedStyle;
@@ -1714,6 +1731,22 @@ export function createProductManagementUI(options = {}) {
                 btn.style.background = isActive ? '#f5f3ff' : '#fff';
                 btn.style.color = isActive ? '#7c3aed' : '#64748b';
             });
+            // Show/hide custom prompt section
+            const isCustom = aiSelectedStyle === 'custom';
+            if (aiCustomPromptSection) aiCustomPromptSection.style.display = isCustom ? 'block' : 'none';
+            // Hide product name input when custom (user writes full prompt)
+            if (aiProductNameSection) aiProductNameSection.style.display = isCustom ? 'none' : '';
+            if (aiProductNameLabel) aiProductNameLabel.style.display = isCustom ? 'none' : '';
+            // Photo upload stays visible in custom mode (optional photo)
+            // But photo label text changes
+            if (aiPhotoLabel && aiPhotoLabel.tagName === 'LABEL') {
+                const photoLabelSpan = aiPhotoLabel.querySelector('span');
+                if (photoLabelSpan) photoLabelSpan.textContent = 'valgfrit';
+            }
+            // Hide photo-mode selector when custom
+            updatePhotoModeVisibility(!!aiSelectedPhoto);
+            // If portrait was selected but we switched to Clay, reset to reference
+            updatePortraitAvailability();
         };
         aiStyleBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1722,12 +1755,28 @@ export function createProductManagementUI(options = {}) {
             });
         });
 
-        // ===== AI PHOTO MODE SELECTOR (Reference / Motiv) =====
+        // ===== AI PHOTO MODE SELECTOR (Reference / Motiv / Portrait) =====
         let aiSelectedPhotoMode = 'reference';
         const aiPhotoModeSelector = document.getElementById('ai-photo-mode-selector');
         const aiPhotoModeBtns = document.querySelectorAll('.ai-photo-mode-btn');
+        const portraitBtn = document.querySelector('.ai-photo-mode-btn[data-mode="portrait"]');
+
+        const updatePortraitAvailability = () => {
+            // Portrait is only available with Pixar style (or custom — hidden anyway)
+            if (portraitBtn) {
+                const isAvailable = aiSelectedStyle === 'pixar';
+                portraitBtn.style.display = isAvailable ? '' : 'none';
+                // If portrait was selected but Clay is now active, reset to reference
+                if (!isAvailable && aiSelectedPhotoMode === 'portrait') {
+                    aiSelectedPhotoMode = 'reference';
+                }
+            }
+            updatePhotoModeBtns();
+        };
+
         const updatePhotoModeBtns = () => {
             aiPhotoModeBtns.forEach(btn => {
+                if (btn.style.display === 'none') return; // skip hidden portrait
                 const isActive = btn.dataset.mode === aiSelectedPhotoMode;
                 btn.style.borderColor = isActive ? '#7c3aed' : '#e0e0e0';
                 btn.style.background = isActive ? '#f5f3ff' : '#fff';
@@ -1745,9 +1794,14 @@ export function createProductManagementUI(options = {}) {
         // Show/hide photo-mode selector when photo is added/removed
         const updatePhotoModeVisibility = (hasPhoto) => {
             if (aiPhotoModeSelector) {
-                aiPhotoModeSelector.style.display = hasPhoto ? 'block' : 'none';
+                // Hide when custom mode or no photo
+                const show = hasPhoto && aiSelectedStyle !== 'custom';
+                aiPhotoModeSelector.style.display = show ? 'block' : 'none';
             }
         };
+
+        // Initial portrait availability
+        updatePortraitAvailability();
 
         // ===== PHOTO REFERENCE HANDLERS =====
         const aiReferenceFile = document.getElementById('ai-reference-file');
@@ -1859,10 +1913,17 @@ export function createProductManagementUI(options = {}) {
                     saveBtn.textContent = 'Gem Produkt';
                 }
             }
+            const isCustomMode = aiSelectedStyle === 'custom';
             const name = aiIconInput?.value?.trim();
+            const customPrompt = aiCustomPromptInput?.value?.trim();
             const referenceFile = aiSelectedPhoto || aiReferenceFile?.files?.[0] || null;
 
-            if (!name && !referenceFile) {
+            if (isCustomMode) {
+                if (!customPrompt) {
+                    showAlert?.('Skriv en prompt i tekstfeltet');
+                    return;
+                }
+            } else if (!name && !referenceFile) {
                 showAlert?.('Skriv et produktnavn eller upload et foto');
                 return;
             }
@@ -1896,17 +1957,31 @@ export function createProductManagementUI(options = {}) {
                     body.append('product_id', currentProduct.id);
                     body.append('product_name', name || '');
                     body.append('reference_image', referenceFile);
-                    body.append('style', aiSelectedStyle);
-                    body.append('photo_mode', aiSelectedPhotoMode);
+                    if (isCustomMode) {
+                        body.append('prompt_mode', 'custom');
+                        body.append('custom_prompt', customPrompt);
+                    } else {
+                        body.append('style', aiSelectedStyle);
+                        body.append('photo_mode', aiSelectedPhotoMode);
+                    }
                 } else {
                     // Text-mode: JSON (backward compatible)
                     headers['Content-Type'] = 'application/json';
-                    body = JSON.stringify({
-                        product_name: name,
-                        product_id: currentProduct.id,
-                        style: aiSelectedStyle,
-                        photo_mode: aiSelectedPhotoMode,
-                    });
+                    if (isCustomMode) {
+                        body = JSON.stringify({
+                            product_id: currentProduct.id,
+                            product_name: name || '',
+                            prompt_mode: 'custom',
+                            custom_prompt: customPrompt,
+                        });
+                    } else {
+                        body = JSON.stringify({
+                            product_name: name,
+                            product_id: currentProduct.id,
+                            style: aiSelectedStyle,
+                            photo_mode: aiSelectedPhotoMode,
+                        });
+                    }
                 }
 
                 const response = await fetch(
@@ -1921,12 +1996,25 @@ export function createProductManagementUI(options = {}) {
                 currentIconUrl = result.icon_url;
                 currentIconUpdatedAt = result.icon_updated_at;
 
-                // Show preview
+                // Show preview — build mode label
                 const timestamp = result.icon_updated_at ? new Date(result.icon_updated_at).getTime() : Date.now();
+                let modeLabel;
+                if (result.prompt_mode === 'custom') {
+                    modeLabel = result.mode?.includes('photo') ? '🎨 Fri prompt + foto' : '🎨 Fri prompt';
+                } else if (result.mode === 'photo-portrait') {
+                    modeLabel = '🎭 Portræt';
+                } else if (result.mode === 'photo-reference') {
+                    modeLabel = '📷 Reference';
+                } else if (result.mode === 'photo-motiv') {
+                    modeLabel = '📷 Motiv';
+                } else {
+                    modeLabel = '✏️ Tekst';
+                }
+                const styleLabel = result.prompt_mode === 'custom' ? '' : ` · ${result.style === 'pixar' ? '🎬 Pixar' : '🏺 Clay'}`;
                 aiIconPreview.innerHTML = `
                     <div style="padding: 15px; background: #f8f9fa; border-radius: 12px; text-align: center;">
-                        <img src="${result.icon_url}?v=${timestamp}" alt="${name}" style="width: 128px; height: 128px; border-radius: 12px; background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">${result.mode === 'photo-portrait' ? '🎭 Portræt' : result.mode === 'photo-reference' ? '📷 Reference' : result.mode === 'photo-motiv' ? '📷 Motiv' : '✏️ Tekst'} · ${result.style === 'pixar' ? '🎬 Pixar' : '🏺 Clay'}</div>
+                        <img src="${result.icon_url}?v=${timestamp}" alt="${name || customPrompt}" style="width: 128px; height: 128px; border-radius: 12px; background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">${modeLabel}${styleLabel}</div>
                     </div>`;
                 aiIconActions.style.display = 'flex';
                 updateIconPreview();
