@@ -1056,9 +1056,20 @@ export function createProductManagementUI(options = {}) {
                             <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Produktnavn</label>
                             <input type="text" id="ai-icon-input" placeholder="fx Pasta med kødsovs" maxlength="100" style="width: 100%; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; margin-bottom: 12px; box-sizing: border-box;">
 
+                            <!-- Stil-vaelger (Clay / Pixar) -->
+                            <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Stil</label>
+                            <div id="ai-style-selector" style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                <button type="button" class="ai-style-btn" data-style="clay" style="flex: 1; padding: 10px 12px; border: 2px solid #7c3aed; background: #f5f3ff; border-radius: 10px; cursor: pointer; text-align: center; font-weight: 600; font-size: 13px; color: #7c3aed; transition: all 0.2s;">
+                                    Clay
+                                </button>
+                                <button type="button" class="ai-style-btn" data-style="pixar" style="flex: 1; padding: 10px 12px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; font-weight: 600; font-size: 13px; color: #64748b; transition: all 0.2s;">
+                                    Pixar
+                                </button>
+                            </div>
+
                             <!-- Foto-reference (valgfrit) -->
                             <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                                📷 Foto som reference
+                                📷 Foto
                                 <span style="font-size: 11px; font-weight: 500; color: #94a3b8; background: #f1f5f9; padding: 1px 8px; border-radius: 8px;">valgfrit</span>
                             </label>
                             <div id="ai-photo-upload-area" style="margin-bottom: 12px;">
@@ -1070,9 +1081,21 @@ export function createProductManagementUI(options = {}) {
                                     <img id="ai-reference-img" style="width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 2px solid #e0e0e0;">
                                     <button type="button" id="ai-remove-photo-btn" style="position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #ef4444; color: white; border: none; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">✕</button>
                                 </div>
-                                <p style="font-size: 11px; color: #94a3b8; margin: 4px 0 0 0;">
-                                    AI'en bruger fotoet til at forstå maden — ikonet genereres i Flango-stil
-                                </p>
+                            </div>
+
+                            <!-- Foto-tilstand (Reference / Motiv) — kun synlig naar foto er uploadet -->
+                            <div id="ai-photo-mode-selector" style="display: none; margin-bottom: 12px;">
+                                <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Foto-tilstand</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <button type="button" class="ai-photo-mode-btn" data-mode="reference" style="flex: 1; padding: 8px 10px; border: 2px solid #7c3aed; background: #f5f3ff; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                        <div style="font-weight: 600; font-size: 12px; color: #7c3aed;">Reference</div>
+                                        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Identificer maden</div>
+                                    </button>
+                                    <button type="button" class="ai-photo-mode-btn" data-mode="motiv" style="flex: 1; padding: 8px 10px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                        <div style="font-weight: 600; font-size: 12px; color: #64748b;">Motiv</div>
+                                        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Genskab komposition</div>
+                                    </button>
+                                </div>
                             </div>
 
                             <button type="button" id="ai-generate-btn" style="width: 100%; padding: 12px 20px; background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s; margin-bottom: 12px; position: relative; z-index: 2; -webkit-tap-highlight-color: rgba(124, 58, 237, 0.3); touch-action: manipulation;">
@@ -1677,6 +1700,51 @@ export function createProductManagementUI(options = {}) {
             aiIconInput.value = product.name;
         }
 
+        // ===== AI STYLE SELECTOR (Clay / Pixar) =====
+        let aiSelectedStyle = 'clay';
+        const aiStyleBtns = document.querySelectorAll('.ai-style-btn');
+        const updateStyleBtns = () => {
+            aiStyleBtns.forEach(btn => {
+                const isActive = btn.dataset.style === aiSelectedStyle;
+                btn.style.borderColor = isActive ? '#7c3aed' : '#e0e0e0';
+                btn.style.background = isActive ? '#f5f3ff' : '#fff';
+                btn.style.color = isActive ? '#7c3aed' : '#64748b';
+            });
+        };
+        aiStyleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                aiSelectedStyle = btn.dataset.style;
+                updateStyleBtns();
+            });
+        });
+
+        // ===== AI PHOTO MODE SELECTOR (Reference / Motiv) =====
+        let aiSelectedPhotoMode = 'reference';
+        const aiPhotoModeSelector = document.getElementById('ai-photo-mode-selector');
+        const aiPhotoModeBtns = document.querySelectorAll('.ai-photo-mode-btn');
+        const updatePhotoModeBtns = () => {
+            aiPhotoModeBtns.forEach(btn => {
+                const isActive = btn.dataset.mode === aiSelectedPhotoMode;
+                btn.style.borderColor = isActive ? '#7c3aed' : '#e0e0e0';
+                btn.style.background = isActive ? '#f5f3ff' : '#fff';
+                const titleDiv = btn.querySelector('div:first-child');
+                if (titleDiv) titleDiv.style.color = isActive ? '#7c3aed' : '#64748b';
+            });
+        };
+        aiPhotoModeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                aiSelectedPhotoMode = btn.dataset.mode;
+                updatePhotoModeBtns();
+            });
+        });
+
+        // Show/hide photo-mode selector when photo is added/removed
+        const updatePhotoModeVisibility = (hasPhoto) => {
+            if (aiPhotoModeSelector) {
+                aiPhotoModeSelector.style.display = hasPhoto ? 'block' : 'none';
+            }
+        };
+
         // ===== PHOTO REFERENCE HANDLERS =====
         const aiReferenceFile = document.getElementById('ai-reference-file');
         const aiPhotoDropzone = document.getElementById('ai-photo-dropzone');
@@ -1691,6 +1759,7 @@ export function createProductManagementUI(options = {}) {
             aiReferenceImg.src = URL.createObjectURL(file);
             aiReferencePreview.style.display = 'block';
             aiPhotoDropzone.style.display = 'none';
+            updatePhotoModeVisibility(true);
         };
 
         // Bridge: allows camera section to inject a captured photo into the AI reference
@@ -1701,6 +1770,7 @@ export function createProductManagementUI(options = {}) {
             if (aiReferenceFile) aiReferenceFile.value = '';
             if (aiReferencePreview) aiReferencePreview.style.display = 'none';
             if (aiPhotoDropzone) aiPhotoDropzone.style.display = 'block';
+            updatePhotoModeVisibility(false);
             if (aiReferenceImg) {
                 if (aiReferenceImg.src.startsWith('blob:')) URL.revokeObjectURL(aiReferenceImg.src);
                 aiReferenceImg.src = '';
@@ -1822,12 +1892,16 @@ export function createProductManagementUI(options = {}) {
                     body.append('product_id', currentProduct.id);
                     body.append('product_name', name || '');
                     body.append('reference_image', referenceFile);
+                    body.append('style', aiSelectedStyle);
+                    body.append('photo_mode', aiSelectedPhotoMode);
                 } else {
                     // Text-mode: JSON (backward compatible)
                     headers['Content-Type'] = 'application/json';
                     body = JSON.stringify({
                         product_name: name,
                         product_id: currentProduct.id,
+                        style: aiSelectedStyle,
+                        photo_mode: aiSelectedPhotoMode,
                     });
                 }
 
@@ -1848,7 +1922,7 @@ export function createProductManagementUI(options = {}) {
                 aiIconPreview.innerHTML = `
                     <div style="padding: 15px; background: #f8f9fa; border-radius: 12px; text-align: center;">
                         <img src="${result.icon_url}?v=${timestamp}" alt="${name}" style="width: 128px; height: 128px; border-radius: 12px; background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">${result.mode === 'photo' ? '📷 Genereret fra foto' : '✏️ Genereret fra tekst'}</div>
+                        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">${result.mode === 'photo-reference' ? '📷 Genereret fra foto (reference)' : result.mode === 'photo-motiv' ? '📷 Genereret fra foto (motiv)' : '✏️ Genereret fra tekst'} · ${result.style === 'pixar' ? '🎬 Pixar' : '🏺 Clay'}</div>
                     </div>`;
                 aiIconActions.style.display = 'flex';
                 updateIconPreview();
