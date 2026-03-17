@@ -1,0 +1,218 @@
+/* ════════════════════════════════════════════
+   Flango shared navigation — matches front page style
+   Include on all subpages via <link rel="stylesheet" href="/shared/nav.css">
+   ════════════════════════════════════════════ */
+
+.flango-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(255, 248, 243, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.flango-nav.scrolled {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.flango-nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+
+/* Logo */
+.flango-nav-logo {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.5rem;
+  color: #D97316;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+.flango-nav-logo span {
+  color: #8C4510;
+}
+
+/* Desktop links */
+.flango-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.flango-nav-links a {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #4A5568;
+  text-decoration: none;
+  transition: color 0.2s;
+  position: relative;
+}
+.flango-nav-links a:hover {
+  color: #B45B10;
+}
+.flango-nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #F08C28;
+  border-radius: 2px;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.flango-nav-links a:hover::after {
+  width: 100%;
+}
+.flango-nav-links a.here {
+  color: #B45B10;
+}
+.flango-nav-links a.here::after {
+  width: 100%;
+}
+
+/* Right side group (Forældreportal + CTA) */
+.flango-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 8px;
+}
+.flango-nav-portal {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #6B7A8D;
+  padding: 8px 14px;
+  border: 1.5px solid #E2E7EB;
+  border-radius: 100px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.flango-nav-portal:hover {
+  border-color: #FFC07A;
+  color: #B45B10;
+}
+.flango-nav-cta {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 10px 20px;
+  background: #334155;
+  color: #fff;
+  border-radius: 100px;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+  transition: all 0.3s;
+}
+.flango-nav-cta:hover {
+  background: #1E293B;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Burger button (hidden on desktop) */
+.flango-burger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  width: 28px;
+  padding: 4px 0;
+  z-index: 1001;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.flango-burger span {
+  display: block;
+  height: 2.5px;
+  background: #334155;
+  border-radius: 2px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center;
+}
+.flango-burger.active span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+.flango-burger.active span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.flango-burger.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(5px, -5px);
+}
+
+/* Mobile menu (fullscreen overlay) */
+.flango-mobile-menu {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #FFF8F3;
+  z-index: 999;
+  padding: 90px 32px 40px;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+}
+.flango-mobile-menu.open {
+  opacity: 1;
+  transform: translateY(0);
+}
+.flango-mobile-menu a {
+  display: block;
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+  padding: 14px 0;
+  color: #334155;
+  border-bottom: 1px solid #E2E7EB;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.flango-mobile-menu a:hover { color: #D97316; }
+.flango-mobile-menu a.here { color: #B45B10; font-weight: 600; }
+.flango-mobile-menu .flango-mobile-section {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9AA5B4;
+  padding: 16px 0 4px;
+  border: none;
+}
+.flango-mobile-menu .flango-nav-cta {
+  margin-top: 16px;
+  text-align: center;
+  justify-content: center;
+}
+
+/* Body offset for fixed nav */
+body.has-flango-nav {
+  padding-top: 64px;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .flango-burger { display: flex; }
+  .flango-nav-links { display: none; }
+  .flango-nav-right { display: none; }
+  .flango-mobile-menu { display: flex; }
+}
