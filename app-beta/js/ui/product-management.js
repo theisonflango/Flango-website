@@ -1095,6 +1095,10 @@ export function createProductManagementUI(options = {}) {
                                         <div style="font-weight: 600; font-size: 12px; color: #64748b;">Motiv</div>
                                         <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Genskab komposition</div>
                                     </button>
+                                    <button type="button" class="ai-photo-mode-btn" data-mode="portrait" style="flex: 1; padding: 8px 10px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
+                                        <div style="font-weight: 600; font-size: 12px; color: #64748b;">Portræt</div>
+                                        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Animeret version</div>
+                                    </button>
                                 </div>
                             </div>
 
@@ -1922,7 +1926,7 @@ export function createProductManagementUI(options = {}) {
                 aiIconPreview.innerHTML = `
                     <div style="padding: 15px; background: #f8f9fa; border-radius: 12px; text-align: center;">
                         <img src="${result.icon_url}?v=${timestamp}" alt="${name}" style="width: 128px; height: 128px; border-radius: 12px; background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">${result.mode === 'photo-reference' ? '📷 Genereret fra foto (reference)' : result.mode === 'photo-motiv' ? '📷 Genereret fra foto (motiv)' : '✏️ Genereret fra tekst'} · ${result.style === 'pixar' ? '🎬 Pixar' : '🏺 Clay'}</div>
+                        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">${result.mode === 'photo-portrait' ? '🎭 Portræt' : result.mode === 'photo-reference' ? '📷 Reference' : result.mode === 'photo-motiv' ? '📷 Motiv' : '✏️ Tekst'} · ${result.style === 'pixar' ? '🎬 Pixar' : '🏺 Clay'}</div>
                     </div>`;
                 aiIconActions.style.display = 'flex';
                 updateIconPreview();
