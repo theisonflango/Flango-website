@@ -16,6 +16,29 @@ let realtimeChannel = null;
 let settingsChannel = null;
 let timeTickerInterval = null;
 
+// Standalone confirm dialog (restaurant.html har ikke custom-alert-modal)
+function kitchenConfirm(message) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;';
+        const box = document.createElement('div');
+        box.style.cssText = 'background:#1e1e2e;color:#fff;border-radius:16px;padding:24px 28px;max-width:420px;width:90%;text-align:center;font-family:inherit;';
+        box.innerHTML = `
+            <p style="font-size:15px;line-height:1.5;margin:0 0 20px;white-space:pre-line;">${message}</p>
+            <div style="display:flex;gap:12px;justify-content:center;">
+                <button id="kc-cancel" style="padding:10px 24px;border-radius:10px;border:1px solid #555;background:transparent;color:#ccc;font-size:14px;cursor:pointer;">Annuller</button>
+                <button id="kc-ok" style="padding:10px 24px;border-radius:10px;border:none;background:#3b82f6;color:#fff;font-size:14px;cursor:pointer;font-weight:600;">OK</button>
+            </div>`;
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        const cleanup = (result) => { overlay.remove(); resolve(result); };
+        box.querySelector('#kc-ok').onclick = () => cleanup(true);
+        box.querySelector('#kc-cancel').onclick = () => cleanup(false);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(false); });
+        box.querySelector('#kc-ok').focus();
+    });
+}
+
 // Sort state
 let columnSort = JSON.parse(localStorage.getItem('flango_kitchen_sort') || 'null') || { column: 'time', direction: 'asc' };
 
@@ -125,8 +148,9 @@ function setupControls() {
     const soundBtn = $('#kitchen-sound-btn');
     if (soundBtn) soundBtn.textContent = isSoundMuted() ? '🔇' : '🔊';
 
-    // Fullscreen toggle
+    // Fullscreen toggle (ikke relevant i native app — allerede fullscreen)
     $('#kitchen-fullscreen-btn')?.addEventListener('click', () => {
+        if (window.Capacitor?.isNativePlatform()) return;
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch(() => {});
         } else {
@@ -709,26 +733,26 @@ function openSettingsOverlay() {
     });
 
     // Serve all active orders
-    overlay.querySelector('#ks-serve-all')?.addEventListener('click', () => {
+    overlay.querySelector('#ks-serve-all')?.addEventListener('click', async () => {
         const active = allOrders.filter(o => !o.kitchen_served);
         if (active.length === 0) return;
-        if (!confirm(`Markér alle ${active.length} aktive ordrer som serveret?`)) return;
+        if (!await kitchenConfirm(`Markér alle ${active.length} aktive ordrer som serveret?`)) return;
         serveAllOrders();
         closeSettingsOverlay();
     });
 
     // Clear served orders from view
-    overlay.querySelector('#ks-clear-served')?.addEventListener('click', () => {
+    overlay.querySelector('#ks-clear-served')?.addEventListener('click', async () => {
         const served = allOrders.filter(o => o.kitchen_served);
         if (served.length === 0) return;
-        if (!confirm(`Fjern ${served.length} serverede ordrer fra listen?`)) return;
+        if (!await kitchenConfirm(`Fjern ${served.length} serverede ordrer fra listen?`)) return;
         clearServedOrders();
         closeSettingsOverlay();
     });
 
     // Reset everything
-    overlay.querySelector('#ks-reset-all')?.addEventListener('click', () => {
-        if (!confirm('Nulstil hele listen og statistikken?\n\nOrdrer forsvinder kun fra køkkenskærmen — ikke fra databasen.')) return;
+    overlay.querySelector('#ks-reset-all')?.addEventListener('click', async () => {
+        if (!await kitchenConfirm('Nulstil hele listen og statistikken?\n\nOrdrer forsvinder kun fra køkkenskærmen — ikke fra databasen.')) return;
         resetAll();
         closeSettingsOverlay();
     });
@@ -778,8 +802,8 @@ async function markServed(saleId) {
     }
 }
 
-function confirmUnserve(sale) {
-    if (!confirm(`Markér "${sale.customer_name}" som IKKE serveret?`)) return;
+async function confirmUnserve(sale) {
+    if (!await kitchenConfirm(`Markér "${sale.customer_name}" som IKKE serveret?`)) return;
     unmarkServed(sale.id);
 }
 
@@ -845,8 +869,8 @@ async function serveAllOrders() {
 }
 
 /** Remove a single order from view (UI only — stays in DB) */
-function confirmRemoveOrder(sale) {
-    if (!confirm(`Fjern "${sale.customer_name}" fra listen?`)) return;
+async function confirmRemoveOrder(sale) {
+    if (!await kitchenConfirm(`Fjern "${sale.customer_name}" fra listen?`)) return;
     allOrders = allOrders.filter(o => o.id !== sale.id);
     updateStats();
     renderOrders();

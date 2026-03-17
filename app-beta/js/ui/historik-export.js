@@ -5,6 +5,7 @@ import {
   getTransactions, getAllBalances, getNegativeBalances,
   getDailySummary, getEmployeeSummary,
 } from '../domain/historik-data.js';
+import { showCustomAlert } from './sound-and-alerts.js';
 
 /** Download en fil via Blob + createObjectURL. */
 function downloadFile(filename, content, mime = 'text/plain') {
@@ -79,7 +80,7 @@ export async function exportSalesReport(from, to, includeTestUsers = false) {
     downloadFile(`flango-salgsrapport-${fmtDate(from)}-${fmtDate(to)}.txt`, lines.join('\n'));
   } catch (err) {
     console.error('exportSalesReport', err);
-    alert('Fejl ved generering af salgsrapport.');
+    showCustomAlert('Fejl', 'Fejl ved generering af salgsrapport.');
   }
 }
 
@@ -95,7 +96,7 @@ export async function exportAllBalances(includeTestUsers = false) {
     downloadFile(`flango-saldoliste-${fmtDate(new Date())}.csv`, [header, ...rows].join('\n'), 'text/csv');
   } catch (err) {
     console.error('exportAllBalances', err);
-    alert('Fejl ved eksport af saldoliste.');
+    showCustomAlert('Fejl', 'Fejl ved eksport af saldoliste.');
   }
 }
 
@@ -111,7 +112,7 @@ export async function exportNegativeBalances(includeTestUsers = false) {
     downloadFile(`flango-negativ-saldo-${fmtDate(new Date())}.csv`, [header, ...rows].join('\n'), 'text/csv');
   } catch (err) {
     console.error('exportNegativeBalances', err);
-    alert('Fejl ved eksport af negativ saldo.');
+    showCustomAlert('Fejl', 'Fejl ved eksport af negativ saldo.');
   }
 }
 
@@ -138,7 +139,7 @@ export async function exportTransactionsCsv(from, to, includeTestUsers = false) 
     downloadFile(`flango-transaktioner-${fmtDate(from)}-${fmtDate(to)}.csv`, [header, ...rows].join('\n'), 'text/csv');
   } catch (err) {
     console.error('exportTransactionsCsv', err);
-    alert('Fejl ved eksport af transaktioner.');
+    showCustomAlert('Fejl', 'Fejl ved eksport af transaktioner.');
   }
 }
 
@@ -164,7 +165,7 @@ export async function exportClerkReport(from, to, includeTestUsers = false) {
     downloadFile(`flango-ekspedient-rapport-${fmtDate(from)}-${fmtDate(to)}.csv`, [header, ...rows].join('\n'), 'text/csv');
   } catch (err) {
     console.error('exportClerkReport', err);
-    alert('Fejl ved eksport af ekspedient-rapport.');
+    showCustomAlert('Fejl', 'Fejl ved eksport af ekspedient-rapport.');
   }
 }
 
@@ -186,6 +187,6 @@ export async function exportPeriodReport(from, to, includeTestUsers = false) {
     downloadFile(`flango-periodeoversigt-${fmtDate(from)}-${fmtDate(to)}.csv`, [header, ...rows].join('\n'), 'text/csv');
   } catch (err) {
     console.error('exportPeriodReport', err);
-    alert('Fejl ved eksport af periodeoversigt.');
+    showCustomAlert('Fejl', 'Fejl ved eksport af periodeoversigt.');
   }
 }

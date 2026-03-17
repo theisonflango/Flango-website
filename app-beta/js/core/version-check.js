@@ -2,6 +2,7 @@
 // Version check and update notification system
 
 import { FLANGO_VERSION } from './config-and-supabase.js';
+import { showCustomAlert } from '../ui/sound-and-alerts.js';
 
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutter
 const CACHE_PROBLEM_THRESHOLD = 24 * 60 * 60 * 1000; // 24 timer
@@ -235,9 +236,10 @@ export function createUpdateChip() {
         e.stopPropagation();
 
         // Bekræft inden refresh
-        const confirmed = confirm(
-            `En ny version af Flango er tilgængelig (v${latestRemoteVersion}).\n\n` +
-            'Vil du opdatere nu? Dette vil genindlæse siden.'
+        const confirmed = await showCustomAlert(
+            'Ny version tilgængelig',
+            `En ny version af Flango er tilgængelig (v${latestRemoteVersion}).<br><br>Vil du opdatere nu? Dette vil genindlæse siden.`,
+            'confirm'
         );
 
         if (confirmed) {

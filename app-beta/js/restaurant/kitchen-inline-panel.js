@@ -10,6 +10,7 @@ import { supabaseClient } from '../core/config-and-supabase.js';
 import { renderKitchenCard, updateAllCardTimes } from './kitchen-cards.js';
 import { sortOrders } from './kitchen-sort.js';
 import { initKitchenSound, playNewOrderSound } from './kitchen-sound.js';
+import { showCustomAlert } from '../ui/sound-and-alerts.js';
 
 let isOpen = false;
 let institutionId = null;
@@ -244,8 +245,8 @@ async function markServed(saleId) {
     }
 }
 
-function confirmUnserve(sale) {
-    if (!confirm(`Markér "${sale.customer_name}" som IKKE serveret?`)) return;
+async function confirmUnserve(sale) {
+    if (!await showCustomAlert('Bekræft', `Markér "${sale.customer_name}" som IKKE serveret?`, 'confirm')) return;
     unmarkServed(sale.id);
 }
 

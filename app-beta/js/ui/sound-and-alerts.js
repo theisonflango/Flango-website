@@ -168,6 +168,11 @@ export function showCustomAlert(title, body, config = 'alert') {
     });
 }
 
+// Expose globally for non-module scripts (e.g. admin-portal-v2.js IIFE)
+if (typeof window !== 'undefined') {
+    window.__flangoShowCustomAlert = showCustomAlert;
+}
+
 export function showAlert(message) {
     playSound('error');
     showCustomAlert('Fejl', message);
