@@ -1364,6 +1364,9 @@ export function createProductManagementUI(options = {}) {
 
             selectedStandardIcon = option.dataset.path;
             emojiInput.value = `${CUSTOM_ICON_PREFIX}${selectedStandardIcon}`;
+            // Clear custom icon_url so the selected standard/institution/shared icon takes priority in preview
+            currentIconUrl = null;
+            currentIconUpdatedAt = null;
             updateStandardIconSelection();
             updateIconPreview();
         };
