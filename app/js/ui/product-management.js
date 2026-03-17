@@ -2277,6 +2277,8 @@ export function createProductManagementUI(options = {}) {
                 refillTimeLimitMinutes,
                 refillMaxRefills,
                 restaurantVariants: restaurantVariantsArray.length > 0 ? [...restaurantVariantsArray] : null,
+                iconUrl: currentIconUrl,
+                iconUpdatedAt: currentIconUpdatedAt,
             };
         };
 
@@ -2438,6 +2440,8 @@ export function createProductManagementUI(options = {}) {
             refillPrice = null,
             refillTimeLimitMinutes = null,
             refillMaxRefills = null,
+            iconUrl = undefined,
+            iconUpdatedAt = undefined,
         } = productData;
         const products = getProducts();
         const product = products.find(p => p.id === productId);
@@ -2465,6 +2469,8 @@ export function createProductManagementUI(options = {}) {
             refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
             refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
             restaurant_variants: restaurantVariants,
+            icon_url: iconUrl || null,
+            icon_updated_at: iconUrl ? iconUpdatedAt : null,
             }).eq("id", productId)
         );
         if (error) return showAlert(`Fejl: ${error.message}`);
@@ -2486,6 +2492,8 @@ export function createProductManagementUI(options = {}) {
             refill_time_limit_minutes: refillEnabledValue ? refillTimeLimitMinutes : 0,
             refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
             restaurant_variants: restaurantVariants,
+            icon_url: iconUrl || null,
+            icon_updated_at: iconUrl ? iconUpdatedAt : null,
         });
         await saveProductAllergens(productId, allergens);
         if (institutionId) {
