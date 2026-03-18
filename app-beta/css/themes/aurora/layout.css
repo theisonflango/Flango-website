@@ -60,8 +60,18 @@
 }
 
 /* Session banner hidden in Aurora — info is in the header bar */
+/* !important needed because JS may set display:flex inline */
 .user-session-banner {
-    display: none;
+    display: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Also hide sticky notes if they leak through from wrong theme path */
+.session-sticky-note {
+    display: none !important;
 }
 
 /* ============================================================

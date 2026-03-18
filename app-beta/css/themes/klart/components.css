@@ -1882,13 +1882,31 @@
     border: 1px solid var(--klart-border-strong);
     font-family: var(--font-body);
     background: var(--klart-bg-raised);
+    color: var(--klart-fg);
     transition: all var(--klart-duration) var(--klart-ease);
+}
+
+#product-form-fields input::placeholder {
+    color: var(--klart-fg-muted);
 }
 
 #product-form-fields input:focus {
     outline: none;
     border-color: var(--klart-accent);
     box-shadow: 0 0 0 3px rgba(26, 138, 110, 0.15);
+}
+
+/* Collapsible headers & icon-type buttons — ensure text contrast */
+#product-form-fields .collapsible-header {
+    color: var(--klart-fg) !important;
+}
+
+.icon-type-btn {
+    color: var(--klart-fg-soft) !important;
+}
+
+.icon-type-btn.active {
+    color: var(--klart-fg) !important;
 }
 
 #product-form-fields h4 {
@@ -2213,4 +2231,22 @@
     color: var(--danger-color);
     margin: 6px 0 0;
     text-align: left;
+}
+
+/* ===== KLART CONTRAST FIXES ===== */
+
+/* Settings modal close button */
+.settings-modal-close-btn {
+    color: var(--klart-fg) !important;
+    border-color: var(--klart-border-strong) !important;
+}
+
+/* General modal text contrast */
+.modal-content {
+    color: var(--klart-fg);
+}
+
+/* Settings modal text */
+.settings-modal {
+    color: var(--klart-fg);
 }

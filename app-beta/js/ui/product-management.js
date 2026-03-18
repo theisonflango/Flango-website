@@ -12,6 +12,7 @@ import {
     fetchSharedIconLibrary,
     getInstitutionIconCount,
     deleteInstitutionIcon,
+    renameInstitutionIcon,
     fetchIconSharingSettings,
     processImageForUpload,
     takeProductPhoto,
@@ -1084,8 +1085,11 @@ export function createProductManagementUI(options = {}) {
                             </label>
                             <div id="ai-photo-upload-area" style="margin-bottom: 12px;">
                                 <input type="file" id="ai-reference-file" accept="image/*" style="display: none;">
-                                <div id="ai-photo-dropzone" style="border: 2px dashed #d1d5db; border-radius: 10px; padding: 14px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa;">
-                                    <div style="font-size: 13px; color: #64748b;">📸 Klik eller træk et foto hertil</div>
+                                <div style="display: flex; gap: 8px; align-items: stretch;">
+                                    <div id="ai-photo-dropzone" style="flex: 1; border: 2px dashed #d1d5db; border-radius: 10px; padding: 14px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa;">
+                                        <div style="font-size: 13px; color: #64748b;">📸 Klik eller træk et foto hertil</div>
+                                    </div>
+                                    <button type="button" id="ai-use-current-icon-btn" style="padding: 10px 14px; border: 2px dashed #a78bfa; border-radius: 10px; background: #faf5ff; color: #7c3aed; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; transition: all 0.2s;">🖼️ Brug<br>valgte ikon</button>
                                 </div>
                                 <div id="ai-reference-preview" style="display: none; margin-top: 8px; position: relative;">
                                     <img id="ai-reference-img" style="width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 2px solid #e0e0e0;">
@@ -1765,11 +1769,11 @@ export function createProductManagementUI(options = {}) {
         const portraitBtn = document.querySelector('.ai-photo-mode-btn[data-mode="portrait"]');
 
         const updatePortraitAvailability = () => {
-            // Portrait is only available with Pixar style (or custom — hidden anyway)
+            // Portrait is available for all styles (clay, pixar, custom)
             if (portraitBtn) {
-                const isAvailable = aiSelectedStyle === 'pixar';
-                portraitBtn.style.display = isAvailable ? '' : 'none';
-                // If portrait was selected but Clay is now active, reset to reference
+                portraitBtn.style.display = '';
+                // Legacy: keep reset logic but it won't trigger since isAvailable is always true
+                const isAvailable = true;
                 if (!isAvailable && aiSelectedPhotoMode === 'portrait') {
                     aiSelectedPhotoMode = 'reference';
                 }
@@ -1819,7 +1823,7 @@ export function createProductManagementUI(options = {}) {
             aiSelectedPhoto = file;
             aiReferenceImg.src = URL.createObjectURL(file);
             aiReferencePreview.style.display = 'block';
-            aiPhotoDropzone.style.display = 'none';
+            aiPhotoDropzone.parentElement.style.display = 'none'; // Hide dropzone + "brug ikon" btn
             updatePhotoModeVisibility(true);
         };
 
@@ -1830,7 +1834,10 @@ export function createProductManagementUI(options = {}) {
             aiSelectedPhoto = null;
             if (aiReferenceFile) aiReferenceFile.value = '';
             if (aiReferencePreview) aiReferencePreview.style.display = 'none';
-            if (aiPhotoDropzone) aiPhotoDropzone.style.display = 'block';
+            if (aiPhotoDropzone) {
+                aiPhotoDropzone.style.display = 'block';
+                aiPhotoDropzone.parentElement.style.display = 'flex'; // Show dropzone + "brug ikon" btn
+            }
             updatePhotoModeVisibility(false);
             if (aiReferenceImg) {
                 if (aiReferenceImg.src.startsWith('blob:')) URL.revokeObjectURL(aiReferenceImg.src);
@@ -1846,6 +1853,47 @@ export function createProductManagementUI(options = {}) {
         aiRemovePhotoBtn?.addEventListener('click', (e) => {
             e.stopPropagation();
             removePhotoPreview();
+        });
+
+        // "Brug valgte ikon" — henter det aktuelle produktikon som foto-reference
+        const aiUseCurrentIconBtn = document.getElementById('ai-use-current-icon-btn');
+        aiUseCurrentIconBtn?.addEventListener('click', async () => {
+            // Find current icon URL from the product being edited
+            const iconPreviewImg = document.querySelector('#icon-preview-container img, #current-icon-preview img');
+            let iconSrc = currentIconUrl || iconPreviewImg?.src || '';
+
+            // If no custom icon, try the icon from the product icon info
+            if (!iconSrc && currentProduct) {
+                const iconInfo = getProductIconInfo(currentProduct);
+                if (iconInfo?.path) iconSrc = iconInfo.path;
+            }
+
+            if (!iconSrc) {
+                // Try the emoji/standard icon shown in the UI
+                const emojiEl = document.querySelector('#icon-preview-container .product-icon-preview');
+                if (emojiEl?.src) iconSrc = emojiEl.src;
+            }
+
+            if (!iconSrc) {
+                showAlert?.('Intet ikon fundet — vælg først et ikon for produktet');
+                return;
+            }
+
+            try {
+                aiUseCurrentIconBtn.disabled = true;
+                aiUseCurrentIconBtn.textContent = '⏳';
+                const response = await fetch(iconSrc);
+                const blob = await response.blob();
+                const file = new File([blob], 'current-icon.webp', { type: blob.type || 'image/webp' });
+                const processed = await processImageForUpload(file);
+                showPhotoPreview(processed);
+            } catch (err) {
+                console.error('[useCurrentIcon]', err);
+                showAlert?.('Kunne ikke hente ikonet');
+            } finally {
+                aiUseCurrentIconBtn.disabled = false;
+                aiUseCurrentIconBtn.innerHTML = '🖼️ Brug<br>valgte ikon';
+            }
         });
 
         // Drag & drop on photo dropzone
@@ -2210,6 +2258,21 @@ export function createProductManagementUI(options = {}) {
         });
         modal.style.display = 'flex';
 
+        // Tilbage-knap: luk redigér-modal og åbn produktoversigt igen
+        const backBtn = document.getElementById('product-form-back-btn');
+        if (backBtn) {
+            backBtn.onclick = () => {
+                modal.style.display = 'none';
+                const sugarModal = document.getElementById('sugar-policy-modal');
+                if (sugarModal) {
+                    sugarModal.style.display = 'flex';
+                    // Re-render tabellen for at vise evt. ændringer
+                    if (typeof renderProductRulesTable === 'function') renderProductRulesTable();
+                    else if (typeof window.__flangoRenderProductRulesTable === 'function') window.__flangoRenderProductRulesTable();
+                }
+            };
+        }
+
         // Shared form data collection — used by both save button and AI-generate flow
         const collectFormData = async () => {
             const name = document.getElementById('product-name-input').value;
@@ -2554,98 +2617,960 @@ export function createProductManagementUI(options = {}) {
         console.log('[handleDeleteProduct] Product deleted and UI refreshed');
     }
 
-    // ===== ICON MANAGEMENT MODAL =====
+    // ===== ICON MANAGEMENT MODAL (v2 — search, filter, preview, create, edit) =====
     const manageIconsBtn = document.getElementById('manage-icons-btn');
     const iconMgmtModal = document.getElementById('icon-management-modal');
 
     if (manageIconsBtn && iconMgmtModal) {
         const iconMgmtCloseBtn = iconMgmtModal.querySelector('.close-btn');
         const iconMgmtCloseFooter = document.getElementById('icon-mgmt-close-btn');
+        const iconMgmtGrid = document.getElementById('icon-mgmt-grid');
+        const iconMgmtEmpty = document.getElementById('icon-mgmt-empty');
+        const iconMgmtCounter = document.getElementById('icon-mgmt-counter');
+        const iconMgmtSearch = document.getElementById('icon-mgmt-search');
+        const iconMgmtFilters = document.getElementById('icon-mgmt-filters');
+        const iconMgmtEditBtn = document.getElementById('icon-mgmt-edit-btn');
+        const iconMgmtCreateBtn = document.getElementById('icon-mgmt-create-btn');
 
-        const closeIconMgmt = () => { iconMgmtModal.style.display = 'none'; };
+        let allIcons = [];
+        let iconLimit = 50;
+        let activeFilter = 'all';
+        let searchQuery = '';
+        let editModeActive = false;
+        let searchDebounceTimer = null;
+        let openIconCreateModal = () => {}; // Assigned in icon-create-modal block below
+
+        const closeIconMgmt = () => {
+            iconMgmtModal.style.display = 'none';
+            editModeActive = false;
+            iconMgmtGrid?.classList.remove('edit-mode');
+            iconMgmtEditBtn?.classList.remove('active');
+        };
         iconMgmtCloseBtn?.addEventListener('click', closeIconMgmt);
         iconMgmtCloseFooter?.addEventListener('click', closeIconMgmt);
 
         manageIconsBtn.addEventListener('click', async () => {
             iconMgmtModal.style.display = 'flex';
+            searchQuery = '';
+            activeFilter = 'all';
+            if (iconMgmtSearch) iconMgmtSearch.value = '';
+            // Reset filter chips
+            iconMgmtFilters?.querySelectorAll('.icon-mgmt-chip').forEach(c => {
+                c.classList.toggle('active', c.dataset.filter === 'all');
+            });
             await loadIconManagementGrid();
         });
 
+        // --- Search ---
+        iconMgmtSearch?.addEventListener('input', () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                searchQuery = iconMgmtSearch.value.trim().toLowerCase();
+                renderFilteredIcons();
+            }, 300);
+        });
+
+        // --- Filter chips ---
+        iconMgmtFilters?.addEventListener('click', (e) => {
+            const chip = e.target.closest('.icon-mgmt-chip');
+            if (!chip) return;
+            const filter = chip.dataset.filter;
+            if (filter === 'all') {
+                activeFilter = 'all';
+                iconMgmtFilters.querySelectorAll('.icon-mgmt-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+            } else {
+                // Toggle this chip
+                const allChip = iconMgmtFilters.querySelector('[data-filter="all"]');
+                if (chip.classList.contains('active')) {
+                    chip.classList.remove('active');
+                    // If no chips active, revert to "all"
+                    const anyActive = iconMgmtFilters.querySelector('.icon-mgmt-chip.active:not([data-filter="all"])');
+                    if (!anyActive) {
+                        activeFilter = 'all';
+                        allChip?.classList.add('active');
+                    } else {
+                        activeFilter = getActiveFilters();
+                    }
+                } else {
+                    chip.classList.add('active');
+                    allChip?.classList.remove('active');
+                    activeFilter = getActiveFilters();
+                }
+            }
+            renderFilteredIcons();
+        });
+
+        function getActiveFilters() {
+            const chips = iconMgmtFilters?.querySelectorAll('.icon-mgmt-chip.active:not([data-filter="all"])') || [];
+            return Array.from(chips).map(c => c.dataset.filter);
+        }
+
+        function filterIcons(icons) {
+            let filtered = icons;
+
+            // Search filter
+            if (searchQuery) {
+                filtered = filtered.filter(i => i.name.toLowerCase().includes(searchQuery));
+            }
+
+            // Chip filters
+            if (activeFilter !== 'all' && Array.isArray(activeFilter) && activeFilter.length > 0) {
+                filtered = filtered.filter(icon => {
+                    return activeFilter.some(f => {
+                        const [type, val] = f.split(':');
+                        if (type === 'source') return icon.source === val;
+                        if (type === 'style') return icon.ai_style === val;
+                        if (type === 'mode') return icon.ai_photo_mode === val;
+                        if (type === 'prompt') return icon.ai_prompt_mode === val;
+                        return false;
+                    });
+                });
+            }
+
+            return filtered;
+        }
+
+        function getIconMetaLabel(icon) {
+            const parts = [];
+            if (icon.source === 'uploaded') parts.push('📤 Upload');
+            else parts.push('🪄 AI');
+            if (icon.ai_style) parts.push(icon.ai_style === 'clay' ? 'Clay' : icon.ai_style === 'pixar' ? 'Pixar' : 'Fri prompt');
+            if (icon.ai_photo_mode) {
+                const modeMap = { reference: 'Reference', motiv: 'Motiv', portrait: 'Portræt' };
+                parts.push(modeMap[icon.ai_photo_mode] || icon.ai_photo_mode);
+            }
+            return parts.join(' · ');
+        }
+
+        function renderFilteredIcons() {
+            if (!iconMgmtGrid) return;
+            const filtered = filterIcons(allIcons);
+
+            iconMgmtGrid.innerHTML = '';
+            if (iconMgmtCounter) iconMgmtCounter.textContent = `${filtered.length} af ${allIcons.length} · ${allIcons.length} / ${iconLimit} brugt`;
+
+            if (filtered.length === 0) {
+                if (iconMgmtEmpty) { iconMgmtEmpty.style.display = 'block'; iconMgmtEmpty.textContent = searchQuery ? 'Ingen ikoner matcher søgningen.' : 'Ingen ikoner fundet.'; }
+                return;
+            }
+            if (iconMgmtEmpty) iconMgmtEmpty.style.display = 'none';
+
+            const isEdit = editModeActive;
+
+            filtered.forEach(icon => {
+                const card = document.createElement('div');
+                card.className = 'icon-mgmt-card';
+                card.dataset.iconId = icon.id;
+                // All critical styles inline to avoid CSS cache issues
+                card.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;padding:12px 8px 8px;border:2px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.04);cursor:default;overflow:hidden;min-width:0;transition:border-color 0.15s,transform 0.15s;';
+                const badgeColor = icon.source === 'uploaded' ? 'background:#dbeafe;color:#1d4ed8' : 'background:#ede9fe;color:#6d28d9';
+                const badgeLabel = icon.source === 'uploaded' ? '📤' : '🪄';
+                card.innerHTML = `
+                    <span style="position:absolute;top:4px;left:4px;font-size:10px;padding:1px 5px;border-radius:8px;font-weight:600;line-height:1.4;${badgeColor};">${badgeLabel}</span>
+                    <button type="button" class="icon-mgmt-preview-btn" title="Forstør"
+                        style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;cursor:pointer;font-size:13px;display:${isEdit ? 'none' : 'flex'};align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;z-index:5;">🔍</button>
+                    <button type="button" class="icon-mgmt-download-btn" data-url="${icon.icon_url}" data-name="${icon.name}" title="Download"
+                        style="position:absolute;bottom:4px;left:4px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;cursor:pointer;font-size:13px;display:${isEdit ? 'none' : 'flex'};align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;z-index:5;">⬇️</button>
+                    <button type="button" class="icon-mgmt-delete-btn" data-icon-id="${icon.id}" title="Slet ikon"
+                        style="position:absolute;top:-1px;right:-1px;width:24px;height:24px;border-radius:50%;background:#ef4444;color:white;border:2px solid rgba(0,0,0,0.2);font-size:12px;cursor:pointer;align-items:center;justify-content:center;line-height:1;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.3);display:${isEdit ? 'flex' : 'none'};">✕</button>
+                    <button type="button" class="icon-mgmt-settings-btn" data-icon-id="${icon.id}" title="Redigér med AI"
+                        style="position:absolute;bottom:2px;right:2px;width:24px;height:24px;border-radius:50%;background:#475569;color:white;border:2px solid rgba(0,0,0,0.2);font-size:12px;cursor:pointer;align-items:center;justify-content:center;line-height:1;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.3);display:${isEdit ? 'flex' : 'none'};">⚙️</button>
+                    <img src="${icon.icon_url}" alt="${icon.name}" loading="lazy"
+                        style="width:80px;height:80px;object-fit:cover;border-radius:10px;flex-shrink:0;">
+                    <span class="icon-mgmt-card-name" style="font-size:11px;color:#94a3b8;margin-top:6px;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:${isEdit ? 'none' : 'block'};">${icon.name}</span>
+                    <input type="text" class="icon-mgmt-rename-input" value="${icon.name}" data-icon-id="${icon.id}" maxlength="60"
+                        style="width:100%;padding:3px 4px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;font-size:11px;text-align:center;margin-top:4px;box-sizing:border-box;background:rgba(255,255,255,0.06);color:inherit;display:${isEdit ? 'block' : 'none'};">
+                `;
+                // Hover effect for preview btn
+                card.addEventListener('mouseenter', () => {
+                    card.style.borderColor = 'rgba(255,255,255,0.2)';
+                    card.style.transform = 'translateY(-1px)';
+                    if (!editModeActive) {
+                        const previewBtn = card.querySelector('.icon-mgmt-preview-btn');
+                        const dlBtn = card.querySelector('.icon-mgmt-download-btn');
+                        if (previewBtn) previewBtn.style.opacity = '1';
+                        if (dlBtn) dlBtn.style.opacity = '1';
+                    }
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.borderColor = 'rgba(255,255,255,0.08)';
+                    card.style.transform = '';
+                    const previewBtn = card.querySelector('.icon-mgmt-preview-btn');
+                    const dlBtn = card.querySelector('.icon-mgmt-download-btn');
+                    if (previewBtn) previewBtn.style.opacity = '0';
+                    if (dlBtn) dlBtn.style.opacity = '0';
+                });
+                iconMgmtGrid.appendChild(card);
+            });
+
+            // Maintain edit-mode class
+            if (editModeActive) iconMgmtGrid.classList.add('edit-mode');
+            else iconMgmtGrid.classList.remove('edit-mode');
+        }
+
         async function loadIconManagementGrid() {
-            const counter = document.getElementById('icon-mgmt-counter');
-            const uploadedGrid = document.getElementById('icon-mgmt-uploaded-grid');
-            const uploadedEmpty = document.getElementById('icon-mgmt-uploaded-empty');
-            const aiGrid = document.getElementById('icon-mgmt-ai-grid');
-            const aiEmpty = document.getElementById('icon-mgmt-ai-empty');
-
-            if (!uploadedGrid || !aiGrid) return;
-
-            uploadedGrid.innerHTML = '';
-            aiGrid.innerHTML = '';
-
             const institutionId = adminProfile?.institution_id;
             if (!institutionId) return;
+
+            if (iconMgmtGrid) iconMgmtGrid.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;">Indlæser...</div>';
 
             const [icons, settings] = await Promise.all([
                 fetchInstitutionIconLibrary(institutionId),
                 fetchIconSharingSettings(institutionId),
             ]);
 
-            const iconLimit = settings.icon_limit || 50;
-            if (counter) counter.textContent = `${icons.length} / ${iconLimit} ikoner brugt`;
+            allIcons = icons;
+            iconLimit = settings.icon_limit || 50;
+            renderFilteredIcons();
+        }
 
-            const uploaded = icons.filter(i => i.source === 'uploaded');
-            const aiGenerated = icons.filter(i => i.source !== 'uploaded');
-
-            const renderIconGrid = (iconList, gridEl, emptyEl) => {
-                gridEl.innerHTML = '';
-                if (iconList.length === 0) {
-                    if (emptyEl) emptyEl.style.display = 'block';
-                    return;
-                }
-                if (emptyEl) emptyEl.style.display = 'none';
-
-                iconList.forEach(icon => {
-                    const option = document.createElement('div');
-                    option.className = 'custom-icon-option';
-                    option.style.position = 'relative';
-                    option.innerHTML = `
-                        <img src="${icon.icon_url}" alt="${icon.name}">
-                        <span style="font-size: 11px;">${icon.name}</span>
-                        <button type="button" class="icon-mgmt-delete-btn" data-icon-id="${icon.id}" title="Slet ikon"
-                            style="position: absolute; top: -4px; right: -4px; width: 20px; height: 20px; border-radius: 50%; background: #ef4444; color: white; border: none; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; z-index: 5;">✕</button>
-                    `;
-                    gridEl.appendChild(option);
-                });
-            };
-
-            renderIconGrid(uploaded, uploadedGrid, uploadedEmpty);
-            renderIconGrid(aiGenerated, aiGrid, aiEmpty);
-
-            // Delete handlers (event delegation)
-            const handleDelete = async (e) => {
-                const btn = e.target.closest('.icon-mgmt-delete-btn');
-                if (!btn) return;
+        // --- Event delegation on grid ---
+        iconMgmtGrid?.addEventListener('click', async (e) => {
+            // Delete
+            const deleteBtn = e.target.closest('.icon-mgmt-delete-btn');
+            if (deleteBtn) {
                 e.stopPropagation();
-                const iconId = btn.dataset.iconId;
+                const iconId = deleteBtn.dataset.iconId;
                 if (!iconId) return;
-
                 const confirmed = await showCustomAlert('Slet ikon?', 'Ikonet fjernes fra biblioteket. Produkter der bruger det beholder deres kopi.', 'confirm');
                 if (!confirmed) return;
-
                 const result = await deleteInstitutionIcon(iconId);
                 if (result.success) {
-                    await loadIconManagementGrid();
+                    allIcons = allIcons.filter(i => i.id !== iconId);
+                    renderFilteredIcons();
                 } else {
                     showAlert?.(result.error || 'Kunne ikke slette ikonet');
                 }
+                return;
+            }
+
+            // Settings (open in create modal with icon as reference)
+            const settingsBtn = e.target.closest('.icon-mgmt-settings-btn');
+            if (settingsBtn) {
+                e.stopPropagation();
+                const iconId = settingsBtn.dataset.iconId;
+                const icon = allIcons.find(i => i.id === iconId);
+                if (icon) openIconCreateModal(icon);
+                return;
+            }
+
+            // Preview (lightbox)
+            const previewBtn = e.target.closest('.icon-mgmt-preview-btn');
+            if (previewBtn) {
+                e.stopPropagation();
+                const card = previewBtn.closest('.icon-mgmt-card');
+                const iconId = card?.dataset.iconId;
+                const filtered = filterIcons(allIcons);
+                const index = filtered.findIndex(i => i.id === iconId);
+                if (index >= 0) showIconPreviewModal(filtered, index);
+                return;
+            }
+
+            // Download
+            const downloadBtn = e.target.closest('.icon-mgmt-download-btn');
+            if (downloadBtn) {
+                e.stopPropagation();
+                const url = downloadBtn.dataset.url;
+                const name = downloadBtn.dataset.name || 'ikon';
+                if (url) {
+                    fetch(url)
+                        .then(r => r.blob())
+                        .then(blob => {
+                            const a = document.createElement('a');
+                            a.href = URL.createObjectURL(blob);
+                            a.download = `${name.replace(/[^a-zA-Z0-9æøåÆØÅ _-]/g, '')}.webp`;
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                            URL.revokeObjectURL(a.href);
+                        })
+                        .catch(err => console.error('[downloadIcon]', err));
+                }
+                return;
+            }
+        });
+
+        // --- Rename (blur/enter on input) ---
+        iconMgmtGrid?.addEventListener('change', async (e) => {
+            const input = e.target.closest('.icon-mgmt-rename-input');
+            if (!input) return;
+            const iconId = input.dataset.iconId;
+            const newName = input.value.trim();
+            if (!iconId || !newName) return;
+            const icon = allIcons.find(i => i.id === iconId);
+            if (icon && icon.name !== newName) {
+                icon.name = newName; // Optimistic
+                await renameInstitutionIcon(iconId, newName);
+            }
+        });
+
+        iconMgmtGrid?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.classList.contains('icon-mgmt-rename-input')) {
+                e.target.blur();
+            }
+        });
+
+        // --- Edit mode toggle ---
+        iconMgmtEditBtn?.addEventListener('click', () => {
+            editModeActive = !editModeActive;
+            iconMgmtEditBtn.classList.toggle('active', editModeActive);
+            iconMgmtEditBtn.textContent = editModeActive ? '✅ Færdig' : '✏️ Redigér';
+            renderFilteredIcons(); // Re-render with inline styles updated
+        });
+
+        // --- Lightbox preview ---
+        function showIconPreviewModal(icons, startIndex = 0) {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position:fixed;inset:0;z-index:10001;display:flex;align-items:center;justify-content:center;';
+            modal.innerHTML = `
+                <div style="position:absolute;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);" data-backdrop></div>
+                <div style="position:relative;max-width:80vw;max-height:80vh;">
+                    <button data-nav="prev" style="position:absolute;left:-60px;top:50%;transform:translateY(-50%);width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
+                    <img data-img style="width:100%;height:100%;max-width:80vw;max-height:80vh;object-fit:contain;border-radius:16px;">
+                    <button data-nav="next" style="position:absolute;right:-60px;top:50%;transform:translateY(-50%);width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;">›</button>
+                    <button data-close style="position:absolute;top:-15px;right:-15px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+                    <div style="position:absolute;bottom:-44px;left:50%;transform:translateX(-50%);text-align:center;color:#fff;white-space:nowrap;">
+                        <div data-name style="font-size:16px;font-weight:700;"></div>
+                        <div data-meta style="font-size:12px;opacity:0.7;margin-top:2px;"></div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            const imgEl = modal.querySelector('[data-img]');
+            const nameEl = modal.querySelector('[data-name]');
+            const metaEl = modal.querySelector('[data-meta]');
+            let currentIndex = ((startIndex % icons.length) + icons.length) % icons.length;
+
+            const updateImage = () => {
+                const icon = icons[currentIndex];
+                imgEl.src = icon.icon_url;
+                nameEl.textContent = icon.name;
+                metaEl.textContent = getIconMetaLabel(icon);
             };
 
-            uploadedGrid.addEventListener('click', handleDelete);
-            aiGrid.addEventListener('click', handleDelete);
+            const navigate = (dir) => {
+                currentIndex = (currentIndex + dir + icons.length) % icons.length;
+                updateImage();
+            };
+
+            const closeModal = () => {
+                document.removeEventListener('keydown', handleKeydown);
+                modal.remove();
+            };
+
+            const handleKeydown = (evt) => {
+                if (evt.key === 'ArrowRight') navigate(1);
+                else if (evt.key === 'ArrowLeft') navigate(-1);
+                else if (evt.key === 'Escape') closeModal();
+            };
+
+            modal.querySelector('[data-nav="prev"]').onclick = (evt) => { evt.stopPropagation(); navigate(-1); };
+            modal.querySelector('[data-nav="next"]').onclick = (evt) => { evt.stopPropagation(); navigate(1); };
+            modal.querySelector('[data-close]').onclick = closeModal;
+            modal.querySelector('[data-backdrop]').onclick = closeModal;
+
+            document.addEventListener('keydown', handleKeydown);
+            updateImage();
+            modal.style.display = 'flex';
         }
 
-        // Expose globally so icon sharing settings can open this modal
+        // ===== ICON CREATE SUB-MODAL =====
+        const iconCreateModal = document.getElementById('icon-create-modal');
+        if (iconCreateModal) {
+            // --- Create icon button (must be inside this block so openIconCreateModal is accessible) ---
+            iconMgmtCreateBtn?.addEventListener('click', () => openIconCreateModal(null));
+            const createCloseBtn = iconCreateModal.querySelector('.close-btn');
+            const createCancelBtn = document.getElementById('icon-create-cancel-btn');
+            const createSaveBtn = document.getElementById('icon-create-save-btn');
+            const createNameInput = document.getElementById('icon-create-name');
+            const createTabs = iconCreateModal.querySelectorAll('.icon-create-tab');
+            const createTabContents = iconCreateModal.querySelectorAll('.icon-create-tab-content');
+            const createStatus = document.getElementById('icon-create-status');
+            const createStatusText = document.getElementById('icon-create-status-text');
+
+            // Upload tab elements
+            const createDropzone = document.getElementById('icon-create-dropzone');
+            const createFileInput = document.getElementById('icon-create-file-input');
+            const createUploadPreview = document.getElementById('icon-create-upload-preview');
+            const createUploadImg = document.getElementById('icon-create-upload-img');
+
+            // Camera tab
+            const createCameraBtn = document.getElementById('icon-create-camera-btn');
+            const createCameraPreview = document.getElementById('icon-create-camera-preview');
+            const createCameraImg = document.getElementById('icon-create-camera-img');
+
+            // AI tab elements
+            const createStyleBtns = iconCreateModal.querySelectorAll('.icon-create-style-btn');
+            const createCustomPromptSection = document.getElementById('icon-create-custom-prompt-section');
+            const createCustomPrompt = document.getElementById('icon-create-custom-prompt');
+            const createAiDropzone = document.getElementById('icon-create-ai-dropzone');
+            const createAiFileInput = document.getElementById('icon-create-ai-file-input');
+            const createAiPhotoPreview = document.getElementById('icon-create-ai-photo-preview');
+            const createAiPhotoImg = document.getElementById('icon-create-ai-photo-img');
+            const createAiPhotoRemove = document.getElementById('icon-create-ai-photo-remove');
+            const createPhotoModeSection = document.getElementById('icon-create-photo-mode-section');
+            const createPhotoModeBtns = iconCreateModal.querySelectorAll('.icon-create-photo-mode-btn');
+            const createGenerateBtn = document.getElementById('icon-create-generate-btn');
+            const createAiResult = document.getElementById('icon-create-ai-result');
+            const createAiResultImg = document.getElementById('icon-create-ai-result-img');
+            const createAiResultLabel = document.getElementById('icon-create-ai-result-label');
+            const createAiPhotoSection = document.getElementById('icon-create-ai-photo-section');
+
+            // Advanced prompt elements
+            // Advanced prompt elements (split: style prompt + photo-mode prompt)
+            const advancedToggle = document.getElementById('icon-create-advanced-toggle');
+            const advancedArrow = document.getElementById('icon-create-advanced-arrow');
+            const resetPromptBtn = document.getElementById('icon-create-reset-prompt-btn');
+            const stylePromptSection = document.getElementById('icon-create-style-prompt-section');
+            const stylePromptEl = document.getElementById('icon-create-style-prompt');
+            const photoPromptSection = document.getElementById('icon-create-photo-prompt-section');
+            const photoPromptEl = document.getElementById('icon-create-photo-prompt');
+            let advancedOpen = false;
+            let stylePromptEdited = false;
+            let photoPromptEdited = false;
+
+            // --- Client-side prompt builder (mirrors Edge Function prompts) ---
+            const STYLE_CLAY = `A single centered food product icon in soft 3D clay style. Rounded puffy shapes, smooth matte clay texture, subtle soft shadows on the object only. Pastel color palette, gentle highlights, no harsh edges. Friendly, playful, child-safe aesthetic like premium mobile app UI icons. Skeuomorphic but simplified - Apple-like simplicity with minimal detail. No text, no labels, no table, no background elements. The object floats on a perfectly transparent background. Clean crisp edges suitable for UI overlay.`;
+            const STYLE_PIXAR = `A single centered food product icon in Pixar-style 3D rendering. Glossy, smooth surfaces with vibrant saturated colors. Soft rounded shapes, subtle specular highlights, gentle ambient occlusion shadows on the object only. Friendly, appealing, child-safe aesthetic. Clean and simple - minimal detail, maximum charm. No text, no labels, no background elements. The object floats on a perfectly transparent background with clean crisp edges suitable for UI overlay.`;
+            const STYLE_PORTRAIT_CLAY = `3D clay-animated style rendering. Rounded puffy shapes, smooth matte clay texture, pastel color palette, gentle highlights, no harsh edges. Friendly, playful, child-safe aesthetic. Characters should look like high-quality clay figurines with warm, expressive faces.`;
+            const STYLE_PORTRAIT_PIXAR = `Pixar/Dreamworks-style 3D animated rendering. Glossy, smooth surfaces with vibrant saturated colors. Soft rounded shapes, subtle specular highlights. Friendly, appealing, child-safe aesthetic with maximum charm. Characters should look like they belong in a Pixar feature film.`;
+
+            function buildStylePrompt() {
+                if (createSelectedStyle === 'custom') return '';
+                const isPortrait = createSelectedPhotoMode === 'portrait' && !!createAiPhotoFile;
+                if (isPortrait) {
+                    return createSelectedStyle === 'pixar' ? STYLE_PORTRAIT_PIXAR : STYLE_PORTRAIT_CLAY;
+                }
+                return createSelectedStyle === 'pixar' ? STYLE_PIXAR : STYLE_CLAY;
+            }
+
+            function buildPhotoModePrompt() {
+                const name = createNameInput?.value?.trim() || '';
+                const style = createSelectedStyle;
+                const mode = createSelectedPhotoMode;
+                if (style === 'custom') return '';
+
+                if (!createAiPhotoFile) {
+                    return `The food item is: ${name}\nInclude a bowl, plate, cup, or container only if the food needs one to make visual sense (soup, yoghurt, drinks, plated dishes). Otherwise show the food on its own.`;
+                }
+                if (mode === 'portrait') {
+                    const styleName = style === 'clay' ? 'clay-animated' : 'Pixar/Dreamworks-style animated';
+                    const movieStyle = style === 'clay' ? 'clay-animated' : 'Pixar';
+                    return `Transform the reference photo into a ${styleName} version. Faithfully preserve the exact composition, poses, facial features, expressions, clothing, food arrangement, and spatial layout from the photo. Every person should be clearly recognizable as an animated version of themselves. Every food item should match the original in shape, color, and plating. The result should look like a still frame from a ${movieStyle} movie depicting this exact scene. Maintain natural, flattering facial proportions - do not exaggerate noses, ears, or chins. Aim for a polished animated look, not caricature.${name ? ` The product is called: ${name}` : ''}`;
+                }
+                if (mode === 'motiv') {
+                    const charStyle = style === 'pixar' ? 'stylized Pixar-like animated characters' : 'stylized clay characters';
+                    const sceneStyle = style === 'pixar' ? 'a miniature Pixar scene' : 'a miniature clay diorama';
+                    const renderStyle = style === 'pixar' ? 'glossy Pixar' : 'the Flango clay';
+                    return `Recreate the composition and subject from the reference photo as a 3D ${style === 'pixar' ? 'Pixar-style' : 'clay'} icon. Keep the food's arrangement, plating, and visual identity from the photo, but render everything in ${renderStyle} style. If people or faces appear in the photo, include them as ${charStyle} that resemble the original. The result should look like ${sceneStyle} of the actual scene.${name ? ` The product is called: ${name}` : ''}`;
+                }
+                // Reference
+                const styleName = style === 'pixar' ? 'Pixar-style' : 'clay-style';
+                const vesselStyle = style === 'pixar' ? 'glossy style' : 'clay style';
+                return `Use the reference photo only to identify the food item. Create a fresh ${styleName} icon of that food - do NOT recreate the photo. Ignore the photo's background, angle, lighting, and surroundings. Include a container only if the food naturally needs one. If the photo shows a distinctive serving vessel, you may include it in the same ${vesselStyle}.${name ? ` The product is called: ${name}` : ''}`;
+            }
+
+            function updateAdvancedPrompt() {
+                if (!advancedOpen) return;
+                const isCustom = createSelectedStyle === 'custom';
+                if (stylePromptSection) stylePromptSection.style.display = isCustom ? 'none' : 'block';
+                if (stylePromptEl && !stylePromptEdited) stylePromptEl.value = buildStylePrompt();
+                if (photoPromptSection) photoPromptSection.style.display = isCustom ? 'none' : 'block';
+                if (photoPromptEl && !photoPromptEdited) photoPromptEl.value = buildPhotoModePrompt();
+            }
+
+            // Helper: style active/inactive buttons inline (no CSS dependency)
+            const ACTIVE_BTN_STYLE = 'background:#fff;color:#1e293b;box-shadow:0 1px 3px rgba(0,0,0,0.1);';
+            const INACTIVE_BTN_STYLE = 'background:transparent;color:#94a3b8;box-shadow:none;';
+            const applyBtnGroupStyles = (btns, activeBtn) => {
+                btns.forEach(b => {
+                    const isActive = b === activeBtn || (typeof activeBtn === 'string' && b.dataset.style === activeBtn) || (typeof activeBtn === 'string' && b.dataset.mode === activeBtn) || (typeof activeBtn === 'string' && b.dataset.tab === activeBtn);
+                    Object.assign(b.style, { background: isActive ? '#fff' : 'transparent', color: isActive ? '#1e293b' : '#94a3b8', boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' });
+                    b.classList.toggle('active', isActive);
+                });
+            };
+
+            let createCurrentTab = 'upload';
+            let createSelectedStyle = 'clay';
+            let createSelectedPhotoMode = 'reference';
+            let createUploadedFile = null;       // For upload tab
+            let createAiPhotoFile = null;         // For AI photo reference
+            let createAiResultUrl = null;         // Generated AI icon URL
+            let createEditingIcon = null;         // Icon being edited (for ⚙️ flow)
+
+            const closeCreateModal = () => {
+                iconCreateModal.style.display = 'none';
+                resetCreateModal();
+            };
+
+            function resetCreateModal() {
+                createUploadedFile = null;
+                createAiPhotoFile = null;
+                createAiResultUrl = null;
+                createEditingIcon = null;
+                if (createNameInput) createNameInput.value = '';
+                if (createUploadPreview) createUploadPreview.style.display = 'none';
+                if (createCameraPreview) createCameraPreview.style.display = 'none';
+                if (createAiPhotoPreview) createAiPhotoPreview.style.display = 'none';
+                if (createPhotoModeSection) createPhotoModeSection.style.display = 'none';
+                if (createAiResult) createAiResult.style.display = 'none';
+                if (createStatus) createStatus.style.display = 'none';
+                if (createCustomPromptSection) createCustomPromptSection.style.display = 'none';
+                if (createCustomPrompt) createCustomPrompt.value = '';
+                // Reset advanced
+                advancedOpen = false;
+                stylePromptEdited = false;
+                photoPromptEdited = false;
+                if (stylePromptSection) stylePromptSection.style.display = 'none';
+                if (photoPromptSection) photoPromptSection.style.display = 'none';
+                if (stylePromptEl) stylePromptEl.value = '';
+                if (photoPromptEl) photoPromptEl.value = '';
+                if (advancedArrow) advancedArrow.style.transform = '';
+                if (resetPromptBtn) resetPromptBtn.style.display = 'none';
+                if (createSaveBtn) { createSaveBtn.disabled = true; createSaveBtn.textContent = 'Gem ikon'; }
+                // Reset to upload tab
+                createCurrentTab = 'upload';
+                applyBtnGroupStyles(createTabs, 'upload');
+                createTabContents.forEach(tc => {
+                    tc.classList.remove('active');
+                    tc.style.display = 'none';
+                });
+                const uploadTab = document.getElementById('icon-create-upload-tab');
+                if (uploadTab) { uploadTab.classList.add('active'); uploadTab.style.display = 'block'; }
+                // Reset style
+                createSelectedStyle = 'clay';
+                applyBtnGroupStyles(createStyleBtns, 'clay');
+                createSelectedPhotoMode = 'reference';
+                applyBtnGroupStyles(createPhotoModeBtns, 'reference');
+                updatePortraitVisibility();
+            }
+
+            function updatePortraitVisibility() {
+                // Portrait available for all styles (clay, pixar, custom)
+                const portraitBtn = iconCreateModal.querySelector('.icon-create-photo-mode-btn[data-mode="portrait"]');
+                if (portraitBtn) portraitBtn.style.display = '';
+            }
+
+            function updateSaveEnabled() {
+                if (!createSaveBtn) return;
+                if (createCurrentTab === 'upload') {
+                    createSaveBtn.disabled = !createUploadedFile;
+                } else if (createCurrentTab === 'camera') {
+                    createSaveBtn.disabled = !createUploadedFile;
+                } else if (createCurrentTab === 'ai') {
+                    createSaveBtn.disabled = !createAiResultUrl;
+                }
+            }
+
+            createCloseBtn?.addEventListener('click', closeCreateModal);
+            createCancelBtn?.addEventListener('click', closeCreateModal);
+
+            // Tab switching
+            createTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    createCurrentTab = tab.dataset.tab;
+                    applyBtnGroupStyles(createTabs, tab);
+                    createTabContents.forEach(tc => { tc.classList.remove('active'); tc.style.display = 'none'; });
+                    const content = document.getElementById(`icon-create-${createCurrentTab}-tab`);
+                    if (content) { content.classList.add('active'); content.style.display = 'block'; }
+                    updateSaveEnabled();
+                });
+            });
+
+            // Upload tab — dropzone + file input
+            createDropzone?.addEventListener('click', () => createFileInput?.click());
+            createDropzone?.addEventListener('dragover', (e) => { e.preventDefault(); createDropzone.classList.add('dragover'); });
+            createDropzone?.addEventListener('dragleave', () => createDropzone.classList.remove('dragover'));
+            createDropzone?.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                createDropzone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) await handleCreateUploadFile(file);
+            });
+            createFileInput?.addEventListener('change', async () => {
+                const file = createFileInput.files[0];
+                if (file) await handleCreateUploadFile(file);
+                createFileInput.value = '';
+            });
+
+            async function handleCreateUploadFile(file) {
+                try {
+                    createUploadedFile = await processImageForUpload(file);
+                    const url = URL.createObjectURL(createUploadedFile);
+                    if (createUploadImg) createUploadImg.src = url;
+                    if (createUploadPreview) createUploadPreview.style.display = 'block';
+                    if (!createNameInput.value) createNameInput.value = file.name.replace(/\.[^.]+$/, '');
+                    updateSaveEnabled();
+                } catch (err) {
+                    console.error('[handleCreateUploadFile]', err);
+                }
+            }
+
+            // Camera tab
+            createCameraBtn?.addEventListener('click', async () => {
+                try {
+                    const file = await takeProductPhoto();
+                    if (file) {
+                        createUploadedFile = await processImageForUpload(file);
+                        const url = URL.createObjectURL(createUploadedFile);
+                        if (createCameraImg) createCameraImg.src = url;
+                        if (createCameraPreview) createCameraPreview.style.display = 'block';
+                        if (!createNameInput.value) createNameInput.value = 'Foto';
+                        updateSaveEnabled();
+                    }
+                } catch (err) {
+                    console.error('[createCameraCapture]', err);
+                }
+            });
+
+            // AI tab — style selector
+            const styleDescs = {
+                clay: '🏺 Blødt 3D-look med runde former og pastelfarver.',
+                pixar: '🎬 Blankt Pixar-look med klare farver og glans.',
+                custom: '✍️ Du skriver din egen prompt. Foto-tilstand ignoreres — din tekst styrer alt.',
+            };
+            const styleDescEl = document.getElementById('icon-create-style-desc');
+
+            createStyleBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    createSelectedStyle = btn.dataset.style;
+                    applyBtnGroupStyles(createStyleBtns, btn);
+                    if (styleDescEl) styleDescEl.textContent = styleDescs[createSelectedStyle] || '';
+                    const isCustom = createSelectedStyle === 'custom';
+                    if (createCustomPromptSection) createCustomPromptSection.style.display = isCustom ? 'block' : 'none';
+                    // Hide photo-mode selector in custom mode (user's prompt replaces everything)
+                    if (createPhotoModeSection && createAiPhotoFile) {
+                        createPhotoModeSection.style.display = isCustom ? 'none' : 'block';
+                    }
+                    updatePortraitVisibility();
+                    updateAdvancedPrompt();
+                });
+            });
+
+            // AI tab — photo reference
+            createAiDropzone?.addEventListener('click', () => createAiFileInput?.click());
+            createAiDropzone?.addEventListener('dragover', (e) => { e.preventDefault(); createAiDropzone.classList.add('dragover'); });
+            createAiDropzone?.addEventListener('dragleave', () => createAiDropzone.classList.remove('dragover'));
+            createAiDropzone?.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                createAiDropzone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) await handleCreateAiPhoto(file);
+            });
+            createAiFileInput?.addEventListener('change', async () => {
+                const file = createAiFileInput.files[0];
+                if (file) await handleCreateAiPhoto(file);
+                createAiFileInput.value = '';
+            });
+
+            async function handleCreateAiPhoto(file) {
+                try {
+                    createAiPhotoFile = await processImageForUpload(file);
+                    const url = URL.createObjectURL(createAiPhotoFile);
+                    if (createAiPhotoImg) createAiPhotoImg.src = url;
+                    if (createAiPhotoPreview) createAiPhotoPreview.style.display = 'block';
+                    if (createPhotoModeSection) createPhotoModeSection.style.display = 'block';
+                    if (createAiDropzone) createAiDropzone.style.display = 'none';
+                    updateAdvancedPrompt();
+                } catch (err) {
+                    console.error('[handleCreateAiPhoto]', err);
+                }
+            }
+
+            createAiPhotoRemove?.addEventListener('click', () => {
+                createAiPhotoFile = null;
+                if (createAiPhotoPreview) createAiPhotoPreview.style.display = 'none';
+                if (createPhotoModeSection) createPhotoModeSection.style.display = 'none';
+                if (createAiDropzone) createAiDropzone.style.display = 'block';
+                updateAdvancedPrompt();
+            });
+
+            // Photo mode selector
+            const photoModeDescs = {
+                reference: '📷 AI ser kun maden på fotoet og laver et nyt ikon fra bunden.',
+                motiv: '🖼️ AI genskaber hele kompositionen (mad, tallerkener, personer) i valgt stil.',
+                portrait: '🎭 AI laver en animeret version af fotoet. Personer bevarer deres udseende.',
+            };
+            const photoModeDescEl = document.getElementById('icon-create-photo-mode-desc');
+
+            function updatePhotoModeDesc() {
+                if (photoModeDescEl) photoModeDescEl.textContent = photoModeDescs[createSelectedPhotoMode] || '';
+            }
+
+            createPhotoModeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    createSelectedPhotoMode = btn.dataset.mode;
+                    applyBtnGroupStyles(createPhotoModeBtns, btn);
+                    updatePhotoModeDesc();
+                    updateAdvancedPrompt();
+                });
+            });
+
+            // Set initial description
+            updatePhotoModeDesc();
+
+            // --- Advanced toggle ---
+            advancedToggle?.addEventListener('click', () => {
+                advancedOpen = !advancedOpen;
+                if (advancedArrow) advancedArrow.style.transform = advancedOpen ? 'rotate(90deg)' : '';
+                if (resetPromptBtn) resetPromptBtn.style.display = advancedOpen ? 'inline' : 'none';
+                if (advancedOpen) {
+                    stylePromptEdited = false;
+                    photoPromptEdited = false;
+                    updateAdvancedPrompt();
+                } else {
+                    if (stylePromptSection) stylePromptSection.style.display = 'none';
+                    if (photoPromptSection) photoPromptSection.style.display = 'none';
+                }
+            });
+
+            resetPromptBtn?.addEventListener('click', () => {
+                stylePromptEdited = false;
+                photoPromptEdited = false;
+                updateAdvancedPrompt();
+            });
+
+            stylePromptEl?.addEventListener('input', () => { stylePromptEdited = true; });
+            photoPromptEl?.addEventListener('input', () => { photoPromptEdited = true; });
+
+            // Update prompt when name changes
+            createNameInput?.addEventListener('input', () => {
+                updateAdvancedPrompt();
+            });
+
+            // AI Generate
+            createGenerateBtn?.addEventListener('click', async () => {
+                const iconName = createNameInput?.value.trim() || 'Ikon';
+                const institutionId = adminProfile?.institution_id;
+                if (!institutionId) return;
+
+                if (createStatus) { createStatus.style.display = 'block'; }
+                if (createStatusText) createStatusText.textContent = '🪄 Genererer ikon...';
+                if (createGenerateBtn) createGenerateBtn.disabled = true;
+
+                try {
+                    const adminUserId = adminProfile?.user_id;
+                    if (!adminUserId) throw new Error('Admin bruger ID ikke fundet');
+
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    const accessToken = session?.access_token || '';
+                    const supabaseUrl = supabaseClient.supabaseUrl || supabaseClient.rest?.url?.replace('/rest/v1', '') || '';
+
+                    const isCustomMode = createSelectedStyle === 'custom';
+                    const hasPhoto = !!createAiPhotoFile;
+                    // If either advanced prompt was manually edited, combine and send as custom
+                    const useAdvancedPrompt = advancedOpen && (stylePromptEdited || photoPromptEdited);
+                    const combinedAdvancedPrompt = useAdvancedPrompt
+                        ? ((stylePromptEl?.value?.trim() || '') + '\n\n' + (photoPromptEl?.value?.trim() || '')).trim()
+                        : '';
+
+                    let response;
+
+                    if (hasPhoto && !isCustomMode && !useAdvancedPrompt) {
+                        // Photo-based generation (FormData)
+                        const formData = new FormData();
+                        formData.append('photo', createAiPhotoFile, 'photo.webp');
+                        formData.append('institution_id', institutionId);
+                        formData.append('product_name', iconName);
+                        formData.append('style', createSelectedStyle);
+                        formData.append('photo_mode', createSelectedPhotoMode);
+                        formData.append('save_to_library_only', 'true');
+
+                        response = await fetch(`${supabaseUrl}/functions/v1/generate-product-icon`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                                'x-admin-user-id': adminUserId,
+                            },
+                            body: formData,
+                        });
+                    } else if (hasPhoto && useAdvancedPrompt) {
+                        // Photo + manually edited prompt → send as custom via FormData
+                        const formData = new FormData();
+                        formData.append('photo', createAiPhotoFile, 'photo.webp');
+                        formData.append('institution_id', institutionId);
+                        formData.append('product_name', iconName);
+                        formData.append('prompt_mode', 'custom');
+                        formData.append('custom_prompt', combinedAdvancedPrompt);
+                        formData.append('save_to_library_only', 'true');
+
+                        response = await fetch(`${supabaseUrl}/functions/v1/generate-product-icon`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                                'x-admin-user-id': adminUserId,
+                            },
+                            body: formData,
+                        });
+                    } else {
+                        // Text-based or custom generation (JSON)
+                        const body = {
+                            institution_id: institutionId,
+                            product_name: iconName,
+                            style: isCustomMode ? 'custom' : createSelectedStyle,
+                            save_to_library_only: true,
+                        };
+                        if (isCustomMode || useAdvancedPrompt) {
+                            body.prompt_mode = 'custom';
+                            body.custom_prompt = useAdvancedPrompt
+                                ? combinedAdvancedPrompt
+                                : (createCustomPrompt?.value?.trim() || iconName);
+                        }
+
+                        response = await fetch(`${supabaseUrl}/functions/v1/generate-product-icon`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                                'x-admin-user-id': adminUserId,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(body),
+                        });
+                    }
+
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.error || 'Generation failed');
+
+                    createAiResultUrl = result.library_icon_url || result.icon_url;
+                    if (createAiResultImg) createAiResultImg.src = createAiResultUrl;
+                    if (createAiResult) createAiResult.style.display = 'block';
+                    if (createAiResultLabel) {
+                        const labels = [];
+                        if (result.style) labels.push(result.style === 'clay' ? '🏺 Clay' : result.style === 'pixar' ? '🎬 Pixar' : '✍️ Fri prompt');
+                        if (result.mode) {
+                            const modeLabels = { 'photo-reference': '📷 Reference', 'photo-motiv': '🖼️ Motiv', 'photo-portrait': '🎭 Portræt', 'text': '✏️ Tekst', 'custom-photo': '🎨 Fri prompt', 'custom-text': '🎨 Fri prompt' };
+                            labels.push(modeLabels[result.mode] || result.mode);
+                        }
+                        createAiResultLabel.textContent = labels.join(' · ');
+                    }
+                    updateSaveEnabled();
+
+                    // Reload the grid since the icon is already saved to library by the Edge Function
+                    await loadIconManagementGrid();
+
+                } catch (err) {
+                    console.error('[createAiGenerate]', err);
+                    if (createStatusText) createStatusText.textContent = `❌ ${err.message}`;
+                    setTimeout(() => { if (createStatus) createStatus.style.display = 'none'; }, 3000);
+                } finally {
+                    if (createGenerateBtn) createGenerateBtn.disabled = false;
+                    if (createStatus && createAiResultUrl) createStatus.style.display = 'none';
+                }
+            });
+
+            // Save button
+            createSaveBtn?.addEventListener('click', async () => {
+                const institutionId = adminProfile?.institution_id;
+                if (!institutionId) return;
+
+                if (createCurrentTab === 'ai') {
+                    // AI icons are already saved by the edge function — just close
+                    closeCreateModal();
+                    return;
+                }
+
+                // Upload or Camera — save to library
+                if (!createUploadedFile) return;
+                createSaveBtn.disabled = true;
+                createSaveBtn.textContent = 'Gemmer...';
+
+                try {
+                    const iconName = createNameInput?.value.trim() || 'Ikon';
+                    const tempProductId = crypto.randomUUID();
+                    const adminUserId = adminProfile?.user_id || adminProfile?.id;
+
+                    const result = await uploadProductIcon(createUploadedFile, institutionId, tempProductId, adminUserId);
+                    if (!result.success) throw new Error(result.error || 'Upload failed');
+
+                    // Reload grid
+                    await loadIconManagementGrid();
+                    closeCreateModal();
+                } catch (err) {
+                    console.error('[createSave]', err);
+                    createSaveBtn.textContent = 'Gem ikon';
+                    createSaveBtn.disabled = false;
+                }
+            });
+
+            // Open create modal (optionally with existing icon as reference)
+            openIconCreateModal = (existingIcon) => {
+                resetCreateModal();
+                iconCreateModal.style.display = 'flex';
+
+                const tabsBar = iconCreateModal.querySelector('.icon-create-tabs');
+                const photoRemoveBtn = document.getElementById('icon-create-ai-photo-remove');
+
+                if (existingIcon) {
+                    createEditingIcon = existingIcon;
+                    const title = document.getElementById('icon-create-title');
+                    if (title) title.textContent = 'Redigér ikon med AI';
+                    if (createNameInput) createNameInput.value = existingIcon.name;
+
+                    // Show preview of the icon being edited
+                    let editPreview = iconCreateModal.querySelector('.icon-edit-preview');
+                    if (!editPreview) {
+                        editPreview = document.createElement('div');
+                        editPreview.className = 'icon-edit-preview';
+                        editPreview.style.cssText = 'text-align:center;padding:16px 0 8px;';
+                        const nameInput = document.getElementById('icon-create-name');
+                        if (nameInput) nameInput.parentElement.insertBefore(editPreview, nameInput.parentElement.firstChild);
+                    }
+                    editPreview.style.display = 'block';
+                    editPreview.innerHTML = `
+                        <img src="${existingIcon.icon_url}" style="width:100px;height:100px;object-fit:cover;border-radius:14px;border:2px solid rgba(255,255,255,0.15);box-shadow:0 4px 16px rgba(0,0,0,0.2);">
+                        <div style="font-size:13px;color:#94a3b8;margin-top:6px;">${existingIcon.name}</div>
+                    `;
+
+                    // Hide tabs — Upload/Kamera irrelevant when editing existing icon
+                    if (tabsBar) tabsBar.style.display = 'none';
+
+                    // Show AI tab directly
+                    createCurrentTab = 'ai';
+                    createTabContents.forEach(tc => { tc.classList.remove('active'); tc.style.display = 'none'; });
+                    const aiTab = document.getElementById('icon-create-ai-tab');
+                    if (aiTab) { aiTab.classList.add('active'); aiTab.style.display = 'block'; }
+
+                    // Default to Portræt mode when editing (most natural for re-generating an existing icon)
+                    createSelectedPhotoMode = 'portrait';
+                    applyBtnGroupStyles(createPhotoModeBtns, 'portrait');
+                    updatePhotoModeDesc();
+
+                    // Pre-load existing icon as locked photo reference
+                    if (createAiPhotoImg) createAiPhotoImg.src = existingIcon.icon_url;
+                    if (createAiPhotoPreview) createAiPhotoPreview.style.display = 'block';
+                    if (createPhotoModeSection) createPhotoModeSection.style.display = 'block';
+                    // Hide dropzone and "Fjern" — reference locked to existing icon
+                    if (createAiDropzone) createAiDropzone.style.display = 'none';
+                    if (createAiPhotoSection) createAiPhotoSection.querySelector('.icon-create-dropzone')?.parentElement && (createAiPhotoSection.querySelector('.icon-create-dropzone').parentElement.style.display = 'none');
+                    if (photoRemoveBtn) photoRemoveBtn.style.display = 'none';
+
+                    // Fetch existing icon as blob for AI reference
+                    fetch(existingIcon.icon_url)
+                        .then(r => r.blob())
+                        .then(blob => {
+                            createAiPhotoFile = new File([blob], 'reference.webp', { type: 'image/webp' });
+                            updateAdvancedPrompt(); // Refresh prompts now that photo file is ready
+                        })
+                        .catch(err => console.error('[fetchExistingIcon]', err));
+
+                    // Update prompts immediately (portrait mode + style)
+                    updateAdvancedPrompt();
+                } else {
+                    const title = document.getElementById('icon-create-title');
+                    if (title) title.textContent = 'Opret nyt ikon';
+                    // Show tabs in create mode
+                    if (tabsBar) tabsBar.style.display = '';
+                    if (photoRemoveBtn) photoRemoveBtn.style.display = '';
+                    // Hide edit preview
+                    const editPreview = iconCreateModal.querySelector('.icon-edit-preview');
+                    if (editPreview) editPreview.style.display = 'none';
+                }
+            };
+        }
+
+        // Expose globally
         window.__flangoLoadIconManagementGrid = loadIconManagementGrid;
     }
 }

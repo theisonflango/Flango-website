@@ -258,6 +258,7 @@
 
 .modal-content {
     background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+    color: #e2e8f0;
     padding: 24px;
     border-radius: var(--Aurora-radius-lg);
     width: 90%;
@@ -1640,7 +1641,12 @@
     border: 2px solid rgba(168, 85, 247, 0.2);
     font-family: var(--font-body);
     background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+    color: #f1f5f9;
     transition: all 0.2s ease;
+}
+
+#product-form-fields input::placeholder {
+    color: #64748b;
 }
 
 #product-form-fields input:focus {
@@ -2096,4 +2102,137 @@
     margin: 0 !important;
     padding: 14px !important;
     font-size: 16px !important;
+}
+
+/* ===== PRODUCT RULES TABLE — Aurora overrides ===== */
+
+.product-rules-header th.prt-col,
+.product-rules-header th.prt-col-assortment {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    border-top-color: rgba(148, 163, 184, 0.4) !important;
+}
+
+.product-rules-header th.prt-col-assortment {
+    background: rgba(168, 85, 247, 0.15) !important;
+    color: #c4b5fd !important;
+    border-top-color: rgba(168, 85, 247, 0.5) !important;
+}
+
+/* Assortment column cells — aurora style */
+.prt-assortment-on {
+    background: rgba(168, 85, 247, 0.10) !important;
+}
+
+.prt-assortment-off {
+    background: rgba(251, 146, 60, 0.08) !important;
+}
+
+.prt-assortment-checkbox {
+    accent-color: #a855f7 !important;
+}
+
+/* +/- buttons — aurora contrast fix */
+.prt-pm-btn {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    color: #e2e8f0 !important;
+}
+
+.prt-pm-btn:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Sortable header hover — aurora */
+.product-rules-header th.sortable-col:hover {
+    background: rgba(168, 85, 247, 0.15) !important;
+    border-top-color: rgba(168, 85, 247, 0.6) !important;
+}
+
+.product-rules-header {
+    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.product-rules-table td {
+    border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.product-rules-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+
+#product-rules-search {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #e2e8f0 !important;
+}
+
+#product-rules-search:focus {
+    border-color: rgba(168, 85, 247, 0.4) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ===== AURORA CONTRAST FIXES (global) ===== */
+
+/* Settings modal "Luk" button */
+.settings-modal-close-btn {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #e2e8f0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    padding: 8px 20px !important;
+    border-radius: var(--Aurora-radius-sm) !important;
+    cursor: pointer !important;
+    font-weight: 600 !important;
+}
+
+.settings-modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Icon type buttons in product edit modal */
+.icon-type-btn {
+    color: #e2e8f0 !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.icon-type-btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.icon-type-btn.active {
+    background: rgba(168, 85, 247, 0.15) !important;
+    border-color: rgba(168, 85, 247, 0.4) !important;
+    color: #c4b5fd !important;
+}
+
+/* Collapsible headers in product edit */
+.collapsible-header,
+#product-form-fields .collapsible-header {
+    color: #e2e8f0 !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Icon preview text */
+#icon-preview-container {
+    color: #cbd5e1;
+}
+
+/* Custom icon info text */
+.custom-icon-info,
+#icon-preview-container span {
+    color: #94a3b8 !important;
+}
+
+/* General label/text contrast in product form */
+#product-form-fields label,
+#product-form-fields .form-label {
+    color: #cbd5e1 !important;
+}
+
+/* Checkbox labels */
+#product-form-fields .checkbox-label,
+#product-form-fields span {
+    color: #cbd5e1;
 }

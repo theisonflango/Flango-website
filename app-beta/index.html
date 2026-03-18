@@ -752,29 +752,43 @@
     <!-- Regler for produkter Modal (uden sukkerpolitik) — FULDSKÆRM -->
     <div id="sugar-policy-modal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 100vw; width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; margin: 0; display: flex; flex-direction: column;">
-            <div class="modal-header" style="flex-shrink: 0;">
-                <h2>Produktoversigt</h2>
+            <div class="modal-header" style="flex-shrink: 0; display: flex; align-items: center; gap: 12px;">
+                <button id="back-to-preferences-sugar-policy-btn" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 15px; white-space: nowrap;">← Tilbage</button>
+                <h2 style="margin: 0;">Produktoversigt</h2>
                 <span class="close-btn">&times;</span>
             </div>
             <div class="modal-user-list" style="padding: 15px; flex: 1; overflow: hidden; display: flex; flex-direction: column;">
                 <!-- Product Rules Table -->
                 <div class="settings-section" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                    <h3 id="product-overview-subtitle" style="margin: 0 0 12px 0; font-size: 15px; flex-shrink: 0;">Tilføj/Rediger produkter</h3>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-shrink: 0; flex-wrap: wrap;">
+                        <h3 id="product-overview-subtitle" style="margin: 0; font-size: 15px; white-space: nowrap;">Tilføj/Rediger produkter</h3>
+                        <div style="flex: 1; min-width: 150px; max-width: 280px;">
+                            <input type="text" id="product-rules-search" placeholder="Søg produkter..." autocomplete="off"
+                                style="width: 100%; padding: 8px 14px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--input-bg, #fff); color: inherit; box-sizing: border-box;">
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
+                            <button id="toggle-inactive-products-btn" style="padding: 9px 16px; background: var(--btn-secondary-bg, #f5f5f5); color: var(--btn-secondary-color, #666); border: 1px solid var(--border-color, #ddd); border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px;">Vis deaktiverede</button>
+                            <button id="manage-icons-btn" style="padding: 9px 16px; background: #7c3aed; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px;">🎨 Ikoner</button>
+                            <button id="add-product-from-rules-btn" style="padding: 9px 18px; background: #2196F3; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 14px;">+ Tilføj</button>
+                            <button id="apply-sugar-policy-btn" style="padding: 9px 18px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 14px;">Anvend ændringer</button>
+                        </div>
+                    </div>
                     <div id="product-rules-table-container" style="overflow-x: auto; flex: 1; overflow-y: auto;">
-                        <table id="product-rules-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <table id="product-rules-table" class="product-rules-table" style="width: 100%; border-collapse: collapse;">
                             <thead style="position: sticky; top: 0; z-index: 10;">
-                                <tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
-                                    <th class="sortable-col" data-sort="in_assortment" style="padding: 10px 8px; text-align: center; font-weight: 700; cursor: pointer; user-select: none; background: #e8f5e9;">Dagens sort. <span class="sort-indicator"></span></th>
-                                    <th style="padding: 10px 8px; text-align: left; font-weight: 600; background: #f5f5f5;">Ikon</th>
-                                    <th class="sortable-col" data-sort="name" style="padding: 10px 8px; text-align: left; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Navn <span class="sort-indicator"></span></th>
-                                    <th class="sortable-col" data-sort="price" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Pris <span class="sort-indicator"></span></th>
-                                    <th class="sortable-col" data-sort="limit" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Grænse <span class="sort-indicator"></span></th>
-                                    <th class="sortable-col" data-sort="daily_special" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Dagens ret <span class="sort-indicator"></span></th>
-                                    <th class="sortable-col" data-sort="core_assortment" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Fast sort. <span class="sort-indicator"></span></th>
-                                    <th class="sortable-col" data-sort="unhealthy" id="col-unhealthy" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Usund <span class="sort-indicator"></span></th>
-                                    <th class="sortable-col" data-sort="active" style="padding: 10px 8px; text-align: center; font-weight: 600; cursor: pointer; user-select: none; background: #f5f5f5;">Aktiv <span class="sort-indicator"></span></th>
-                                    <th style="padding: 10px 8px; text-align: center; font-weight: 600; background: #f5f5f5;">Slet</th>
-                                    <th style="padding: 10px 8px; text-align: center; font-weight: 600; background: #f5f5f5;">Rediger</th>
+                                <tr class="product-rules-header">
+                                    <th class="sortable-col prt-col-assortment" data-sort="in_assortment" style="padding:16px 12px;font-weight:800;font-size:15px;white-space:nowrap;cursor:pointer;text-align:center;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#e8f5e9;">Dagens sort. <span class="sort-indicator"></span></th>
+                                    <th class="prt-col" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Ikon</th>
+                                    <th class="sortable-col prt-col" data-sort="name" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:left;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Navn <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col prt-col" data-sort="price" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Pris <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col prt-col" data-sort="limit" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Grænse <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col prt-col" data-sort="daily_special" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Dagens ret <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col prt-col" data-sort="core_assortment" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Fast sort. <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col prt-col" data-sort="unhealthy" id="col-unhealthy" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Usund <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col prt-col" data-sort="active" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Aktiv <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col prt-col" data-sort="created_at" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Oprettet <span class="sort-indicator"></span></th>
+                                    <th class="prt-col" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Slet</th>
+                                    <th class="prt-col" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Rediger</th>
                                 </tr>
                             </thead>
                             <tbody id="product-rules-tbody">
@@ -787,44 +801,177 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: space-between; align-items: center; flex-shrink: 0;">
-                <button id="back-to-preferences-sugar-policy-btn" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">← Tilbage</button>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button id="toggle-inactive-products-btn" style="padding: 10px 16px; background: #f5f5f5; color: #666; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-weight: 500;">Vis deaktiverede</button>
-                    <button id="manage-icons-btn" style="padding: 10px 16px; background: #7c3aed; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">🎨 Ikoner</button>
-                    <button id="add-product-from-rules-btn" style="padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">+ Tilføj nyt produkt</button>
-                </div>
-                <button id="apply-sugar-policy-btn" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Anvend ændringer</button>
-            </div>
+            <!-- Footer removed — all buttons moved to toolbar -->
         </div>
     </div>
 
     <!-- Icon Management Modal -->
     <div id="icon-management-modal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 700px; width: 95%;">
+        <div class="modal-content" style="max-width: 100vw; width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; margin: 0; display: flex; flex-direction: column;">
+            <div class="modal-header" style="flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 12px 20px;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <h2 style="margin: 0; font-size: 20px;">Ikonbibliotek</h2>
+                    <span id="icon-mgmt-counter" style="font-size: 13px; font-weight: 600; color: #94a3b8; white-space: nowrap;">Indlæser...</span>
+                </div>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div style="flex-shrink: 0; padding: 0 20px 12px; display: flex; flex-direction: column; gap: 10px;">
+                <!-- Toolbar: søg + knapper -->
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <div style="flex: 1; max-width: 320px;">
+                        <input type="text" id="icon-mgmt-search" placeholder="Søg ikoner..." autocomplete="off"
+                            style="width: 100%; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.06); color: inherit; box-sizing: border-box;">
+                    </div>
+                    <button type="button" id="icon-mgmt-edit-btn" class="icon-mgmt-action-btn" title="Redigér ikoner">✏️ Redigér</button>
+                    <button type="button" id="icon-mgmt-create-btn" class="icon-mgmt-action-btn icon-mgmt-create-btn" title="Opret nyt ikon">➕ Opret</button>
+                </div>
+                <!-- Filter-chips -->
+                <div id="icon-mgmt-filters" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    <button type="button" class="icon-mgmt-chip active" data-filter="all">Alle</button>
+                    <button type="button" class="icon-mgmt-chip" data-filter="source:uploaded">📤 Upload</button>
+                    <button type="button" class="icon-mgmt-chip" data-filter="source:ai_generated">🪄 AI</button>
+                    <button type="button" class="icon-mgmt-chip" data-filter="style:clay">🏺 Clay</button>
+                    <button type="button" class="icon-mgmt-chip" data-filter="style:pixar">🎬 Pixar</button>
+                    <button type="button" class="icon-mgmt-chip" data-filter="mode:portrait">🎭 Portræt</button>
+                    <button type="button" class="icon-mgmt-chip" data-filter="prompt:custom">✍️ Fri prompt</button>
+                    <button type="button" class="icon-mgmt-chip" data-filter="mode:reference">📷 Reference</button>
+                    <button type="button" class="icon-mgmt-chip" data-filter="mode:motiv">🖼️ Motiv</button>
+                </div>
+            </div>
+            <!-- Ikon-grid (fullscreen scrollable) -->
+            <div style="flex: 1; overflow-y: auto; padding: 0 20px 20px;">
+                <div id="icon-mgmt-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;"></div>
+                <div id="icon-mgmt-empty" style="display: none; padding: 40px; text-align: center; color: #94a3b8; font-size: 15px;">Ingen ikoner fundet.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Opret/redigér ikon sub-modal -->
+    <div id="icon-create-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 520px; width: 95%;">
             <div class="modal-header">
-                <h2>Administrer Produktikoner</h2>
+                <h2 id="icon-create-title">Opret nyt ikon</h2>
                 <span class="close-btn">&times;</span>
             </div>
             <div class="modal-user-list" style="padding: 15px;">
-                <div id="icon-mgmt-counter" style="text-align: center; margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; font-weight: 600; color: #475569;">
-                    Indlæser...
+                <!-- Ikon-navn -->
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px;">Ikon-navn</label>
+                    <input type="text" id="icon-create-name" placeholder="Navngiv dit ikon..." style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
                 </div>
 
-                <div id="icon-mgmt-uploaded" style="margin-bottom: 20px;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2563eb;">📤 Uploadede ikoner</label>
-                    <div id="icon-mgmt-uploaded-grid" class="custom-icon-grid" style="gap: 10px;"></div>
-                    <div id="icon-mgmt-uploaded-empty" style="display: none; padding: 12px; text-align: center; color: #94a3b8; font-size: 13px; background: #f8f9fa; border-radius: 8px;">Ingen uploadede ikoner.</div>
+                <!-- Metode-tabs: Upload / Kamera / AI -->
+                <div class="icon-create-tabs">
+                    <button type="button" class="icon-create-tab active" data-tab="upload">📤 Upload</button>
+                    <button type="button" class="icon-create-tab" data-tab="camera">📸 Kamera</button>
+                    <button type="button" class="icon-create-tab" data-tab="ai">🪄 AI</button>
                 </div>
 
-                <div id="icon-mgmt-ai">
-                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #7c3aed;">🪄 AI-genererede ikoner</label>
-                    <div id="icon-mgmt-ai-grid" class="custom-icon-grid" style="gap: 10px;"></div>
-                    <div id="icon-mgmt-ai-empty" style="display: none; padding: 12px; text-align: center; color: #94a3b8; font-size: 13px; background: #f8f9fa; border-radius: 8px;">Ingen AI-genererede ikoner.</div>
+                <!-- Upload-tab -->
+                <div id="icon-create-upload-tab" class="icon-create-tab-content active">
+                    <div id="icon-create-dropzone" class="icon-create-dropzone">
+                        <p>📤 Træk fil hertil eller klik for at vælge</p>
+                        <input type="file" id="icon-create-file-input" accept="image/*" style="display: none;">
+                    </div>
+                    <div id="icon-create-upload-preview" style="display: none; text-align: center; margin-top: 10px;">
+                        <img id="icon-create-upload-img" style="max-width: 128px; max-height: 128px; border-radius: 12px; border: 2px solid #e2e8f0;">
+                    </div>
+                </div>
+
+                <!-- Kamera-tab -->
+                <div id="icon-create-camera-tab" class="icon-create-tab-content" style="display: none;">
+                    <button type="button" id="icon-create-camera-btn" class="icon-mgmt-action-btn" style="width: 100%;">📸 Tag foto</button>
+                    <div id="icon-create-camera-preview" style="display: none; text-align: center; margin-top: 10px;">
+                        <img id="icon-create-camera-img" style="max-width: 128px; max-height: 128px; border-radius: 12px; border: 2px solid #e2e8f0;">
+                    </div>
+                </div>
+
+                <!-- AI-tab -->
+                <div id="icon-create-ai-tab" class="icon-create-tab-content" style="display: none;">
+                    <!-- Stil-vælger -->
+                    <!-- Avanceret toggle (øverst) -->
+                    <div style="margin-bottom: 10px; display:flex; align-items:center; justify-content:space-between;">
+                        <button type="button" id="icon-create-advanced-toggle" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;padding:4px 0;display:flex;align-items:center;gap:4px;">
+                            <span id="icon-create-advanced-arrow" style="transition:transform 0.2s;display:inline-block;">▶</span> Avanceret — vis prompts
+                        </button>
+                        <button type="button" id="icon-create-reset-prompt-btn" style="background:none;border:none;color:#60a5fa;font-size:11px;cursor:pointer;padding:2px 6px;display:none;">↺ Nulstil prompts</button>
+                    </div>
+
+                    <!-- Stil-vælger -->
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 2px; font-size: 13px;">Stil</label>
+                        <div id="icon-create-style-desc" style="font-size: 11px; color: #64748b; margin-bottom: 6px;">🏺 Blødt 3D-look med runde former og pastelfarer.</div>
+                        <div class="icon-create-style-selector">
+                            <button type="button" class="icon-create-style-btn active" data-style="clay">🏺 Clay</button>
+                            <button type="button" class="icon-create-style-btn" data-style="pixar">🎬 Pixar</button>
+                            <button type="button" class="icon-create-style-btn" data-style="custom">✍️ Fri prompt</button>
+                        </div>
+                    </div>
+
+                    <!-- Stil-prompt (avanceret, under stil) -->
+                    <div id="icon-create-style-prompt-section" style="display:none;margin-bottom:10px;">
+                        <label style="font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:3px;display:block;">Stil-prompt</label>
+                        <textarea id="icon-create-style-prompt" rows="4" style="width:100%;padding:8px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:11px;font-family:monospace;line-height:1.4;resize:vertical;box-sizing:border-box;background:rgba(0,0,0,0.2);color:#e2e8f0;"></textarea>
+                    </div>
+
+                    <!-- Custom prompt textarea (kun for "Fri prompt" stil) -->
+                    <div id="icon-create-custom-prompt-section" style="display: none; margin-bottom: 10px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px;">Din prompt</label>
+                        <textarea id="icon-create-custom-prompt" rows="3" maxlength="500" placeholder="Beskriv præcis hvad du vil have..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; resize: vertical; box-sizing: border-box;"></textarea>
+                    </div>
+
+                    <!-- Foto-upload til AI (valgfrit) -->
+                    <div id="icon-create-ai-photo-section" style="margin-bottom: 10px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 2px; font-size: 13px;">Foto-reference (valgfrit)</label>
+                        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Upload et foto af maden. AI'en bruger det som udgangspunkt.</div>
+                        <div id="icon-create-ai-dropzone" class="icon-create-dropzone" style="padding: 12px;">
+                            <p style="margin: 0; font-size: 12px;">📷 Tilføj foto som reference</p>
+                            <input type="file" id="icon-create-ai-file-input" accept="image/*" style="display: none;">
+                        </div>
+                        <div id="icon-create-ai-photo-preview" style="display: none; margin-top: 8px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <img id="icon-create-ai-photo-img" style="width: 64px; height: 64px; border-radius: 8px; object-fit: cover; border: 1px solid #e2e8f0;">
+                                <button type="button" id="icon-create-ai-photo-remove" style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer;">✕ Fjern</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Foto-mode (kun synlig med foto) -->
+                    <div id="icon-create-photo-mode-section" style="display: none; margin-bottom: 10px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 2px; font-size: 13px;">Foto-tilstand</label>
+                        <div id="icon-create-photo-mode-desc" style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Bestemmer hvordan AI'en bruger dit foto.</div>
+                        <div class="icon-create-style-selector">
+                            <button type="button" class="icon-create-photo-mode-btn active" data-mode="reference">📷 Reference</button>
+                            <button type="button" class="icon-create-photo-mode-btn" data-mode="motiv">🖼️ Motiv</button>
+                            <button type="button" class="icon-create-photo-mode-btn" data-mode="portrait">🎭 Portræt</button>
+                        </div>
+                    </div>
+
+                    <!-- Foto-prompt (avanceret, under foto-tilstand) -->
+                    <div id="icon-create-photo-prompt-section" style="display:none;margin-bottom:10px;">
+                        <label style="font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:3px;display:block;">Foto-tilstand prompt</label>
+                        <textarea id="icon-create-photo-prompt" rows="4" style="width:100%;padding:8px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:11px;font-family:monospace;line-height:1.4;resize:vertical;box-sizing:border-box;background:rgba(0,0,0,0.2);color:#e2e8f0;"></textarea>
+                    </div>
+
+                    <!-- Generer knap -->
+                    <button type="button" id="icon-create-generate-btn" class="icon-mgmt-action-btn icon-mgmt-create-btn" style="width: 100%; padding: 12px;">🪄 Generér ikon</button>
+
+                    <!-- AI resultat-preview -->
+                    <div id="icon-create-ai-result" style="display: none; margin-top: 12px; text-align: center;">
+                        <img id="icon-create-ai-result-img" style="max-width: 160px; max-height: 160px; border-radius: 12px; border: 2px solid #7c3aed;">
+                        <div id="icon-create-ai-result-label" style="margin-top: 6px; font-size: 12px; color: #7c3aed; font-weight: 600;"></div>
+                    </div>
+                </div>
+
+                <!-- Status/loading -->
+                <div id="icon-create-status" style="display: none; text-align: center; padding: 12px; margin-top: 10px;">
+                    <div class="icon-create-spinner"></div>
+                    <span id="icon-create-status-text" style="font-size: 13px; color: #64748b;"></span>
                 </div>
             </div>
-            <div class="modal-footer" style="padding: 15px; border-top: 1px solid #eee; display: flex; justify-content: flex-end;">
-                <button id="icon-mgmt-close-btn" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Luk</button>
+            <div class="modal-footer" style="padding: 15px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" id="icon-create-cancel-btn" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Annuller</button>
+                <button type="button" id="icon-create-save-btn" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;" disabled>Gem ikon</button>
             </div>
         </div>
     </div>
@@ -1460,7 +1607,7 @@
         <div class="flango-section-divider"><div class="divider-line"></div><span class="divider-label">🧑‍🍳 Mine Avatarer</span><div class="divider-line"></div></div>
         <div id="avatar-carousel-container" class="avatar-carousel-container"></div>
     </div></div></template>
-    <template id="add-edit-product-modal-template"><div class="modal-content" style="height: auto; max-height: 90%; display: flex; flex-direction: column;"><div class="modal-header"><h2 id="product-form-title">Tilføj Produkt</h2><span class="close-btn">&times;</span></div><div id="product-form-fields" style="overflow-y: auto; flex: 1; padding-right: 10px;"></div><button id="save-product-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0; flex-shrink: 0;">Gem Produkt</button></div></template>
+    <template id="add-edit-product-modal-template"><div class="modal-content" style="height: auto; max-height: 90%; display: flex; flex-direction: column;"><div class="modal-header" style="display:flex;align-items:center;gap:12px;"><button type="button" id="product-form-back-btn" style="padding:8px 16px;background:#666;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:14px;white-space:nowrap;">← Tilbage</button><h2 id="product-form-title" style="margin:0;flex:1;">Tilføj Produkt</h2><span class="close-btn">&times;</span></div><div id="product-form-fields" style="overflow-y: auto; flex: 1; padding-right: 10px;"></div><button id="save-product-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0; flex-shrink: 0;">Gem Produkt</button></div></template>
     <template id="quick-login-modal-template"><div class="modal-content"><div class="modal-header"><h2>Hvem er du?</h2><span class="close-btn">&times;</span></div><div id="quick-login-user-list" class="modal-user-list"></div><p id="quick-login-error-msg" style="color: var(--danger-color); text-align: center; display: none; margin-top: 10px;"></p></div></template>
     <template id="add-edit-user-modal-template"><div class="modal-content" style="height: auto; max-height: 90%;"><div class="modal-header"><h2 id="user-form-title">Tilføj Ny Bruger</h2><span class="close-btn">&times;</span></div><div id="user-form-fields"></div><button id="save-user-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0;">Gem Bruger</button></div></template><template id="balance-modal-template"><div class="modal-content" style="height: auto; max-width: 400px;"><div class="modal-header"><h2 id="balance-form-title">Rediger Saldo</h2><span class="close-btn">&times;</span></div><div id="balance-form-fields"></div><button id="save-balance-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0;">Gem</button></div></template>
     <template id="edit-user-detail-modal-template"><div class="modal-content edit-user-modal"><div class="modal-header"><h2 id="edit-user-detail-title">Rediger Bruger</h2><span class="close-btn">&times;</span></div><div class="edit-user-form"><p id="edit-user-balance-display" class="balance-display"></p><div class="form-group"><label for="edit-user-name-input">Brugernavn</label><input type="text" id="edit-user-name-input" placeholder="Fx. Sofie Hansen" autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="form-group"><label for="edit-user-number-input">Brugernummer</label><input type="text" id="edit-user-number-input" placeholder="Fx. 1234" autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="form-group"><label for="edit-user-grade-level">Klasse</label><select id="edit-user-grade-level"><option value="">Ikke angivet</option><option value="0">0. klasse</option><option value="1">1. klasse</option><option value="2">2. klasse</option><option value="3">3. klasse</option><option value="4">4. klasse</option><option value="5">5. klasse</option><option value="6">6. klasse</option><option value="7">7. klasse</option><option value="8">8. klasse</option><option value="9">9. klasse</option></select></div><div class="form-group"><label for="edit-user-deposit-input">Indbetal Penge</label><div class="inline-input-row"><input type="number" id="edit-user-deposit-input" placeholder="Beløb" step="0.01" autocomplete="off" spellcheck="false" autocapitalize="off"><div class="preset-buttons"><button type="button" class="preset-btn" data-amount="50">+50</button><button type="button" class="preset-btn" data-amount="100">+100</button><button type="button" class="preset-btn" data-amount="150">+150</button><button type="button" class="preset-btn" data-amount="200">+200</button></div></div></div><div class="form-row"><div class="form-group half"><label for="edit-user-balance-input">Sæt Ny Saldo</label><input type="number" id="edit-user-balance-input" placeholder="Fx. 250" step="0.01" autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="form-group half"><label for="edit-user-pin-input">Ny PIN (4 cifre)</label><input type="text" id="edit-user-pin-input" placeholder="1234" maxlength="4" autocomplete="off" spellcheck="false" autocapitalize="off"></div></div><div class="form-group"><label>Badge</label><div class="badge-row"><span id="current-badge-label">Ingen badge</span><button type="button" id="assign-badge-btn" class="action-button secondary-action">Tildel Badge</button></div><p id="assign-badge-note" class="assign-badge-note" style="display:none;"></p><div id="edit-user-badge-display" class="simple-badge-row compact"></div></div></div><div class="modal-actions"><button id="save-edit-user-btn" class="action-button" style="width:100%;">Gem</button><button id="delete-edit-user-btn" class="action-button" style="width:100%; background-color: var(--danger-color); margin-top: 10px;">Slet Bruger</button></div></div></template>
