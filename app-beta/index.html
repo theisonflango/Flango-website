@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/icon-library.css">
     <link rel="stylesheet" href="css/products.css">
     <link rel="stylesheet" href="css/users.css">
     <link rel="stylesheet" href="css/features.css">
@@ -808,170 +809,186 @@
     <!-- Icon Management Modal -->
     <div id="icon-management-modal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 100vw; width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; margin: 0; display: flex; flex-direction: column;">
-            <div class="modal-header" style="flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 12px 20px;">
-                <div style="display: flex; align-items: center; gap: 16px;">
-                    <h2 style="margin: 0; font-size: 20px;">Ikonbibliotek</h2>
-                    <span id="icon-mgmt-counter" style="font-size: 13px; font-weight: 600; color: #94a3b8; white-space: nowrap;">Indlæser...</span>
-                </div>
-                <span class="close-btn">&times;</span>
-            </div>
-            <div style="flex-shrink: 0; padding: 0 20px 12px; display: flex; flex-direction: column; gap: 10px;">
-                <!-- Toolbar: søg + knapper -->
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <div style="flex: 1; max-width: 320px;">
-                        <input type="text" id="icon-mgmt-search" placeholder="Søg ikoner..." autocomplete="off"
-                            style="width: 100%; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.06); color: inherit; box-sizing: border-box;">
+            <!-- Toolbar -->
+            <div class="icon-mgmt-toolbar-wrap">
+                <div class="icon-mgmt-toolbar-header">
+                    <div class="icon-mgmt-toolbar-title">
+                        <h2>Ikonbibliotek</h2>
+                        <span id="icon-mgmt-counter">Indlæser...</span>
                     </div>
-                    <button type="button" id="icon-mgmt-edit-btn" class="icon-mgmt-action-btn" title="Redigér ikoner">✏️ Redigér</button>
-                    <button type="button" id="icon-mgmt-create-btn" class="icon-mgmt-action-btn icon-mgmt-create-btn" title="Opret nyt ikon">➕ Opret</button>
+                    <span class="close-btn">&times;</span>
                 </div>
-                <!-- Filter-chips -->
-                <div id="icon-mgmt-filters" style="display: flex; flex-wrap: wrap; gap: 6px;">
-                    <button type="button" class="icon-mgmt-chip active" data-filter="all">Alle</button>
-                    <button type="button" class="icon-mgmt-chip" data-filter="source:uploaded">📤 Upload</button>
-                    <button type="button" class="icon-mgmt-chip" data-filter="source:ai_generated">🪄 AI</button>
-                    <button type="button" class="icon-mgmt-chip" data-filter="style:clay">🏺 Clay</button>
-                    <button type="button" class="icon-mgmt-chip" data-filter="style:pixar">🎬 Pixar</button>
-                    <button type="button" class="icon-mgmt-chip" data-filter="mode:portrait">🎭 Portræt</button>
-                    <button type="button" class="icon-mgmt-chip" data-filter="prompt:custom">✍️ Fri prompt</button>
-                    <button type="button" class="icon-mgmt-chip" data-filter="mode:reference">📷 Reference</button>
-                    <button type="button" class="icon-mgmt-chip" data-filter="mode:motiv">🖼️ Motiv</button>
+                <div class="icon-mgmt-toolbar-row">
+                    <input type="text" id="icon-mgmt-search" class="icon-mgmt-search" placeholder="Søg ikoner..." autocomplete="off">
+                    <div class="icon-mgmt-toolbar-actions">
+                        <button type="button" id="icon-mgmt-edit-btn" class="icon-mgmt-action-btn" title="Redigér ikoner">Redigér</button>
+                        <button type="button" id="icon-mgmt-create-btn" class="icon-mgmt-action-btn icon-mgmt-create-btn" title="Opret nyt ikon">+ Opret</button>
+                    </div>
                 </div>
             </div>
-            <!-- Ikon-grid (fullscreen scrollable) -->
-            <div style="flex: 1; overflow-y: auto; padding: 0 20px 20px;">
-                <div id="icon-mgmt-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;"></div>
-                <div id="icon-mgmt-empty" style="display: none; padding: 40px; text-align: center; color: #94a3b8; font-size: 15px;">Ingen ikoner fundet.</div>
+            <!-- Quota bar -->
+            <div class="icon-mgmt-quota-bar"><div id="icon-mgmt-quota-fill" class="icon-mgmt-quota-fill" style="width:0%"></div></div>
+            <!-- Filter chips -->
+            <div id="icon-mgmt-filters" class="icon-mgmt-filters">
+                <button type="button" class="icon-mgmt-chip active" data-filter="all">Alle</button>
+                <button type="button" class="icon-mgmt-chip" data-filter="source:uploaded">📤 Upload</button>
+                <button type="button" class="icon-mgmt-chip" data-filter="source:ai_generated">🪄 AI</button>
+                <button type="button" class="icon-mgmt-chip" data-filter="style:clay">🏺 Clay</button>
+                <button type="button" class="icon-mgmt-chip" data-filter="style:pixar">🎬 Pixar</button>
+                <button type="button" class="icon-mgmt-chip" data-filter="mode:portrait">🎭 Portræt</button>
+                <button type="button" class="icon-mgmt-chip" data-filter="prompt:custom">✍️ Fri prompt</button>
+                <button type="button" class="icon-mgmt-chip" data-filter="mode:reference">📷 Reference</button>
+                <button type="button" class="icon-mgmt-chip" data-filter="mode:motiv">🖼️ Motiv</button>
+            </div>
+            <!-- Icon grid -->
+            <div class="icon-mgmt-grid-wrap">
+                <div id="icon-mgmt-grid" class="icon-mgmt-grid"></div>
+                <div id="icon-mgmt-empty" class="icon-mgmt-empty" style="display: none;">Ingen ikoner fundet.</div>
             </div>
         </div>
     </div>
 
     <!-- Opret/redigér ikon sub-modal -->
     <div id="icon-create-modal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 520px; width: 95%;">
-            <div class="modal-header">
+        <div class="modal-content icon-create-modal-content">
+            <div class="icon-create-header">
                 <h2 id="icon-create-title">Opret nyt ikon</h2>
                 <span class="close-btn">&times;</span>
             </div>
-            <div class="modal-user-list" style="padding: 15px;">
-                <!-- Ikon-navn -->
-                <div style="margin-bottom: 12px;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px;">Ikon-navn</label>
-                    <input type="text" id="icon-create-name" placeholder="Navngiv dit ikon..." style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
-                </div>
 
-                <!-- Metode-tabs: Upload / Kamera / AI -->
-                <div class="icon-create-tabs">
-                    <button type="button" class="icon-create-tab active" data-tab="upload">📤 Upload</button>
-                    <button type="button" class="icon-create-tab" data-tab="camera">📸 Kamera</button>
-                    <button type="button" class="icon-create-tab" data-tab="ai">🪄 AI</button>
-                </div>
+            <!-- Metode-tabs -->
+            <div class="icon-create-tabs">
+                <button type="button" class="icon-create-tab active" data-tab="upload">Upload</button>
+                <button type="button" class="icon-create-tab" data-tab="camera">Kamera</button>
+                <button type="button" class="icon-create-tab" data-tab="ai">AI Generer</button>
+            </div>
 
+            <div class="icon-create-body">
                 <!-- Upload-tab -->
                 <div id="icon-create-upload-tab" class="icon-create-tab-content active">
-                    <div id="icon-create-dropzone" class="icon-create-dropzone">
-                        <p>📤 Træk fil hertil eller klik for at vælge</p>
-                        <input type="file" id="icon-create-file-input" accept="image/*" style="display: none;">
+                    <div>
+                        <div class="icon-create-section-label">Upload billede</div>
+                        <div class="icon-create-section-help">Træk en billedfil hertil, eller klik for at vælge fra din enhed</div>
+                        <div id="icon-create-dropzone" class="icon-create-dropzone">
+                            <p>Træk billedfil hertil<br><span style="font-size:11px;margin-top:4px;display:inline-block">eller klik for at vælge</span></p>
+                            <input type="file" id="icon-create-file-input" accept="image/*" style="display: none;">
+                        </div>
                     </div>
-                    <div id="icon-create-upload-preview" style="display: none; text-align: center; margin-top: 10px;">
-                        <img id="icon-create-upload-img" style="max-width: 128px; max-height: 128px; border-radius: 12px; border: 2px solid #e2e8f0;">
+                    <div id="icon-create-upload-preview" class="icon-create-upload-preview" style="display: none;">
+                        <img id="icon-create-upload-img">
                     </div>
                 </div>
 
                 <!-- Kamera-tab -->
                 <div id="icon-create-camera-tab" class="icon-create-tab-content" style="display: none;">
-                    <button type="button" id="icon-create-camera-btn" class="icon-mgmt-action-btn" style="width: 100%;">📸 Tag foto</button>
-                    <div id="icon-create-camera-preview" style="display: none; text-align: center; margin-top: 10px;">
-                        <img id="icon-create-camera-img" style="max-width: 128px; max-height: 128px; border-radius: 12px; border: 2px solid #e2e8f0;">
+                    <div>
+                        <div class="icon-create-section-label">Tag foto</div>
+                        <div class="icon-create-section-help">Brug kameraet til at tage et foto af den mad du vil lave ikon af</div>
+                        <button type="button" id="icon-create-camera-btn" class="icon-mgmt-action-btn" style="width: 100%;">📸 Tag foto</button>
+                    </div>
+                    <div id="icon-create-camera-preview" class="icon-create-upload-preview" style="display: none;">
+                        <img id="icon-create-camera-img">
                     </div>
                 </div>
 
                 <!-- AI-tab -->
                 <div id="icon-create-ai-tab" class="icon-create-tab-content" style="display: none;">
-                    <!-- Stil-vælger -->
-                    <!-- Avanceret toggle (øverst) -->
-                    <div style="margin-bottom: 10px; display:flex; align-items:center; justify-content:space-between;">
-                        <button type="button" id="icon-create-advanced-toggle" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;padding:4px 0;display:flex;align-items:center;gap:4px;">
-                            <span id="icon-create-advanced-arrow" style="transition:transform 0.2s;display:inline-block;">▶</span> Avanceret — vis prompts
-                        </button>
-                        <button type="button" id="icon-create-reset-prompt-btn" style="background:none;border:none;color:#60a5fa;font-size:11px;cursor:pointer;padding:2px 6px;display:none;">↺ Nulstil prompts</button>
-                    </div>
-
-                    <!-- Stil-vælger -->
-                    <div style="margin-bottom: 10px;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 2px; font-size: 13px;">Stil</label>
-                        <div id="icon-create-style-desc" style="font-size: 11px; color: #64748b; margin-bottom: 6px;">🏺 Blødt 3D-look med runde former og pastelfarer.</div>
-                        <div class="icon-create-style-selector">
-                            <button type="button" class="icon-create-style-btn active" data-style="clay">🏺 Clay</button>
-                            <button type="button" class="icon-create-style-btn" data-style="pixar">🎬 Pixar</button>
-                            <button type="button" class="icon-create-style-btn" data-style="custom">✍️ Fri prompt</button>
+                    <!-- Stil-vælger med style cards -->
+                    <div>
+                        <div class="icon-create-section-label">Vælg stil</div>
+                        <div class="icon-create-section-help">Sådan skal dit ikon se ud</div>
+                        <div class="icon-create-style-cards">
+                            <button type="button" class="icon-create-style-card selected" data-style="clay">
+                                <div class="style-card-emoji">🏺</div>
+                                <div class="style-card-label">Clay</div>
+                                <div class="style-card-desc">Blødt 3D med runde former og pastelfarver</div>
+                            </button>
+                            <button type="button" class="icon-create-style-card" data-style="pixar">
+                                <div class="style-card-emoji">🎬</div>
+                                <div class="style-card-label">Pixar</div>
+                                <div class="style-card-desc">Blankt look med klare farver og glans</div>
+                            </button>
+                            <button type="button" class="icon-create-style-card" data-style="custom">
+                                <div class="style-card-emoji">✍️</div>
+                                <div class="style-card-label">Fri prompt</div>
+                                <div class="style-card-desc">Din egen tekst styrer alt</div>
+                            </button>
                         </div>
                     </div>
 
                     <!-- Stil-prompt (avanceret, under stil) -->
-                    <div id="icon-create-style-prompt-section" style="display:none;margin-bottom:10px;">
-                        <label style="font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:3px;display:block;">Stil-prompt</label>
-                        <textarea id="icon-create-style-prompt" rows="4" style="width:100%;padding:8px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:11px;font-family:monospace;line-height:1.4;resize:vertical;box-sizing:border-box;background:rgba(0,0,0,0.2);color:#e2e8f0;"></textarea>
+                    <div id="icon-create-style-prompt-section" style="display:none;">
+                        <label class="icon-create-section-label" style="font-size:12px;color:#8888a4;">Stil-prompt</label>
+                        <textarea id="icon-create-style-prompt" class="icon-create-prompt-area"></textarea>
                     </div>
 
                     <!-- Custom prompt textarea (kun for "Fri prompt" stil) -->
-                    <div id="icon-create-custom-prompt-section" style="display: none; margin-bottom: 10px;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px;">Din prompt</label>
-                        <textarea id="icon-create-custom-prompt" rows="3" maxlength="500" placeholder="Beskriv præcis hvad du vil have..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; resize: vertical; box-sizing: border-box;"></textarea>
+                    <div id="icon-create-custom-prompt-section" style="display: none;">
+                        <div class="icon-create-section-label">Din prompt</div>
+                        <textarea id="icon-create-custom-prompt" class="icon-create-prompt-area" rows="3" maxlength="500" placeholder="Beskriv præcis hvad du vil have..." style="height:auto;"></textarea>
                     </div>
 
                     <!-- Foto-upload til AI (valgfrit) -->
-                    <div id="icon-create-ai-photo-section" style="margin-bottom: 10px;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 2px; font-size: 13px;">Foto-reference (valgfrit)</label>
-                        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Upload et foto af maden. AI'en bruger det som udgangspunkt.</div>
-                        <div id="icon-create-ai-dropzone" class="icon-create-dropzone" style="padding: 12px;">
-                            <p style="margin: 0; font-size: 12px;">📷 Tilføj foto som reference</p>
+                    <div id="icon-create-ai-photo-section">
+                        <div class="icon-create-section-label">Foto-reference (valgfrit)</div>
+                        <div class="icon-create-section-help">Upload et foto som AI'en bruger som inspiration</div>
+                        <div id="icon-create-ai-dropzone" class="icon-create-dropzone">
+                            <p style="margin: 0;">Træk foto hertil eller klik for at vælge</p>
                             <input type="file" id="icon-create-ai-file-input" accept="image/*" style="display: none;">
                         </div>
-                        <div id="icon-create-ai-photo-preview" style="display: none; margin-top: 8px;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <img id="icon-create-ai-photo-img" style="width: 64px; height: 64px; border-radius: 8px; object-fit: cover; border: 1px solid #e2e8f0;">
-                                <button type="button" id="icon-create-ai-photo-remove" style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer;">✕ Fjern</button>
-                            </div>
+                        <div id="icon-create-ai-photo-preview" class="icon-create-photo-preview" style="display: none;">
+                            <img id="icon-create-ai-photo-img">
+                            <button type="button" id="icon-create-ai-photo-remove" class="icon-create-photo-remove-btn">✕ Fjern</button>
                         </div>
                     </div>
 
                     <!-- Foto-mode (kun synlig med foto) -->
-                    <div id="icon-create-photo-mode-section" style="display: none; margin-bottom: 10px;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 2px; font-size: 13px;">Foto-tilstand</label>
-                        <div id="icon-create-photo-mode-desc" style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Bestemmer hvordan AI'en bruger dit foto.</div>
-                        <div class="icon-create-style-selector">
-                            <button type="button" class="icon-create-photo-mode-btn active" data-mode="reference">📷 Reference</button>
-                            <button type="button" class="icon-create-photo-mode-btn" data-mode="motiv">🖼️ Motiv</button>
-                            <button type="button" class="icon-create-photo-mode-btn" data-mode="portrait">🎭 Portræt</button>
+                    <div id="icon-create-photo-mode-section" style="display: none;">
+                        <div class="icon-create-section-label">Foto-tilstand</div>
+                        <div class="icon-create-section-help">Bestemmer hvordan AI'en bruger dit foto</div>
+                        <div class="icon-create-mode-btns">
+                            <button type="button" class="icon-create-mode-btn active" data-mode="reference">📷 Reference</button>
+                            <button type="button" class="icon-create-mode-btn" data-mode="motiv">🖼️ Motiv</button>
+                            <button type="button" class="icon-create-mode-btn" data-mode="portrait">🎭 Portræt</button>
                         </div>
+                        <div id="icon-create-photo-mode-desc" class="icon-create-mode-desc">Bestemmer hvordan AI'en bruger dit foto.</div>
                     </div>
 
                     <!-- Foto-prompt (avanceret, under foto-tilstand) -->
-                    <div id="icon-create-photo-prompt-section" style="display:none;margin-bottom:10px;">
-                        <label style="font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:3px;display:block;">Foto-tilstand prompt</label>
-                        <textarea id="icon-create-photo-prompt" rows="4" style="width:100%;padding:8px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:11px;font-family:monospace;line-height:1.4;resize:vertical;box-sizing:border-box;background:rgba(0,0,0,0.2);color:#e2e8f0;"></textarea>
+                    <div id="icon-create-photo-prompt-section" style="display:none;">
+                        <label class="icon-create-section-label" style="font-size:12px;color:#8888a4;">Foto-tilstand prompt</label>
+                        <textarea id="icon-create-photo-prompt" class="icon-create-prompt-area"></textarea>
+                    </div>
+
+                    <!-- Avanceret toggle -->
+                    <div>
+                        <button type="button" id="icon-create-advanced-toggle" class="icon-create-adv-toggle">
+                            <span id="icon-create-advanced-arrow" style="transition:transform 0.2s;display:inline-block;">▶</span> Avanceret — vis prompts
+                        </button>
+                        <button type="button" id="icon-create-reset-prompt-btn" style="background:none;border:none;color:#1a8a6e;font-size:11px;cursor:pointer;padding:2px 6px;display:none;">↺ Nulstil prompts</button>
                     </div>
 
                     <!-- Generer knap -->
-                    <button type="button" id="icon-create-generate-btn" class="icon-mgmt-action-btn icon-mgmt-create-btn" style="width: 100%; padding: 12px;">🪄 Generér ikon</button>
+                    <button type="button" id="icon-create-generate-btn" class="icon-create-gen-btn">🪄 Generér ikon</button>
 
                     <!-- AI resultat-preview -->
-                    <div id="icon-create-ai-result" style="display: none; margin-top: 12px; text-align: center;">
-                        <img id="icon-create-ai-result-img" style="max-width: 160px; max-height: 160px; border-radius: 12px; border: 2px solid #7c3aed;">
-                        <div id="icon-create-ai-result-label" style="margin-top: 6px; font-size: 12px; color: #7c3aed; font-weight: 600;"></div>
+                    <div id="icon-create-ai-result" class="icon-create-ai-result" style="display: none;">
+                        <img id="icon-create-ai-result-img">
+                        <div id="icon-create-ai-result-label" class="icon-create-ai-result-label"></div>
                     </div>
                 </div>
 
                 <!-- Status/loading -->
-                <div id="icon-create-status" style="display: none; text-align: center; padding: 12px; margin-top: 10px;">
+                <div id="icon-create-status" class="icon-create-status" style="display: none;">
                     <div class="icon-create-spinner"></div>
-                    <span id="icon-create-status-text" style="font-size: 13px; color: #64748b;"></span>
+                    <span id="icon-create-status-text" class="icon-create-status-text"></span>
                 </div>
             </div>
-            <div class="modal-footer" style="padding: 15px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" id="icon-create-cancel-btn" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Annuller</button>
-                <button type="button" id="icon-create-save-btn" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;" disabled>Gem ikon</button>
+
+            <div class="icon-create-footer">
+                <input type="text" id="icon-create-name" class="icon-create-footer-name" placeholder="Ikon-navn">
+                <button type="button" id="icon-create-cancel-btn" class="icon-create-cancel-btn">Annuller</button>
+                <button type="button" id="icon-create-save-btn" class="icon-create-save-btn" disabled>Gem ikon</button>
             </div>
         </div>
     </div>

@@ -2750,6 +2750,13 @@ export function createProductManagementUI(options = {}) {
             iconMgmtGrid.innerHTML = '';
             if (iconMgmtCounter) iconMgmtCounter.textContent = `${filtered.length} af ${allIcons.length} · ${allIcons.length} / ${iconLimit} brugt`;
 
+            // Update quota bar
+            const quotaFill = document.getElementById('icon-mgmt-quota-fill');
+            if (quotaFill) {
+                const pct = iconLimit > 0 ? Math.min(100, Math.round((allIcons.length / iconLimit) * 100)) : 0;
+                quotaFill.style.width = pct + '%';
+            }
+
             if (filtered.length === 0) {
                 if (iconMgmtEmpty) { iconMgmtEmpty.style.display = 'block'; iconMgmtEmpty.textContent = searchQuery ? 'Ingen ikoner matcher søgningen.' : 'Ingen ikoner fundet.'; }
                 return;
@@ -2762,45 +2769,20 @@ export function createProductManagementUI(options = {}) {
                 const card = document.createElement('div');
                 card.className = 'icon-mgmt-card';
                 card.dataset.iconId = icon.id;
-                // All critical styles inline to avoid CSS cache issues
-                card.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;padding:12px 8px 8px;border:2px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.04);cursor:default;overflow:hidden;min-width:0;transition:border-color 0.15s,transform 0.15s;';
-                const badgeColor = icon.source === 'uploaded' ? 'background:#dbeafe;color:#1d4ed8' : 'background:#ede9fe;color:#6d28d9';
+                const badgeClass = icon.source === 'uploaded' ? 'source-uploaded' : 'source-ai';
                 const badgeLabel = icon.source === 'uploaded' ? '📤' : '🪄';
                 card.innerHTML = `
-                    <span style="position:absolute;top:4px;left:4px;font-size:10px;padding:1px 5px;border-radius:8px;font-weight:600;line-height:1.4;${badgeColor};">${badgeLabel}</span>
-                    <button type="button" class="icon-mgmt-preview-btn" title="Forstør"
-                        style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;cursor:pointer;font-size:13px;display:${isEdit ? 'none' : 'flex'};align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;z-index:5;">🔍</button>
-                    <button type="button" class="icon-mgmt-download-btn" data-url="${icon.icon_url}" data-name="${icon.name}" title="Download"
-                        style="position:absolute;bottom:4px;left:4px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;cursor:pointer;font-size:13px;display:${isEdit ? 'none' : 'flex'};align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;z-index:5;">⬇️</button>
-                    <button type="button" class="icon-mgmt-delete-btn" data-icon-id="${icon.id}" title="Slet ikon"
-                        style="position:absolute;top:-1px;right:-1px;width:24px;height:24px;border-radius:50%;background:#ef4444;color:white;border:2px solid rgba(0,0,0,0.2);font-size:12px;cursor:pointer;align-items:center;justify-content:center;line-height:1;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.3);display:${isEdit ? 'flex' : 'none'};">✕</button>
-                    <button type="button" class="icon-mgmt-settings-btn" data-icon-id="${icon.id}" title="Redigér med AI"
-                        style="position:absolute;bottom:2px;right:2px;width:24px;height:24px;border-radius:50%;background:#475569;color:white;border:2px solid rgba(0,0,0,0.2);font-size:12px;cursor:pointer;align-items:center;justify-content:center;line-height:1;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.3);display:${isEdit ? 'flex' : 'none'};">⚙️</button>
-                    <img src="${icon.icon_url}" alt="${icon.name}" loading="lazy"
-                        style="width:80px;height:80px;object-fit:cover;border-radius:10px;flex-shrink:0;">
-                    <span class="icon-mgmt-card-name" style="font-size:11px;color:#94a3b8;margin-top:6px;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:${isEdit ? 'none' : 'block'};">${icon.name}</span>
-                    <input type="text" class="icon-mgmt-rename-input" value="${icon.name}" data-icon-id="${icon.id}" maxlength="60"
-                        style="width:100%;padding:3px 4px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;font-size:11px;text-align:center;margin-top:4px;box-sizing:border-box;background:rgba(255,255,255,0.06);color:inherit;display:${isEdit ? 'block' : 'none'};">
+                    <span class="icon-mgmt-card-badge ${badgeClass}">${badgeLabel}</span>
+                    <div class="icon-mgmt-hover-actions" style="${isEdit ? 'display:none' : ''}">
+                        <button type="button" class="icon-mgmt-hover-btn icon-mgmt-preview-btn" title="Forstør">🔍</button>
+                        <button type="button" class="icon-mgmt-hover-btn icon-mgmt-download-btn" data-url="${icon.icon_url}" data-name="${icon.name}" title="Download">⬇️</button>
+                    </div>
+                    <button type="button" class="icon-mgmt-delete-btn" data-icon-id="${icon.id}" title="Slet ikon">✕</button>
+                    <button type="button" class="icon-mgmt-settings-btn" data-icon-id="${icon.id}" title="Redigér med AI">⚙️</button>
+                    <img class="icon-mgmt-card-img" src="${icon.icon_url}" alt="${icon.name}" loading="lazy">
+                    <span class="icon-mgmt-card-name">${icon.name}</span>
+                    <input type="text" class="icon-mgmt-rename-input" value="${icon.name}" data-icon-id="${icon.id}" maxlength="60">
                 `;
-                // Hover effect for preview btn
-                card.addEventListener('mouseenter', () => {
-                    card.style.borderColor = 'rgba(255,255,255,0.2)';
-                    card.style.transform = 'translateY(-1px)';
-                    if (!editModeActive) {
-                        const previewBtn = card.querySelector('.icon-mgmt-preview-btn');
-                        const dlBtn = card.querySelector('.icon-mgmt-download-btn');
-                        if (previewBtn) previewBtn.style.opacity = '1';
-                        if (dlBtn) dlBtn.style.opacity = '1';
-                    }
-                });
-                card.addEventListener('mouseleave', () => {
-                    card.style.borderColor = 'rgba(255,255,255,0.08)';
-                    card.style.transform = '';
-                    const previewBtn = card.querySelector('.icon-mgmt-preview-btn');
-                    const dlBtn = card.querySelector('.icon-mgmt-download-btn');
-                    if (previewBtn) previewBtn.style.opacity = '0';
-                    if (dlBtn) dlBtn.style.opacity = '0';
-                });
                 iconMgmtGrid.appendChild(card);
             });
 
@@ -2922,18 +2904,18 @@ export function createProductManagementUI(options = {}) {
         // --- Lightbox preview ---
         function showIconPreviewModal(icons, startIndex = 0) {
             const modal = document.createElement('div');
-            modal.style.cssText = 'position:fixed;inset:0;z-index:10001;display:flex;align-items:center;justify-content:center;';
+            modal.className = 'icon-preview-modal';
             modal.innerHTML = `
-                <div style="position:absolute;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);" data-backdrop></div>
-                <div style="position:relative;max-width:80vw;max-height:80vh;">
-                    <button data-nav="prev" style="position:absolute;left:-60px;top:50%;transform:translateY(-50%);width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
-                    <img data-img style="width:100%;height:100%;max-width:80vw;max-height:80vh;object-fit:contain;border-radius:16px;">
-                    <button data-nav="next" style="position:absolute;right:-60px;top:50%;transform:translateY(-50%);width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;">›</button>
-                    <button data-close style="position:absolute;top:-15px;right:-15px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
-                    <div style="position:absolute;bottom:-44px;left:50%;transform:translateX(-50%);text-align:center;color:#fff;white-space:nowrap;">
-                        <div data-name style="font-size:16px;font-weight:700;"></div>
-                        <div data-meta style="font-size:12px;opacity:0.7;margin-top:2px;"></div>
+                <div class="icon-preview-backdrop" data-backdrop></div>
+                <button class="icon-preview-nav icon-preview-nav-prev" data-nav="prev">&#8249;</button>
+                <button class="icon-preview-nav icon-preview-nav-next" data-nav="next">&#8250;</button>
+                <button class="icon-preview-close" data-close>&#215;</button>
+                <div class="icon-preview-content">
+                    <div class="icon-preview-img-wrap">
+                        <img data-img>
                     </div>
+                    <div class="icon-preview-name" data-name></div>
+                    <div class="icon-preview-meta" data-meta></div>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -2947,7 +2929,10 @@ export function createProductManagementUI(options = {}) {
                 const icon = icons[currentIndex];
                 imgEl.src = icon.icon_url;
                 nameEl.textContent = icon.name;
-                metaEl.textContent = getIconMetaLabel(icon);
+                // Render meta as chips
+                const metaLabel = getIconMetaLabel(icon);
+                const parts = metaLabel.split(' · ').filter(Boolean);
+                metaEl.innerHTML = parts.map(p => `<span class="icon-preview-meta-chip">${p}</span>`).join('');
             };
 
             const navigate = (dir) => {
@@ -3002,7 +2987,7 @@ export function createProductManagementUI(options = {}) {
             const createCameraImg = document.getElementById('icon-create-camera-img');
 
             // AI tab elements
-            const createStyleBtns = iconCreateModal.querySelectorAll('.icon-create-style-btn');
+            const createStyleBtns = iconCreateModal.querySelectorAll('.icon-create-style-card');
             const createCustomPromptSection = document.getElementById('icon-create-custom-prompt-section');
             const createCustomPrompt = document.getElementById('icon-create-custom-prompt');
             const createAiDropzone = document.getElementById('icon-create-ai-dropzone');
@@ -3011,7 +2996,7 @@ export function createProductManagementUI(options = {}) {
             const createAiPhotoImg = document.getElementById('icon-create-ai-photo-img');
             const createAiPhotoRemove = document.getElementById('icon-create-ai-photo-remove');
             const createPhotoModeSection = document.getElementById('icon-create-photo-mode-section');
-            const createPhotoModeBtns = iconCreateModal.querySelectorAll('.icon-create-photo-mode-btn');
+            const createPhotoModeBtns = iconCreateModal.querySelectorAll('.icon-create-mode-btn');
             const createGenerateBtn = document.getElementById('icon-create-generate-btn');
             const createAiResult = document.getElementById('icon-create-ai-result');
             const createAiResultImg = document.getElementById('icon-create-ai-result-img');
@@ -3081,14 +3066,13 @@ export function createProductManagementUI(options = {}) {
                 if (photoPromptEl && !photoPromptEdited) photoPromptEl.value = buildPhotoModePrompt();
             }
 
-            // Helper: style active/inactive buttons inline (no CSS dependency)
-            const ACTIVE_BTN_STYLE = 'background:#fff;color:#1e293b;box-shadow:0 1px 3px rgba(0,0,0,0.1);';
-            const INACTIVE_BTN_STYLE = 'background:transparent;color:#94a3b8;box-shadow:none;';
+            // Helper: toggle active/selected class on button groups
             const applyBtnGroupStyles = (btns, activeBtn) => {
                 btns.forEach(b => {
                     const isActive = b === activeBtn || (typeof activeBtn === 'string' && b.dataset.style === activeBtn) || (typeof activeBtn === 'string' && b.dataset.mode === activeBtn) || (typeof activeBtn === 'string' && b.dataset.tab === activeBtn);
-                    Object.assign(b.style, { background: isActive ? '#fff' : 'transparent', color: isActive ? '#1e293b' : '#94a3b8', boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' });
-                    b.classList.toggle('active', isActive);
+                    // Style cards use 'selected', tabs/mode-btns use 'active'
+                    const isStyleCard = b.classList.contains('icon-create-style-card');
+                    b.classList.toggle(isStyleCard ? 'selected' : 'active', isActive);
                 });
             };
 
@@ -3138,7 +3122,7 @@ export function createProductManagementUI(options = {}) {
                     tc.style.display = 'none';
                 });
                 const uploadTab = document.getElementById('icon-create-upload-tab');
-                if (uploadTab) { uploadTab.classList.add('active'); uploadTab.style.display = 'block'; }
+                if (uploadTab) { uploadTab.classList.add('active'); uploadTab.style.display = ''; }
                 // Reset style
                 createSelectedStyle = 'clay';
                 applyBtnGroupStyles(createStyleBtns, 'clay');
@@ -3149,7 +3133,7 @@ export function createProductManagementUI(options = {}) {
 
             function updatePortraitVisibility() {
                 // Portrait available for all styles (clay, pixar, custom)
-                const portraitBtn = iconCreateModal.querySelector('.icon-create-photo-mode-btn[data-mode="portrait"]');
+                const portraitBtn = iconCreateModal.querySelector('.icon-create-mode-btn[data-mode="portrait"]');
                 if (portraitBtn) portraitBtn.style.display = '';
             }
 
@@ -3174,7 +3158,7 @@ export function createProductManagementUI(options = {}) {
                     applyBtnGroupStyles(createTabs, tab);
                     createTabContents.forEach(tc => { tc.classList.remove('active'); tc.style.display = 'none'; });
                     const content = document.getElementById(`icon-create-${createCurrentTab}-tab`);
-                    if (content) { content.classList.add('active'); content.style.display = 'block'; }
+                    if (content) { content.classList.add('active'); content.style.display = ''; }
                     updateSaveEnabled();
                 });
             });
@@ -3225,19 +3209,11 @@ export function createProductManagementUI(options = {}) {
                 }
             });
 
-            // AI tab — style selector
-            const styleDescs = {
-                clay: '🏺 Blødt 3D-look med runde former og pastelfarver.',
-                pixar: '🎬 Blankt Pixar-look med klare farver og glans.',
-                custom: '✍️ Du skriver din egen prompt. Foto-tilstand ignoreres — din tekst styrer alt.',
-            };
-            const styleDescEl = document.getElementById('icon-create-style-desc');
-
+            // AI tab — style selector (style cards)
             createStyleBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
                     createSelectedStyle = btn.dataset.style;
                     applyBtnGroupStyles(createStyleBtns, btn);
-                    if (styleDescEl) styleDescEl.textContent = styleDescs[createSelectedStyle] || '';
                     const isCustom = createSelectedStyle === 'custom';
                     if (createCustomPromptSection) createCustomPromptSection.style.display = isCustom ? 'block' : 'none';
                     // Hide photo-mode selector in custom mode (user's prompt replaces everything)
@@ -3289,9 +3265,9 @@ export function createProductManagementUI(options = {}) {
 
             // Photo mode selector
             const photoModeDescs = {
-                reference: '📷 AI ser kun maden på fotoet og laver et nyt ikon fra bunden.',
-                motiv: '🖼️ AI genskaber hele kompositionen (mad, tallerkener, personer) i valgt stil.',
-                portrait: '🎭 AI laver en animeret version af fotoet. Personer bevarer deres udseende.',
+                reference: 'AI\'en ser kun maden på fotoet og laver et helt nyt ikon fra bunden',
+                motiv: 'AI\'en genskaber hele kompositionen (mad, tallerkener, personer) i valgt stil',
+                portrait: 'AI\'en laver en animeret version af fotoet. Personer bevarer deres udseende',
             };
             const photoModeDescEl = document.getElementById('icon-create-photo-mode-desc');
 
@@ -3508,19 +3484,25 @@ export function createProductManagementUI(options = {}) {
                     if (title) title.textContent = 'Redigér ikon med AI';
                     if (createNameInput) createNameInput.value = existingIcon.name;
 
-                    // Show preview of the icon being edited
+                    // Show preview strip of the icon being edited
                     let editPreview = iconCreateModal.querySelector('.icon-edit-preview');
                     if (!editPreview) {
                         editPreview = document.createElement('div');
                         editPreview.className = 'icon-edit-preview';
-                        editPreview.style.cssText = 'text-align:center;padding:16px 0 8px;';
-                        const nameInput = document.getElementById('icon-create-name');
-                        if (nameInput) nameInput.parentElement.insertBefore(editPreview, nameInput.parentElement.firstChild);
+                        const bodyEl = iconCreateModal.querySelector('.icon-create-body');
+                        if (bodyEl) bodyEl.insertBefore(editPreview, bodyEl.firstChild);
                     }
                     editPreview.style.display = 'block';
+                    const metaLabel = getIconMetaLabel(existingIcon);
                     editPreview.innerHTML = `
-                        <img src="${existingIcon.icon_url}" style="width:100px;height:100px;object-fit:cover;border-radius:14px;border:2px solid rgba(255,255,255,0.15);box-shadow:0 4px 16px rgba(0,0,0,0.2);">
-                        <div style="font-size:13px;color:#94a3b8;margin-top:6px;">${existingIcon.name}</div>
+                        <div class="icon-create-preview-strip">
+                            <img class="icon-create-preview-thumb" src="${existingIcon.icon_url}" alt="${existingIcon.name}">
+                            <div class="icon-create-preview-info">
+                                <strong>Du redigerer: ${existingIcon.name}</strong><br>
+                                ${metaLabel ? metaLabel + '<br>' : ''}
+                                <span style="color:#8888a4;">Foto-reference er låst til dette ikon</span>
+                            </div>
+                        </div>
                     `;
 
                     // Hide tabs — Upload/Kamera irrelevant when editing existing icon
@@ -3530,7 +3512,7 @@ export function createProductManagementUI(options = {}) {
                     createCurrentTab = 'ai';
                     createTabContents.forEach(tc => { tc.classList.remove('active'); tc.style.display = 'none'; });
                     const aiTab = document.getElementById('icon-create-ai-tab');
-                    if (aiTab) { aiTab.classList.add('active'); aiTab.style.display = 'block'; }
+                    if (aiTab) { aiTab.classList.add('active'); aiTab.style.display = ''; }
 
                     // Default to Portræt mode when editing (most natural for re-generating an existing icon)
                     createSelectedPhotoMode = 'portrait';
