@@ -553,6 +553,17 @@
     border-color: #1a8a6e;
 }
 
+/* Photo actions row (dropzone + camera side by side) */
+.icon-create-photo-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.icon-create-camera-action {
+    flex: 1;
+    border-style: dashed;
+}
+
 /* Dropzone */
 .icon-create-dropzone {
     border: 2px dashed #d1d5db;

@@ -2575,6 +2575,17 @@ body[data-theme="pastel-pop"] .settings-modal {
     border-color: #1a8a6e;
 }
 
+/* Photo actions row (dropzone + camera side by side) */
+.icon-create-photo-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.icon-create-camera-action {
+    flex: 1;
+    border-style: dashed;
+}
+
 /* Dropzone */
 .icon-create-dropzone {
     border: 2px dashed rgba(255,255,255,0.12);
@@ -2971,8 +2982,8 @@ body[data-theme="pastel-pop"] .settings-modal {
 }
 
 .icon-preview-img-wrap {
-    width: 260px;
-    height: 260px;
+    width: 480px;
+    height: 480px;
     border-radius: 16px;
     display: flex;
     align-items: center;

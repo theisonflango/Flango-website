@@ -3246,20 +3246,44 @@ export function createProductManagementUI(options = {}) {
                     createAiPhotoFile = await processImageForUpload(file);
                     const url = URL.createObjectURL(createAiPhotoFile);
                     if (createAiPhotoImg) createAiPhotoImg.src = url;
-                    if (createAiPhotoPreview) createAiPhotoPreview.style.display = 'block';
-                    if (createPhotoModeSection) createPhotoModeSection.style.display = 'block';
-                    if (createAiDropzone) createAiDropzone.style.display = 'none';
+                    if (createAiPhotoPreview) createAiPhotoPreview.style.display = '';
+                    if (createPhotoModeSection) createPhotoModeSection.style.display = '';
+                    // Hide the entire photo-actions row (dropzone + camera)
+                    const photoActions = createAiDropzone?.closest('.icon-create-photo-actions');
+                    if (photoActions) {
+                        photoActions.style.display = 'none';
+                    } else if (createAiDropzone) {
+                        createAiDropzone.style.display = 'none';
+                    }
                     updateAdvancedPrompt();
                 } catch (err) {
                     console.error('[handleCreateAiPhoto]', err);
                 }
             }
 
+            // AI tab — camera capture for photo reference
+            const createAiCameraBtn = document.getElementById('icon-create-ai-camera-btn');
+            createAiCameraBtn?.addEventListener('click', async () => {
+                try {
+                    const file = await takeProductPhoto({ showCustomAlert });
+                    if (file) await handleCreateAiPhoto(file);
+                } catch (err) {
+                    console.error('[createAiCameraCapture]', err);
+                }
+            });
+
             createAiPhotoRemove?.addEventListener('click', () => {
                 createAiPhotoFile = null;
                 if (createAiPhotoPreview) createAiPhotoPreview.style.display = 'none';
                 if (createPhotoModeSection) createPhotoModeSection.style.display = 'none';
-                if (createAiDropzone) createAiDropzone.style.display = 'block';
+                // Show both dropzone and camera button again
+                const photoActions = createAiDropzone?.closest('.icon-create-photo-actions');
+                if (photoActions) {
+                    photoActions.style.display = '';
+                } else if (createAiDropzone) {
+                    createAiDropzone.style.display = 'block';
+                }
+                if (createAiCameraBtn) createAiCameraBtn.style.display = '';
                 updateAdvancedPrompt();
             });
 

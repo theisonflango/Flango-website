@@ -931,10 +931,15 @@
                     <!-- Foto-upload til AI (valgfrit) -->
                     <div id="icon-create-ai-photo-section">
                         <div class="icon-create-section-label">Foto-reference (valgfrit)</div>
-                        <div class="icon-create-section-help">Upload et foto som AI'en bruger som inspiration</div>
-                        <div id="icon-create-ai-dropzone" class="icon-create-dropzone">
-                            <p style="margin: 0;">Træk foto hertil eller klik for at vælge</p>
-                            <input type="file" id="icon-create-ai-file-input" accept="image/*" style="display: none;">
+                        <div class="icon-create-section-help">Upload et foto eller tag et billede som AI'en bruger som inspiration</div>
+                        <div class="icon-create-photo-actions">
+                            <div id="icon-create-ai-dropzone" class="icon-create-dropzone" style="flex:1;">
+                                <p style="margin: 0;">📁 Vælg fil</p>
+                                <input type="file" id="icon-create-ai-file-input" accept="image/*" style="display: none;">
+                            </div>
+                            <button type="button" id="icon-create-ai-camera-btn" class="icon-create-dropzone icon-create-camera-action">
+                                <p style="margin: 0;">📸 Tag foto</p>
+                            </button>
                         </div>
                         <div id="icon-create-ai-photo-preview" class="icon-create-photo-preview" style="display: none;">
                             <img id="icon-create-ai-photo-img">
