@@ -195,6 +195,11 @@ h3 {
 .login-container input {
     border: 2px solid #e0e7ff;
     background: linear-gradient(145deg, #fffbf7 0%, #fff5eb 100%);
+    color: #1e293b;
+}
+
+.login-container input::placeholder {
+    color: #94a3b8;
 }
 
 .login-container select:focus,
