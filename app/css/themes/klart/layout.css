@@ -6,7 +6,7 @@
 /* Main App Grid Layout — header spans full width, sidebar takes full right column */
 #main-app {
     display: grid;
-    grid-template-columns: 1fr 380px;
+    grid-template-columns: 1fr 460px;
     grid-template-rows: auto 1fr;
     grid-template-areas:
         "header     header"

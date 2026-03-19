@@ -1,6 +1,7 @@
 // js/ui/customer-picker.js
 import { buildCustomerSelectionEntryElement } from '../domain/users-and-admin.js';
 import { SEARCH_DEBOUNCE_MS } from '../core/constants.js';
+import { batchPreWarmProfilePictures } from '../core/profile-picture-cache.js';
 
 // Filter state - enklere: kun ét valg ad gangen
 let userFilterMode = 'all'; // 'all' | 'children' | 'adults'
@@ -174,6 +175,9 @@ export function openCustomerSelectionModalUI(options) {
 
     // Nulstil modalens tilstand (titel, knapper, søgefelt osv.)
     resetView();
+
+    // Pre-warm profile picture URLs (async, non-blocking)
+    if (options.allUsers) batchPreWarmProfilePictures(options.allUsers).catch(() => {});
 
     // Render den aktuelle kundeliste
     renderList();

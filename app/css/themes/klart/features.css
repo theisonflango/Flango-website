@@ -42,11 +42,11 @@ h3 {
    ============================================================ */
 
 #sidebar {
-    background: linear-gradient(180deg, #fef9ee 0%, #fdf6e4 100%);
+    background: var(--klart-pos-bg);
     padding: 0;
-    border-radius: var(--klart-radius-lg);
-    border: 1px solid var(--klart-border);
-    box-shadow: none;
+    border-radius: var(--klart-cart-radius-lg);
+    border: 1px solid var(--klart-cart-border);
+    box-shadow: 0 4px 16px rgba(26,26,24,.08), 0 12px 40px rgba(26,26,24,.10);
     display: flex;
     flex-direction: column;
     position: relative;
@@ -291,14 +291,14 @@ h3 {
    NO crumpled paper, NO tape, NO checkmarks, NO rotation
    ============================================================ */
 
-/* Sidebar header — clean, cart title + "Ryd kurv" */
+/* Sidebar header — cart title with count badge + "Ryd kurv" pill */
 .sidebar-header {
     position: relative;
-    background: none;
-    padding: 16px 20px 12px;
+    background: var(--klart-bg-raised);
+    padding: 20px 22px 16px;
     margin: 0;
     border-radius: 0;
-    border-bottom: 1px solid rgba(200, 180, 120, 0.2);
+    border-bottom: 1px solid var(--klart-cart-border);
     box-shadow: none;
     transform: none;
     z-index: 1;
@@ -317,41 +317,95 @@ h3 {
     font-family: var(--font-heading);
     background: none !important;
     -webkit-background-clip: unset !important;
-    -webkit-text-fill-color: var(--klart-fg) !important;
+    -webkit-text-fill-color: var(--klart-ink) !important;
     background-clip: unset !important;
-    color: var(--klart-fg);
+    color: var(--klart-ink);
     font-size: 22px;
     font-weight: 700;
     text-align: left;
     margin: 0;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 0;
 }
 
 .sidebar-header-icon {
     display: none;
 }
 
-/* "Ryd kurv" / clear cart button in sidebar header */
-.klart-clear-cart-btn {
-    font-size: 13px;
-    color: var(--klart-fg-muted);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: var(--klart-radius-sm);
-    transition: all var(--klart-duration) var(--klart-ease);
+/* Count badge — dark circle after title */
+.sidebar-header h2 .klart-cart-count-badge,
+.klart-cart-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--klart-ink);
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+    background-clip: unset !important;
+    -webkit-background-clip: unset !important;
     font-family: var(--font-body);
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 600;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--klart-radius-full);
+    margin-left: 8px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+    flex-shrink: 0;
+}
+
+/* "Ryd kurv" / clear cart button — pill with trash icon */
+.klart-clear-cart-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 14px;
+    border-radius: var(--klart-radius-full);
+    border: 1.5px solid var(--klart-cart-border-strong);
+    background: var(--klart-bg-raised);
+    color: var(--danger-color);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s ease;
+    font-family: var(--font-body);
     white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.klart-clear-cart-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.klart-clear-cart-btn:active {
+    background: rgba(196, 64, 64, 0.08);
+    border-color: var(--danger-color);
+    transform: scale(.97);
 }
 
 .klart-clear-cart-btn:hover {
-    color: var(--danger-color);
-    background: rgba(196, 64, 64, 0.06);
+    background: rgba(196, 64, 64, 0.04);
+    border-color: var(--danger-color);
 }
 
-/* The cart container — transparent, sidebar provides background */
+/* ============================================================
+   SIDEBAR SCROLL LAYOUT
+   Both #current-order and #selected-user-info scroll together.
+   Use a wrapper approach via flex + overflow on sidebar itself.
+   ============================================================ */
+
+/* Make sidebar internals scrollable (everything between header and footer) */
+#sidebar {
+    /* flex-direction: column already set */
+}
+
+/* Scrollable middle section */
 #current-order {
     flex: 1;
     min-height: 0;
@@ -359,223 +413,389 @@ h3 {
     flex-direction: column;
     margin: 0;
     padding: 0;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     background: transparent;
     border-radius: 0;
     border: none;
     position: relative;
     transform: none;
     box-shadow: none;
+    scrollbar-width: none;
 }
 
-/* No red margin line */
-#current-order::before {
-    display: none;
-}
+#current-order::-webkit-scrollbar { display: none; }
+#current-order::before { display: none; }
+#current-order::after { display: none; }
 
 #current-order ul {
     list-style: none;
-    padding: 0 20px;
+    padding: 16px 18px;
     margin: 0;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    scrollbar-gutter: stable both-edges;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
+/* Reorder sidebar children: header (1) → order (2) → checkout (3) */
+#toolbar-gear-menu { order: 0; }
+.sidebar-header { order: 1; }
+#current-order { order: 2; }
+#selected-user-info { display: none !important; order: 99; } /* Hidden — customer rendered inside checkout-stack */
+#checkout-stack { order: 3; }
+
+/* Hide default li styling — klart uses .klart-cart-item instead */
 #current-order li {
-    padding: 10px 12px;
-    min-height: 38px;
+    padding: 0;
+    min-height: 0;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
     border-bottom: none;
-    border-radius: var(--klart-radius-md);
-    margin: 0 0 4px;
-    background: rgba(255, 255, 255, 0.6);
-    transition: all var(--klart-duration) var(--klart-ease);
-    position: relative;
+    border-radius: 0;
+    margin: 0;
     font-family: var(--font-body);
     font-size: 15px;
-    color: var(--klart-fg);
+    color: var(--klart-ink);
     line-height: 1.4;
+    list-style: none;
 }
 
-#current-order li:last-child {
-    margin-bottom: 0;
-}
-
-#current-order li:hover {
-    background: rgba(255, 255, 255, 0.8);
-}
-
-/* Strikethrough effect when item is being removed */
-#current-order li.removing {
-    text-decoration: line-through;
-    opacity: 0.5;
-}
-
-/* Remove button — green checkmark in Klart theme */
+/* Default remove button hidden — klart uses .klart-cart-remove-btn */
 .remove-item-btn {
     font-size: 0;
     cursor: pointer;
-    color: var(--klart-accent);
-    padding: 4px 10px;
-    transition: all var(--klart-duration) var(--klart-ease);
+    padding: 0;
     background: transparent;
-    border-radius: var(--klart-radius-sm);
+    border: none;
     line-height: 1;
-    font-family: var(--font-body);
-    font-weight: 700;
 }
 
-/* Show green checkmark — hide original content */
-.remove-item-btn::before {
-    content: '✓';
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--klart-accent);
+.remove-item-btn::before { display: none; }
+.remove-item-btn > * { display: none; }
+
+/* ============================================================
+   KLART CART ITEMS — Card-based layout
+   ============================================================ */
+
+/* Section label */
+.klart-cart-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--klart-ink-muted);
+    padding: 0 4px;
+    margin-bottom: 2px;
 }
 
-.remove-item-btn > * {
-    display: none;
-}
-
-.remove-item-btn:hover {
-    transform: scale(1.1);
-    color: var(--danger-color);
-    background: rgba(196, 64, 64, 0.08);
-}
-
-.remove-item-btn:hover::before {
-    content: '✕';
-    color: var(--danger-color);
-}
-
-/* NO paper curl shadow */
-#current-order::after {
-    display: none;
-}
-
-/* Total price — warm pedagogical box with icon summation */
-#total-price {
-    text-align: right;
-    font-size: clamp(18px, 2.2vw, 24px);
-    font-weight: 700;
-    margin: 8px 20px;
-    padding: 12px 16px;
-    background: linear-gradient(135deg, #fff4e0 0%, #ffe8d0 40%, #ffdece 100%);
-    font-family: var(--font-heading);
-    color: var(--klart-fg);
-    -webkit-text-fill-color: var(--klart-fg);
-    position: relative;
-    z-index: 1;
-    box-shadow: 0 2px 8px rgba(200, 140, 60, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-    border-radius: var(--klart-radius-lg);
-    border: 1px solid rgba(220, 180, 120, 0.25);
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    flex-wrap: wrap;
-    transform: none;
-}
-
-/* Product icon summary row — warm pedagogical icons */
-.total-product-summary {
+/* Cart item card */
+#current-order li.klart-cart-item,
+.klart-cart-item {
     display: flex;
     align-items: center;
-    gap: 4px;
-    font-size: 18px;
-    flex-wrap: wrap;
+    gap: 14px;
+    padding: 14px 18px;
+    background-color: #FFFFFF !important;
+    background-image: none !important;
+    border-radius: 18px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    transition: all .15s ease;
+    animation: klartCartSlideIn .25s ease-out backwards;
 }
 
-.total-product-summary img {
+@keyframes klartCartSlideIn {
+    from { opacity: 0; transform: translateX(12px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Emoji/icon box */
+.klart-cart-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--klart-surface-alt);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+    border: 1px solid var(--klart-cart-border);
+}
+
+.klart-cart-icon-box .klart-cart-icon-img {
     width: 32px;
     height: 32px;
     object-fit: contain;
-    border-radius: var(--klart-radius-sm);
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
-.total-product-summary .plus-sign {
-    font-size: 18px;
+/* Text block */
+.klart-cart-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.klart-cart-item-name {
+    font-size: 16px;
     font-weight: 600;
-    color: var(--klart-fg-muted);
-    margin: 0 2px;
+    color: var(--klart-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.total-product-summary .equals-sign {
-    font-size: 18px;
-    font-weight: 800;
-    color: var(--klart-fg);
-    margin-left: auto;
+.klart-cart-item-unit {
+    font-size: 12px;
+    color: var(--klart-ink-muted);
+    margin-top: 1px;
 }
 
-.total-product-summary .discount-tag-icon {
-    font-size: 32px;
-    line-height: 1;
-    display: inline-flex;
+/* Price */
+.klart-cart-item-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--klart-ink);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    margin-right: 4px;
+}
+
+/* Circle X remove button */
+.klart-cart-remove-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--klart-radius-full);
+    border: 1.5px solid var(--klart-cart-border);
+    background: var(--klart-bg-raised);
+    display: flex;
     align-items: center;
     justify-content: center;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+    cursor: pointer;
+    transition: all .12s ease;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    padding: 0;
+    font-size: 0;
 }
 
-.total-text {
+.klart-cart-remove-btn::before { display: none; }
+
+.klart-cart-remove-btn svg {
+    width: 14px;
+    height: 14px;
+    color: var(--klart-ink-muted);
+    display: block;
+}
+
+.klart-cart-remove-btn:active {
+    background: rgba(196, 64, 64, 0.08);
+    border-color: var(--danger-color);
+    transform: scale(.92);
+}
+
+.klart-cart-remove-btn:active svg {
+    color: var(--danger-color);
+}
+
+.klart-cart-remove-btn:hover svg {
+    color: var(--danger-color);
+}
+
+/* Empty state */
+.klart-cart-empty {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--klart-ink-muted);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.klart-cart-empty-icon {
+    font-size: 36px;
+    opacity: .5;
+}
+
+/* Admin free banner (klart) */
+.klart-admin-free-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--klart-accent-soft);
+    border-radius: var(--klart-cart-radius-md);
+    border: 1px solid rgba(26, 138, 110, 0.2);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--klart-accent);
+}
+
+/* Discount item in klart */
+.klart-cart-discount {
+    background: #fffbeb;
+    border-color: rgba(220, 180, 120, 0.3);
+}
+
+/* ============================================================
+   TOTAL BOX — Mini emoji icons + total value
+   ============================================================ */
+
+/* Hide original total — klart renders its own in the bottom panel */
+#total-price {
+    display: none !important;
+}
+
+/* Total box as full-width divider in bottom panel */
+.klart-total-divider {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    margin: 0 -20px;
+    background: var(--klart-surface-alt);
+    border-top: 1px solid var(--klart-cart-border);
+    border-bottom: 1px solid var(--klart-cart-border);
+    position: relative;
+    z-index: 2;
+}
+
+/* Mini emoji icons row */
+.klart-total-icons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.klart-total-mini-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--klart-bg-raised);
+    border: 1px solid var(--klart-cart-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.klart-total-mini-icon img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+.klart-total-plus,
+.klart-total-equals {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--klart-ink-muted);
+    user-select: none;
+}
+
+.klart-total-equals {
+    margin-left: 4px;
+}
+
+/* Total amount */
+.klart-total-amount {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.klart-total-val {
+    font-family: var(--font-heading);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--klart-ink);
+    letter-spacing: -0.5px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
     white-space: nowrap;
-    font-weight: 800;
 }
 
-/* NO hand-drawn underline pseudo-element */
-#total-price::before {
-    display: none;
-}
+/* Legacy total classes — hidden */
+.total-product-summary { display: none; }
+.total-text { display: none; }
 
 /* ============================================================
    CHECKOUT & ACTION BUTTONS - CLEAN WITH KLART RADII
    ============================================================ */
 
+/* ============================================================
+   CHECKOUT FOOTER — Sticky bottom with total + buttons
+   ============================================================ */
+
+/* Unified bottom panel: customer → total-divider → buttons */
 #checkout-stack {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 4px;
     margin-top: auto;
-    padding: 12px 20px 16px;
-    background: transparent;
+    padding: 0px 20px 6px;
+    border-top: 1px solid var(--klart-cart-border);
+    background: #EDE9E1;
+    position: relative;
+    overflow: visible;
 }
 
 #bottom-buttons {
     margin-top: 0;
     padding-top: 0;
+    display: none;
+}
+
+/* Footer buttons — side by side */
+#user-selection-actions {
+    display: flex;
+    gap: 10px;
 }
 
 .action-button {
     width: 100%;
     color: #fff;
-    padding: clamp(12px, 2.2vw, 18px);
-    font-size: clamp(16px, 1.9vw, 20px);
+    padding: 16px 12px;
+    font-size: 15px;
     font-family: var(--font-body);
     border: none;
-    border-radius: var(--klart-radius-md);
+    border-radius: var(--klart-cart-radius-md);
     cursor: pointer;
-    margin-bottom: clamp(6px, 1.4vw, 10px);
-    transition: all var(--klart-duration) var(--klart-ease);
+    margin-bottom: 0;
+    transition: all .13s ease;
     font-weight: 700;
-    box-shadow: var(--klart-shadow-md);
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    -webkit-tap-highlight-color: transparent;
+    letter-spacing: -0.1px;
+}
+
+.action-button svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
 }
 
 .action-button:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--klart-shadow-lg);
+    transform: none;
+    box-shadow: none;
 }
 
 .action-button:active {
-    transform: translateY(0);
+    transform: scale(.98);
 }
 
 .action-button:disabled {
-    background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+    background: var(--klart-cart-border-strong);
+    color: var(--klart-ink-muted);
     cursor: not-allowed;
     box-shadow: none;
     transform: none;
@@ -601,16 +821,25 @@ h3 {
 
 #complete-purchase {
     background: var(--klart-accent);
-    padding: 12px 16px;
+    color: #fff;
+    padding: 16px 12px;
     font-size: 15px;
     margin-bottom: 0;
-    box-shadow: none;
-    border-radius: var(--klart-radius-md);
+    box-shadow: 0 2px 6px rgba(26,138,110,.25);
+    border-radius: var(--klart-cart-radius-md);
+    flex: 1;
 }
 
-#complete-purchase:hover {
+#complete-purchase:active {
     background: var(--klart-accent-hover);
-    box-shadow: var(--klart-shadow-sm);
+    transform: scale(.98);
+    box-shadow: 0 1px 3px rgba(26,138,110,.3);
+}
+
+#complete-purchase:disabled {
+    background: var(--klart-cart-border-strong);
+    color: var(--klart-ink-muted);
+    box-shadow: none;
 }
 
 #admin-panel {

@@ -7,7 +7,7 @@ import {
     mergeRemoteStatsWithSession,
 } from '../domain/stats-and-badges.js';
 
-const AVATAR_URLS = [
+export const AVATAR_URLS = [
     'Icons/webp/Avatar/Ekspedient-dreng-1star.webp',
     'Icons/webp/Avatar/Ekspedient-dreng-2star.webp',
     'Icons/webp/Avatar/Ekspedient-dreng-3star.webp',

@@ -444,6 +444,10 @@ function sortProducts(products) {
                 aVal = a.is_enabled !== false ? 1 : 0;
                 bVal = b.is_enabled !== false ? 1 : 0;
                 return dir * (aVal - bVal);
+            case 'created_at':
+                aVal = a.created_at ? new Date(a.created_at).getTime() : 0;
+                bVal = b.created_at ? new Date(b.created_at).getTime() : 0;
+                return dir * (aVal - bVal);
             default:
                 return (a.sort_order || 0) - (b.sort_order || 0);
         }
@@ -482,6 +486,17 @@ function setupSortableHeaders() {
     });
 }
 
+function setupProductSearch() {
+    const searchInput = document.getElementById('product-rules-search');
+    if (!searchInput || searchInput.dataset.searchBound) return;
+    searchInput.dataset.searchBound = 'true';
+    let debounce;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(() => renderProductRulesTable(), 250);
+    });
+}
+
 function renderProductRulesTable() {
     const tbody = document.getElementById('product-rules-tbody');
     const emptyEl = document.getElementById('product-rules-empty');
@@ -500,9 +515,19 @@ function renderProductRulesTable() {
         products = products.filter(p => p.is_enabled !== false);
     }
 
+    // Filter: Søg i produktnavn
+    const searchInput = document.getElementById('product-rules-search');
+    const searchQuery = (searchInput?.value || '').trim().toLowerCase();
+    if (searchQuery) {
+        products = products.filter(p => (p.name || '').toLowerCase().includes(searchQuery));
+    }
+
     // Opdater undertitel med antal produkter
     if (subtitleEl) {
-        subtitleEl.textContent = `Tilføj/Rediger produkter (${totalProductCount} produkter)`;
+        const showing = products.length;
+        subtitleEl.textContent = searchQuery
+            ? `${showing} af ${totalProductCount} produkter`
+            : `Tilføj/Rediger produkter (${totalProductCount} produkter)`;
     }
 
     // Show/hide empty message
@@ -536,27 +561,31 @@ function renderProductRulesTable() {
         let purchaseLimit = productRulesState.productLimits.get(product.id) || 0;
         let currentPrice = product.price || 0;
 
+        const CB = 'border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);'; // cell border
+
         // 0. Dagens sortiment (toggle for visibility in cafe - FØRST fordi det bruges dagligt)
         const isVisible = product.is_visible !== false; // Default true if undefined
         setOriginalValue(product.id, 'is_visible', isVisible);
         const tdInAssortment = document.createElement('td');
-        tdInAssortment.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center; background: ' + (isVisible ? '#e8f5e9' : '#fff3e0') + ';';
+        tdInAssortment.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;' + CB;
+        tdInAssortment.className = isVisible ? 'prt-assortment-on' : 'prt-assortment-off';
         const inAssortmentToggle = document.createElement('input');
         inAssortmentToggle.type = 'checkbox';
         inAssortmentToggle.checked = isVisible;
-        inAssortmentToggle.style.cssText = 'width: 22px; height: 22px; cursor: pointer; accent-color: #4caf50;';
+        inAssortmentToggle.style.cssText = 'width: 22px; height: 22px; cursor: pointer;';
+        inAssortmentToggle.className = 'prt-assortment-checkbox';
         inAssortmentToggle.title = isVisible ? 'Vises i caféen' : 'Skjult fra caféen';
         inAssortmentToggle.addEventListener('change', () => {
             setDraftValue(product.id, 'is_visible', inAssortmentToggle.checked);
             inAssortmentToggle.title = inAssortmentToggle.checked ? 'Vises i caféen' : 'Skjult fra caféen';
-            tdInAssortment.style.background = inAssortmentToggle.checked ? '#e8f5e9' : '#fff3e0';
+            tdInAssortment.className = inAssortmentToggle.checked ? 'prt-assortment-on' : 'prt-assortment-off';
         });
         tdInAssortment.appendChild(inAssortmentToggle);
         tr.appendChild(tdInAssortment);
 
         // 1. Ikon
         const tdIcon = document.createElement('td');
-        tdIcon.style.cssText = 'padding: 8px; vertical-align: middle;';
+        tdIcon.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;' + CB;
         const iconInfo = getProductIconInfo(product);
         if (iconInfo?.path) {
             tdIcon.innerHTML = `<img src="${iconInfo.path}" alt="${product.name}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 4px;">`;
@@ -565,21 +594,29 @@ function renderProductRulesTable() {
         }
         tr.appendChild(tdIcon);
 
-        // 2. Navn (klikbart for inline redigering)
+        // 2. Navn (med blyant-ikon for redigering)
         const tdName = document.createElement('td');
-        tdName.style.cssText = 'padding: 8px; vertical-align: middle; font-weight: 500; cursor: pointer;';
-        tdName.title = 'Klik for at redigere navn';
+        tdName.style.cssText = 'padding: 8px; vertical-align: middle; font-weight: 500;' + CB;
 
         const nameSpan = document.createElement('span');
         nameSpan.textContent = product.name || 'Produkt';
+
+        const editNameBtn = document.createElement('button');
+        editNameBtn.type = 'button';
+        editNameBtn.innerHTML = '✏️';
+        editNameBtn.title = 'Redigér navn';
+        editNameBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:12px;padding:2px 4px;margin-left:4px;opacity:0.4;transition:opacity 0.15s;';
+        editNameBtn.addEventListener('mouseenter', () => { editNameBtn.style.opacity = '1'; });
+        editNameBtn.addEventListener('mouseleave', () => { editNameBtn.style.opacity = '0.4'; });
+
         tdName.appendChild(nameSpan);
+        tdName.appendChild(editNameBtn);
 
         // Gem original værdi for sammenligning
         setOriginalValue(product.id, 'name', product.name || 'Produkt');
 
-        tdName.addEventListener('click', (e) => {
-            // Ignorer klik hvis input allerede er aktivt
-            if (e.target.tagName === 'INPUT') return;
+        editNameBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Don't trigger row click
 
             // Replace name cell with input field
             const currentName = getDraftValue(product.id, 'name', product.name || 'Produkt');
@@ -624,7 +661,7 @@ function renderProductRulesTable() {
         // 3. Pris med +/- controls
         setOriginalValue(product.id, 'price', currentPrice);
         const tdPrice = document.createElement('td');
-        tdPrice.style.cssText = 'padding: 4px 8px; vertical-align: middle; text-align: center; white-space: nowrap;';
+        tdPrice.style.cssText = 'padding: 4px 8px; vertical-align: middle; text-align: center; white-space: nowrap;' + CB;
         const priceDisplay = document.createElement('span');
         priceDisplay.style.cssText = 'display: inline-block; min-width: 50px; font-weight: 500;';
         priceDisplay.textContent = currentPrice.toFixed(2);
@@ -632,7 +669,8 @@ function renderProductRulesTable() {
         const minusPriceBtn = document.createElement('button');
         minusPriceBtn.textContent = '−';
         minusPriceBtn.title = 'Sænk pris med 1 kr';
-        minusPriceBtn.style.cssText = 'background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 14px; margin-right: 4px;';
+        minusPriceBtn.className = 'prt-pm-btn';
+        minusPriceBtn.style.cssText = 'margin-right: 4px;';
         minusPriceBtn.addEventListener('click', () => {
             if (currentPrice > 0) {
                 currentPrice = Math.max(0, currentPrice - 1);
@@ -644,7 +682,8 @@ function renderProductRulesTable() {
         const plusPriceBtn = document.createElement('button');
         plusPriceBtn.textContent = '+';
         plusPriceBtn.title = 'Hæv pris med 1 kr';
-        plusPriceBtn.style.cssText = 'background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 14px; margin-left: 4px;';
+        plusPriceBtn.className = 'prt-pm-btn';
+        plusPriceBtn.style.cssText = 'margin-left: 4px;';
         plusPriceBtn.addEventListener('click', () => {
             currentPrice = currentPrice + 1;
             priceDisplay.textContent = currentPrice.toFixed(2);
@@ -659,7 +698,7 @@ function renderProductRulesTable() {
         // 4. Købsgrænse med +/- controls
         setOriginalValue(product.id, 'limit', purchaseLimit);
         const tdLimit = document.createElement('td');
-        tdLimit.style.cssText = 'padding: 4px 8px; vertical-align: middle; text-align: center; white-space: nowrap;';
+        tdLimit.style.cssText = 'padding: 4px 8px; vertical-align: middle; text-align: center; white-space: nowrap;' + CB;
         const limitDisplay = document.createElement('span');
         limitDisplay.style.cssText = 'display: inline-block; min-width: 30px; font-weight: 500; color: #1565c0;';
         limitDisplay.textContent = purchaseLimit > 0 ? purchaseLimit : '∞';
@@ -667,7 +706,8 @@ function renderProductRulesTable() {
         const minusLimitBtn = document.createElement('button');
         minusLimitBtn.textContent = '−';
         minusLimitBtn.title = 'Sænk grænse med 1';
-        minusLimitBtn.style.cssText = 'background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 14px; margin-right: 4px;';
+        minusLimitBtn.className = 'prt-pm-btn';
+        minusLimitBtn.style.cssText = 'margin-right: 4px;';
         minusLimitBtn.addEventListener('click', () => {
             if (purchaseLimit > 0) {
                 purchaseLimit = purchaseLimit - 1;
@@ -679,7 +719,8 @@ function renderProductRulesTable() {
         const plusLimitBtn = document.createElement('button');
         plusLimitBtn.textContent = '+';
         plusLimitBtn.title = 'Hæv grænse med 1';
-        plusLimitBtn.style.cssText = 'background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 14px; margin-left: 4px;';
+        plusLimitBtn.className = 'prt-pm-btn';
+        plusLimitBtn.style.cssText = 'margin-left: 4px;';
         plusLimitBtn.addEventListener('click', () => {
             purchaseLimit = purchaseLimit + 1;
             limitDisplay.textContent = purchaseLimit;
@@ -694,7 +735,7 @@ function renderProductRulesTable() {
         // 5. Dagens ret (toggle)
         setOriginalValue(product.id, 'is_daily_special', isDailySpecial);
         const tdDailySpecial = document.createElement('td');
-        tdDailySpecial.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+        tdDailySpecial.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;' + CB;
         const dailySpecialToggle = document.createElement('input');
         dailySpecialToggle.type = 'checkbox';
         dailySpecialToggle.checked = isDailySpecial;
@@ -709,7 +750,7 @@ function renderProductRulesTable() {
         // 6. Fast sortiment (toggle)
         setOriginalValue(product.id, 'is_core_assortment', isCoreAssortment);
         const tdCoreAssortment = document.createElement('td');
-        tdCoreAssortment.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+        tdCoreAssortment.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;' + CB;
         const coreAssortmentToggle = document.createElement('input');
         coreAssortmentToggle.type = 'checkbox';
         coreAssortmentToggle.checked = isCoreAssortment;
@@ -726,7 +767,7 @@ function renderProductRulesTable() {
         // 7. Usund (toggle - conditional visibility)
         setOriginalValue(product.id, 'unhealthy', isUnhealthy);
         const tdUnhealthy = document.createElement('td');
-        tdUnhealthy.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+        tdUnhealthy.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;' + CB;
         tdUnhealthy.style.display = showUnhealthyCol ? '' : 'none';
         tdUnhealthy.className = 'col-unhealthy-cell';
 
@@ -744,7 +785,7 @@ function renderProductRulesTable() {
         // 8. Aktiv (toggle)
         setOriginalValue(product.id, 'is_enabled', isActive);
         const tdActive = document.createElement('td');
-        tdActive.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+        tdActive.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;' + CB;
 
         const activeToggle = document.createElement('input');
         activeToggle.type = 'checkbox';
@@ -765,7 +806,7 @@ function renderProductRulesTable() {
 
         // 9. Slet (delete button)
         const tdDelete = document.createElement('td');
-        tdDelete.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+        tdDelete.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;' + CB;
 
         const deleteBtn = document.createElement('button');
         deleteBtn.innerHTML = '🗑️';
@@ -797,12 +838,26 @@ function renderProductRulesTable() {
                 }
             }
         });
+        // 9. Oprettet (created_at) — skal komme FØR Slet
+        const tdCreated = document.createElement('td');
+        tdCreated.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center; font-size: 12px; color: #94a3b8; white-space: nowrap;' + CB;
+        if (product.created_at) {
+            const d = new Date(product.created_at);
+            tdCreated.textContent = `${d.getDate()}/${d.getMonth() + 1}-${d.getFullYear().toString().slice(-2)}`;
+            tdCreated.title = d.toLocaleString('da-DK');
+        } else {
+            tdCreated.textContent = '—';
+        }
+        tr.appendChild(tdCreated);
+
         tdDelete.appendChild(deleteBtn);
         tr.appendChild(tdDelete);
 
         // 10. Rediger (åbner produkt-modal)
         const tdEdit = document.createElement('td');
-        tdEdit.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;';
+
+        // 10. Redigér
+        tdEdit.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;' + CB;
         const editBtn = document.createElement('button');
         editBtn.innerHTML = '✏️';
         editBtn.title = 'Rediger produkt';
@@ -854,13 +909,28 @@ function renderProductRulesTable() {
         tdEdit.appendChild(editBtn);
         tr.appendChild(tdEdit);
 
+        // Hele rækken er klikbar → åbner redigér modal
+        tr.addEventListener('click', async (e) => {
+            // Ignorer klik på interaktive elementer (knapper, checkboxes, inputs)
+            const target = e.target;
+            if (target.tagName === 'BUTTON' || target.tagName === 'INPUT' || target.tagName === 'SELECT' ||
+                target.closest('button') || target.closest('input')) return;
+
+            // Brug editBtn's klik-handler logik
+            editBtn.click();
+        });
+
         tbody.appendChild(tr);
     });
 
-    // Setup sortable headers after render
+    // Setup sortable headers + search after render
     setupSortableHeaders();
+    setupProductSearch();
     updateSortIndicators();
 }
+
+// Expose globally so product edit modal can re-render after returning
+window.__flangoRenderProductRulesTable = renderProductRulesTable;
 
 /**
  * Håndterer lukning af produktoversigt modal med check for ugemte ændringer
@@ -1517,6 +1587,133 @@ async function openSugarPolicySettingsModal() {
     modal.style.display = 'flex';
 }
 
+/**
+ * Åbner Profilbillede indstillinger modal
+ */
+async function openProfilePictureSettingsModal() {
+    const modal = document.getElementById('profile-picture-settings-modal');
+    if (!modal) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+
+    // Load current settings
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('profile_pictures_enabled, profile_picture_types, profile_pictures_ai_enabled')
+        .eq('id', institutionId)
+        .single();
+
+    if (error) {
+        console.error('[profile-picture-settings] Fejl:', error);
+        return;
+    }
+
+    const enabledToggle = document.getElementById('pp-settings-enabled-toggle');
+    const enabledLabel = document.getElementById('pp-settings-enabled-label');
+    const typesSection = document.getElementById('pp-settings-types');
+    const uploadCb = document.getElementById('pp-type-upload');
+    const cameraCb = document.getElementById('pp-type-camera');
+    const libraryCb = document.getElementById('pp-type-library');
+    const aiAvatarCb = document.getElementById('pp-type-ai-avatar');
+    const aiWarning = document.getElementById('pp-ai-warning');
+
+    if (data) {
+        const enabled = data.profile_pictures_enabled || false;
+        const types = data.profile_picture_types || ['upload', 'camera', 'library'];
+        const aiEnabled = data.profile_pictures_ai_enabled || false;
+
+        enabledToggle.checked = enabled;
+        enabledLabel.textContent = enabled ? 'Profilbilleder er slået TIL' : 'Profilbilleder er slået FRA';
+        typesSection.style.display = enabled ? 'block' : 'none';
+
+        uploadCb.checked = types.includes('upload');
+        cameraCb.checked = types.includes('camera');
+        libraryCb.checked = types.includes('library');
+        aiAvatarCb.checked = types.includes('ai_avatar');
+        aiWarning.style.display = aiAvatarCb.checked ? 'block' : 'none';
+    }
+
+    // Toggle enabled
+    enabledToggle.onchange = () => {
+        const on = enabledToggle.checked;
+        enabledLabel.textContent = on ? 'Profilbilleder er slået TIL' : 'Profilbilleder er slået FRA';
+        typesSection.style.display = on ? 'block' : 'none';
+    };
+
+    // AI-Avatar warning toggle
+    aiAvatarCb.onchange = () => {
+        aiWarning.style.display = aiAvatarCb.checked ? 'block' : 'none';
+    };
+
+    // Close + back buttons
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) closeBtn.onclick = () => { modal.style.display = 'none'; };
+
+    const backBtn = document.getElementById('back-to-preferences-pp-settings-btn');
+    if (backBtn) {
+        const newBackBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+        newBackBtn.onclick = () => {
+            modal.style.display = 'none';
+            openInstitutionPreferences();
+        };
+    }
+
+    // Save button
+    const applyBtn = document.getElementById('apply-pp-settings-btn');
+    if (applyBtn) {
+        const newApplyBtn = applyBtn.cloneNode(true);
+        applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+        newApplyBtn.onclick = async () => {
+            newApplyBtn.disabled = true;
+            newApplyBtn.textContent = 'Gemmer...';
+
+            try {
+                const types = [];
+                if (uploadCb.checked) types.push('upload');
+                if (cameraCb.checked) types.push('camera');
+                if (libraryCb.checked) types.push('library');
+                if (aiAvatarCb.checked) types.push('ai_avatar');
+
+                const updates = {
+                    profile_pictures_enabled: enabledToggle.checked,
+                    profile_picture_types: types,
+                    profile_pictures_ai_enabled: aiAvatarCb.checked,
+                };
+
+                const { error: saveError } = await supabaseClient
+                    .from('institutions')
+                    .update(updates)
+                    .eq('id', institutionId);
+
+                if (saveError) throw saveError;
+
+                updateInstitutionCache(institutionId, updates);
+
+                newApplyBtn.textContent = '✓ Gemt!';
+                newApplyBtn.style.background = '#2e7d32';
+                setTimeout(() => {
+                    newApplyBtn.textContent = 'Gem indstillinger';
+                    newApplyBtn.style.background = '#4CAF50';
+                    newApplyBtn.disabled = false;
+                }, 1500);
+            } catch (err) {
+                console.error('[profile-picture-settings] Gem fejl:', err);
+                newApplyBtn.textContent = 'Fejl';
+                newApplyBtn.style.background = '#f44336';
+                setTimeout(() => {
+                    newApplyBtn.textContent = 'Gem indstillinger';
+                    newApplyBtn.style.background = '#4CAF50';
+                    newApplyBtn.disabled = false;
+                }, 2000);
+            }
+        };
+    }
+
+    modal.style.display = 'flex';
+}
+
 async function openSpendingLimitModal() {
     const modal = document.getElementById('spending-limit-modal');
     if (!modal) return;
@@ -1811,10 +2008,20 @@ async function openInstitutionPreferences() {
         openRestaurantModeSettingsModal();
     });
 
+    // Profilbilleder knap
+    const profilePictureBtn = document.createElement('button');
+    profilePictureBtn.className = 'settings-item-btn';
+    profilePictureBtn.innerHTML = prefRow('📷', 'Profilbilleder', 'Vis profilbilleder ved brugervalg i caféen.');
+    profilePictureBtn.addEventListener('click', () => {
+        settingsModalPushParent(openInstitutionPreferences);
+        openProfilePictureSettingsModal();
+    });
+
     contentEl.appendChild(parentPortalBtn);
     contentEl.appendChild(betalingsmetodeBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(sugarPolicyBtn);
+    contentEl.appendChild(profilePictureBtn);
     contentEl.appendChild(restaurantModeBtn);
     contentEl.appendChild(iconSharingBtn);
     contentEl.appendChild(editAdminsBtn);

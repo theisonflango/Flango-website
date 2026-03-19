@@ -507,7 +507,7 @@ export async function fetchInstitutionIconLibrary(institutionId) {
     try {
         const { data, error } = await supabaseClient
             .from('institution_icons')
-            .select('id, name, icon_url, source, created_at')
+            .select('id, name, icon_url, source, created_at, ai_style, ai_photo_mode, ai_prompt_mode')
             .eq('institution_id', institutionId)
             .order('created_at', { ascending: false });
 
@@ -593,6 +593,27 @@ export async function deleteInstitutionIcon(iconId) {
     } catch (err) {
         console.error('[deleteInstitutionIcon] Error:', err);
         return { success: false, error: err.message || 'Kunne ikke slette ikon' };
+    }
+}
+
+/**
+ * Rename an icon in institution library
+ * @param {string} iconId - Icon UUID
+ * @param {string} newName - New name for the icon
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function renameInstitutionIcon(iconId, newName) {
+    try {
+        const { error } = await supabaseClient
+            .from('institution_icons')
+            .update({ name: newName })
+            .eq('id', iconId);
+
+        if (error) throw new Error(error.message);
+        return { success: true };
+    } catch (err) {
+        console.error('[renameInstitutionIcon] Error:', err);
+        return { success: false, error: err.message || 'Kunne ikke omdøbe ikon' };
     }
 }
 

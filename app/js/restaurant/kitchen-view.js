@@ -576,9 +576,10 @@ function showNewOrderToast(sale) {
     const toast = document.createElement('div');
     toast.className = 'kitchen-toast kitchen-toast-enter';
 
-    const itemsPreview = (sale.items || []).slice(0, 3).map(i =>
-        `${i.emoji || '🍽️'} ${i.name}${i.quantity > 1 ? ` x${i.quantity}` : ''}`
-    ).join(', ');
+    const itemsPreview = (sale.items || []).slice(0, 3).map(i => {
+        const emoji = (i.emoji && i.emoji.startsWith('::icon::')) ? '🍽️' : (i.emoji || '🍽️');
+        return `${emoji} ${i.name}${i.quantity > 1 ? ` x${i.quantity}` : ''}`;
+    }).join(', ');
     const moreCount = (sale.items || []).length - 3;
     const moreText = moreCount > 0 ? ` +${moreCount}` : '';
 

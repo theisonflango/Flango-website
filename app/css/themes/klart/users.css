@@ -127,18 +127,21 @@
 
 /* .sidebar-header defined in features.css (cart header context) */
 
-/* Selected user info — customer bar matching styleguide */
+/* ============================================================
+   SELECTED USER INFO — Klart redesign
+   Vertical layout: customer card + balance card
+   ============================================================ */
+
 #selected-user-info {
     background: transparent;
     border: none;
-    border-top: 1px solid rgba(200, 180, 120, 0.2);
-    padding: 10px 12px 10px 20px;
+    padding: 0;
     overflow: visible;
     border-radius: 0;
     margin-bottom: 0;
     display: flex !important;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
+    gap: 14px;
     text-align: left;
     position: relative;
     z-index: 10;
@@ -147,138 +150,173 @@
     font-family: var(--font-body);
 }
 
-/* NO pushpin — remove pseudo-elements */
 #selected-user-info::before,
 #selected-user-info::after {
     display: none !important;
     content: none !important;
 }
 
-/* Customer avatar — 40px circle */
-.customer-avatar {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
+/* ─── Customer Card ─── */
+.klart-customer-card {
+    background: transparent;
+    border-radius: 0;
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: none;
+    border: none;
+    position: relative;
+    overflow: visible;
+    margin: -30px 0 -30px;
+    z-index: 6;
+}
+
+.klart-customer-card::before {
+    display: none;
+}
+
+/* Avatar wrap */
+.klart-customer-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+    margin-bottom: 4px;
+}
+
+.klart-customer-avatar-ring {
+    width: 140px;
+    height: 140px;
     border-radius: 50%;
-    background: #fff3d8;
-    border: 2px solid #e8c868;
+    background: linear-gradient(145deg, #F7D59C, #F0B860);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
-    flex-shrink: 0;
-    overflow: hidden;
-}
-
-/* Customer name block */
-.customer-name-block {
-    flex: 0 1 auto;
-    min-width: 60px;
-    overflow: hidden;
-}
-
-.customer-name {
+    font-size: 40px;
     font-weight: 700;
-    font-size: 15px;
-    line-height: 1.3;
-    color: var(--klart-fg);
-    font-family: var(--font-body);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    color: #7A5C1F;
+    border: 3.5px solid var(--klart-accent);
+    box-shadow: 0 0 0 5px rgba(45,140,78,.12), 0 4px 12px rgba(0,0,0,.08);
+    user-select: none;
     overflow: hidden;
-    word-break: break-word;
 }
 
-.customer-number {
-    color: var(--klart-fg-muted);
-    font-weight: 500;
-    font-size: 12px;
+.klart-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
-/* Saldo container — groups saldo + arrow + ny saldo */
-.customer-saldo-container {
-    flex: 1 0 auto;
+.klart-customer-number-badge {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--klart-accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: var(--klart-radius-full);
+    border: 2.5px solid var(--klart-bg-raised);
+    white-space: nowrap;
+    letter-spacing: 1.5px;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 6px rgba(0,0,0,.15);
+    font-family: var(--font-body);
+}
+
+/* Customer info (name + balance) */
+.klart-customer-info {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    position: relative;
+}
+
+.klart-customer-name {
+    font-family: var(--font-heading);
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--klart-ink);
+    white-space: nowrap;
+    letter-spacing: -0.2px;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+/* ─── Balance Row (inside customer card, below name) ─── */
+.klart-balance-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    align-items: center;
+}
+
+.klart-balance-arrow {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 12px;
-    background: rgba(255, 255, 255, 0.5);
-    border-radius: var(--klart-radius-md);
-    min-width: 0;
+    justify-content: center;
+    color: var(--klart-accent);
 }
 
-.saldo-arrow {
-    color: var(--klart-fg-muted);
-    font-size: 16px;
-    font-weight: 600;
-    flex-shrink: 0;
+.klart-balance-arrow svg {
+    width: 18px;
+    height: 18px;
 }
 
-.info-box {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    font-family: var(--font-body);
+.klart-balance-col {
     flex: 1;
     text-align: center;
+    padding: 4px 4px;
+    border-radius: var(--klart-cart-radius-sm);
+    background: var(--klart-surface-alt);
+    border: 1px solid var(--klart-cart-border);
 }
 
-.info-box-label {
+.klart-balance-label {
     font-size: 10px;
     font-weight: 600;
-    color: var(--klart-fg-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-family: var(--font-body);
-    margin-bottom: 1px;
-}
-
-.info-box-value {
-    font-size: clamp(14px, 1.6vw, 18px);
-    font-weight: 700;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--klart-fg);
+    letter-spacing: 0.5px;
+    color: var(--klart-ink-muted);
+    margin-bottom: 2px;
     font-family: var(--font-body);
 }
 
-.info-box-value.negative {
-    color: var(--danger-color);
-}
-
-/* "Ny Saldo" — green accent */
-.info-box.saldo-new .info-box-label {
-    color: var(--klart-accent);
-    font-weight: 600;
-}
-
-.info-box.saldo-new .info-box-value:not(.negative) {
-    color: var(--klart-accent);
-}
-
-#new-balance-info {
+.klart-balance-val {
+    font-family: var(--font-heading);
     font-weight: 700;
-    color: var(--danger-color);
+    font-size: 17px;
+    color: var(--klart-ink);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.3px;
 }
 
-/* Deselect user button — floats outside top-right corner */
+.klart-balance-new .klart-balance-val {
+    color: var(--klart-accent);
+}
+
+.klart-balance-val.negative {
+    color: var(--danger-color) !important;
+}
+
+/* Deselect user button — top-right corner of bottom panel */
 .deselect-user-btn {
     position: absolute !important;
-    top: -6px !important;
-    right: 2px !important;
+    top: -10px !important;
+    right: -10px !important;
     left: auto !important;
     transform: none !important;
-    background: var(--klart-bg-raised, #fff) !important;
-    color: var(--klart-fg-muted) !important;
-    border: 1px solid var(--klart-border, #e2e8f0) !important;
+    background: var(--klart-bg-raised) !important;
+    color: var(--klart-ink-muted) !important;
+    border: 1px solid var(--klart-cart-border) !important;
     border-radius: 50% !important;
     width: 22px !important;
     height: 22px !important;
     min-width: 22px !important;
-    font-size: 14px !important;
+    font-size: 13px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -291,6 +329,70 @@
 .deselect-user-btn:hover {
     background: rgba(196, 64, 64, 0.1) !important;
     color: var(--danger-color) !important;
+}
+
+/* ─── Empty Customer Placeholder (no user selected) ─── */
+.klart-customer-empty {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 4px 0;
+    margin: -30px 0 -30px;
+    position: relative;
+    overflow: visible;
+}
+
+.klart-avatar-empty {
+    opacity: 0.35;
+    border-color: var(--klart-ink-muted) !important;
+    box-shadow: none !important;
+    background: linear-gradient(145deg, #e0ddd7, #d5d2cc) !important;
+    color: #999 !important;
+}
+
+.klart-name-empty {
+    color: var(--klart-ink-muted) !important;
+    font-style: italic;
+}
+
+/* Empty state (no customer selected) */
+#selected-user-info.empty-state {
+    padding: 16px 18px;
+}
+
+#selected-user-info.empty-state .info-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+    padding: 12px;
+}
+
+#selected-user-info.empty-state .info-box-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--klart-ink-muted);
+}
+
+#selected-user-info.empty-state .info-box-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--klart-ink-soft);
+}
+
+/* Legacy classes — hidden in new design */
+.customer-avatar,
+.customer-name-block,
+.customer-saldo-container,
+.saldo-arrow,
+.info-box,
+.info-box-label,
+.info-box-value,
+.customer-name,
+.customer-number {
+    /* These may still be used by aurora theme, only affect klart rendering */
 }
 
 /* ============================================================
@@ -307,35 +409,44 @@
 }
 
 #select-customer-main-btn {
-    background: var(--klart-bg-raised);
-    color: var(--klart-fg);
-    padding: 12px 16px;
+    background: #E3EDF7;
+    color: #2B5A8C;
+    padding: 16px 12px;
     font-size: 15px;
     font-family: var(--font-body);
-    border: 1px solid var(--klart-border-strong);
-    border-radius: var(--klart-radius-md);
+    border: 1.5px solid transparent;
+    border-radius: var(--klart-cart-radius-md);
     cursor: pointer;
     margin-bottom: 0;
-    font-weight: 600;
+    font-weight: 700;
     box-shadow: none;
-    transition: all var(--klart-duration) var(--klart-ease);
+    transition: all .13s ease;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
-#select-customer-main-btn:hover {
-    transform: translateY(-1px);
-    background: var(--klart-bg-hover);
-    border-color: var(--klart-border-strong);
+#select-customer-main-btn svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+#select-customer-main-btn:active {
+    background: #D1E2F0;
+    transform: scale(.98);
 }
 
 #user-selection-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    display: flex;
+    gap: 10px;
     align-items: stretch;
 }
 
 #user-selection-actions button {
-    width: 100%;
+    flex: 1;
 }
 
 /* ============================================================
