@@ -88,6 +88,9 @@ export async function openProfilePictureModal(user, options = {}) {
         // Icons (like library) are always available — they use the institution's icon library
         if (tc.key !== 'icons' && !allowedTypes.includes(tc.key)) continue;
         if (tc.requiresAi && !inst.profile_pictures_ai_enabled) continue;
+        // Respect granular parent opt-outs
+        if (tc.key === 'camera' && user.profile_picture_opt_out_camera) continue;
+        if (tc.key === 'ai_avatar' && user.profile_picture_opt_out_ai) continue;
 
         const btn = document.createElement('button');
         btn.className = 'profile-pic-type-btn';

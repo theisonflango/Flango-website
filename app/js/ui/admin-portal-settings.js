@@ -53,6 +53,7 @@
     { id: 'section-sugar', icon: ICONS.noEntry, label: 'Sukkerpolitik', check: true, settingKey: 'parent_portal_sugar_policy', defaultChecked: true },
     { id: 'section-diet', icon: ICONS.cup, label: 'Kostpr\u00e6ferencer', check: true, settingKey: 'parent_portal_diet', defaultChecked: true },
     { id: 'section-allergens', icon: ICONS.wrench, label: 'Allergier', check: true, settingKey: 'parent_portal_allergens', defaultChecked: true },
+    { id: 'section-profile-pictures', icon: ICONS.user, label: 'Profilbilleder', check: true, settingKey: 'parent_portal_profile_pictures', defaultChecked: true },
     { id: 'section-screentime', icon: ICONS.monitor, label: 'Sk\u00e6rmtid', check: true, settingKey: 'skaermtid_enabled', defaultChecked: true },
     { id: 'section-games', icon: ICONS.gamepad, label: 'Godkend spil', check: true, settingKey: 'skaermtid_allow_game_approval', defaultChecked: true },
     { id: 'section-st-chart', icon: ICONS.barChart, label: 'Spilletidsoversigt', check: true, settingKey: 'skaermtid_show_usage' },
@@ -619,10 +620,22 @@
       </div>`;
     const pinSection = buildSection('section-pin', '\uD83D\uDD11', 'var(--surface-sunken)', 'Skift adgangskode', 'Minimum 6 tegn', pinContent);
 
+    // Profile pictures section
+    const ppDisabled = !isFeatureOn(SIDEBAR_NAV.find(n => n.id === 'section-profile-pictures'), settings);
+    const ppContent = `
+      <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">\u2139\uFE0F</span><span>Institutionen kan bruge profilbilleder i caf\u00e9en for at bekr\u00e6fte dit barns identitet ved k\u00f8b. Billedet er kun synligt for personale.</span></div>
+      ${buildSettingRow('Aula-profilbillede', 'Tillad at institutionen bruger barnets Aula-billede', buildToggle(null, true))}
+      ${buildSettingRow('Kamera-foto', 'Tillad at der tages et billede af barnet i caf\u00e9en', buildToggle(null, true))}
+      <div style="opacity:0.55;pointer-events:none">
+        ${buildSettingRow('AI-genereret avatar', 'Afventer kommunal tilladelse', buildToggle(null, true))}
+      </div>`;
+    const ppSection = buildSection('section-profile-pictures', '\uD83D\uDCF7', '#e0e7ff', 'Profilbilleder', 'Samtykke til billeder i caf\u00e9en', ppContent, { disabled: ppDisabled });
+
     return `
     <div class="tab-view" id="tab-profile">
       <div class="view-header mobile-only"><div class="view-title">Profil</div><div class="view-subtitle">Indstillinger & notifikationer</div></div>
       ${notifSection}
+      ${ppSection}
       ${feedbackSection}
       ${pinSection}
     </div>`;
