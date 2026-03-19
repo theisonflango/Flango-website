@@ -5,6 +5,22 @@
  *   compact = false → <tr> table row for the standalone kitchen view
  */
 import { escapeHtml } from '../core/escape-html.js';
+import { CUSTOM_ICON_PREFIX, getCustomIconPath } from '../domain/products-and-cart.js';
+
+/**
+ * Resolve icon HTML for a sale item.
+ * Handles custom uploaded icons (icon_url), standard 3D icons (::icon:: prefix in emoji), and plain emoji.
+ */
+function resolveItemIcon(item, imgClass) {
+    if (item.icon_url) {
+        return `<img src="${escapeHtml(item.icon_url)}" class="${imgClass}" alt="">`;
+    }
+    const standardPath = getCustomIconPath(item.emoji);
+    if (standardPath) {
+        return `<img src="${escapeHtml(standardPath)}" class="${imgClass}" alt="">`;
+    }
+    return null; // caller uses emoji fallback
+}
 
 /**
  * Get time-based color for order urgency.
@@ -61,9 +77,8 @@ function renderCompactRow(sale) {
     // Items inline: emoji+qty (🍔x2 🍟x1) + variant suffix
     const items = sale.items || [];
     const itemsHtml = items.map(item => {
-        const icon = item.icon_url
-            ? `<img src="${escapeHtml(item.icon_url)}" class="krc-item-icon" alt="">`
-            : `<span class="krc-item-emoji">${item.emoji || '🍽️'}</span>`;
+        const icon = resolveItemIcon(item, 'krc-item-icon')
+            || `<span class="krc-item-emoji">${item.emoji || '🍽️'}</span>`;
         const qty = item.quantity > 1 ? `x${item.quantity}` : '';
         const variant = item.item_variant ? `<span class="krc-item-variant">·${escapeHtml(item.item_variant)}</span>` : '';
         return `<span class="krc-item">${icon}${qty}${variant}</span>`;
@@ -110,9 +125,8 @@ function renderTableRow(sale) {
     // Items summary — med variant-badge og per-item note
     const items = sale.items || [];
     const itemsSummary = items.map(item => {
-        const icon = item.icon_url
-            ? `<img src="${escapeHtml(item.icon_url)}" class="kitchen-item-icon" alt="">`
-            : `<span class="kitchen-item-emoji">${item.emoji || '🍽️'}</span>`;
+        const icon = resolveItemIcon(item, 'kitchen-item-icon')
+            || `<span class="kitchen-item-emoji">${item.emoji || '🍽️'}</span>`;
         const qty = item.quantity > 1 ? ` x${item.quantity}` : '';
         const variantHtml = item.item_variant
             ? ` <span class="kitchen-item-variant">${escapeHtml(item.item_variant)}</span>` : '';
