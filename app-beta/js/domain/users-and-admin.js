@@ -4,8 +4,26 @@
 
 import { supabaseClient } from '../core/config-and-supabase.js';
 import { escapeHtml } from '../core/escape-html.js';
+import { getCachedProfilePictureUrl } from '../core/profile-picture-cache.js';
 
 const adminCacheByInstitutionUsers = {};
+
+/**
+ * Returns a small inline profile pic (26px circle) for user list rows.
+ * Shows the user's profile picture, or a default avatar placeholder.
+ * Only renders if the institution has profile pictures enabled.
+ * Fits within existing row height — no layout impact.
+ */
+function inlineProfilePic(user) {
+    const inst = window.__flangoGetInstitutionById?.(user.institution_id);
+    if (!inst?.profile_pictures_enabled) return '';
+    if (user.profile_picture_url && !user.profile_picture_opt_out) {
+        const url = getCachedProfilePictureUrl(user);
+        if (url) return `<img src="${url}" alt="" class="pp-inline-thumb">`;
+    }
+    // Default placeholder — small neutral avatar
+    return `<span class="pp-inline-default">👤</span>`;
+}
 
 export function getCurrentInstitutionId(adminProfile, clerkProfile) {
     if (adminProfile && adminProfile.institution_id) {
@@ -50,10 +68,11 @@ export function buildUserAdminTableRows(users, selectedIndex = 0) {
     return users.map((user, index) => {
         const highlightClass = index === selectedIndex ? ' highlight' : '';
         const balanceClass = (user.balance || 0) < 0 ? 'negative' : 'positive';
+
         return `
             <div class="modal-entry">
                 <div class="modal-entry-info${highlightClass}" data-index="${index}" data-user-id="${user.id}">
-                    <span class="user-list-name">${escapeHtml(user.name)}</span>
+                    <span class="user-list-name">${inlineProfilePic(user)}${escapeHtml(user.name)}</span>
                     <span class="user-list-number">${escapeHtml(safeNumber(user.number))}</span>
                     <span class="user-list-grade">${safeGrade(user.grade_level)}</span>
                     <span class="user-list-balance ${balanceClass}">${safeBalance(user.balance)} kr.</span>
@@ -68,9 +87,10 @@ export function buildUserAdminTableRows(users, selectedIndex = 0) {
 export function buildCustomerSelectionEntryElement(user, index, isHighlighted) {
     const userElement = document.createElement('div');
     userElement.className = 'modal-entry';
+
     userElement.innerHTML = `
         <div class="modal-entry-info ${isHighlighted ? 'highlight' : ''}" data-user-id="${user.id}" data-user-role="${user.role}" style="cursor: pointer;">
-            <span class="user-list-name">${escapeHtml(user.name)}</span>
+            <span class="user-list-name">${inlineProfilePic(user)}${escapeHtml(user.name)}</span>
             <span class="user-list-number">${escapeHtml(user.number || '—')}</span>
             <span class="user-list-balance ${user.balance < 0 ? 'negative' : 'positive'}">${user.balance.toFixed(2)} kr.</span>
         </div>`;

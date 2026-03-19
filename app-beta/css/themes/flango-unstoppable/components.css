@@ -467,7 +467,12 @@
     border: 2px solid rgba(168, 85, 247, 0.2);
     font-size: 16px;
     background: linear-gradient(145deg, #fffbf7 0%, #fff5eb 100%);
+    color: #1a1a2e;
     transition: all 0.2s ease;
+}
+
+.edit-user-form input::placeholder {
+    color: #9ca3af;
 }
 
 .edit-user-form input:focus,

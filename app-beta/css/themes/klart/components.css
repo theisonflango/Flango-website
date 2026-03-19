@@ -459,12 +459,6 @@
     transition: all var(--klart-duration) var(--klart-ease);
 }
 
-#search-user-input::placeholder,
-#admin-search-user-input::placeholder,
-.modal-controls #search-history-input::placeholder {
-    color: var(--klart-fg-soft);
-}
-
 #search-user-input:focus,
 #admin-search-user-input:focus,
 .modal-controls #search-history-input:focus {
@@ -1984,12 +1978,7 @@
     font-family: var(--font-body);
     text-align: center;
     background: var(--klart-bg-raised);
-    color: var(--klart-fg);
     transition: all var(--klart-duration) var(--klart-ease);
-}
-
-#balance-form-fields input::placeholder {
-    color: var(--klart-fg-soft);
 }
 
 #balance-form-fields input:focus {

@@ -6,6 +6,8 @@ import { playSound } from '../ui/sound-and-alerts.js';
 import { getCurrentCustomer, clearEvaluation } from './cafe-session-store.js';
 import { MAX_ITEMS_PER_ORDER } from '../core/constants.js';
 import { formatKr } from '../ui/confirm-modals.js';
+import { getCurrentTheme } from '../ui/theme-loader.js';
+import { updateKlartCartCountBadge } from './app-ui-updates.js';
 
 /**
  * Tjekker om den nuværende kunde er en admin med gratis-køb
@@ -90,13 +92,12 @@ export function updateTotalPrice(totalPriceEl) {
     const isMobile = window.innerWidth <= 767;
     const currentOrder = getOrder();
     const isFreeAdmin = isCurrentCustomerFreeAdmin() && currentOrder.length > 0;
+    const isKlart = getCurrentTheme() === 'klart';
 
-    // Avoid innerHTML injection: build DOM instead
     totalPriceEl.replaceChildren();
 
     if (isMobile) {
         if (isFreeAdmin) {
-            // Mobil: vis GRATIS i stedet for total
             const mobileNode = buildMiniReceiptNode(total);
             const totalValueEl = mobileNode.querySelector('#total-price-value');
             if (totalValueEl) {
@@ -119,11 +120,74 @@ export function updateTotalPrice(totalPriceEl) {
         return;
     }
 
+    if (isKlart) {
+        // Klart: mini emoji icons + total value in Fraunces
+        const iconsWrap = document.createElement('div');
+        iconsWrap.className = 'klart-total-icons';
+
+        if (currentOrder.length > 0) {
+            currentOrder.forEach((item, idx) => {
+                if (idx > 0) {
+                    const plus = document.createElement('span');
+                    plus.className = 'klart-total-plus';
+                    plus.textContent = '+';
+                    iconsWrap.appendChild(plus);
+                }
+                const miniIcon = document.createElement('span');
+                miniIcon.className = 'klart-total-mini-icon';
+                const iconInfo = getProductIconInfo(item);
+                if (iconInfo?.path) {
+                    const img = document.createElement('img');
+                    img.src = iconInfo.path;
+                    img.alt = '';
+                    miniIcon.appendChild(img);
+                } else {
+                    miniIcon.textContent = item?.emoji || '❓';
+                }
+                iconsWrap.appendChild(miniIcon);
+            });
+            const eq = document.createElement('span');
+            eq.className = 'klart-total-equals';
+            eq.textContent = '=';
+            iconsWrap.appendChild(eq);
+        } else {
+            const dash = document.createElement('span');
+            dash.style.color = 'var(--klart-ink-muted)';
+            dash.style.fontSize = '13px';
+            dash.textContent = '—';
+            iconsWrap.appendChild(dash);
+        }
+
+        totalPriceEl.appendChild(iconsWrap);
+
+        const totalAmount = document.createElement('div');
+        totalAmount.className = 'klart-total-amount';
+
+        if (isFreeAdmin) {
+            const strikeEl = document.createElement('s');
+            strikeEl.style.opacity = '0.5';
+            strikeEl.className = 'klart-total-val';
+            strikeEl.textContent = `${total.toFixed(0)} kr.`;
+            totalAmount.appendChild(strikeEl);
+            const badge = document.createElement('span');
+            badge.className = 'free-admin-badge-inline';
+            badge.textContent = 'GRATIS';
+            totalAmount.appendChild(badge);
+        } else {
+            const valSpan = document.createElement('span');
+            valSpan.className = 'klart-total-val';
+            valSpan.textContent = `${total.toFixed(0)} kr.`;
+            totalAmount.appendChild(valSpan);
+        }
+        totalPriceEl.appendChild(totalAmount);
+        return;
+    }
+
+    // Default theme rendering
     const summary = buildProductIconSummaryNode(currentOrder);
     if (summary) totalPriceEl.appendChild(summary);
 
     if (isFreeAdmin) {
-        // Desktop: vis overstreget pris + GRATIS badge
         const totalWrap = document.createElement('span');
         totalWrap.className = 'total-text';
         totalWrap.appendChild(document.createTextNode('Total: '));
@@ -223,10 +287,108 @@ function buildProductIconSummaryNode(currentOrder) {
     return wrap;
 }
 
+/**
+ * Renders the klart total-divider bar in checkout-stack (permanent separator)
+ */
+export function renderKlartTotalDivider(items, total) {
+    const checkoutStack = document.getElementById('checkout-stack');
+    if (!checkoutStack) return;
+
+    checkoutStack.querySelector('.klart-total-divider')?.remove();
+
+    const totalDiv = document.createElement('div');
+    totalDiv.className = 'klart-total-divider';
+
+    const iconsWrap = document.createElement('div');
+    iconsWrap.className = 'klart-total-icons';
+    if (items.length > 0) {
+        items.forEach((item, idx) => {
+            if (idx > 0) {
+                const plus = document.createElement('span');
+                plus.className = 'klart-total-plus';
+                plus.textContent = '+';
+                iconsWrap.appendChild(plus);
+            }
+            const miniIcon = document.createElement('span');
+            miniIcon.className = 'klart-total-mini-icon';
+            const iconInfo = getProductIconInfo(item);
+            if (iconInfo?.path) {
+                const img = document.createElement('img');
+                img.src = iconInfo.path;
+                img.alt = '';
+                miniIcon.appendChild(img);
+            } else {
+                miniIcon.textContent = item?.emoji || '❓';
+            }
+            iconsWrap.appendChild(miniIcon);
+        });
+        const eq = document.createElement('span');
+        eq.className = 'klart-total-equals';
+        eq.textContent = '=';
+        iconsWrap.appendChild(eq);
+    } else {
+        const dash = document.createElement('span');
+        dash.style.cssText = 'color:var(--klart-ink-muted);font-size:13px';
+        dash.textContent = '—';
+        iconsWrap.appendChild(dash);
+    }
+    totalDiv.appendChild(iconsWrap);
+
+    const totalAmount = document.createElement('div');
+    totalAmount.className = 'klart-total-amount';
+    const isFreeAdminCheck = isCurrentCustomerFreeAdmin() && items.length > 0;
+    if (isFreeAdminCheck) {
+        const strikeEl = document.createElement('s');
+        strikeEl.style.opacity = '0.5';
+        strikeEl.className = 'klart-total-val';
+        strikeEl.textContent = `${total.toFixed(0)} kr.`;
+        totalAmount.appendChild(strikeEl);
+        const badge = document.createElement('span');
+        badge.className = 'free-admin-badge-inline';
+        badge.textContent = 'GRATIS';
+        totalAmount.appendChild(badge);
+    } else {
+        const valSpan = document.createElement('span');
+        valSpan.className = 'klart-total-val';
+        valSpan.textContent = `${total.toFixed(0)} kr.`;
+        totalAmount.appendChild(valSpan);
+    }
+    totalDiv.appendChild(totalAmount);
+
+    const btnArea = checkoutStack.querySelector('#user-selection-area');
+    if (btnArea) {
+        btnArea.parentNode.insertBefore(totalDiv, btnArea);
+    } else {
+        checkoutStack.appendChild(totalDiv);
+    }
+}
+
 export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelectedUserInfo) {
+    const isKlart = getCurrentTheme() === 'klart';
+
+    // Update klart count badge
+    if (isKlart) {
+        updateKlartCartCountBadge(currentOrder.length);
+    }
+
     if (currentOrder.length === 0) {
-        // OPTIMERING: replaceChildren() i stedet for innerHTML = '' (atomic operation)
         orderListEl.replaceChildren();
+        if (isKlart) {
+            // Klart empty state
+            const emptyEl = document.createElement('li');
+            emptyEl.className = 'klart-cart-empty';
+            const icon = document.createElement('div');
+            icon.className = 'klart-cart-empty-icon';
+            icon.textContent = '🛒';
+            const text = document.createElement('div');
+            text.textContent = 'Kurven er tom';
+            emptyEl.appendChild(icon);
+            emptyEl.appendChild(text);
+            orderListEl.appendChild(emptyEl);
+
+            // Render empty total-divider (permanent separator)
+            renderKlartTotalDivider([], 0);
+        }
         updateTotalPrice(totalPriceEl);
         if (typeof updateSelectedUserInfo === 'function') {
             updateSelectedUserInfo();
@@ -234,15 +396,22 @@ export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelec
         return;
     }
 
-    // Use DocumentFragment for batched DOM insertion (reduces reflows)
     const fragment = document.createDocumentFragment();
 
     // Gratis admin-køb banner
     if (isCurrentCustomerFreeAdmin() && currentOrder.length > 0) {
         const banner = document.createElement('li');
-        banner.className = 'admin-free-banner';
+        banner.className = isKlart ? 'klart-admin-free-banner' : 'admin-free-banner';
         banner.innerHTML = '<span style="font-size: 18px;">&#x267E;</span> <span>Gratis &mdash; Medarbejdere betaler ikke</span>';
         fragment.appendChild(banner);
+    }
+
+    // Klart: "Valgte varer" section label
+    if (isKlart) {
+        const label = document.createElement('li');
+        label.className = 'klart-cart-section-label';
+        label.textContent = 'Valgte varer';
+        fragment.appendChild(label);
     }
 
     const productCounts = new Map();
@@ -267,42 +436,92 @@ export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelec
     currentOrder.forEach((item, index) => {
         const listItem = document.createElement('li');
 
-        const line = document.createElement('span');
-        line.className = 'cart-product-line';
+        if (isKlart) {
+            // --- Klart card-style item ---
+            listItem.className = 'klart-cart-item';
+            listItem.style.animationDelay = `${index * 50}ms`;
 
-        const iconInfo = getProductIconInfo(item);
-        if (iconInfo?.path) {
-            const img = document.createElement('img');
-            img.src = iconInfo.path;
-            img.alt = item?.name || 'Produkt';
-            img.className = 'cart-product-icon';
-            line.appendChild(img);
+            // Emoji/icon box
+            const iconBox = document.createElement('div');
+            iconBox.className = 'klart-cart-icon-box';
+            const iconInfo = getProductIconInfo(item);
+            if (iconInfo?.path) {
+                const img = document.createElement('img');
+                img.src = iconInfo.path;
+                img.alt = item?.name || 'Produkt';
+                img.className = 'klart-cart-icon-img';
+                iconBox.appendChild(img);
+            } else {
+                iconBox.textContent = item?.emoji || '❓';
+            }
+
+            // Text block: name only
+            const textBlock = document.createElement('div');
+            textBlock.className = 'klart-cart-text';
+            const nameEl = document.createElement('div');
+            nameEl.className = 'klart-cart-item-name';
+            nameEl.textContent = item.name || 'Ukendt';
+            textBlock.appendChild(nameEl);
+
+            // Price
+            const priceEl = document.createElement('div');
+            priceEl.className = 'klart-cart-item-price';
+            priceEl.textContent = `${Number(item.price || 0).toFixed(0)} kr.`;
+
+            // Circle X remove button
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'klart-cart-remove-btn remove-item-btn';
+            removeBtn.dataset.index = String(index);
+            removeBtn.title = 'Fjern vare';
+            removeBtn.type = 'button';
+            // X icon as SVG
+            removeBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+            listItem.appendChild(iconBox);
+            listItem.appendChild(textBlock);
+            listItem.appendChild(priceEl);
+            listItem.appendChild(removeBtn);
         } else {
-            const emoji = document.createElement('span');
-            emoji.className = 'cart-product-emoji';
-            emoji.textContent = item?.emoji || '❓';
-            line.appendChild(emoji);
+            // --- Default rendering ---
+            const line = document.createElement('span');
+            line.className = 'cart-product-line';
+
+            const iconInfo = getProductIconInfo(item);
+            if (iconInfo?.path) {
+                const img = document.createElement('img');
+                img.src = iconInfo.path;
+                img.alt = item?.name || 'Produkt';
+                img.className = 'cart-product-icon';
+                line.appendChild(img);
+            } else {
+                const emoji = document.createElement('span');
+                emoji.className = 'cart-product-emoji';
+                emoji.textContent = item?.emoji || '❓';
+                line.appendChild(emoji);
+            }
+
+            const text = document.createElement('span');
+            text.textContent = `${item.name || 'Ukendt'} - ${Number(item.price || 0).toFixed(2)} DKK`;
+            line.appendChild(text);
+
+            const removeBtn = document.createElement('span');
+            removeBtn.className = 'remove-item-btn';
+            removeBtn.dataset.index = String(index);
+            removeBtn.title = 'Fjern vare';
+
+            const trash = document.createElement('img');
+            trash.src = 'Icons/webp/Function/Papirkurv.webp';
+            trash.alt = 'Fjern';
+            trash.className = 'cart-remove-icon';
+            removeBtn.appendChild(trash);
+
+            listItem.appendChild(line);
+            listItem.appendChild(removeBtn);
         }
 
-        const text = document.createElement('span');
-        text.textContent = `${item.name || 'Ukendt'} - ${Number(item.price || 0).toFixed(2)} DKK`;
-        line.appendChild(text);
-
-        const removeBtn = document.createElement('span');
-        removeBtn.className = 'remove-item-btn';
-        removeBtn.dataset.index = String(index);
-        removeBtn.title = 'Fjern vare';
-
-        const trash = document.createElement('img');
-        trash.src = 'Icons/webp/Function/Papirkurv.webp';
-        trash.alt = 'Fjern';
-        trash.className = 'cart-remove-icon';
-        removeBtn.appendChild(trash);
-
-        listItem.appendChild(line);
-        listItem.appendChild(removeBtn);
         fragment.appendChild(listItem);
 
+        // Bulk discount line (shared logic, both themes)
         const productId = item?.product_id || item?.productId || item?.id;
         if (productId != null) {
             const key = String(productId);
@@ -316,6 +535,7 @@ export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelec
                     const summary = getBulkDiscountSummary(product, count, { disableDiscount: bulkDisabledById.get(key) === true });
                     if (summary.discountAmount > 0) {
                         const discountItem = document.createElement('li');
+                        discountItem.className = isKlart ? 'klart-cart-item klart-cart-discount' : '';
                         const discountLine = document.createElement('span');
                         discountLine.className = 'cart-product-line';
                         const bundleLabel = summary.bundlePrice != null
@@ -349,8 +569,13 @@ export function renderOrder(orderListEl, currentOrder, totalPriceEl, updateSelec
             }
         }
     });
-    // OPTIMERING: replaceChildren(fragment) i stedet for innerHTML = '' + appendChild
+
     orderListEl.replaceChildren(fragment);
+
+    // Klart: render total-divider in checkout-stack (before buttons)
+    if (isKlart) {
+        renderKlartTotalDivider(currentOrder, getOrderTotal());
+    }
 
     updateTotalPrice(totalPriceEl);
     if (typeof updateSelectedUserInfo === 'function') {

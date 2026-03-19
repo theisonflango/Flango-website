@@ -200,6 +200,7 @@
           <div class="admin-bar-center">
             <button class="admin-page-tab active" data-page="page-portal" id="pv2-tab-portal">&#9881;&#65039; Portal-indstillinger</button>
             <button class="admin-page-tab" data-page="page-insights" id="pv2-tab-insights">&#128202; For\u00e6ldreindsigt</button>
+            <button class="admin-page-tab" data-page="page-profile-pics" id="pv2-tab-profile-pics">&#128247; Profilbilleder</button>
           </div>
           <div class="admin-bar-right">
             <div class="preview-toggle" id="pv2-preview-toggle">
@@ -219,6 +220,15 @@
           ${buildInsightsSidebarHTML()}
           <div class="insights-page">
             ${buildInsightsContentHTML(s)}
+          </div>
+        </div>
+
+        <!-- ══════ PAGE: PROFILE PICTURES ══════ -->
+        <div class="admin-page" id="pv2-page-profile-pics">
+          <div class="insights-page" style="padding:30px;">
+            <div id="pv2-profile-pics-content" style="max-width:700px;margin:0 auto;">
+              <div style="text-align:center;color:#94a3b8;padding:40px;">Indlæser statistik...</div>
+            </div>
           </div>
         </div>
 
@@ -559,6 +569,80 @@
 
   // ─── Page switching ────────────────────────────────────────────
 
+  function loadProfilePictureStats() {
+    var container = overlayEl ? overlayEl.querySelector('#pv2-profile-pics-content') : null;
+    if (!container) return;
+
+    var users = window.__flangoAllUsers || [];
+    var customers = users.filter(function (u) { return u.role === 'kunde'; });
+    var total = customers.length;
+    var withPic = customers.filter(function (u) { return u.profile_picture_url && !u.profile_picture_opt_out; });
+    var optOut = customers.filter(function (u) { return u.profile_picture_opt_out === true; });
+    var noPic = total - withPic.length - optOut.length;
+
+    // Count by type
+    var byType = {};
+    withPic.forEach(function (u) {
+      var t = u.profile_picture_type || 'ukendt';
+      byType[t] = (byType[t] || 0) + 1;
+    });
+
+    var typeLabels = { upload: 'Upload', camera: 'Kamera', library: 'Bibliotek', ai_avatar: 'AI-Avatar' };
+    var typeBreakdown = Object.keys(byType).map(function (k) {
+      return (typeLabels[k] || k) + ': ' + byType[k];
+    }).join(', ') || 'Ingen';
+
+    var pct = total > 0 ? Math.round((withPic.length / total) * 100) : 0;
+
+    // Institution settings
+    var inst = window.__flangoGetInstitutionById ? window.__flangoGetInstitutionById(customers[0]?.institution_id) : null;
+    var enabled = inst?.profile_pictures_enabled;
+    var statusText = enabled ? '✓ Aktiveret' : '✗ Deaktiveret';
+    var statusColor = enabled ? '#10b981' : '#ef4444';
+
+    // Opt-out list
+    var optOutList = optOut.map(function (u) {
+      return '<li style="padding:4px 0;">' + (u.name || 'Ukendt') + (u.number ? ' (' + u.number + ')' : '') + '</li>';
+    }).join('') || '<li style="color:#64748b;">Ingen</li>';
+
+    // Children without picture
+    var noPicList = customers.filter(function (u) {
+      return !u.profile_picture_url && !u.profile_picture_opt_out;
+    }).slice(0, 20).map(function (u) {
+      return '<li style="padding:4px 0;">' + (u.name || 'Ukendt') + (u.number ? ' (' + u.number + ')' : '') + '</li>';
+    }).join('');
+
+    container.innerHTML = '\
+      <h2 style="margin:0 0 20px;font-size:22px;color:#f8fafc;">📷 Profilbilleder</h2>\
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px;">\
+        <div style="flex:1;min-width:140px;padding:16px;background:rgba(255,255,255,0.06);border-radius:12px;text-align:center;">\
+          <div style="font-size:28px;font-weight:700;color:#a5b4fc;">' + withPic.length + ' / ' + total + '</div>\
+          <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Børn med billede (' + pct + '%)</div>\
+        </div>\
+        <div style="flex:1;min-width:140px;padding:16px;background:rgba(255,255,255,0.06);border-radius:12px;text-align:center;">\
+          <div style="font-size:28px;font-weight:700;color:#f59e0b;">' + optOut.length + '</div>\
+          <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Fravalgt af forælder</div>\
+        </div>\
+        <div style="flex:1;min-width:140px;padding:16px;background:rgba(255,255,255,0.06);border-radius:12px;text-align:center;">\
+          <div style="font-size:28px;font-weight:700;color:#64748b;">' + noPic + '</div>\
+          <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Mangler billede</div>\
+        </div>\
+      </div>\
+      <div style="padding:12px 16px;background:rgba(255,255,255,0.04);border-radius:10px;margin-bottom:16px;">\
+        <div style="font-size:13px;color:#94a3b8;">Status: <strong style="color:' + statusColor + ';">' + statusText + '</strong></div>\
+        <div style="font-size:13px;color:#94a3b8;margin-top:4px;">Typer: ' + typeBreakdown + '</div>\
+      </div>\
+      <div style="margin-bottom:16px;">\
+        <h3 style="font-size:15px;color:#e2e8f0;margin:0 0 8px;">Børn med fravalg (' + optOut.length + ')</h3>\
+        <ul style="list-style:none;padding:0;margin:0;font-size:13px;color:#e2e8f0;">' + optOutList + '</ul>\
+      </div>\
+      <div>\
+        <h3 style="font-size:15px;color:#e2e8f0;margin:0 0 8px;">Børn uden billede (' + noPic + ')</h3>\
+        <ul style="list-style:none;padding:0;margin:0;font-size:13px;color:#e2e8f0;max-height:200px;overflow-y:auto;">' + noPicList + '\
+        ' + (noPic > 20 ? '<li style="color:#64748b;font-style:italic;">... og ' + (noPic - 20) + ' flere</li>' : '') + '</ul>\
+      </div>';
+  }
+
   function switchPage(pageId) {
     if (!overlayEl) return;
     currentPage = pageId;
@@ -578,6 +662,11 @@
       chartsGenerated = true;
       generateChartBars('pv2-login-chart', 28, 'primary');
       generateChartBars('pv2-adoption-chart', 12, 'accent');
+    }
+
+    // Load profile picture stats (lazy)
+    if (pageId === 'page-profile-pics') {
+      loadProfilePictureStats();
     }
 
     // Scroll to top

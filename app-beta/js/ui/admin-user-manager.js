@@ -10,6 +10,8 @@ import { parseBadgeList, formatBadgeList, renderSimpleBadgeDisplay } from '../do
 import { showAlert, showCustomAlert } from './sound-and-alerts.js';
 import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
 import { refetchUserBalance } from '../core/data-refetch.js';
+import { getCachedProfilePictureUrl, getProfilePictureUrl, invalidateProfilePictureCache } from '../core/profile-picture-cache.js';
+import { removeProfilePicture } from '../core/profile-picture-utils.js';
 
 function extractBalanceFromRpcData(data) {
     if (data == null) return null;
@@ -410,6 +412,118 @@ export function setupAdminUserManagerFromModule(config = {}) {
             } else {
                 assignBadgeNote.style.display = 'none';
             }
+        }
+
+        // --- Profile picture section ---
+        renderProfilePictureSection(user, detailModal);
+    }
+
+    function renderProfilePictureSection(user, modal) {
+        // Remove any existing profile picture section
+        const existing = modal.querySelector('#profile-pic-section');
+        if (existing) existing.remove();
+
+        const inst = window.__flangoGetInstitutionById?.(user.institution_id);
+        if (!inst?.profile_pictures_enabled) return;
+
+        const section = document.createElement('div');
+        section.id = 'profile-pic-section';
+
+        const isOptOut = user.profile_picture_opt_out === true;
+        const hasPic = user.profile_picture_url && !isOptOut;
+
+        if (isOptOut) {
+            section.innerHTML = `<p class="profile-pic-opt-out-msg">Forælderen har fravalgt profilbillede for dette barn</p>`;
+        } else {
+            const cachedUrl = hasPic ? getCachedProfilePictureUrl(user) : null;
+            const previewHtml = cachedUrl
+                ? `<img src="${cachedUrl}" alt="" class="profile-pic-detail-preview">`
+                : `<span class="profile-pic-detail-placeholder">👤</span>`;
+
+            const typeLabel = user.profile_picture_type
+                ? { upload: 'Uploadet', camera: 'Kamera', library: 'Bibliotek', ai_avatar: 'AI-Avatar' }[user.profile_picture_type] || ''
+                : '';
+
+            section.innerHTML = `
+                <div class="profile-pic-detail-row">
+                    <span id="pp-detail-preview">${previewHtml}</span>
+                    <div style="flex:1;min-width:0;overflow:hidden;">
+                        <div class="pp-detail-label">Profilbillede</div>
+                        ${hasPic ? `<div class="pp-detail-sublabel">${typeLabel}</div>` : `<div class="pp-detail-sublabel">Intet billede sat</div>`}
+                    </div>
+                    <div style="display:flex;gap:8px;flex-shrink:0;">
+                        <button type="button" id="pp-change-btn" class="action-button secondary-action" style="padding:8px 14px;font-size:13px;white-space:nowrap;">
+                            ${hasPic ? 'Skift' : 'Tilføj'}
+                        </button>
+                        ${hasPic ? `<button type="button" id="pp-remove-btn" class="action-button" style="padding:8px 14px;font-size:13px;background:var(--danger-color);white-space:nowrap;">Fjern</button>` : ''}
+                    </div>
+                </div>`;
+
+            // Async load preview if not cached
+            if (hasPic && !cachedUrl) {
+                getProfilePictureUrl(user).then(url => {
+                    const previewEl = section.querySelector('#pp-detail-preview');
+                    if (url && previewEl) {
+                        previewEl.innerHTML = `<img src="${url}" alt="" class="profile-pic-detail-preview">`;
+                    }
+                });
+            }
+        }
+
+        // Insert before the save button's parent form-group
+        const saveBtn = modal.querySelector('#save-edit-user-btn');
+        const insertTarget = saveBtn?.closest('.form-group') || saveBtn?.parentElement;
+        if (insertTarget) {
+            insertTarget.parentElement.insertBefore(section, insertTarget);
+        } else {
+            modal.querySelector('.modal-content')?.appendChild(section);
+        }
+
+        // Wire up buttons
+        const changeBtn = section.querySelector('#pp-change-btn');
+        const removeBtn = section.querySelector('#pp-remove-btn');
+
+        if (changeBtn) {
+            changeBtn.addEventListener('click', async () => {
+                // Dynamically import and open the profile picture modal
+                const { openProfilePictureModal } = await import('./profile-picture-modal.js');
+                openProfilePictureModal(user, {
+                    showCustomAlert: showCustomAlert,
+                    onSaved: (updatedUser) => {
+                        // Update local user object
+                        Object.assign(user, updatedUser);
+                        invalidateProfilePictureCache(user.id);
+                        // Re-render this section
+                        renderProfilePictureSection(user, modal);
+                        // Re-render user list if available
+                        if (typeof renderAdminUserListFromModule === 'function') renderAdminUserListFromModule();
+                    },
+                });
+            });
+        }
+
+        if (removeBtn) {
+            removeBtn.addEventListener('click', async () => {
+                const confirmed = await showCustomAlert({
+                    title: 'Fjern profilbillede?',
+                    message: `Er du sikker på du vil fjerne profilbilledet for ${user.name}?`,
+                    buttons: [
+                        { text: 'Annuller', value: false },
+                        { text: 'Fjern', value: true, className: 'danger' },
+                    ],
+                });
+                if (!confirmed) return;
+
+                const result = await removeProfilePicture(user.id, user.institution_id, user.profile_picture_type);
+                if (result.success) {
+                    user.profile_picture_url = null;
+                    user.profile_picture_type = null;
+                    renderProfilePictureSection(user, modal);
+                    if (typeof renderAdminUserListFromModule === 'function') renderAdminUserListFromModule();
+                } else {
+                    showAlert(result.error || 'Kunne ikke fjerne billedet');
+                }
+            });
         }
     }
 

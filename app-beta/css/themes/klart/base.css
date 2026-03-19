@@ -80,6 +80,19 @@
     --klart-ease: cubic-bezier(.22,.61,.36,1);
     --klart-duration: 180ms;
 
+    /* Cart redesign tokens */
+    --klart-pos-bg: #F4F1EC;
+    --klart-surface-alt: #F9F7F4;
+    --klart-ink: #1A1A18;
+    --klart-ink-soft: #6B6860;
+    --klart-ink-muted: #A5A09A;
+    --klart-cart-border: #E5E1DA;
+    --klart-cart-border-strong: #D0CBC3;
+    --klart-cart-radius-sm: 10px;
+    --klart-cart-radius-md: 14px;
+    --klart-cart-radius-lg: 20px;
+    --klart-shadow-cart-card: 0 1px 3px rgba(26,26,24,.04), 0 4px 12px rgba(26,26,24,.06);
+
     /* Unstoppable-compatible aliases (for any JS that references these) */
     --unstoppable-glow: none;
     --unstoppable-shadow: var(--klart-shadow-lg);
@@ -132,6 +145,37 @@ button,
 select,
 textarea {
     font-family: var(--font-body);
+}
+
+/* ============================================================
+   GLOBAL FORM ELEMENT FIX — Light theme text readability
+   Browsere arver IKKE body color på form-elementer.
+   Sætter mørk tekst + lys baggrund på ALLE text-inputs.
+   ============================================================ */
+
+input,
+select,
+textarea,
+[contenteditable] {
+    color: var(--klart-fg, #1a1a2e);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+select,
+textarea {
+    background: var(--klart-bg-raised, #ffffff);
+    border-color: var(--klart-border-strong, #d0cfc8);
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: var(--klart-fg-muted, #8a8a9e);
+    opacity: 1;
+}
+
+select option {
+    background: var(--klart-bg-raised, #ffffff);
+    color: var(--klart-fg, #1a1a2e);
 }
 
 /* ============================================================

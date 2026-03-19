@@ -93,6 +93,37 @@ body {
 }
 
 /* ============================================================
+   GLOBAL FORM ELEMENT FIX — Light theme text readability
+   Browsere arver IKKE body color på form-elementer.
+   Sætter mørk tekst + lys baggrund på ALLE text-inputs.
+   ============================================================ */
+
+input,
+select,
+textarea,
+[contenteditable] {
+    color: #374151;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+select,
+textarea {
+    background: linear-gradient(145deg, #fffbf7 0%, #fff5eb 100%);
+    border-color: #e0e7ff;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #9ca3af;
+    opacity: 1;
+}
+
+select option {
+    background: #fffbf7;
+    color: #374151;
+}
+
+/* ============================================================
    TYPOGRAPHY - HEADINGS WITH GRADIENTS
    ============================================================ */
 
@@ -195,11 +226,6 @@ h3 {
 .login-container input {
     border: 2px solid #e0e7ff;
     background: linear-gradient(145deg, #fffbf7 0%, #fff5eb 100%);
-    color: #1e293b;
-}
-
-.login-container input::placeholder {
-    color: #94a3b8;
 }
 
 .login-container select:focus,

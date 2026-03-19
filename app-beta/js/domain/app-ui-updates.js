@@ -8,6 +8,8 @@ import { getCurrentCustomer } from './cafe-session-store.js';
 import { getOrderTotal } from './order-store.js';
 import { getFinancialState } from './cafe-session-store.js';
 import { calculateLevel } from './statistics-data.js';
+import { getProfilePictureUrl, getCachedProfilePictureUrl } from '../core/profile-picture-cache.js';
+import { renderKlartTotalDivider } from './order-ui.js';
 
 /**
  * Deselect user function - exposed via window for use in UI
@@ -183,6 +185,10 @@ export function updateLoggedInUserDisplay(clerkProfile, avatarCache, constants) 
 
         // Add "Ryd kurv" button to sidebar header
         setupKlartClearCartButton();
+        // Add SVG icons to footer buttons
+        decorateKlartFooterButtons();
+        // Render initial empty total-divider
+        renderKlartTotalDivider([], 0);
 
     } else if (sessionBanner) {
         // Remove sticky notes for other themes
@@ -214,23 +220,69 @@ export function updateLoggedInUserDisplay(clerkProfile, avatarCache, constants) 
 }
 
 /**
- * Tilføjer "Ryd kurv" knap i sidebar-header for Klart-temaet
+ * Tilføjer count-badge og "Ryd kurv" pill-knap i sidebar-header for Klart-temaet
  */
 function setupKlartClearCartButton() {
     const sidebarHeader = document.querySelector('#sidebar .sidebar-header');
     if (!sidebarHeader || sidebarHeader.querySelector('.klart-clear-cart-btn')) return;
 
+    // Count badge (appended to the h2)
+    const h2 = sidebarHeader.querySelector('h2');
+    if (h2 && !h2.querySelector('.klart-cart-count-badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'klart-cart-count-badge';
+        badge.textContent = '0';
+        badge.style.display = 'none';
+        h2.appendChild(badge);
+    }
+
+    // "Ryd kurv" pill button with trash SVG
     const clearBtn = document.createElement('button');
     clearBtn.className = 'klart-clear-cart-btn';
-    clearBtn.textContent = 'Ryd kurv';
+    clearBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>Ryd kurv`;
     clearBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        // Use the global clear cart function exposed from app-main.js
         if (typeof window.__flangoClearCart === 'function') {
             window.__flangoClearCart();
         }
     });
     sidebarHeader.appendChild(clearBtn);
+}
+
+/**
+ * Opdaterer kurv count-badge i klart header
+ */
+export function updateKlartCartCountBadge(count) {
+    const badge = document.querySelector('.klart-cart-count-badge');
+    if (!badge) return;
+    badge.textContent = String(count);
+    badge.style.display = count > 0 ? '' : 'none';
+}
+
+/**
+ * Dekorerer footer-knapper med SVG-ikoner for Klart-temaet
+ */
+function decorateKlartFooterButtons() {
+    const selectBtn = document.getElementById('select-customer-main-btn');
+    if (selectBtn && !selectBtn.querySelector('svg')) {
+        const text = selectBtn.textContent.trim();
+        selectBtn.textContent = '';
+        selectBtn.insertAdjacentHTML('afterbegin',
+            `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+        );
+        selectBtn.appendChild(document.createTextNode(text));
+    }
+
+    const purchaseBtn = document.getElementById('complete-purchase');
+    if (purchaseBtn && !purchaseBtn.querySelector('svg')) {
+        const span = purchaseBtn.querySelector('span');
+        const text = span ? span.textContent.trim() : purchaseBtn.textContent.trim();
+        purchaseBtn.textContent = '';
+        purchaseBtn.insertAdjacentHTML('afterbegin',
+            `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+        );
+        purchaseBtn.appendChild(document.createTextNode(text));
+    }
 }
 
 /**
@@ -285,26 +337,59 @@ export function updateSelectedUserInfo() {
 
         if (!selectedUser) {
             console.log('[app-main] No user selected - showing empty state');
-            userInfoEl.replaceChildren();
-            const box = createInfoBox('Ingen kunde valgt', 'Vælg en kunde for at se saldo..', {
-                boxStyle: isKlart ? '' : 'grid-column: 1 / -1;'
-            });
-            userInfoEl.appendChild(box);
-            userInfoEl.style.display = isKlart ? 'flex' : 'grid';
-            
-            // IF aurora or klart, also add a specific class so CSS can target it
             if (isKlart) {
-                 userInfoEl.classList.add('empty-state');
-            } else {
-                 userInfoEl.classList.remove('empty-state');
+                // Remove customer card from checkout-stack if present
+                document.querySelector('#checkout-stack .klart-customer-card')?.remove();
+
+                // Show empty placeholder customer area in checkout-stack
+                const checkoutStack = document.getElementById('checkout-stack');
+                if (checkoutStack && !checkoutStack.querySelector('.klart-customer-empty')) {
+                    const emptyCustomer = document.createElement('div');
+                    emptyCustomer.className = 'klart-customer-empty';
+
+                    // Empty avatar circle
+                    const avatarPlaceholder = document.createElement('div');
+                    avatarPlaceholder.className = 'klart-customer-avatar-wrap';
+                    const avatarRing = document.createElement('div');
+                    avatarRing.className = 'klart-customer-avatar-ring klart-avatar-empty';
+                    avatarRing.textContent = '?';
+                    avatarPlaceholder.appendChild(avatarRing);
+                    emptyCustomer.appendChild(avatarPlaceholder);
+
+                    // Placeholder text
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'klart-customer-info';
+                    const nameEl = document.createElement('div');
+                    nameEl.className = 'klart-customer-name klart-name-empty';
+                    nameEl.textContent = 'Ingen kunde valgt';
+                    infoDiv.appendChild(nameEl);
+                    emptyCustomer.appendChild(infoDiv);
+
+                    // Make it clickable to open customer selector
+                    emptyCustomer.style.cursor = 'pointer';
+                    emptyCustomer.addEventListener('click', () => {
+                        document.getElementById('select-customer-main-btn')?.click();
+                    });
+
+                    checkoutStack.insertBefore(emptyCustomer, checkoutStack.firstChild);
+                }
             }
-            
-            console.log('[app-main] Empty state rendered, children count:', userInfoEl.children.length);
+            userInfoEl.replaceChildren();
+            if (!isKlart) {
+                const box = createInfoBox('Ingen kunde valgt', 'Vælg en kunde for at se saldo..', {
+                    boxStyle: 'grid-column: 1 / -1;'
+                });
+                userInfoEl.appendChild(box);
+                userInfoEl.style.display = 'grid';
+            }
+            console.log('[app-main] Empty state rendered');
             return;
         }
 
         // Fjerne empty-state klassen hvis der er valgt en bruger
         userInfoEl.classList.remove('empty-state');
+        // Remove empty customer placeholder if present
+        document.querySelector('#checkout-stack .klart-customer-empty')?.remove();
 
         // Brug den centrale order-store til totalen
         const total = getOrderTotal();
@@ -331,59 +416,108 @@ export function updateSelectedUserInfo() {
         const number = selectedUser?.number ? String(selectedUser.number) : '';
 
         if (isKlart) {
-            // --- Klart layout: avatar + name (left) | saldo box (right) | close btn ---
+            // --- Klart layout: customer card + balance card ---
 
-            // 1) Avatar
-            const avatarDiv = document.createElement('div');
-            avatarDiv.className = 'customer-avatar';
-            const avatarKey = `flango-avatar-${selectedUser.id}`;
-            const savedAvatar = localStorage.getItem(avatarKey);
-            if (savedAvatar) {
-                avatarDiv.innerHTML = `<img src="${savedAvatar}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            // 1) Customer card with large avatar, number badge, name
+            const customerCard = document.createElement('div');
+            customerCard.className = 'klart-customer-card';
+
+            // Avatar wrap (large avatar + number badge)
+            const avatarWrap = document.createElement('div');
+            avatarWrap.className = 'klart-customer-avatar-wrap';
+
+            const avatarRing = document.createElement('div');
+            avatarRing.className = 'klart-customer-avatar-ring';
+
+            const inst = window.__flangoGetInstitutionById?.(selectedUser.institution_id);
+            const hasProfilePic = inst?.profile_pictures_enabled
+                && selectedUser.profile_picture_url
+                && !selectedUser.profile_picture_opt_out;
+
+            if (hasProfilePic) {
+                const cachedUrl = getCachedProfilePictureUrl(selectedUser);
+                if (cachedUrl) {
+                    avatarRing.innerHTML = `<img src="${cachedUrl}" alt="" class="klart-avatar-img">`;
+                } else {
+                    // Initials fallback while loading
+                    const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                    avatarRing.textContent = initials;
+                    getProfilePictureUrl(selectedUser).then(url => {
+                        if (url && avatarRing.isConnected) {
+                            avatarRing.textContent = '';
+                            avatarRing.innerHTML = `<img src="${url}" alt="" class="klart-avatar-img">`;
+                        }
+                    });
+                }
             } else {
-                avatarDiv.textContent = '👦';
+                const avatarKey = `flango-avatar-${selectedUser.id}`;
+                const savedAvatar = localStorage.getItem(avatarKey);
+                if (savedAvatar) {
+                    avatarRing.innerHTML = `<img src="${savedAvatar}" alt="" class="klart-avatar-img">`;
+                } else {
+                    const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                    avatarRing.textContent = initials;
+                }
             }
-            userInfoEl.appendChild(avatarDiv);
+            avatarWrap.appendChild(avatarRing);
 
-            // 2) Name + number
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'customer-name-block';
-            const nameSpan = document.createElement('div');
-            nameSpan.className = 'customer-name';
-            nameSpan.textContent = name;
-            nameDiv.appendChild(nameSpan);
+            // Number badge below avatar
             if (number) {
-                const numSpan = document.createElement('span');
-                numSpan.className = 'customer-number';
-                numSpan.textContent = `(${number})`;
-                nameSpan.appendChild(document.createTextNode(' '));
-                nameSpan.appendChild(numSpan);
+                const badge = document.createElement('div');
+                badge.className = 'klart-customer-number-badge';
+                badge.textContent = `#${number}`;
+                avatarWrap.appendChild(badge);
             }
-            userInfoEl.appendChild(nameDiv);
+            customerCard.appendChild(avatarWrap);
 
-            // 3) Saldo container (saldo → ny saldo)
-            const saldoContainer = document.createElement('div');
-            saldoContainer.className = 'customer-saldo-container';
+            // Customer info (name + balance row inside card)
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'klart-customer-info';
+            const nameEl = document.createElement('div');
+            nameEl.className = 'klart-customer-name';
+            nameEl.textContent = name;
+            infoDiv.appendChild(nameEl);
 
-            const saldoBox = createInfoBox('Saldo', `${currentBalance.toFixed(2)}`);
-            saldoBox.className = 'info-box saldo-current';
-            saldoContainer.appendChild(saldoBox);
+            // Balance row (inside customer card, below name)
+            const balanceRow = document.createElement('div');
+            balanceRow.className = 'klart-balance-row';
 
-            const arrowSpan = document.createElement('div');
-            arrowSpan.className = 'saldo-arrow';
-            arrowSpan.textContent = '→';
-            saldoContainer.appendChild(arrowSpan);
+            const col1 = document.createElement('div');
+            col1.className = 'klart-balance-col';
+            const label1 = document.createElement('div');
+            label1.className = 'klart-balance-label';
+            label1.textContent = 'Saldo';
+            const val1 = document.createElement('div');
+            val1.className = 'klart-balance-val';
+            val1.textContent = `${currentBalance.toFixed(0)} kr.`;
+            col1.appendChild(label1);
+            col1.appendChild(val1);
 
-            const nySaldoBox = createInfoBox('Ny saldo', `${newBalance.toFixed(2)}`);
-            nySaldoBox.className = 'info-box saldo-new';
-            if (newBalance < 0) {
-                nySaldoBox.querySelector('.info-box-value').classList.add('negative');
-            }
-            saldoContainer.appendChild(nySaldoBox);
+            const col2 = document.createElement('div');
+            col2.className = 'klart-balance-col klart-balance-new';
+            const label2 = document.createElement('div');
+            label2.className = 'klart-balance-label';
+            label2.textContent = 'Ny saldo';
+            const val2 = document.createElement('div');
+            val2.className = 'klart-balance-val';
+            if (newBalance < 0) val2.classList.add('negative');
+            val2.textContent = `${newBalance.toFixed(0)} kr.`;
+            col2.appendChild(label2);
+            col2.appendChild(val2);
 
-            userInfoEl.appendChild(saldoContainer);
+            // Arrow between saldo columns
+            const arrow = document.createElement('div');
+            arrow.className = 'klart-balance-arrow';
+            arrow.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="14 7 19 12 14 17"/></svg>`;
 
-            // 4) Close button
+            balanceRow.appendChild(col1);
+            balanceRow.appendChild(arrow);
+            balanceRow.appendChild(col2);
+            infoDiv.appendChild(balanceRow);
+
+            customerCard.appendChild(infoDiv);
+
+            // Close/deselect button (top-right of customer info box)
             const closeBtn = document.createElement('button');
             closeBtn.innerHTML = '&times;';
             closeBtn.className = 'deselect-user-btn';
@@ -392,9 +526,36 @@ export function updateSelectedUserInfo() {
                 e.stopPropagation();
                 deselectUser();
             });
-            userInfoEl.appendChild(closeBtn);
+            infoDiv.appendChild(closeBtn);
 
-            userInfoEl.style.display = 'flex';
+            // Make customer card clickable to open customer selector
+            customerCard.style.cursor = 'pointer';
+            customerCard.addEventListener('click', (e) => {
+                if (e.target.closest('.deselect-user-btn')) return;
+                document.getElementById('select-customer-main-btn')?.click();
+            });
+
+            // Render customer card into checkout-stack (unified bottom panel)
+            const checkoutStack = document.getElementById('checkout-stack');
+            if (checkoutStack) {
+                // Remove previous klart customer card
+                checkoutStack.querySelector('.klart-customer-card')?.remove();
+                // Insert at the top of checkout-stack
+                checkoutStack.insertBefore(customerCard, checkoutStack.firstChild);
+            }
+
+            // Auto-scale name if it overflows its container
+            requestAnimationFrame(() => {
+                if (!nameEl.isConnected) return;
+                const container = nameEl.parentElement;
+                if (!container) return;
+                const containerWidth = container.clientWidth;
+                const nameWidth = nameEl.scrollWidth;
+                if (nameWidth > containerWidth && containerWidth > 0) {
+                    const scale = Math.max(0.6, containerWidth / nameWidth);
+                    nameEl.style.fontSize = `${19 * scale}px`;
+                }
+            });
         } else {
             // --- Default/Unstoppable layout: 3-column grid ---
             const nameLine = number ? `${name} (${number})` : name;

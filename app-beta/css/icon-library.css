@@ -171,6 +171,7 @@
 .icon-mgmt-chip[data-filter="source:ai_generated"].active { background: rgba(124,58,237,0.15); color: #a78bfa; border-color: #7c3aed; }
 .icon-mgmt-chip[data-filter="style:clay"].active { background: rgba(217,119,6,0.15); color: #fbbf24; border-color: #d97706; }
 .icon-mgmt-chip[data-filter="style:pixar"].active { background: rgba(5,150,105,0.15); color: #34d399; border-color: #059669; }
+.icon-mgmt-chip[data-filter="mode:avatar"].active { background: rgba(99,102,241,0.15); color: #818cf8; border-color: #6366f1; }
 .icon-mgmt-chip[data-filter="mode:portrait"].active { background: rgba(219,39,119,0.15); color: #f472b6; border-color: #db2777; }
 .icon-mgmt-chip[data-filter="prompt:custom"].active { background: rgba(124,58,237,0.15); color: #a78bfa; border-color: #7c3aed; }
 .icon-mgmt-chip[data-filter="mode:reference"].active { background: rgba(2,132,199,0.15); color: #38bdf8; border-color: #0284c7; }

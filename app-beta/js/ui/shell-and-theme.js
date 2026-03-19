@@ -1587,6 +1587,133 @@ async function openSugarPolicySettingsModal() {
     modal.style.display = 'flex';
 }
 
+/**
+ * Åbner Profilbillede indstillinger modal
+ */
+async function openProfilePictureSettingsModal() {
+    const modal = document.getElementById('profile-picture-settings-modal');
+    if (!modal) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+
+    // Load current settings
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('profile_pictures_enabled, profile_picture_types, profile_pictures_ai_enabled')
+        .eq('id', institutionId)
+        .single();
+
+    if (error) {
+        console.error('[profile-picture-settings] Fejl:', error);
+        return;
+    }
+
+    const enabledToggle = document.getElementById('pp-settings-enabled-toggle');
+    const enabledLabel = document.getElementById('pp-settings-enabled-label');
+    const typesSection = document.getElementById('pp-settings-types');
+    const uploadCb = document.getElementById('pp-type-upload');
+    const cameraCb = document.getElementById('pp-type-camera');
+    const libraryCb = document.getElementById('pp-type-library');
+    const aiAvatarCb = document.getElementById('pp-type-ai-avatar');
+    const aiWarning = document.getElementById('pp-ai-warning');
+
+    if (data) {
+        const enabled = data.profile_pictures_enabled || false;
+        const types = data.profile_picture_types || ['upload', 'camera', 'library'];
+        const aiEnabled = data.profile_pictures_ai_enabled || false;
+
+        enabledToggle.checked = enabled;
+        enabledLabel.textContent = enabled ? 'Profilbilleder er slået TIL' : 'Profilbilleder er slået FRA';
+        typesSection.style.display = enabled ? 'block' : 'none';
+
+        uploadCb.checked = types.includes('upload');
+        cameraCb.checked = types.includes('camera');
+        libraryCb.checked = types.includes('library');
+        aiAvatarCb.checked = types.includes('ai_avatar');
+        aiWarning.style.display = aiAvatarCb.checked ? 'block' : 'none';
+    }
+
+    // Toggle enabled
+    enabledToggle.onchange = () => {
+        const on = enabledToggle.checked;
+        enabledLabel.textContent = on ? 'Profilbilleder er slået TIL' : 'Profilbilleder er slået FRA';
+        typesSection.style.display = on ? 'block' : 'none';
+    };
+
+    // AI-Avatar warning toggle
+    aiAvatarCb.onchange = () => {
+        aiWarning.style.display = aiAvatarCb.checked ? 'block' : 'none';
+    };
+
+    // Close + back buttons
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) closeBtn.onclick = () => { modal.style.display = 'none'; };
+
+    const backBtn = document.getElementById('back-to-preferences-pp-settings-btn');
+    if (backBtn) {
+        const newBackBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+        newBackBtn.onclick = () => {
+            modal.style.display = 'none';
+            openInstitutionPreferences();
+        };
+    }
+
+    // Save button
+    const applyBtn = document.getElementById('apply-pp-settings-btn');
+    if (applyBtn) {
+        const newApplyBtn = applyBtn.cloneNode(true);
+        applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+        newApplyBtn.onclick = async () => {
+            newApplyBtn.disabled = true;
+            newApplyBtn.textContent = 'Gemmer...';
+
+            try {
+                const types = [];
+                if (uploadCb.checked) types.push('upload');
+                if (cameraCb.checked) types.push('camera');
+                if (libraryCb.checked) types.push('library');
+                if (aiAvatarCb.checked) types.push('ai_avatar');
+
+                const updates = {
+                    profile_pictures_enabled: enabledToggle.checked,
+                    profile_picture_types: types,
+                    profile_pictures_ai_enabled: aiAvatarCb.checked,
+                };
+
+                const { error: saveError } = await supabaseClient
+                    .from('institutions')
+                    .update(updates)
+                    .eq('id', institutionId);
+
+                if (saveError) throw saveError;
+
+                updateInstitutionCache(institutionId, updates);
+
+                newApplyBtn.textContent = '✓ Gemt!';
+                newApplyBtn.style.background = '#2e7d32';
+                setTimeout(() => {
+                    newApplyBtn.textContent = 'Gem indstillinger';
+                    newApplyBtn.style.background = '#4CAF50';
+                    newApplyBtn.disabled = false;
+                }, 1500);
+            } catch (err) {
+                console.error('[profile-picture-settings] Gem fejl:', err);
+                newApplyBtn.textContent = 'Fejl';
+                newApplyBtn.style.background = '#f44336';
+                setTimeout(() => {
+                    newApplyBtn.textContent = 'Gem indstillinger';
+                    newApplyBtn.style.background = '#4CAF50';
+                    newApplyBtn.disabled = false;
+                }, 2000);
+            }
+        };
+    }
+
+    modal.style.display = 'flex';
+}
+
 async function openSpendingLimitModal() {
     const modal = document.getElementById('spending-limit-modal');
     if (!modal) return;
@@ -1881,10 +2008,20 @@ async function openInstitutionPreferences() {
         openRestaurantModeSettingsModal();
     });
 
+    // Profilbilleder knap
+    const profilePictureBtn = document.createElement('button');
+    profilePictureBtn.className = 'settings-item-btn';
+    profilePictureBtn.innerHTML = prefRow('📷', 'Profilbilleder', 'Vis profilbilleder ved brugervalg i caféen.');
+    profilePictureBtn.addEventListener('click', () => {
+        settingsModalPushParent(openInstitutionPreferences);
+        openProfilePictureSettingsModal();
+    });
+
     contentEl.appendChild(parentPortalBtn);
     contentEl.appendChild(betalingsmetodeBtn);
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(sugarPolicyBtn);
+    contentEl.appendChild(profilePictureBtn);
     contentEl.appendChild(restaurantModeBtn);
     contentEl.appendChild(iconSharingBtn);
     contentEl.appendChild(editAdminsBtn);
