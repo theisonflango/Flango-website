@@ -384,9 +384,10 @@ async function renderIconLibraryView(container, user, closeModal, onSaved) {
     }
 
     let selectedUrl = null;
+    let selectedSource = null;
 
     const gridHtml = icons.map((icon, i) => `
-        <div class="profile-pic-library-item" data-icon-index="${i}" data-icon-url="${escapeHtml(icon.icon_url)}">
+        <div class="profile-pic-library-item" data-icon-index="${i}" data-icon-url="${escapeHtml(icon.icon_url)}" data-icon-source="${escapeHtml(icon.source || 'uploaded')}">
             <img src="${escapeHtml(icon.icon_url)}" alt="${escapeHtml(icon.name || '')}" loading="lazy">
             ${icon.name ? `<div style="font-size:10px;color:#6B6860;margin-top:4px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${escapeHtml(icon.name)}</div>` : ''}
         </div>
@@ -408,6 +409,7 @@ async function renderIconLibraryView(container, user, closeModal, onSaved) {
             items.forEach(i => i.classList.remove('selected'));
             item.classList.add('selected');
             selectedUrl = item.dataset.iconUrl;
+            selectedSource = item.dataset.iconSource;
             saveBtn.disabled = false;
         });
     });
@@ -417,11 +419,12 @@ async function renderIconLibraryView(container, user, closeModal, onSaved) {
         saveBtn.disabled = true;
         saveBtn.textContent = 'Gemmer...';
 
-        const result = await saveLibraryProfilePicture(user.id, selectedUrl, 'icon');
+        const iconType = selectedSource === 'ai_generated' ? 'ai_avatar' : 'icon';
+        const result = await saveLibraryProfilePicture(user.id, selectedUrl, iconType);
         if (result.success) {
             user.profile_picture_url = selectedUrl;
-            user.profile_picture_type = 'icon';
-            if (onSaved) onSaved({ profile_picture_url: selectedUrl, profile_picture_type: 'icon' });
+            user.profile_picture_type = iconType;
+            if (onSaved) onSaved({ profile_picture_url: selectedUrl, profile_picture_type: iconType });
             closeModal();
         } else {
             saveBtn.textContent = 'Gem';
