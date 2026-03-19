@@ -270,6 +270,18 @@
       });
     },
 
+    // ─── Profile Picture Consent ───
+
+    /** Save granular profile picture consent for a child */
+    async saveProfilePictureConsent(childId, optOutAula, optOutCamera, optOutAi) {
+      return rpcCall('save_profile_picture_consent', {
+        p_child_id: childId,
+        p_opt_out_aula: optOutAula,
+        p_opt_out_camera: optOutCamera,
+        p_opt_out_ai: optOutAi,
+      });
+    },
+
     // ─── Notifications ───
 
     /** Save notification preferences for a child */

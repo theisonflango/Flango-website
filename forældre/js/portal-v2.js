@@ -807,6 +807,7 @@
           <div class="tab-view" id="tab-profile">
             <div class="view-header mobile-only"><div class="view-title">Profil</div><div class="view-subtitle">Indstillinger & notifikationer</div></div>
             ${renderNotificationsSection()}
+            ${renderProfilePictureSection()}
             ${renderFeedbackSection()}
             ${renderPinSection()}
             <a href="index.html" class="v1-link">Vis original portal</a>
@@ -1213,6 +1214,51 @@
           <p style="font-size:12px;color:var(--ink-muted);margin-bottom:var(--s2)">Tryk for at skifte: Tilladt → Advarsel → Blokeret</p>
           <div class="allergen-grid" id="allergen-grid">${grid}</div>
           <p class="disclaimer">Ingrediens- og allergenoplysninger i systemet er vejledende og kan indeholde fejl eller mangler, da produkter og opskrifter løbende ændres af personalet. Institutionen og systemet kan ikke garantere fuldstændig korrekthed. Forældre til børn med allergi bør altid tale direkte med personalet.</p>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderProfilePictureSection() {
+    // Show if admin has enabled the profile picture section in portal sidebar
+    if (featureFlags?.parent_portal_profile_pictures === false) return '';
+
+    const optOutAula = childData?.profile_picture_opt_out_aula || false;
+    const optOutCamera = childData?.profile_picture_opt_out_camera || false;
+    const optOutAi = childData?.profile_picture_opt_out_ai || false;
+
+    const allOptedOut = optOutAula && optOutCamera && optOutAi;
+
+    return `
+      <div class="section" id="section-profile-picture">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:#e0e7ff">📷</div><div><div class="section-title">Profilbilleder</div><div class="section-subtitle">Samtykke til billeder i caféen</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Institutionen kan bruge profilbilleder i caféen for at bekræfte dit barns identitet ved køb. Billedet er kun synligt for børn og personale i denne institution.</span></div>
+
+          <div class="setting-row" style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:var(--s3);margin-bottom:var(--s2)">
+            <div class="setting-info"><div class="setting-label" style="font-weight:700">Tillad profilbilleder</div><div class="setting-desc">Slå fra for at fravælge alle billedtyper på én gang</div></div>
+            <label class="toggle"><input type="checkbox" id="pp-consent-master" ${!allOptedOut ? 'checked' : ''}><span class="toggle-track"></span></label>
+          </div>
+
+          <div id="pp-type-toggles" style="${allOptedOut ? 'opacity:0.4;pointer-events:none' : ''}">
+            <div class="setting-row">
+              <div class="setting-info"><div class="setting-label">Aula-profilbillede</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen. Billedet kopieres til Flango og vises ved køb.</div></div>
+              <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''}><span class="toggle-track"></span></label>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info"><div class="setting-label">Kamera-foto</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed. Billedet bruges kun til identifikation ved køb og opbevares krypteret i EU.</div></div>
+              <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''}><span class="toggle-track"></span></label>
+            </div>
+
+            <div class="setting-row" style="opacity:0.55;pointer-events:none">
+              <div class="setting-info"><div class="setting-label">AI-genereret avatar</div><div class="setting-desc">Et foto af dit barn bruges til at generere en tegnet avatar i animationsstil. Fotoet sendes til en AI-tjeneste, avataren returneres, og fotoet slettes straks. Kun avataren gemmes.<br><span style="font-size:11px;color:var(--warning);margin-top:4px;display:inline-block">⏳ Afventer kommunal tilladelse</span><br><span style="font-size:11px;color:var(--text-muted, #9ca3af)">Denne funktion er ikke tilgængelig endnu. Den kræver særskilt godkendelse fra kommunen.</span></div></div>
+              <label class="toggle"><input type="checkbox" id="pp-consent-ai" ${!optOutAi ? 'checked' : ''} disabled><span class="toggle-track"></span></label>
+            </div>
+          </div>
+
         </div></div></div>
       </div>`;
   }
@@ -1723,6 +1769,31 @@
     const dietPork = document.getElementById('diet-no-pork');
     if (dietVeg) dietVeg.addEventListener('change', () => saveSugarPolicy());
     if (dietPork) dietPork.addEventListener('change', () => saveSugarPolicy());
+
+    // Profile picture consent toggles
+    const ppMaster = document.getElementById('pp-consent-master');
+    const ppAula = document.getElementById('pp-consent-aula');
+    const ppCamera = document.getElementById('pp-consent-camera');
+    if (ppMaster) ppMaster.addEventListener('change', () => {
+      const on = ppMaster.checked;
+      const typeToggles = document.getElementById('pp-type-toggles');
+      if (typeToggles) {
+        typeToggles.style.opacity = on ? '' : '0.4';
+        typeToggles.style.pointerEvents = on ? '' : 'none';
+      }
+      if (!on) {
+        // Slå alle fra
+        if (ppAula) ppAula.checked = false;
+        if (ppCamera) ppCamera.checked = false;
+      } else {
+        // Slå alle til igen
+        if (ppAula) ppAula.checked = true;
+        if (ppCamera) ppCamera.checked = true;
+      }
+      saveProfilePictureConsent();
+    });
+    if (ppAula) ppAula.addEventListener('change', () => saveProfilePictureConsent());
+    if (ppCamera) ppCamera.addEventListener('change', () => saveProfilePictureConsent());
 
     // Notification toggles
     const notifZero = document.getElementById('notif-zero');
@@ -2249,6 +2320,35 @@
       showToast('Kostindstillinger gemt', 'success');
     } catch (err) {
       console.error('[Portal] Save sugar policy error:', err);
+      showToast('Kunne ikke gemme', 'error');
+    }
+  }
+
+  async function saveProfilePictureConsent() {
+    if (!selectedChild) return;
+    const aulaToggle = document.getElementById('pp-consent-aula');
+    const cameraToggle = document.getElementById('pp-consent-camera');
+    const aiToggle = document.getElementById('pp-consent-ai');
+    // Toggles are "allow" (checked = allowed), opt-out is the inverse
+    const optOutAula = aulaToggle ? !aulaToggle.checked : false;
+    const optOutCamera = cameraToggle ? !cameraToggle.checked : false;
+    const optOutAi = aiToggle ? !aiToggle.checked : false;
+    try {
+      const result = await API.saveProfilePictureConsent(selectedChild.child_id, optOutAula, optOutCamera, optOutAi);
+      if (result && result.success === false) {
+        showToast(result.error || 'Kunne ikke gemme', 'error');
+        return;
+      }
+      // Update local data
+      if (childData) {
+        childData.profile_picture_opt_out_aula = optOutAula;
+        childData.profile_picture_opt_out_camera = optOutCamera;
+        childData.profile_picture_opt_out_ai = optOutAi;
+        childData.profile_picture_opt_out = optOutAula && optOutCamera && optOutAi;
+      }
+      showToast('Profilbillede-indstillinger gemt', 'success');
+    } catch (err) {
+      console.error('[Portal] Save profile picture consent error:', err);
       showToast('Kunne ikke gemme', 'error');
     }
   }
