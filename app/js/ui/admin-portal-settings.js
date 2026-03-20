@@ -43,7 +43,7 @@
   // Each entry: { id, icon, label, check (boolean = has sidebar checkbox), dataSection, checked (default) }
   const SIDEBAR_NAV = [
     { id: 'section-balance', icon: ICONS.home, label: 'Overblik', check: false },
-    { id: 'section-events', icon: ICONS.calendar, label: 'Arrangementer', check: true, settingKey: 'parent_portal_events' },
+    { id: 'section-events', icon: ICONS.calendar, label: 'Arrangementer', check: true, settingKey: 'parent_portal_events', defaultChecked: true },
     { id: 'section-profile', icon: ICONS.chart, label: 'Købsprofil', check: true, settingKey: 'parent_portal_purchase_profile', defaultChecked: true },
     { id: 'section-history', icon: ICONS.clock, label: 'Historik', check: true, settingKey: 'parent_portal_history', defaultChecked: true },
     { id: 'section-sortiment', icon: ICONS.list, label: 'Sortiment', check: true, settingKey: 'parent_portal_sortiment', defaultChecked: true },
@@ -56,7 +56,7 @@
     { id: 'section-profile-pictures', icon: ICONS.user, label: 'Profilbilleder', check: true, settingKey: 'parent_portal_profile_pictures', defaultChecked: true },
     { id: 'section-screentime', icon: ICONS.monitor, label: 'Sk\u00e6rmtid', check: true, settingKey: 'skaermtid_enabled', defaultChecked: true },
     { id: 'section-games', icon: ICONS.gamepad, label: 'Godkend spil', check: true, settingKey: 'skaermtid_allow_game_approval', defaultChecked: true },
-    { id: 'section-st-chart', icon: ICONS.barChart, label: 'Spilletidsoversigt', check: true, settingKey: 'skaermtid_show_usage' },
+    { id: 'section-st-chart', icon: ICONS.barChart, label: 'Spilletidsoversigt', check: true, settingKey: 'skaermtid_show_usage', defaultChecked: true },
     { id: 'section-notifications', icon: ICONS.mail, label: 'Notifikationer', check: true, settingKey: 'parent_portal_email_notifications', defaultChecked: true },
     { id: 'section-feedback', icon: ICONS.chat, label: 'Feedback', check: true, settingKey: 'parent_portal_feedback', defaultChecked: true },
     { id: 'section-pin', icon: ICONS.lock, label: 'Adgangskode', check: false },
