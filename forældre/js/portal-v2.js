@@ -1122,23 +1122,39 @@
       </div>`;
   }
 
+  function renderProductRow(p, isFirst) {
+    const emoji = p.emoji || '🍽️';
+    const currentLimit = p.parent_limit ?? '∞';
+    const instLimit = p.institution_limit;
+    const instNote = instLimit != null ? `<span style="font-size:11px;color:var(--ink-muted)">Klub: max ${instLimit}/dag</span>` : '';
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--s3) 0${!isFirst ? ';border-top:1px solid var(--border)' : ''}">
+        <div style="display:flex;align-items:center;gap:var(--s3)"><span style="font-size:20px">${emoji}</span><div><span style="font-weight:600;font-size:14px">${esc(cleanProductName(p.name))}</span>${instNote ? '<br>' + instNote : ''}</div></div>
+        <div class="stepper" data-product-id="${p.id}"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${currentLimit}</div><button class="stepper-btn stepper-plus">+</button></div>
+      </div>`;
+  }
+
   function renderProductLimitsSection() {
-    const limitProducts = products.filter(p => p.is_enabled !== false);
-    let listHTML = '';
-    if (limitProducts.length === 0) {
-      listHTML = '<div class="empty-state"><div class="empty-state-text">Ingen produkter tilgængelige</div></div>';
+    // Fast sortiment: alle core_assortment produkter
+    const coreProducts = products.filter(p => p.is_core_assortment === true);
+    // Dagens sortiment: synlige produkter som IKKE er fast sortiment
+    const todayProducts = products.filter(p => p.is_visible === true && p.is_core_assortment !== true);
+
+    let coreHTML = '';
+    if (coreProducts.length === 0) {
+      coreHTML = '<div style="padding:var(--s2) 0;color:var(--ink-muted);font-size:13px">Ingen faste produkter opsat</div>';
     } else {
-      listHTML = limitProducts.map(p => {
-        const emoji = p.emoji || '🍽️';
-        const currentLimit = p.parent_limit ?? '∞';
-        const instLimit = p.institution_limit;
-        const instNote = instLimit != null ? `<span style="font-size:11px;color:var(--ink-muted)">Klub: max ${instLimit}/dag</span>` : '';
-        return `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--s3) 0${p !== limitProducts[0] ? ';border-top:1px solid var(--border)' : ''}">
-            <div style="display:flex;align-items:center;gap:var(--s3)"><span style="font-size:20px">${emoji}</span><div><span style="font-weight:600;font-size:14px">${esc(cleanProductName(p.name))}</span>${instNote ? '<br>' + instNote : ''}</div></div>
-            <div class="stepper" data-product-id="${p.id}"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${currentLimit}</div><button class="stepper-btn stepper-plus">+</button></div>
-          </div>`;
-      }).join('');
+      coreHTML = coreProducts.map((p, i) => renderProductRow(p, i === 0)).join('');
+    }
+
+    let todayHTML = '';
+    if (todayProducts.length > 0) {
+      todayHTML = `
+        <div style="margin-top:var(--s4)">
+          <div style="font-weight:700;font-size:13px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:var(--s2)">Dagens sortiment</div>
+          <div class="hint-box neutral" style="margin-bottom:var(--s2);font-size:12px"><span class="hint-icon">ℹ️</span><span>Grænser for dagens sortiment gælder kun mens produktet er på menuen</span></div>
+          ${todayProducts.map((p, i) => renderProductRow(p, i === 0)).join('')}
+        </div>`;
     }
 
     return `
@@ -1149,7 +1165,9 @@
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">💡</span><span>Hvis institutionen har sat en grænse, gælder den strengeste.</span></div>
-          ${listHTML}
+          <div style="font-weight:700;font-size:13px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:var(--s2)">Fast sortiment</div>
+          ${coreHTML}
+          ${todayHTML}
         </div></div></div>
       </div>`;
   }
