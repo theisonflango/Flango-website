@@ -994,7 +994,7 @@
           '<td>' + d.purchases + '</td>' +
           '<td>' + (d.notif ? ck : no) + '</td>' +
           '<td>' + renderProfilePictureStatus(d) + '</td>' +
-          '<td><button class="pl-action-btn pv2-pl-action-btn">\ud83d\udd11 Ny kode</button></td>' +
+          '<td><button class="pl-action-btn pv2-pl-action-btn">' + (d.portalCode && !d.portalCodeUsedAt && d.codeExpiresAt && new Date(d.codeExpiresAt) < new Date() ? '\ud83d\udd04 Forny kode' : '\ud83d\udd11 Ny kode') + '</button></td>' +
         '</tr>';
       }).join('');
     }
@@ -1052,7 +1052,23 @@
     html += row('For\u00e6lder', d.parent ? esc(d.parent) : '<span style="color:var(--ink-muted)">\u2014</span>');
     html += row('Oprettet', esc(createdDisplay));
     html += row('Har kode', d.code ? ck : no);
-    html += row('Portal-kode', d.portalCode ? '<code style="font-size:12px;background:var(--surface-raised,#f1f5f9);padding:2px 6px;border-radius:4px">' + esc(d.portalCode) + '</code>' + (d.portalCodeUsedAt ? ' <span class="pl-tag green" style="font-size:10px">Brugt</span>' : '') : '<span style="color:var(--ink-muted)">\u2014</span>');
+    // Portal-kode med status (aktiv/udløbet/brugt/ingen)
+    var portalCodeHtml;
+    if (d.portalCode) {
+      var codeTag = '<code style="font-size:12px;background:var(--surface-raised,#f1f5f9);padding:2px 6px;border-radius:4px">' + esc(d.portalCode) + '</code>';
+      if (d.portalCodeUsedAt) {
+        codeTag += ' <span class="pl-tag green" style="font-size:10px">Brugt</span>';
+      } else if (d.codeExpiresAt && new Date(d.codeExpiresAt) < new Date()) {
+        codeTag += ' <span class="pl-tag red" style="font-size:10px">Udl\u00f8bet</span>';
+      } else if (d.codeExpiresAt) {
+        var daysLeft = Math.ceil((new Date(d.codeExpiresAt) - new Date()) / 86400000);
+        codeTag += ' <span class="pl-tag green" style="font-size:10px">Aktiv (' + daysLeft + 'd)</span>';
+      }
+      portalCodeHtml = codeTag;
+    } else {
+      portalCodeHtml = '<span style="color:var(--ink-muted)">\u2014</span>';
+    }
+    html += row('Portal-kode', portalCodeHtml);
     html += row('Sidste login', loginDisplay === 'Aldrig' ? '<span class="pl-tag red">Aldrig</span>' : esc(loginDisplay));
     html += '</div>';
 
@@ -1147,12 +1163,15 @@
 
     var newCode = result.code;
     var childName = result.child_name || childData.child;
+    var expiresAt = result.expires_at || null;
 
     // Opdater lokalt cache
     for (var i = 0; i < parentListData.length; i++) {
       if (parentListData[i].childId === childData.childId) {
         parentListData[i].portalCode = newCode;
         parentListData[i].portalCodeGeneratedAt = new Date().toISOString();
+        parentListData[i].codeExpiresAt = expiresAt || new Date(Date.now() + 7 * 86400000).toISOString();
+        parentListData[i].portalCodeUsedAt = null;
         break;
       }
     }
@@ -1169,7 +1188,7 @@
     var aulaData = await PortalData.getAulaMessageTemplate();
     var template = (aulaData && aulaData.template)
       ? aulaData.template
-      : 'Kære forælder,\n\nDit barn {{child_name}} har fået en kode til Flango Forældreportal.\n\nKode: {{pin}}\n\nGå til flango.dk/forældre for at oprette din konto.\n\nVenlig hilsen\n{{institution}}';
+      : 'Kære forælder,\n\nDit barn {{child_name}} har fået en kode til Flango Forældreportal.\n\nKode: {{pin}}\n\nKoden udløber om 7 dage.\n\nGå til flango.dk/forældre for at oprette din konto.\n\nVenlig hilsen\n{{institution}}';
 
     // Erstat placeholders (støtter både {{x}} og {x} formater)
     var instName = (aulaData && aulaData.institutionName) || institutionName || 'Institutionen';
@@ -1195,6 +1214,7 @@
         '<div class="pv2-code-popup-body">' +
           '<p style="margin:0 0 4px 0">Ny portal-kode til <strong>' + esc(childName) + '</strong>:</p>' +
           '<div class="pv2-code-display">' + esc(code) + '</div>' +
+          '<p style="margin:0 0 12px 0;font-size:12px;color:var(--ink-muted,#64748b)">Koden udl\u00f8ber om 7 dage.</p>' +
           '<div style="display:flex;gap:8px;margin-bottom:16px">' +
             '<button class="pv2-code-copy-btn" id="pv2-copy-code-btn">\ud83d\udccb Kopier kode</button>' +
           '</div>' +

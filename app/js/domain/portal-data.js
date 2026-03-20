@@ -958,6 +958,7 @@ async function getParentAdminOverview(institutionId) {
         portalCode: c.portalCode || null,
         portalCodeUsedAt: c.portalCodeUsedAt || null,
         portalCodeGeneratedAt: c.portalCodeGeneratedAt || null,
+        codeExpiresAt: c.codeExpiresAt || null,
         limit: c.limitKr != null ? Math.round(c.limitKr) + ' kr' : null,
         limitRaw: c.limitKr != null ? parseFloat(c.limitKr) : null,
         hasProductLimits: !!c.hasProductLimits,

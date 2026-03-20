@@ -183,6 +183,33 @@
       return data;
     },
 
+    /** Verify invite code for signup (before account creation, anon) */
+    async verifyInviteCodeForSignup(code) {
+      const { data, error } = await window.portalSupabase.rpc('verify_invite_code_for_signup', {
+        p_code: code,
+      });
+      if (error) throw error;
+      return data;
+    },
+
+    /** Create a parent invite code (authenticated parent) */
+    async createParentInvite(institutionId) {
+      const { data, error } = await window.portalSupabase.rpc('create_parent_invite', {
+        p_institution_id: institutionId,
+      });
+      if (error) throw error;
+      return data;
+    },
+
+    /** Redeem a parent invite code (authenticated parent) */
+    async redeemParentInvite(inviteCode) {
+      const { data, error } = await window.portalSupabase.rpc('redeem_parent_invite', {
+        p_invite_code: inviteCode,
+      });
+      if (error) throw error;
+      return data;
+    },
+
     // ─── Children ───
 
     /** Get all children for the logged-in parent */

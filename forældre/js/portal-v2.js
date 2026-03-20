@@ -450,26 +450,66 @@
     btn.textContent = 'Verificerer...';
 
     try {
+      // Prøv først som portal-kode (aktiveringskode fra admin)
       const result = await API.verifyPortalCodeForSignup(code);
-      if (!result?.valid) {
-        errorEl.textContent = result?.error || 'Ugyldig kode. Tjek koden og prøv igen.';
+      if (result?.valid) {
+        // Aktiveringskode verificeret
+        signupVerifiedData = {
+          code: code,
+          type: 'activation',
+          child_name: result.child_name,
+          child_id: result.child_id,
+          institution_name: result.institution_name,
+          institution_id: result.institution_id,
+        };
+        showLoginView('signup-auth');
+        return;
+      }
+
+      // Håndter specifikke fejl fra aktiveringskode
+      if (result?.error === 'CODE_EXPIRED') {
+        errorEl.textContent = 'Denne kode er udl\u00f8bet. Kontakt personalet for en ny kode.';
         errorEl.classList.add('visible');
         return;
       }
 
-      // Code verified — save data and proceed to auth step
-      signupVerifiedData = {
-        code: code,
-        child_name: result.child_name,
-        child_id: result.child_id,
-        institution_name: result.institution_name,
-        institution_id: result.institution_id,
-      };
-      showLoginView('signup-auth');
+      // Hvis ikke fundet som aktiveringskode, prøv som invitationskode
+      if (result?.error === 'LOOKUP_FAILED') {
+        const inviteResult = await API.verifyInviteCodeForSignup(code);
+        if (inviteResult?.valid) {
+          // Invitationskode verificeret
+          const childNames = inviteResult.children_names || [];
+          signupVerifiedData = {
+            code: code,
+            type: 'invite',
+            invite_code: inviteResult.invite_code,
+            institution_name: inviteResult.institution_name,
+            institution_id: inviteResult.institution_id,
+            children_names: childNames,
+          };
+          showLoginView('signup-auth');
+          return;
+        }
+
+        if (inviteResult?.error === 'INVITE_EXPIRED') {
+          errorEl.textContent = 'Denne kode er udl\u00f8bet. Bed den anden for\u00e6lder om at generere en ny.';
+          errorEl.classList.add('visible');
+          return;
+        }
+
+        // Ingen match som hverken aktiverings- eller invitationskode
+        errorEl.textContent = 'Ugyldig kode. Tjek koden og pr\u00f8v igen.';
+        errorEl.classList.add('visible');
+        return;
+      }
+
+      // Andre fejl fra aktiveringskode
+      errorEl.textContent = result?.error || 'Ugyldig kode. Tjek koden og pr\u00f8v igen.';
+      errorEl.classList.add('visible');
 
     } catch (err) {
       console.error('[signup] Code verification error:', err);
-      errorEl.textContent = err?.message || 'Kunne ikke verificere koden. Prøv igen.';
+      errorEl.textContent = err?.message || 'Kunne ikke verificere koden. Pr\u00f8v igen.';
       errorEl.classList.add('visible');
     } finally {
       btn.disabled = false;
@@ -574,10 +614,14 @@
         return;
       }
 
-      // Link child to parent using the portal code
+      // Link child(ren) to parent
       btn.textContent = 'Tilknytter barn...';
       try {
-        await API.linkChildByPortalCode(signupVerifiedData.code);
+        if (signupVerifiedData.type === 'invite') {
+          await API.redeemParentInvite(signupVerifiedData.code);
+        } else {
+          await API.linkChildByPortalCode(signupVerifiedData.code);
+        }
       } catch (linkErr) {
         console.error('[signup] Link error:', linkErr);
         // Fall through — attempt to continue
@@ -609,13 +653,16 @@
       if (raw) pending = JSON.parse(raw);
     } catch (e) { return; }
 
-    if (!pending?.child_id || !pending?.institution_id) return;
+    if (!pending?.code || !pending?.institution_id) return;
 
     console.log('[signup] Found pending signup link, attempting to link child...');
     try {
-      // Link child using the stored portal code
-      await API.linkChildByPortalCode(pending.code);
-      console.log('[signup] Child linked successfully after Google redirect');
+      if (pending.type === 'invite') {
+        await API.redeemParentInvite(pending.code);
+      } else {
+        await API.linkChildByPortalCode(pending.code);
+      }
+      console.log('[signup] Child linked successfully after redirect');
     } catch (err) {
       console.error('[signup] Pending link error:', err);
     } finally {
@@ -820,6 +867,7 @@
             <div class="view-header mobile-only"><div class="view-title">Profil</div><div class="view-subtitle">Indstillinger & notifikationer</div></div>
             ${renderNotificationsSection()}
             ${renderProfilePictureSection()}
+            ${renderInviteParentSection()}
             ${renderFeedbackSection()}
             ${renderPinSection()}
             <a href="index.html" class="v1-link">Vis original portal</a>
@@ -1535,6 +1583,28 @@
       </div>`;
   }
 
+  function renderInviteParentSection() {
+    return `
+      <div class="section" id="section-invite-parent">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--surface-sunken)">👥</div><div><div class="section-title">Invit\u00e9r anden for\u00e6lder</div><div class="section-subtitle">Del adgang med en partner</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <p style="margin:var(--s2) 0;font-size:13px;color:var(--ink-muted)">Generer en invitationskode som den anden for\u00e6lder kan bruge til at oprette en konto. Alle dine b\u00f8rn tilknyttes automatisk.</p>
+          <div id="invite-parent-result" style="display:none;margin-bottom:var(--s3)">
+            <div style="text-align:center;padding:var(--s4);background:var(--surface-sunken);border-radius:12px">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-muted);margin-bottom:var(--s1)">Invitationskode</div>
+              <div id="invite-parent-code" style="font-size:28px;font-weight:800;letter-spacing:4px;font-family:monospace"></div>
+              <div id="invite-parent-expiry" style="font-size:12px;color:var(--ink-muted);margin-top:var(--s1)"></div>
+              <button class="save-btn" id="invite-copy-btn" style="margin-top:var(--s3);font-size:13px">Kopier kode</button>
+            </div>
+          </div>
+          <button class="save-btn full" id="invite-parent-btn" style="margin-top:var(--s2)">Generer invitationskode</button>
+        </div></div></div>
+      </div>`;
+  }
+
   function renderPinSection() {
     return `
       <div class="section" id="section-pin">
@@ -1895,6 +1965,18 @@
     // PIN save
     const pinBtn = document.getElementById('pin-save-btn');
     if (pinBtn) pinBtn.addEventListener('click', handlePinChange);
+
+    // Invite parent
+    const inviteBtn = document.getElementById('invite-parent-btn');
+    if (inviteBtn) inviteBtn.addEventListener('click', handleInviteParent);
+    const inviteCopyBtn = document.getElementById('invite-copy-btn');
+    if (inviteCopyBtn) inviteCopyBtn.addEventListener('click', () => {
+      const code = document.getElementById('invite-parent-code')?.textContent;
+      if (code) navigator.clipboard.writeText(code).then(() => {
+        inviteCopyBtn.textContent = 'Kopieret!';
+        setTimeout(() => { inviteCopyBtn.textContent = 'Kopier kode'; }, 1500);
+      });
+    });
 
     // Feedback tabs
     const feedbackTabs = document.getElementById('feedback-tabs');
@@ -2748,6 +2830,45 @@
     }
   }
 
+  async function handleInviteParent() {
+    const btn = document.getElementById('invite-parent-btn');
+    const resultDiv = document.getElementById('invite-parent-result');
+    const codeEl = document.getElementById('invite-parent-code');
+    const expiryEl = document.getElementById('invite-parent-expiry');
+
+    if (!btn || !selectedChild) return;
+    const institutionId = selectedChild.institution_id;
+    if (!institutionId) { showToast('Ingen institution fundet', 'error'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Genererer...';
+
+    try {
+      const result = await API.createParentInvite(institutionId);
+      if (!result?.success) {
+        showToast(result?.error || 'Kunne ikke generere kode', 'error');
+        return;
+      }
+
+      if (codeEl) codeEl.textContent = result.invite_code;
+      if (expiryEl) {
+        const expDate = new Date(result.expires_at);
+        const daysLeft = Math.ceil((expDate - new Date()) / 86400000);
+        expiryEl.textContent = result.existing
+          ? 'Eksisterende kode \u2014 udl\u00f8ber om ' + daysLeft + ' dage'
+          : 'Udl\u00f8ber om 7 dage';
+      }
+      if (resultDiv) resultDiv.style.display = '';
+      btn.textContent = 'Generer ny kode';
+    } catch (err) {
+      console.error('[Portal] Invite error:', err);
+      showToast('Kunne ikke generere invitationskode', 'error');
+    } finally {
+      btn.disabled = false;
+      if (btn.textContent === 'Genererer...') btn.textContent = 'Generer invitationskode';
+    }
+  }
+
   async function handleLinkChild() {
     const codeEl = document.getElementById('link-code');
     const instEl = document.getElementById('link-institution');
@@ -2767,14 +2888,35 @@
     }
     errorEl.classList.remove('visible');
     try {
+      // Prøv først som aktiverings-/portalkode (via link-sibling-by-code)
       await API.linkSiblingByCode(code, institutionId);
       showToast('Barn tilknyttet!', 'success');
       document.getElementById('add-child-modal').classList.remove('visible');
       await loadChildren();
     } catch (err) {
-      console.error('[Portal] Link child error:', err);
-      errorEl.textContent = 'Koden er ugyldig eller allerede brugt';
-      errorEl.classList.add('visible');
+      console.warn('[Portal] linkSiblingByCode failed, trying invite code...', err);
+      // Prøv som invitationskode
+      try {
+        const inviteResult = await API.redeemParentInvite(code);
+        if (inviteResult?.valid) {
+          const count = inviteResult.count || 0;
+          showToast(count + ' b\u00f8rn tilknyttet!', 'success');
+          document.getElementById('add-child-modal').classList.remove('visible');
+          await loadChildren();
+          return;
+        }
+        // Specifik fejl fra invite
+        if (inviteResult?.error === 'INVITE_EXPIRED') {
+          errorEl.textContent = 'Denne kode er udl\u00f8bet. Bed den anden for\u00e6lder om en ny.';
+        } else {
+          errorEl.textContent = inviteResult?.error || 'Koden er ugyldig eller allerede brugt';
+        }
+        errorEl.classList.add('visible');
+      } catch (inviteErr) {
+        console.error('[Portal] Both link methods failed:', inviteErr);
+        errorEl.textContent = 'Koden er ugyldig eller allerede brugt';
+        errorEl.classList.add('visible');
+      }
     }
   }
 
