@@ -83,7 +83,19 @@
         API.getClubAvgDailySpend(instId).catch(e => { console.error('[Portal] getClubAvg:', e); return null; }),
       ]);
       childData = view;
-      products = prods?.products || prods || [];
+      // Map child_limits and institution_limits onto products
+      const rawProducts = prods?.products || prods || [];
+      const childLimits = prods?.child_limits || [];
+      const instLimits = prods?.institution_limits || [];
+      const childLimitMap = {};
+      childLimits.forEach(l => { childLimitMap[l.product_id] = l.max_per_day; });
+      const instLimitMap = {};
+      instLimits.forEach(l => { instLimitMap[l.product_id] = l.max_per_day; });
+      products = rawProducts.map(p => ({
+        ...p,
+        parent_limit: childLimitMap[p.id] ?? null,
+        institution_limit: instLimitMap[p.id] ?? null,
+      }));
       eventsData = events;
       clubAvgPerDay = clubAvg;
       featureFlags = childData?.institution || childData?.feature_flags || {};
@@ -1111,7 +1123,7 @@
   }
 
   function renderProductLimitsSection() {
-    const limitProducts = products.filter(p => p.is_visible === true && p.is_enabled !== false);
+    const limitProducts = products.filter(p => p.is_enabled !== false);
     let listHTML = '';
     if (limitProducts.length === 0) {
       listHTML = '<div class="empty-state"><div class="empty-state-text">Ingen produkter tilgængelige</div></div>';
@@ -1119,9 +1131,11 @@
       listHTML = limitProducts.map(p => {
         const emoji = p.emoji || '🍽️';
         const currentLimit = p.parent_limit ?? '∞';
+        const instLimit = p.institution_limit;
+        const instNote = instLimit != null ? `<span style="font-size:11px;color:var(--ink-muted)">Klub: max ${instLimit}/dag</span>` : '';
         return `
           <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--s3) 0${p !== limitProducts[0] ? ';border-top:1px solid var(--border)' : ''}">
-            <div style="display:flex;align-items:center;gap:var(--s3)"><span style="font-size:20px">${emoji}</span><span style="font-weight:600;font-size:14px">${esc(cleanProductName(p.name))}</span></div>
+            <div style="display:flex;align-items:center;gap:var(--s3)"><span style="font-size:20px">${emoji}</span><div><span style="font-weight:600;font-size:14px">${esc(cleanProductName(p.name))}</span>${instNote ? '<br>' + instNote : ''}</div></div>
             <div class="stepper" data-product-id="${p.id}"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${currentLimit}</div><button class="stepper-btn stepper-plus">+</button></div>
           </div>`;
       }).join('');
