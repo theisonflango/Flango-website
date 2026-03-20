@@ -432,8 +432,14 @@ export function setupAdminUserManagerFromModule(config = {}) {
         const isOptOut = user.profile_picture_opt_out === true;
         const hasPic = user.profile_picture_url && !isOptOut;
 
+        // Build granular opt-out message
+        const optOuts = [];
+        if (user.profile_picture_opt_out_camera) optOuts.push('kamera-foto');
+        if (user.profile_picture_opt_out_ai) optOuts.push('AI-avatar');
+        if (user.profile_picture_opt_out_aula) optOuts.push('Aula-billede');
+
         if (isOptOut) {
-            section.innerHTML = `<p class="profile-pic-opt-out-msg">Forælderen har fravalgt profilbillede for dette barn</p>`;
+            section.innerHTML = `<p class="profile-pic-opt-out-msg">Forælderen har fravalgt alle profilbilleder for dette barn</p>`;
         } else {
             const cachedUrl = hasPic ? getCachedProfilePictureUrl(user) : null;
             const previewHtml = cachedUrl
@@ -457,7 +463,8 @@ export function setupAdminUserManagerFromModule(config = {}) {
                         </button>
                         ${hasPic ? `<button type="button" id="pp-remove-btn" class="action-button" style="padding:8px 14px;font-size:13px;background:var(--danger-color);white-space:nowrap;">Fjern</button>` : ''}
                     </div>
-                </div>`;
+                </div>
+                ${optOuts.length > 0 ? `<div style="font-size:12px;color:var(--warning-color,#f59e0b);margin-top:6px;">⚠️ Forælder har fravalgt: ${optOuts.join(', ')}</div>` : ''}`;
 
             // Async load preview if not cached
             if (hasPic && !cachedUrl) {

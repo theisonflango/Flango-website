@@ -457,7 +457,7 @@ async function getParentList(institutionId) {
     const childrenPromise = fetchAllRows(() =>
       client
         .from('users')
-        .select('id, name, number, balance, role, parent_pin_hash, parent_pin_is_custom, parent_portal_code, last_parent_login_at, daily_spend_limit, grade_level, is_test_user, created_at')
+        .select('id, name, number, balance, role, parent_pin_hash, parent_pin_is_custom, parent_portal_code, last_parent_login_at, daily_spend_limit, grade_level, is_test_user, created_at, profile_picture_opt_out_aula, profile_picture_opt_out_camera, profile_picture_opt_out_ai, profile_picture_opt_out_camera_at, profile_picture_opt_out_ai_at, profile_picture_type, profile_picture_url')
         .eq('institution_id', instId)
         .eq('role', 'kunde')
         .not('is_test_user', 'eq', true)
@@ -676,6 +676,14 @@ async function getParentList(institutionId) {
         notifDetails: notif || null,
         gradeLevel: child.grade_level,
         created: child.created_at,
+        // Profilbillede opt-out status
+        ppOptOutAula: !!child.profile_picture_opt_out_aula,
+        ppOptOutCamera: !!child.profile_picture_opt_out_camera,
+        ppOptOutAi: !!child.profile_picture_opt_out_ai,
+        ppOptOutCameraAt: child.profile_picture_opt_out_camera_at || null,
+        ppOptOutAiAt: child.profile_picture_opt_out_ai_at || null,
+        ppType: child.profile_picture_type || null,
+        ppUrl: child.profile_picture_url || null,
         flags: flags.join(' '),
       };
     });
@@ -950,6 +958,7 @@ async function getParentAdminOverview(institutionId) {
         portalCode: c.portalCode || null,
         portalCodeUsedAt: c.portalCodeUsedAt || null,
         portalCodeGeneratedAt: c.portalCodeGeneratedAt || null,
+        codeExpiresAt: c.codeExpiresAt || null,
         limit: c.limitKr != null ? Math.round(c.limitKr) + ' kr' : null,
         limitRaw: c.limitKr != null ? parseFloat(c.limitKr) : null,
         hasProductLimits: !!c.hasProductLimits,

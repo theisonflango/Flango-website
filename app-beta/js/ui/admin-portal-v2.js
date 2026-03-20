@@ -119,6 +119,7 @@
     { key: 'spent', label: 'Forbrug (m\u00e5ned)' },
     { key: 'purchases', label: 'Antal k\u00f8b' },
     { key: 'notif', label: 'Notifikation' },
+    { key: 'profilbillede', label: 'Profilbillede' },
     { key: 'action', label: 'Handling' },
   ];
 
@@ -183,6 +184,54 @@
     }
   }
 
+  function renderProfilePictureStatus(d) {
+    var anyOptOut = d.ppOptOutAula || d.ppOptOutCamera || d.ppOptOutAi;
+    var allOptOut = d.ppOptOutAula && d.ppOptOutCamera && d.ppOptOutAi;
+
+    if (allOptOut) {
+      // Beregn dage til sletning (30 dages grace period)
+      var daysInfo = '';
+      var cameraDays = daysUntilDeletion(d.ppOptOutCameraAt);
+      var aiDays = daysUntilDeletion(d.ppOptOutAiAt);
+      if (d.ppType === 'camera' && d.ppUrl && cameraDays !== null) {
+        daysInfo = ' · <span style="font-size:10px;color:#ef4444">' + cameraDays + 'd til sletning</span>';
+      } else if (d.ppType === 'ai_avatar' && d.ppUrl && aiDays !== null) {
+        daysInfo = ' · <span style="font-size:10px;color:#ef4444">' + aiDays + 'd til sletning</span>';
+      }
+      return '<span class="pl-tag red">Alle fravalgt</span>' + daysInfo;
+    }
+
+    if (anyOptOut) {
+      var parts = [];
+      if (d.ppOptOutAula) parts.push('Aula');
+      if (d.ppOptOutCamera) parts.push('Kamera');
+      if (d.ppOptOutAi) parts.push('AI');
+      var daysInfo = '';
+      if (d.ppOptOutCamera && d.ppType === 'camera' && d.ppUrl) {
+        var cd = daysUntilDeletion(d.ppOptOutCameraAt);
+        if (cd !== null) daysInfo = ' · <span style="font-size:10px;color:#ef4444">' + cd + 'd</span>';
+      }
+      if (d.ppOptOutAi && d.ppType === 'ai_avatar' && d.ppUrl) {
+        var ad = daysUntilDeletion(d.ppOptOutAiAt);
+        if (ad !== null) daysInfo = ' · <span style="font-size:10px;color:#ef4444">' + ad + 'd</span>';
+      }
+      return '<span class="pl-tag orange">' + parts.join(', ') + ' fra</span>' + daysInfo;
+    }
+
+    return '<span class="pl-tag green">Tilladt</span>';
+  }
+
+  function daysUntilDeletion(optOutDateStr) {
+    if (!optOutDateStr) return null;
+    try {
+      var optOutDate = new Date(optOutDateStr);
+      var deleteDate = new Date(optOutDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+      var now = new Date();
+      var remaining = Math.ceil((deleteDate - now) / (24 * 60 * 60 * 1000));
+      return remaining > 0 ? remaining : 0;
+    } catch (e) { return null; }
+  }
+
   // ─── Main overlay structure ────────────────────────────────────
 
   function buildOverlayHTML() {
@@ -200,6 +249,7 @@
           <div class="admin-bar-center">
             <button class="admin-page-tab active" data-page="page-portal" id="pv2-tab-portal">&#9881;&#65039; Portal-indstillinger</button>
             <button class="admin-page-tab" data-page="page-insights" id="pv2-tab-insights">&#128202; For\u00e6ldreindsigt</button>
+            <button class="admin-page-tab" data-page="page-parentlist" id="pv2-tab-parentlist">&#128101; For\u00e6ldreliste</button>
             <button class="admin-page-tab" data-page="page-profile-pics" id="pv2-tab-profile-pics">&#128247; Profilbilleder</button>
           </div>
           <div class="admin-bar-right">
@@ -223,35 +273,22 @@
           </div>
         </div>
 
-        <!-- ══════ PAGE: PROFILE PICTURES ══════ -->
-        <div class="admin-page" id="pv2-page-profile-pics">
-          <div class="insights-page" style="padding:30px;">
-            <div id="pv2-profile-pics-content" style="max-width:700px;margin:0 auto;">
-              <div style="text-align:center;color:#94a3b8;padding:40px;">Indlæser statistik...</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ══════ PARENT LIST OVERLAY ══════ -->
-        <div class="parent-list-overlay" id="pv2-parent-list-overlay">
-          <div class="pl-topbar">
-            <div class="pl-topbar-left">
-              <div class="pl-topbar-back" id="pv2-pl-back">\u2190 Tilbage</div>
-              <div class="pl-topbar-title" id="pv2-pl-title">For\u00e6ldreliste \u2014 ${esc(institutionName)}</div>
+        <!-- ══════ PAGE: PARENT LIST ══════ -->
+        <div class="admin-page" id="pv2-page-parentlist">
+          <div class="pl-page-toolbar">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1">
+              <input class="pl-search" placeholder="S\u00f8g barn eller for\u00e6lder\u2026" id="pv2-pl-search">
+              <div class="pl-sep"></div>
+              <button class="pl-filter-btn" id="pv2-flt-never">&#128100; Aldrig logget ind</button>
+              <button class="pl-filter-btn" id="pv2-flt-zero">&#128176; 0 kr saldo</button>
+              <button class="pl-filter-btn" id="pv2-flt-nolimit">&#9888;&#65039; Ingen gr\u00e6nser</button>
+              <button class="pl-filter-btn" id="pv2-flt-nocode">&#128273; Ingen kode</button>
+              <div class="pl-count" id="pv2-pl-row-count"></div>
             </div>
             <div style="display:flex;gap:8px;align-items:center">
-              <button class="pl-action-btn" style="border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.7)" id="pv2-pl-batch-codes">&#128273; Generer alle koder</button>
-              <button class="pl-action-btn" style="border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.7)" id="pv2-pl-export">&#128229; Eksporter CSV</button>
+              <button class="pl-action-btn" id="pv2-pl-batch-codes">&#128273; Generer alle koder</button>
+              <button class="pl-action-btn" id="pv2-pl-export">&#128229; Eksporter CSV</button>
             </div>
-          </div>
-          <div class="pl-toolbar">
-            <input class="pl-search" placeholder="S\u00f8g barn eller for\u00e6lder\u2026" id="pv2-pl-search">
-            <div class="pl-sep"></div>
-            <button class="pl-filter-btn" id="pv2-flt-never">&#128683; Aldrig logget ind</button>
-            <button class="pl-filter-btn" id="pv2-flt-zero">&#128184; 0 kr saldo</button>
-            <button class="pl-filter-btn" id="pv2-flt-nolimit">&#9888;&#65039; Ingen gr\u00e6nser</button>
-            <button class="pl-filter-btn" id="pv2-flt-nocode">&#128273; Ingen kode</button>
-            <div class="pl-count" id="pv2-pl-row-count"></div>
           </div>
           <div class="pl-table-wrap">
             <table class="pl-table">
@@ -260,6 +297,15 @@
             </table>
           </div>
           <div class="pl-summary" id="pv2-pl-summary"></div>
+        </div>
+
+        <!-- ══════ PAGE: PROFILE PICTURES ══════ -->
+        <div class="admin-page" id="pv2-page-profile-pics">
+          <div class="insights-page" style="padding:24px 30px;">
+            <div id="pv2-profile-pics-content" style="max-width:900px;margin:0 auto;">
+              <div style="text-align:center;color:#94a3b8;padding:40px;">Indlæser...</div>
+            </div>
+          </div>
         </div>
 
         <!-- ══════ PARENT LIST DETAIL MODAL ══════ -->
@@ -277,10 +323,7 @@
           </div>
         </div>
 
-        <!-- ══════ FOOTER ══════ -->
-        <div class="pv2-footer">
-          <a href="#" id="pv2-close-link">\u2190 Tilbage til caf\u00e9-app</a>
-        </div>
+        <!-- Footer removed — admin-bar has back button -->
       </div>
     `;
   }
@@ -569,78 +612,246 @@
 
   // ─── Page switching ────────────────────────────────────────────
 
+  // Profile picture tab state
+  var ppSearchQuery = '';
+  var ppFilterMode = ''; // '' = all, 'has-pic', 'no-pic', 'opt-out'
+  var ppSortCol = 0;
+  var ppSortAsc = true;
+
+  var PP_TYPE_LABELS = { upload: 'Upload', camera: 'Kamera', library: 'Bibliotek', ai_avatar: 'AI-Avatar', icon: 'Ikon', aula: 'Aula' };
+
+  function getProfilePicUsers() {
+    var users = window.__flangoAllUsers || [];
+    return users.filter(function (u) { return u.role === 'kunde'; });
+  }
+
+  function getFilteredPPUsers() {
+    var all = getProfilePicUsers();
+    var q = ppSearchQuery.toLowerCase();
+    var rows = all.filter(function (u) {
+      if (q && !(u.name || '').toLowerCase().includes(q) && !(String(u.number || '')).includes(q)) return false;
+      if (ppFilterMode === 'has-pic' && !u.profile_picture_url) return false;
+      if (ppFilterMode === 'no-pic' && (u.profile_picture_url || u.profile_picture_opt_out)) return false;
+      if (ppFilterMode === 'opt-out' && !u.profile_picture_opt_out && !u.profile_picture_opt_out_aula && !u.profile_picture_opt_out_camera && !u.profile_picture_opt_out_ai) return false;
+      return true;
+    });
+
+    var PP_SORT_KEYS = ['name', 'number', 'type', 'status'];
+    var key = PP_SORT_KEYS[ppSortCol] || 'name';
+    rows.sort(function (a, b) {
+      var av, bv;
+      if (key === 'name') { av = a.name || ''; bv = b.name || ''; }
+      else if (key === 'number') { av = a.number || 0; bv = b.number || 0; return ppSortAsc ? av - bv : bv - av; }
+      else if (key === 'type') { av = a.profile_picture_type || ''; bv = b.profile_picture_type || ''; }
+      else if (key === 'status') { av = ppUserStatus(a); bv = ppUserStatus(b); }
+      else { av = ''; bv = ''; }
+      return ppSortAsc ? String(av).localeCompare(String(bv), 'da') : String(bv).localeCompare(String(av), 'da');
+    });
+    return rows;
+  }
+
+  function ppUserStatus(u) {
+    if (u.profile_picture_opt_out || (u.profile_picture_opt_out_aula && u.profile_picture_opt_out_camera && u.profile_picture_opt_out_ai)) return 'opt-out';
+    if (u.profile_picture_url) return 'has-pic';
+    return 'no-pic';
+  }
+
+  function ppOptOutSummary(u) {
+    var parts = [];
+    if (u.profile_picture_opt_out_aula) parts.push('Aula');
+    if (u.profile_picture_opt_out_camera) parts.push('Kamera');
+    if (u.profile_picture_opt_out_ai) parts.push('AI');
+    return parts;
+  }
+
   function loadProfilePictureStats() {
     var container = overlayEl ? overlayEl.querySelector('#pv2-profile-pics-content') : null;
     if (!container) return;
 
-    var users = window.__flangoAllUsers || [];
-    var customers = users.filter(function (u) { return u.role === 'kunde'; });
+    var customers = getProfilePicUsers();
     var total = customers.length;
-    var withPic = customers.filter(function (u) { return u.profile_picture_url && !u.profile_picture_opt_out; });
-    var optOut = customers.filter(function (u) { return u.profile_picture_opt_out === true; });
+    var withPic = customers.filter(function (u) { return u.profile_picture_url && ppUserStatus(u) !== 'opt-out'; });
+    var optOut = customers.filter(function (u) { return ppUserStatus(u) === 'opt-out'; });
     var noPic = total - withPic.length - optOut.length;
+    var pct = total > 0 ? Math.round((withPic.length / total) * 100) : 0;
 
     // Count by type
     var byType = {};
-    withPic.forEach(function (u) {
-      var t = u.profile_picture_type || 'ukendt';
-      byType[t] = (byType[t] || 0) + 1;
-    });
-
-    var typeLabels = { upload: 'Upload', camera: 'Kamera', library: 'Bibliotek', ai_avatar: 'AI-Avatar' };
-    var typeBreakdown = Object.keys(byType).map(function (k) {
-      return (typeLabels[k] || k) + ': ' + byType[k];
-    }).join(', ') || 'Ingen';
-
-    var pct = total > 0 ? Math.round((withPic.length / total) * 100) : 0;
-
-    // Institution settings
-    var inst = window.__flangoGetInstitutionById ? window.__flangoGetInstitutionById(customers[0]?.institution_id) : null;
-    var enabled = inst?.profile_pictures_enabled;
-    var statusText = enabled ? '✓ Aktiveret' : '✗ Deaktiveret';
-    var statusColor = enabled ? '#10b981' : '#ef4444';
-
-    // Opt-out list
-    var optOutList = optOut.map(function (u) {
-      return '<li style="padding:4px 0;">' + (u.name || 'Ukendt') + (u.number ? ' (' + u.number + ')' : '') + '</li>';
-    }).join('') || '<li style="color:#64748b;">Ingen</li>';
-
-    // Children without picture
-    var noPicList = customers.filter(function (u) {
-      return !u.profile_picture_url && !u.profile_picture_opt_out;
-    }).slice(0, 20).map(function (u) {
-      return '<li style="padding:4px 0;">' + (u.name || 'Ukendt') + (u.number ? ' (' + u.number + ')' : '') + '</li>';
-    }).join('');
+    withPic.forEach(function (u) { var t = u.profile_picture_type || 'ukendt'; byType[t] = (byType[t] || 0) + 1; });
+    var typeBreakdown = Object.keys(byType).map(function (k) { return (PP_TYPE_LABELS[k] || k) + ': ' + byType[k]; }).join(', ') || 'Ingen';
 
     container.innerHTML = '\
-      <h2 style="margin:0 0 20px;font-size:22px;color:#f8fafc;">📷 Profilbilleder</h2>\
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px;">\
-        <div style="flex:1;min-width:140px;padding:16px;background:rgba(255,255,255,0.06);border-radius:12px;text-align:center;">\
-          <div style="font-size:28px;font-weight:700;color:#a5b4fc;">' + withPic.length + ' / ' + total + '</div>\
-          <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Børn med billede (' + pct + '%)</div>\
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">\
+        <div style="flex:1;min-width:130px;padding:14px;background:var(--surface-raised, #f8fafc);border:1px solid var(--border, #e2e8f0);border-radius:12px;text-align:center;">\
+          <div style="font-size:26px;font-weight:700;color:var(--flango, #6366f1);">' + withPic.length + ' / ' + total + '</div>\
+          <div style="font-size:11px;color:var(--ink-muted, #64748b);margin-top:4px;">Med billede (' + pct + '%)</div>\
         </div>\
-        <div style="flex:1;min-width:140px;padding:16px;background:rgba(255,255,255,0.06);border-radius:12px;text-align:center;">\
-          <div style="font-size:28px;font-weight:700;color:#f59e0b;">' + optOut.length + '</div>\
-          <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Fravalgt af forælder</div>\
+        <div style="flex:1;min-width:130px;padding:14px;background:var(--surface-raised, #f8fafc);border:1px solid var(--border, #e2e8f0);border-radius:12px;text-align:center;">\
+          <div style="font-size:26px;font-weight:700;color:#f59e0b;">' + optOut.length + '</div>\
+          <div style="font-size:11px;color:var(--ink-muted, #64748b);margin-top:4px;">Fravalgt</div>\
         </div>\
-        <div style="flex:1;min-width:140px;padding:16px;background:rgba(255,255,255,0.06);border-radius:12px;text-align:center;">\
-          <div style="font-size:28px;font-weight:700;color:#64748b;">' + noPic + '</div>\
-          <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Mangler billede</div>\
+        <div style="flex:1;min-width:130px;padding:14px;background:var(--surface-raised, #f8fafc);border:1px solid var(--border, #e2e8f0);border-radius:12px;text-align:center;">\
+          <div style="font-size:26px;font-weight:700;color:var(--ink-muted, #64748b);">' + noPic + '</div>\
+          <div style="font-size:11px;color:var(--ink-muted, #64748b);margin-top:4px;">Mangler</div>\
         </div>\
       </div>\
-      <div style="padding:12px 16px;background:rgba(255,255,255,0.04);border-radius:10px;margin-bottom:16px;">\
-        <div style="font-size:13px;color:#94a3b8;">Status: <strong style="color:' + statusColor + ';">' + statusText + '</strong></div>\
-        <div style="font-size:13px;color:#94a3b8;margin-top:4px;">Typer: ' + typeBreakdown + '</div>\
+      <div style="padding:8px 14px;background:var(--surface-sunken, #f1f5f9);border-radius:10px;margin-bottom:16px;font-size:12px;color:var(--ink-muted, #64748b);">\
+        Typer: ' + typeBreakdown + '\
       </div>\
-      <div style="margin-bottom:16px;">\
-        <h3 style="font-size:15px;color:#e2e8f0;margin:0 0 8px;">Børn med fravalg (' + optOut.length + ')</h3>\
-        <ul style="list-style:none;padding:0;margin:0;font-size:13px;color:#e2e8f0;">' + optOutList + '</ul>\
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">\
+        <input type="text" placeholder="S\u00f8g navn eller nummer\u2026" id="pv2-pp-search" class="pl-search" style="flex:1;min-width:160px;">\
+        <button class="pv2-pp-filter-btn pl-filter-btn' + (ppFilterMode === '' ? ' active' : '') + '" data-filter="">Alle</button>\
+        <button class="pv2-pp-filter-btn pl-filter-btn' + (ppFilterMode === 'has-pic' ? ' active' : '') + '" data-filter="has-pic">📷 Med billede</button>\
+        <button class="pv2-pp-filter-btn pl-filter-btn' + (ppFilterMode === 'no-pic' ? ' active' : '') + '" data-filter="no-pic">❌ Mangler</button>\
+        <button class="pv2-pp-filter-btn pl-filter-btn' + (ppFilterMode === 'opt-out' ? ' active' : '') + '" data-filter="opt-out">🚫 Fravalgt</button>\
+        <span class="pl-count" id="pv2-pp-count"></span>\
       </div>\
-      <div>\
-        <h3 style="font-size:15px;color:#e2e8f0;margin:0 0 8px;">Børn uden billede (' + noPic + ')</h3>\
-        <ul style="list-style:none;padding:0;margin:0;font-size:13px;color:#e2e8f0;max-height:200px;overflow-y:auto;">' + noPicList + '\
-        ' + (noPic > 20 ? '<li style="color:#64748b;font-style:italic;">... og ' + (noPic - 20) + ' flere</li>' : '') + '</ul>\
+      <div style="overflow-x:auto;">\
+        <table class="pl-table" id="pv2-pp-table">\
+          <thead><tr id="pv2-pp-thead"></tr></thead>\
+          <tbody id="pv2-pp-tbody"></tbody>\
+        </table>\
       </div>';
+
+    // Bind events
+    var searchEl = container.querySelector('#pv2-pp-search');
+    if (searchEl) searchEl.addEventListener('input', function () { ppSearchQuery = this.value; renderPPTable(); });
+
+    container.querySelectorAll('.pv2-pp-filter-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { ppFilterMode = btn.dataset.filter; loadProfilePictureStats(); });
+    });
+
+    renderPPTable();
+  }
+
+  function renderPPTable() {
+    var container = overlayEl ? overlayEl.querySelector('#pv2-profile-pics-content') : null;
+    if (!container) return;
+
+    var PP_COLS = [
+      { label: 'Barn', key: 'name' },
+      { label: 'Nr.', key: 'number' },
+      { label: 'Type', key: 'type' },
+      { label: 'Status', key: 'status' },
+      { label: 'Samtykke', key: 'consent' },
+      { label: '', key: 'action' },
+    ];
+
+    var thead = container.querySelector('#pv2-pp-thead');
+    if (thead) {
+      thead.innerHTML = PP_COLS.map(function (c, i) {
+        if (c.key === 'action') return '<th></th>';
+        var sorted = ppSortCol === i;
+        var arrow = sorted ? (ppSortAsc ? ' ▲' : ' ▼') : '';
+        return '<th style="cursor:pointer;user-select:none;' + (sorted ? 'color:var(--ink, #1e293b);' : '') + '" data-pp-col="' + i + '">' + esc(c.label) + arrow + '</th>';
+      }).join('');
+
+      thead.querySelectorAll('th[data-pp-col]').forEach(function (th) {
+        th.addEventListener('click', function () {
+          var col = parseInt(th.dataset.ppCol);
+          if (ppSortCol === col) ppSortAsc = !ppSortAsc;
+          else { ppSortCol = col; ppSortAsc = true; }
+          renderPPTable();
+        });
+      });
+    }
+
+    var rows = getFilteredPPUsers();
+    var tbody = container.querySelector('#pv2-pp-tbody');
+    if (tbody) {
+      tbody.innerHTML = rows.map(function (u, ri) {
+        var status = ppUserStatus(u);
+        var typeLabel = PP_TYPE_LABELS[u.profile_picture_type] || '\u2014';
+        var statusTag, consentTag;
+
+        if (status === 'has-pic') {
+          statusTag = '<span class="pl-tag green">Har billede</span>';
+        } else if (status === 'opt-out') {
+          statusTag = '<span class="pl-tag red">Fravalgt</span>';
+        } else {
+          statusTag = '<span class="pl-tag gray">Mangler</span>';
+        }
+
+        // Consent details
+        var optOuts = ppOptOutSummary(u);
+        if (optOuts.length === 3) {
+          consentTag = '<span style="color:#ef4444;font-size:12px;">Alle fravalgt</span>';
+        } else if (optOuts.length > 0) {
+          consentTag = '<span style="color:#f59e0b;font-size:12px;">' + esc(optOuts.join(', ')) + ' fra</span>';
+        } else {
+          consentTag = '<span style="color:#10b981;font-size:12px;">Alle tilladt</span>';
+        }
+
+        // Grace period info
+        var graceInfo = '';
+        if (u.profile_picture_opt_out_camera && u.profile_picture_type === 'camera' && u.profile_picture_url && u.profile_picture_opt_out_camera_at) {
+          var d = daysUntilDeletion(u.profile_picture_opt_out_camera_at);
+          if (d !== null) graceInfo = '<br><span style="font-size:10px;color:#ef4444;">' + d + 'd til sletning</span>';
+        }
+        if (u.profile_picture_opt_out_ai && u.profile_picture_type === 'ai_avatar' && u.profile_picture_url && u.profile_picture_opt_out_ai_at) {
+          var d2 = daysUntilDeletion(u.profile_picture_opt_out_ai_at);
+          if (d2 !== null) graceInfo = '<br><span style="font-size:10px;color:#ef4444;">' + d2 + 'd til sletning</span>';
+        }
+
+        // Action button
+        var actionBtn = status === 'opt-out'
+          ? ''
+          : '<button class="pv2-pp-edit-btn pl-action-btn" data-user-idx="' + ri + '" style="white-space:nowrap;">' + (status === 'has-pic' ? '\u270F\uFE0F Redigér' : '📷 Opret') + '</button>';
+
+        return '<tr data-pp-row="' + ri + '">' +
+          '<td>' + esc(u.name || 'Ukendt') + '</td>' +
+          '<td class="pl-no">' + (u.number || '\u2014') + '</td>' +
+          '<td>' + (status === 'has-pic' ? esc(typeLabel) : '<span class="pl-no">\u2014</span>') + '</td>' +
+          '<td>' + statusTag + '</td>' +
+          '<td>' + consentTag + graceInfo + '</td>' +
+          '<td style="text-align:right;">' + actionBtn + '</td>' +
+        '</tr>';
+      }).join('');
+
+      // Bind edit buttons
+      tbody.querySelectorAll('.pv2-pp-edit-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var idx = parseInt(btn.dataset.userIdx);
+          var user = getFilteredPPUsers()[idx];
+          if (user) openPPModal(user);
+        });
+      });
+    }
+
+    var countEl = container.querySelector('#pv2-pp-count');
+    if (countEl) countEl.textContent = 'Viser ' + rows.length + ' af ' + getProfilePicUsers().length;
+  }
+
+  async function openPPModal(user) {
+    try {
+      var mod = await import('./profile-picture-modal.js');
+      mod.openProfilePictureModal(user, {
+        onSaved: function () {
+          // Refresh user data in cache
+          if (window.__flangoAllUsers) {
+            var idx = window.__flangoAllUsers.findIndex(function (u) { return u.id === user.id; });
+            if (idx >= 0) {
+              // Re-fetch user from DB
+              var client = window.__flangoSupabaseClient || window.supabase;
+              if (client) {
+                client.from('users').select('profile_picture_url, profile_picture_type').eq('id', user.id).single().then(function (res) {
+                  if (res.data) {
+                    window.__flangoAllUsers[idx].profile_picture_url = res.data.profile_picture_url;
+                    window.__flangoAllUsers[idx].profile_picture_type = res.data.profile_picture_type;
+                  }
+                  loadProfilePictureStats();
+                });
+              } else {
+                loadProfilePictureStats();
+              }
+            }
+          }
+        },
+      });
+    } catch (err) {
+      console.error('[portal-v2] Could not open profile picture modal:', err);
+    }
   }
 
   function switchPage(pageId) {
@@ -664,14 +875,20 @@
       generateChartBars('pv2-adoption-chart', 12, 'accent');
     }
 
+    // Load parent list (lazy)
+    if (pageId === 'page-parentlist') {
+      renderParentListTable();
+      renderParentListSummary();
+    }
+
     // Load profile picture stats (lazy)
     if (pageId === 'page-profile-pics') {
       loadProfilePictureStats();
     }
 
     // Scroll to top
-    const root = overlayEl.querySelector('#portal-v2-root');
-    if (root) root.scrollTop = 0;
+    var activePage = overlayEl.querySelector('.admin-page.active');
+    if (activePage) activePage.scrollTop = 0;
   }
 
   // ─── Preview mode ──────────────────────────────────────────────
@@ -709,15 +926,7 @@
       if (btn) btn.classList.add('active');
     }
 
-    renderParentListTable();
-    renderParentListSummary();
-
-    overlayEl.querySelector('#pv2-parent-list-overlay').classList.add('open');
-  }
-
-  function closeParentList() {
-    if (!overlayEl) return;
-    overlayEl.querySelector('#pv2-parent-list-overlay').classList.remove('open');
+    switchPage('page-parentlist');
   }
 
   function toggleParentListFilter(f) {
@@ -784,7 +993,8 @@
           '<td>' + d.spent + ' kr</td>' +
           '<td>' + d.purchases + '</td>' +
           '<td>' + (d.notif ? ck : no) + '</td>' +
-          '<td><button class="pl-action-btn pv2-pl-action-btn">\ud83d\udd11 Ny kode</button></td>' +
+          '<td>' + renderProfilePictureStatus(d) + '</td>' +
+          '<td><button class="pl-action-btn pv2-pl-action-btn">' + (d.portalCode && !d.portalCodeUsedAt && d.codeExpiresAt && new Date(d.codeExpiresAt) < new Date() ? '\ud83d\udd04 Forny kode' : '\ud83d\udd11 Ny kode') + '</button></td>' +
         '</tr>';
       }).join('');
     }
@@ -842,7 +1052,23 @@
     html += row('For\u00e6lder', d.parent ? esc(d.parent) : '<span style="color:var(--ink-muted)">\u2014</span>');
     html += row('Oprettet', esc(createdDisplay));
     html += row('Har kode', d.code ? ck : no);
-    html += row('Portal-kode', d.portalCode ? '<code style="font-size:12px;background:var(--surface-raised,#f1f5f9);padding:2px 6px;border-radius:4px">' + esc(d.portalCode) + '</code>' + (d.portalCodeUsedAt ? ' <span class="pl-tag green" style="font-size:10px">Brugt</span>' : '') : '<span style="color:var(--ink-muted)">\u2014</span>');
+    // Portal-kode med status (aktiv/udløbet/brugt/ingen)
+    var portalCodeHtml;
+    if (d.portalCode) {
+      var codeTag = '<code style="font-size:12px;background:var(--surface-raised,#f1f5f9);padding:2px 6px;border-radius:4px">' + esc(d.portalCode) + '</code>';
+      if (d.portalCodeUsedAt) {
+        codeTag += ' <span class="pl-tag green" style="font-size:10px">Brugt</span>';
+      } else if (d.codeExpiresAt && new Date(d.codeExpiresAt) < new Date()) {
+        codeTag += ' <span class="pl-tag red" style="font-size:10px">Udl\u00f8bet</span>';
+      } else if (d.codeExpiresAt) {
+        var daysLeft = Math.ceil((new Date(d.codeExpiresAt) - new Date()) / 86400000);
+        codeTag += ' <span class="pl-tag green" style="font-size:10px">Aktiv (' + daysLeft + 'd)</span>';
+      }
+      portalCodeHtml = codeTag;
+    } else {
+      portalCodeHtml = '<span style="color:var(--ink-muted)">\u2014</span>';
+    }
+    html += row('Portal-kode', portalCodeHtml);
     html += row('Sidste login', loginDisplay === 'Aldrig' ? '<span class="pl-tag red">Aldrig</span>' : esc(loginDisplay));
     html += '</div>';
 
@@ -867,6 +1093,23 @@
     html += row('Daglig gr\u00e6nse', d.screentime && d.screentime !== '\u2014' ? esc(d.screentime) : '<span style="color:var(--ink-muted)">\u2014</span>');
     html += '</div>';
 
+    html += '<div class="pl-modal-sec"><div class="pl-modal-sec-title">\ud83d\udcf7 Profilbilleder</div>';
+    html += row('Aula-foto', d.ppOptOutAula ? '<span class="pl-tag red">Fravalgt</span>' : '<span class="pl-tag green">Tilladt</span>');
+    html += row('Kamera-foto', d.ppOptOutCamera ? '<span class="pl-tag red">Fravalgt</span>' : '<span class="pl-tag green">Tilladt</span>');
+    if (d.ppOptOutCamera && d.ppType === 'camera' && d.ppUrl) {
+      var camDays = daysUntilDeletion(d.ppOptOutCameraAt);
+      html += row('Kamera-billede sletning', camDays !== null ? '<span class="pl-tag orange">' + camDays + ' dage tilbage</span>' : '<span style="color:var(--ink-muted)">\u2014</span>');
+    }
+    html += row('AI-avatar', d.ppOptOutAi ? '<span class="pl-tag red">Fravalgt</span>' : '<span class="pl-tag green">Tilladt</span>');
+    if (d.ppOptOutAi && d.ppType === 'ai_avatar' && d.ppUrl) {
+      var aiDays = daysUntilDeletion(d.ppOptOutAiAt);
+      html += row('AI-billede sletning', aiDays !== null ? '<span class="pl-tag orange">' + aiDays + ' dage tilbage</span>' : '<span style="color:var(--ink-muted)">\u2014</span>');
+    }
+    if (d.ppType) {
+      html += row('Nuv\u00e6rende type', '<span class="pl-tag blue">' + esc(d.ppType === 'camera' ? 'Kamera' : d.ppType === 'ai_avatar' ? 'AI-avatar' : d.ppType === 'aula' ? 'Aula' : d.ppType) + '</span>');
+    }
+    html += '</div>';
+
     var bodyEl = overlayEl.querySelector('#pv2-pl-m-body');
     if (bodyEl) bodyEl.innerHTML = html;
 
@@ -886,6 +1129,9 @@
       csvRows.push([
         d.child, d.parent, d.saldo, d.login, d.limit,
         d.spent, d.purchases, d.notif ? 'Ja' : 'Nej',
+        d.ppOptOutAula || d.ppOptOutCamera || d.ppOptOutAi
+          ? [d.ppOptOutAula ? 'Aula fra' : '', d.ppOptOutCamera ? 'Kamera fra' : '', d.ppOptOutAi ? 'AI fra' : ''].filter(Boolean).join(' + ')
+          : 'Tilladt',
       ].join(';'));
     });
     var blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -917,12 +1163,15 @@
 
     var newCode = result.code;
     var childName = result.child_name || childData.child;
+    var expiresAt = result.expires_at || null;
 
     // Opdater lokalt cache
     for (var i = 0; i < parentListData.length; i++) {
       if (parentListData[i].childId === childData.childId) {
         parentListData[i].portalCode = newCode;
         parentListData[i].portalCodeGeneratedAt = new Date().toISOString();
+        parentListData[i].codeExpiresAt = expiresAt || new Date(Date.now() + 7 * 86400000).toISOString();
+        parentListData[i].portalCodeUsedAt = null;
         break;
       }
     }
@@ -939,7 +1188,7 @@
     var aulaData = await PortalData.getAulaMessageTemplate();
     var template = (aulaData && aulaData.template)
       ? aulaData.template
-      : 'Kære forælder,\n\nDit barn {{child_name}} har fået en kode til Flango Forældreportal.\n\nKode: {{pin}}\n\nGå til flango.dk/forældre for at oprette din konto.\n\nVenlig hilsen\n{{institution}}';
+      : 'Kære forælder,\n\nDit barn {{child_name}} har fået en kode til Flango Forældreportal.\n\nKode: {{pin}}\n\nKoden udløber om 7 dage.\n\nGå til flango.dk/forældre for at oprette din konto.\n\nVenlig hilsen\n{{institution}}';
 
     // Erstat placeholders (støtter både {{x}} og {x} formater)
     var instName = (aulaData && aulaData.institutionName) || institutionName || 'Institutionen';
@@ -965,6 +1214,7 @@
         '<div class="pv2-code-popup-body">' +
           '<p style="margin:0 0 4px 0">Ny portal-kode til <strong>' + esc(childName) + '</strong>:</p>' +
           '<div class="pv2-code-display">' + esc(code) + '</div>' +
+          '<p style="margin:0 0 12px 0;font-size:12px;color:var(--ink-muted,#64748b)">Koden udl\u00f8ber om 7 dage.</p>' +
           '<div style="display:flex;gap:8px;margin-bottom:16px">' +
             '<button class="pv2-code-copy-btn" id="pv2-copy-code-btn">\ud83d\udccb Kopier kode</button>' +
           '</div>' +
@@ -1071,15 +1321,12 @@
     // Page tabs
     overlayEl.querySelector('#pv2-tab-portal').addEventListener('click', function () { switchPage('page-portal'); });
     overlayEl.querySelector('#pv2-tab-insights').addEventListener('click', function () { switchPage('page-insights'); });
+    overlayEl.querySelector('#pv2-tab-parentlist').addEventListener('click', function () { switchPage('page-parentlist'); });
+    var ppTab = overlayEl.querySelector('#pv2-tab-profile-pics');
+    if (ppTab) ppTab.addEventListener('click', function () { switchPage('page-profile-pics'); });
 
     // Preview toggle
     overlayEl.querySelector('#pv2-preview-toggle').addEventListener('click', togglePreview);
-
-    // Close portal (footer link)
-    overlayEl.querySelector('#pv2-close-link').addEventListener('click', function (e) {
-      e.preventDefault();
-      closePortal();
-    });
 
     // Close portal (admin bar back button)
     var backToCafe = overlayEl.querySelector('#pv2-back-to-cafe');
@@ -1123,9 +1370,6 @@
     overlayEl.querySelectorAll('.pv2-open-parent-list').forEach(function (el) {
       el.addEventListener('click', function () { openParentList(); });
     });
-
-    // Parent list: back button
-    overlayEl.querySelector('#pv2-pl-back').addEventListener('click', closeParentList);
 
     // Parent list: search
     overlayEl.querySelector('#pv2-pl-search').addEventListener('input', function (e) {
@@ -1224,16 +1468,10 @@
     if (e.key !== 'Escape') return;
     if (!overlayEl) return;
 
-    // Close in order of depth: detail modal > parent list > portal
+    // Close in order of depth: detail modal > portal
     var modal = overlayEl.querySelector('#pv2-pl-modal');
     if (modal && modal.classList.contains('open')) {
       closeParentDetailModal();
-      return;
-    }
-
-    var plOverlay = overlayEl.querySelector('#pv2-parent-list-overlay');
-    if (plOverlay && plOverlay.classList.contains('open')) {
-      closeParentList();
       return;
     }
 
@@ -1333,8 +1571,19 @@
     // Create overlay container
     overlayEl = document.createElement('div');
     overlayEl.id = 'admin-portal-v2-overlay';
-    overlayEl.style.cssText = 'position:fixed;inset:0;z-index:10000;overflow-y:auto;background:var(--surface, #FAFAF9);';
+    overlayEl.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;background:var(--surface, #FAFAF9);overflow:hidden;';
     overlayEl.innerHTML = buildOverlayHTML();
+
+    // Force flex layout on root, admin-bar fixed at top, pages scroll
+    var rootEl = overlayEl.querySelector('#portal-v2-root');
+    if (rootEl) rootEl.style.cssText = 'display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;';
+    var barEl = overlayEl.querySelector('.admin-bar');
+    if (barEl) barEl.style.cssText += ';flex-shrink:0;position:relative;';
+    overlayEl.querySelectorAll('.admin-page').forEach(function (p) {
+      p.style.flex = '1';
+      p.style.minHeight = '0';
+      p.style.overflowY = 'auto';
+    });
 
     document.body.appendChild(overlayEl);
     document.body.style.overflow = 'hidden';
