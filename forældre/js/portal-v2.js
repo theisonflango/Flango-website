@@ -1044,7 +1044,7 @@
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          <div id="history-content">${renderHistoryContent('today')}</div>
+          <div id="history-content">${renderHistoryContent('week')}</div>
         </div></div></div>
       </div>`;
   }
