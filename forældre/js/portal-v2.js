@@ -1054,10 +1054,9 @@
       listHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Ingen produkter tilgængelige</div></div>';
     } else {
       listHTML = products.filter(p => p.is_visible === true && p.is_enabled !== false).map(p => {
-        const emoji = p.emoji || '🍽️';
-        const isPermanent = p.is_permanent === true || p.core_assortment === true;
-        const badge = isPermanent ? '<span class="product-badge permanent">Fast</span>' : (p.is_daily_special ? '<span class="product-badge daily">Dagens</span>' : '');
-        return `<div class="product-list-item"><div class="product-emoji">${emoji}</div><div class="product-name">${esc(cleanProductName(p.name))}${badge}</div><div class="product-price">${formatKr(p.price)} kr</div></div>`;
+        const emojiHtml = productEmojiHTML(p, 20);
+        const badge = p.is_core_assortment === true ? '<span class="product-badge permanent">Fast</span>' : '';
+        return `<div class="product-list-item"><div class="product-emoji">${emojiHtml}</div><div class="product-name">${esc(cleanProductName(p.name))}${badge}</div><div class="product-price">${formatKr(p.price)} kr</div></div>`;
       }).join('');
     }
 
@@ -1123,13 +1122,13 @@
   }
 
   function renderProductRow(p, isFirst) {
-    const emoji = p.emoji || '🍽️';
+    const emojiHtml = productEmojiHTML(p, 24);
     const currentLimit = p.parent_limit ?? '∞';
     const instLimit = p.institution_limit;
     const instNote = instLimit != null ? `<span style="font-size:11px;color:var(--ink-muted)">Klub: max ${instLimit}/dag</span>` : '';
     return `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--s3) 0${!isFirst ? ';border-top:1px solid var(--border)' : ''}">
-        <div style="display:flex;align-items:center;gap:var(--s3)"><span style="font-size:20px">${emoji}</span><div><span style="font-weight:600;font-size:14px">${esc(cleanProductName(p.name))}</span>${instNote ? '<br>' + instNote : ''}</div></div>
+        <div style="display:flex;align-items:center;gap:var(--s3)">${emojiHtml}<div><span style="font-weight:600;font-size:14px">${esc(cleanProductName(p.name))}</span>${instNote ? '<br>' + instNote : ''}</div></div>
         <div class="stepper" data-product-id="${p.id}"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${currentLimit}</div><button class="stepper-btn stepper-plus">+</button></div>
       </div>`;
   }
@@ -2746,6 +2745,27 @@
     if (!name) return 'Ukendt';
     if (name.startsWith('::icon::')) return 'Custom produkt';
     return name;
+  }
+
+  /** Resolve emoji field → HTML. Handles ::icon::URL, regular emoji, icon_url, or fallback. */
+  function productEmojiHTML(p, size) {
+    size = size || 20;
+    const emoji = p.emoji;
+    // ::icon::URL format → render as <img>
+    if (emoji && emoji.startsWith('::icon::')) {
+      const url = emoji.slice('::icon::'.length);
+      return `<img src="${esc(url)}" alt="" style="width:${size}px;height:${size}px;object-fit:contain;border-radius:4px">`;
+    }
+    // Regular emoji
+    if (emoji && emoji.length > 0) {
+      return `<span style="font-size:${size}px">${emoji}</span>`;
+    }
+    // Fallback to icon_url
+    if (p.icon_url) {
+      return `<img src="${esc(p.icon_url)}" alt="" style="width:${size}px;height:${size}px;object-fit:contain;border-radius:4px">`;
+    }
+    // Default
+    return `<span style="font-size:${size}px">🍽️</span>`;
   }
 
   // ─── HTML escape helper ───
