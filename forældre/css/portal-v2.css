@@ -531,6 +531,10 @@ a { color: inherit; text-decoration: none; }
 .overview-stat-value { font-size: 20px; font-weight: 800; color: var(--ink); }
 .overview-vs { font-size: 13px; font-weight: 700; color: var(--ink-muted); flex-shrink: 0; }
 
+.history-filter-btn { padding: 6px 14px; border-radius: var(--r-full); font-size: 13px; font-weight: 600; background: var(--surface-raised, #f1f5f9); color: var(--ink-soft); border: 1px solid var(--border); transition: all .15s; cursor: pointer; }
+.history-filter-btn.active { background: var(--flango); color: #fff; border-color: var(--flango); }
+.history-filter-btn:not(.active):hover { background: var(--surface-hover, #e2e8f0); }
+
 .tx-row { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) 0; }
 .tx-row + .tx-row { border-top: 1px solid var(--border); }
 .tx-icon { width: 36px; height: 36px; border-radius: var(--r-full); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }

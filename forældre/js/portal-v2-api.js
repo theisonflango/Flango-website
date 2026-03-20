@@ -197,13 +197,13 @@
       return invokeFunction('get-parent-view', { child_id: childId });
     },
 
-    /** Get club average daily spend (all-time) */
-    async getClubAvgDailySpend(institutionId) {
-      const { data, error } = await window.portalSupabase.rpc('get_club_avg_daily_spend', {
+    /** Get customer average spend per period (today/week/month) */
+    async getCustomerAvgSpend(institutionId) {
+      const { data, error } = await window.portalSupabase.rpc('get_customer_avg_spend', {
         p_institution_id: institutionId,
       });
       if (error) throw error;
-      return data || 0;
+      return data || { avg_today: 0, avg_week: 0, avg_month: 0 };
     },
 
     // ─── Products ───

@@ -23,7 +23,7 @@
   let screentimeData = null;
   let eventsData = null;
   let featureFlags = {};      // from institution
-  let clubAvgPerDay = null;   // all-time club avg daily spend
+  let customerAvgSpend = null; // { avg_today, avg_week, avg_month }
 
   // ═══════════════════════════════════════
   //  INIT
@@ -80,7 +80,7 @@
         API.getParentView(childId).catch(e => { console.error('[Portal] getParentView:', e); return null; }),
         API.getProducts(instId, childId).catch(e => { console.error('[Portal] getProducts:', e); return []; }),
         API.getParentEvents(childId).catch(e => { console.error('[Portal] getEvents:', e); return null; }),
-        API.getClubAvgDailySpend(instId).catch(e => { console.error('[Portal] getClubAvg:', e); return null; }),
+        API.getCustomerAvgSpend(instId).catch(e => { console.error('[Portal] getCustomerAvg:', e); return null; }),
       ]);
       childData = view;
       // Map child_limits and institution_limits onto products
@@ -97,7 +97,7 @@
         institution_limit: instLimitMap[p.id] ?? null,
       }));
       eventsData = events;
-      clubAvgPerDay = clubAvg;
+      customerAvgSpend = clubAvg;
       featureFlags = childData?.institution || childData?.feature_flags || {};
 
       // Load screentime data if enabled
@@ -982,51 +982,92 @@
       </div>`;
   }
 
-  function getSpentToday() {
+  function getSpentForPeriod(periodKey) {
     const transactions = childData?.recent_transactions || childData?.history || [];
-    const today = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('sv-SE');
+    let cutoff = null;
+    if (periodKey === 'today') {
+      cutoff = todayStr;
+    } else if (periodKey === 'week') {
+      const d = new Date(now); d.setDate(d.getDate() - 6);
+      cutoff = d.toLocaleDateString('sv-SE');
+    } else {
+      const d = new Date(now); d.setDate(d.getDate() - 29);
+      cutoff = d.toLocaleDateString('sv-SE');
+    }
     let spent = 0;
     transactions.forEach(tx => {
       const type = tx.type || tx.event_type || '';
       const dateStr = tx.created_at || tx.date || '';
       if (!dateStr) return;
       const txDate = new Date(dateStr).toLocaleDateString('sv-SE');
-      if (txDate !== today) return;
+      if (periodKey === 'today' && txDate !== todayStr) return;
+      if (periodKey !== 'today' && txDate < cutoff) return;
       if (type === 'SALE') spent += Math.abs(parseFloat(tx.amount || tx.total_amount || 0));
       else if (type === 'SALE_UNDO' || type === 'UNDO_SALE') spent -= Math.abs(parseFloat(tx.amount || tx.total_amount || 0));
     });
     return Math.max(0, spent);
   }
 
-  function renderHistorySection() {
+  function filterTransactions(periodKey) {
     const transactions = childData?.recent_transactions || childData?.history || [];
-    const spentToday = getSpentToday();
-    const clubAvg = clubAvgPerDay != null ? Number(clubAvgPerDay) : null;
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('sv-SE');
+    let cutoff = null;
+    if (periodKey === 'today') cutoff = todayStr;
+    else if (periodKey === 'week') { const d = new Date(now); d.setDate(d.getDate() - 6); cutoff = d.toLocaleDateString('sv-SE'); }
+    else { const d = new Date(now); d.setDate(d.getDate() - 29); cutoff = d.toLocaleDateString('sv-SE'); }
+    return transactions.filter(tx => {
+      const dateStr = tx.created_at || tx.date || '';
+      if (!dateStr) return false;
+      const txDate = new Date(dateStr).toLocaleDateString('sv-SE');
+      if (periodKey === 'today') return txDate === todayStr;
+      return txDate >= cutoff;
+    });
+  }
 
-    // "Min dag vs. Klubbens gns." comparison card
-    const comparisonHTML = `
-      <div class="overview-comparison">
-        <div class="overview-stat">
-          <div class="overview-stat-label">Min dag</div>
-          <div class="overview-stat-value">${formatKr(spentToday)} kr</div>
+  function pctBadgeHTML(childSpend, avg) {
+    if (avg == null || avg <= 0) return '';
+    const pct = Math.round(((childSpend - avg) / avg) * 100);
+    if (pct === 0) return '<span style="font-size:11px;color:var(--ink-muted);margin-left:4px">= gns.</span>';
+    const color = pct > 0 ? 'var(--danger, #ef4444)' : 'var(--positive, #22c55e)';
+    const arrow = pct > 0 ? '▲' : '▼';
+    return `<span style="font-size:11px;font-weight:600;color:${color};margin-left:4px">${arrow} ${Math.abs(pct)}%</span>`;
+  }
+
+  function renderHistorySection() {
+    return `
+      <div class="section" id="section-history">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📊</div><div><div class="section-title">Overblik</div><div class="section-subtitle">Forbrug og historik</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div class="overview-vs">vs.</div>
-        <div class="overview-stat">
-          <div class="overview-stat-label">Klubbens gns.</div>
-          <div class="overview-stat-value">${clubAvg != null ? formatKr(clubAvg) + ' kr/dag' : '—'}</div>
-        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div id="history-content">${renderHistoryContent('today')}</div>
+        </div></div></div>
       </div>`;
+  }
 
+  function renderHistoryContent(periodKey) {
+    const spent = getSpentForPeriod(periodKey);
+    const avg = customerAvgSpend || {};
+    const avgVal = periodKey === 'today' ? avg.avg_today : periodKey === 'week' ? avg.avg_week : avg.avg_month;
+    const badge = pctBadgeHTML(spent, avgVal);
+    const avgText = avgVal != null && avgVal > 0 ? `Gns. pr. barn: ${formatKr(avgVal)} kr` : '';
+    const periodLabel = periodKey === 'today' ? 'I dag' : periodKey === 'week' ? 'Sidste 7 dage' : 'Sidste 30 dage';
+
+    const filteredTx = filterTransactions(periodKey);
     let txHTML = '';
-    if (transactions.length === 0) {
-      txHTML = '<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">Ingen transaktioner endnu</div></div>';
+    if (filteredTx.length === 0) {
+      txHTML = '<div class="empty-state" style="padding:var(--s3) 0"><div class="empty-state-text">Ingen transaktioner</div></div>';
     } else {
-      txHTML = transactions.slice(0, 10).map(tx => {
+      txHTML = filteredTx.map(tx => {
         const type = tx.type || tx.event_type || 'SALE';
         let icon = '🧃', iconCls = 'purchase', amountCls = 'negative', sign = '-';
         if (type === 'DEPOSIT' || type === 'TOPUP') { icon = '💳'; iconCls = 'topup'; amountCls = 'positive'; sign = '+'; }
         else if (type === 'BALANCE_EDIT' || type === 'ADJUSTMENT') { icon = '⚙️'; iconCls = 'adjust'; amountCls = parseFloat(tx.amount) >= 0 ? 'positive' : 'negative'; sign = parseFloat(tx.amount) >= 0 ? '+' : '-'; }
-        else if (type === 'SALE_UNDO') { icon = '↩️'; iconCls = 'topup'; amountCls = 'positive'; sign = '+'; }
+        else if (type === 'SALE_UNDO' || type === 'UNDO_SALE') { icon = '↩️'; iconCls = 'topup'; amountCls = 'positive'; sign = '+'; }
         const title = tx.description || tx.product_names || type;
         const dateStr = tx.created_at || tx.date || '';
         const date = dateStr ? formatDateTime(dateStr) : '';
@@ -1036,16 +1077,18 @@
     }
 
     return `
-      <div class="section" id="section-history">
-        <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📊</div><div><div class="section-title">Overblik</div><div class="section-subtitle">Din dagsoversigt</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-        <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          ${comparisonHTML}
-          ${txHTML}
-        </div></div></div>
-      </div>`;
+      <div style="display:flex;gap:6px;margin-bottom:var(--s3)">
+        <button class="history-filter-btn${periodKey === 'today' ? ' active' : ''}" data-period="today">I dag</button>
+        <button class="history-filter-btn${periodKey === 'week' ? ' active' : ''}" data-period="week">1 uge</button>
+        <button class="history-filter-btn${periodKey === 'month' ? ' active' : ''}" data-period="month">1 måned</button>
+      </div>
+      <div style="background:var(--surface-raised, #f8fafc);border-radius:12px;padding:var(--s3);margin-bottom:var(--s3);text-align:center">
+        <div style="font-size:12px;color:var(--ink-muted);margin-bottom:2px">${periodLabel}</div>
+        <div style="font-size:24px;font-weight:800;color:var(--ink)">${formatKr(spent)} kr${badge}</div>
+        ${avgText ? `<div style="font-size:11px;color:var(--ink-muted);margin-top:2px">${avgText}</div>` : ''}
+      </div>
+      <div style="font-weight:700;font-size:13px;color:var(--ink-muted);margin-bottom:var(--s2)">Transaktioner</div>
+      ${txHTML}`;
   }
 
   function renderSortimentSection() {
@@ -1687,6 +1730,14 @@
       if (isNaN(val)) val = 0;
       val = isMinus ? Math.max(0, val - 1) : val + 1;
       valEl.textContent = val === 0 ? '∞' : val;
+    });
+
+    // History filter buttons — delegated
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('.history-filter-btn[data-period]');
+      if (!btn) return;
+      const container = document.getElementById('history-content');
+      if (container) container.innerHTML = renderHistoryContent(btn.dataset.period);
     });
   }
 
