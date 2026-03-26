@@ -17,6 +17,7 @@ import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
 import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
 import { escapeHtml } from '../core/escape-html.js';
 import { formatKr } from '../ui/confirm-modals.js';
+import { getProfilePictureUrl, getCachedProfilePictureUrl } from '../core/profile-picture-cache.js';
 import { processEventItemsInCheckout } from '../ui/cafe-event-strip.js';
 
 
@@ -120,16 +121,69 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
     // Byg DOM med ny Klart v5c-struktur
     const root = document.createElement('div');
 
-    // === Header: kundenavn ===
+    // === Header: avatar + kundenavn ===
     const header = document.createElement('div');
     header.className = 'confirm-modal-header';
     const h3 = document.createElement('h3');
     h3.textContent = 'Bekræft køb';
     header.appendChild(h3);
+
+    const customerRow = document.createElement('div');
+    customerRow.className = 'confirm-customer-row';
+    customerRow.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:10px;';
+
+    // Avatar circle
+    const inst = window.__flangoGetInstitutionById?.(customer?.institution_id);
+    const hasProfilePic = inst?.profile_pictures_enabled
+        && customer?.profile_picture_url
+        && !customer?.profile_picture_opt_out;
+
+    const avatarEl = document.createElement('div');
+    avatarEl.className = 'confirm-customer-avatar';
+    avatarEl.id = 'confirm-customer-avatar';
+    avatarEl.style.cssText = 'width:180px;height:180px;min-width:180px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.18);';
+
+    const imgStyle = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+
+    if (hasProfilePic) {
+        const cachedUrl = getCachedProfilePictureUrl(customer);
+        if (cachedUrl) {
+            avatarEl.innerHTML = `<img src="${cachedUrl}" alt="" style="${imgStyle}">`;
+        } else {
+            const initials = (customer?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            avatarEl.textContent = initials;
+            avatarEl.dataset.needsAsync = 'true';
+        }
+    } else {
+        const avatarKey = `flango-avatar-${customer?.id}`;
+        const savedAvatar = localStorage.getItem(avatarKey);
+        if (savedAvatar) {
+            avatarEl.innerHTML = `<img src="${savedAvatar}" alt="" style="${imgStyle}">`;
+        } else {
+            const initials = (customer?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            avatarEl.textContent = initials;
+        }
+    }
+    // Wrap avatar + number badge
+    const avatarWrap = document.createElement('div');
+    avatarWrap.style.cssText = 'position:relative;display:inline-block;';
+    avatarWrap.appendChild(avatarEl);
+
+    const number = customer?.number ? String(customer.number) : '';
+    if (number) {
+        const badge = document.createElement('div');
+        badge.style.cssText = 'position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:var(--primary-color,#1a8a6e);color:#fff;font-size:13px;font-weight:700;padding:2px 10px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.15);';
+        badge.textContent = `#${number}`;
+        avatarWrap.appendChild(badge);
+    }
+    customerRow.appendChild(avatarWrap);
+
     const customerHighlight = document.createElement('div');
     customerHighlight.className = 'customer-highlight';
     customerHighlight.textContent = `${customer?.name || 'Ukendt'} køber:`;
-    header.appendChild(customerHighlight);
+    customerRow.appendChild(customerHighlight);
+
+    header.appendChild(customerRow);
     root.appendChild(header);
 
     // === Produktrækker ===
@@ -1068,6 +1122,17 @@ export async function handleCompletePurchase({
         okText: 'Bekræft Køb',
         cancelText: 'Annullér',
     });
+
+    // Async profile picture load (if cached URL wasn't available during build)
+    const avatarNode = document.getElementById('confirm-customer-avatar');
+    if (avatarNode?.dataset.needsAsync === 'true') {
+        getProfilePictureUrl(customer).then(url => {
+            if (url && avatarNode.isConnected) {
+                avatarNode.textContent = '';
+                avatarNode.innerHTML = `<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            }
+        });
+    }
 
     // Re-attach bordknap click-handlers (tabt under innerHTML serialisering i buildConfirmationUI)
     if (restaurantMode?.enabled && restaurantMode.tableNumbersEnabled) {

@@ -27,6 +27,11 @@ export async function getProfilePictureUrl(user) {
         return user.profile_picture_url;
     }
 
+    // Full URLs (e.g. AI avatars in public bucket) — use directly
+    if (user.profile_picture_url.startsWith('http')) {
+        return user.profile_picture_url;
+    }
+
     // Check cache
     const cached = signedUrlCache.get(user.id);
     if (cached && cached.expiresAt > Date.now()) {
@@ -69,6 +74,8 @@ export async function batchPreWarmProfilePictures(users) {
         !u.profile_picture_opt_out &&
         u.profile_picture_type !== 'library' &&
         u.profile_picture_type !== 'icon' &&
+        // Full URLs (public bucket) don't need signed URLs
+        !u.profile_picture_url.startsWith('http') &&
         // Skip if already cached and valid
         !(signedUrlCache.has(u.id) && signedUrlCache.get(u.id).expiresAt > Date.now())
     );
@@ -106,6 +113,7 @@ export async function batchPreWarmProfilePictures(users) {
 export function getCachedProfilePictureUrl(user) {
     if (!user || !user.profile_picture_url || user.profile_picture_opt_out) return null;
     if ((user.profile_picture_type === 'library' || user.profile_picture_type === 'icon')) return user.profile_picture_url;
+    if (user.profile_picture_url.startsWith('http')) return user.profile_picture_url;
 
     const cached = signedUrlCache.get(user.id);
     if (cached && cached.expiresAt > Date.now()) return cached.url;
@@ -129,7 +137,7 @@ function getCachedUrls(users) {
     const now = Date.now();
     for (const u of users) {
         if (!u.profile_picture_url || u.profile_picture_opt_out) continue;
-        if ((u.profile_picture_type === 'library' || u.profile_picture_type === 'icon')) {
+        if ((u.profile_picture_type === 'library' || u.profile_picture_type === 'icon') || u.profile_picture_url.startsWith('http')) {
             result.set(u.id, u.profile_picture_url);
         } else {
             const cached = signedUrlCache.get(u.id);

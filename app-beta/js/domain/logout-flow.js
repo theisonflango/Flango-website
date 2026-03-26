@@ -300,10 +300,15 @@ export function setupLogoutFlow({ clerkProfile, sessionStartTime, getSessionSale
     if (lockCafeBtn && !lockCafeBtn.dataset.allBalancesHooked) {
         const originalLockHandler = lockCafeBtn.onclick;
         lockCafeBtn.onclick = async (event) => {
-            try {
-                handlePrintAllBalances();
-            } catch (err) {
-                console.error('Kunne ikke gemme saldo-liste ved låsning af café:', err);
+            const instId = window.__flangoInstitutionId || '';
+            const balanceDownloadKey = `flango_balance_download_on_lock_${instId}`;
+            const balanceDownloadEnabled = localStorage.getItem(balanceDownloadKey) !== 'false';
+            if (balanceDownloadEnabled) {
+                try {
+                    handlePrintAllBalances();
+                } catch (err) {
+                    console.error('Kunne ikke gemme saldo-liste ved låsning af café:', err);
+                }
             }
             if (typeof originalLockHandler === 'function') {
                 return originalLockHandler.call(lockCafeBtn, event);

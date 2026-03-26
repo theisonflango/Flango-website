@@ -135,6 +135,13 @@ export function initThemeLoader() {
 /**
  * Switch to a different theme
  */
+/** @type {Array<() => void>} */
+const themeChangeListeners = [];
+
+export function onThemeChange(fn) {
+    themeChangeListeners.push(fn);
+}
+
 export function switchTheme(themeName) {
     if (!ALL_VALID_THEMES.includes(themeName)) {
         themeName = 'flango-unstoppable';
@@ -148,6 +155,9 @@ export function switchTheme(themeName) {
 
     // Swap CSS dynamically — no reload needed
     loadThemePack(themeName);
+
+    // Notify listeners (e.g. re-render header for new theme)
+    themeChangeListeners.forEach(fn => fn());
 }
 
 /**

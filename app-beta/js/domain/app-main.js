@@ -2,7 +2,7 @@ import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '.
 import { initializeSoundSettings } from '../core/sound-manager.js';
 import { initDebugRecorder, logDebugEvent } from '../core/debug-flight-recorder.js';
 import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen } from '../ui/shell-and-theme.js';
-import { getCurrentTheme } from '../ui/theme-loader.js';
+import { getCurrentTheme, onThemeChange } from '../ui/theme-loader.js';
 import { configureHistoryModule, showTransactionsInSummary, showOverviewInSummary, resetSharedHistoryControls } from './history-and-reports.js';
 import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js';
 import { setupLogoutFlow } from './logout-flow.js';
@@ -371,6 +371,12 @@ export async function startApp() {
 
     // Update logged-in user display (refactored to app-ui-updates.js)
     updateLoggedInUserDisplay(clerkProfile, avatarCache, { AVATAR_STORAGE_PREFIX, DEFAULT_AVATAR_URL });
+
+    // Re-render header when theme changes
+    onThemeChange(() => {
+        updateLoggedInUserDisplay(clerkProfile, avatarCache, { AVATAR_STORAGE_PREFIX, DEFAULT_AVATAR_URL });
+        updateSelectedUserInfo();
+    });
 
     // 3.5) DB-Historik button (superadmin only)
     const dbHistoryBtn = document.getElementById('toolbar-db-history-btn');

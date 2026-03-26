@@ -162,7 +162,7 @@
     border-radius: 4px;
     margin-bottom: clamp(14px, 2.5vw, 20px);
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto 1fr 1fr 1fr;
     gap: 10px;
     text-align: center;
     position: relative;
@@ -204,6 +204,35 @@
     background: linear-gradient(180deg, #9e9e9e 0%, #616161 100%);
     border-radius: 0 0 2px 2px;
     z-index: 4;
+}
+
+/* --- Customer avatar in sticky note --- */
+#selected-user-info .unstoppable-customer-avatar {
+    grid-row: 1;
+    grid-column: 1;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffab91 0%, #ff8a65 100%);
+    border: 2.5px solid #d84315;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: #3e2723;
+    overflow: hidden;
+    box-shadow: 1px 2px 6px rgba(0, 0, 0, 0.15);
+    align-self: center;
+    font-family: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
+}
+
+#selected-user-info .unstoppable-customer-avatar .unstoppable-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
 .info-box {
