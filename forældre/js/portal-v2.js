@@ -102,7 +102,7 @@
 
       // Load screentime data if enabled
       if (featureFlags.skaermtid_enabled === true) {
-        screentimeData = await API.getScreentime(childId).catch(e => { console.error('[Portal] getScreentime:', e); return null; });
+        screentimeData = await API.getScreentime(childId, instId).catch(e => { console.error('[Portal] getScreentime:', e); return null; });
       } else {
         screentimeData = null;
       }
@@ -1800,6 +1800,14 @@
       if (isNaN(val)) val = 0;
       val = isMinus ? Math.max(0, val - 1) : val + 1;
       valEl.textContent = val === 0 ? '∞' : val;
+      // Auto-save produkt-grænser ved ændring
+      if (stepper.dataset.productId) {
+        saveProductLimits();
+      }
+      // Auto-save sukkerpolitik steppers ved ændring
+      if (stepper.id === 'sugar-max-stepper' || stepper.id === 'sugar-per-product-stepper') {
+        saveSugarPolicy();
+      }
     });
 
     // History filter buttons — delegated
@@ -2449,6 +2457,25 @@
     container.querySelectorAll('.pp-view-btn').forEach(function (btn) {
       btn.addEventListener('click', function () { loadPurchaseProfile(ppCurrentPeriod, ppCurrentSort, btn.dataset.view); });
     });
+  }
+
+  async function saveProductLimits() {
+    if (!selectedChild) return;
+    const steppers = document.querySelectorAll('.stepper[data-product-id]');
+    const limits = [];
+    steppers.forEach(function (stepper) {
+      const productId = stepper.dataset.productId;
+      const valText = stepper.querySelector('.stepper-val')?.textContent ?? '∞';
+      const val = valText === '∞' ? null : parseInt(valText);
+      if (productId) limits.push({ product_id: productId, max_per_day: val });
+    });
+    try {
+      await API.saveProductLimits(selectedChild.child_id, limits);
+      showToast('Grænse gemt', 'success');
+    } catch (err) {
+      console.error('[Portal] Save product limits error:', err);
+      showToast('Kunne ikke gemme grænse', 'error');
+    }
   }
 
   async function saveDailyLimit(limit) {

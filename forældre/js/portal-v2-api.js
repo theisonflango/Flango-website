@@ -363,8 +363,8 @@
     // ─── Screentime ───
 
     /** Get screentime data for a child */
-    async getScreentime(childId) {
-      return invokeFunction('get-parent-skaermtid', { child_id: childId });
+    async getScreentime(childId, institutionId) {
+      return invokeFunction('get-parent-skaermtid', { child_id: childId, institution_id: institutionId });
     },
 
     /** Save screentime settings for a child */
