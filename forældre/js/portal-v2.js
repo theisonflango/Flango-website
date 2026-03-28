@@ -2225,12 +2225,21 @@
       var iconWrap = document.createElement('div');
       iconWrap.style.cssText = 'margin-top:10px;width:32px;height:32px;background:white;border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,0.08);border:1px solid #e2e8f0;overflow:hidden;';
       var icon = item.icon || item.emoji;
+      // Resolve ::icon:: prefix to displayable URL
+      if (icon && icon.startsWith('::icon::')) {
+        var iconPath = icon.slice('::icon::'.length);
+        if (iconPath && !iconPath.startsWith('http')) {
+          icon = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/' + iconPath;
+        } else {
+          icon = iconPath;
+        }
+      }
       if (item.isDagensRet) {
         iconWrap.innerHTML = '<span style="font-size:18px">🍽️</span>';
       } else if (item.isAndreVarer) {
         iconWrap.innerHTML = '<span style="font-size:18px">📦</span>';
       } else if (icon && (icon.startsWith('http') || icon.includes('.webp') || icon.includes('.png'))) {
-        iconWrap.innerHTML = '<img src="' + icon + '" alt="" style="width:24px;height:24px;object-fit:contain">';
+        iconWrap.innerHTML = '<img src="' + esc(icon) + '" alt="" style="width:24px;height:24px;object-fit:contain">';
       } else if (icon) {
         iconWrap.innerHTML = '<span style="font-size:18px">' + icon + '</span>';
       } else {
