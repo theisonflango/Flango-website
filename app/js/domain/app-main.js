@@ -2,7 +2,7 @@ import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '.
 import { initializeSoundSettings } from '../core/sound-manager.js';
 import { initDebugRecorder, logDebugEvent } from '../core/debug-flight-recorder.js';
 import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen } from '../ui/shell-and-theme.js';
-import { getCurrentTheme } from '../ui/theme-loader.js';
+import { getCurrentTheme, onThemeChange } from '../ui/theme-loader.js';
 import { configureHistoryModule, showTransactionsInSummary, showOverviewInSummary, resetSharedHistoryControls } from './history-and-reports.js';
 import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js';
 import { setupLogoutFlow } from './logout-flow.js';
@@ -37,6 +37,8 @@ import { startRealtimeSync } from '../core/realtime-sync.js';
 import { initToastNotifications, clearAllToasts } from '../ui/toast-notifications.js';
 import { setupCustomerPickerFlow } from './customer-picker-flow.js';
 import { setupAdminFlow, loadUsersAndNotifications } from './admin-flow.js';
+import { startInactivityTimeout } from '../core/inactivity-timeout.js';
+import { logAuditEvent } from '../core/audit-events.js';
 import { setupProductAssortmentFlow } from './product-assortment-flow.js';
 import { initCafeEventStrip, refreshCafeEventStrip, hideCafeEventStrip } from '../ui/cafe-event-strip.js';
 import { invalidateCafeEventsCache } from './cafe-events.js';
@@ -66,6 +68,10 @@ export async function startApp() {
 
     // Værn mod dobbelt initialisering
     if (!adminProfile || !clerkProfile) return;
+
+    // Start inaktivitets-timeout (10 min → auto-logout)
+    startInactivityTimeout();
+
     // 1) Basis state for session og app
     const AVATAR_STORAGE_PREFIX = 'flango-avatar-';
     const DEFAULT_AVATAR_URL = 'Icons/webp/Avatar/Ekspedient-default2.webp';
@@ -371,6 +377,12 @@ export async function startApp() {
 
     // Update logged-in user display (refactored to app-ui-updates.js)
     updateLoggedInUserDisplay(clerkProfile, avatarCache, { AVATAR_STORAGE_PREFIX, DEFAULT_AVATAR_URL });
+
+    // Re-render header when theme changes
+    onThemeChange(() => {
+        updateLoggedInUserDisplay(clerkProfile, avatarCache, { AVATAR_STORAGE_PREFIX, DEFAULT_AVATAR_URL });
+        updateSelectedUserInfo();
+    });
 
     // 3.5) DB-Historik button (superadmin only)
     const dbHistoryBtn = document.getElementById('toolbar-db-history-btn');
@@ -1073,6 +1085,13 @@ export async function setupAdminLoginScreen(adminProfile) {
     setInstitutionId(adminProfile.institution_id);
     window.__flangoCurrentAdminProfile = adminProfile;
     showScreen('screen-admin-login');
+
+    // Audit: log admin login
+    logAuditEvent('LOGIN', {
+        institutionId: adminProfile.institution_id,
+        adminUserId: adminProfile.user_id,
+        details: { admin_name: adminProfile.name },
+    });
     const adminWelcomeText = document.getElementById('admin-welcome-text');
     const continueBtn = document.getElementById('continue-as-admin-btn');
     if (adminWelcomeText) {

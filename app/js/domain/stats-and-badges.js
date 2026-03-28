@@ -6,6 +6,7 @@ import {
     FLANGO_LEVEL_MESSAGES,
 } from './stats-store.js';
 import { getProductIconInfo } from './products-and-cart.js';
+import { escapeHtml } from '../core/escape-html.js';
 
 // 1) Konstanter og basis-helpers
 export const BADGE_ICON_MAP = {
@@ -27,10 +28,11 @@ export const formatBadgeList = (list) => {
 
 export const renderBadgeIcon = (badge) => {
     const icon = BADGE_ICON_MAP[badge];
+    const safe = escapeHtml(badge);
     if (icon) {
-        return `<div class="badge-display-item"><img src="${icon}" alt="${badge} badge"></div>`;
+        return `<div class="badge-display-item"><img src="${icon}" alt="${safe} badge"></div>`;
     }
-    return `<div class="badge-display-item badge-display-pill">${badge}</div>`;
+    return `<div class="badge-display-item badge-display-pill">${safe}</div>`;
 };
 
 export const renderBadgePlaceholder = () => `<div class="badge-display-item badge-empty"></div>`;
@@ -48,8 +50,9 @@ export function renderSimpleBadgeDisplay(badgeList, options = {}) {
     if (badgeList && badgeList.length > 0) {
         const items = badgeList.map(badge => {
             const iconMarkup = renderBadgeIcon(badge);
+            const safe = escapeHtml(badge);
             const removeBtn = removable
-                ? `<button type="button" class="badge-remove-btn" data-badge="${badge}">×</button>`
+                ? `<button type="button" class="badge-remove-btn" data-badge="${safe}">×</button>`
                 : '';
             const handlerAttr = removable && typeof onRemove === 'function'
                 ? `data-remove-handler="true"`
@@ -60,7 +63,7 @@ export function renderSimpleBadgeDisplay(badgeList, options = {}) {
                         ${iconMarkup}
                         ${removeBtn}
                     </div>
-                    <span class="badge-label">${badge}</span>
+                    <span class="badge-label">${safe}</span>
                 </div>`;
         }).join('');
         return `<div class="simple-badge-row ${rowClass}">${items}</div>`;

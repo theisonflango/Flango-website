@@ -578,7 +578,7 @@ async function getTopProductsFallback(from, to, limit, includeTestUsers = false)
     if (productIds.length) {
       const { data: prods } = await supabaseClient
         .from('products')
-        .select('id, name, emoji, icon_url')
+        .select('id, name, emoji, icon_url, icon_storage_path')
         .in('id', productIds);
       (prods || []).forEach(p => { productsMap[p.id] = p; });
     }
@@ -593,6 +593,7 @@ async function getTopProductsFallback(from, to, limit, includeTestUsers = false)
           name: prod?.name || i.product_name_at_purchase || 'Ukendt',
           emoji: prod?.emoji || '',
           icon_url: prod?.icon_url || '',
+          icon_storage_path: prod?.icon_storage_path || '',
           antal: 0,
           beloeb: 0,
         };
@@ -743,7 +744,7 @@ export async function getSaleItems(saleId) {
   if (pids.length) {
     const { data: prods } = await supabaseClient
       .from('products')
-      .select('id, emoji, icon_url')
+      .select('id, emoji, icon_url, icon_storage_path')
       .in('id', pids);
     (prods || []).forEach(p => { prodMap[p.id] = p; });
   }
@@ -752,6 +753,7 @@ export async function getSaleItems(saleId) {
     ...i,
     emoji: prodMap[i.product_id]?.emoji || '',
     icon_url: prodMap[i.product_id]?.icon_url || '',
+    icon_storage_path: prodMap[i.product_id]?.icon_storage_path || '',
     name: i.product_name_at_purchase || 'Ukendt',
   }));
 }
@@ -1080,10 +1082,10 @@ export async function getProductsIconMap() {
   if (_iconCache && _iconCacheInst === iid) return _iconCache;
   const { data } = await supabaseClient
     .from('products')
-    .select('id, emoji, icon_url')
+    .select('id, emoji, icon_url, icon_storage_path')
     .eq('institution_id', iid);
   const map = {};
-  (data || []).forEach(p => { map[p.id] = { emoji: p.emoji || '', icon_url: p.icon_url || '' }; });
+  (data || []).forEach(p => { map[p.id] = { emoji: p.emoji || '', icon_url: p.icon_url || '', icon_storage_path: p.icon_storage_path || '' }; });
   _iconCache = map;
   _iconCacheInst = iid;
   return map;

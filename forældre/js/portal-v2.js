@@ -2967,14 +2967,31 @@
     return name;
   }
 
-  /** Resolve emoji field → HTML. Handles ::icon::URL, regular emoji, icon_url, or fallback. */
+  /** Resolve emoji field → HTML. Handles signed URLs, ::icon:: paths, regular emoji, icon_url, or fallback. */
   function productEmojiHTML(p, size) {
     size = size || 20;
+    const imgStyle = `width:${size}px;height:${size}px;object-fit:contain;border-radius:4px`;
+    // Priority 1: Pre-signed URL from Edge Function (private bucket)
+    if (p.icon_signed_url) {
+      return `<img src="${esc(p.icon_signed_url)}" alt="" style="${imgStyle}">`;
+    }
     const emoji = p.emoji;
-    // ::icon::URL format → render as <img>
+    // Priority 2: ::icon:: prefix
     if (emoji && emoji.startsWith('::icon::')) {
-      const url = emoji.slice('::icon::'.length);
-      return `<img src="${esc(url)}" alt="" style="width:${size}px;height:${size}px;object-fit:contain;border-radius:4px">`;
+      // Check for pre-signed emoji URL from Edge Function
+      if (p.emoji_signed_url) {
+        return `<img src="${esc(p.emoji_signed_url)}" alt="" style="${imgStyle}">`;
+      }
+      const path = emoji.slice('::icon::'.length);
+      if (path) {
+        // Full URL (legacy) — use directly
+        if (path.startsWith('http')) {
+          return `<img src="${esc(path)}" alt="" style="${imgStyle}">`;
+        }
+        // Storage path — construct public bucket URL as fallback
+        const bucketUrl = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/';
+        return `<img src="${esc(bucketUrl + path)}" alt="" style="${imgStyle}">`;
+      }
     }
     // Regular emoji
     if (emoji && emoji.length > 0) {
@@ -2982,7 +2999,7 @@
     }
     // Fallback to icon_url
     if (p.icon_url) {
-      return `<img src="${esc(p.icon_url)}" alt="" style="width:${size}px;height:${size}px;object-fit:contain;border-radius:4px">`;
+      return `<img src="${esc(p.icon_url)}" alt="" style="${imgStyle}">`;
     }
     // Default
     return `<span style="font-size:${size}px">🍽️</span>`;

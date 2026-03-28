@@ -291,10 +291,15 @@ function buildProductIconSummaryNode(currentOrder) {
  * Renders the klart total-divider bar in checkout-stack (permanent separator)
  */
 export function renderKlartTotalDivider(items, total) {
+    if (getCurrentTheme() !== 'klart') return;
     const checkoutStack = document.getElementById('checkout-stack');
     if (!checkoutStack) return;
 
+    checkoutStack.querySelector('.klart-total-spacer')?.remove();
     checkoutStack.querySelector('.klart-total-divider')?.remove();
+
+    const spacer = document.createElement('div');
+    spacer.className = 'klart-total-divider klart-total-spacer';
 
     const totalDiv = document.createElement('div');
     totalDiv.className = 'klart-total-divider';
@@ -358,7 +363,9 @@ export function renderKlartTotalDivider(items, total) {
     const btnArea = checkoutStack.querySelector('#user-selection-area');
     if (btnArea) {
         btnArea.parentNode.insertBefore(totalDiv, btnArea);
+        totalDiv.parentNode.insertBefore(spacer, totalDiv);
     } else {
+        checkoutStack.appendChild(spacer);
         checkoutStack.appendChild(totalDiv);
     }
 }

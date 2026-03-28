@@ -518,9 +518,9 @@
   background: linear-gradient(135deg, #1C1917, #292524);
   color: #fff; padding: var(--s3) var(--s5);
   display: flex; align-items: center; justify-content: space-between;
-  gap: var(--s4); flex-wrap: wrap;
+  gap: var(--s4); flex-wrap: nowrap; overflow: visible;
 }
-.portal-v2 .admin-bar-left { display: flex; align-items: center; gap: var(--s3); }
+.portal-v2 .admin-bar-left { display: flex; align-items: center; gap: var(--s3); flex-shrink: 0; }
 .portal-v2 .admin-bar-back-btn {
   background: rgba(255,255,255,.12);
   border: 1px solid rgba(255,255,255,.18);
@@ -539,7 +539,7 @@
 }
 .portal-v2 .admin-bar-label { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: rgba(255,255,255,.5); }
 .portal-v2 .admin-bar-institution { font-weight: 700; font-size: 15px; }
-.portal-v2 .admin-bar-right { display: flex; align-items: center; gap: var(--s4); }
+.portal-v2 .admin-bar-right { display: flex; align-items: center; gap: var(--s4); flex-shrink: 0; }
 
 /* Preview mode toggle */
 .portal-v2 .preview-toggle {
@@ -724,7 +724,7 @@
 /* ═══════════════════════════════════
    ADMIN PAGE TABS (top navigation)
    ═══════════════════════════════════ */
-.portal-v2 .admin-bar-center { display: flex; gap: var(--s1); margin: 0 auto; }
+.portal-v2 .admin-bar-center { display: flex; gap: var(--s1); flex: 1; justify-content: center; min-width: 0; }
 .portal-v2 .admin-page-tab {
   padding: 6px 16px; border-radius: var(--r-full);
   font-size: 13px; font-weight: 600; color: rgba(255,255,255,.5);

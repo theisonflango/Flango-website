@@ -113,7 +113,7 @@ async function fetchProducts() {
     const buildQuery = () => {
         let query = supabaseClient
             .from('products')
-            .select('id, name, is_daily_special, icon_url, emoji');
+            .select('id, name, is_daily_special, icon_url, icon_storage_path, emoji');
         
         if (_institutionId) {
             query = query.eq('institution_id', _institutionId);
@@ -243,7 +243,8 @@ export async function fetchUserPurchaseData(userId, period = 'all') {
                         antal: 0,
                         kr: 0,
                         isDagensRet: false,
-                        icon: productInfo?.icon_url || productInfo?.emoji || null
+                        icon: productInfo?.icon_storage_path || productInfo?.icon_url || productInfo?.emoji || null,
+                        iconStoragePath: productInfo?.icon_storage_path || null
                     });
                 }
             }

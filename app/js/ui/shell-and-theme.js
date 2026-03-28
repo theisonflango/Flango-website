@@ -4250,6 +4250,29 @@ export function openSettingsModal() {
                 settingsModalPushParent(showDiverseView);
                 openShiftTimerSettingsModal();
             }, '', 'Aktivér eller deaktivér bytte-timer for ekspedienter.', 'Kokkehue.webp');
+
+            // Toggle: Download saldoliste ved café-låsning
+            const instId = window.__flangoInstitutionId || '';
+            const balanceDownloadKey = `flango_balance_download_on_lock_${instId}`;
+            const balanceDownloadEnabled = localStorage.getItem(balanceDownloadKey) !== 'false'; // default: true
+            const toggleRow = document.createElement('button');
+            toggleRow.className = 'settings-item-btn';
+            toggleRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; cursor: pointer;';
+            toggleRow.innerHTML = `
+                <span class="settings-item-icon"><img src="${ICON('Print.webp')}" alt=""></span>
+                <span class="settings-item-text" style="flex:1">
+                    <strong>Saldoliste ved låsning</strong>
+                    <div class="settings-item-desc">Download saldoliste automatisk når caféen låses.</div>
+                </span>
+                <span class="balance-download-toggle" style="font-size: 1.4rem; min-width: 36px; text-align: center;">${balanceDownloadEnabled ? '✅' : '⬜'}</span>
+            `;
+            toggleRow.addEventListener('click', (e) => {
+                e.preventDefault();
+                const current = localStorage.getItem(balanceDownloadKey) !== 'false';
+                localStorage.setItem(balanceDownloadKey, !current);
+                toggleRow.querySelector('.balance-download-toggle').textContent = !current ? '✅' : '⬜';
+            });
+            contentEl.appendChild(toggleRow);
         }
         addDiverseItem('Udseende', () => openViaSettings('theme-picker-backdrop', () => callButtonById('open-theme-picker')), '', 'Vælg tema og udseende.', 'image.webp');
         addDiverseItem('Min Flango', () => {

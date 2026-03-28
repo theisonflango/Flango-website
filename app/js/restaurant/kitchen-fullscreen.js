@@ -274,7 +274,7 @@ async function loadOrders() {
             sale_items (
                 id, product_id, quantity, price_at_purchase,
                 item_variant, item_note,
-                products:product_id ( name, emoji, icon_url )
+                products:product_id ( name, emoji, icon_url, icon_storage_path )
             ),
             users:customer_id ( name ),
             clerk:clerk_user_id ( name ),
@@ -300,6 +300,7 @@ function normalizeSale(sale) {
         name: si.products?.name || 'Produkt',
         emoji: si.products?.emoji || '🍽️',
         icon_url: si.products?.icon_url || null,
+        icon_storage_path: si.products?.icon_storage_path || null,
         quantity: si.quantity || 1,
         unit_price: si.price_at_purchase,
         item_variant: si.item_variant || null,
@@ -592,7 +593,7 @@ async function handleInsert(payload) {
             sale_items (
                 id, product_id, quantity, price_at_purchase,
                 item_variant, item_note,
-                products:product_id ( name, emoji, icon_url )
+                products:product_id ( name, emoji, icon_url, icon_storage_path )
             ),
             users:customer_id ( name ),
             clerk:clerk_user_id ( name ),

@@ -158,9 +158,11 @@
 
 /* ─── Customer Card ─── */
 .klart-customer-card {
-    background: transparent;
+    background: #f0d4be;
     border-radius: 0;
-    padding: 4px 0;
+    padding: 12px 16px 12px 170px;
+    margin: 0 -20px 0;
+    min-height: 100px;
     display: flex;
     align-items: center;
     gap: 14px;
@@ -168,7 +170,6 @@
     border: none;
     position: relative;
     overflow: visible;
-    margin: -30px 0 -30px;
     z-index: 6;
 }
 
@@ -176,11 +177,14 @@
     display: none;
 }
 
-/* Avatar wrap */
+/* Avatar wrap — badge-style overlay on left side of card */
 .klart-customer-avatar-wrap {
-    position: relative;
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
     flex-shrink: 0;
-    margin-bottom: 4px;
+    z-index: 2;
 }
 
 .klart-customer-avatar-ring {
@@ -251,6 +255,7 @@
     gap: 6px;
     margin-top: 6px;
     align-items: center;
+    justify-content: center;
 }
 
 .klart-balance-arrow {
@@ -267,7 +272,8 @@
 }
 
 .klart-balance-col {
-    flex: 1;
+    flex: none;
+    width: 95px;
     text-align: center;
     padding: 4px 4px;
     border-radius: var(--klart-cart-radius-sm);
@@ -332,15 +338,7 @@
 }
 
 /* ─── Empty Customer Placeholder (no user selected) ─── */
-.klart-customer-empty {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 4px 0;
-    margin: -30px 0 -30px;
-    position: relative;
-    overflow: visible;
-}
+/* Layout structure now relies entirely on .klart-customer-card class */
 
 .klart-avatar-empty {
     opacity: 0.35;

@@ -6,15 +6,26 @@
  */
 import { escapeHtml } from '../core/escape-html.js';
 import { CUSTOM_ICON_PREFIX, getCustomIconPath } from '../domain/products-and-cart.js';
+import { getCachedProductIconUrl } from '../core/product-icon-cache.js';
 
 /**
  * Resolve icon HTML for a sale item.
- * Handles custom uploaded icons (icon_url), standard 3D icons (::icon:: prefix in emoji), and plain emoji.
+ * Handles signed URLs (icon_storage_path), custom uploaded icons (icon_url),
+ * standard 3D icons (::icon:: prefix in emoji), and plain emoji.
  */
 function resolveItemIcon(item, imgClass) {
+    // Priority 1: Signed URL from private bucket
+    if (item.icon_storage_path) {
+        const signedUrl = getCachedProductIconUrl(item.icon_storage_path);
+        if (signedUrl) {
+            return `<img src="${escapeHtml(signedUrl)}" class="${imgClass}" alt="">`;
+        }
+    }
+    // Priority 2: Legacy public icon_url
     if (item.icon_url) {
         return `<img src="${escapeHtml(item.icon_url)}" class="${imgClass}" alt="">`;
     }
+    // Priority 3: Standard icon from ::icon:: prefix
     const standardPath = getCustomIconPath(item.emoji);
     if (standardPath) {
         return `<img src="${escapeHtml(standardPath)}" class="${imgClass}" alt="">`;

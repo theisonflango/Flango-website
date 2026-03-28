@@ -1578,7 +1578,7 @@
     var rootEl = overlayEl.querySelector('#portal-v2-root');
     if (rootEl) rootEl.style.cssText = 'display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;';
     var barEl = overlayEl.querySelector('.admin-bar');
-    if (barEl) barEl.style.cssText += ';flex-shrink:0;position:relative;';
+    if (barEl) barEl.style.cssText += ';flex-shrink:0;';
     overlayEl.querySelectorAll('.admin-page').forEach(function (p) {
       p.style.flex = '1';
       p.style.minHeight = '0';

@@ -25,11 +25,25 @@ import {
 } from './historik-v3-charts.js';
 
 // ─── CONSTANTS ───
+import { getCachedProductIconUrl } from '../core/product-icon-cache.js';
+
 const ICON_PREFIX = '::icon::';
-function productIcon(emoji, iconUrl, size = 18) {
+function productIcon(emoji, iconUrl, size = 18, storagePath = '') {
+  // Priority 1: Signed URL from private bucket
+  if (storagePath) {
+    const signedUrl = getCachedProductIconUrl(storagePath);
+    if (signedUrl) return `<img src="${signedUrl}" style="width:${size}px;height:${size}px;vertical-align:middle;border-radius:3px;margin-right:2px" alt="">`;
+  }
   if (emoji && emoji.startsWith(ICON_PREFIX)) {
-    const url = emoji.slice(ICON_PREFIX.length);
-    return `<img src="${url}" style="width:${size}px;height:${size}px;vertical-align:middle;border-radius:3px;margin-right:2px" alt="">`;
+    const path = emoji.slice(ICON_PREFIX.length);
+    if (path) {
+      if (!path.startsWith('http')) {
+        const signedUrl = getCachedProductIconUrl(path);
+        const url = signedUrl || `https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/${path}`;
+        return `<img src="${url}" style="width:${size}px;height:${size}px;vertical-align:middle;border-radius:3px;margin-right:2px" alt="">`;
+      }
+      return `<img src="${path}" style="width:${size}px;height:${size}px;vertical-align:middle;border-radius:3px;margin-right:2px" alt="">`;
+    }
   }
   if (iconUrl) return `<img src="${iconUrl}" style="width:${size}px;height:${size}px;vertical-align:middle;border-radius:3px;margin-right:2px" alt="">`;
   if (emoji) return emoji;
@@ -661,6 +675,7 @@ async function renderPageToplister() {
       name: p.name || p.product_name || 'Ukendt',
       emoji: p.emoji || '',
       icon_url: p.icon_url || '',
+      icon_storage_path: p.icon_storage_path || '',
       sold: p.antal || p.total_qty || 0,
       revenue: p.beloeb || p.total_revenue || 0,
     }));
@@ -682,7 +697,7 @@ async function renderPageToplister() {
             const color = BAR_COLORS[i % BAR_COLORS.length];
             return `<div class="hv3-ranking-item">
               <span class="hv3-ranking-medal">${i < 3 ? medals[i] : `<span class="hv3-ranking-number">${i + 1}</span>`}</span>
-              <span style="font-size:18px">${productIcon(p.emoji, p.icon_url)}</span>
+              <span style="font-size:18px">${productIcon(p.emoji, p.icon_url, 18, p.icon_storage_path)}</span>
               <span class="hv3-ranking-name" style="width:130px">${escHtml(p.name)}</span>
               <div class="hv3-ranking-bar"><div class="hv3-ranking-bar-fill" style="width:${(val / maxVal) * 100}%;background:linear-gradient(90deg,${color},${color}dd)"></div></div>
               <div class="hv3-ranking-value">
@@ -704,7 +719,7 @@ async function renderPageToplister() {
           <table class="hv3-table" style="font-size:12px">
             <thead><tr>${['Produkt', 'Pris', 'Solgt', 'Omsætning', 'Andel'].map(h => `<th style="padding:8px">${h}</th>`).join('')}</tr></thead>
             <tbody>${[...normalized].sort((a, b) => b.revenue - a.revenue).map(p => `<tr>
-              <td style="padding:8px;font-weight:600">${productIcon(p.emoji, p.icon_url, 14)} ${escHtml(p.name)}</td>
+              <td style="padding:8px;font-weight:600">${productIcon(p.emoji, p.icon_url, 14, p.icon_storage_path)} ${escHtml(p.name)}</td>
               <td style="padding:8px;color:var(--hv3-text-muted)">${p.sold > 0 ? Math.round(p.revenue / p.sold) : 0} kr</td>
               <td style="padding:8px;font-weight:600">${p.sold}</td>
               <td style="padding:8px;font-weight:700">${fmtKr(p.revenue)}</td>
@@ -1289,7 +1304,7 @@ async function renderPageStatistik() {
 function productIconById(iconMap, productId, size = 16) {
   const info = iconMap?.[productId];
   if (!info) return '';
-  return productIcon(info.emoji, info.icon_url, size);
+  return productIcon(info.emoji, info.icon_url, size, info.icon_storage_path);
 }
 
 // ═══════════════════════════════════════════
@@ -1887,7 +1902,7 @@ async function loadTxExpandDetails(eventId, expandRow) {
         <div class="hv3-tx-adjust-section-title">Kvittering</div>
         <div class="hv3-tx-adjust-items">
           ${items.map(i => `<div class="hv3-tx-adjust-item">
-            <span class="hv3-tx-adjust-item-name">${productIcon(i.emoji, i.icon_url)} ${escHtml(i.name)}</span>
+            <span class="hv3-tx-adjust-item-name">${productIcon(i.emoji, i.icon_url, 18, i.icon_storage_path)} ${escHtml(i.name)}</span>
             <span class="hv3-tx-adjust-item-qty">×${i.quantity}</span>
             <span class="hv3-tx-adjust-item-price">${fmtKr(i.quantity * i.price_at_purchase)}</span>
           </div>`).join('')}
@@ -1909,7 +1924,7 @@ async function loadTxExpandDetails(eventId, expandRow) {
 
         <div class="hv3-tx-adjust-qty-section">
           ${items.map((i, idx) => `<div class="hv3-tx-adjust-qty-row" data-idx="${idx}">
-            <span class="hv3-tx-adjust-qty-name">${productIcon(i.emoji, i.icon_url)} ${escHtml(i.name)}</span>
+            <span class="hv3-tx-adjust-qty-name">${productIcon(i.emoji, i.icon_url, 18, i.icon_storage_path)} ${escHtml(i.name)}</span>
             <div class="hv3-tx-adjust-qty-controls">
               <button class="hv3-tx-qty-btn hv3-tx-qty-minus" data-idx="${idx}">−</button>
               <span class="hv3-tx-qty-diff" data-idx="${idx}">0</span>
