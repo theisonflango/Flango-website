@@ -496,12 +496,20 @@ function createChartBar(item, sortBy, index) {
     } else if (item.isAndreVarer) {
         iconContainer.innerHTML = '<span style="font-size: 22px; line-height: 1;">📦</span>';
     } else if (item.icon) {
+        // Resolve ::icon:: prefix and storage paths to full URLs
+        let resolvedIcon = item.icon;
+        if (resolvedIcon.startsWith('::icon::')) {
+            resolvedIcon = resolvedIcon.slice('::icon::'.length);
+        }
+        if (resolvedIcon && !resolvedIcon.startsWith('http') && !resolvedIcon.startsWith('/') && (resolvedIcon.includes('.webp') || resolvedIcon.includes('.png'))) {
+            resolvedIcon = `https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/${resolvedIcon}`;
+        }
         // Use product icon
-        if (item.icon.startsWith('http') || item.icon.startsWith('/') || item.icon.includes('.webp') || item.icon.includes('.png')) {
-            iconContainer.innerHTML = `<img src="${item.icon}" alt="${item.name}" style="width: 26px; height: 26px; object-fit: contain;">`;
+        if (resolvedIcon.startsWith('http') || resolvedIcon.startsWith('/') || resolvedIcon.includes('.webp') || resolvedIcon.includes('.png')) {
+            iconContainer.innerHTML = `<img src="${resolvedIcon}" alt="${item.name}" style="width: 26px; height: 26px; object-fit: contain;">`;
         } else {
             // Emoji
-            iconContainer.innerHTML = `<span style="font-size: 22px; line-height: 1;">${item.icon}</span>`;
+            iconContainer.innerHTML = `<span style="font-size: 22px; line-height: 1;">${resolvedIcon}</span>`;
         }
     } else {
         iconContainer.innerHTML = '<span style="font-size: 22px; line-height: 1;">🛒</span>';
