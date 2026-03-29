@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Flango</title>
+    <script>
+      // GitHub Pages SPA redirect for client-side routed apps
+      var path = window.location.pathname;
+
+      // Ugeplan SPA routes
+      if (path.indexOf('/ugeplan/') === 0 && path !== '/ugeplan/') {
+        window.location.replace('/ugeplan/?p=' + encodeURIComponent(path));
+      }
+    </script>
+  </head>
+  <body>
+    <h1>Side ikke fundet</h1>
+    <p><a href="/">Gå til forsiden</a></p>
+  </body>
+</html>
