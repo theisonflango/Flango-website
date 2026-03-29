@@ -6,6 +6,8 @@ import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-
 import { getInstitutionId } from '../domain/session-store.js';
 import { getCurrentCustomer } from '../domain/cafe-session-store.js';
 import { getOrder } from '../domain/order-store.js';
+import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js';
+import { logAuditEvent } from '../core/audit-events.js';
 import {
     initThemeLoader,
     switchTheme as themePackSwitchTheme,
@@ -4155,6 +4157,100 @@ export function resumeSettingsReturn(modal) {
     monitorModalForSettingsReturn(modal);
 }
 
+// ── My Devices View (settings sub-view) ──
+
+async function openMyDevicesView() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    backdrop.style.display = 'flex';
+    titleEl.textContent = 'Mine enheder';
+    contentEl.innerHTML = '<p style="text-align:center;padding:20px;opacity:0.6;">Henter enheder...</p>';
+
+    const tokens = await getMyDeviceTokens();
+
+    contentEl.innerHTML = '';
+
+    if (!tokens.length) {
+        contentEl.innerHTML = '<p style="text-align:center;padding:20px;opacity:0.6;">Ingen registrerede enheder.</p>';
+        updateSettingsModalBackVisibility();
+        return;
+    }
+
+    tokens.forEach(token => {
+        const row = document.createElement('div');
+        row.className = 'settings-item-btn';
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;cursor:default;';
+
+        const lastUsed = token.last_used_at ? new Date(token.last_used_at).toLocaleDateString('da-DK') : 'Ukendt';
+        const created = token.created_at ? new Date(token.created_at).toLocaleDateString('da-DK') : '';
+        const expires = token.expires_at ? new Date(token.expires_at).toLocaleDateString('da-DK') : '';
+
+        row.innerHTML = `
+            <span class="settings-item-text" style="flex:1;">
+                <strong>${token.device_name || 'Ukendt enhed'}</strong>
+                <div style="font-size:12px;opacity:0.6;">
+                    Sidst brugt: ${lastUsed} · Oprettet: ${created} · Udløber: ${expires}
+                </div>
+            </span>
+        `;
+
+        const revokeBtn = document.createElement('button');
+        revokeBtn.textContent = 'Fjern';
+        revokeBtn.style.cssText = 'padding:6px 14px;border-radius:8px;border:none;background:var(--negative,#ef4444);color:white;cursor:pointer;font-size:13px;flex-shrink:0;margin-left:10px;';
+        revokeBtn.onclick = async () => {
+            revokeBtn.disabled = true;
+            revokeBtn.textContent = '...';
+            const result = await revokeDeviceToken(token.id);
+            if (result.success) {
+                logAuditEvent('DEVICE_REVOKED', {
+                    institutionId: getInstitutionId(),
+                    details: { device_name: token.device_name, token_id: token.id },
+                });
+                row.remove();
+                // Check if any tokens left
+                if (!contentEl.querySelector('.settings-item-btn')) {
+                    contentEl.innerHTML = '<p style="text-align:center;padding:20px;opacity:0.6;">Ingen registrerede enheder.</p>';
+                }
+            } else {
+                revokeBtn.disabled = false;
+                revokeBtn.textContent = 'Fjern';
+            }
+        };
+
+        row.appendChild(revokeBtn);
+        contentEl.appendChild(row);
+    });
+
+    // "Fjern alle" button
+    if (tokens.length > 1) {
+        const sep = document.createElement('div');
+        sep.style.cssText = 'border-top:1px solid rgba(255,255,255,0.08);margin:8px 0;';
+        contentEl.appendChild(sep);
+
+        const revokeAllBtn = document.createElement('button');
+        revokeAllBtn.className = 'settings-item-btn';
+        revokeAllBtn.innerHTML = '<strong style="color:var(--negative,#ef4444)">Fjern alle enheder</strong>';
+        revokeAllBtn.onclick = async () => {
+            revokeAllBtn.disabled = true;
+            revokeAllBtn.textContent = 'Fjerner...';
+            const result = await revokeAllDeviceTokens();
+            if (result.success) {
+                clearAllDeviceUsers();
+                contentEl.innerHTML = '<p style="text-align:center;padding:20px;opacity:0.6;">Alle enheder fjernet.</p>';
+            } else {
+                revokeAllBtn.disabled = false;
+                revokeAllBtn.innerHTML = '<strong style="color:var(--negative,#ef4444)">Fjern alle enheder</strong>';
+            }
+        };
+        contentEl.appendChild(revokeAllBtn);
+    }
+
+    updateSettingsModalBackVisibility();
+}
+
 export function openSettingsModal() {
     const clerkProfile = getCurrentClerk();
     const isAdmin = clerkProfile?.role === 'admin';
@@ -4279,6 +4375,10 @@ export function openSettingsModal() {
             window.__flangoOpenAvatarPicker?.() || notifyToolbarUser('Status-visningen er ikke klar.');
         }, 'settings-min-flango-status-btn', 'Skift avatar og visningsnavn.', 'Bruger.webp');
         addDiverseItem('Hjælp', () => openHelpManually(), 'settings-help-btn', 'Vejledning og tastaturgenveje.', 'tastaturgenveje.webp');
+        addDiverseItem('Mine enheder', () => {
+            settingsModalPushParent(showDiverseView);
+            openMyDevicesView();
+        }, 'settings-my-devices-btn', 'Se og fjern enheder der husker din login.', 'Gear.webp');
         addDiverseItem('Opdateringer', () => {
             settingsModalPushParent(showDiverseView);
             openUpdatesModal();
@@ -4522,7 +4622,13 @@ export function setupHelpButton() {
 }
 
 export function showScreen(screenId) {
-    const screens = ['screen-club-login', 'screen-locked', 'screen-admin-login', 'main-app'];
+    const screens = [
+        'screen-club-login', 'screen-locked',       // Legacy (kept for compat)
+        'screen-full-login', 'screen-device-unlock', // New login states
+        'screen-remember-device', 'screen-pin-locked',
+        'screen-force-password',
+        'screen-admin-login', 'main-app',
+    ];
     screens.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';

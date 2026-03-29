@@ -2,6 +2,7 @@
 import { getChildProductLimitSnapshot, canChildPurchase, invalidateAllLimitCaches, getRefillEligibility } from './purchase-limits.js';
 import { getCurrentCustomer } from './cafe-session-store.js';
 import { MAX_ITEMS_PER_ORDER } from '../core/constants.js';
+import { getCachedProductIconUrl } from '../core/product-icon-cache.js';
 
 // Sæt til true ved fejlsøgning; hold false i prod for bedre UI/CPU og mindre console-støj
 const LIMITS_UI_DEBUG = false;
@@ -10,6 +11,18 @@ export const CUSTOM_ICON_PREFIX = '::icon::';
 
 const SUPABASE_STORAGE_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/standard';
 
+// Name → storage path mapping for auto-matching
+export const PRODUCT_ICON_STORAGE_PATHS = {
+    'toast': 'standard/Toast.webp',
+    'pizza': 'standard/Pizza.webp',
+    'sushi': 'standard/Sushi.webp',
+    'nøddemix': 'standard/Noddemix.webp',
+    'frugt': 'standard/Frugt.webp',
+    'saft': 'standard/Saft.webp',
+    'suppe': 'standard/Suppe.webp'
+};
+
+// Legacy fallback: public URLs (used when signed URL not yet cached)
 export const PRODUCT_ICON_MAP = {
     'toast': `${SUPABASE_STORAGE_URL}/Toast.webp`,
     'pizza': `${SUPABASE_STORAGE_URL}/Pizza.webp`,
@@ -32,20 +45,42 @@ export const PRODUCT_ICON_CLASS_MAP = {
 
 export function getCustomIconPath(value) {
     if (typeof value !== 'string') return null;
-    return value.startsWith(CUSTOM_ICON_PREFIX) ? value.slice(CUSTOM_ICON_PREFIX.length) : null;
+    if (!value.startsWith(CUSTOM_ICON_PREFIX)) return null;
+    const path = value.slice(CUSTOM_ICON_PREFIX.length);
+    // If it's a storage path (not a full URL), resolve via signed URL cache with public fallback
+    if (path && !path.startsWith('http')) {
+        return getCachedProductIconUrl(path)
+            || `https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/${path}`;
+    }
+    // Legacy: full URL (from old data before migration)
+    return path || null;
 }
 
 export function getProductIconInfo(product) {
     if (!product) return null;
 
-    // OPTIMERING: Cache icon info på produktobjektet for 30-50ms cumulativ besparelse
-    // Invalidér cache hvis icon_url er ændret
-    const cacheKey = `${product.icon_url || ''}_${product.icon_updated_at || ''}_${product.emoji || ''}`;
+    // Cache key includes signed URL availability for icon_storage_path
+    const hasSignedUrl = product.icon_storage_path ? !!getCachedProductIconUrl(product.icon_storage_path) : false;
+    const cacheKey = `${product.icon_storage_path || ''}_${hasSignedUrl}_${product.icon_url || ''}_${product.icon_updated_at || ''}_${product.emoji || ''}`;
     if (product._iconInfo !== undefined && product._iconInfoCacheKey === cacheKey) {
         return product._iconInfo;
     }
 
-    // PRIORITY 1: Custom uploaded icon (icon_url)
+    // PRIORITY 1: Private bucket icon via signed URL cache
+    if (product.icon_storage_path) {
+        const signedUrl = getCachedProductIconUrl(product.icon_storage_path);
+        if (signedUrl) {
+            product._iconInfo = {
+                path: signedUrl,
+                alt: product.name || 'Produkt',
+                isCustomUploaded: true
+            };
+            product._iconInfoCacheKey = cacheKey;
+            return product._iconInfo;
+        }
+    }
+
+    // PRIORITY 2: Legacy public icon_url (backward compat)
     if (product.icon_url) {
         const timestamp = product.icon_updated_at
             ? new Date(product.icon_updated_at).getTime()
@@ -59,7 +94,7 @@ export function getProductIconInfo(product) {
         return product._iconInfo;
     }
 
-    // PRIORITY 2: Standard icon via CUSTOM_ICON_PREFIX in emoji field
+    // PRIORITY 3: Standard icon via CUSTOM_ICON_PREFIX in emoji field
     const customIcon = getCustomIconPath(product.emoji);
     if (customIcon) {
         product._iconInfo = { path: customIcon, alt: product.name || 'Produkt' };
@@ -67,12 +102,17 @@ export function getProductIconInfo(product) {
         return product._iconInfo;
     }
 
-    // PRIORITY 3: Auto-match by product name
+    // PRIORITY 4: Auto-match by product name (try signed URL first, then public fallback)
     const nameLower = (product.name || '').trim().toLowerCase();
-    if (PRODUCT_ICON_MAP[nameLower]) {
-        product._iconInfo = { path: PRODUCT_ICON_MAP[nameLower], alt: product.name || 'Produkt', className: PRODUCT_ICON_CLASS_MAP[nameLower] || '' };
-        product._iconInfoCacheKey = cacheKey;
-        return product._iconInfo;
+    const storagePath = PRODUCT_ICON_STORAGE_PATHS[nameLower];
+    if (storagePath) {
+        const signedUrl = getCachedProductIconUrl(storagePath);
+        const iconPath = signedUrl || PRODUCT_ICON_MAP[nameLower];
+        if (iconPath) {
+            product._iconInfo = { path: iconPath, alt: product.name || 'Produkt', className: PRODUCT_ICON_CLASS_MAP[nameLower] || '' };
+            product._iconInfoCacheKey = cacheKey;
+            return product._iconInfo;
+        }
     }
 
     product._iconInfo = null;

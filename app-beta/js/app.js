@@ -10,7 +10,8 @@ import {
 import { supabaseClient } from './core/config-and-supabase.js';
 import { getCurrentUserProfile } from './domain/auth-and-session.js';
 import { ensureActiveInstitution, fetchInstitutions } from './domain/institution-store.js';
-import { setupClubLoginScreen, setupLockedScreen } from './domain/club-login.js';
+import { setupFullLoginScreen, setupDeviceUnlockScreen } from './domain/login-flow.js';
+import { hasDeviceUsers } from './domain/device-trust.js';
 import { startApp, setupAdminLoginScreen } from './domain/app-main.js';
 import { initUpdateChip, startVersionChecking } from './core/version-check.js';
 
@@ -98,60 +99,65 @@ document.addEventListener('DOMContentLoaded', () => {
     async function initializeApp() {
         try {
             await fetchInstitutions();
-            const hasInstitution = await ensureActiveInstitution();
-            if (!hasInstitution) {
-                await supabaseClient.auth.signOut();
-                await setupClubLoginScreen();
-                return;
-            }
 
             const { data: { session } } = await supabaseClient.auth.getSession();
 
             if (session) {
-                // Der er en aktiv admin-session
+                // Active admin session exists
                 const adminProfile = await getCurrentUserProfile(session);
                 if (adminProfile && adminProfile.role === 'admin') {
+                    // Ensure institution is remembered
+                    if (adminProfile.institution_id) {
+                        await ensureActiveInstitution();
+                    }
                     setupAdminLoginScreen(adminProfile);
                 } else {
-                    // Sessionen er ugyldig eller ikke en admin, log ud
                     await supabaseClient.auth.signOut();
-                    setupLockedScreen();
+                    _showLoginScreen();
                 }
             } else {
-                // Ingen session, vis den låste skærm
-                setupLockedScreen();
+                _showLoginScreen();
             }
         } catch (err) {
             const isAbort = err?.name === 'AbortError' || (err?.message || '').includes('aborted');
             if (isAbort) {
                 console.warn('[app] initializeApp AbortError – venter og prøver igen...');
-                // Vent kort og prøv igen (Supabase client kan have brug for at stabilisere)
                 await new Promise(r => setTimeout(r, 500));
                 try {
                     await fetchInstitutions(true);
-                    const hasInstitution = await ensureActiveInstitution();
-                    if (hasInstitution) {
-                        const { data: { session } } = await supabaseClient.auth.getSession();
-                        if (session) {
-                            const adminProfile = await getCurrentUserProfile(session);
-                            if (adminProfile && adminProfile.role === 'admin') {
-                                setupAdminLoginScreen(adminProfile);
-                                return;
-                            }
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (session) {
+                        const adminProfile = await getCurrentUserProfile(session);
+                        if (adminProfile && adminProfile.role === 'admin') {
+                            setupAdminLoginScreen(adminProfile);
+                            return;
                         }
                     }
                 } catch (retryErr) {
                     console.error('[app] initializeApp retry fejl:', retryErr?.message);
                 }
             }
-            console.error('[app] initializeApp fejl – viser klub login:', err?.message || err);
+            console.error('[app] initializeApp fejl:', err?.message || err);
             await supabaseClient.auth.signOut().catch(() => {});
-            await setupClubLoginScreen();
+            _showLoginScreen();
+        }
+    }
+
+    /**
+     * Show the appropriate login screen:
+     * - If device has registered users → admin-picker + PIN (State 2)
+     * - Otherwise → full email+password login (State 1)
+     */
+    function _showLoginScreen() {
+        if (hasDeviceUsers()) {
+            setupDeviceUnlockScreen();
+        } else {
+            setupFullLoginScreen();
         }
     }
 
     initializeApp().catch((err) => {
         console.error('[app] initializeApp afvist:', err?.message || err);
-        setupClubLoginScreen();
+        _showLoginScreen();
     });
 });

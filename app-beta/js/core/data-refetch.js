@@ -6,6 +6,7 @@ import { supabaseClient } from './config-and-supabase.js';
 import { runWithAuthRetry } from './auth-retry.js';
 import { safeDbCall } from './safe-db-call.js';
 import { getCurrentCustomer, setCustomerBalance } from '../domain/cafe-session-store.js';
+import { batchPreWarmProductIcons, preWarmStandardIcons } from './product-icon-cache.js';
 
 // Race condition protection: Track in-flight requests
 let usersRefetchToken = 0;
@@ -220,6 +221,10 @@ export async function refetchAllProducts() {
     }
 
     const data = result.data;
+
+    // Pre-warm signed URLs for product icons (non-blocking)
+    batchPreWarmProductIcons(data).catch(() => {});
+    preWarmStandardIcons().catch(() => {});
 
     // Update cache via setter if available
     if (typeof window.__flangoSetAllProducts === 'function') {

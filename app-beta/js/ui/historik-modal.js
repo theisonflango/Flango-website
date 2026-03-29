@@ -19,19 +19,40 @@ import { showCustomAlert } from './sound-and-alerts.js';
 import { invalidateTodaysSalesCache } from '../domain/purchase-limits.js';
 
 // ─── HELPERS ───
+import { getCachedProductIconUrl } from '../core/product-icon-cache.js';
+
 const ICON_PREFIX = '::icon::';
 /**
  * Render product emoji/icon as inline HTML.
- * Checks emoji for ::icon:: prefix, then falls back to icon_url, then plain emoji.
- * @param {string} emoji  — emoji or ::icon::url string
+ * Checks icon_storage_path (signed URL) first, then ::icon:: prefix, then icon_url, then emoji.
+ * @param {string} emoji  — emoji or ::icon::path string
  * @param {string} [iconUrl] — icon_url from products table (fallback)
  * @param {number} [size=18] — pixel size
+ * @param {string} [storagePath] — icon_storage_path for signed URL resolution
  */
-function productIcon(emoji, iconUrl, size = 18) {
-  if (emoji && emoji.startsWith(ICON_PREFIX)) {
-    const url = emoji.slice(ICON_PREFIX.length);
-    return `<img src="${url}" style="width:${size}px;height:${size}px;vertical-align:middle;border-radius:3px;margin-right:2px" alt="">`;
+function productIcon(emoji, iconUrl, size = 18, storagePath = '') {
+  // Priority 1: Signed URL from private bucket
+  if (storagePath) {
+    const signedUrl = getCachedProductIconUrl(storagePath);
+    if (signedUrl) {
+      return `<img src="${signedUrl}" style="width:${size}px;height:${size}px;vertical-align:middle;border-radius:3px;margin-right:2px" alt="">`;
+    }
   }
+  // Priority 2: ::icon:: prefix (may contain storage path or legacy URL)
+  if (emoji && emoji.startsWith(ICON_PREFIX)) {
+    const path = emoji.slice(ICON_PREFIX.length);
+    if (path) {
+      // Try signed URL for storage paths
+      if (!path.startsWith('http')) {
+        const signedUrl = getCachedProductIconUrl(path);
+        const url = signedUrl || `https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/${path}`;
+        return `<img src="${url}" style="width:${size}px;height:${size}px;vertical-align:middle;border-radius:3px;margin-right:2px" alt="">`;
+      }
+      // Legacy: full URL
+      return `<img src="${path}" style="width:${size}px;height:${size}px;vertical-align:middle;border-radius:3px;margin-right:2px" alt="">`;
+    }
+  }
+  // Priority 3: Legacy public icon_url
   if (iconUrl) {
     return `<img src="${iconUrl}" style="width:${size}px;height:${size}px;vertical-align:middle;border-radius:3px;margin-right:2px" alt="">`;
   }
@@ -43,7 +64,7 @@ function productIcon(emoji, iconUrl, size = 18) {
 function productIconById(iconMap, productId, size = 16) {
   const info = iconMap?.[productId];
   if (!info) return '';
-  return productIcon(info.emoji, info.icon_url, size);
+  return productIcon(info.emoji, info.icon_url, size, info.icon_storage_path);
 }
 
 // ─── STATE ───
@@ -540,11 +561,11 @@ async function loadOverview() {
     // Render bar charts
     const colors = ['flango', 'green', 'blue', 'purple', 'orange'];
     renderBarChart('ov-chart-count', topByCount.map((p, i) => ({
-      rank: i + 1, label: `${productIcon(p.emoji, p.icon_url)} ${p.name}`, value: p.antal, secondary: fmtKr(p.beloeb),
+      rank: i + 1, label: `${productIcon(p.emoji, p.icon_url, 18, p.icon_storage_path)} ${p.name}`, value: p.antal, secondary: fmtKr(p.beloeb),
       color: colors[i % colors.length], pct: topByCount[0]?.antal ? (p.antal / topByCount[0].antal) * 100 : 0,
     })));
     renderBarChart('ov-chart-rev', topByRev.map((p, i) => ({
-      rank: i + 1, label: `${productIcon(p.emoji, p.icon_url)} ${p.name}`, value: fmtKr(p.beloeb), secondary: `${p.antal} stk`,
+      rank: i + 1, label: `${productIcon(p.emoji, p.icon_url, 18, p.icon_storage_path)} ${p.name}`, value: fmtKr(p.beloeb), secondary: `${p.antal} stk`,
       color: colors[i % colors.length], pct: topByRev[0]?.beloeb ? (p.beloeb / topByRev[0].beloeb) * 100 : 0,
     })));
   } catch (err) {
@@ -847,7 +868,7 @@ async function loadExpandDetails(eventId, expandRow) {
         <div class="hv2-adjust-section-title">Kvittering</div>
         <div class="hv2-adjust-items">
           ${items.map(i => `<div class="hv2-adjust-item">
-            <span class="hv2-adjust-item-name">${productIcon(i.emoji, i.icon_url)} ${i.name}</span>
+            <span class="hv2-adjust-item-name">${productIcon(i.emoji, i.icon_url, 18, i.icon_storage_path)} ${i.name}</span>
             <span class="hv2-adjust-item-qty">×${i.quantity}</span>
             <span class="hv2-adjust-item-price">${fmtKr(i.quantity * i.price_at_purchase)}</span>
           </div>`).join('')}
@@ -870,7 +891,7 @@ async function loadExpandDetails(eventId, expandRow) {
         <!-- Item qty corrections -->
         <div class="hv2-adjust-qty-section">
           ${items.map((i, idx) => `<div class="hv2-adjust-qty-row" data-idx="${idx}">
-            <span class="hv2-adjust-qty-name">${productIcon(i.emoji, i.icon_url)} ${i.name}</span>
+            <span class="hv2-adjust-qty-name">${productIcon(i.emoji, i.icon_url, 18, i.icon_storage_path)} ${i.name}</span>
             <div class="hv2-adjust-qty-controls">
               <button class="hv2-qty-btn hv2-qty-minus" data-idx="${idx}">−</button>
               <span class="hv2-qty-diff" data-idx="${idx}">0</span>
@@ -1110,7 +1131,7 @@ async function loadPeriodsData() {
       const clerkNames = Array.isArray(row.clerks)
         ? row.clerks.filter(c => c.role !== 'admin').map(c => c.name).join(', ')
         : '—';
-      const topProduct = row.top_product ? `${productIcon(row.top_product.emoji, row.top_product.icon_url)} ${row.top_product.name} (${row.top_product.count || 0})` : '—';
+      const topProduct = row.top_product ? `${productIcon(row.top_product.emoji, row.top_product.icon_url, 18, row.top_product.icon_storage_path)} ${row.top_product.name} (${row.top_product.count || 0})` : '—';
       return `<tr>
         <td>${date}</td>
         <td>${supervisor}</td>
@@ -1313,11 +1334,11 @@ async function loadToplistData() {
         </div>
       </div>`;
       renderBarChart('toplist-count-chart', byCount.map((p, i) => ({
-        rank: i + 1, label: `${productIcon(p.emoji, p.icon_url)} ${p.name}`, value: `${p.antal} stk`, pct: byCount[0]?.antal ? (p.antal / byCount[0].antal) * 100 : 0,
+        rank: i + 1, label: `${productIcon(p.emoji, p.icon_url, 18, p.icon_storage_path)} ${p.name}`, value: `${p.antal} stk`, pct: byCount[0]?.antal ? (p.antal / byCount[0].antal) * 100 : 0,
         color: colors[i % colors.length],
       })));
       renderBarChart('toplist-rev-chart', byRev.map((p, i) => ({
-        rank: i + 1, label: `${productIcon(p.emoji, p.icon_url)} ${p.name}`, value: fmtKr(p.beloeb), pct: byRev[0]?.beloeb ? (p.beloeb / byRev[0].beloeb) * 100 : 0,
+        rank: i + 1, label: `${productIcon(p.emoji, p.icon_url, 18, p.icon_storage_path)} ${p.name}`, value: fmtKr(p.beloeb), pct: byRev[0]?.beloeb ? (p.beloeb / byRev[0].beloeb) * 100 : 0,
         color: colors[i % colors.length],
       })));
     } else if (toplistView === 'ekspedienter') {

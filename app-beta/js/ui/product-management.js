@@ -1264,6 +1264,7 @@ export function createProductManagementUI(options = {}) {
         // Track current state
         let selectedStandardIcon = existingCustomIcon;
         let currentIconUrl = isEditing ? product?.icon_url : null;
+        let currentIconStoragePath = isEditing ? product?.icon_storage_path : null;
         let currentIconUpdatedAt = isEditing ? product?.icon_updated_at : null;
         let isUploading = false;
 
@@ -1509,7 +1510,8 @@ export function createProductManagementUI(options = {}) {
                 const result = await uploadProductIcon(processedFile, institutionId, currentProduct.id, adminUserId);
 
                 if (result.success) {
-                    currentIconUrl = result.icon_url;
+                    currentIconUrl = result.icon_signed_url || result.icon_url;
+                    currentIconStoragePath = result.icon_storage_path || null;
                     currentIconUpdatedAt = result.icon_updated_at;
                     updateIconPreview();
                     removeCustomIconBtn.style.display = 'block';
@@ -1671,7 +1673,8 @@ export function createProductManagementUI(options = {}) {
                 const result = await uploadProductIcon(processedFile, institutionId, currentProduct.id, adminUserId);
 
                 if (result.success) {
-                    currentIconUrl = result.icon_url;
+                    currentIconUrl = result.icon_signed_url || result.icon_url;
+                    currentIconStoragePath = result.icon_storage_path || null;
                     currentIconUpdatedAt = result.icon_updated_at;
                     updateIconPreview();
                     playSound?.('success');
@@ -2043,8 +2046,9 @@ export function createProductManagementUI(options = {}) {
                 const result = await response.json();
                 if (!result.success) throw new Error(result.error || 'Generering fejlede');
 
-                aiGeneratedUrl = result.icon_url;
-                currentIconUrl = result.icon_url;
+                aiGeneratedUrl = result.icon_signed_url || result.icon_url;
+                currentIconUrl = result.icon_signed_url || result.icon_url;
+                currentIconStoragePath = result.icon_storage_path || null;
                 currentIconUpdatedAt = result.icon_updated_at;
 
                 // Show preview — build mode label
@@ -2064,7 +2068,7 @@ export function createProductManagementUI(options = {}) {
                 const styleLabel = result.prompt_mode === 'custom' ? '' : ` · ${result.style === 'pixar' ? '🎬 Pixar' : '🏺 Clay'}`;
                 aiIconPreview.innerHTML = `
                     <div style="padding: 15px; background: #f8f9fa; border-radius: 12px; text-align: center;">
-                        <img src="${result.icon_url}?v=${timestamp}" alt="${name || customPrompt}" style="width: 128px; height: 128px; border-radius: 12px; background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <img src="${result.icon_signed_url || result.icon_url}?v=${timestamp}" alt="${name || customPrompt}" style="width: 128px; height: 128px; border-radius: 12px; background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                         <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">${modeLabel}${styleLabel}</div>
                     </div>`;
                 aiIconActions.style.display = 'flex';
@@ -2342,6 +2346,7 @@ export function createProductManagementUI(options = {}) {
                 restaurantVariants: restaurantVariantsArray.length > 0 ? [...restaurantVariantsArray] : null,
                 iconUrl: currentIconUrl,
                 iconUpdatedAt: currentIconUpdatedAt,
+                iconStoragePath: currentIconStoragePath,
             };
         };
 
@@ -2505,6 +2510,7 @@ export function createProductManagementUI(options = {}) {
             refillMaxRefills = null,
             iconUrl = undefined,
             iconUpdatedAt = undefined,
+            iconStoragePath = undefined,
         } = productData;
         const products = getProducts();
         const product = products.find(p => p.id === productId);
@@ -2533,6 +2539,7 @@ export function createProductManagementUI(options = {}) {
             refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
             restaurant_variants: restaurantVariants,
             icon_url: iconUrl || null,
+            icon_storage_path: iconStoragePath || null,
             icon_updated_at: iconUrl ? iconUpdatedAt : null,
             }).eq("id", productId)
         );
@@ -2556,6 +2563,7 @@ export function createProductManagementUI(options = {}) {
             refill_max_refills: refillEnabledValue ? refillMaxRefills : 0,
             restaurant_variants: restaurantVariants,
             icon_url: iconUrl || null,
+            icon_storage_path: iconStoragePath || null,
             icon_updated_at: iconUrl ? iconUpdatedAt : null,
         });
         await saveProductAllergens(productId, allergens);
@@ -3447,7 +3455,7 @@ export function createProductManagementUI(options = {}) {
                     const result = await response.json();
                     if (!result.success) throw new Error(result.error || 'Generation failed');
 
-                    createAiResultUrl = result.library_icon_url || result.icon_url;
+                    createAiResultUrl = result.library_icon_url || result.icon_signed_url || result.icon_url;
                     if (createAiResultImg) createAiResultImg.src = createAiResultUrl;
                     if (createAiResult) createAiResult.style.display = 'block';
                     if (createAiResultLabel) {

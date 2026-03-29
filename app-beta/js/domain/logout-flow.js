@@ -9,6 +9,7 @@ import {
     addWorkMinutesForToday, getStatsAccordionSectionsHTML,
 } from './stats-and-badges.js';
 import { clearCurrentCustomer } from './cafe-session-store.js';
+import { stopInactivityTimeout } from '../core/inactivity-timeout.js';
 import { showScreen } from '../ui/shell-and-theme.js';
 import { handlePrintAllBalances } from './history-and-reports.js';
 import { resetShiftTimer } from './shift-timer.js';
@@ -279,10 +280,11 @@ export function setupLogoutFlow({ clerkProfile, sessionStartTime, getSessionSale
                 window.__flangoCurrentClerkProfile = null;
                 window.__flangoCurrentAdminProfile = null;
                 window.currentUserIsAdmin = false;
-                // Nulstil bytte-timer, realtime-kanaler og toast-notifikationer ved logout
+                // Nulstil bytte-timer, realtime-kanaler, toast-notifikationer og inaktivitets-timer ved logout
                 resetShiftTimer();
                 stopRealtimeSync();
                 clearAllToasts();
+                stopInactivityTimeout();
                 showScreen('screen-admin-login');
             }
         }

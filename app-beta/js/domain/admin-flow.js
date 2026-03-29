@@ -7,6 +7,7 @@ import { setupEventAdminModule } from '../ui/event-admin.js';
 import { createParentPortalAdminUI } from '../ui/parent-portal-admin.js';
 import { mergeUsersWithParentNotifications } from './users-and-admin.js';
 import { runWithAuthRetry } from '../core/auth-retry.js';
+import { logAuditEvent } from '../core/audit-events.js';
 
 export async function loadUsersAndNotifications({
     adminProfile,
@@ -199,6 +200,14 @@ export function setupAdminFlow({
         allUsers.push(newUser);
         renderAdminUserList();
         reopenAdminManager();
+
+        // Audit: log brugeroprettelse
+        logAuditEvent('USER_CREATED', {
+            institutionId: adminProfile.institution_id,
+            adminUserId: session.user.id,
+            targetUserId: newUser?.id,
+            details: { name: userData.name, role: userData.role },
+        });
 
         await showCustomAlert(
             "Bruger oprettet",

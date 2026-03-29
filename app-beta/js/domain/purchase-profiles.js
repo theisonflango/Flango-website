@@ -13,6 +13,27 @@
 
 import { supabaseClient } from '../core/config-and-supabase.js';
 import { runWithAuthRetry } from '../core/auth-retry.js';
+import { getProductIconSrc } from '../core/product-icon-utils.js';
+
+const BUCKET_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/';
+
+/** Resolve product icon to a displayable URL or emoji */
+function _resolveProductIcon(productInfo) {
+    if (!productInfo) return null;
+    // Try getProductIconSrc which handles signed URLs and fallbacks
+    const src = getProductIconSrc(productInfo);
+    if (src) return src;
+    // Fallback: emoji (strip ::icon:: prefix and resolve storage paths)
+    const emoji = productInfo.emoji;
+    if (!emoji) return null;
+    if (emoji.startsWith('::icon::')) {
+        const path = emoji.slice('::icon::'.length);
+        if (path.startsWith('http')) return path;
+        if (path) return BUCKET_URL + path;
+        return null;
+    }
+    return emoji;
+}
 
 // ============================================================
 // STATE
@@ -113,7 +134,7 @@ async function fetchProducts() {
     const buildQuery = () => {
         let query = supabaseClient
             .from('products')
-            .select('id, name, is_daily_special, icon_url, emoji');
+            .select('id, name, is_daily_special, icon_url, icon_storage_path, emoji');
         
         if (_institutionId) {
             query = query.eq('institution_id', _institutionId);
@@ -243,7 +264,7 @@ export async function fetchUserPurchaseData(userId, period = 'all') {
                         antal: 0,
                         kr: 0,
                         isDagensRet: false,
-                        icon: productInfo?.icon_url || productInfo?.emoji || null
+                        icon: _resolveProductIcon(productInfo)
                     });
                 }
             }

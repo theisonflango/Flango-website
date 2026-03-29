@@ -385,31 +385,15 @@
 </head>
 <body>
 
-    <!-- Præ-login: Klub login -->
-    <div id="screen-club-login" class="login-container" style="display: none;">
-        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
-        <div class="lock-icon">🏡</div>
-        <h1>Klub login</h1>
-        <label for="club-institution-select">Vælg institution</label>
-        <select id="club-institution-select"></select>
-        <label for="club-code-input">Klubbens login-kode</label>
-        <input type="password" id="club-code-input" placeholder="••••" maxlength="8" inputmode="numeric">
-        <button id="club-login-btn">Fortsæt</button>
-        <p id="club-login-error" class="login-error"></p>
-    </div>
-
-    <!-- Tilstand 1: Caféen er låst -->
-    <div id="screen-locked" class="login-container">
+    <!-- State 1: Fuldt login (email + kodeord) — ny enhed eller ingen registrerede admins -->
+    <div id="screen-full-login" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
         <div class="lock-icon">🔒</div>
-        <h1>Caféen er låst</h1>
-        <p id="active-club-label" class="login-subtitle"></p>
-        <label for="admin-user-select">Vælg administrator</label>
-        <select id="admin-user-select">
-            <option value="">— Vælg administrator —</option>
-        </select>
-        <input type="email" id="admin-email-input" placeholder="Admin e-mail" autocomplete="off">
-        <input type="password" id="admin-password-input" placeholder="Adgangskode" autocomplete="new-password">
+        <h1>Log ind</h1>
+        <label for="login-email-input">E-mail</label>
+        <input type="email" id="login-email-input" placeholder="din@email.dk" autocomplete="email">
+        <label for="login-password-input">Kodeord</label>
+        <input type="password" id="login-password-input" placeholder="Kodeord" autocomplete="current-password">
         <label id="restaurant-mode-login-label" class="restaurant-mode-login-toggle" style="display: none;">
             <input type="checkbox" id="restaurant-mode-login-checkbox">
             <div>
@@ -417,10 +401,72 @@
                 <small>Bordvalg og køkkennote vises ved hvert køb</small>
             </div>
         </label>
-        <button id="admin-login-btn">Lås op & Log ind</button>
-        <button id="developer-login-btn" class="secondary-action">Developer Login</button>
-        <button id="switch-club-btn" class="switch-club-btn" style="display: none;">Skift klub</button>
-        <p id="locked-screen-error" class="login-error"></p>
+        <button id="full-login-btn">Log ind</button>
+        <button id="full-login-back-btn" class="secondary-action" style="display: none;">← Tilbage til PIN-login</button>
+        <p id="full-login-error" class="login-error"></p>
+    </div>
+
+    <!-- State 2: Admin-picker + PIN (hurtig unlock — enhed har registrerede admins) -->
+    <div id="screen-device-unlock" class="login-container" style="display: none;">
+        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
+        <div class="lock-icon">🔑</div>
+        <h1>Vælg din profil</h1>
+        <label for="device-admin-select">Hvem er du?</label>
+        <select id="device-admin-select"></select>
+        <label for="device-pin-input">PIN-kode</label>
+        <div class="pin-input-group">
+            <input type="password" id="device-pin-input" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
+        </div>
+        <button id="device-unlock-btn">Lås op</button>
+        <button id="device-email-login-btn" class="secondary-action">Log ind med email</button>
+        <p id="device-unlock-error" class="login-error"></p>
+        <a id="device-remove-btn" href="#" style="display: block; margin-top: 16px; font-size: 12px; color: #999; text-align: center; text-decoration: underline;">Glem mig på denne enhed</a>
+    </div>
+
+    <!-- State 3: Husk enhed modal (efter fuldt login) -->
+    <div id="screen-remember-device" class="login-container" style="display: none;">
+        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
+        <div class="lock-icon">📱</div>
+        <h1>Vil du huske denne enhed?</h1>
+        <p class="login-subtitle">Du kan fremover logge ind med en hurtig 4-cifret PIN-kode.</p>
+        <label for="remember-pin-input">Vælg PIN-kode</label>
+        <input type="password" id="remember-pin-input" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
+        <label for="remember-pin-confirm">Gentag PIN-kode</label>
+        <input type="password" id="remember-pin-confirm" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
+        <div class="login-options" style="margin-top: 10px;">
+            <button id="remember-device-yes-btn">Husk mig på denne enhed</button>
+            <button id="remember-device-no-btn" class="secondary-action">Nej tak</button>
+        </div>
+        <p id="remember-device-error" class="login-error"></p>
+    </div>
+
+    <!-- State 4: PIN locked (3 fejlede forsøg — kræver fuldt login) -->
+    <div id="screen-pin-locked" class="login-container" style="display: none;">
+        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
+        <div class="lock-icon">🚫</div>
+        <h1>For mange forsøg</h1>
+        <p id="pin-locked-message" class="login-subtitle"></p>
+        <label for="locked-email-input">E-mail</label>
+        <input type="email" id="locked-email-input" placeholder="din@email.dk" autocomplete="email">
+        <label for="locked-password-input">Kodeord</label>
+        <input type="password" id="locked-password-input" placeholder="Kodeord" autocomplete="current-password">
+        <button id="locked-login-btn">Log ind</button>
+        <button id="locked-back-btn" class="secondary-action">Tilbage til profiler</button>
+        <p id="locked-login-error" class="login-error"></p>
+    </div>
+
+    <!-- Tvunget kodeordsskift (efter login med svagt kodeord) -->
+    <div id="screen-force-password" class="login-container" style="display: none;">
+        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
+        <div class="lock-icon">🔐</div>
+        <h1>Skift din adgangskode</h1>
+        <p class="login-subtitle">Din adgangskode skal opdateres. Vælg en ny adgangskode med mindst 10 tegn (bogstaver + tal).</p>
+        <label for="force-pw-new">Ny adgangskode</label>
+        <input type="password" id="force-pw-new" placeholder="Min. 10 tegn" autocomplete="new-password">
+        <label for="force-pw-confirm">Gentag adgangskode</label>
+        <input type="password" id="force-pw-confirm" placeholder="Gentag" autocomplete="new-password">
+        <button id="force-pw-btn">Gem ny adgangskode</button>
+        <p id="force-pw-error" class="login-error"></p>
     </div>
 
     <!-- Tilstand 2: Admin er logget ind (Kontrolrum) -->

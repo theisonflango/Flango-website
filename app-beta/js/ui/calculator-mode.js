@@ -373,7 +373,12 @@ function getEmojiDisplay(emoji) {
 /** Returnerer ikon-URL hvis emoji bruger ::icon:: prefix */
 function getIconUrl(emoji) {
     if (!emoji || !emoji.startsWith(CUSTOM_ICON_PREFIX)) return null;
-    return emoji.slice(CUSTOM_ICON_PREFIX.length);
+    const path = emoji.slice(CUSTOM_ICON_PREFIX.length);
+    // Storage paths need full bucket URL
+    if (path && !path.startsWith('http')) {
+        return `https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/${path}`;
+    }
+    return path;
 }
 
 async function loadQuickProducts() {

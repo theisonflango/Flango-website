@@ -4,49 +4,55 @@
 
 import { supabaseClient, SUPABASE_URL } from './config-and-supabase.js';
 import { CUSTOM_ICON_PREFIX, getCustomIconPath } from '../domain/products-and-cart.js';
+import { getCachedProductIconUrl, batchPreWarmProductIcons, setCachedProductIconUrl } from './product-icon-cache.js';
 
-// Standard icons available from Supabase Storage
+// Standard icons — storagePath is canonical, path is public URL fallback
 const SUPABASE_STORAGE_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/standard';
 
 export const STANDARD_ICONS = [
-    { key: 'Toast.webp', label: 'Toast', path: `${SUPABASE_STORAGE_URL}/Toast.webp` },
-    { key: 'Saft.webp', label: 'Saft', path: `${SUPABASE_STORAGE_URL}/Saft.webp` },
-    { key: 'Sushi.webp', label: 'Sushi', path: `${SUPABASE_STORAGE_URL}/Sushi.webp` },
-    { key: 'Noddemix.webp', label: 'Nøddemix', path: `${SUPABASE_STORAGE_URL}/Noddemix.webp` },
-    { key: 'Frugt.webp', label: 'Frugt', path: `${SUPABASE_STORAGE_URL}/Frugt.webp` },
-    { key: 'Frugter.webp', label: 'Frugter', path: `${SUPABASE_STORAGE_URL}/Frugter.webp` },
-    { key: 'Suppe.webp', label: 'Suppe', path: `${SUPABASE_STORAGE_URL}/Suppe.webp` },
-    { key: 'Pizza.webp', label: 'Pizza', path: `${SUPABASE_STORAGE_URL}/Pizza.webp` },
-    { key: 'stegt_flaesk.webp', label: 'Stegt flæsk', path: `${SUPABASE_STORAGE_URL}/stegt_flaesk.webp` },
-    { key: 'smorrebrod.webp', label: 'Smørrebrød', path: `${SUPABASE_STORAGE_URL}/smorrebrod.webp` },
-    { key: 'pizzatoast.webp', label: 'Pizza Toast', path: `${SUPABASE_STORAGE_URL}/pizzatoast.webp` },
+    { key: 'Toast.webp', label: 'Toast', storagePath: 'standard/Toast.webp', path: `${SUPABASE_STORAGE_URL}/Toast.webp` },
+    { key: 'Saft.webp', label: 'Saft', storagePath: 'standard/Saft.webp', path: `${SUPABASE_STORAGE_URL}/Saft.webp` },
+    { key: 'Sushi.webp', label: 'Sushi', storagePath: 'standard/Sushi.webp', path: `${SUPABASE_STORAGE_URL}/Sushi.webp` },
+    { key: 'Noddemix.webp', label: 'Nøddemix', storagePath: 'standard/Noddemix.webp', path: `${SUPABASE_STORAGE_URL}/Noddemix.webp` },
+    { key: 'Frugt.webp', label: 'Frugt', storagePath: 'standard/Frugt.webp', path: `${SUPABASE_STORAGE_URL}/Frugt.webp` },
+    { key: 'Frugter.webp', label: 'Frugter', storagePath: 'standard/Frugter.webp', path: `${SUPABASE_STORAGE_URL}/Frugter.webp` },
+    { key: 'Suppe.webp', label: 'Suppe', storagePath: 'standard/Suppe.webp', path: `${SUPABASE_STORAGE_URL}/Suppe.webp` },
+    { key: 'Pizza.webp', label: 'Pizza', storagePath: 'standard/Pizza.webp', path: `${SUPABASE_STORAGE_URL}/Pizza.webp` },
+    { key: 'stegt_flaesk.webp', label: 'Stegt flæsk', storagePath: 'standard/stegt_flaesk.webp', path: `${SUPABASE_STORAGE_URL}/stegt_flaesk.webp` },
+    { key: 'smorrebrod.webp', label: 'Smørrebrød', storagePath: 'standard/smorrebrod.webp', path: `${SUPABASE_STORAGE_URL}/smorrebrod.webp` },
+    { key: 'pizzatoast.webp', label: 'Pizza Toast', storagePath: 'standard/pizzatoast.webp', path: `${SUPABASE_STORAGE_URL}/pizzatoast.webp` },
 ];
 
 /**
  * Get the icon source URL for a product
- * Priority: custom icon_url > standard icon via emoji field > fallback
- * @param {object} product - Product object with icon_url, icon_updated_at, emoji fields
+ * Priority: signed URL from cache > legacy icon_url > standard icon > fallback
+ * @param {object} product - Product object with icon_storage_path, icon_url, icon_updated_at, emoji fields
  * @returns {string|null} Icon URL or null if no icon
  */
 export function getProductIconSrc(product) {
     if (!product) return null;
 
-    // Priority 1: Custom uploaded icon (icon_url)
+    // Priority 1: Private bucket icon via signed URL cache
+    if (product.icon_storage_path) {
+        const signedUrl = getCachedProductIconUrl(product.icon_storage_path);
+        if (signedUrl) return signedUrl;
+    }
+
+    // Priority 2: Legacy public icon_url (backward compat)
     if (product.icon_url) {
-        // Add cache-busting query param
         const timestamp = product.icon_updated_at
             ? new Date(product.icon_updated_at).getTime()
             : Date.now();
         return `${product.icon_url}?v=${timestamp}`;
     }
 
-    // Priority 2: Standard icon via CUSTOM_ICON_PREFIX in emoji field
+    // Priority 3: Standard icon via CUSTOM_ICON_PREFIX in emoji field
     const customIconPath = getCustomIconPath(product.emoji);
     if (customIconPath) {
         return customIconPath;
     }
 
-    // Priority 3: No icon (will use emoji or default)
+    // Priority 4: No icon (will use emoji or default)
     return null;
 }
 
@@ -56,7 +62,7 @@ export function getProductIconSrc(product) {
  * @returns {boolean}
  */
 export function hasCustomIcon(product) {
-    return !!(product?.icon_url);
+    return !!(product?.icon_storage_path || product?.icon_url);
 }
 
 /**
@@ -66,7 +72,7 @@ export function hasCustomIcon(product) {
  */
 export function hasStandardIcon(product) {
     if (!product) return false;
-    if (product.icon_url) return false; // Custom takes precedence
+    if (product.icon_storage_path || product.icon_url) return false; // Custom takes precedence
     return !!getCustomIconPath(product.emoji);
 }
 
@@ -455,6 +461,11 @@ export async function uploadProductIcon(file, institutionId, productId, adminUse
             throw new Error(result.error || 'Upload fejlede');
         }
 
+        // Cache the signed URL for immediate use
+        if (result.icon_storage_path && result.icon_signed_url) {
+            setCachedProductIconUrl(result.icon_storage_path, result.icon_signed_url);
+        }
+
         console.log('[uploadProductIcon] Success:', result);
         return result;
 
@@ -477,6 +488,7 @@ export async function removeProductIcon(productId) {
         const { error } = await supabaseClient
             .from('products')
             .update({
+                icon_storage_path: null,
                 icon_url: null,
                 icon_updated_at: null,
             })
@@ -507,7 +519,7 @@ export async function fetchInstitutionIconLibrary(institutionId) {
     try {
         const { data, error } = await supabaseClient
             .from('institution_icons')
-            .select('id, name, icon_url, source, created_at, ai_style, ai_photo_mode, ai_prompt_mode')
+            .select('id, name, icon_url, storage_path, source, created_at, ai_style, ai_photo_mode, ai_prompt_mode')
             .eq('institution_id', institutionId)
             .order('created_at', { ascending: false });
 
@@ -516,7 +528,19 @@ export async function fetchInstitutionIconLibrary(institutionId) {
             return [];
         }
 
-        return data || [];
+        const icons = data || [];
+
+        // Batch sign storage paths and set icon_url to signed URL
+        const withPaths = icons.filter(i => i.storage_path);
+        if (withPaths.length > 0) {
+            await batchPreWarmProductIcons(withPaths);
+            for (const icon of withPaths) {
+                const signedUrl = getCachedProductIconUrl(icon.storage_path);
+                if (signedUrl) icon.icon_url = signedUrl;
+            }
+        }
+
+        return icons;
     } catch (err) {
         console.error('[fetchInstitutionIconLibrary] Error:', err);
         return [];
@@ -532,7 +556,7 @@ export async function fetchSharedIconLibrary(currentInstitutionId) {
     try {
         const { data, error } = await supabaseClient
             .from('institution_icons')
-            .select('id, name, icon_url, source, institution_id, created_at')
+            .select('id, name, icon_url, storage_path, source, institution_id, created_at')
             .neq('institution_id', currentInstitutionId)
             .order('created_at', { ascending: false })
             .limit(100);
@@ -542,8 +566,20 @@ export async function fetchSharedIconLibrary(currentInstitutionId) {
             return [];
         }
 
+        const icons = data || [];
+
+        // Batch sign storage paths and set icon_url to signed URL
+        const withPaths = icons.filter(i => i.storage_path);
+        if (withPaths.length > 0) {
+            await batchPreWarmProductIcons(withPaths);
+            for (const icon of withPaths) {
+                const signedUrl = getCachedProductIconUrl(icon.storage_path);
+                if (signedUrl) icon.icon_url = signedUrl;
+            }
+        }
+
         // RLS policy ensures only icons from institutions with icon_sharing_enabled=true are returned
-        return data || [];
+        return icons;
     } catch (err) {
         console.error('[fetchSharedIconLibrary] Error:', err);
         return [];
