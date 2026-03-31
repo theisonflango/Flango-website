@@ -41,6 +41,34 @@
     }
   }
 
+  // ─── Inactivity timeout (30 min) ───
+  const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
+  let _inactivityTimer = null;
+  function _resetInactivityTimer() {
+    clearTimeout(_inactivityTimer);
+    if (!currentSession) return;
+    _inactivityTimer = setTimeout(async () => {
+      console.log('[Portal] Inactivity timeout — logging out');
+      try { await API.signOut(); } catch {}
+      currentSession = null;
+      children = [];
+      selectedChild = null;
+      renderLogin();
+    }, INACTIVITY_TIMEOUT_MS);
+  }
+  function startInactivityTimeout() {
+    ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt =>
+      document.addEventListener(evt, _resetInactivityTimer, { passive: true })
+    );
+    _resetInactivityTimer();
+  }
+  function stopInactivityTimeout() {
+    clearTimeout(_inactivityTimer);
+    ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt =>
+      document.removeEventListener(evt, _resetInactivityTimer)
+    );
+  }
+
   // ═══════════════════════════════════════
   //  INIT
   // ═══════════════════════════════════════
@@ -53,6 +81,7 @@
         return;
       }
       currentSession = session;
+      startInactivityTimeout();
 
       // Check password recovery
       if (window.__pendingPasswordRecovery) {
@@ -421,6 +450,7 @@
         window.__flangoForgetOnClose = true;
       }
       currentSession = await API.getSession();
+      startInactivityTimeout();
       await loadChildren();
     } catch (err) {
       errorEl.textContent = 'Forkert e-mail eller adgangskode';
@@ -3780,6 +3810,7 @@
   }
 
   async function handleLogout() {
+    stopInactivityTimeout();
     try {
       await API.signOut();
       currentSession = null;
