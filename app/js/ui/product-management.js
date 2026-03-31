@@ -2616,6 +2616,15 @@ export function createProductManagementUI(options = {}) {
         );
         if (error) return showAlert(`Fejl: ${error.message}`);
 
+        // Opryd produktikon fra Storage (fire-and-forget)
+        if (product.icon_storage_path) {
+            supabaseClient.storage.from('product-icons').remove([product.icon_storage_path])
+                .then(({ error: storageErr }) => {
+                    if (storageErr) console.warn('[handleDeleteProduct] Icon storage cleanup failed:', storageErr.message);
+                    else console.log('[handleDeleteProduct] Product icon cleaned from Storage:', product.icon_storage_path);
+                });
+        }
+
         // REFETCH PATTERN: Hent fresh data fra database for at sikre UI er synkroniseret
         console.log('[handleDeleteProduct] Refetching products from database...');
         await refetchAllProducts();

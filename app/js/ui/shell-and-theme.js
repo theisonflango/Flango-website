@@ -6,6 +6,8 @@ import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-
 import { getInstitutionId } from '../domain/session-store.js';
 import { getCurrentCustomer } from '../domain/cafe-session-store.js';
 import { getOrder } from '../domain/order-store.js';
+import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js';
+import { logAuditEvent } from '../core/audit-events.js';
 import {
     initThemeLoader,
     switchTheme as themePackSwitchTheme,
@@ -1373,6 +1375,10 @@ async function saveAllDraftChanges() {
     }
 
     console.log('[product-rules] Alle ændringer gemt');
+    logAuditEvent('SETTINGS_CHANGE', {
+        institutionId: getInstitutionId(),
+        details: { context: 'product_rules_batch_save', changed_products: productRulesState.draft.size },
+    });
 }
 
 /**
@@ -2017,6 +2023,24 @@ async function openInstitutionPreferences() {
         openProfilePictureSettingsModal();
     });
 
+    // MFA / Totrinsgodkendelse knap
+    const mfaSettingsBtn = document.createElement('button');
+    mfaSettingsBtn.className = 'settings-item-btn';
+    mfaSettingsBtn.innerHTML = prefRow('🔐', 'Totrinsgodkendelse (MFA)', 'Krav om ekstra sikkerhedskode ved login via authenticator-app.');
+    mfaSettingsBtn.addEventListener('click', () => {
+        settingsModalPushParent(openInstitutionPreferences);
+        openMfaSettingsModal();
+    });
+
+    // Auto-sletning af inaktive brugere knap
+    const autoDeleteBtn = document.createElement('button');
+    autoDeleteBtn.className = 'settings-item-btn';
+    autoDeleteBtn.innerHTML = prefRow('🗑️', 'Auto-sletning af inaktive', 'Slet automatisk brugere der ikke har været aktive i lang tid.');
+    autoDeleteBtn.addEventListener('click', () => {
+        settingsModalPushParent(openInstitutionPreferences);
+        openAutoDeleteSettingsModal();
+    });
+
     contentEl.appendChild(parentPortalBtn);
     contentEl.appendChild(betalingsmetodeBtn);
     contentEl.appendChild(spendingLimitBtn);
@@ -2024,10 +2048,150 @@ async function openInstitutionPreferences() {
     contentEl.appendChild(profilePictureBtn);
     contentEl.appendChild(restaurantModeBtn);
     contentEl.appendChild(iconSharingBtn);
+    contentEl.appendChild(mfaSettingsBtn);
+    contentEl.appendChild(autoDeleteBtn);
     contentEl.appendChild(editAdminsBtn);
     contentEl.appendChild(mobilePayImportBtn);
     backdrop.style.display = 'flex';
     updateSettingsModalBackVisibility();
+}
+
+/**
+ * Åbner Auto-sletning indstillinger modal
+ */
+async function openAutoDeleteSettingsModal() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+
+    titleEl.textContent = 'Auto-sletning af inaktive brugere';
+    contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Indlæser...</div>';
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
+
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('auto_delete_inactive_enabled, auto_delete_inactive_months')
+        .eq('id', institutionId)
+        .single();
+
+    if (error || !data) {
+        contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #ef4444;">Kunne ikke hente indstillinger.</div>';
+        return;
+    }
+
+    const enabled = data.auto_delete_inactive_enabled === true;
+    const months = data.auto_delete_inactive_months || 6;
+
+    const container = document.createElement('div');
+    container.style.cssText = 'padding: 20px;';
+    container.innerHTML = `
+        <div style="margin-bottom: 20px;">
+            <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin-bottom: 16px;">
+                Når auto-sletning er aktiveret, slettes brugere der ikke har været aktive i den valgte periode automatisk.
+                Forældre modtager en advarsel via e-mail 30 dage inden sletning.
+            </p>
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 16px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; border: 2px solid #f59e0b;">
+                <input type="checkbox" id="auto-delete-checkbox" ${enabled ? 'checked' : ''} style="width: 22px; height: 22px; cursor: pointer; accent-color: #d97706;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <strong style="color: #92400e; font-size: 16px;">Aktivér auto-sletning</strong>
+                        <span id="auto-delete-status" style="padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; ${enabled ? 'background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534;' : 'background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b;'}">
+                            ${enabled ? '✓ Aktiv' : '✗ Inaktiv'}
+                        </span>
+                    </div>
+                    <div style="font-size: 13px; color: #6b7280;">Brugere der ikke har handlet eller logget ind slettes automatisk</div>
+                </div>
+            </label>
+        </div>
+
+        <div id="auto-delete-options" style="display: ${enabled ? 'block' : 'none'}; margin-bottom: 20px;">
+            <label style="font-weight: 600; color: #374151; display: block; margin-bottom: 8px;">Inaktivitetsperiode</label>
+            <div style="display: flex; gap: 10px;">
+                <label style="flex: 1; display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 14px 16px; background: ${months === 6 ? 'linear-gradient(135deg, #dbeafe, #bfdbfe)' : '#f3f4f6'}; border-radius: 10px; border: 2px solid ${months === 6 ? '#3b82f6' : '#e5e7eb'}; transition: all 0.2s;">
+                    <input type="radio" name="auto-delete-months" value="6" ${months === 6 ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #3b82f6;">
+                    <div>
+                        <strong style="color: ${months === 6 ? '#1d4ed8' : '#374151'};">6 måneder</strong>
+                        <div style="font-size: 12px; color: #6b7280;">Anbefalet for aktive institutioner</div>
+                    </div>
+                </label>
+                <label style="flex: 1; display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 14px 16px; background: ${months === 24 ? 'linear-gradient(135deg, #dbeafe, #bfdbfe)' : '#f3f4f6'}; border-radius: 10px; border: 2px solid ${months === 24 ? '#3b82f6' : '#e5e7eb'}; transition: all 0.2s;">
+                    <input type="radio" name="auto-delete-months" value="24" ${months === 24 ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #3b82f6;">
+                    <div>
+                        <strong style="color: ${months === 24 ? '#1d4ed8' : '#374151'};">24 måneder</strong>
+                        <div style="font-size: 12px; color: #6b7280;">Længere bevaringsperiode</div>
+                    </div>
+                </label>
+            </div>
+            <p style="font-size: 12px; color: #9ca3af; margin-top: 10px;">Forældre advares automatisk 30 dage inden sletning via e-mail.</p>
+        </div>
+    `;
+
+    const checkbox = container.querySelector('#auto-delete-checkbox');
+    const statusSpan = container.querySelector('#auto-delete-status');
+    const optionsDiv = container.querySelector('#auto-delete-options');
+    const radios = container.querySelectorAll('input[name="auto-delete-months"]');
+
+    checkbox.addEventListener('change', () => {
+        const on = checkbox.checked;
+        optionsDiv.style.display = on ? 'block' : 'none';
+        statusSpan.textContent = on ? '✓ Aktiv' : '✗ Inaktiv';
+        statusSpan.style.cssText = `padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; ${on ? 'background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534;' : 'background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b;'}`;
+    });
+
+    // Radio styling update
+    radios.forEach(r => r.addEventListener('change', () => {
+        const val = parseInt(r.value);
+        radios.forEach(r2 => {
+            const label = r2.closest('label');
+            const isChecked = r2.checked;
+            label.style.background = isChecked ? 'linear-gradient(135deg, #dbeafe, #bfdbfe)' : '#f3f4f6';
+            label.style.borderColor = isChecked ? '#3b82f6' : '#e5e7eb';
+            const strong = label.querySelector('strong');
+            if (strong) strong.style.color = isChecked ? '#1d4ed8' : '#374151';
+        });
+    }));
+
+    // Gem-knap
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'settings-button settings-button-primary';
+    saveBtn.textContent = 'Gem';
+    saveBtn.style.cssText = 'width: 100%; padding: 14px; font-size: 16px; font-weight: 600; border-radius: 10px; cursor: pointer; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none;';
+    saveBtn.addEventListener('click', async () => {
+        const isEnabled = checkbox.checked;
+        const selectedMonths = parseInt(container.querySelector('input[name="auto-delete-months"]:checked')?.value || '6');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Gemmer...';
+        try {
+            const { error: saveErr } = await supabaseClient
+                .from('institutions')
+                .update({
+                    auto_delete_inactive_enabled: isEnabled,
+                    auto_delete_inactive_months: isEnabled ? selectedMonths : null,
+                })
+                .eq('id', institutionId);
+            if (saveErr) throw saveErr;
+            saveBtn.textContent = '✓ Gemt!';
+            saveBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+            setTimeout(() => {
+                saveBtn.textContent = 'Gem';
+                saveBtn.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+                saveBtn.disabled = false;
+            }, 1500);
+        } catch (e) {
+            showAlert('Fejl ved gemning: ' + (e.message || e));
+            saveBtn.textContent = 'Gem';
+            saveBtn.disabled = false;
+        }
+    });
+
+    container.appendChild(saveBtn);
+    contentEl.innerHTML = '';
+    contentEl.appendChild(container);
 }
 
 /**
@@ -2639,6 +2803,120 @@ async function openRestaurantModeSettingsModal() {
             settingsModalGoBack();
         } catch (err) {
             console.error('[restaurant-settings] Error:', err);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Gem';
+        }
+    });
+
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
+}
+
+/**
+ * Åbner MFA / Totrinsgodkendelse indstillinger
+ */
+async function openMfaSettingsModal() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+
+    titleEl.textContent = 'Totrinsgodkendelse (MFA)';
+    contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Indlaeser...</div>';
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
+
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('admin_mfa_policy, parent_mfa_new_device')
+        .eq('id', institutionId)
+        .single();
+
+    if (error || !data) {
+        contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #ef4444;">Kunne ikke hente indstillinger.</div>';
+        return;
+    }
+
+    const currentPolicy = data.admin_mfa_policy || 'off';
+    const parentMfa = data.parent_mfa_new_device === true;
+
+    const container = document.createElement('div');
+    container.style.cssText = 'padding: 20px;';
+    container.innerHTML = `
+        <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+            Totrinsgodkendelse (MFA) tilfojer et ekstra sikkerhedslag ved login.
+            Brugeren skal indtaste en 6-cifret kode fra en authenticator-app
+            (Google Authenticator, Microsoft Authenticator o.l.) ud over kodeord.
+        </p>
+
+        <div style="margin-bottom: 24px;">
+            <label style="display: block; font-weight: 700; color: #1e3a5f; margin-bottom: 8px; font-size: 15px;">
+                Admin-login MFA
+            </label>
+            <select id="mfa-admin-policy" style="width: 100%; padding: 12px 14px; border: 2px solid #d1d5db; border-radius: 10px; font-size: 15px; background: #fff; cursor: pointer;">
+                <option value="off" ${currentPolicy === 'off' ? 'selected' : ''}>Fra (ingen MFA)</option>
+                <option value="new_device" ${currentPolicy === 'new_device' ? 'selected' : ''}>Kun ved ny enhed</option>
+                <option value="always" ${currentPolicy === 'always' ? 'selected' : ''}>Altid ved login</option>
+            </select>
+            <p style="font-size: 12px; color: #6b7280; margin-top: 6px;">
+                "Kun ved ny enhed" kraever MFA forste gang man logger ind pa en ny browser/enhed.
+                "Altid" kraever MFA ved hver ny session.
+            </p>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 14px 16px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border-radius: 12px; border: 1.5px solid #93c5fd;">
+                <input type="checkbox" id="mfa-parent-new-device" ${parentMfa ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer; accent-color: #3b82f6;">
+                <div style="flex: 1;">
+                    <strong style="color: #1e40af; font-size: 15px;">Kraev MFA for foraeldre ved ny enhed</strong>
+                    <div style="font-size: 13px; color: #6b7280; margin-top: 2px;">
+                        Foraeldre skal bruge authenticator-app forste gang de logger ind pa en ny enhed i foraeldreportalen.
+                    </div>
+                </div>
+            </label>
+        </div>
+
+        <button id="mfa-settings-save-btn" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer;">
+            Gem
+        </button>
+    `;
+
+    contentEl.innerHTML = '';
+    contentEl.appendChild(container);
+
+    const saveBtn = container.querySelector('#mfa-settings-save-btn');
+    const policySelect = container.querySelector('#mfa-admin-policy');
+    const parentCheckbox = container.querySelector('#mfa-parent-new-device');
+
+    saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Gemmer...';
+
+        const updates = {
+            admin_mfa_policy: policySelect.value,
+            parent_mfa_new_device: parentCheckbox.checked,
+        };
+
+        try {
+            const { error: saveError } = await supabaseClient
+                .from('institutions')
+                .update(updates)
+                .eq('id', institutionId);
+
+            if (saveError) {
+                showCustomAlert('Fejl', 'Kunne ikke gemme MFA-indstillinger.');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Gem';
+                return;
+            }
+
+            updateInstitutionCache(institutionId, updates);
+            settingsModalGoBack();
+        } catch (err) {
+            console.error('[mfa-settings] Error:', err);
             saveBtn.disabled = false;
             saveBtn.textContent = 'Gem';
         }
@@ -4155,6 +4433,100 @@ export function resumeSettingsReturn(modal) {
     monitorModalForSettingsReturn(modal);
 }
 
+// ── My Devices View (settings sub-view) ──
+
+async function openMyDevicesView() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    backdrop.style.display = 'flex';
+    titleEl.textContent = 'Mine enheder';
+    contentEl.innerHTML = '<p style="text-align:center;padding:20px;opacity:0.6;">Henter enheder...</p>';
+
+    const tokens = await getMyDeviceTokens();
+
+    contentEl.innerHTML = '';
+
+    if (!tokens.length) {
+        contentEl.innerHTML = '<p style="text-align:center;padding:20px;opacity:0.6;">Ingen registrerede enheder.</p>';
+        updateSettingsModalBackVisibility();
+        return;
+    }
+
+    tokens.forEach(token => {
+        const row = document.createElement('div');
+        row.className = 'settings-item-btn';
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;cursor:default;';
+
+        const lastUsed = token.last_used_at ? new Date(token.last_used_at).toLocaleDateString('da-DK') : 'Ukendt';
+        const created = token.created_at ? new Date(token.created_at).toLocaleDateString('da-DK') : '';
+        const expires = token.expires_at ? new Date(token.expires_at).toLocaleDateString('da-DK') : '';
+
+        row.innerHTML = `
+            <span class="settings-item-text" style="flex:1;">
+                <strong>${token.device_name || 'Ukendt enhed'}</strong>
+                <div style="font-size:12px;opacity:0.6;">
+                    Sidst brugt: ${lastUsed} · Oprettet: ${created} · Udløber: ${expires}
+                </div>
+            </span>
+        `;
+
+        const revokeBtn = document.createElement('button');
+        revokeBtn.textContent = 'Fjern';
+        revokeBtn.style.cssText = 'padding:6px 14px;border-radius:8px;border:none;background:var(--negative,#ef4444);color:white;cursor:pointer;font-size:13px;flex-shrink:0;margin-left:10px;';
+        revokeBtn.onclick = async () => {
+            revokeBtn.disabled = true;
+            revokeBtn.textContent = '...';
+            const result = await revokeDeviceToken(token.id);
+            if (result.success) {
+                logAuditEvent('DEVICE_REVOKED', {
+                    institutionId: getInstitutionId(),
+                    details: { device_name: token.device_name, token_id: token.id },
+                });
+                row.remove();
+                // Check if any tokens left
+                if (!contentEl.querySelector('.settings-item-btn')) {
+                    contentEl.innerHTML = '<p style="text-align:center;padding:20px;opacity:0.6;">Ingen registrerede enheder.</p>';
+                }
+            } else {
+                revokeBtn.disabled = false;
+                revokeBtn.textContent = 'Fjern';
+            }
+        };
+
+        row.appendChild(revokeBtn);
+        contentEl.appendChild(row);
+    });
+
+    // "Fjern alle" button
+    if (tokens.length > 1) {
+        const sep = document.createElement('div');
+        sep.style.cssText = 'border-top:1px solid rgba(255,255,255,0.08);margin:8px 0;';
+        contentEl.appendChild(sep);
+
+        const revokeAllBtn = document.createElement('button');
+        revokeAllBtn.className = 'settings-item-btn';
+        revokeAllBtn.innerHTML = '<strong style="color:var(--negative,#ef4444)">Fjern alle enheder</strong>';
+        revokeAllBtn.onclick = async () => {
+            revokeAllBtn.disabled = true;
+            revokeAllBtn.textContent = 'Fjerner...';
+            const result = await revokeAllDeviceTokens();
+            if (result.success) {
+                clearAllDeviceUsers();
+                contentEl.innerHTML = '<p style="text-align:center;padding:20px;opacity:0.6;">Alle enheder fjernet.</p>';
+            } else {
+                revokeAllBtn.disabled = false;
+                revokeAllBtn.innerHTML = '<strong style="color:var(--negative,#ef4444)">Fjern alle enheder</strong>';
+            }
+        };
+        contentEl.appendChild(revokeAllBtn);
+    }
+
+    updateSettingsModalBackVisibility();
+}
+
 export function openSettingsModal() {
     const clerkProfile = getCurrentClerk();
     const isAdmin = clerkProfile?.role === 'admin';
@@ -4279,6 +4651,10 @@ export function openSettingsModal() {
             window.__flangoOpenAvatarPicker?.() || notifyToolbarUser('Status-visningen er ikke klar.');
         }, 'settings-min-flango-status-btn', 'Skift avatar og visningsnavn.', 'Bruger.webp');
         addDiverseItem('Hjælp', () => openHelpManually(), 'settings-help-btn', 'Vejledning og tastaturgenveje.', 'tastaturgenveje.webp');
+        addDiverseItem('Mine enheder', () => {
+            settingsModalPushParent(showDiverseView);
+            openMyDevicesView();
+        }, 'settings-my-devices-btn', 'Se og fjern enheder der husker din login.', 'Gear.webp');
         addDiverseItem('Opdateringer', () => {
             settingsModalPushParent(showDiverseView);
             openUpdatesModal();
@@ -4522,7 +4898,14 @@ export function setupHelpButton() {
 }
 
 export function showScreen(screenId) {
-    const screens = ['screen-club-login', 'screen-locked', 'screen-admin-login', 'main-app'];
+    const screens = [
+        'screen-club-login', 'screen-locked',       // Legacy (kept for compat)
+        'screen-full-login', 'screen-device-unlock', // New login states
+        'screen-remember-device', 'screen-pin-locked',
+        'screen-force-password',
+        'screen-mfa-enroll', 'screen-mfa-challenge',
+        'screen-admin-login', 'main-app',
+    ];
     screens.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';

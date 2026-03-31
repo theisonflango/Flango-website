@@ -2,6 +2,18 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' fonts.googleapis.com;
+        font-src 'self' fonts.gstatic.com;
+        img-src 'self' data: blob: https://jbknjgbpghrbrstqwoxj.supabase.co https://api.qrserver.com;
+        connect-src 'self' https://jbknjgbpghrbrstqwoxj.supabase.co https://jbknjgbpghrbrstqwoxj.functions.supabase.co wss://jbknjgbpghrbrstqwoxj.supabase.co;
+        frame-src 'none';
+        object-src 'none';
+        base-uri 'self';
+    ">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <title>Flango Køkkenskærm</title>
     <link rel="icon" type="image/png" href="Icons/webp/Assets/FlangoFruitLogo.webp">
@@ -82,5 +94,6 @@
         }
     </script>
     <script type="module" src="js/restaurant/kitchen-view.js?v=2"></script>
+    <script src="js/ui/cookie-banner.js"></script>
 </body>
 </html>

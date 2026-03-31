@@ -2,6 +2,18 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' cdn.jsdelivr.net https://challenges.cloudflare.com;
+        style-src 'self' 'unsafe-inline' fonts.googleapis.com;
+        font-src 'self' fonts.gstatic.com;
+        img-src 'self' data: blob: https://jbknjgbpghrbrstqwoxj.supabase.co https://api.qrserver.com;
+        connect-src 'self' https://jbknjgbpghrbrstqwoxj.supabase.co https://jbknjgbpghrbrstqwoxj.functions.supabase.co wss://jbknjgbpghrbrstqwoxj.supabase.co https://challenges.cloudflare.com;
+        frame-src https://challenges.cloudflare.com;
+        object-src 'none';
+        base-uri 'self';
+    ">
     <!-- iOS PWA / Fullscreen support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,6 +23,7 @@
     <title>Flango 3.2</title>
     <link rel="icon" type="image/png" href="Icons/webp/Assets/FlangoFruitLogo.webp">
     
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&family=Nunito:wght@400;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
@@ -385,31 +398,15 @@
 </head>
 <body>
 
-    <!-- Præ-login: Klub login -->
-    <div id="screen-club-login" class="login-container" style="display: none;">
-        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
-        <div class="lock-icon">🏡</div>
-        <h1>Klub login</h1>
-        <label for="club-institution-select">Vælg institution</label>
-        <select id="club-institution-select"></select>
-        <label for="club-code-input">Klubbens login-kode</label>
-        <input type="password" id="club-code-input" placeholder="••••" maxlength="8" inputmode="numeric">
-        <button id="club-login-btn">Fortsæt</button>
-        <p id="club-login-error" class="login-error"></p>
-    </div>
-
-    <!-- Tilstand 1: Caféen er låst -->
-    <div id="screen-locked" class="login-container">
+    <!-- State 1: Fuldt login (email + kodeord) — ny enhed eller ingen registrerede admins -->
+    <div id="screen-full-login" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
         <div class="lock-icon">🔒</div>
-        <h1>Caféen er låst</h1>
-        <p id="active-club-label" class="login-subtitle"></p>
-        <label for="admin-user-select">Vælg administrator</label>
-        <select id="admin-user-select">
-            <option value="">— Vælg administrator —</option>
-        </select>
-        <input type="email" id="admin-email-input" placeholder="Admin e-mail" autocomplete="off">
-        <input type="password" id="admin-password-input" placeholder="Adgangskode" autocomplete="new-password">
+        <h1>Log ind</h1>
+        <label for="login-email-input">E-mail</label>
+        <input type="email" id="login-email-input" placeholder="din@email.dk" autocomplete="email">
+        <label for="login-password-input">Kodeord</label>
+        <input type="password" id="login-password-input" placeholder="Kodeord" autocomplete="current-password">
         <label id="restaurant-mode-login-label" class="restaurant-mode-login-toggle" style="display: none;">
             <input type="checkbox" id="restaurant-mode-login-checkbox">
             <div>
@@ -417,10 +414,102 @@
                 <small>Bordvalg og køkkennote vises ved hvert køb</small>
             </div>
         </label>
-        <button id="admin-login-btn">Lås op & Log ind</button>
-        <button id="developer-login-btn" class="secondary-action">Developer Login</button>
-        <button id="switch-club-btn" class="switch-club-btn" style="display: none;">Skift klub</button>
-        <p id="locked-screen-error" class="login-error"></p>
+        <div id="turnstile-full-login" class="cf-turnstile" data-sitekey="0x4AAAAAACyNOCuIOJjI0pUa" data-theme="dark" style="margin: 12px 0;"></div>
+        <button id="full-login-btn">Log ind</button>
+        <button id="full-login-back-btn" class="secondary-action" style="display: none;">← Tilbage til PIN-login</button>
+        <p id="full-login-error" class="login-error"></p>
+    </div>
+
+    <!-- State 2: Admin-picker + PIN (hurtig unlock — enhed har registrerede admins) -->
+    <div id="screen-device-unlock" class="login-container" style="display: none;">
+        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
+        <div class="lock-icon">🔑</div>
+        <h1>Vælg din profil</h1>
+        <label for="device-admin-select">Hvem er du?</label>
+        <select id="device-admin-select"></select>
+        <label for="device-pin-input">PIN-kode</label>
+        <div class="pin-input-group">
+            <input type="password" id="device-pin-input" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
+        </div>
+        <button id="device-unlock-btn">Lås op</button>
+        <button id="device-email-login-btn" class="secondary-action">Log ind med email</button>
+        <p id="device-unlock-error" class="login-error"></p>
+        <a id="device-remove-btn" href="#" style="display: block; margin-top: 16px; font-size: 12px; color: #999; text-align: center; text-decoration: underline;">Glem mig på denne enhed</a>
+    </div>
+
+    <!-- State 3: Husk enhed modal (efter fuldt login) -->
+    <div id="screen-remember-device" class="login-container" style="display: none;">
+        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
+        <div class="lock-icon">📱</div>
+        <h1>Vil du huske denne enhed?</h1>
+        <p class="login-subtitle">Du kan fremover logge ind med en hurtig 4-cifret PIN-kode.</p>
+        <label for="remember-pin-input">Vælg PIN-kode</label>
+        <input type="password" id="remember-pin-input" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
+        <label for="remember-pin-confirm">Gentag PIN-kode</label>
+        <input type="password" id="remember-pin-confirm" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
+        <div class="login-options" style="margin-top: 10px;">
+            <button id="remember-device-yes-btn">Husk mig på denne enhed</button>
+            <button id="remember-device-no-btn" class="secondary-action">Nej tak</button>
+        </div>
+        <p id="remember-device-error" class="login-error"></p>
+    </div>
+
+    <!-- State 4: PIN locked (3 fejlede forsøg — kræver fuldt login) -->
+    <div id="screen-pin-locked" class="login-container" style="display: none;">
+        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
+        <div class="lock-icon">🚫</div>
+        <h1>For mange forsøg</h1>
+        <p id="pin-locked-message" class="login-subtitle"></p>
+        <label for="locked-email-input">E-mail</label>
+        <input type="email" id="locked-email-input" placeholder="din@email.dk" autocomplete="email">
+        <label for="locked-password-input">Kodeord</label>
+        <input type="password" id="locked-password-input" placeholder="Kodeord" autocomplete="current-password">
+        <div id="turnstile-locked-login" class="cf-turnstile" data-sitekey="0x4AAAAAACyNOCuIOJjI0pUa" data-theme="dark" style="margin: 12px 0;"></div>
+        <button id="locked-login-btn">Log ind</button>
+        <button id="locked-back-btn" class="secondary-action">Tilbage til profiler</button>
+        <p id="locked-login-error" class="login-error"></p>
+    </div>
+
+    <!-- Tvunget kodeordsskift (efter login med svagt kodeord) -->
+    <div id="screen-force-password" class="login-container" style="display: none;">
+        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
+        <div class="lock-icon">🔐</div>
+        <h1>Skift din adgangskode</h1>
+        <p class="login-subtitle">Din adgangskode skal opdateres. Vælg en ny adgangskode med mindst 10 tegn (bogstaver + tal).</p>
+        <label for="force-pw-new">Ny adgangskode</label>
+        <input type="password" id="force-pw-new" placeholder="Min. 10 tegn" autocomplete="new-password">
+        <label for="force-pw-confirm">Gentag adgangskode</label>
+        <input type="password" id="force-pw-confirm" placeholder="Gentag" autocomplete="new-password">
+        <button id="force-pw-btn">Gem ny adgangskode</button>
+        <p id="force-pw-error" class="login-error"></p>
+    </div>
+
+    <!-- MFA: Enrollment (scan QR-kode) -->
+    <div id="screen-mfa-enroll" class="login-container" style="display: none;">
+        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
+        <div class="lock-icon">🔐</div>
+        <h1>Aktiver totrinsgodkendelse</h1>
+        <p class="login-subtitle">Scan QR-koden med din authenticator-app (Google Authenticator, Microsoft Authenticator o.l.) og indtast den 6-cifrede kode.</p>
+        <div id="mfa-qr-container" style="text-align: center; margin: 16px 0;">
+            <img id="mfa-qr-image" alt="QR-kode" style="width: 200px; height: 200px; border-radius: 12px; background: #fff;">
+        </div>
+        <p id="mfa-secret-display" style="font-size: 12px; color: #888; text-align: center; word-break: break-all;"></p>
+        <label for="mfa-enroll-code">6-cifret kode fra app</label>
+        <input type="text" id="mfa-enroll-code" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+        <button id="mfa-enroll-btn">Aktiver</button>
+        <p id="mfa-enroll-error" class="login-error"></p>
+    </div>
+
+    <!-- MFA: Challenge (indtast kode) -->
+    <div id="screen-mfa-challenge" class="login-container" style="display: none;">
+        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
+        <div class="lock-icon">🔐</div>
+        <h1>Totrinsgodkendelse</h1>
+        <p class="login-subtitle">Indtast den 6-cifrede kode fra din authenticator-app.</p>
+        <label for="mfa-challenge-code">6-cifret kode</label>
+        <input type="text" id="mfa-challenge-code" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+        <button id="mfa-challenge-btn">Bekraeft</button>
+        <p id="mfa-challenge-error" class="login-error"></p>
     </div>
 
     <!-- Tilstand 2: Admin er logget ind (Kontrolrum) -->
@@ -445,6 +534,8 @@
                 <button id="calculator-mode-toggle" class="header-action-btn calculator-toggle" title="Lommeregner-mode (frie beløb)" aria-label="Toggle lommeregner-mode" aria-pressed="false">🧮</button>
                 <button id="kitchen-btn" class="header-action-btn" title="Køkkenskærm" style="display:none;">🍽️</button>
                 <button id="toolbar-db-history-btn" class="header-action-btn" title="DB-Historik" style="display: none;"><img src="Icons/webp/Function/Gear2.webp" alt="DB-Historik"></button>
+                <span id="inactive-users-badge" style="display:none;cursor:pointer;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;min-width:22px;height:22px;border-radius:11px;align-items:center;justify-content:center;padding:0 5px;line-height:22px;margin-right:2px;" title="Inaktive brugere">0</span>
+                <button id="deletion-requests-btn" class="header-action-btn" title="Sletningsanmodninger" style="display:none;position:relative;">🗑️<span id="deletion-badge" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
                 <button id="toolbar-gear-btn" class="header-action-btn" title="Indstillinger"><img src="Icons/webp/Function/Gear2.webp" alt="Indstillinger"></button>
                 <button id="logout-btn" class="header-action-btn" title="Log ud"><img src="Icons/webp/Function/Logout.webp" alt="Log ud"></button>
                 <button id="flango-logo-button" class="header-action-btn" title="Hjælp"><img src="Icons/webp/Assets/FlangoFruitLogo.webp" alt="Flango Logo"></button>
@@ -1157,6 +1248,25 @@
         </div>
     </div>
 
+    <!-- Modal: Sletningsanmodninger (GDPR) -->
+    <div id="deletion-requests-modal" class="settings-modal-backdrop" style="display: none;">
+        <div class="settings-modal" style="max-width: 650px; max-height: 90vh; overflow-y: auto;">
+            <h2>🗑️ Sletningsanmodninger</h2>
+            <div id="deletion-requests-content" class="settings-modal-content" style="padding: 0 16px 16px;">
+                <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
+                    <div style="font-weight:700;margin-bottom:4px;">⚖️ GDPR-krav</div>
+                    <div style="font-size:13px;line-height:1.5;color:#78350f;">Forældre har ret til at anmode om sletning af deres barns data. Reagér venligst hurtigt på anmodninger. Overvej altid at kontakte forældrene via <strong>Aula</strong> (aula.dk) for at bekræfte anmodningen inden sletning.</div>
+                </div>
+                <div id="deletion-requests-list" style="display:flex;flex-direction:column;gap:12px;">
+                    <div style="text-align:center;padding:24px;color:#78716c;">Indlæser...</div>
+                </div>
+            </div>
+            <div class="settings-modal-actions">
+                <button id="deletion-requests-close" class="settings-button">Luk</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal #1: Optankning / Betalingsmetoder -->
     <div id="parent-portal-payment-methods-modal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 700px; max-height: 90vh;">
@@ -1842,6 +1952,7 @@
     <script type="module" src="js/admin/auto-import-users.js"></script>
     <script type="module" src="js/app.js?v=2"></script>
     <script type="module" src="js/restaurant/kitchen-inline-panel.js"></script>
+    <script src="js/ui/cookie-banner.js"></script>
 
 </body>
 </html>

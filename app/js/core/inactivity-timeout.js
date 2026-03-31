@@ -27,12 +27,15 @@ async function _onInactive() {
 
     stopInactivityTimeout();
 
-    // Log ud og genindlæs (viser login-skærm)
+    // Sign out the admin session
     try {
         await supabaseClient.auth.signOut();
     } catch (e) {
         console.error('[inactivity-timeout] signOut fejl:', e?.message);
     }
+
+    // Reload to show the appropriate login screen
+    // (app.js will check hasDeviceUsers and show admin-picker or full login)
     location.reload();
 }
 

@@ -165,6 +165,10 @@ async function saveInstitutionSettings(institutionId, settings) {
     'institution_contact_phone_enabled',
     'sugar_policy_info_text',
     'sugar_policy_info_enabled',
+    'admin_mfa_policy',
+    'parent_mfa_new_device',
+    'auto_delete_inactive_enabled',
+    'auto_delete_inactive_months',
   ];
 
   const filtered = {};

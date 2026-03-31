@@ -1,5 +1,6 @@
 import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
 import { refetchUserBalance } from '../core/data-refetch.js';
+import { logAuditEvent } from '../core/audit-events.js';
 
 function extractBalanceFromRpcData(data) {
     if (data == null) return null;
@@ -170,8 +171,42 @@ export function createAdminUserActions(options = {}) {
             return;
         }
 
-        const { error } = await supabaseClient.rpc('delete_user_safely', { p_user_profile_id: userId });
+        // Gem Storage-sti inden sletning (CASCADE fjerner rækken)
+        const profilePicPath = user.profile_picture_url && !user.profile_picture_url.startsWith('http')
+            ? user.profile_picture_url
+            : null;
+
+        const { data: receipt, error } = await supabaseClient.rpc('delete_user_safely', { p_user_profile_id: userId });
         if (error) return showAlert(`Fejl: ${error.message}`);
+
+        // Opryd profilbillede fra Storage (fire-and-forget)
+        if (profilePicPath) {
+            supabaseClient.storage.from('profile-pictures').remove([profilePicPath])
+                .then(({ error: storageErr }) => {
+                    if (storageErr) console.warn('[handleDeleteUser] Storage cleanup failed:', storageErr.message);
+                    else console.log('[handleDeleteUser] Profile picture cleaned from Storage:', profilePicPath);
+                });
+        }
+
+        // Vis sletningskvittering
+        if (receipt?.rows_deleted) {
+            const rd = receipt.rows_deleted;
+            const salesCount = rd.sales_as_customer || 0;
+            const eventsCount = rd.events_referenced || 0;
+            const parts = [`${user.name} slettet.`];
+            if (salesCount > 0) parts.push(`${salesCount} salg`);
+            if (eventsCount > 0) parts.push(`${eventsCount} events`);
+            if (rd.user_daily_stats > 0) parts.push(`${rd.user_daily_stats} statistik-rækker`);
+            showAlert(parts.join(' · '));
+            console.log('[handleDeleteUser] Deletion receipt:', receipt);
+        }
+
+        logAuditEvent('USER_DELETED', {
+            institutionId: adminProfile?.institution_id,
+            adminUserId: adminProfile?.user_id,
+            targetUserId: userId,
+            details: { deleted_name: user.name, deleted_role: user.role, deleted_number: user.number, storage_cleaned: !!profilePicPath, receipt },
+        });
 
         const nextUsers = users.filter(u => u.id !== userId);
         setAllUsers(nextUsers);

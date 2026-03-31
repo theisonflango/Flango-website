@@ -418,5 +418,53 @@
     async getChildSugarPolicy(childId) {
       return invokeFunction('get-child-sugar-policy', { child_id: childId });
     },
+
+    // ─── Privacy & Rights (GDPR) ───
+
+    /** Get complete data export for a child */
+    async getDataExport(childId) {
+      return rpcCall('get_child_data_export', { p_child_id: childId });
+    },
+
+    /** Get deletion request status for a child */
+    async getDeletionStatus(childId) {
+      return rpcCall('get_parent_deletion_status', { p_child_id: childId });
+    },
+
+    /** Request deletion of a child's data */
+    async requestDeletion(childId, reason) {
+      return rpcCall('request_parent_deletion', {
+        p_child_id: childId,
+        p_reason: reason || null,
+      });
+    },
+
+    /** Get linked parents for a child */
+    async getLinkedParents(childId) {
+      return rpcCall('get_linked_parents_for_child', { p_child_id: childId });
+    },
+
+    /** Update child's display name */
+    async updateChildName(childId, newName) {
+      return rpcCall('update_child_name_by_parent', {
+        p_child_id: childId,
+        p_new_name: newName,
+      });
+    },
+
+    /** Delete parent's own account */
+    async deleteParentAccount() {
+      return invokeFunction('delete-parent-account');
+    },
+
+    // ─── Terms Acceptance ───
+
+    /** Accept terms for a child */
+    async acceptTerms(childId, termsVersion) {
+      return rpcCall('accept_parent_terms', {
+        p_child_id: childId,
+        p_terms_version: termsVersion || 1,
+      });
+    },
   };
 })();

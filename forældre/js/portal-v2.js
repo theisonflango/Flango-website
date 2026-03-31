@@ -25,6 +25,22 @@
   let featureFlags = {};      // from institution
   let customerAvgSpend = null; // { avg_today, avg_week, avg_month }
 
+  // ─── Turnstile verification helper ───
+  async function verifyTurnstileToken(widgetId) {
+    const token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
+    if (!token) return { ok: false, error: 'Bekræft venligst at du ikke er en robot.' };
+    try {
+      const res = await window.portalSupabase.functions.invoke('verify-turnstile', { body: { token } });
+      if (res.error || !res.data?.success) {
+        if (typeof turnstile !== 'undefined') turnstile.reset(widgetId);
+        return { ok: false, error: 'Sikkerhedsverifikation fejlede. Prøv igen.' };
+      }
+      return { ok: true };
+    } catch {
+      return { ok: true }; // Fail-open
+    }
+  }
+
   // ═══════════════════════════════════════
   //  INIT
   // ═══════════════════════════════════════
@@ -62,6 +78,15 @@
         renderNoChildren();
         return;
       }
+
+      // Retrospektiv vilkårsaccept: tjek om nogen børn mangler accept
+      const unaccepted = children.filter(c => !c.terms_accepted_at);
+      if (unaccepted.length > 0) {
+        await showTermsAcceptFlow(unaccepted);
+        // Refresh children after accept
+        children = await API.getChildren();
+      }
+
       selectedChild = children[0];
       await loadChildData();
       renderApp();
@@ -278,6 +303,7 @@
               <label for="signup-password-confirm">Bekræft adgangskode</label>
               <input type="password" id="signup-password-confirm" class="input-field" placeholder="Gentag adgangskode" minlength="6" autocomplete="new-password">
             </div>
+            <div id="turnstile-portal-signup" class="cf-turnstile" data-sitekey="0x4AAAAAACyNOCuIOJjI0pUa" data-theme="light" style="margin-top:var(--s3)"></div>
             <button class="save-btn full" id="signup-email-btn" style="margin-top:var(--s3)">Opret med e-mail</button>
             <div class="login-links">
               <a href="#" id="back-to-code-step">Tilbage</a>
@@ -338,7 +364,13 @@
               <label for="login-password">Adgangskode</label>
               <input type="password" id="login-password" class="input-field" placeholder="Din adgangskode" autocomplete="current-password">
             </div>
-            <button class="save-btn full" id="login-btn" style="margin-top:var(--s4)">Log ind</button>
+            <label style="display:flex;align-items:center;gap:var(--s2);margin-top:var(--s3);cursor:pointer;font-size:13px;color:var(--ink-soft)">
+              <input type="checkbox" id="login-remember-me" checked style="width:18px;height:18px;cursor:pointer;accent-color:var(--flango)">
+              Husk mig på denne enhed
+            </label>
+            <div style="font-size:11px;color:var(--ink-muted);margin-top:2px;margin-left:26px">Du kan altid logge ud via Profil-menuen</div>
+            <div id="turnstile-portal-login" class="cf-turnstile" data-sitekey="0x4AAAAAACyNOCuIOJjI0pUa" data-theme="light" style="margin-top:var(--s3)"></div>
+            <button class="save-btn full" id="login-btn" style="margin-top:var(--s3)">Log ind</button>
             <div class="login-links">
               <a href="#" id="forgot-link">Glemt adgangskode?</a>
               <a href="#" id="goto-signup-link" class="login-link-bold">Opret konto</a>
@@ -371,8 +403,23 @@
     btn.textContent = 'Logger ind...';
     errorEl.classList.remove('visible');
 
+    // Turnstile verifikation
+    const turnstileCheck = await verifyTurnstileToken('turnstile-portal-login');
+    if (!turnstileCheck.ok) {
+      errorEl.textContent = turnstileCheck.error;
+      errorEl.classList.add('visible');
+      btn.disabled = false;
+      btn.textContent = 'Log ind';
+      return;
+    }
+
     try {
       await API.signIn(email, password);
+      // "Husk mig": Hvis ikke valgt, marker at sessionen skal ryddes ved lukning
+      const rememberMe = document.getElementById('login-remember-me');
+      if (rememberMe && !rememberMe.checked) {
+        window.__flangoForgetOnClose = true;
+      }
       currentSession = await API.getSession();
       await loadChildren();
     } catch (err) {
@@ -398,6 +445,151 @@
       }
     }
   }
+
+  // ─── Vilkårsaccept (terms) ───
+
+  const CURRENT_TERMS_VERSION = 1;
+
+  function renderPrivacyInfoText() {
+    const instName = getInstitutionName() || 'din institution';
+    return `
+      <p style="margin:0 0 10px"><strong>Hvad er Flango?</strong><br>Flango er det cafésystem som ${esc(instName)} bruger til cafédriften. Dit barn handler i caféen med en digital saldo i stedet for kontanter.</p>
+      <p style="margin:0 0 10px"><strong>Hvilke data har vi?</strong><br>Barnets navn og kontonummer i caféen, saldo og købshistorik, eventuelle kostindstillinger du har sat (allergener, sukkerpolitik) og forbrugsgrænser du har valgt.</p>
+      <p style="margin:0 0 10px"><strong>Hvem har adgang?</strong><br>Du som forælder (via denne portal), institutionens personale (via caféappen) og Flango som databehandler (teknisk drift). Kommunen er dataansvarlig.</p>
+      <p style="margin:0 0 10px"><strong>Hvor opbevares data?</strong><br>Alle data opbevares i EU (Irland) hos Supabase. Al kommunikation er krypteret. Ingen data deles med tredjeparter.</p>
+      <p style="margin:0 0 10px"><strong>Hvor længe opbevares data?</strong><br>Købshistorik og brugerdata slettes automatisk efter 6 måneders inaktivitet. Systemlogs opbevares i 24 måneder og anonymiseres derefter.</p>
+      <p style="margin:0"><strong>Dine rettigheder</strong><br>Som forælder har du ret til indsigt, berigtigelse, sletning, dataportabilitet og indsigelse — alt tilgængeligt via "Privatliv & Rettigheder" i portalen.</p>`;
+  }
+
+  function renderTermsContent(childName) {
+    return `
+      <div style="line-height:1.7;color:var(--ink-soft);margin-bottom:var(--s4)">
+        <p style="margin:0 0 var(--s3);font-weight:600;color:var(--ink)">Ved at tilknytte ${esc(childName || 'dit barn')} bekræfter du at du er informeret om at:</p>
+        <ul style="margin:0;padding-left:20px;list-style:disc">
+          <li>Barnets navn og saldo vises på caféskærmen ved køb</li>
+          <li>Historik for køb, indbetalinger og tilmeldinger opbevares</li>
+          <li>Alle data opbevares krypteret i EU (Irland) hos Supabase</li>
+          <li>Du kan til enhver tid se, eksportere og anmode om sletning af data via "Privatliv & Rettigheder" i portalen</li>
+        </ul>
+      </div>
+      <details style="margin-bottom:var(--s4);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden;">
+        <summary style="padding:10px 14px;cursor:pointer;font-weight:600;font-size:13px;color:var(--info);background:var(--surface-sunken);user-select:none;list-style:none;display:flex;align-items:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform 0.2s"><polyline points="9 18 15 12 9 6"/></svg>
+          Læs mere om hvordan vi behandler data
+        </summary>
+        <div style="padding:14px;font-size:13px;line-height:1.6;color:var(--ink-soft);border-top:1px solid var(--border);">
+          ${renderPrivacyInfoText()}
+        </div>
+      </details>
+      <a href="https://flango.dk/privatlivspolitik/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;color:var(--info);font-weight:600;text-decoration:none;margin-bottom:var(--s4);font-size:13px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Læs den fulde privatlivspolitik
+      </a>`;
+  }
+
+  /**
+   * Blokerende vilkårsaccept for børn der mangler accept.
+   * Viser en modal pr. barn. Returnerer når alle er accepteret.
+   */
+  async function showTermsAcceptFlow(unacceptedChildren) {
+    for (const child of unacceptedChildren) {
+      await new Promise((resolve) => {
+        const backdrop = document.createElement('div');
+        backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+        const box = document.createElement('div');
+        box.style.cssText = 'background:#fff;border-radius:16px;padding:28px;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;';
+        box.innerHTML = `
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:var(--s4)">
+            <div style="width:44px;height:44px;border-radius:12px;background:var(--flango-light);display:flex;align-items:center;justify-content:center;font-size:22px">🛡️</div>
+            <div>
+              <div style="font-weight:700;font-size:17px;color:var(--ink)">Vilkår for brug</div>
+              <div style="font-size:13px;color:var(--ink-muted)">${esc(child.child_name)}</div>
+            </div>
+          </div>
+          ${renderTermsContent(child.child_name)}
+          <label style="display:flex;align-items:center;gap:var(--s2);cursor:pointer;margin-bottom:var(--s4);padding:12px;background:var(--surface-sunken);border-radius:var(--r-sm)">
+            <input type="checkbox" id="terms-accept-cb" style="width:20px;height:20px;cursor:pointer;accent-color:var(--flango)">
+            <span style="font-weight:600;font-size:14px">Jeg accepterer vilkårene</span>
+          </label>
+          <button id="terms-accept-btn" disabled style="width:100%;padding:14px;border:none;border-radius:var(--r-sm);background:var(--flango);color:#fff;font-size:15px;font-weight:700;cursor:pointer;opacity:0.5;transition:opacity 0.2s">Fortsæt</button>
+        `;
+        backdrop.appendChild(box);
+        document.body.appendChild(backdrop);
+
+        const cb = box.querySelector('#terms-accept-cb');
+        const btn = box.querySelector('#terms-accept-btn');
+        cb.addEventListener('change', () => {
+          btn.disabled = !cb.checked;
+          btn.style.opacity = cb.checked ? '1' : '0.5';
+        });
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          btn.textContent = 'Gemmer...';
+          try {
+            await API.acceptTerms(child.child_id, CURRENT_TERMS_VERSION);
+            backdrop.remove();
+            resolve();
+          } catch (err) {
+            console.error('[Terms] Accept error:', err);
+            btn.textContent = 'Fejl — prøv igen';
+            btn.disabled = false;
+            btn.style.opacity = '1';
+          }
+        });
+      });
+    }
+  }
+
+  /**
+   * Vis vilkårsaccept i tilknytningsflowet.
+   * Returnerer true hvis accepteret, false hvis annulleret.
+   */
+  function showTermsAcceptForLinking(childName) {
+    return new Promise((resolve) => {
+      const backdrop = document.createElement('div');
+      backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+      const box = document.createElement('div');
+      box.style.cssText = 'background:#fff;border-radius:16px;padding:28px;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;';
+      box.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:var(--s4)">
+          <div style="width:44px;height:44px;border-radius:12px;background:var(--flango-light);display:flex;align-items:center;justify-content:center;font-size:22px">🛡️</div>
+          <div>
+            <div style="font-weight:700;font-size:17px;color:var(--ink)">Vilkår for brug</div>
+            <div style="font-size:13px;color:var(--ink-muted)">Tilknyt ${esc(childName || 'barn')}</div>
+          </div>
+        </div>
+        ${renderTermsContent(childName)}
+        <label style="display:flex;align-items:center;gap:var(--s2);cursor:pointer;margin-bottom:var(--s4);padding:12px;background:var(--surface-sunken);border-radius:var(--r-sm)">
+          <input type="checkbox" id="terms-link-cb" style="width:20px;height:20px;cursor:pointer;accent-color:var(--flango)">
+          <span style="font-weight:600;font-size:14px">Jeg accepterer vilkårene</span>
+        </label>
+        <div style="display:flex;gap:var(--s2)">
+          <button id="terms-link-cancel" style="flex:1;padding:12px;border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;font-size:14px;cursor:pointer;">Annuller</button>
+          <button id="terms-link-accept" disabled style="flex:1;padding:12px;border:none;border-radius:var(--r-sm);background:var(--flango);color:#fff;font-size:14px;font-weight:700;cursor:pointer;opacity:0.5;transition:opacity 0.2s">Tilknyt barn</button>
+        </div>
+      `;
+      backdrop.appendChild(box);
+      document.body.appendChild(backdrop);
+
+      const cb = box.querySelector('#terms-link-cb');
+      const acceptBtn = box.querySelector('#terms-link-accept');
+      const cancelBtn = box.querySelector('#terms-link-cancel');
+      cb.addEventListener('change', () => {
+        acceptBtn.disabled = !cb.checked;
+        acceptBtn.style.opacity = cb.checked ? '1' : '0.5';
+      });
+      acceptBtn.addEventListener('click', () => { backdrop.remove(); resolve(true); });
+      cancelBtn.addEventListener('click', () => { backdrop.remove(); resolve(false); });
+      backdrop.addEventListener('click', (e) => { if (e.target === backdrop) { backdrop.remove(); resolve(false); } });
+    });
+  }
+
+  // ─── "Husk mig" — ryd session ved lukning hvis ikke valgt ───
+  window.addEventListener('beforeunload', () => {
+    if (window.__flangoForgetOnClose) {
+      localStorage.removeItem('sb-jbknjgbpghrbrstqwoxj-auth-token');
+    }
+  });
 
   // ─── Forgot password handler ───
   async function handleForgotSubmit() {
@@ -583,6 +775,16 @@
     btn.disabled = true;
     btn.textContent = 'Opretter konto...';
 
+    // Turnstile verifikation
+    const turnstileCheck = await verifyTurnstileToken('turnstile-portal-signup');
+    if (!turnstileCheck.ok) {
+      errorEl.textContent = turnstileCheck.error;
+      errorEl.classList.add('visible');
+      btn.disabled = false;
+      btn.textContent = 'Opret med e-mail';
+      return;
+    }
+
     try {
       // Create auth user
       let signUpData;
@@ -614,6 +816,14 @@
         return;
       }
 
+      // Vis vilkårsaccept FØR linking
+      const termsAccepted = await showTermsAcceptForLinking(signupVerifiedData.child_name || 'dit barn');
+      if (!termsAccepted) {
+        btn.disabled = false;
+        btn.textContent = 'Opret med e-mail';
+        return;
+      }
+
       // Link child(ren) to parent
       btn.textContent = 'Tilknytter barn...';
       try {
@@ -622,6 +832,13 @@
         } else {
           await API.linkChildByPortalCode(signupVerifiedData.code);
         }
+        // Acceptér vilkår for nyligt tilknyttede børn
+        try {
+          const refreshed = await API.getChildren();
+          for (const c of refreshed.filter(ch => !ch.terms_accepted_at)) {
+            await API.acceptTerms(c.child_id, CURRENT_TERMS_VERSION);
+          }
+        } catch (_e) { /* non-critical */ }
       } catch (linkErr) {
         console.error('[signup] Link error:', linkErr);
         // Fall through — attempt to continue
@@ -662,6 +879,7 @@
       } else {
         await API.linkChildByPortalCode(pending.code);
       }
+      // Vilkårsaccept håndteres retrospektivt i loadChildren()
       console.log('[signup] Child linked successfully after redirect');
     } catch (err) {
       console.error('[signup] Pending link error:', err);
@@ -783,7 +1001,7 @@
           <div style="padding:0 var(--s5);margin-bottom:var(--s2)"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted)">Funktioner</span></div>
           <nav class="sidebar-nav" id="sidebar-nav"></nav>
           <div class="sidebar-footer">
-            <div class="sidebar-footer-btn" id="sidebar-logout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Log ud</div>
+            <div class="sidebar-footer-btn" id="sidebar-logout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Log ud af denne enhed</div>
           </div>
         </aside>
 
@@ -866,11 +1084,23 @@
           <div class="tab-view" id="tab-profile">
             <div class="view-header mobile-only"><div class="view-title">Profil</div><div class="view-subtitle">Indstillinger & notifikationer</div></div>
             ${renderNotificationsSection()}
-            ${renderProfilePictureSection()}
             ${renderInviteParentSection()}
             ${renderFeedbackSection()}
             ${renderPinSection()}
             <a href="index.html" class="v1-link">Vis original portal</a>
+          </div>
+
+          <!-- TAB: PRIVACY & RIGHTS -->
+          <div class="tab-view" id="tab-privacy">
+            <div class="view-header mobile-only"><div class="view-title">Privatliv & Rettigheder</div><div class="view-subtitle">GDPR og persondata</div></div>
+            ${renderPrivacyPolicySection()}
+            ${renderChildNameSection()}
+            ${renderProfilePictureSection()}
+            ${renderDataInsightSection()}
+            ${renderLinkedParentsSection()}
+            ${renderDeleteChildDataSection()}
+            ${renderDeleteParentAccountSection()}
+            ${renderContactSection()}
           </div>
 
         </main>
@@ -882,6 +1112,7 @@
           <button class="bnav-item" data-tab="tab-limits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span class="bnav-label">Grænser</span></button>
           ${showScreentime ? '<button class="bnav-item" data-tab="tab-screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span class="bnav-label">Skærmtid</span></button>' : ''}
           <button class="bnav-item" data-tab="tab-profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="bnav-label">Profil</span></button>
+          <button class="bnav-item" data-tab="tab-privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span class="bnav-label">Privatliv</span></button>
         </nav>
 
       </div>
@@ -1340,6 +1571,192 @@
       </div>`;
   }
 
+  // ═══════════════════════════════════════
+  //  RENDER: PRIVACY & RIGHTS SECTIONS
+  // ═══════════════════════════════════════
+
+  function renderPrivacyPolicySection() {
+    const instName = getInstitutionName() || 'din institution';
+    return `
+      <div class="section" id="section-privacy-policy">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:#dbeafe">📄</div><div><div class="section-title">Privatlivspolitik</div><div class="section-subtitle">Hvordan vi behandler data</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div style="line-height:1.7;color:var(--ink-soft)">
+            ${renderPrivacyInfoText()}
+          </div>
+          <a href="https://flango.dk/privatlivspolitik/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:var(--s3);color:var(--info);font-weight:600;text-decoration:none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Læs den fulde privatlivspolitik
+          </a>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderChildNameSection() {
+    const name = getChildName();
+    return `
+      <div class="section" id="section-child-name">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:#fef3c7">✏️</div><div><div class="section-title">Barnets navn</div><div class="section-subtitle">Rediger visningsnavn</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <p style="margin:0 0 var(--s3);color:var(--ink-soft);line-height:1.6">Barnets navn bruges i caféen så ekspedienten kan sikre at det rigtige barn får sit køb. Du kan forkorte eller ændre navnet, fx til kun fornavn eller kaldenavn. Navnet skal stadig være genkendeligt for personalet.</p>
+          <div style="display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap">
+            <div style="font-weight:600;font-size:16px" id="privacy-child-name-display">${esc(name)}</div>
+            <button class="save-btn" id="privacy-edit-name-btn" style="padding:6px 14px;font-size:13px">Rediger</button>
+          </div>
+          <div id="privacy-name-edit-form" style="display:none;margin-top:var(--s3)">
+            <div style="display:flex;gap:var(--s2);align-items:center">
+              <input type="text" id="privacy-name-input" value="${esc(name)}" maxlength="50" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:14px;outline:none" />
+              <button class="save-btn" id="privacy-save-name-btn" style="padding:8px 16px;font-size:13px">Gem</button>
+              <button class="save-btn" id="privacy-cancel-name-btn" style="padding:8px 16px;font-size:13px;background:var(--surface-sunken);color:var(--ink)">Annuller</button>
+            </div>
+            <div id="privacy-name-error" style="display:none;color:var(--negative,#dc2626);font-size:12px;margin-top:var(--s1)"></div>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderDataInsightSection() {
+    return `
+      <div class="section" id="section-data-insight">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:#d1fae5">📊</div><div><div class="section-title">Hvilke data har vi?</div><div class="section-subtitle">Se og download data</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div id="privacy-data-content">
+            <p style="color:var(--ink-soft);margin:0 0 var(--s3)">Klik for at indlæse alle data vi har om dit barn.</p>
+            <button class="save-btn" id="privacy-load-data-btn">Vis data</button>
+          </div>
+          <div id="privacy-data-loading" style="display:none;text-align:center;padding:var(--s6)">
+            <div style="color:var(--ink-muted)">Indlæser data...</div>
+          </div>
+          <div id="privacy-data-result" style="display:none"></div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderLinkedParentsSection() {
+    return `
+      <div class="section" id="section-linked-parents">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:#ede9fe">👥</div><div><div class="section-title">Tilknyttede forældre</div><div class="section-subtitle">Hvem har adgang</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div id="privacy-linked-parents-content">
+            <p style="color:var(--ink-soft);margin:0">Indlæser...</p>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderDeleteChildDataSection() {
+    const name = getChildName();
+    return `
+      <div class="section" id="section-delete-child">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:#fee2e2">🗑️</div><div><div class="section-title">Slet barnets data</div><div class="section-subtitle">Anmod om sletning</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div id="privacy-deletion-status" style="display:none"></div>
+          <div id="privacy-deletion-form">
+            <div class="hint-box orange" style="margin-bottom:var(--s3)">
+              <span class="hint-icon">&#9888;&#65039;</span>
+              <span>
+                <strong>Hvad der sker ved sletning:</strong><br>
+                &bull; Institutionens personale modtager din anmodning<br>
+                &bull; Personalet behandler anmodningen inden for 30 dage (jf. GDPR)<br>
+                &bull; Alle data slettes permanent: saldo, købshistorik, indstillinger<br>
+                &bull; Sletningen kan ikke fortrydes<br>
+                &bull; Eventuel restsaldo kan desværre ikke refunderes
+              </span>
+            </div>
+            <p style="color:var(--ink-soft);margin:0 0 var(--s3)">Tip: Download en kopi af dine data først (se sektionen ovenfor).</p>
+            <button class="save-btn" id="privacy-request-deletion-btn" style="background:var(--negative,#dc2626);color:#fff">Anmod om sletning af data for ${esc(name)}</button>
+          </div>
+          <div id="privacy-deletion-confirm" style="display:none">
+            <p style="margin:0 0 var(--s2);font-weight:600">Er du sikker? Skriv barnets navn for at bekræfte:</p>
+            <div style="display:flex;gap:var(--s2);align-items:center">
+              <input type="text" id="privacy-deletion-name-input" placeholder="${esc(name)}" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:14px" />
+              <button class="save-btn" id="privacy-confirm-deletion-btn" style="background:var(--negative,#dc2626);color:#fff;padding:8px 16px">Bekræft</button>
+              <button class="save-btn" id="privacy-cancel-deletion-btn" style="padding:8px 16px;background:var(--surface-sunken);color:var(--ink)">Annuller</button>
+            </div>
+            <div id="privacy-deletion-error" style="display:none;color:var(--negative,#dc2626);font-size:12px;margin-top:var(--s1)"></div>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderDeleteParentAccountSection() {
+    let parentEmail = '';
+    try { parentEmail = currentSession?.user?.email || ''; } catch (_e) {}
+    return `
+      <div class="section" id="section-delete-account">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:#fee2e2">❌</div><div><div class="section-title">Slet din forældrekonto</div><div class="section-subtitle">Fjern din adgang til portalen</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div class="hint-box orange" style="margin-bottom:var(--s3)">
+            <span class="hint-icon">&#9888;&#65039;</span>
+            <span>
+              <strong>Hvad der sker:</strong><br>
+              &bull; Din konto (${esc(parentEmail)}) slettes permanent<br>
+              &bull; Du mister adgang til forældreportalen<br>
+              &bull; Dine børns data påvirkes IKKE &mdash; de forbliver i systemet<br>
+              &bull; Andre forældrekonti tilknyttet dine børn påvirkes ikke
+            </span>
+          </div>
+          <div id="privacy-delete-account-form">
+            <button class="save-btn" id="privacy-delete-account-btn" style="background:var(--negative,#dc2626);color:#fff">Slet min konto permanent</button>
+          </div>
+          <div id="privacy-delete-account-confirm" style="display:none">
+            <p style="margin:0 0 var(--s2);font-weight:600">Er du sikker? Skriv din e-mailadresse for at bekraefte:</p>
+            <div style="display:flex;gap:var(--s2);align-items:center">
+              <input type="text" id="privacy-delete-account-email-input" placeholder="${esc(parentEmail)}" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:14px" />
+              <button class="save-btn" id="privacy-confirm-delete-account-btn" style="background:var(--negative,#dc2626);color:#fff;padding:8px 16px">Bekræft</button>
+              <button class="save-btn" id="privacy-cancel-delete-account-btn" style="padding:8px 16px;background:var(--surface-sunken);color:var(--ink)">Annuller</button>
+            </div>
+            <div id="privacy-delete-account-error" style="display:none;color:var(--negative,#dc2626);font-size:12px;margin-top:var(--s1)"></div>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function renderContactSection() {
+    const instName = getInstitutionName() || 'din institution';
+    return `
+      <div class="section" id="section-contact">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:#dbeafe">📬</div><div><div class="section-title">Kontakt</div><div class="section-subtitle">Vedr. persondata</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div style="line-height:1.7;color:var(--ink-soft)">
+            <p style="margin:0 0 var(--s4)">Har du spørgsmål om hvordan dit barns data behandles, eller ønsker du at udøve dine rettigheder, er du altid velkommen til at kontakte os.</p>
+            <div style="background:var(--surface-sunken);border-radius:var(--r-md);padding:var(--s4);margin-bottom:var(--s3)">
+              <div style="font-weight:700;margin-bottom:var(--s1)">Institutionen (dataansvarlig)</div>
+              <div>${esc(instName)}</div>
+              <div style="font-size:13px;color:var(--ink-muted);margin-top:var(--s1)">Kontakt institutionens personale direkte &mdash; de kan hjælpe med de fleste spørgsmål om dit barns data i Flango.</div>
+            </div>
+            <div style="background:var(--surface-sunken);border-radius:var(--r-md);padding:var(--s4)">
+              <div style="font-weight:700;margin-bottom:var(--s1)">Flango (databehandler)</div>
+              <div>Flango &middot; CVR 34360642</div>
+              <div><a href="mailto:kontakt@flango.dk" style="color:var(--info)">kontakt@flango.dk</a></div>
+              <div style="font-size:13px;color:var(--ink-muted);margin-top:var(--s1)">Vi behandler data på vegne af institutionen og kommunen. Skriv til os hvis du har tekniske spørgsmål.</div>
+            </div>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
   function renderProfilePictureSection() {
     // Show if admin has enabled the profile picture section in portal sidebar
     if (featureFlags?.parent_portal_profile_pictures === false) return '';
@@ -1357,6 +1774,22 @@
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${(() => {
+            const picUrl = childData?.profile_picture_url;
+            const childName = getChildName();
+            const initials = childName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            if (picUrl) {
+              return `<div style="display:flex;align-items:center;gap:var(--s4);margin-bottom:var(--s4)">
+                <img src="${esc(picUrl)}" alt="Profilbillede" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--border)" />
+                <div><div style="font-weight:600">${esc(childName)}</div><div style="font-size:12px;color:var(--ink-muted)">Aktuelt profilbillede</div></div>
+              </div>`;
+            } else {
+              return `<div style="display:flex;align-items:center;gap:var(--s4);margin-bottom:var(--s4)">
+                <div style="width:80px;height:80px;border-radius:50%;background:var(--flango-light);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:var(--flango-dark);border:2px solid var(--border)">${initials}</div>
+                <div><div style="font-weight:600">${esc(childName)}</div><div style="font-size:12px;color:var(--ink-muted)">Ingen profilbillede (standard-avatar)</div></div>
+              </div>`;
+            }
+          })()}
           <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Institutionen kan bruge profilbilleder i caféen for at bekræfte dit barns identitet ved køb. Billedet er kun synligt for børn og personale i denne institution.</span></div>
 
           <div class="setting-row" style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:var(--s3);margin-bottom:var(--s2)">
@@ -1699,15 +2132,21 @@
         { id: 'section-st-chart', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label: 'Spilletidsoversigt' },
       );
     }
-    if (featureFlags?.parent_portal_profile_pictures !== false) {
-      items.push(
-        { id: 'section-profile-picture', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>', label: 'Profilbilleder' },
-      );
-    }
     items.push(
       { id: 'section-notifications', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Notifikationer' },
       { id: 'section-feedback', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>', label: 'Feedback' },
       { id: 'section-pin', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>', label: 'Adgangskode' },
+    );
+    // Privacy & Rights sections
+    items.push(
+      { id: 'section-privacy-policy', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', label: 'Privatlivspolitik' },
+      { id: 'section-child-name', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', label: 'Barnets navn' },
+      { id: 'section-profile-picture', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>', label: 'Profilbilleder' },
+      { id: 'section-data-insight', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', label: 'Dataindsigt' },
+      { id: 'section-linked-parents', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label: 'Forældrekonti' },
+      { id: 'section-delete-child', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>', label: 'Slet data' },
+      { id: 'section-delete-account', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>', label: 'Slet konto' },
+      { id: 'section-contact', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Kontakt' },
     );
 
     nav.innerHTML = items.map((item, i) =>
@@ -1846,6 +2285,7 @@
     });
 
     // Desktop sidebar nav
+    const privacySections = ['section-privacy-policy','section-child-name','section-profile-picture','section-data-insight','section-linked-parents','section-delete-child','section-delete-account','section-contact'];
     document.querySelectorAll('.sidebar-nav-item[data-scroll]').forEach(item => {
       item.addEventListener('click', () => {
         document.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
@@ -1854,7 +2294,13 @@
         if (target === 'section-balance') {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
-          scrollToSection(target);
+          // On mobile, switch to the correct tab first
+          if (isMobile() && privacySections.includes(target)) {
+            switchTab('tab-privacy');
+            requestAnimationFrame(() => { setTimeout(() => scrollToSection(target, true), 80); });
+          } else {
+            scrollToSection(target);
+          }
         }
       });
     });
@@ -1959,6 +2405,9 @@
     });
     if (ppAula) ppAula.addEventListener('change', () => saveProfilePictureConsent());
     if (ppCamera) ppCamera.addEventListener('change', () => saveProfilePictureConsent());
+
+    // ─── Privacy & Rights event listeners ───
+    bindPrivacyEventListeners();
 
     // Notification toggles
     const notifZero = document.getElementById('notif-zero');
@@ -2558,6 +3007,362 @@
     }
   }
 
+  // ═══════════════════════════════════════
+  //  PRIVACY & RIGHTS — HANDLERS
+  // ═══════════════════════════════════════
+
+  function bindPrivacyEventListeners() {
+    // Child name editing
+    const editNameBtn = document.getElementById('privacy-edit-name-btn');
+    const saveNameBtn = document.getElementById('privacy-save-name-btn');
+    const cancelNameBtn = document.getElementById('privacy-cancel-name-btn');
+    if (editNameBtn) editNameBtn.addEventListener('click', () => {
+      document.getElementById('privacy-name-edit-form').style.display = '';
+      editNameBtn.style.display = 'none';
+      document.getElementById('privacy-name-input').focus();
+    });
+    if (cancelNameBtn) cancelNameBtn.addEventListener('click', () => {
+      document.getElementById('privacy-name-edit-form').style.display = 'none';
+      document.getElementById('privacy-edit-name-btn').style.display = '';
+      document.getElementById('privacy-name-error').style.display = 'none';
+    });
+    if (saveNameBtn) saveNameBtn.addEventListener('click', () => handleSaveChildName());
+
+    // Data insight
+    const loadDataBtn = document.getElementById('privacy-load-data-btn');
+    if (loadDataBtn) loadDataBtn.addEventListener('click', () => handleLoadDataExport());
+
+    // Deletion request
+    const requestDelBtn = document.getElementById('privacy-request-deletion-btn');
+    const confirmDelBtn = document.getElementById('privacy-confirm-deletion-btn');
+    const cancelDelBtn = document.getElementById('privacy-cancel-deletion-btn');
+    if (requestDelBtn) requestDelBtn.addEventListener('click', () => {
+      document.getElementById('privacy-deletion-form').style.display = 'none';
+      document.getElementById('privacy-deletion-confirm').style.display = '';
+      document.getElementById('privacy-deletion-name-input').focus();
+    });
+    if (cancelDelBtn) cancelDelBtn.addEventListener('click', () => {
+      document.getElementById('privacy-deletion-confirm').style.display = 'none';
+      document.getElementById('privacy-deletion-form').style.display = '';
+      document.getElementById('privacy-deletion-error').style.display = 'none';
+    });
+    if (confirmDelBtn) confirmDelBtn.addEventListener('click', () => handleConfirmDeletion());
+
+    // Delete parent account
+    const deleteAccBtn = document.getElementById('privacy-delete-account-btn');
+    const confirmAccBtn = document.getElementById('privacy-confirm-delete-account-btn');
+    const cancelAccBtn = document.getElementById('privacy-cancel-delete-account-btn');
+    if (deleteAccBtn) deleteAccBtn.addEventListener('click', () => {
+      document.getElementById('privacy-delete-account-form').style.display = 'none';
+      document.getElementById('privacy-delete-account-confirm').style.display = '';
+      document.getElementById('privacy-delete-account-email-input').focus();
+    });
+    if (cancelAccBtn) cancelAccBtn.addEventListener('click', () => {
+      document.getElementById('privacy-delete-account-confirm').style.display = 'none';
+      document.getElementById('privacy-delete-account-form').style.display = '';
+      document.getElementById('privacy-delete-account-error').style.display = 'none';
+    });
+    if (confirmAccBtn) confirmAccBtn.addEventListener('click', () => handleDeleteParentAccount());
+
+    // Lazy-load linked parents and deletion status when privacy tab sections open
+    const linkedSection = document.getElementById('section-linked-parents');
+    const deleteSection = document.getElementById('section-delete-child');
+    if (linkedSection) {
+      const obs = new MutationObserver(() => {
+        if (linkedSection.classList.contains('open')) { loadLinkedParents(); obs.disconnect(); }
+      });
+      obs.observe(linkedSection, { attributes: true, attributeFilter: ['class'] });
+    }
+    if (deleteSection) {
+      const obs = new MutationObserver(() => {
+        if (deleteSection.classList.contains('open')) { loadDeletionStatus(); obs.disconnect(); }
+      });
+      obs.observe(deleteSection, { attributes: true, attributeFilter: ['class'] });
+    }
+  }
+
+  async function handleSaveChildName() {
+    if (!selectedChild) return;
+    const input = document.getElementById('privacy-name-input');
+    const errorEl = document.getElementById('privacy-name-error');
+    const newName = (input.value || '').trim();
+    if (newName.length < 2 || newName.length > 50) {
+      errorEl.textContent = 'Navnet skal være mellem 2 og 50 tegn.';
+      errorEl.style.display = '';
+      return;
+    }
+    errorEl.style.display = 'none';
+    try {
+      const result = await API.updateChildName(selectedChild.child_id, newName);
+      if (result && result.success === false) {
+        errorEl.textContent = result.error || 'Kunne ikke gemme';
+        errorEl.style.display = '';
+        return;
+      }
+      // Update local state
+      selectedChild.child_name = result.new_name || newName;
+      selectedChild.name = result.new_name || newName;
+      if (childData) childData.name = result.new_name || newName;
+      document.getElementById('privacy-child-name-display').textContent = result.new_name || newName;
+      document.getElementById('privacy-name-edit-form').style.display = 'none';
+      document.getElementById('privacy-edit-name-btn').style.display = '';
+      showToast('Navnet er ændret', 'success');
+    } catch (err) {
+      console.error('[Privacy] Save name error:', err);
+      errorEl.textContent = 'Der opstod en fejl. Prøv igen.';
+      errorEl.style.display = '';
+    }
+  }
+
+  async function handleLoadDataExport() {
+    if (!selectedChild) return;
+    const contentEl = document.getElementById('privacy-data-content');
+    const loadingEl = document.getElementById('privacy-data-loading');
+    const resultEl = document.getElementById('privacy-data-result');
+    contentEl.style.display = 'none';
+    loadingEl.style.display = '';
+    try {
+      const rawData = await API.getDataExport(selectedChild.child_id);
+      // Tilføj metadata client-side
+      let parentEmail = '';
+      try { parentEmail = currentSession?.user?.email || ''; } catch (_e) {}
+      const data = {
+        export_metadata: {
+          exported_at: new Date().toISOString(),
+          exported_by: parentEmail,
+          format_version: '1.0',
+        },
+        ...rawData,
+      };
+      loadingEl.style.display = 'none';
+      resultEl.style.display = '';
+      resultEl.innerHTML = renderDataExportView(data);
+      // Bind download button
+      const dlBtn = document.getElementById('privacy-download-json-btn');
+      if (dlBtn) dlBtn.addEventListener('click', () => downloadDataAsJson(data));
+    } catch (err) {
+      console.error('[Privacy] Data export error:', err);
+      loadingEl.style.display = 'none';
+      contentEl.style.display = '';
+      showToast('Kunne ikke indlæse data', 'error');
+    }
+  }
+
+  function renderDataExportView(data) {
+    const child = data.child || {};
+    const purchases = data.purchases || [];
+    const deposits = data.deposits || [];
+    const settings = data.parent_settings || {};
+    const consents = data.consents || {};
+    const events = data.event_registrations || [];
+
+    let html = '<div style="display:flex;flex-direction:column;gap:var(--s4)">';
+
+    // Stamdata
+    html += '<div><div style="font-weight:700;margin-bottom:var(--s2)">Stamdata</div><table style="width:100%;font-size:13px;border-collapse:collapse">';
+    const fields = [
+      ['Navn', child.name], ['Kontonummer', child.number], ['Klassetrin', child.grade_level ?? 'Ikke sat'],
+      ['Saldo', (child.balance != null ? child.balance + ' kr' : '—')],
+      ['Daglig forbrugsgrænse', child.daily_spend_limit ? child.daily_spend_limit + ' kr' : 'Ikke sat'],
+      ['Oprettet', child.created_at ? new Date(child.created_at).toLocaleDateString('da-DK') : '—'],
+    ];
+    fields.forEach(([k, v]) => { html += `<tr><td style="padding:4px 8px 4px 0;color:var(--ink-muted);white-space:nowrap">${k}</td><td style="padding:4px 0">${esc(String(v ?? ''))}</td></tr>`; });
+    html += '</table></div>';
+
+    // Købshistorik (top 50)
+    if (purchases.length > 0) {
+      html += '<div><div style="font-weight:700;margin-bottom:var(--s2)">Købshistorik (seneste ' + Math.min(purchases.length, 50) + ')</div>';
+      html += '<div style="overflow-x:auto"><table style="width:100%;font-size:12px;border-collapse:collapse">';
+      html += '<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:4px 8px 4px 0">Dato</th><th style="text-align:left;padding:4px 8px">Produkt</th><th style="text-align:right;padding:4px 0">Beløb</th></tr>';
+      purchases.slice(0, 50).forEach(p => {
+        const date = p.sold_at ? new Date(p.sold_at).toLocaleDateString('da-DK') : '—';
+        html += `<tr style="border-bottom:1px solid var(--surface-sunken)"><td style="padding:4px 8px 4px 0;color:var(--ink-muted)">${date}</td><td style="padding:4px 8px">${esc(p.product || '')}${p.quantity > 1 ? ' x' + p.quantity : ''}</td><td style="text-align:right;padding:4px 0">${p.price ?? '—'} kr</td></tr>`;
+      });
+      html += '</table></div></div>';
+    }
+
+    // Indbetalinger
+    if (deposits.length > 0) {
+      html += '<div><div style="font-weight:700;margin-bottom:var(--s2)">Indbetalinger</div>';
+      html += '<div style="overflow-x:auto"><table style="width:100%;font-size:12px;border-collapse:collapse">';
+      html += '<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:4px 8px 4px 0">Dato</th><th style="text-align:right;padding:4px 8px">Beløb</th><th style="text-align:left;padding:4px 0">Metode</th></tr>';
+      deposits.forEach(d => {
+        const date = d.created_at ? new Date(d.created_at).toLocaleDateString('da-DK') : '—';
+        html += `<tr style="border-bottom:1px solid var(--surface-sunken)"><td style="padding:4px 8px 4px 0;color:var(--ink-muted)">${date}</td><td style="text-align:right;padding:4px 8px">${d.amount ?? '—'} kr</td><td style="padding:4px 0">${esc(d.method || 'manuel')}</td></tr>`;
+      });
+      html += '</table></div></div>';
+    }
+
+    // Indstillinger
+    html += '<div><div style="font-weight:700;margin-bottom:var(--s2)">Dine indstillinger</div><div style="font-size:13px;color:var(--ink-soft);line-height:1.6">';
+    const sugar = settings.sugar_policy || {};
+    html += `Sukkerpolitik: ${sugar.enabled ? 'Aktiv' : 'Inaktiv'}`;
+    if (sugar.block_unhealthy) html += ' (bloker usunde)';
+    if (sugar.max_unhealthy_per_day) html += `, max ${sugar.max_unhealthy_per_day}/dag`;
+    html += '<br>';
+    const allergens = settings.allergens || [];
+    html += `Allergener: ${allergens.length > 0 ? allergens.map(a => a.allergen + '=' + a.policy).join(', ') : 'Ingen sat'}<br>`;
+    html += `Produktgrænser: ${(settings.product_limits || []).length} produkter med grænser<br>`;
+    const notif = settings.notifications || {};
+    html += `Notifikationer: ${notif.email ? 'Aktiv (' + esc(notif.email) + ')' : 'Inaktiv'}`;
+    html += '</div></div>';
+
+    // Samtykker
+    const pp = consents.profile_picture || {};
+    html += '<div><div style="font-weight:700;margin-bottom:var(--s2)">Samtykker</div><div style="font-size:13px;color:var(--ink-soft)">';
+    html += `Profilbillede — Aula: ${pp.opt_out_aula ? 'Fravalgt' : 'Tilladt'}, Kamera: ${pp.opt_out_camera ? 'Fravalgt' : 'Tilladt'}, AI: ${pp.opt_out_ai ? 'Fravalgt' : 'Tilladt'}`;
+    html += '</div></div>';
+
+    // Event-tilmeldinger
+    if (events.length > 0) {
+      html += '<div><div style="font-weight:700;margin-bottom:var(--s2)">Event-tilmeldinger</div><div style="font-size:13px">';
+      events.forEach(ev => {
+        const date = ev.event_date ? new Date(ev.event_date).toLocaleDateString('da-DK') : '—';
+        html += `<div style="padding:2px 0">${esc(ev.title || '')} (${date}) &mdash; ${esc(ev.registration_status || '')} / ${esc(ev.payment_status || '')}</div>`;
+      });
+      html += '</div></div>';
+    }
+
+    html += '</div>';
+
+    // Download button
+    html += `<button class="save-btn" id="privacy-download-json-btn" style="margin-top:var(--s4)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download al data som JSON
+    </button>`;
+
+    return html;
+  }
+
+  function downloadDataAsJson(data) {
+    const childName = (data.child?.name || 'barn').split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `flango-data-${childName}-${dateStr}.json`;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    showToast('Data downloadet', 'success');
+  }
+
+  async function loadLinkedParents() {
+    if (!selectedChild) return;
+    const container = document.getElementById('privacy-linked-parents-content');
+    if (!container) return;
+    try {
+      const parents = await API.getLinkedParents(selectedChild.child_id);
+      if (!parents || parents.length === 0) {
+        container.innerHTML = '<p style="color:var(--ink-muted)">Ingen tilknyttede forældre fundet.</p>';
+        return;
+      }
+      let html = `<p style="color:var(--ink-soft);margin:0 0 var(--s3)">Disse forældrekonti har adgang til ${esc(getChildName())} i Flango:</p>`;
+      parents.forEach(p => {
+        const date = p.linked_at ? new Date(p.linked_at).toLocaleDateString('da-DK') : '—';
+        const youTag = p.is_current_user ? ' <span style="color:var(--positive);font-weight:600">(dig)</span>' : '';
+        html += `<div style="display:flex;align-items:center;gap:var(--s2);padding:var(--s2) 0;border-bottom:1px solid var(--surface-sunken)">
+          <span style="font-size:20px">👤</span>
+          <div style="flex:1"><div style="font-weight:500">${esc(p.email)}${youTag}</div><div style="font-size:12px;color:var(--ink-muted)">Tilknyttet: ${date}</div></div>
+        </div>`;
+      });
+      html += '<p style="font-size:12px;color:var(--ink-muted);margin:var(--s3) 0 0">Hvis du ikke genkender en konto, kontakt institutionens personale.</p>';
+      container.innerHTML = html;
+    } catch (err) {
+      console.error('[Privacy] Load linked parents error:', err);
+      container.innerHTML = '<p style="color:var(--negative,#dc2626)">Kunne ikke indlæse data.</p>';
+    }
+  }
+
+  async function loadDeletionStatus() {
+    if (!selectedChild) return;
+    const statusEl = document.getElementById('privacy-deletion-status');
+    const formEl = document.getElementById('privacy-deletion-form');
+    if (!statusEl || !formEl) return;
+    try {
+      const result = await API.getDeletionStatus(selectedChild.child_id);
+      if (result && result.status && result.status !== 'none') {
+        formEl.style.display = 'none';
+        document.getElementById('privacy-deletion-confirm').style.display = 'none';
+        statusEl.style.display = '';
+        let statusHtml = '';
+        if (result.status === 'pending') {
+          const date = result.requested_at ? new Date(result.requested_at).toLocaleDateString('da-DK') : '—';
+          statusHtml = `<div class="hint-box blue"><span class="hint-icon">📋</span><span><strong>Sletningsanmodning</strong><br>Anmodet: ${date}<br>Status: ⏳ Under behandling<br><br>Du kan kontakte institutionen hvis du har spørgsmål.</span></div>`;
+        } else if (result.status === 'completed') {
+          const date = result.processed_at ? new Date(result.processed_at).toLocaleDateString('da-DK') : '—';
+          const receipt = result.deletion_receipt;
+          statusHtml = `<div class="hint-box green" style="border-color:var(--positive)"><span class="hint-icon">&#10003;</span><span><strong>Sletning gennemført</strong><br>Dato: ${date}${receipt ? '<br>Slettet: ' + JSON.stringify(receipt) : ''}</span></div>`;
+        } else if (result.status === 'rejected') {
+          const reason = result.rejection_reason || 'Ingen begrundelse angivet';
+          statusHtml = `<div class="hint-box orange"><span class="hint-icon">❌</span><span><strong>Anmodning afvist</strong><br>Begrundelse: ${esc(reason)}<br><br>Kontakt institutionen for yderligere information.</span></div>`;
+          // Show form again so they can re-request
+          formEl.style.display = '';
+        }
+        statusEl.innerHTML = statusHtml;
+      }
+    } catch (err) {
+      console.error('[Privacy] Load deletion status error:', err);
+    }
+  }
+
+  async function handleConfirmDeletion() {
+    if (!selectedChild) return;
+    const input = document.getElementById('privacy-deletion-name-input');
+    const errorEl = document.getElementById('privacy-deletion-error');
+    const typedName = (input.value || '').trim().toLowerCase();
+    const childName = getChildName().toLowerCase();
+    if (typedName !== childName) {
+      errorEl.textContent = 'Navnet matcher ikke. Prøv igen.';
+      errorEl.style.display = '';
+      return;
+    }
+    errorEl.style.display = 'none';
+    try {
+      const result = await API.requestDeletion(selectedChild.child_id);
+      if (result && result.success === false) {
+        errorEl.textContent = result.error || 'Kunne ikke oprette anmodning';
+        errorEl.style.display = '';
+        return;
+      }
+      showToast('Sletningsanmodning sendt', 'success');
+      loadDeletionStatus(); // Refresh to show status
+    } catch (err) {
+      console.error('[Privacy] Deletion request error:', err);
+      errorEl.textContent = 'Der opstod en fejl. Prøv igen.';
+      errorEl.style.display = '';
+    }
+  }
+
+  async function handleDeleteParentAccount() {
+    const input = document.getElementById('privacy-delete-account-email-input');
+    const errorEl = document.getElementById('privacy-delete-account-error');
+    const typedEmail = (input.value || '').trim().toLowerCase();
+    let parentEmail = '';
+    try { parentEmail = (currentSession?.user?.email || '').toLowerCase(); } catch (_e) {}
+    if (!parentEmail || typedEmail !== parentEmail) {
+      errorEl.textContent = 'E-mailen matcher ikke.';
+      errorEl.style.display = '';
+      return;
+    }
+    errorEl.style.display = 'none';
+    try {
+      const result = await API.deleteParentAccount();
+      if (result && result.success === false) {
+        errorEl.textContent = result.error || 'Kunne ikke slette kontoen';
+        errorEl.style.display = '';
+        return;
+      }
+      // Log out and redirect
+      try { await API.signOut(); } catch (_e) {}
+      showToast('Din konto er slettet', 'success');
+      setTimeout(() => { window.location.reload(); }, 1500);
+    } catch (err) {
+      console.error('[Privacy] Delete account error:', err);
+      errorEl.textContent = 'Der opstod en fejl. Prøv igen.';
+      errorEl.style.display = '';
+    }
+  }
+
   async function saveAllergens() {
     if (!selectedChild) return;
     const items = document.querySelectorAll('#allergen-grid .allergen-item');
@@ -2923,9 +3728,20 @@
       return;
     }
     errorEl.classList.remove('visible');
+
+    // Vis vilkårsaccept FØR linking
+    const accepted = await showTermsAcceptForLinking('dit barn');
+    if (!accepted) return;
+
     try {
       // Prøv først som aktiverings-/portalkode (via link-sibling-by-code)
       await API.linkSiblingByCode(code, institutionId);
+      // Acceptér vilkår for det nyligt tilknyttede barn
+      try {
+        const refreshed = await API.getChildren();
+        const newChild = refreshed.find(c => !c.terms_accepted_at);
+        if (newChild) await API.acceptTerms(newChild.child_id, CURRENT_TERMS_VERSION);
+      } catch (_e) { /* non-critical */ }
       showToast('Barn tilknyttet!', 'success');
       document.getElementById('add-child-modal').classList.remove('visible');
       await loadChildren();
@@ -2935,15 +3751,22 @@
       try {
         const inviteResult = await API.redeemParentInvite(code);
         if (inviteResult?.valid) {
+          // Acceptér vilkår for alle nyligt tilknyttede børn
+          try {
+            const refreshed = await API.getChildren();
+            for (const c of refreshed.filter(ch => !ch.terms_accepted_at)) {
+              await API.acceptTerms(c.child_id, CURRENT_TERMS_VERSION);
+            }
+          } catch (_e) { /* non-critical */ }
           const count = inviteResult.count || 0;
-          showToast(count + ' b\u00f8rn tilknyttet!', 'success');
+          showToast(count + ' børn tilknyttet!', 'success');
           document.getElementById('add-child-modal').classList.remove('visible');
           await loadChildren();
           return;
         }
         // Specifik fejl fra invite
         if (inviteResult?.error === 'INVITE_EXPIRED') {
-          errorEl.textContent = 'Denne kode er udl\u00f8bet. Bed den anden for\u00e6lder om en ny.';
+          errorEl.textContent = 'Denne kode er udløbet. Bed den anden forælder om en ny.';
         } else {
           errorEl.textContent = inviteResult?.error || 'Koden er ugyldig eller allerede brugt';
         }

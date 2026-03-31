@@ -32,6 +32,20 @@ Web-portal for forældre til at se og styre deres barns cafe-saldo, forbrugsbegr
 | Skærmtid | 🕹️ | Gaming-grænser, samtykke, spilgodkendelse (se nedenfor) | `skaermtid_enabled` |
 | Allergier & madbegrænsninger | 🥜 | 9 allergener: allow/warn/block per allergen | `parent_portal_allergens` |
 | Skift kode til forældre-login | 🔑 | Skift password/PIN (min 4 tegn) | Altid |
+| **Privatliv & Rettigheder** | 🛡️ | GDPR-tab med 8 sektioner (se nedenfor) | Altid |
+
+### Privatliv & Rettigheder (ny tab)
+
+| Sektion | Formål | Backend |
+|---------|--------|---------|
+| 1. Privatlivspolitik | Forældrevenlig tekst + link til fuld version | Statisk (dynamisk institutionsnavn) |
+| 2. Barnets navn | Vis + rediger visningsnavn | RPC `update_child_name_by_parent` |
+| 3. Profilbillede & samtykke | Vis aktuelt billede + consent-toggles (flyttet fra Profil) | RPC `save_profile_picture_consent` |
+| 4. Dataindsigt & eksport | Vis alle data + JSON download | RPC `get_child_data_export` |
+| 5. Tilknyttede forældrekonti | Hvem har adgang (maskeret e-mail) | RPC `get_linked_parents_for_child` |
+| 6. Slet barnets data | Anmodning med navne-bekræftelse + statusvisning | RPC `request_parent_deletion` / `get_parent_deletion_status` |
+| 7. Slet forældrekonto | E-mail-bekræftelse → slet konto + log ud | Edge Function `delete-parent-account` |
+| 8. Kontakt | Dataansvarlig + databehandler | Statisk (dynamisk institutionsnavn) |
 
 ### Skærmtid-sektionen (detaljer)
 
@@ -47,8 +61,10 @@ Web-portal for forældre til at se og styre deres barns cafe-saldo, forbrugsbegr
 ### Auth & Tilknytning
 1. Opret konto: vælg institution → indtast 8-cifret PIN + email + password
 2. PIN verificeres via `verify_parent_code_and_link_child` RPC → konto oprettes i Supabase Auth
-3. Tilknyt ekstra barn: `link-sibling-by-code` Edge Function (preview + bekræft)
-4. Børneskifter-dropdown med saldo + statusindikator (grøn/gul/rød prik)
+3. **Vilkårsaccept:** Forælder skal acceptere vilkår (databehandling, visning på caféskærm) FØR barn tilknyttes. Versioneret (`terms_version`). Retrospektiv accept ved login for eksisterende forældre.
+4. Tilknyt ekstra barn: `link-sibling-by-code` Edge Function (preview + vilkårsaccept + bekræft)
+5. Børneskifter-dropdown med saldo + statusindikator (grøn/gul/rød prik)
+6. "Husk mig på denne enhed": Checkbox ved login. Hvis fravalgt, ryddes session ved browser-lukning.
 
 ### Betaling (saldo-optankning)
 - Stripe Connect: `create-topup` → Stripe checkout → `confirm-topup`
@@ -75,13 +91,19 @@ Web-portal for forældre til at se og styre deres barns cafe-saldo, forbrugsbegr
 | Funktion | Formål |
 |----------|--------|
 | `get_public_institutions` | Hent institutioner til signup/valg |
-| `get_children_for_parent` | Hent tilknyttede børn |
+| `get_children_for_parent` | Hent tilknyttede børn (inkl. `terms_accepted_at`, `terms_version`) |
 | `verify_parent_code_and_link_child` | Verificer PIN og tilknyt barn |
+| `accept_parent_terms` | Acceptér vilkår for et barn (sæt `terms_accepted_at`) |
+| `get_child_data_export` | Komplet dataudtræk for et barn (GDPR indsigt) |
+| `get_parent_deletion_status` | Hent seneste sletningsanmodning |
+| `request_parent_deletion` | Opret sletningsanmodning |
+| `get_linked_parents_for_child` | Vis tilknyttede forældre (maskeret e-mail) |
+| `update_child_name_by_parent` | Rediger barnets visningsnavn |
 
 ## Edge Functions
 
-`get-parent-view`, `get-products-for-parent`, `save-parent-limits`, `save-daily-limit`, `save-parent-sugar-policy`, `save-parent-notification`, `get-allergy-settings`, `save-allergy-settings`, `get-parent-events`, `parent-event-register`, `parent-event-cancel`, `create-event-payment`, `confirm-event-payment`, `create-topup`, `confirm-topup`, `link-sibling-by-code`, `get-purchase-profile`, `save-skaermtid-parent-settings`, `update-parent-pin`
+`get-parent-view`, `get-products-for-parent`, `save-parent-limits`, `save-daily-limit`, `save-parent-sugar-policy`, `save-parent-notification`, `get-allergy-settings`, `save-allergy-settings`, `get-parent-events`, `parent-event-register`, `parent-event-cancel`, `create-event-payment`, `confirm-event-payment`, `create-topup`, `confirm-topup`, `link-sibling-by-code`, `get-purchase-profile`, `save-skaermtid-parent-settings`, `update-parent-pin`, `get-parent-data-export`, `delete-parent-account`
 
 ## Supabase-tabeller (via Edge Functions)
 
-`users`, `institutions`, `products`, `parent_account_children`, `parent_limits`, `parent_sugar_policy`, `child_allergen_settings`, `parent_notifications`, `parent_daily_special_limit`, `club_events`, `event_registrations`, `event_payments`, `stripe_topup_payments`, `gaming.users`, `gaming.parent_overrides`, `gaming.portal_settings`, `gaming.game_catalog`
+`users`, `institutions`, `products`, `parent_account_children`, `parent_limits`, `parent_sugar_policy`, `child_allergen_settings`, `parent_notifications`, `parent_daily_special_limit`, `parent_deletion_requests`, `club_events`, `event_registrations`, `event_payments`, `stripe_topup_payments`, `admin_audit_log`, `gaming.users`, `gaming.parent_overrides`, `gaming.portal_settings`, `gaming.game_catalog`
