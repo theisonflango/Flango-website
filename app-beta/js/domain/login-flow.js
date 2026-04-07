@@ -118,10 +118,8 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
         loginBtn.disabled = true;
         loginBtn.textContent = 'Logger ind...';
 
-        console.log('[login] step 1: turnstile check...');
         // Turnstile verifikation
         const turnstileCheck = await verifyTurnstileToken('turnstile-full-login');
-        console.log('[login] step 1 done:', turnstileCheck);
         if (!turnstileCheck.ok) {
             errorEl.textContent = turnstileCheck.error;
             loginBtn.disabled = false;
@@ -129,9 +127,7 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
             return;
         }
 
-        console.log('[login] step 2: performLogin...');
         const { success } = await performLogin(email, password);
-        console.log('[login] step 2 done: success =', success);
 
         if (!success) {
             logAuditEvent('FAILED_LOGIN', {
@@ -145,9 +141,7 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
             return;
         }
 
-        console.log('[login] step 3: getSession...');
         const { data: { session } } = await supabaseClient.auth.getSession();
-        console.log('[login] step 3 done: session =', !!session);
         if (!session) {
             errorEl.textContent = 'Login fejlede. Prøv igen.';
             loginBtn.disabled = false;
@@ -155,9 +149,7 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
             return;
         }
 
-        console.log('[login] step 4: getCurrentUserProfile...');
         const adminProfile = await getCurrentUserProfile(session);
-        console.log('[login] step 4 done: profile =', adminProfile?.role);
         if (!adminProfile || adminProfile.role !== 'admin') {
             errorEl.textContent = 'Denne bruger er ikke administrator.';
             await supabaseClient.auth.signOut();
@@ -168,9 +160,7 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
 
         // Auto-set institution from admin profile
         if (adminProfile.institution_id) {
-            console.log('[login] step 5: fetchInstitutions...');
             const institutions = await fetchInstitutions();
-            console.log('[login] step 5 done');
             const inst = institutions.find(i => String(i.id) === String(adminProfile.institution_id));
             if (inst) rememberInstitution(inst);
 
@@ -198,9 +188,7 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
         }
 
         // ── MFA TOTP check ──
-        console.log('[login] step 6: MFA gate...');
         const mfaNeeded = await handleMfaGate(adminProfile);
-        console.log('[login] step 6 done: mfaNeeded =', mfaNeeded);
         if (mfaNeeded) return;
 
         // Skip "Remember device" if this admin already has a device token on this device
@@ -531,9 +519,9 @@ export function setupPinLockedScreen(adminName) {
             return;
         }
 
-        // ── MFA TOTP check ── TEMP BYPASSED (2026-04-07)
-        // const mfaNeeded = await handleMfaGate(adminProfile);
-        // if (mfaNeeded) return;
+        // ── MFA TOTP check ──
+        const mfaNeeded = await handleMfaGate(adminProfile);
+        if (mfaNeeded) return;
 
         // Skip "Remember device" if this admin already has a device token on this device
         const existingDeviceUsers = getDeviceUsers();
@@ -628,9 +616,9 @@ export function setupForcePasswordScreen(adminProfile) {
             details: { admin_name: adminProfile.name },
         });
 
-        // ── MFA TOTP check (after password change) ── TEMP BYPASSED (2026-04-07)
-        // const mfaNeeded = await handleMfaGate(adminProfile);
-        // if (mfaNeeded) return;
+        // ── MFA TOTP check (after password change) ──
+        const mfaNeeded = await handleMfaGate(adminProfile);
+        if (mfaNeeded) return;
 
         // Proceed to remember device screen
         setupRememberDeviceScreen(adminProfile);
