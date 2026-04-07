@@ -50,6 +50,8 @@ import {
 // ─── Turnstile verification helper ──────────────────────────────
 
 async function verifyTurnstileToken(widgetId) {
+    // TEMP: Skip Turnstile entirely — hænger på nogle enheder (2026-04-07)
+    return { ok: true };
     // Skip Turnstile on localhost (not available outside production)
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return { ok: true };
@@ -177,9 +179,9 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
             return;
         }
 
-        // ── MFA TOTP check ──
-        const mfaNeeded = await handleMfaGate(adminProfile);
-        if (mfaNeeded) return;
+        // ── MFA TOTP check ── TEMP BYPASSED (2026-04-07)
+        // const mfaNeeded = await handleMfaGate(adminProfile);
+        // if (mfaNeeded) return;
 
         // Skip "Remember device" if this admin already has a device token on this device
         const existingDeviceUsers = getDeviceUsers();
@@ -509,9 +511,9 @@ export function setupPinLockedScreen(adminName) {
             return;
         }
 
-        // ── MFA TOTP check ──
-        const mfaNeeded = await handleMfaGate(adminProfile);
-        if (mfaNeeded) return;
+        // ── MFA TOTP check ── TEMP BYPASSED (2026-04-07)
+        // const mfaNeeded = await handleMfaGate(adminProfile);
+        // if (mfaNeeded) return;
 
         // Skip "Remember device" if this admin already has a device token on this device
         const existingDeviceUsers = getDeviceUsers();
@@ -606,9 +608,9 @@ export function setupForcePasswordScreen(adminProfile) {
             details: { admin_name: adminProfile.name },
         });
 
-        // ── MFA TOTP check (after password change) ──
-        const mfaNeeded = await handleMfaGate(adminProfile);
-        if (mfaNeeded) return;
+        // ── MFA TOTP check (after password change) ── TEMP BYPASSED (2026-04-07)
+        // const mfaNeeded = await handleMfaGate(adminProfile);
+        // if (mfaNeeded) return;
 
         // Proceed to remember device screen
         setupRememberDeviceScreen(adminProfile);
