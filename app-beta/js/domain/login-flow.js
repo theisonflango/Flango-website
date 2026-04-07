@@ -26,6 +26,7 @@
 
 import { supabaseClient } from '../core/config-and-supabase.js';
 import { rememberInstitution, ensureActiveInstitution, fetchInstitutions } from './institution-store.js';
+import { getInstitutionId } from './session-store.js';
 import { performLogin, getCurrentUserProfile } from './auth-and-session.js';
 import { showScreen } from '../ui/shell-and-theme.js';
 import { logAuditEvent } from '../core/audit-events.js';
@@ -38,6 +39,33 @@ import {
     removeDeviceUser,
     clearAllDeviceUsers,
 } from './device-trust.js';
+import {
+    getMfaFactors,
+    enrollTotp,
+    challengeAndVerify,
+    shouldRequireMfa,
+    setMfaDeviceTrusted,
+} from './mfa-utils.js';
+
+// ─── Turnstile verification helper ──────────────────────────────
+
+async function verifyTurnstileToken(widgetId) {
+    // Skip Turnstile on localhost (not available outside production)
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return { ok: true };
+    const token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
+    if (!token) return { ok: false, error: 'Bekræft venligst at du ikke er en robot.' };
+    try {
+        const res = await supabaseClient.functions.invoke('verify-turnstile', { body: { token } });
+        if (res.error || !res.data?.success) {
+            if (typeof turnstile !== 'undefined') turnstile.reset(widgetId);
+            return { ok: false, error: 'Sikkerhedsverifikation fejlede. Prøv igen.' };
+        }
+        return { ok: true };
+    } catch {
+        return { ok: true }; // Fail-open: tillad login hvis Edge Function er nede
+    }
+}
 
 // ─── State 1: Full Login ────────────────────────────────────────
 
@@ -76,12 +104,26 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
         loginBtn.disabled = true;
         loginBtn.textContent = 'Logger ind...';
 
+        // Turnstile verifikation
+        const turnstileCheck = await verifyTurnstileToken('turnstile-full-login');
+        if (!turnstileCheck.ok) {
+            errorEl.textContent = turnstileCheck.error;
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Log ind';
+            return;
+        }
+
         const { success } = await performLogin(email, password);
 
         if (!success) {
+            logAuditEvent('FAILED_LOGIN', {
+                institutionId: getInstitutionId(),
+                details: { email, reason: 'invalid_credentials', method: 'email_password' },
+            });
             errorEl.textContent = 'Forkert e-mail eller kodeord.';
             loginBtn.disabled = false;
             loginBtn.textContent = 'Log ind';
+            if (typeof turnstile !== 'undefined') turnstile.reset('turnstile-full-login');
             return;
         }
 
@@ -131,7 +173,19 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
             return;
         }
 
-        setupRememberDeviceScreen(adminProfile);
+        // ── MFA TOTP check ──
+        const mfaNeeded = await handleMfaGate(adminProfile);
+        if (mfaNeeded) return;
+
+        // Skip "Remember device" if this admin already has a device token on this device
+        const existingDeviceUsers = getDeviceUsers();
+        const alreadyRegistered = existingDeviceUsers.some(u => u.userId === session.user.id);
+        if (alreadyRegistered) {
+            const { setupAdminLoginScreen } = await import('./app-main.js');
+            setupAdminLoginScreen(adminProfile);
+        } else {
+            setupRememberDeviceScreen(adminProfile);
+        }
     };
 
     passwordInput.onkeydown = (e) => {
@@ -265,13 +319,22 @@ export async function setupDeviceUnlockScreen() {
         setupFullLoginScreen({ fromDeviceUnlock: true });
     };
 
-    // "Fjern denne enhed" button
+    // "Glem mig på denne enhed" button — fjerner kun den valgte profil
     const removeBtn = document.getElementById('device-remove-btn');
     if (removeBtn) {
         removeBtn.onclick = () => {
-            if (confirm('Fjern alle gemte profiler fra denne enhed?')) {
-                clearAllDeviceUsers();
-                setupFullLoginScreen();
+            const userId = selectEl.value;
+            const user = deviceUsers.find(u => u.userId === userId);
+            const name = user?.firstName || 'denne profil';
+            if (confirm(`Glem "${name}" på denne enhed?`)) {
+                removeDeviceUser(userId);
+                // Hvis der stadig er andre profiler, genindlæs picker
+                const remaining = getDeviceUsers();
+                if (remaining.length > 0) {
+                    setupDeviceUnlockScreen();
+                } else {
+                    setupFullLoginScreen();
+                }
             }
         };
     }
@@ -386,12 +449,26 @@ export function setupPinLockedScreen(adminName) {
         loginBtn.disabled = true;
         loginBtn.textContent = 'Logger ind...';
 
+        // Turnstile verifikation
+        const turnstileCheck = await verifyTurnstileToken('turnstile-locked-login');
+        if (!turnstileCheck.ok) {
+            errorEl.textContent = turnstileCheck.error;
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Log ind';
+            return;
+        }
+
         const { success } = await performLogin(email, password);
 
         if (!success) {
+            logAuditEvent('FAILED_LOGIN', {
+                institutionId: getInstitutionId(),
+                details: { email, reason: 'invalid_credentials', method: 'email_password_after_lockout' },
+            });
             errorEl.textContent = 'Forkert e-mail eller kodeord.';
             loginBtn.disabled = false;
             loginBtn.textContent = 'Log ind';
+            if (typeof turnstile !== 'undefined') turnstile.reset('turnstile-locked-login');
             return;
         }
 
@@ -428,8 +505,19 @@ export function setupPinLockedScreen(adminName) {
             return;
         }
 
-        // Offer to remember device again
-        setupRememberDeviceScreen(adminProfile);
+        // ── MFA TOTP check ──
+        const mfaNeeded = await handleMfaGate(adminProfile);
+        if (mfaNeeded) return;
+
+        // Skip "Remember device" if this admin already has a device token on this device
+        const existingDeviceUsers = getDeviceUsers();
+        const alreadyRegistered = existingDeviceUsers.some(u => u.userId === session.user.id);
+        if (alreadyRegistered) {
+            const { setupAdminLoginScreen: startAdmin } = await import('./app-main.js');
+            startAdmin(adminProfile);
+        } else {
+            setupRememberDeviceScreen(adminProfile);
+        }
     };
 
     backBtn.onclick = () => {
@@ -514,11 +602,180 @@ export function setupForcePasswordScreen(adminProfile) {
             details: { admin_name: adminProfile.name },
         });
 
+        // ── MFA TOTP check (after password change) ──
+        const mfaNeeded = await handleMfaGate(adminProfile);
+        if (mfaNeeded) return;
+
         // Proceed to remember device screen
         setupRememberDeviceScreen(adminProfile);
     };
 
     confirmInput.onkeydown = (e) => {
+        if (e.key === 'Enter') submitBtn.click();
+    };
+}
+
+// ─── MFA TOTP Gate ─────────────────────────────────────────────────
+
+/**
+ * Tjekker om MFA er påkrævet for denne admin og viser enrollment/challenge.
+ * Returnerer true hvis MFA-skærm vises (flow pauset), false hvis MFA springes over.
+ */
+async function handleMfaGate(adminProfile) {
+    // Skip MFA on localhost (Supabase MFA challenge requires production origin)
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return false;
+    try {
+        // Hent institution MFA-policy
+        const { data: inst } = await supabaseClient
+            .from('institutions')
+            .select('admin_mfa_policy')
+            .eq('id', adminProfile.institution_id)
+            .single();
+
+        const policy = inst?.admin_mfa_policy || 'off';
+        if (!shouldRequireMfa(policy, 'admin')) return false;
+
+        // Tjek om brugeren har enrollet TOTP
+        const factors = await getMfaFactors();
+        if (factors.length === 0) {
+            setupMfaEnrollScreen(adminProfile);
+        } else {
+            setupMfaChallengeScreen(adminProfile, factors[0].id);
+        }
+        return true;
+    } catch (err) {
+        console.error('[login-flow] MFA gate fejl:', err);
+        return false; // fail-open: tillad login ved fejl
+    }
+}
+
+/** MFA Enrollment: Vis QR-kode, scan, verificer */
+function setupMfaEnrollScreen(adminProfile) {
+    showScreen('screen-mfa-enroll');
+
+    const qrImage = document.getElementById('mfa-qr-image');
+    const secretDisplay = document.getElementById('mfa-secret-display');
+    const codeInput = document.getElementById('mfa-enroll-code');
+    const submitBtn = document.getElementById('mfa-enroll-btn');
+    const errorEl = document.getElementById('mfa-enroll-error');
+    if (!qrImage || !codeInput || !submitBtn || !errorEl) return;
+
+    errorEl.textContent = '';
+    codeInput.value = '';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Indlaeser...';
+
+    let factorId = null;
+
+    // Start enrollment
+    (async () => {
+        const result = await enrollTotp();
+        if (result.error) {
+            errorEl.textContent = result.error;
+            submitBtn.textContent = 'Aktiver';
+            return;
+        }
+        factorId = result.factorId;
+        // Render QR-kode via Google Charts API (simpel, ingen dependencies)
+        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(result.qrCodeUri)}`;
+        if (secretDisplay) {
+            secretDisplay.textContent = 'Manuel kode: ' + result.secret;
+        }
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Aktiver';
+        codeInput.focus();
+    })();
+
+    submitBtn.onclick = async () => {
+        errorEl.textContent = '';
+        const code = codeInput.value.trim();
+        if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
+            errorEl.textContent = 'Indtast en 6-cifret kode.';
+            return;
+        }
+        if (!factorId) {
+            errorEl.textContent = 'QR-kode ikke indlaest endnu. Vent venligst.';
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Verificerer...';
+
+        const result = await challengeAndVerify(factorId, code);
+        if (result.error) {
+            errorEl.textContent = 'Forkert kode. Proev igen.';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Aktiver';
+            codeInput.value = '';
+            codeInput.focus();
+            return;
+        }
+
+        // Succes
+        setMfaDeviceTrusted('admin');
+        logAuditEvent('MFA_ENROLLED', {
+            institutionId: adminProfile.institution_id,
+            adminUserId: adminProfile.user_id,
+            details: { admin_name: adminProfile.name, method: 'totp' },
+        });
+
+        setupRememberDeviceScreen(adminProfile);
+    };
+
+    codeInput.onkeydown = (e) => {
+        if (e.key === 'Enter') submitBtn.click();
+    };
+}
+
+/** MFA Challenge: Indtast 6-cifret kode fra authenticator-app */
+function setupMfaChallengeScreen(adminProfile, factorId) {
+    showScreen('screen-mfa-challenge');
+
+    const codeInput = document.getElementById('mfa-challenge-code');
+    const submitBtn = document.getElementById('mfa-challenge-btn');
+    const errorEl = document.getElementById('mfa-challenge-error');
+    if (!codeInput || !submitBtn || !errorEl) return;
+
+    errorEl.textContent = '';
+    codeInput.value = '';
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Bekraeft';
+    codeInput.focus();
+
+    submitBtn.onclick = async () => {
+        errorEl.textContent = '';
+        const code = codeInput.value.trim();
+        if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
+            errorEl.textContent = 'Indtast en 6-cifret kode.';
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Verificerer...';
+
+        const result = await challengeAndVerify(factorId, code);
+        if (result.error) {
+            errorEl.textContent = 'Forkert kode. Proev igen.';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Bekraeft';
+            codeInput.value = '';
+            codeInput.focus();
+            return;
+        }
+
+        // Succes
+        setMfaDeviceTrusted('admin');
+        logAuditEvent('MFA_VERIFIED', {
+            institutionId: adminProfile.institution_id,
+            adminUserId: adminProfile.user_id,
+            details: { admin_name: adminProfile.name, method: 'totp' },
+        });
+
+        setupRememberDeviceScreen(adminProfile);
+    };
+
+    codeInput.onkeydown = (e) => {
         if (e.key === 'Enter') submitBtn.click();
     };
 }

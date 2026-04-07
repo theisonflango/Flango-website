@@ -53,7 +53,7 @@
 
     /* Typography */
     --font-body: 'DM Sans', -apple-system, system-ui, sans-serif;
-    --font-heading: 'Fraunces', Georgia, serif;
+    --font-heading: 'Poppins', -apple-system, system-ui, sans-serif;
 
     /* Klart design tokens */
     --klart-fg: #1a1a2e;

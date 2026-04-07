@@ -62,7 +62,9 @@ export async function fetchInstitutions(forceRefresh = false) {
                     spending_limit_applies_to_test_users,
                     show_admins_in_user_list, admins_purchase_free, shift_timer_enabled,
                     restaurant_mode_enabled, restaurant_table_numbers_enabled, restaurant_table_count, restaurant_sound, restaurant_serve_sound,
-                    profile_pictures_enabled, profile_picture_types, profile_pictures_ai_enabled
+                    toolbar_kitchen, toolbar_calculator, toolbar_history, toolbar_help, toolbar_min_flango, toolbar_logout, toolbar_products, toolbar_deposit,
+                    profile_pictures_enabled, profile_picture_types, profile_pictures_ai_enabled,
+                    auto_delete_inactive_enabled, auto_delete_inactive_months
                 `)
                 .order('name'));
         } else {

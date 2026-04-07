@@ -1,6 +1,6 @@
 // Ansvar: Historik v3 — modal lifecycle, sidebar, page routing, alle 8 page-render funktioner.
 // Genbruger data-laget fra historik-data.js og eksport fra historik-export.js.
-import { getCurrentAdmin, getInstitutionId } from '../domain/session-store.js';
+import { getCurrentAdmin, getInstitutionId, isCurrentUserAdmin } from '../domain/session-store.js';
 import { initPurchaseProfiles, getChartData as ppGetChartData } from '../domain/purchase-profiles.js';
 import {
   periodRange, fmtDate, fmtDateTime, fmtMinutes, fmtKr, fmtDayDate, getLevel,
@@ -56,12 +56,12 @@ const SALDO_COLORS = {
 };
 
 const NAV_ITEMS = [
+  { id: 'transactions', icon: '📋', label: 'Transaktioner', section: 'HISTORIK' },
   { id: 'today', icon: '☀️', label: 'I dag', section: 'HISTORIK' },
   { id: 'overview', icon: '📈', label: 'Overblik', section: 'HISTORIK' },
   { id: 'toplists', icon: '🏆', label: 'Toplister', section: 'ANALYSE' },
   { id: 'stats', icon: '📊', label: 'Statistik', section: 'ANALYSE' },
   { id: 'profiles', icon: '🛍️', label: 'Købsprofiler', section: 'ANALYSE' },
-  { id: 'transactions', icon: '📋', label: 'Transaktioner', section: 'DATA' },
   { id: 'timesaved', icon: '⏱️', label: 'Tidsbesparelse', section: 'INDSIGT' },
   { id: 'reconcile', icon: '⚖️', label: 'Afstemning', section: 'ØKONOMI' },
   { id: 'reports', icon: '📁', label: 'Rapporter', section: 'EKSPORT' },
@@ -94,7 +94,7 @@ function setCache(key, data) { _pageCache.set(key, { data, ts: Date.now() }); }
 function invalidateAllCaches() { _pageCache.clear(); kundeCached = null; cdCachedDays = null; }
 
 // ─── STATE ───
-let activePage = 'today';
+let activePage = 'transactions';
 let includeTestUsers = false;
 
 // Sub-states per page
@@ -111,6 +111,8 @@ let afstemningTab = 'mobilepay';
 let personnelView = 'ekspedienter';
 let txTypeFilter = 'alle';
 let txSearch = '';
+let txSearchCustomerOnly = false; // When true, search only matches target/customer name
+let txSearchClerkOnly = false; // When true, search only matches clerk/expedient name
 let allTransactions = [];
 let _txIconMap = {};
 let txPeriod = '30 dage';
@@ -133,6 +135,25 @@ let kundeSaldoFilter = 'alle'; // alle | negativ | nul | positiv
 let kundeCached = null; // cached getCustomerStats result
 
 // ─── MODAL LIFECYCLE ───
+
+/**
+ * Open historik V3 directly on Transactions page with pre-filled search and "Alt" period.
+ */
+export function openHistorikV3ForUser(userName) {
+  activePage = 'transactions';
+  txPeriod = 'Altid';
+  txTypeFilter = 'alle';
+  txSearchCustomerOnly = true; // Only show transactions where this person is the customer
+  _pendingTxSearch = userName || '';
+
+  openHistorikV3();
+}
+
+let _pendingTxSearch = null;
+let _preserveFilters = false;
+
+// Global accessor for external callers (user-admin-panel)
+window.__flangoOpenHistorikV3ForUser = openHistorikV3ForUser;
 
 export function openHistorikV3() {
   if (document.getElementById('hv3-backdrop')) return;
@@ -1681,48 +1702,121 @@ async function renderPageTransaktioner() {
   const c = getPageContainer();
   if (!c) return;
 
-  // Reset filters on full page render
-  txTypeFilter = 'alle';
-  txSearch = '';
+  // Reset filters on full page render, unless preserving state (period change or external open)
+  if (!_pendingTxSearch && !_preserveFilters) {
+    txTypeFilter = 'alle';
+    txSearch = '';
+    txSearchCustomerOnly = false;
+    txSearchClerkOnly = false;
+  }
+  _preserveFilters = false;
 
   // Compute period
   const { from, to } = periodRange(txPeriod === '7 dage' ? 'uge' : txPeriod === '30 dage' ? 'maaned' : 'altid');
 
   c.innerHTML = `
   <div class="hv3-tx-toolbar">
-    ${filterPills(['7 dage', '30 dage', 'Alt'], txPeriod, '__hv3SetTxPeriod', true)}
+    ${filterPills(['7 dage', '30 dage', 'Altid'], txPeriod, '__hv3SetTxPeriod', true)}
     <div style="flex:1"></div>
-    <input type="text" class="hv3-tx-search" id="hv3-tx-search" placeholder="Søg barn, ekspedient...">
+    <div style="position:relative;" id="hv3-tx-search-wrap">
+      <input type="text" class="hv3-tx-search" id="hv3-tx-search" placeholder="Søg barn, ekspedient..." autocomplete="off">
+      <div class="hv3-tx-dropdown" id="hv3-tx-dropdown" style="display:none;"></div>
+    </div>
     <span class="hv3-tx-count" id="hv3-tx-count">…</span>
   </div>
   <div class="hv3-tx-type-filter" style="margin-bottom:16px">
-    ${filterPills(['Alle', 'Salg', 'Indbet.', 'Just.', '🎫 Arr.'], 'Alle', '__hv3SetTxType', true)}
+    ${filterPills(['Alle', '🛒 Køb', '🧑‍🍳 Ekspedient', '💰 Indbetalinger', '✏️ Justeringer', '🎫 Arrangementer'], txActiveFilterLabel(), '__hv3SetTxType', true)}
   </div>
   <div class="hv3-card" style="padding:0;overflow:hidden">
     <div id="hv3-tx-table-wrap"><div class="hv3-loading"><div class="hv3-spinner"></div>Indlæser transaktioner...</div></div>
   </div>`;
 
-  // Wire search
+  // Wire search with dropdown
   const searchEl = document.getElementById('hv3-tx-search');
-  if (searchEl) {
+  const dropdown = document.getElementById('hv3-tx-dropdown');
+  if (searchEl && dropdown) {
+    // Build user list for dropdown
+    const allUsers = (typeof window.__flangoGetAllUsers === 'function' ? window.__flangoGetAllUsers() : []) || [];
+    const customers = allUsers.filter(u => u.role === 'kunde').sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    dropdown.innerHTML = customers.map(u =>
+      `<div class="hv3-tx-dropdown-item" data-name="${escHtml(u.name || '')}" data-id="${u.id}">${escHtml(u.name || '')} <span style="opacity:0.5;">#${u.number || ''}</span></div>`
+    ).join('');
+
     searchEl.value = txSearch;
-    searchEl.oninput = () => { txSearch = searchEl.value.toLowerCase().trim(); renderTxRows(); };
+
+    const showDropdown = () => {
+      filterDropdownItems(searchEl.value);
+      dropdown.style.display = 'block';
+    };
+
+    const hideDropdown = () => {
+      setTimeout(() => { dropdown.style.display = 'none'; }, 150);
+    };
+
+    function filterDropdownItems(query) {
+      const q = (query || '').toLowerCase().trim();
+      dropdown.querySelectorAll('.hv3-tx-dropdown-item').forEach(item => {
+        const text = item.textContent.toLowerCase();
+        item.style.display = (!q || text.includes(q)) ? '' : 'none';
+      });
+    }
+
+    searchEl.onfocus = showDropdown;
+    searchEl.onblur = hideDropdown;
+    searchEl.oninput = () => {
+      txSearch = searchEl.value.toLowerCase().trim();
+      filterDropdownItems(searchEl.value);
+      dropdown.style.display = 'block';
+      renderTxRows();
+    };
+
+    // Click on dropdown item → select user
+    dropdown.addEventListener('click', (e) => {
+      const item = e.target.closest('.hv3-tx-dropdown-item');
+      if (!item) return;
+      const name = item.dataset.name;
+      searchEl.value = name;
+      txSearch = name.toLowerCase().trim();
+      dropdown.style.display = 'none';
+      renderTxRows();
+    });
   }
+
 
   // Wire type filter via window handler
   window.__hv3SetTxType = (label) => {
-    const map = { 'Alle': 'alle', 'Salg': 'SALE', 'Indbet.': 'DEPOSIT', 'Just.': 'SALE_ADJUSTMENT', '🎫 Arr.': 'EVENT' };
-    txTypeFilter = map[label] || 'alle';
-    // Update pill active states
-    const filterWrap = c.querySelector('.hv3-tx-type-filter');
+    const typeMap = { 'Alle': 'alle', '💰 Indbetalinger': 'DEPOSIT', '✏️ Justeringer': 'SALE_ADJUSTMENT', '🎫 Arrangementer': 'EVENT' };
+
+    // Reset all role filters
+    txSearchCustomerOnly = false;
+    txSearchClerkOnly = false;
+    txTypeFilter = 'alle';
+
+    if (label === '🛒 Køb') {
+      txSearchCustomerOnly = true;
+    } else if (label === '🧑‍🍳 Ekspedient') {
+      txSearchClerkOnly = true;
+    } else {
+      txTypeFilter = typeMap[label] || 'alle';
+    }
+
+    // Update pill active states (only one active at a time)
+    const filterWrap = c.querySelector('.hv3-tx-type-filter .hv3-pills');
     if (filterWrap) {
-      filterWrap.innerHTML = filterPills(['Alle', 'Salg', 'Indbet.', 'Just.', '🎫 Arr.'], label, '__hv3SetTxType', true);
+      filterWrap.querySelectorAll('.hv3-pill').forEach(p => {
+        p.classList.toggle('active', p.textContent.trim() === label);
+      });
     }
     renderTxRows();
   };
 
   // Period handler
-  window.__hv3SetTxPeriod = (p) => { txPeriod = p; renderPageTransaktioner(); };
+  window.__hv3SetTxPeriod = (p) => {
+    txPeriod = p;
+    _preserveFilters = true;
+    renderPageTransaktioner();
+  };
 
   // Load data (cached per period)
   try {
@@ -1738,11 +1832,27 @@ async function renderPageTransaktioner() {
     }
     allTransactions = _tc.txData;
     _txIconMap = _tc.iconMap;
+
+    // Apply pending search from openHistorikV3ForUser
+    if (_pendingTxSearch) {
+      txSearch = _pendingTxSearch.toLowerCase().trim();
+      const searchEl = document.getElementById('hv3-tx-search');
+      if (searchEl) searchEl.value = _pendingTxSearch;
+      _pendingTxSearch = null;
+    }
+
     renderTxRows();
   } catch (err) {
     console.error('renderPageTransaktioner', err);
     document.getElementById('hv3-tx-table-wrap').innerHTML = '<div style="padding:40px;text-align:center;color:var(--hv3-red)">Fejl ved indlæsning af transaktioner.</div>';
   }
+}
+
+function txActiveFilterLabel() {
+  if (txSearchCustomerOnly) return '🛒 Køb';
+  if (txSearchClerkOnly) return '🧑‍🍳 Ekspedient';
+  const map = { alle: 'Alle', DEPOSIT: '💰 Indbetalinger', SALE_ADJUSTMENT: '✏️ Justeringer', EVENT: '🎫 Arrangementer' };
+  return map[txTypeFilter] || 'Alle';
 }
 
 function renderTxRows() {
@@ -1751,9 +1861,7 @@ function renderTxRows() {
 
   let filtered = allTransactions;
   if (txTypeFilter !== 'alle') {
-    if (txTypeFilter === 'SALE') {
-      filtered = filtered.filter(e => e.event_type === 'SALE' || e.event_type === 'SALE_UNDO');
-    } else if (txTypeFilter === 'EVENT') {
+    if (txTypeFilter === 'EVENT') {
       filtered = filtered.filter(e => e.event_type === 'EVENT_PAYMENT' || e.event_type === 'EVENT_REFUND');
     } else {
       filtered = filtered.filter(e => e.event_type === txTypeFilter);
@@ -1761,9 +1869,22 @@ function renderTxRows() {
   }
   if (txSearch) {
     filtered = filtered.filter(e => {
+      if (txSearchCustomerOnly) {
+        return (e.target?.name || '').toLowerCase().includes(txSearch);
+      }
+      if (txSearchClerkOnly) {
+        return (e.clerk?.name || '').toLowerCase().includes(txSearch);
+      }
       const text = [e.target?.name, e.clerk?.name, e.admin?.name, e.session_admin_name].filter(Boolean).join(' ').toLowerCase();
       return text.includes(txSearch);
     });
+  }
+  // Role filters: restrict to relevant transaction types
+  if (txSearchCustomerOnly) {
+    filtered = filtered.filter(e => e.event_type === 'SALE' || e.event_type === 'SALE_UNDO');
+  }
+  if (txSearchClerkOnly) {
+    filtered = filtered.filter(e => e.clerk?.name);
   }
 
   const countEl = document.getElementById('hv3-tx-count');
@@ -1804,11 +1925,18 @@ function renderTxRows() {
         return `<strong>${fmtKr(amt)}</strong>`;
       }
       case 'DEPOSIT': return `<strong style="color:#2563eb">+${fmtKr(d.amount)}</strong>`;
-      case 'SALE_ADJUSTMENT': return `<strong style="color:var(--hv3-green)">+${fmtKr(Math.abs(d.adjustment_amount || 0))}</strong>`;
+      case 'SALE_ADJUSTMENT': {
+        const adj = d.adjustment_amount || 0;
+        const sign = adj > 0 ? '+' : adj < 0 ? '−' : '';
+        const color = adj < 0 ? 'var(--hv3-red, #ef4444)' : 'var(--hv3-green)';
+        return `<strong style="color:${color}">${sign}${fmtKr(Math.abs(adj))}</strong>`;
+      }
       case 'SALE_UNDO': return `<strong>${fmtKr(d.refunded_amount || 0)}</strong>`;
       case 'BALANCE_EDIT': {
         const diff = (d.new_balance || 0) - (d.old_balance || 0);
-        return `<strong style="color:#2563eb">+${fmtKr(Math.abs(diff))}</strong>`;
+        const sign = diff > 0 ? '+' : diff < 0 ? '−' : '';
+        const color = diff < 0 ? 'var(--hv3-red, #ef4444)' : '#2563eb';
+        return `<strong style="color:${color}">${sign}${fmtKr(Math.abs(diff))}</strong>`;
       }
       case 'EVENT_PAYMENT': return `<strong>${fmtKr(d.amount || 0)}</strong>`;
       case 'EVENT_REFUND': return `<strong style="color:var(--hv3-green)">+${fmtKr(d.amount || 0)}</strong>`;
@@ -2028,6 +2156,10 @@ function wireTxAdjustmentPanel(expandRow, items, ctx) {
   // Save adjustment
   panel.querySelector('.hv3-tx-adjust-save').onclick = async (e) => {
     e.stopPropagation();
+    if (!isCurrentUserAdmin()) {
+      showCustomAlert('Kun for admins', 'Kun en administrator kan justere salg. Bed en voksen om hjælp.');
+      return;
+    }
     const itemsDelta = corrections.reduce((sum, c) => sum + c.diffQty * c.unitPrice, 0);
     const delta = itemsDelta + manualAdj;
     if (delta === 0) return;
@@ -2071,6 +2203,10 @@ function wireTxAdjustmentPanel(expandRow, items, ctx) {
   // Undo entire sale
   panel.querySelector('.hv3-tx-adjust-undo').onclick = async (e) => {
     e.stopPropagation();
+    if (!isCurrentUserAdmin()) {
+      showCustomAlert('Kun for admins', 'Kun en administrator kan fortryde salg. Bed en voksen om hjælp.');
+      return;
+    }
     const itemsList = items.map(i => `${i.name} × ${i.quantity}`).join('\n');
     const confirmed = await showConfirmModal({
       title: 'Fortryd hele salget?',

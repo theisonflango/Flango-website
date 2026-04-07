@@ -1,5 +1,5 @@
 // Ansvar: Historik v2 modal lifecycle, tab-switching, alle render-funktioner.
-import { getCurrentAdmin } from '../domain/session-store.js';
+import { getCurrentAdmin, isCurrentUserAdmin } from '../domain/session-store.js';
 import {
   periodRange, fmtDate, fmtDateTime, fmtMinutes, fmtKr, fmtDayDate, getLevel,
   getMyRevenue, getMyTransactionCount, getMyTransactionSplit, getClubStats, getTotalDeposits,
@@ -135,6 +135,38 @@ function getModalHTML() {
 // ─── INIT / OPEN / CLOSE ───
 
 let modalInjected = false;
+
+/**
+ * Open historik modal directly on Transactions tab with a pre-filled search query and "alt" period.
+ */
+export function openHistorikForUser(userName) {
+  // Set period to altid BEFORE opening (openHistorikModal resets to 'idag')
+  openHistorikModal();
+
+  // Wait for modal to render, then switch to transactions
+  setTimeout(() => {
+    // Set period to altid
+    currentPeriod = 'altid';
+    const { from, to } = periodRange('altid');
+    currentFrom = from;
+    currentTo = to;
+    // Switch tab — this calls loadTransactions() which resets txSearch to ''
+    switchTab('tab-transactions');
+
+    // After loadTransactions has rendered, override the search field + filter rows
+    setTimeout(() => {
+      txSearch = (userName || '').toLowerCase().trim();
+      const searchEl = document.getElementById('tx-search');
+      if (searchEl) { searchEl.value = userName || ''; }
+      // Activate "Alt" period button visually
+      document.querySelectorAll('#tx-period .hv2-period-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.period === 'alt' || b.dataset.period === 'altid');
+      });
+      // Re-render with search applied
+      renderTransactionRows();
+    }, 500);
+  }, 150);
+}
 
 export function openHistorikModal() {
   if (!modalInjected) {
@@ -770,7 +802,12 @@ function renderTransactionRows() {
         return `<strong>${fmtKr(amt)}</strong>`;
       }
       case 'DEPOSIT': return `<strong style="color:var(--hv2-info)">+${fmtKr(d.amount)}</strong>`;
-      case 'SALE_ADJUSTMENT': return `<strong style="color:var(--hv2-positive)">+${fmtKr(Math.abs(d.adjustment_amount || 0))}</strong>`;
+      case 'SALE_ADJUSTMENT': {
+        const adj = d.adjustment_amount || 0;
+        const sign = adj > 0 ? '+' : adj < 0 ? '−' : '';
+        const color = adj < 0 ? 'var(--hv2-negative, #ef4444)' : 'var(--hv2-positive)';
+        return `<strong style="color:${color}">${sign}${fmtKr(Math.abs(adj))}</strong>`;
+      }
       case 'SALE_UNDO': return `<strong>${fmtKr(d.refunded_amount || 0)}</strong>`;
       case 'BALANCE_EDIT': {
         const diff = (d.new_balance || 0) - (d.old_balance || 0);
@@ -1001,6 +1038,10 @@ function wireAdjustmentPanel(expandRow, items, ctx) {
   // Save adjustment
   panel.querySelector('.hv2-adjust-save').onclick = async (e) => {
     e.stopPropagation();
+    if (!isCurrentUserAdmin()) {
+      showCustomAlert('Kun for admins', 'Kun en administrator kan justere salg. Bed en voksen om hjælp.');
+      return;
+    }
     const itemsDelta = corrections.reduce((sum, c) => sum + c.diffQty * c.unitPrice, 0);
     const delta = itemsDelta + manualAdj;
     if (delta === 0) return;
@@ -1043,6 +1084,10 @@ function wireAdjustmentPanel(expandRow, items, ctx) {
   // Undo entire sale
   panel.querySelector('.hv2-adjust-undo').onclick = async (e) => {
     e.stopPropagation();
+    if (!isCurrentUserAdmin()) {
+      showCustomAlert('Kun for admins', 'Kun en administrator kan fortryde salg. Bed en voksen om hjælp.');
+      return;
+    }
     const itemsList = items.map(i => `${i.name} × ${i.quantity}`).join('\n');
     const confirmed = await showConfirmModal({
       title: 'Fortryd hele salget?',

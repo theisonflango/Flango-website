@@ -1,4 +1,5 @@
 import { getCurrentCustomer } from './cafe-session-store.js';
+import { isCurrentUserAdmin } from './session-store.js';
 import { runWithAuthRetry } from '../core/auth-retry.js';
 import { applyProductLimitsToButtons, getProductIconInfo } from './products-and-cart.js';
 let flangoReorderMode = false;
@@ -167,6 +168,7 @@ export function setupProductAssortmentFlow({
     ensureReorderHintActions = () => {
         const hint = document.getElementById('product-reorder-hint');
         if (!hint) return null;
+        if (!isCurrentUserAdmin()) return null;
         let addBtn = hint.querySelector('.product-reorder-add-btn');
         if (addBtn) return addBtn;
         addBtn = document.createElement('button');
@@ -576,7 +578,7 @@ export function setupProductAssortmentFlow({
             const iconInfo = getProductIconInfo(product);
             const visualMarkup = iconInfo
                 ? `<img src="${iconInfo.path}" alt="${product.name || 'Produkt'}" class="product-icon-small">`
-                : `<span class="assortment-emoji">${product.emoji || '❓'}</span>`;
+                : `<span class="assortment-emoji">${product.emoji || '🛒'}</span>`;
             itemDiv.innerHTML = `<label for="assortment-${product.id}">${visualMarkup} ${product.name}</label><input type="checkbox" id="assortment-${product.id}" data-product-id="${product.id}" ${product.is_visible !== false ? 'checked' : ''}>`;
             fragment.appendChild(itemDiv);
         });

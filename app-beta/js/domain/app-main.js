@@ -1,7 +1,7 @@
 import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '../ui/sound-and-alerts.js';
 import { initializeSoundSettings } from '../core/sound-manager.js';
 import { initDebugRecorder, logDebugEvent } from '../core/debug-flight-recorder.js';
-import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen } from '../ui/shell-and-theme.js';
+import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen, initToolbarSettings } from '../ui/shell-and-theme.js';
 import { getCurrentTheme, onThemeChange } from '../ui/theme-loader.js';
 import { configureHistoryModule, showTransactionsInSummary, showOverviewInSummary, resetSharedHistoryControls } from './history-and-reports.js';
 import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js';
@@ -37,6 +37,7 @@ import { startRealtimeSync } from '../core/realtime-sync.js';
 import { initToastNotifications, clearAllToasts } from '../ui/toast-notifications.js';
 import { setupCustomerPickerFlow } from './customer-picker-flow.js';
 import { setupAdminFlow, loadUsersAndNotifications } from './admin-flow.js';
+import { initDeletionRequests, checkPendingDeletionRequests } from './deletion-requests.js';
 import { startInactivityTimeout } from '../core/inactivity-timeout.js';
 import { logAuditEvent } from '../core/audit-events.js';
 import { setupProductAssortmentFlow } from './product-assortment-flow.js';
@@ -71,6 +72,9 @@ export async function startApp() {
 
     // Start inaktivitets-timeout (10 min → auto-logout)
     startInactivityTimeout();
+
+    // Apply toolbar settings (needs clerk to be set for admin-only checks)
+    initToolbarSettings();
 
     // 1) Basis state for session og app
     const AVATAR_STORAGE_PREFIX = 'flango-avatar-';
@@ -629,13 +633,20 @@ export async function startApp() {
     // 3.6) Restaurant Mode: badge + køkken-knap
     {
         const inst = window.__flangoGetInstitutionById?.(getInstitutionId());
-        const deviceRm = localStorage.getItem('flango_device_restaurant_mode') === 'true';
-        const rmEnabled = inst?.restaurant_mode_enabled === true && deviceRm;
+        const rmEnabled = inst?.restaurant_mode_enabled === true;
+        const toolbarKitchen = inst?.toolbar_kitchen !== false;
         const badge = document.getElementById('restaurant-mode-badge');
         const kitchenBtn = document.getElementById('kitchen-btn');
-        if (badge) badge.style.display = rmEnabled ? '' : 'none';
+        if (badge) {
+            badge.style.display = rmEnabled ? '' : 'none';
+            badge.addEventListener('click', () => {
+                if (typeof window.__flangoOpenRestaurantModeSettings === 'function') {
+                    window.__flangoOpenRestaurantModeSettings();
+                }
+            });
+        }
         if (kitchenBtn) {
-            kitchenBtn.style.display = rmEnabled ? '' : 'none';
+            kitchenBtn.style.display = (rmEnabled && toolbarKitchen) ? '' : 'none';
             let pressTimer = null;
             let isLongPress = false;
             const startPress = () => {
@@ -699,6 +710,63 @@ export async function startApp() {
         getBalanceSortOrder: () => balanceSortOrder,
         setBalanceSortOrder: (value) => { balanceSortOrder = value; },
     });
+
+    // 9b) GDPR sletningsanmodninger — badge + alert
+    if (adminProfile?.role === 'admin') {
+      initDeletionRequests({ supabaseClient, institutionId: getInstitutionId(), showCustomAlert });
+      checkPendingDeletionRequests();
+    }
+
+    // 9c) Inaktive brugere — advarsel ved admin-login (med countdown når auto-delete er aktiv)
+    if (adminProfile?.role === 'admin') {
+      (async () => {
+        try {
+          // Hent institutions auto-delete settings
+          const inst = window.__flangoGetInstitutionById?.(getInstitutionId());
+          const autoDeleteEnabled = inst?.auto_delete_inactive_enabled === true;
+          const autoDeleteMonths = inst?.auto_delete_inactive_months || 6;
+          const checkMonths = autoDeleteEnabled ? autoDeleteMonths : 6;
+
+          const { data: inactive, error: inactiveErr } = await supabaseClient.rpc('get_inactive_users', {
+            p_institution_id: getInstitutionId(),
+            p_months: checkMonths
+          });
+          if (!inactiveErr && inactive && inactive.length > 0) {
+            const badge = document.getElementById('inactive-users-badge');
+            if (badge) {
+              badge.textContent = inactive.length;
+              badge.style.display = '';
+              badge.title = `${inactive.length} bruger${inactive.length > 1 ? 'e' : ''} har ikke været aktive i ${checkMonths}+ måneder`;
+              badge.addEventListener('click', () => {
+                const lines = inactive.map(u => {
+                  const months = Math.round(u.inactive_months);
+                  let extra = '';
+                  if (autoDeleteEnabled) {
+                    const daysLeft = Math.max(0, Math.round((autoDeleteMonths - u.inactive_months) * 30.44));
+                    if (daysLeft <= 0) {
+                      extra = ' — <span style="color:#ef4444;font-weight:600;">Afventer sletning</span>';
+                    } else {
+                      extra = ` — <span style="color:#f59e0b;font-weight:600;">${daysLeft} dage til auto-sletning</span>`;
+                    }
+                  }
+                  return `<li><strong>${u.name}</strong> — ${months} mdr. inaktiv${extra}</li>`;
+                }).join('');
+                const footer = autoDeleteEnabled
+                  ? `<p style="margin-top:8px;font-size:0.9em;color:#f59e0b;">Auto-sletning er aktiv (${autoDeleteMonths} mdr). Forældre advares 30 dage inden.</p>`
+                  : `<p style="margin-top:8px;font-size:0.9em;color:#888">Du kan slette brugere manuelt via bruger-administration.</p>`;
+                showCustomAlert(
+                  'Inaktive Brugere',
+                  `<p>Følgende brugere har ikke været aktive i ${checkMonths}+ måneder:</p><ul style="text-align:left;max-height:300px;overflow-y:auto">${lines}</ul>${footer}`
+                );
+              });
+            }
+            console.log(`[app-main] ${inactive.length} inaktive brugere fundet (${checkMonths}+ måneder)`);
+          }
+        } catch (e) {
+          console.warn('[app-main] Kunne ikke tjekke inaktive brugere:', e);
+        }
+      })();
+    }
 
     const productAssortment = setupProductAssortmentFlow({
         adminProfile,

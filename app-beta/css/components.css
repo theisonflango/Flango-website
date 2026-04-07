@@ -306,6 +306,35 @@ body[data-theme="pastel-pop"] .settings-modal {
     margin: -5px
 }
 
+/* Admin role toggle tabs */
+.admin-role-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.12);
+    flex-shrink: 0;
+    min-height: 42px;
+}
+.admin-role-toggle-btn {
+    flex: 1;
+    padding: 12px 0;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s;
+    background: rgba(0,0,0,0.05);
+    color: rgba(0,0,0,0.4);
+    min-height: 42px;
+    line-height: 1;
+}
+.admin-role-toggle-btn.active {
+    background: var(--accent-primary, #6366f1);
+    color: #fff;
+}
+
 .modal.admin-mode .modal-entry-info {
     grid-template-columns: 2fr 1fr 0.7fr 1fr 1.2fr;
 }

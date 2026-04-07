@@ -115,11 +115,18 @@ h3 {
 .restaurant-mode-badge {
     width: 100%;
     text-align: center;
-    padding: 4px 0 2px;
-    font-size: 11px;
+    padding: 8px 16px;
+    font-size: 13px;
     font-weight: 700;
     color: #92400e;
-    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border-radius: 10px;
+    letter-spacing: 0.3px;
+    transition: opacity 0.15s;
+}
+
+.restaurant-mode-badge:hover {
+    opacity: 0.8;
 }
 
 #logged-in-user-avatar-container {

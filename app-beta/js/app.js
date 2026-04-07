@@ -4,8 +4,10 @@ import {
     setupThemePickerUI,
     setupToolbarGearMenu,
     setupToolbarHistoryButton,
+    setupToolbarShortcutButtons,
     setupSettingsModal,
     setupHelpButton,
+    initToolbarSettings,
 } from './ui/shell-and-theme.js';
 import { supabaseClient } from './core/config-and-supabase.js';
 import { getCurrentUserProfile } from './domain/auth-and-session.js';
@@ -86,6 +88,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // __flangoGetInstitutionId: portal-data.js reads localStorage directly as fallback
     setupToolbarGearMenu();
     setupToolbarHistoryButton();
+    setupToolbarShortcutButtons();
+    initToolbarSettings();
     setupSettingsModal();
     setupHelpButton();
 

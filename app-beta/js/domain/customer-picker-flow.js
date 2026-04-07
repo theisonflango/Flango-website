@@ -68,6 +68,7 @@ export function setupCustomerPickerFlow({
         openCustomerSelectionModalUI({
             userModal,
             searchInput,
+            allUsers: getAllUsers(),
             renderList: () => renderCustomerList(),
             resetView: resetUserModalView,
         });

@@ -1,9 +1,8 @@
 // Tema og shell-funktioner
-import { getCurrentClerk } from '../domain/session-store.js';
+import { getCurrentClerk, getCurrentAdmin, isCurrentUserAdmin, getInstitutionId } from '../domain/session-store.js';
 import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js';
 import { setupHelpModule, openHelpManually } from './help.js';
 import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js';
-import { getInstitutionId } from '../domain/session-store.js';
 import { getCurrentCustomer } from '../domain/cafe-session-store.js';
 import { getOrder } from '../domain/order-store.js';
 import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js';
@@ -21,6 +20,8 @@ import { showCustomAlert } from './sound-and-alerts.js';
 import { refetchAllProducts } from '../core/data-refetch.js';
 import { invalidateAllLimitCaches } from '../domain/purchase-limits.js';
 import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js';
+import { openAulaImportModal } from './aula-import-modal.js';
+import { openUserAdminPanel } from './user-admin-panel.js';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 
@@ -132,13 +133,7 @@ export function setupThemePickerUI() {
     });
 }
 
-function isCurrentUserAdmin() {
-    if (typeof window.currentUserIsAdmin === 'boolean') {
-        return window.currentUserIsAdmin;
-    }
-    const role = (window.__flangoCurrentClerkRole || '').toLowerCase();
-    return role === 'admin';
-}
+// isCurrentUserAdmin is imported from session-store.js
 
 function notifyToolbarUser(message) {
     const alertFn = typeof window.__flangoShowAlert === 'function'
@@ -206,7 +201,7 @@ let productRulesState = {
     parentPortalAllowsUnhealthy: true, // Om forældreportal tillader at bruge usund-funktionen
     productLimits: new Map(), // productId -> max_per_day
     institutionId: null,
-    sortColumn: 'core_assortment',
+    sortColumn: 'in_assortment',
     sortDirection: 'desc',
     showInactiveProducts: false, // Vis deaktiverede produkter (is_enabled=false)
     // Draft state for pending changes (kun lokale ændringer, ikke gemt endnu)
@@ -528,8 +523,8 @@ function renderProductRulesTable() {
     if (subtitleEl) {
         const showing = products.length;
         subtitleEl.textContent = searchQuery
-            ? `${showing} af ${totalProductCount} produkter`
-            : `Tilføj/Rediger produkter (${totalProductCount} produkter)`;
+            ? `(${showing} af ${totalProductCount})`
+            : `(${totalProductCount})`;
     }
 
     // Show/hide empty message
@@ -585,15 +580,55 @@ function renderProductRulesTable() {
         tdInAssortment.appendChild(inAssortmentToggle);
         tr.appendChild(tdInAssortment);
 
-        // 1. Ikon
+        // 1. Ikon (klikbar → åbner ikon-picker)
         const tdIcon = document.createElement('td');
-        tdIcon.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center;' + CB;
+        tdIcon.style.cssText = 'padding: 8px; vertical-align: middle; text-align: center; cursor: pointer;' + CB;
+        tdIcon.title = 'Klik for at ændre ikon';
         const iconInfo = getProductIconInfo(product);
         if (iconInfo?.path) {
             tdIcon.innerHTML = `<img src="${iconInfo.path}" alt="${product.name}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 4px;">`;
         } else {
             tdIcon.innerHTML = `<span style="font-size: 24px;">${product.emoji || '🛒'}</span>`;
         }
+        tdIcon.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { openProductIconPicker } = await import('./product-icon-picker.js');
+            openProductIconPicker({
+                mode: 'product',
+                institutionId: productRulesState.institutionId,
+                productId: product.id,
+                productName: product.name || '',
+                currentIcon: product.icon_url ? { url: product.icon_url, storagePath: product.icon_storage_path } : null,
+                adminProfile: getCurrentAdmin(),
+                onResult: async (result) => {
+                    const updates = {};
+                    if (result.type === 'emoji') {
+                        updates.emoji = result.emoji;
+                        updates.icon_url = null;
+                        updates.icon_storage_path = null;
+                    } else if (result.type === 'standard' || result.type === 'icon') {
+                        updates.emoji = result.emoji || null;
+                        updates.icon_url = null;
+                        updates.icon_storage_path = null;
+                    } else if (result.type === 'upload' || result.type === 'ai') {
+                        updates.icon_url = result.url;
+                        updates.icon_storage_path = result.storagePath || null;
+                        updates.icon_updated_at = result.updatedAt || new Date().toISOString();
+                        updates.emoji = null;
+                    }
+                    const { error } = await supabaseClient
+                        .from('products')
+                        .update(updates)
+                        .eq('id', product.id);
+                    if (error) {
+                        console.error('[Produktoversigt] Fejl ved ikon-opdatering:', error);
+                    } else {
+                        Object.assign(product, updates);
+                        renderProductRulesTable();
+                    }
+                },
+            });
+        });
         tr.appendChild(tdIcon);
 
         // 2. Navn (med blyant-ikon for redigering)
@@ -1375,6 +1410,10 @@ async function saveAllDraftChanges() {
     }
 
     console.log('[product-rules] Alle ændringer gemt');
+    logAuditEvent('SETTINGS_CHANGE', {
+        institutionId: getInstitutionId(),
+        details: { context: 'product_rules_batch_save', changed_products: productRulesState.draft.size },
+    });
 }
 
 /**
@@ -1629,6 +1668,10 @@ async function openProfilePictureSettingsModal() {
         enabledLabel.textContent = enabled ? 'Profilbilleder er slået TIL' : 'Profilbilleder er slået FRA';
         typesSection.style.display = enabled ? 'block' : 'none';
 
+        // Show/hide Aula import section
+        const aulaSection = document.getElementById('pp-aula-import-section');
+        if (aulaSection) aulaSection.style.display = enabled ? 'block' : 'none';
+
         uploadCb.checked = types.includes('upload');
         cameraCb.checked = types.includes('camera');
         libraryCb.checked = types.includes('library');
@@ -1641,12 +1684,23 @@ async function openProfilePictureSettingsModal() {
         const on = enabledToggle.checked;
         enabledLabel.textContent = on ? 'Profilbilleder er slået TIL' : 'Profilbilleder er slået FRA';
         typesSection.style.display = on ? 'block' : 'none';
+        const aulaSection = document.getElementById('pp-aula-import-section');
+        if (aulaSection) aulaSection.style.display = on ? 'block' : 'none';
     };
 
     // AI-Avatar warning toggle
     aiAvatarCb.onchange = () => {
         aiWarning.style.display = aiAvatarCb.checked ? 'block' : 'none';
     };
+
+    // Aula import button
+    const aulaImportBtn = document.getElementById('pp-aula-import-btn');
+    if (aulaImportBtn) {
+        aulaImportBtn.onclick = () => {
+            modal.style.display = 'none';
+            openAulaImportModal();
+        };
+    }
 
     // Close + back buttons
     const closeBtn = modal.querySelector('.close-btn');
@@ -1965,15 +2019,6 @@ async function openInstitutionPreferences() {
         }
     });
 
-    // Rediger Admin (Voksen konto'er) knap
-    const editAdminsBtn = document.createElement('button');
-    editAdminsBtn.className = 'settings-item-btn';
-    editAdminsBtn.innerHTML = prefRow('Key.webp', 'Rediger Admin (Voksen konto\'er)', 'Administrer voksne/admin-brugere for caféen.');
-    editAdminsBtn.addEventListener('click', () => {
-        backdrop.style.display = 'none';
-        window.__flangoOpenAdminUserManager?.('admins');
-    });
-
     // MobilePay Import knap
     const mobilePayImportBtn = document.createElement('button');
     mobilePayImportBtn.className = 'settings-item-btn';
@@ -2019,17 +2064,439 @@ async function openInstitutionPreferences() {
         openProfilePictureSettingsModal();
     });
 
-    contentEl.appendChild(parentPortalBtn);
-    contentEl.appendChild(betalingsmetodeBtn);
+    // MFA / Totrinsgodkendelse knap
+    const mfaSettingsBtn = document.createElement('button');
+    mfaSettingsBtn.className = 'settings-item-btn';
+    mfaSettingsBtn.innerHTML = prefRow('🔐', 'Totrinsgodkendelse (MFA)', 'Krav om ekstra sikkerhedskode ved login via authenticator-app.');
+    mfaSettingsBtn.addEventListener('click', () => {
+        settingsModalPushParent(openInstitutionPreferences);
+        openMfaSettingsModal();
+    });
+
+    // Auto-sletning af inaktive brugere knap
+    const autoDeleteBtn = document.createElement('button');
+    autoDeleteBtn.className = 'settings-item-btn';
+    autoDeleteBtn.innerHTML = prefRow('🗑️', 'Auto-sletning af inaktive', 'Slet automatisk brugere der ikke har været aktive i lang tid.');
+    autoDeleteBtn.addEventListener('click', () => {
+        settingsModalPushParent(openInstitutionPreferences);
+        openAutoDeleteSettingsModal();
+    });
+
     contentEl.appendChild(spendingLimitBtn);
     contentEl.appendChild(sugarPolicyBtn);
-    contentEl.appendChild(profilePictureBtn);
     contentEl.appendChild(restaurantModeBtn);
-    contentEl.appendChild(iconSharingBtn);
-    contentEl.appendChild(editAdminsBtn);
-    contentEl.appendChild(mobilePayImportBtn);
+
+    // "Toolbar" item
+    const toolbarBtn = document.createElement('button');
+    toolbarBtn.className = 'settings-item-btn';
+    toolbarBtn.innerHTML = prefRow('Gear.webp', 'Toolbar', 'Vælg hvilke funktioner der skal være tilgængelige som genveje over indkøbskurven.');
+    toolbarBtn.addEventListener('click', () => {
+        showToolbarSettingsView();
+    });
+    contentEl.appendChild(toolbarBtn);
+
+    // "Administration" sub-menu item
+    const adminSubBtn = document.createElement('button');
+    adminSubBtn.className = 'settings-item-btn';
+    adminSubBtn.innerHTML = prefRow('Gear.webp', 'Administration', 'Betaling, deling, sikkerhed, import m.m.');
+    adminSubBtn.addEventListener('click', () => {
+        showAdministrationView();
+    });
+    contentEl.appendChild(adminSubBtn);
+
     backdrop.style.display = 'flex';
     updateSettingsModalBackVisibility();
+}
+
+// DB column → toolbar button ID mapping
+const TOOLBAR_MAPPING = [
+    { dbCol: 'shift_timer_enabled', key: 'shift_timer', btnId: null, label: 'Bytte-Timer', desc: 'Vis bytte-timer genvej', icon: '⏱️' },
+    { dbCol: 'toolbar_calculator', key: 'calculator', btnId: 'calculator-mode-toggle', label: 'Lommeregner', desc: 'Vis lommeregner genvej', icon: '🧮' },
+    { dbCol: 'toolbar_kitchen', key: 'kitchen', btnId: 'kitchen-btn', label: 'Køkkenskærm', desc: 'Vis køkkenskærm genvej (kræver Restaurant Mode)', icon: '🍽️', requiresCol: 'restaurant_mode_enabled' },
+    { dbCol: 'toolbar_products', key: 'products', btnId: 'toolbar-products-btn', label: 'Produktoversigt', desc: 'Vis produktoversigt genvej', icon: '🛒', adminOnly: true },
+    { dbCol: 'toolbar_deposit', key: 'deposit', btnId: 'toolbar-deposit-btn', label: 'Indbetaling', desc: 'Vis indbetaling genvej', icon: '💰', adminOnly: true },
+    { dbCol: 'toolbar_history', key: 'history', btnId: 'toolbar-history-btn', label: 'Historik', desc: 'Vis historik genvej', icon: '📋' },
+    { dbCol: 'toolbar_help', key: 'help', btnId: 'flango-logo-button', label: 'Hjælp', desc: 'Vis hjælp genvej', icon: '❓' },
+    { dbCol: 'toolbar_min_flango', key: 'min_flango', btnId: 'logged-in-user-avatar-container', label: 'Min Flango', desc: 'Vis avatar/profil genvej', icon: '👤' },
+    { dbCol: 'toolbar_logout', key: 'logout', btnId: 'logout-btn', label: 'Log Ud', desc: 'Vis log ud genvej', icon: '🚪' },
+    { dbCol: 'toolbar_user_panel', key: 'user_panel', btnId: 'toolbar-user-panel-btn', label: 'Brugerpanel', desc: 'Vis brugerpanel genvej', icon: '👥', adminOnly: true },
+];
+
+async function showToolbarSettingsView() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    settingsModalPushParent(openInstitutionPreferences);
+    titleEl.textContent = 'Toolbar';
+    contentEl.innerHTML = '<p style="text-align:center;padding:20px;opacity:0.6;">Henter indstillinger...</p>';
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+
+    // Fetch current values from DB (include requirement columns)
+    const extraCols = new Set();
+    TOOLBAR_MAPPING.forEach(m => { if (m.requiresCol) extraCols.add(m.requiresCol); });
+    const selectCols = [...TOOLBAR_MAPPING.map(m => m.dbCol), ...extraCols].join(', ');
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select(selectCols)
+        .eq('id', institutionId)
+        .single();
+
+    if (error) {
+        contentEl.innerHTML = '<p style="text-align:center;padding:20px;color:#ef4444;">Kunne ikke hente indstillinger.</p>';
+        updateSettingsModalBackVisibility();
+        return;
+    }
+
+    contentEl.innerHTML = '';
+
+    const desc = document.createElement('p');
+    desc.style.cssText = 'margin: 0 0 16px; font-size: 13px; color: var(--text-secondary, #888); padding: 0 4px;';
+    desc.textContent = 'Vælg hvilke genvejsknapper der vises i toolbaren over indkøbskurven.';
+    contentEl.appendChild(desc);
+
+    TOOLBAR_MAPPING.forEach(item => {
+        const requirementMet = !item.requiresCol || data[item.requiresCol] === true;
+        const isOn = data[item.dbCol] !== false;
+        const row = document.createElement('button');
+        row.className = 'settings-item-btn';
+        row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; cursor: pointer;' + (!requirementMet ? ' opacity: 0.45; pointer-events: none;' : '');
+        row.innerHTML = `
+            <span class="settings-item-icon"><span class="settings-item-icon-emoji">${item.icon}</span></span>
+            <span class="settings-item-text" style="flex:1">
+                <strong>${item.label}</strong>
+                <div class="settings-item-desc">${item.desc}</div>
+            </span>
+            <span class="toolbar-toggle" style="font-size: 1.4rem; min-width: 36px; text-align: center;">${requirementMet ? (isOn ? '✅' : '⬜') : '⬜'}</span>
+        `;
+        if (requirementMet) {
+            row.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const current = data[item.dbCol] !== false;
+                const newVal = !current;
+                data[item.dbCol] = newVal;
+                row.querySelector('.toolbar-toggle').textContent = newVal ? '✅' : '⬜';
+                await supabaseClient
+                    .from('institutions')
+                    .update({ [item.dbCol]: newVal })
+                    .eq('id', institutionId);
+                applyToolbarSettings(data);
+            });
+        }
+        contentEl.appendChild(row);
+    });
+
+    updateSettingsModalBackVisibility();
+}
+
+function applyToolbarSettings(data) {
+    const isAdmin = isCurrentUserAdmin();
+    TOOLBAR_MAPPING.forEach(item => {
+        if (!item.btnId) return;
+        const btn = document.getElementById(item.btnId);
+        if (!btn) return;
+        const requirementMet = !item.requiresCol || data[item.requiresCol] === true;
+        const roleAllowed = !item.adminOnly || isAdmin;
+        btn.style.display = (requirementMet && roleAllowed && data[item.dbCol] !== false) ? '' : 'none';
+    });
+}
+
+// Apply toolbar settings on load (fetches from DB)
+export async function initToolbarSettings() {
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+    try {
+        const extraCols = new Set();
+        TOOLBAR_MAPPING.forEach(m => { if (m.requiresCol) extraCols.add(m.requiresCol); });
+        const selectCols = [...TOOLBAR_MAPPING.map(m => m.dbCol), ...extraCols].join(', ');
+        const { data } = await supabaseClient
+            .from('institutions')
+            .select(selectCols)
+            .eq('id', institutionId)
+            .single();
+        if (data) applyToolbarSettings(data);
+    } catch (e) { /* ignore */ }
+}
+
+function showAdministrationView() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    settingsModalPushParent(openInstitutionPreferences);
+    titleEl.textContent = 'Administration';
+    contentEl.innerHTML = '';
+
+    const prefIcon = (name) => `Icons/webp/Function/${name}`;
+    const prefRow = (icon, title, desc) => {
+        const iconHtml = icon.endsWith('.webp')
+            ? `<img src="${prefIcon(icon)}" alt="">`
+            : `<span class="settings-item-icon-emoji">${icon}</span>`;
+        return `<span class="settings-item-icon">${iconHtml}</span><span class="settings-item-text"><strong>${title}</strong><div class="settings-item-desc">${desc}</div></span>`;
+    };
+
+    const items = [
+        { icon: 'Coin.webp', title: 'Indbetal penge & Rediger brugere', desc: 'Indbetal på børnenes saldo og administrer brugerlisten.', action: () => { openViaSettings('admin-user-manager-modal', () => window.__flangoOpenAdminUserManager?.('customers')); } },
+        { icon: 'Bruger.webp', title: 'Forældreportal', desc: 'Forældreindsigt, forældre-liste, kode-administration og portal-preview.', action: () => { backdrop.style.display = 'none'; if (window.isV2Enabled?.()) { window.openAdminPortalV2(); } else { openParentPortalSettingsModal(); } } },
+        { icon: 'Kasseapparat.webp', title: 'Betalingsmetoder', desc: 'Stripe Connect, MobilePay og gebyrfordeling for forældreportalen.', action: () => { backdrop.style.display = 'none'; openPaymentMethodsModal(); } },
+        { icon: '📷', title: 'Profilbilleder', desc: 'Vis profilbilleder ved brugervalg i caféen.', action: () => { settingsModalPushParent(showAdministrationView); openProfilePictureSettingsModal(); }, keepOpen: true },
+        { icon: '🎨', title: 'Produktikoner – Deling', desc: 'Del jeres ikoner med andre institutioner og brug andres delte ikoner.', action: () => { backdrop.style.display = 'none'; openIconSharingSettingsModal(); } },
+        { icon: 'Kasseapparat.webp', title: 'MobilePay CSV Import', desc: 'Importér indbetalinger fra MobilePay CSV-eksport og sæt dem på børnenes saldo.', action: () => { backdrop.style.display = 'none'; openMobilePayImportModal(); } },
+        { icon: 'Bruger.webp', title: 'Opret/Opdater brugere automatisk', desc: 'Masse-import af brugere fra liste.', action: () => { backdrop.style.display = 'none'; window.__flangoOpenAutoImportModal?.() || notifyToolbarUser('Auto-import er ikke klar.'); } },
+    ];
+
+    items.forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'settings-item-btn';
+        btn.innerHTML = prefRow(item.icon, item.title, item.desc);
+        btn.addEventListener('click', () => {
+            if (!item.keepOpen) backdrop.style.display = 'none';
+            item.action();
+        });
+        contentEl.appendChild(btn);
+    });
+
+    // "Datasikkerhed" sub-menu item
+    const datasikkerhedBtn = document.createElement('button');
+    datasikkerhedBtn.className = 'settings-item-btn';
+    datasikkerhedBtn.innerHTML = prefRow('🔐', 'Datasikkerhed', 'MFA, auto-sletning, enheder, saldoliste og nulstilling.');
+    datasikkerhedBtn.addEventListener('click', () => {
+        showDatasikkerhedView();
+    });
+    contentEl.appendChild(datasikkerhedBtn);
+
+    updateSettingsModalBackVisibility();
+}
+
+function showDatasikkerhedView() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    settingsModalPushParent(showAdministrationView);
+    titleEl.textContent = 'Datasikkerhed';
+    contentEl.innerHTML = '';
+
+    const prefIcon = (name) => `Icons/webp/Function/${name}`;
+    const prefRow = (icon, title, desc) => {
+        const iconHtml = icon.endsWith('.webp')
+            ? `<img src="${prefIcon(icon)}" alt="">`
+            : `<span class="settings-item-icon-emoji">${icon}</span>`;
+        return `<span class="settings-item-icon">${iconHtml}</span><span class="settings-item-text"><strong>${title}</strong><div class="settings-item-desc">${desc}</div></span>`;
+    };
+
+    // MFA
+    const mfaBtn = document.createElement('button');
+    mfaBtn.className = 'settings-item-btn';
+    mfaBtn.innerHTML = prefRow('🔐', 'Totrinsgodkendelse (MFA)', 'Krav om ekstra sikkerhedskode ved login via authenticator-app.');
+    mfaBtn.addEventListener('click', () => {
+        settingsModalPushParent(showDatasikkerhedView);
+        openMfaSettingsModal();
+    });
+    contentEl.appendChild(mfaBtn);
+
+    // Auto-sletning
+    const autoDeleteBtn = document.createElement('button');
+    autoDeleteBtn.className = 'settings-item-btn';
+    autoDeleteBtn.innerHTML = prefRow('🗑️', 'Auto-sletning af inaktive', 'Slet automatisk brugere der ikke har været aktive i lang tid.');
+    autoDeleteBtn.addEventListener('click', () => {
+        settingsModalPushParent(showDatasikkerhedView);
+        openAutoDeleteSettingsModal();
+    });
+    contentEl.appendChild(autoDeleteBtn);
+
+    // Mine enheder
+    const devicesBtn = document.createElement('button');
+    devicesBtn.className = 'settings-item-btn';
+    devicesBtn.innerHTML = prefRow('Gear.webp', 'Mine enheder', 'Se og fjern enheder der husker din login.');
+    devicesBtn.addEventListener('click', () => {
+        settingsModalPushParent(showDatasikkerhedView);
+        openMyDevicesView();
+    });
+    contentEl.appendChild(devicesBtn);
+
+    // Saldoliste ved låsning (toggle)
+    const instId = window.__flangoInstitutionId || '';
+    const balanceDownloadKey = `flango_balance_download_on_lock_${instId}`;
+    const balanceDownloadEnabled = localStorage.getItem(balanceDownloadKey) !== 'false';
+    const toggleRow = document.createElement('button');
+    toggleRow.className = 'settings-item-btn';
+    toggleRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; cursor: pointer;';
+    toggleRow.innerHTML = `
+        <span class="settings-item-icon"><img src="${prefIcon('Print.webp')}" alt=""></span>
+        <span class="settings-item-text" style="flex:1">
+            <strong>Saldoliste ved låsning</strong>
+            <div class="settings-item-desc">Download saldoliste automatisk når caféen låses.</div>
+        </span>
+        <span class="balance-download-toggle" style="font-size: 1.4rem; min-width: 36px; text-align: center;">${balanceDownloadEnabled ? '✅' : '⬜'}</span>
+    `;
+    toggleRow.addEventListener('click', (e) => {
+        e.preventDefault();
+        const current = localStorage.getItem(balanceDownloadKey) !== 'false';
+        localStorage.setItem(balanceDownloadKey, !current);
+        toggleRow.querySelector('.balance-download-toggle').textContent = !current ? '✅' : '⬜';
+    });
+    contentEl.appendChild(toggleRow);
+
+    // Separator + Anmod om nulstilling
+    const sep = document.createElement('div');
+    sep.style.cssText = 'border-top: 1px solid rgba(255,255,255,0.08); margin: 8px 0;';
+    contentEl.appendChild(sep);
+
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'settings-item-btn';
+    resetBtn.id = 'settings-reset-request-btn';
+    resetBtn.innerHTML = `<span class="settings-item-text"><strong style="color: var(--negative, #ef4444)">Anmod om nulstilling af system</strong><div class="settings-item-desc" style="color: var(--negative, #ef4444); opacity: 0.7">Anmod om at al data i systemet nulstilles permanent.</div></span>`;
+    resetBtn.addEventListener('click', () => {
+        backdrop.style.display = 'none';
+        openResetRequestDialog();
+    });
+    contentEl.appendChild(resetBtn);
+
+    updateSettingsModalBackVisibility();
+}
+
+/**
+ * Åbner Auto-sletning indstillinger modal
+ */
+async function openAutoDeleteSettingsModal() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+
+    titleEl.textContent = 'Auto-sletning af inaktive brugere';
+    contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Indlæser...</div>';
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
+
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('auto_delete_inactive_enabled, auto_delete_inactive_months')
+        .eq('id', institutionId)
+        .single();
+
+    if (error || !data) {
+        contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #ef4444;">Kunne ikke hente indstillinger.</div>';
+        return;
+    }
+
+    const enabled = data.auto_delete_inactive_enabled === true;
+    const months = data.auto_delete_inactive_months || 6;
+
+    const container = document.createElement('div');
+    container.style.cssText = 'padding: 20px;';
+    container.innerHTML = `
+        <div style="margin-bottom: 20px;">
+            <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin-bottom: 16px;">
+                Når auto-sletning er aktiveret, slettes brugere der ikke har været aktive i den valgte periode automatisk.
+                Forældre modtager en advarsel via e-mail 30 dage inden sletning.
+            </p>
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 16px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; border: 2px solid #f59e0b;">
+                <input type="checkbox" id="auto-delete-checkbox" ${enabled ? 'checked' : ''} style="width: 22px; height: 22px; cursor: pointer; accent-color: #d97706;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <strong style="color: #92400e; font-size: 16px;">Aktivér auto-sletning</strong>
+                        <span id="auto-delete-status" style="padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; ${enabled ? 'background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534;' : 'background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b;'}">
+                            ${enabled ? '✓ Aktiv' : '✗ Inaktiv'}
+                        </span>
+                    </div>
+                    <div style="font-size: 13px; color: #6b7280;">Brugere der ikke har handlet eller logget ind slettes automatisk</div>
+                </div>
+            </label>
+        </div>
+
+        <div id="auto-delete-options" style="display: ${enabled ? 'block' : 'none'}; margin-bottom: 20px;">
+            <label style="font-weight: 600; color: #374151; display: block; margin-bottom: 8px;">Inaktivitetsperiode</label>
+            <div style="display: flex; gap: 10px;">
+                <label style="flex: 1; display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 14px 16px; background: ${months === 6 ? 'linear-gradient(135deg, #dbeafe, #bfdbfe)' : '#f3f4f6'}; border-radius: 10px; border: 2px solid ${months === 6 ? '#3b82f6' : '#e5e7eb'}; transition: all 0.2s;">
+                    <input type="radio" name="auto-delete-months" value="6" ${months === 6 ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #3b82f6;">
+                    <div>
+                        <strong style="color: ${months === 6 ? '#1d4ed8' : '#374151'};">6 måneder</strong>
+                        <div style="font-size: 12px; color: #6b7280;">Anbefalet for aktive institutioner</div>
+                    </div>
+                </label>
+                <label style="flex: 1; display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 14px 16px; background: ${months === 24 ? 'linear-gradient(135deg, #dbeafe, #bfdbfe)' : '#f3f4f6'}; border-radius: 10px; border: 2px solid ${months === 24 ? '#3b82f6' : '#e5e7eb'}; transition: all 0.2s;">
+                    <input type="radio" name="auto-delete-months" value="24" ${months === 24 ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #3b82f6;">
+                    <div>
+                        <strong style="color: ${months === 24 ? '#1d4ed8' : '#374151'};">24 måneder</strong>
+                        <div style="font-size: 12px; color: #6b7280;">Længere bevaringsperiode</div>
+                    </div>
+                </label>
+            </div>
+            <p style="font-size: 12px; color: #9ca3af; margin-top: 10px;">Forældre advares automatisk 30 dage inden sletning via e-mail.</p>
+        </div>
+    `;
+
+    const checkbox = container.querySelector('#auto-delete-checkbox');
+    const statusSpan = container.querySelector('#auto-delete-status');
+    const optionsDiv = container.querySelector('#auto-delete-options');
+    const radios = container.querySelectorAll('input[name="auto-delete-months"]');
+
+    checkbox.addEventListener('change', () => {
+        const on = checkbox.checked;
+        optionsDiv.style.display = on ? 'block' : 'none';
+        statusSpan.textContent = on ? '✓ Aktiv' : '✗ Inaktiv';
+        statusSpan.style.cssText = `padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; ${on ? 'background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534;' : 'background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b;'}`;
+    });
+
+    // Radio styling update
+    radios.forEach(r => r.addEventListener('change', () => {
+        const val = parseInt(r.value);
+        radios.forEach(r2 => {
+            const label = r2.closest('label');
+            const isChecked = r2.checked;
+            label.style.background = isChecked ? 'linear-gradient(135deg, #dbeafe, #bfdbfe)' : '#f3f4f6';
+            label.style.borderColor = isChecked ? '#3b82f6' : '#e5e7eb';
+            const strong = label.querySelector('strong');
+            if (strong) strong.style.color = isChecked ? '#1d4ed8' : '#374151';
+        });
+    }));
+
+    // Gem-knap
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'settings-button settings-button-primary';
+    saveBtn.textContent = 'Gem';
+    saveBtn.style.cssText = 'width: 100%; padding: 14px; font-size: 16px; font-weight: 600; border-radius: 10px; cursor: pointer; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none;';
+    saveBtn.addEventListener('click', async () => {
+        const isEnabled = checkbox.checked;
+        const selectedMonths = parseInt(container.querySelector('input[name="auto-delete-months"]:checked')?.value || '6');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Gemmer...';
+        try {
+            const { error: saveErr } = await supabaseClient
+                .from('institutions')
+                .update({
+                    auto_delete_inactive_enabled: isEnabled,
+                    auto_delete_inactive_months: isEnabled ? selectedMonths : null,
+                })
+                .eq('id', institutionId);
+            if (saveErr) throw saveErr;
+            saveBtn.textContent = '✓ Gemt!';
+            saveBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+            setTimeout(() => {
+                saveBtn.textContent = 'Gem';
+                saveBtn.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+                saveBtn.disabled = false;
+            }, 1500);
+        } catch (e) {
+            showAlert('Fejl ved gemning: ' + (e.message || e));
+            saveBtn.textContent = 'Gem';
+            saveBtn.disabled = false;
+        }
+    });
+
+    container.appendChild(saveBtn);
+    contentEl.innerHTML = '';
+    contentEl.appendChild(container);
 }
 
 /**
@@ -2401,6 +2868,8 @@ async function openShiftTimerSettingsModal() {
 /**
  * Åbner Restaurant Mode indstillinger modal
  */
+window.__flangoOpenRestaurantModeSettings = () => openRestaurantModeSettingsModal();
+
 async function openRestaurantModeSettingsModal() {
     const backdrop = document.getElementById('settings-modal-backdrop');
     const titleEl = document.getElementById('settings-modal-title');
@@ -2551,13 +3020,13 @@ async function openRestaurantModeSettingsModal() {
     const servePreviewBtn = container.querySelector('#restaurant-serve-sound-preview');
     const saveBtn = container.querySelector('#restaurant-save-btn');
 
-    // Helper: opdater header badge + køkken-knap baseret på institution + enhed
+    // Helper: opdater header badge + køkken-knap baseret på institution + toolbar settings
     const updateHeaderVisibility = (instOn, deviceOn) => {
         const showRm = instOn && deviceOn;
         const badge = document.getElementById('restaurant-mode-badge');
         const kitchenBtn = document.getElementById('kitchen-btn');
         if (badge) badge.style.display = showRm ? '' : 'none';
-        if (kitchenBtn) kitchenBtn.style.display = showRm ? '' : 'none';
+        // Kitchen button visibility is handled by applyToolbarSettings / initToolbarSettings
     };
 
     // Toggle sub-settings enabled/disabled
@@ -2635,12 +3104,141 @@ async function openRestaurantModeSettingsModal() {
             // Opdater cache
             updateInstitutionCache(institutionId, updates);
 
-            // Opdater header badge + køkken-knap synlighed
-            updateHeaderVisibility(updates.restaurant_mode_enabled, deviceCheckbox.checked);
+            // Opdater header badge
+            const badge = document.getElementById('restaurant-mode-badge');
+            if (badge) badge.style.display = updates.restaurant_mode_enabled ? '' : 'none';
+
+            // Re-apply toolbar settings with fresh DB data
+            try {
+                const toolbarCols = TOOLBAR_MAPPING.map(m => m.dbCol).join(', ');
+                const extraCols = new Set();
+                TOOLBAR_MAPPING.forEach(m => { if (m.requiresCol) extraCols.add(m.requiresCol); });
+                const allCols = toolbarCols + (extraCols.size ? ', ' + [...extraCols].join(', ') : '');
+                const { data: tbData } = await supabaseClient
+                    .from('institutions')
+                    .select(allCols)
+                    .eq('id', institutionId)
+                    .single();
+                if (tbData) applyToolbarSettings(tbData);
+            } catch (e) { console.warn('[restaurant-settings] toolbar refresh error:', e); }
 
             settingsModalGoBack();
         } catch (err) {
             console.error('[restaurant-settings] Error:', err);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Gem';
+        }
+    });
+
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
+}
+
+/**
+ * Åbner MFA / Totrinsgodkendelse indstillinger
+ */
+async function openMfaSettingsModal() {
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    const titleEl = document.getElementById('settings-modal-title');
+    const contentEl = document.getElementById('settings-modal-content');
+    if (!backdrop || !titleEl || !contentEl) return;
+
+    const institutionId = getInstitutionId();
+    if (!institutionId) return;
+
+    titleEl.textContent = 'Totrinsgodkendelse (MFA)';
+    contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Indlaeser...</div>';
+    backdrop.style.display = 'flex';
+    updateSettingsModalBackVisibility();
+
+    const { data, error } = await supabaseClient
+        .from('institutions')
+        .select('admin_mfa_policy, parent_mfa_new_device')
+        .eq('id', institutionId)
+        .single();
+
+    if (error || !data) {
+        contentEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #ef4444;">Kunne ikke hente indstillinger.</div>';
+        return;
+    }
+
+    const currentPolicy = data.admin_mfa_policy || 'off';
+    const parentMfa = data.parent_mfa_new_device === true;
+
+    const container = document.createElement('div');
+    container.style.cssText = 'padding: 20px;';
+    container.innerHTML = `
+        <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+            Totrinsgodkendelse (MFA) tilfojer et ekstra sikkerhedslag ved login.
+            Brugeren skal indtaste en 6-cifret kode fra en authenticator-app
+            (Google Authenticator, Microsoft Authenticator o.l.) ud over kodeord.
+        </p>
+
+        <div style="margin-bottom: 24px;">
+            <label style="display: block; font-weight: 700; color: #1e3a5f; margin-bottom: 8px; font-size: 15px;">
+                Admin-login MFA
+            </label>
+            <select id="mfa-admin-policy" style="width: 100%; padding: 12px 14px; border: 2px solid #d1d5db; border-radius: 10px; font-size: 15px; background: #fff; cursor: pointer;">
+                <option value="off" ${currentPolicy === 'off' ? 'selected' : ''}>Fra (ingen MFA)</option>
+                <option value="new_device" ${currentPolicy === 'new_device' ? 'selected' : ''}>Kun ved ny enhed</option>
+                <option value="always" ${currentPolicy === 'always' ? 'selected' : ''}>Altid ved login</option>
+            </select>
+            <p style="font-size: 12px; color: #6b7280; margin-top: 6px;">
+                "Kun ved ny enhed" kraever MFA forste gang man logger ind pa en ny browser/enhed.
+                "Altid" kraever MFA ved hver ny session.
+            </p>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 14px 16px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border-radius: 12px; border: 1.5px solid #93c5fd;">
+                <input type="checkbox" id="mfa-parent-new-device" ${parentMfa ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer; accent-color: #3b82f6;">
+                <div style="flex: 1;">
+                    <strong style="color: #1e40af; font-size: 15px;">Kraev MFA for foraeldre ved ny enhed</strong>
+                    <div style="font-size: 13px; color: #6b7280; margin-top: 2px;">
+                        Foraeldre skal bruge authenticator-app forste gang de logger ind pa en ny enhed i foraeldreportalen.
+                    </div>
+                </div>
+            </label>
+        </div>
+
+        <button id="mfa-settings-save-btn" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer;">
+            Gem
+        </button>
+    `;
+
+    contentEl.innerHTML = '';
+    contentEl.appendChild(container);
+
+    const saveBtn = container.querySelector('#mfa-settings-save-btn');
+    const policySelect = container.querySelector('#mfa-admin-policy');
+    const parentCheckbox = container.querySelector('#mfa-parent-new-device');
+
+    saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Gemmer...';
+
+        const updates = {
+            admin_mfa_policy: policySelect.value,
+            parent_mfa_new_device: parentCheckbox.checked,
+        };
+
+        try {
+            const { error: saveError } = await supabaseClient
+                .from('institutions')
+                .update(updates)
+                .eq('id', institutionId);
+
+            if (saveError) {
+                showCustomAlert('Fejl', 'Kunne ikke gemme MFA-indstillinger.');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Gem';
+                return;
+            }
+
+            updateInstitutionCache(institutionId, updates);
+            settingsModalGoBack();
+        } catch (err) {
+            console.error('[mfa-settings] Error:', err);
             saveBtn.disabled = false;
             saveBtn.textContent = 'Gem';
         }
@@ -4260,7 +4858,6 @@ export function openSettingsModal() {
 
     if (!backdrop || !titleEl || !contentEl) return;
 
-    // Ved indgang fra gear/luk: ryd stak. Ved tilbage fra under-visning: behold stak.
     if (backdrop.style.display !== 'flex') {
         settingsModalBackStack = [];
     }
@@ -4292,152 +4889,108 @@ export function openSettingsModal() {
     const openViaSettings = (modalRef, action) => {
         const modal = typeof modalRef === 'function'
             ? modalRef()
-            : (typeof modalRef === 'string'
-                ? document.getElementById(modalRef)
-                : modalRef);
+            : (typeof modalRef === 'string' ? document.getElementById(modalRef) : modalRef);
         if (modal) monitorModalForSettingsReturn(modal);
         action?.();
     };
 
+    function createSettingsItemBtn(label, onClick, id, description, icon, closesBackdrop = true) {
+        const btn = document.createElement('button');
+        btn.className = 'settings-item-btn';
+        if (id) btn.id = id;
+        if (icon) {
+            btn.innerHTML = `<span class="settings-item-icon"><img src="${ICON(icon)}" alt=""></span><span class="settings-item-text"><strong>${label}</strong>${description ? `<div class="settings-item-desc">${description}</div>` : ''}</span>`;
+        } else if (description) {
+            btn.innerHTML = `<strong>${label}</strong><div style="font-size: 12px; margin-top: 2px;">${description}</div>`;
+        } else {
+            btn.textContent = label;
+        }
+        btn.addEventListener('click', () => {
+            if (closesBackdrop) backdrop.style.display = 'none';
+            onClick();
+        });
+        return btn;
+    }
+
+    // ─── Diverse view ───
     function showDiverseView() {
         titleEl.textContent = 'Diverse';
         contentEl.innerHTML = '';
-        const addDiverseItem = (label, onClick, id = '', description = '', icon = '') => {
-            const btn = document.createElement('button');
-            btn.className = 'settings-item-btn';
-            if (id) btn.id = id;
-            const ICON = (name) => `Icons/webp/Function/${name}`;
-            if (icon) {
-                btn.innerHTML = `<span class="settings-item-icon"><img src="${ICON(icon)}" alt=""></span><span class="settings-item-text"><strong>${label}</strong>${description ? `<div class="settings-item-desc">${description}</div>` : ''}</span>`;
-            } else if (description) {
-                btn.innerHTML = `<strong>${label}</strong><div style="font-size: 12px; margin-top: 2px;">${description}</div>`;
-            } else {
-                btn.textContent = label;
-            }
-            btn.addEventListener('click', () => {
-                backdrop.style.display = 'none';
-                onClick();
-            });
-            contentEl.appendChild(btn);
-        };
 
-        addDiverseItem('Dagens Sortiment', () => {
+        contentEl.appendChild(createSettingsItemBtn('Dagens Sortiment', () => {
             if (window.__flangoOpenAssortmentModal) {
                 openViaSettings('assortment-modal', () => window.__flangoOpenAssortmentModal());
-            } else {
-                notifyToolbarUser('Indstillinger for sortiment er ikke klar. Prøv at genindlæse.');
-            }
-        }, '', 'Vælg hvilke produkter der vises i caféen.', 'Kurv.webp');
-        if (isAdmin) {
-            addDiverseItem('Rediger Produkter', () => openViaSettings('product-modal', () => callButtonById('edit-menu-original-btn')), '', 'Tilføj, rediger eller skjul produkter og priser.', 'Rediger.webp');
-        }
-        addDiverseItem('Historik', () => {
-            window.__flangoOpenSalesHistory?.() || notifyToolbarUser('Historik-funktionen er ikke klar.');
-        }, 'settings-history-btn', 'Se salgshistorik og fortryd køb.', 'historik.webp');
-        addDiverseItem('Lydindstillinger', () => {
-            if (window.__flangoOpenSoundSettingsModal) {
-                openViaSettings('sound-settings-modal', () => window.__flangoOpenSoundSettingsModal());
-            } else {
-                notifyToolbarUser('Lydindstillinger kan ikke åbnes lige nu.');
-            }
-        }, '', 'Indstil lyde for køb, fejl og andre handlinger.', 'Mute.webp');
-        if (isAdmin) {
-            addDiverseItem('Bytte-timer', () => {
-                settingsModalPushParent(showDiverseView);
-                openShiftTimerSettingsModal();
-            }, '', 'Aktivér eller deaktivér bytte-timer for ekspedienter.', 'Kokkehue.webp');
+            } else { notifyToolbarUser('Ikke klar.'); }
+        }, '', 'Vælg hvilke produkter der vises i caféen.', 'Kurv.webp'));
 
-            // Toggle: Download saldoliste ved café-låsning
-            const instId = window.__flangoInstitutionId || '';
-            const balanceDownloadKey = `flango_balance_download_on_lock_${instId}`;
-            const balanceDownloadEnabled = localStorage.getItem(balanceDownloadKey) !== 'false'; // default: true
-            const toggleRow = document.createElement('button');
-            toggleRow.className = 'settings-item-btn';
-            toggleRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; cursor: pointer;';
-            toggleRow.innerHTML = `
-                <span class="settings-item-icon"><img src="${ICON('Print.webp')}" alt=""></span>
-                <span class="settings-item-text" style="flex:1">
-                    <strong>Saldoliste ved låsning</strong>
-                    <div class="settings-item-desc">Download saldoliste automatisk når caféen låses.</div>
-                </span>
-                <span class="balance-download-toggle" style="font-size: 1.4rem; min-width: 36px; text-align: center;">${balanceDownloadEnabled ? '✅' : '⬜'}</span>
-            `;
-            toggleRow.addEventListener('click', (e) => {
-                e.preventDefault();
-                const current = localStorage.getItem(balanceDownloadKey) !== 'false';
-                localStorage.setItem(balanceDownloadKey, !current);
-                toggleRow.querySelector('.balance-download-toggle').textContent = !current ? '✅' : '⬜';
-            });
-            contentEl.appendChild(toggleRow);
-        }
-        addDiverseItem('Udseende', () => openViaSettings('theme-picker-backdrop', () => callButtonById('open-theme-picker')), '', 'Vælg tema og udseende.', 'image.webp');
-        addDiverseItem('Min Flango', () => {
-            window.__flangoOpenAvatarPicker?.() || notifyToolbarUser('Status-visningen er ikke klar.');
-        }, 'settings-min-flango-status-btn', 'Skift avatar og visningsnavn.', 'Bruger.webp');
-        addDiverseItem('Hjælp', () => openHelpManually(), 'settings-help-btn', 'Vejledning og tastaturgenveje.', 'tastaturgenveje.webp');
-        addDiverseItem('Mine enheder', () => {
-            settingsModalPushParent(showDiverseView);
-            openMyDevicesView();
-        }, 'settings-my-devices-btn', 'Se og fjern enheder der husker din login.', 'Gear.webp');
-        addDiverseItem('Opdateringer', () => {
-            settingsModalPushParent(showDiverseView);
-            openUpdatesModal();
-        }, '', 'Tjek for opdateringer og genindlæs appen.', 'Print.webp');
-        addDiverseItem('🐛 Der er en fejl', () => {
-            if (window.FLANGO_DEBUG?.showBugReportPrompt) {
-                window.FLANGO_DEBUG.showBugReportPrompt();
-            } else {
-                notifyToolbarUser('Fejlrapport-funktionen er ikke klar. Prøv at genindlæse siden.');
-            }
-        }, 'settings-bug-report-btn', 'Rapporter en fejl eller uhensigtsmæssighed.', 'Flueben.webp');
-        if (isAdmin) {
-            // Separator
-            const sep = document.createElement('div');
-            sep.style.cssText = 'border-top: 1px solid rgba(255,255,255,0.08); margin: 8px 0;';
-            contentEl.appendChild(sep);
+        contentEl.appendChild(createSettingsItemBtn('Udseende', () => openViaSettings('theme-picker-backdrop', () => callButtonById('open-theme-picker')), '', 'Vælg tema og udseende.', 'image.webp'));
 
-            const resetBtn = document.createElement('button');
-            resetBtn.className = 'settings-item-btn';
-            resetBtn.id = 'settings-reset-request-btn';
-            resetBtn.innerHTML = `<span class="settings-item-text"><strong style="color: var(--negative, #ef4444)">Anmod om nulstilling af system</strong><div class="settings-item-desc" style="color: var(--negative, #ef4444); opacity: 0.7">Anmod om at al data i systemet nulstilles permanent.</div></span>`;
-            resetBtn.addEventListener('click', () => {
-                backdrop.style.display = 'none';
-                openResetRequestDialog();
-            });
-            contentEl.appendChild(resetBtn);
-        }
+        contentEl.appendChild(createSettingsItemBtn('Ugeplan', () => {
+            const instData = window.__flangoGetInstitutionById?.(getInstitutionId());
+            const slug = instData?.slug || instData?.name?.toLowerCase().replace(/\s+/g, '-') || 'stampen';
+            const ugeplanUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? `http://localhost:3005/${slug}`
+                : `https://flango.dk/ugeplan/${slug}`;
+            window.open(ugeplanUrl, '_blank');
+        }, '', 'Åbn institutionens ugeplan.', 'Star.webp'));
 
-        addDiverseItem('Log ud', () => {
-            callButtonById('logout-btn') || notifyToolbarUser('Log ud-knappen er ikke tilgængelig.');
-        }, '', 'Afslut din session.', 'Logout.webp');
+        contentEl.appendChild(createSettingsItemBtn('Flere Indstillinger', () => {
+            showFlereIndstillingerView();
+        }, '', 'Historik, lyd, enheder, bytte-timer m.m.', 'Gear.webp', false));
+
+        contentEl.appendChild(createSettingsItemBtn('Log ud', () => {
+            callButtonById('logout-btn') || notifyToolbarUser('Log ud er ikke tilgængelig.');
+        }, '', 'Afslut din session.', 'Logout.webp'));
+
         updateSettingsModalBackVisibility();
     }
 
+    // ─── Flere Indstillinger view ───
+    function showFlereIndstillingerView() {
+        settingsModalPushParent(showDiverseView);
+        titleEl.textContent = 'Flere Indstillinger';
+        contentEl.innerHTML = '';
+
+        contentEl.appendChild(createSettingsItemBtn('Min Flango', () => {
+            window.__flangoOpenAvatarPicker?.() || notifyToolbarUser('Ikke klar.');
+        }, 'settings-min-flango-status-btn', 'Skift avatar og visningsnavn.', 'Bruger.webp'));
+
+        contentEl.appendChild(createSettingsItemBtn('Hjælp', () => openHelpManually(), 'settings-help-btn', 'Vejledning og tastaturgenveje.', 'tastaturgenveje.webp'));
+
+        contentEl.appendChild(createSettingsItemBtn('Opdateringer', () => {
+            settingsModalPushParent(showFlereIndstillingerView);
+            openUpdatesModal();
+        }, '', 'Tjek for opdateringer og genindlæs appen.', 'Print.webp', false));
+
+        contentEl.appendChild(createSettingsItemBtn('🐛 Der er en fejl', () => {
+            window.FLANGO_DEBUG?.showBugReportPrompt?.() || notifyToolbarUser('Ikke klar.');
+        }, 'settings-bug-report-btn', 'Rapporter en fejl eller uhensigtsmæssighed.', 'Flueben.webp'));
+
+        contentEl.appendChild(createSettingsItemBtn('Historik', () => {
+            window.__flangoOpenSalesHistory?.() || notifyToolbarUser('Ikke klar.');
+        }, 'settings-history-btn', 'Se salgshistorik og fortryd køb.', 'historik.webp'));
+
+        contentEl.appendChild(createSettingsItemBtn('Lydindstillinger', () => {
+            if (window.__flangoOpenSoundSettingsModal) {
+                openViaSettings('sound-settings-modal', () => window.__flangoOpenSoundSettingsModal());
+            } else { notifyToolbarUser('Ikke klar.'); }
+        }, '', 'Indstil lyde for køb, fejl og andre handlinger.', 'Mute.webp'));
+
+        updateSettingsModalBackVisibility();
+    }
+
+    // ─── Main menu items ───
     if (isAdmin) {
         addItem('Produktoversigt', () => openSugarPolicyModal(), '', false, 'Tilføj/Rediger Produkter & Dagens Sortiment', 'Kurv.webp');
-    }
-
-    if (isAdmin) {
-        addItem('Indbetal penge & Rediger brugere', () => openViaSettings('admin-user-manager-modal', () => window.__flangoOpenAdminUserManager?.('customers')), '', false, 'Indbetal på børnenes saldo og administrer brugerlisten.', 'Coin.webp');
-    }
-
-    if (isAdmin) {
+        addItem('Brugerpanel', () => { backdrop.style.display = 'none'; openUserAdminPanel(); }, '', false, 'Samlet overblik: brugere, indbetaling, profilbilleder og statistik.', 'Bruger.webp');
         addItem('Tilmelding (Arrangementer)', () => {
             backdrop.style.display = 'none';
             window.__flangoOpenEventAdmin?.();
         }, '', false, 'Opret og administrer kommende begivenheder, tilmeldinger og betalinger.', 'Star.webp');
-        addItem('Forældreportal', () => {
-            backdrop.style.display = 'none';
-            if (window.isV2Enabled && window.isV2Enabled()) {
-                window.openAdminPortalV2();
-            } else {
-                openParentPortalSettingsModal();
-            }
-        }, '', false, 'Forældreindsigt, forældre-liste, kode-administration og portal-preview.', 'Bruger.webp');
         addItem('Institutionens Præferencer', () => {
             settingsModalPushParent(openSettingsModal);
             openInstitutionPreferences();
-        }, '', true, 'Konfigurer sukkerpolitik, beløbsgrænse, forældreportal m.m.', 'Gear.webp');
+        }, '', true, 'Konfigurer sukkerpolitik, beløbsgrænse, toolbar m.m.', 'Gear.webp');
     }
 
     addItem('Diverse', () => {
@@ -4573,6 +5126,30 @@ export function setupSettingsModal() {
     });
 }
 
+export function setupToolbarShortcutButtons() {
+    const productsBtn = document.getElementById('toolbar-products-btn');
+    if (productsBtn) {
+        productsBtn.onclick = (e) => {
+            e.preventDefault();
+            openSugarPolicyModal();
+        };
+    }
+    const depositBtn = document.getElementById('toolbar-deposit-btn');
+    if (depositBtn) {
+        depositBtn.onclick = (e) => {
+            e.preventDefault();
+            window.__flangoOpenAdminUserManager?.('customers');
+        };
+    }
+    const userPanelBtn = document.getElementById('toolbar-user-panel-btn');
+    if (userPanelBtn) {
+        userPanelBtn.onclick = (e) => {
+            e.preventDefault();
+            openUserAdminPanel();
+        };
+    }
+}
+
 export function setupToolbarGearMenu() {
     const gearBtn = document.getElementById('toolbar-gear-btn');
     if (!gearBtn) return;
@@ -4627,6 +5204,7 @@ export function showScreen(screenId) {
         'screen-full-login', 'screen-device-unlock', // New login states
         'screen-remember-device', 'screen-pin-locked',
         'screen-force-password',
+        'screen-mfa-enroll', 'screen-mfa-challenge',
         'screen-admin-login', 'main-app',
     ];
     screens.forEach(id => {

@@ -43,6 +43,11 @@ async function _onInactive() {
  * Start inaktivitets-timeren. Kald efter admin login / startApp().
  */
 export function startInactivityTimeout() {
+    // Skip inaktivitets-timeout under lokal udvikling
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        console.log('[inactivity-timeout] Deaktiveret på localhost');
+        return;
+    }
     if (_active) return;
     _active = true;
     ACTIVITY_EVENTS.forEach(evt => document.addEventListener(evt, _resetTimer, { passive: true }));

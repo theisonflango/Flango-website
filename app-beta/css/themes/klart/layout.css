@@ -39,9 +39,9 @@
     grid-area: sidebar;
 }
 
-/* Session banner hidden in Klart — info is in the header bar */
+/* Session banner — shown with sticky-note cards */
 .user-session-banner {
-    display: none;
+    display: flex;
 }
 
 /* ============================================================

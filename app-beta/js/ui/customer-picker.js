@@ -42,16 +42,17 @@ export function renderCustomerListUI(options) {
     const searchTerm = (searchInput.value || '').toLowerCase();
 
     // Filtrer brugere baseret på filter mode
+    // Admins vises kun hvis de individuelt har show_in_user_list = true
     let filteredUsers = allUsers;
 
     if (userFilterMode === 'children') {
-        // Vis kun børn
         filteredUsers = filteredUsers.filter((u) => u.role === 'kunde');
     } else if (userFilterMode === 'adults') {
-        // Vis kun voksne
-        filteredUsers = filteredUsers.filter((u) => u.role === 'admin');
+        filteredUsers = filteredUsers.filter((u) => u.role === 'admin' && u.show_in_user_list !== false);
+    } else {
+        // 'all' — vis alle børn + admins der har show_in_user_list
+        filteredUsers = filteredUsers.filter((u) => u.role === 'kunde' || (u.role === 'admin' && u.show_in_user_list !== false));
     }
-    // else: userFilterMode === 'all' - vis alle brugere
 
     if (searchTerm) {
         filteredUsers = filteredUsers.filter((user) =>
@@ -176,10 +177,14 @@ export function openCustomerSelectionModalUI(options) {
     // Nulstil modalens tilstand (titel, knapper, søgefelt osv.)
     resetView();
 
-    // Pre-warm profile picture URLs (async, non-blocking)
-    if (options.allUsers) batchPreWarmProfilePictures(options.allUsers).catch(() => {});
+    // Pre-warm profile picture URLs (async), then re-render to show pictures
+    if (options.allUsers) {
+        batchPreWarmProfilePictures(options.allUsers)
+            .then(() => renderList())
+            .catch(() => {});
+    }
 
-    // Render den aktuelle kundeliste
+    // Render den aktuelle kundeliste (immediate — shows initials if pics not cached yet)
     renderList();
 
     // Vis modal
@@ -303,14 +308,8 @@ export function setupUserFilterButtons(renderList) {
 
     if (!filterButtonsContainer || !filterAllBtn || !filterChildrenBtn || !filterAdultsBtn) return;
 
-    // Vis knapperne kun hvis admins er aktiveret i settings
-    const showAdminsInList = window.__flangoInstitutionSettings?.showAdminsInUserList !== false;
-    if (showAdminsInList) {
-        filterButtonsContainer.style.display = 'flex';
-    } else {
-        filterButtonsContainer.style.display = 'none';
-        return;
-    }
+    // Vis filter-knapperne altid (per-admin show_in_user_list styrer synlighed individuelt)
+    filterButtonsContainer.style.display = 'flex';
 
     // Opdater active state på alle knapper
     function updateActiveButton() {

@@ -138,6 +138,8 @@ import { getInstitutionId } from '../domain/session-store.js';
         showError('');
     };
 
+    window.__flangoOpenAutoImportModal = openAutoImportModal;
+
     const closeAutoImportModal = () => {
         modal.style.display = 'none';
         selectedFile = null;

@@ -1157,6 +1157,35 @@
   border-color: var(--hv3-accent);
 }
 
+/* Dropdown for user search */
+.hv3-tx-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--hv3-card-bg, #fff);
+  border: 1.5px solid var(--hv3-card-border);
+  border-top: none;
+  border-radius: 0 0 var(--hv3-radius-sm) var(--hv3-radius-sm);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 100;
+}
+.hv3-tx-dropdown-item {
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.1s;
+  color: var(--hv3-text, #1e293b);
+}
+.hv3-tx-dropdown-item:hover {
+  background: var(--hv3-accent-subtle, rgba(99,102,241,0.08));
+}
+.hv3-tx-dropdown-item[style*="display: none"] + .hv3-tx-dropdown-item:not([style*="display: none"]) {
+  border-top: none;
+}
+
 .hv3-tx-count {
   font-size: 12px;
   font-weight: 600;

@@ -87,65 +87,62 @@ export function showPinModal(userName) {
 export function showAddUserModal(options = {}) {
     const {
         preferredRole = 'kunde',
-        lockRole = false, // kept for backward compatibility, no visible select now
-        titleOverride = null
     } = options;
-    const isAdminPreferred = preferredRole === 'admin';
+    const isAdmin = preferredRole === 'admin';
     const modal = document.getElementById('add-edit-user-modal');
     const title = document.getElementById('user-form-title');
     const fieldsContainer = document.getElementById('user-form-fields');
     const saveBtn = document.getElementById('save-user-btn');
     const closeBtn = modal.querySelector('.close-btn');
 
-    title.textContent = titleOverride || (preferredRole === 'admin' ? 'Tilføj Admin' : 'Tilføj Ny Bruger');
-    // Luk aktive brugermodaler, mens vi viser "tilføj bruger"-modalen
+    title.textContent = isAdmin ? 'Tilføj Admin' : 'Tilføj Ny Bruger';
     const userModalEl = document.getElementById('user-modal');
     const adminModalEl = document.getElementById('admin-user-manager-modal');
     if (userModalEl) userModalEl.style.display = 'none';
     if (adminModalEl) adminModalEl.style.display = 'none';
 
     fieldsContainer.innerHTML = `
-            <input type="text" id="user-name-input" placeholder="Fulde navn" required>
-            ${isAdminPreferred ? `
-                <input type="email" id="user-email-input" placeholder="E-mail (til login)" required>
-                <input type="password" id="user-password-input" placeholder="Adgangskode" required>
-            ` : `
-                <input type="text" id="user-number-input" placeholder="Brugernummer (til børnelogin)">
-                <input type="text" id="user-pin-input" placeholder="4-cifret PIN (til børnelogin)">
-                <select id="user-grade-level-input" style="font-size: 16px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;">
-                    <option value="">Klasse (valgfrit)</option>
-                    <option value="0">0. klasse</option>
-                    <option value="1">1. klasse</option>
-                    <option value="2">2. klasse</option>
-                    <option value="3">3. klasse</option>
-                    <option value="4">4. klasse</option>
-                    <option value="5">5. klasse</option>
-                    <option value="6">6. klasse</option>
-                    <option value="7">7. klasse</option>
-                    <option value="8">8. klasse</option>
-                    <option value="9">9. klasse</option>
-                </select>
-                <input type="number" id="user-balance-input" placeholder="Startsaldo (f.eks. 50.00)" step="0.01" value="0.00">
-            `}
-        `;
+        <input type="text" id="user-name-input" placeholder="Fulde navn" required>
+        ${isAdmin ? `
+            <input type="email" id="user-email-input" placeholder="E-mail (til login)" required>
+            <input type="password" id="user-password-input" placeholder="Adgangskode" required>
+        ` : `
+            <input type="text" id="user-number-input" placeholder="Brugernummer (til børnelogin)">
+            <input type="text" id="user-pin-input" placeholder="4-cifret PIN (til børnelogin)">
+            <select id="user-grade-level-input" style="font-size: 16px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;">
+                <option value="">Klasse (valgfrit)</option>
+                <option value="0">0. klasse</option>
+                <option value="1">1. klasse</option>
+                <option value="2">2. klasse</option>
+                <option value="3">3. klasse</option>
+                <option value="4">4. klasse</option>
+                <option value="5">5. klasse</option>
+                <option value="6">6. klasse</option>
+                <option value="7">7. klasse</option>
+                <option value="8">8. klasse</option>
+                <option value="9">9. klasse</option>
+            </select>
+            <input type="number" id="user-balance-input" placeholder="Startsaldo (f.eks. 50.00)" step="0.01" value="0.00">
+        `}
+    `;
     modal.style.display = 'flex';
-
-    const nameInput = document.getElementById('user-name-input');
-    const emailInput = document.getElementById('user-email-input');
-    const passwordInput = document.getElementById('user-password-input');
-    const numberInput = document.getElementById('user-number-input');
-    const pinInput = document.getElementById('user-pin-input');
-    const gradeLevelInput = document.getElementById('user-grade-level-input');
-    const balanceInput = document.getElementById('user-balance-input');
 
     return new Promise((resolve) => {
         saveBtn.onclick = () => {
-            const name = nameInput.value.trim();
-            const email = emailInput ? emailInput.value.trim() : '';
-            const password = passwordInput ? passwordInput.value : '';
+            const nameInput = document.getElementById('user-name-input');
+            const emailInput = document.getElementById('user-email-input');
+            const passwordInput = document.getElementById('user-password-input');
+            const numberInput = document.getElementById('user-number-input');
+            const pinInput = document.getElementById('user-pin-input');
+            const gradeLevelInput = document.getElementById('user-grade-level-input');
+            const balanceInput = document.getElementById('user-balance-input');
 
-            if (!name || (isAdminPreferred && (!email || !password))) {
-                showAlert('Udfyld venligst alle påkrævede felter for den valgte rolle.');
+            const name = nameInput?.value.trim() || '';
+            const email = emailInput?.value.trim() || '';
+            const password = passwordInput?.value || '';
+
+            if (!name || (isAdmin && (!email || !password))) {
+                showAlert('Udfyld venligst alle påkrævede felter.');
                 return;
             }
 
@@ -156,17 +153,17 @@ export function showAddUserModal(options = {}) {
                 password: password || null,
                 number: numberInput ? numberInput.value : null,
                 balance: balanceInput ? (parseFloat(balanceInput.value.replace(',', '.')) || 0) : 0,
-                role: preferredRole,
+                role: isAdmin ? 'admin' : 'kunde',
                 pin: pinInput ? pinInput.value : null,
                 grade_level: gradeLevelRaw !== '' ? parseInt(gradeLevelRaw, 10) : null,
             };
-            modal.style.display = 'none'; // Skjul modal før resolve
+            modal.style.display = 'none';
             resolve(userData);
         };
 
         closeBtn.onclick = () => {
             modal.style.display = 'none';
-            resolve(null); // Annulleret
+            resolve(null);
         };
     });
 }
