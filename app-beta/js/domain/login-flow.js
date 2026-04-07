@@ -53,7 +53,13 @@ async function verifyTurnstileToken(widgetId) {
     // Skip Turnstile on localhost (not available outside production)
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return { ok: true };
-    const token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
+    let token = null;
+    try {
+        token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
+    } catch (e) {
+        console.warn('[login] Turnstile getResponse error:', e?.message, '— fail-open');
+        return { ok: true };
+    }
     if (!token) {
         console.warn('[login] Turnstile token missing — skipping verification (fail-open)');
         return { ok: true };
