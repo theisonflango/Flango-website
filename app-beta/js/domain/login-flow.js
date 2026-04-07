@@ -56,14 +56,18 @@ async function verifyTurnstileToken(widgetId) {
     const token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
     if (!token) return { ok: false, error: 'Bekræft venligst at du ikke er en robot.' };
     try {
-        const res = await supabaseClient.functions.invoke('verify-turnstile', { body: { token } });
+        // Timeout: fail-open efter 5 sekunder hvis Edge Function hænger
+        const res = await Promise.race([
+            supabaseClient.functions.invoke('verify-turnstile', { body: { token } }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+        ]);
         if (res.error || !res.data?.success) {
             if (typeof turnstile !== 'undefined') turnstile.reset(widgetId);
             return { ok: false, error: 'Sikkerhedsverifikation fejlede. Prøv igen.' };
         }
         return { ok: true };
     } catch {
-        return { ok: true }; // Fail-open: tillad login hvis Edge Function er nede
+        return { ok: true }; // Fail-open: tillad login hvis Edge Function er nede eller timeout
     }
 }
 
