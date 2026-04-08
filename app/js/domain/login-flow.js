@@ -44,23 +44,42 @@ import {
     enrollTotp,
     challengeAndVerify,
     shouldRequireMfa,
-    setMfaDeviceTrusted,
+    setMfaDeviceTrustedDurable,
+    isMfaDeviceTrusted,
+    checkServerMfaTrust,
 } from './mfa-utils.js';
 
 // ─── Turnstile verification helper ──────────────────────────────
 
 async function verifyTurnstileToken(widgetId) {
-    const token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
-    if (!token) return { ok: false, error: 'Bekræft venligst at du ikke er en robot.' };
+    // Skip Turnstile on localhost (not available outside production)
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return { ok: true };
+    let token = null;
     try {
-        const res = await supabaseClient.functions.invoke('verify-turnstile', { body: { token } });
+        token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
+    } catch (e) {
+        console.warn('[login] Turnstile getResponse error:', e?.message, '— fail-open');
+        return { ok: true };
+    }
+    if (!token) {
+        console.warn('[login] Turnstile token missing — skipping verification (fail-open)');
+        return { ok: true };
+    }
+    try {
+        // Timeout: fail-open efter 5 sekunder hvis Edge Function hænger
+        const res = await Promise.race([
+            supabaseClient.functions.invoke('verify-turnstile', { body: { token } }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+        ]);
         if (res.error || !res.data?.success) {
             if (typeof turnstile !== 'undefined') turnstile.reset(widgetId);
             return { ok: false, error: 'Sikkerhedsverifikation fejlede. Prøv igen.' };
         }
         return { ok: true };
     } catch {
-        return { ok: true }; // Fail-open: tillad login hvis Edge Function er nede
+        console.warn('[login] Turnstile verification failed/timed out — fail-open');
+        return { ok: true }; // Fail-open: tillad login hvis Edge Function er nede eller timeout
     }
 }
 
@@ -174,7 +193,15 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
         const mfaNeeded = await handleMfaGate(adminProfile);
         if (mfaNeeded) return;
 
-        setupRememberDeviceScreen(adminProfile);
+        // Skip "Remember device" if this admin already has a device token on this device
+        const existingDeviceUsers = getDeviceUsers();
+        const alreadyRegistered = existingDeviceUsers.some(u => u.userId === session.user.id);
+        if (alreadyRegistered) {
+            const { setupAdminLoginScreen } = await import('./app-main.js');
+            setupAdminLoginScreen(adminProfile);
+        } else {
+            setupRememberDeviceScreen(adminProfile);
+        }
     };
 
     passwordInput.onkeydown = (e) => {
@@ -498,8 +525,15 @@ export function setupPinLockedScreen(adminName) {
         const mfaNeeded = await handleMfaGate(adminProfile);
         if (mfaNeeded) return;
 
-        // Offer to remember device again
-        setupRememberDeviceScreen(adminProfile);
+        // Skip "Remember device" if this admin already has a device token on this device
+        const existingDeviceUsers = getDeviceUsers();
+        const alreadyRegistered = existingDeviceUsers.some(u => u.userId === session.user.id);
+        if (alreadyRegistered) {
+            const { setupAdminLoginScreen: startAdmin } = await import('./app-main.js');
+            startAdmin(adminProfile);
+        } else {
+            setupRememberDeviceScreen(adminProfile);
+        }
     };
 
     backBtn.onclick = () => {
@@ -604,6 +638,9 @@ export function setupForcePasswordScreen(adminProfile) {
  * Returnerer true hvis MFA-skærm vises (flow pauset), false hvis MFA springes over.
  */
 async function handleMfaGate(adminProfile) {
+    // Skip MFA on localhost (Supabase MFA challenge requires production origin)
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return false;
     try {
         // Hent institution MFA-policy
         const { data: inst } = await supabaseClient
@@ -613,7 +650,17 @@ async function handleMfaGate(adminProfile) {
             .single();
 
         const policy = inst?.admin_mfa_policy || 'off';
-        if (!shouldRequireMfa(policy, 'admin')) return false;
+        if (policy === 'off') return false;
+
+        if (policy === 'new_device') {
+            // Hurtig check: localStorage
+            if (isMfaDeviceTrusted('admin')) return false;
+
+            // Fallback: cookie + server-side check (overlever cache-rydning)
+            const serverTrusted = await checkServerMfaTrust('admin');
+            if (serverTrusted) return false;
+        }
+        // policy === 'always' falder igennem til MFA
 
         // Tjek om brugeren har enrollet TOTP
         const factors = await getMfaFactors();
@@ -691,8 +738,8 @@ function setupMfaEnrollScreen(adminProfile) {
             return;
         }
 
-        // Succes
-        setMfaDeviceTrusted('admin');
+        // Succes — gem MFA trust i alle 3 lag (localStorage + cookie + server)
+        await setMfaDeviceTrustedDurable('admin');
         logAuditEvent('MFA_ENROLLED', {
             institutionId: adminProfile.institution_id,
             adminUserId: adminProfile.user_id,
@@ -743,8 +790,8 @@ function setupMfaChallengeScreen(adminProfile, factorId) {
             return;
         }
 
-        // Succes
-        setMfaDeviceTrusted('admin');
+        // Succes — gem MFA trust i alle 3 lag (localStorage + cookie + server)
+        await setMfaDeviceTrustedDurable('admin');
         logAuditEvent('MFA_VERIFIED', {
             institutionId: adminProfile.institution_id,
             adminUserId: adminProfile.user_id,

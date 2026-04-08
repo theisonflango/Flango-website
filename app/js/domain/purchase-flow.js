@@ -17,7 +17,7 @@ import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
 import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
 import { escapeHtml } from '../core/escape-html.js';
 import { formatKr } from '../ui/confirm-modals.js';
-import { getProfilePictureUrl, getCachedProfilePictureUrl } from '../core/profile-picture-cache.js';
+import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js';
 import { processEventItemsInCheckout } from '../ui/cafe-event-strip.js';
 
 
@@ -114,76 +114,114 @@ function groupOrderItems(order) {
  * @param {Object|null} restaurantMode - { enabled, tableNumbersEnabled, tableCount } eller null
  * @returns {string} HTML string til bekræftelsesdialog
  */
-function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isFreeAdminPurchase = false, restaurantMode = null) {
+function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isFreeAdminPurchase = false, restaurantMode = null, clerk = null) {
     // Grupper items efter produkt ID
     const itemCounts = groupOrderItems(currentOrder);
 
-    // Byg DOM med ny Klart v5c-struktur
+    // Byg DOM
     const root = document.createElement('div');
-
-    // === Header: avatar + kundenavn ===
-    const header = document.createElement('div');
-    header.className = 'confirm-modal-header';
-    const h3 = document.createElement('h3');
-    h3.textContent = 'Bekræft køb';
-    header.appendChild(h3);
-
-    const customerRow = document.createElement('div');
-    customerRow.className = 'confirm-customer-row';
-    customerRow.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:10px;';
-
-    // Avatar circle
     const inst = window.__flangoGetInstitutionById?.(customer?.institution_id);
-    const hasProfilePic = inst?.profile_pictures_enabled
-        && customer?.profile_picture_url
-        && !customer?.profile_picture_opt_out;
-
-    const avatarEl = document.createElement('div');
-    avatarEl.className = 'confirm-customer-avatar';
-    avatarEl.id = 'confirm-customer-avatar';
-    avatarEl.style.cssText = 'width:180px;height:180px;min-width:180px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.18);';
-
     const imgStyle = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
 
-    if (hasProfilePic) {
-        const cachedUrl = getCachedProfilePictureUrl(customer);
-        if (cachedUrl) {
-            avatarEl.innerHTML = `<img src="${cachedUrl}" alt="" style="${imgStyle}">`;
+    // === Helper: build avatar element ===
+    function buildAvatar(user, size) {
+        const el = document.createElement('div');
+        el.style.cssText = `width:${size}px;height:${size}px;min-width:${size}px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size * 0.28)}px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.18);background:rgba(99,102,241,0.15);color:var(--text-primary,#fff);`;
+
+        const hasPic = inst?.profile_pictures_enabled && user?.profile_picture_url && !user?.profile_picture_opt_out;
+        if (hasPic) {
+            const cachedUrl = getCachedProfilePictureUrl(user);
+            if (cachedUrl) {
+                el.innerHTML = `<img src="${cachedUrl}" alt="" style="${imgStyle}">`;
+            } else {
+                el.textContent = (user?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                el.dataset.needsAsync = 'true';
+                el.dataset.userId = user.id;
+            }
         } else {
-            const initials = (customer?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-            avatarEl.textContent = initials;
-            avatarEl.dataset.needsAsync = 'true';
+            const avatarKey = `flango-avatar-${user?.id}`;
+            const savedAvatar = localStorage.getItem(avatarKey);
+            if (savedAvatar) {
+                el.innerHTML = `<img src="${savedAvatar}" alt="" style="${imgStyle}">`;
+            } else {
+                const def = getDefaultProfilePicture(user?.name, inst);
+                if (def.type === 'anonymous') {
+                    el.textContent = '👤';
+                    el.style.fontSize = `${Math.round(size * 0.45)}px`;
+                } else if (def.type === 'image' && def.value) {
+                    el.innerHTML = `<img src="${def.value}" alt="" style="${imgStyle}">`;
+                } else if (def.type === 'image') {
+                    el.textContent = '...';
+                    getDefaultProfilePictureAsync(user?.name, inst).then(res => {
+                        if (res.type === 'image' && res.value && el.isConnected) {
+                            el.innerHTML = `<img src="${res.value}" alt="" style="${imgStyle}">`;
+                        } else if (el.isConnected) {
+                            el.textContent = res.value || '?';
+                        }
+                    });
+                } else {
+                    el.textContent = def.value; // initials
+                }
+            }
         }
-    } else {
-        const avatarKey = `flango-avatar-${customer?.id}`;
-        const savedAvatar = localStorage.getItem(avatarKey);
-        if (savedAvatar) {
-            avatarEl.innerHTML = `<img src="${savedAvatar}" alt="" style="${imgStyle}">`;
-        } else {
-            const initials = (customer?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-            avatarEl.textContent = initials;
-        }
+        return el;
     }
-    // Wrap avatar + number badge
-    const avatarWrap = document.createElement('div');
-    avatarWrap.style.cssText = 'position:relative;display:inline-block;';
-    avatarWrap.appendChild(avatarEl);
+
+    // === Header: Ekspedient + Kunde side om side ===
+    const header = document.createElement('div');
+    header.className = 'confirm-modal-header';
+
+    const peopleRow = document.createElement('div');
+    peopleRow.style.cssText = 'display:flex;align-items:flex-start;justify-content:center;gap:24px;margin-bottom:8px;';
+
+    // Clerk/Ekspedient column
+    if (clerk) {
+        const clerkCol = document.createElement('div');
+        clerkCol.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;flex:0 0 auto;';
+        const clerkLabel = document.createElement('div');
+        clerkLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--text-secondary,#64748b);text-transform:uppercase;letter-spacing:0.5px;';
+        clerkLabel.textContent = 'Ekspedient';
+        clerkCol.appendChild(clerkLabel);
+        const clerkAvatar = buildAvatar(clerk, 180);
+        clerkAvatar.id = 'confirm-clerk-avatar';
+        clerkCol.appendChild(clerkAvatar);
+        const clerkName = document.createElement('div');
+        clerkName.style.cssText = 'font-size:15px;font-weight:600;color:var(--text-primary,#334155);text-align:center;max-width:220px;word-break:break-word;';
+        clerkName.textContent = clerk.name || '';
+        clerkCol.appendChild(clerkName);
+        peopleRow.appendChild(clerkCol);
+    }
+
+    // Customer column
+    const custCol = document.createElement('div');
+    custCol.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;flex:0 0 auto;';
+    const custLabel = document.createElement('div');
+    custLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--text-secondary,#64748b);text-transform:uppercase;letter-spacing:0.5px;';
+    custLabel.textContent = 'Kunde';
+    custCol.appendChild(custLabel);
+
+    const custAvatar = buildAvatar(customer, 180);
+    custAvatar.id = 'confirm-customer-avatar';
+    const custAvatarWrap = document.createElement('div');
+    custAvatarWrap.style.cssText = 'position:relative;display:inline-block;';
+    custAvatarWrap.appendChild(custAvatar);
 
     const number = customer?.number ? String(customer.number) : '';
     if (number) {
         const badge = document.createElement('div');
-        badge.style.cssText = 'position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:var(--primary-color,#1a8a6e);color:#fff;font-size:13px;font-weight:700;padding:2px 10px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.15);';
+        badge.style.cssText = 'position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:var(--primary-color,#1a8a6e);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.15);';
         badge.textContent = `#${number}`;
-        avatarWrap.appendChild(badge);
+        custAvatarWrap.appendChild(badge);
     }
-    customerRow.appendChild(avatarWrap);
+    custCol.appendChild(custAvatarWrap);
 
-    const customerHighlight = document.createElement('div');
-    customerHighlight.className = 'customer-highlight';
-    customerHighlight.textContent = `${customer?.name || 'Ukendt'} køber:`;
-    customerRow.appendChild(customerHighlight);
+    const custName = document.createElement('div');
+    custName.style.cssText = 'font-size:15px;font-weight:600;color:var(--text-primary,#334155);text-align:center;max-width:220px;word-break:break-word;';
+    custName.textContent = `${customer?.name || 'Ukendt'} køber:`;
+    custCol.appendChild(custName);
 
-    header.appendChild(customerRow);
+    peopleRow.appendChild(custCol);
+    header.appendChild(peopleRow);
     root.appendChild(header);
 
     // === Produktrækker ===
@@ -204,7 +242,7 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
             img.alt = item?.name || 'Produkt';
             iconWrap.appendChild(img);
         } else {
-            iconWrap.textContent = item?.emoji || '❓';
+            iconWrap.textContent = item?.emoji || '🛒';
         }
         row.appendChild(iconWrap);
 
@@ -1010,10 +1048,9 @@ export async function handleCompletePurchase({
         console.warn('[cafe-session] finalTotal selection failed, using legacy total:', err);
     }
 
-    // Tjek om dette er et gratis admin-køb (SKAL ske før finansiel evaluering)
+    // Tjek om dette er et gratis admin-køb (per-admin purchase_free felt)
     const isAdminCustomer = customer?.role === 'admin';
-    const adminsPurchaseFree = window.__flangoInstitutionSettings?.adminsPurchaseFree || false;
-    const shouldBeFreePurchase = isAdminCustomer && adminsPurchaseFree;
+    const shouldBeFreePurchase = isAdminCustomer && customer?.purchase_free === true;
 
     // Hvis admin skal købe gratis, sæt finalTotal til 0
     if (shouldBeFreePurchase) {
@@ -1113,7 +1150,7 @@ export async function handleCompletePurchase({
         finalTotal,
         newBalance,
     });
-    const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance, shouldBeFreePurchase, restaurantMode);
+    const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance, shouldBeFreePurchase, restaurantMode, clerkProfile);
     logDebugEvent('confirmation_modal_showing', { bodyLength: confirmationBody?.length });
     // showCustomAlert indsætter HTML synkront via innerHTML — await ikke endnu
     // så vi kan vedhæfte event listeners til DOM-elementer der blev oprettet
@@ -1124,12 +1161,22 @@ export async function handleCompletePurchase({
     });
 
     // Async profile picture load (if cached URL wasn't available during build)
+    const imgStyle2 = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
     const avatarNode = document.getElementById('confirm-customer-avatar');
     if (avatarNode?.dataset.needsAsync === 'true') {
         getProfilePictureUrl(customer).then(url => {
             if (url && avatarNode.isConnected) {
                 avatarNode.textContent = '';
-                avatarNode.innerHTML = `<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+                avatarNode.innerHTML = `<img src="${url}" alt="" style="${imgStyle2}">`;
+            }
+        });
+    }
+    const clerkAvatarNode = document.getElementById('confirm-clerk-avatar');
+    if (clerkAvatarNode?.dataset.needsAsync === 'true' && clerk) {
+        getProfilePictureUrl(clerk).then(url => {
+            if (url && clerkAvatarNode.isConnected) {
+                clerkAvatarNode.textContent = '';
+                clerkAvatarNode.innerHTML = `<img src="${url}" alt="" style="${imgStyle2}">`;
             }
         });
     }

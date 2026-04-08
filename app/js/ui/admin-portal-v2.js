@@ -56,6 +56,7 @@
   let adoptionData = null;
   let parentListData = [];
   let previewUsers = [];
+  let featureFlags = null;
   let currentDetailChild = null; // Current child shown in detail modal
 
   // ─── Demo / placeholder data ───────────────────────────────────
@@ -1500,6 +1501,7 @@
     parentListData = [];
     previewUsers = [];
     institutionSettings = null;
+    featureFlags = null;
   }
 
   // ─── Main entry point ─────────────────────────────────────────
@@ -1513,9 +1515,10 @@
     // Load real data if PortalData is available
     try {
       if (typeof PortalData !== 'undefined') {
-        // Hent settings + preview-brugere parallelt med RPC
+        // Hent settings + preview-brugere + feature flags parallelt
         var settingsPromise = PortalData.getInstitutionSettings();
         var previewUsersPromise = typeof PortalData.getPreviewUsers === 'function' ? PortalData.getPreviewUsers() : Promise.resolve([]);
+        var featureFlagsPromise = typeof PortalData.getFeatureFlags === 'function' ? PortalData.getFeatureFlags() : Promise.resolve(null);
 
         // Brug samlet RPC hvis tilgængelig (erstatter 9+ parallelle queries)
         var overviewPromise = typeof PortalData.getParentAdminOverview === 'function'
@@ -1524,7 +1527,7 @@
 
         if (overviewPromise) {
           // Ny RPC-baseret datahentning
-          var results = await Promise.all([settingsPromise, overviewPromise, previewUsersPromise]);
+          var results = await Promise.all([settingsPromise, overviewPromise, previewUsersPromise, featureFlagsPromise]);
 
           if (results[0]) {
             institutionSettings = results[0];
@@ -1538,13 +1541,16 @@
           if (results[2] && results[2].length > 0) {
             previewUsers = results[2];
           }
+          if (results[3]) {
+            featureFlags = results[3];
+          }
         } else {
           // Fallback: individuelle queries (legacy)
           var statsPromise = PortalData.getParentStats();
           var listPromise = typeof PortalData.getParentList === 'function' ? PortalData.getParentList() : Promise.resolve([]);
           var adoptionPromise = typeof PortalData.getAdoptionStats === 'function' ? PortalData.getAdoptionStats() : Promise.resolve(null);
 
-          var results = await Promise.all([settingsPromise, statsPromise, listPromise, adoptionPromise, previewUsersPromise]);
+          var results = await Promise.all([settingsPromise, statsPromise, listPromise, adoptionPromise, previewUsersPromise, featureFlagsPromise]);
 
           if (results[0]) {
             institutionSettings = results[0];
@@ -1561,6 +1567,9 @@
           }
           if (results[4] && results[4].length > 0) {
             previewUsers = results[4];
+          }
+          if (results[5]) {
+            featureFlags = results[5];
           }
         }
       }
@@ -1591,7 +1600,7 @@
     // Render Portal Settings page via AdminPortalSettings if available
     var settingsContainer = overlayEl.querySelector('#pv2-settings-container');
     if (settingsContainer && typeof AdminPortalSettings !== 'undefined' && typeof AdminPortalSettings.render === 'function') {
-      AdminPortalSettings.render(settingsContainer, institutionSettings, institutionName, previewUsers);
+      AdminPortalSettings.render(settingsContainer, institutionSettings, institutionName, previewUsers, featureFlags);
       if (typeof AdminPortalSettings.initHandlers === 'function') {
         AdminPortalSettings.initHandlers(settingsContainer, institutionSettings);
       }

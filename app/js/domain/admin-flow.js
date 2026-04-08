@@ -24,75 +24,55 @@ export async function loadUsersAndNotifications({
 
     const institutionId = adminProfile.institution_id;
 
-    // Tjek om admins skal vises i bruger-listen (med fejlhåndtering)
-    let showAdminsInList = true; // Default: vis ALLE brugere (backward compatible)
-    let adminsPurchaseFree = false;
-    let shiftTimerEnabled = false; // Default: bytte-timer er IKKE aktiveret (skal aktiveres manuelt)
+    // Hent institution settings (shift_timer_enabled)
+    let shiftTimerEnabled = false;
 
     // OPTIMERING: Brug memory cache først (0 DB kald)
     let institutionData = typeof window !== 'undefined' && typeof window.__flangoGetInstitutionById === 'function'
         ? window.__flangoGetInstitutionById(institutionId)
         : null;
 
-    // Hvis cache mangler shift_timer_enabled, hent fra DB (cache kan være forældet)
     const needsDbFetch = !institutionData || !('shift_timer_enabled' in institutionData);
-    
+
     if (needsDbFetch) {
         try {
             const { data: dbData, error: institutionError } = await supabaseClient
                 .from('institutions')
-                .select('show_admins_in_user_list, admins_purchase_free, shift_timer_enabled')
+                .select('shift_timer_enabled')
                 .eq('id', institutionId)
                 .single();
 
             if (!institutionError && dbData) {
                 institutionData = dbData;
             } else {
-                console.warn('[admin-flow] Kunne ikke hente institution settings (måske migration ikke kørt endnu):', institutionError);
+                console.warn('[admin-flow] Kunne ikke hente institution settings:', institutionError);
             }
         } catch (err) {
             console.warn('[admin-flow] Fejl ved hentning af institution settings, bruger defaults:', err);
         }
     }
 
-    // Anvend settings fra cache eller DB
     if (institutionData) {
-        if (typeof institutionData.show_admins_in_user_list === 'boolean') {
-            showAdminsInList = institutionData.show_admins_in_user_list;
-        }
-        if (typeof institutionData.admins_purchase_free === 'boolean') {
-            adminsPurchaseFree = institutionData.admins_purchase_free;
-        }
-        // Håndter shift_timer_enabled: både boolean true/false og null (behandles som false)
         if (institutionData.shift_timer_enabled !== undefined) {
             shiftTimerEnabled = institutionData.shift_timer_enabled === true;
         }
     }
 
-    // Gem settings globalt så de kan bruges i purchase flow og shift-timer
+    // Gem settings globalt (per-admin settings er nu på users tabellen)
     window.__flangoInstitutionSettings = {
-        showAdminsInUserList: showAdminsInList,
-        adminsPurchaseFree: adminsPurchaseFree,
+        showAdminsInUserList: true, // Backward compat — per-admin show_in_user_list bruges nu
+        adminsPurchaseFree: false, // Backward compat — per-admin purchase_free bruges nu
         shiftTimerEnabled: shiftTimerEnabled
     };
 
     const buildUsersQuery = () => {
-        // Byg bruger-query baseret på settings
-        let usersQuery = supabaseClient
+        // Hent altid alle brugere (både børn og admins) — filtrering sker i customer-picker
+        // baseret på per-admin show_in_user_list felt
+        return supabaseClient
             .from('users')
             .select('*, last_parent_login_at, parent_pin_is_custom')
-            .eq('institution_id', institutionId);
-
-        // Hvis admins IKKE skal vises, filtrer kun til børn/kunder
-        // VIGTIGT: Kun filtrer hvis settings eksplicit er sat til false
-        if (showAdminsInList === false) {
-            usersQuery = usersQuery.eq('role', 'kunde');
-            console.log('[admin-flow] Filtrerer bruger-liste til kun kunder (role = kunde)');
-        } else {
-            console.log('[admin-flow] Viser alle brugere i bruger-liste');
-        }
-
-        return usersQuery.order('name');
+            .eq('institution_id', institutionId)
+            .order('name');
     };
 
     const buildNotificationsQuery = () => supabaseClient
@@ -157,8 +137,6 @@ export function setupAdminFlow({
         const isAdminMode = adminManagerMode === 'admins';
         const userData = await showAddUserModal({
             preferredRole: isAdminMode ? 'admin' : 'kunde',
-            lockRole: isAdminMode,
-            titleOverride: isAdminMode ? 'Tilføj Admin' : null
         });
         const reopenAdminManager = () => window.__flangoOpenAdminUserManager?.(adminManagerMode);
 

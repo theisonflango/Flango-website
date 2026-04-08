@@ -1,7 +1,7 @@
 import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '../ui/sound-and-alerts.js';
 import { initializeSoundSettings } from '../core/sound-manager.js';
 import { initDebugRecorder, logDebugEvent } from '../core/debug-flight-recorder.js';
-import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen } from '../ui/shell-and-theme.js';
+import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen, initToolbarSettings } from '../ui/shell-and-theme.js';
 import { getCurrentTheme, onThemeChange } from '../ui/theme-loader.js';
 import { configureHistoryModule, showTransactionsInSummary, showOverviewInSummary, resetSharedHistoryControls } from './history-and-reports.js';
 import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js';
@@ -72,6 +72,9 @@ export async function startApp() {
 
     // Start inaktivitets-timeout (10 min → auto-logout)
     startInactivityTimeout();
+
+    // Apply toolbar settings (needs clerk to be set for admin-only checks)
+    initToolbarSettings();
 
     // 1) Basis state for session og app
     const AVATAR_STORAGE_PREFIX = 'flango-avatar-';
@@ -630,13 +633,20 @@ export async function startApp() {
     // 3.6) Restaurant Mode: badge + køkken-knap
     {
         const inst = window.__flangoGetInstitutionById?.(getInstitutionId());
-        const deviceRm = localStorage.getItem('flango_device_restaurant_mode') === 'true';
-        const rmEnabled = inst?.restaurant_mode_enabled === true && deviceRm;
+        const rmEnabled = inst?.restaurant_mode_enabled === true;
+        const toolbarKitchen = inst?.toolbar_kitchen !== false;
         const badge = document.getElementById('restaurant-mode-badge');
         const kitchenBtn = document.getElementById('kitchen-btn');
-        if (badge) badge.style.display = rmEnabled ? '' : 'none';
+        if (badge) {
+            badge.style.display = rmEnabled ? '' : 'none';
+            badge.addEventListener('click', () => {
+                if (typeof window.__flangoOpenRestaurantModeSettings === 'function') {
+                    window.__flangoOpenRestaurantModeSettings();
+                }
+            });
+        }
         if (kitchenBtn) {
-            kitchenBtn.style.display = rmEnabled ? '' : 'none';
+            kitchenBtn.style.display = (rmEnabled && toolbarKitchen) ? '' : 'none';
             let pressTimer = null;
             let isLongPress = false;
             const startPress = () => {

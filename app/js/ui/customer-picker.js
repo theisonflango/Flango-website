@@ -1,7 +1,7 @@
 // js/ui/customer-picker.js
 import { buildCustomerSelectionEntryElement } from '../domain/users-and-admin.js';
 import { SEARCH_DEBOUNCE_MS } from '../core/constants.js';
-import { batchPreWarmProfilePictures } from '../core/profile-picture-cache.js';
+import { batchPreWarmProfilePictures, preWarmDefaultProfilePicture } from '../core/profile-picture-cache.js';
 
 // Filter state - enklere: kun ét valg ad gangen
 let userFilterMode = 'all'; // 'all' | 'children' | 'adults'
@@ -42,16 +42,17 @@ export function renderCustomerListUI(options) {
     const searchTerm = (searchInput.value || '').toLowerCase();
 
     // Filtrer brugere baseret på filter mode
-    let filteredUsers = allUsers;
+    // Respekter show_in_user_list for alle roller (børn + admins)
+    let filteredUsers = allUsers.filter(u => u.show_in_user_list !== false);
 
     if (userFilterMode === 'children') {
-        // Vis kun børn
         filteredUsers = filteredUsers.filter((u) => u.role === 'kunde');
     } else if (userFilterMode === 'adults') {
-        // Vis kun voksne
         filteredUsers = filteredUsers.filter((u) => u.role === 'admin');
+    } else {
+        // 'all' — vis alle børn + admins (begge allerede filtreret på show_in_user_list)
+        filteredUsers = filteredUsers.filter((u) => u.role === 'kunde' || u.role === 'admin');
     }
-    // else: userFilterMode === 'all' - vis alle brugere
 
     if (searchTerm) {
         filteredUsers = filteredUsers.filter((user) =>
@@ -176,10 +177,16 @@ export function openCustomerSelectionModalUI(options) {
     // Nulstil modalens tilstand (titel, knapper, søgefelt osv.)
     resetView();
 
-    // Pre-warm profile picture URLs (async, non-blocking)
-    if (options.allUsers) batchPreWarmProfilePictures(options.allUsers).catch(() => {});
+    // Pre-warm profile picture URLs (async), then re-render to show pictures
+    if (options.allUsers) {
+        const inst = window.__flangoGetInstitutionById?.(options.allUsers[0]?.institution_id);
+        Promise.all([
+            batchPreWarmProfilePictures(options.allUsers),
+            preWarmDefaultProfilePicture(inst),
+        ]).then(() => renderList()).catch(() => {});
+    }
 
-    // Render den aktuelle kundeliste
+    // Render den aktuelle kundeliste (immediate — shows initials if pics not cached yet)
     renderList();
 
     // Vis modal
@@ -303,14 +310,8 @@ export function setupUserFilterButtons(renderList) {
 
     if (!filterButtonsContainer || !filterAllBtn || !filterChildrenBtn || !filterAdultsBtn) return;
 
-    // Vis knapperne kun hvis admins er aktiveret i settings
-    const showAdminsInList = window.__flangoInstitutionSettings?.showAdminsInUserList !== false;
-    if (showAdminsInList) {
-        filterButtonsContainer.style.display = 'flex';
-    } else {
-        filterButtonsContainer.style.display = 'none';
-        return;
-    }
+    // Vis filter-knapperne altid (per-admin show_in_user_list styrer synlighed individuelt)
+    filterButtonsContainer.style.display = 'flex';
 
     // Opdater active state på alle knapper
     function updateActiveButton() {

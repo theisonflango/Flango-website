@@ -595,6 +595,13 @@
 .portal-v2 .section.disabled .section-title { color: var(--ink-muted); }
 .portal-v2 .section.disabled .section-subtitle { color: var(--ink-muted); }
 
+/* Superadmin locked states */
+.portal-v2 .sidebar-nav-item.superadmin-locked { position: relative; }
+.portal-v2 .sidebar-nav-item.superadmin-locked .sidebar-check { pointer-events: none; opacity: .5; }
+.portal-v2 .sa-lock { font-size: 11px; margin-left: auto; flex-shrink: 0; }
+.portal-v2 .sa-lock-on { filter: hue-rotate(90deg); }
+.portal-v2 .sa-lock-off { filter: grayscale(1); }
+
 /* Admin-only fields inside sections */
 .portal-v2 .admin-field {
   margin-top: var(--s3); padding: var(--s3); border-radius: var(--r-md);

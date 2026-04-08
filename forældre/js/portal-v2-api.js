@@ -309,6 +309,15 @@
       });
     },
 
+    /** Set active profile picture or delete one from library */
+    async manageProfilePicture(childId, action, pictureId) {
+      return invokeFunction('parent-manage-profile-picture', {
+        child_id: childId,
+        action,        // 'set_active' | 'delete'
+        picture_id: pictureId,
+      });
+    },
+
     // ─── Notifications ───
 
     /** Save notification preferences for a child */

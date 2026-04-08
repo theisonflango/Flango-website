@@ -2267,3 +2267,32 @@
 #product-form-fields span {
     color: #cbd5e1;
 }
+
+/* Admin role toggle tabs */
+.admin-role-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.12);
+    flex-shrink: 0;
+    min-height: 42px;
+}
+.admin-role-toggle-btn {
+    flex: 1;
+    padding: 12px 0;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s;
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.5);
+    min-height: 42px;
+    line-height: 1;
+}
+.admin-role-toggle-btn.active {
+    background: var(--accent-primary, #6366f1);
+    color: #fff;
+}

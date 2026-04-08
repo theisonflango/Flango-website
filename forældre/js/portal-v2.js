@@ -24,9 +24,52 @@
   let eventsData = null;
   let featureFlags = {};      // from institution
   let customerAvgSpend = null; // { avg_today, avg_week, avg_month }
+  let _sidebarObserver = null; // IntersectionObserver for sidebar scroll tracking
+
+  // ─── Tab-to-sections mapping ───
+  const TAB_SECTIONS = {
+    'tab-home':    ['section-balance','section-events','section-profile','section-history','section-sortiment'],
+    'tab-pay':     ['section-topup'],
+    'tab-limits':  ['section-spending-limit','section-product-limits','section-sugar','section-diet','section-allergens'],
+    'tab-screen':  ['section-screentime','section-games','section-st-chart'],
+    'tab-profile': ['section-notifications','section-invite-parent','section-feedback','section-pin'],
+    'tab-privacy': ['section-privacy-policy','section-child-name','section-profile-picture','section-data-insight','section-linked-parents','section-delete-child','section-delete-account','section-contact'],
+  };
+
+  const SECTION_LABELS = {
+    'section-balance':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', label: 'Overblik' },
+    'section-events':         { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', label: 'Arrangementer' },
+    'section-profile':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label: 'Købsprofil' },
+    'section-history':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', label: 'Historik' },
+    'section-sortiment':      { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>', label: 'Sortiment' },
+    'section-topup':          { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', label: 'Indbetaling' },
+    'section-spending-limit': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>', label: 'Daglig grænse' },
+    'section-product-limits': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>', label: 'Købsgrænser' },
+    'section-sugar':          { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>', label: 'Sukkerpolitik' },
+    'section-diet':           { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg>', label: 'Kostpræferencer' },
+    'section-allergens':      { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>', label: 'Allergier' },
+    'section-screentime':     { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>', label: 'Skærmtid' },
+    'section-games':          { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="17" cy="10" r="1"/><circle cx="15" cy="13" r="1"/></svg>', label: 'Godkend spil' },
+    'section-st-chart':       { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label: 'Spilletidsoversigt' },
+    'section-notifications':  { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Notifikationer' },
+    'section-invite-parent':  { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>', label: 'Invitér forælder' },
+    'section-feedback':       { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>', label: 'Feedback' },
+    'section-pin':            { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>', label: 'Adgangskode' },
+    'section-privacy-policy': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', label: 'Privatlivspolitik' },
+    'section-child-name':     { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', label: 'Barnets navn' },
+    'section-profile-picture':{ icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>', label: 'Profilbilleder' },
+    'section-data-insight':   { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', label: 'Dataindsigt' },
+    'section-linked-parents': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label: 'Forældrekonti' },
+    'section-delete-child':   { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>', label: 'Slet data' },
+    'section-delete-account': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>', label: 'Slet konto' },
+    'section-contact':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Kontakt' },
+  };
 
   // ─── Turnstile verification helper ───
   async function verifyTurnstileToken(widgetId) {
+    // Skip Turnstile on localhost (not available outside production)
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return { ok: true };
     const token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
     if (!token) return { ok: false, error: 'Bekræft venligst at du ikke er en robot.' };
     try {
@@ -75,6 +118,24 @@
 
   async function init() {
     try {
+      // Auto-login via admin-parent token (from café app)
+      const urlParams = new URLSearchParams(window.location.search);
+      const adminToken = urlParams.get('admin_token');
+      const adminRefresh = urlParams.get('admin_refresh');
+      if (adminToken && adminRefresh) {
+        // Clear URL params (don't expose tokens in browser history)
+        window.history.replaceState({}, '', window.location.pathname);
+        try {
+          const { error: sessionErr } = await window.portalSupabase.auth.setSession({
+            access_token: adminToken,
+            refresh_token: adminRefresh,
+          });
+          if (sessionErr) console.error('[Portal] Admin auto-login fejl:', sessionErr);
+        } catch (e) {
+          console.error('[Portal] Admin auto-login fejl:', e);
+        }
+      }
+
       const session = await API.getSession();
       if (!session) {
         renderLogin();
@@ -153,6 +214,34 @@
       eventsData = events;
       customerAvgSpend = clubAvg;
       featureFlags = childData?.institution || childData?.feature_flags || {};
+      window.__featureFlags = featureFlags; // DEBUG
+      console.log('[Portal] featureFlags.skaermtid_enabled:', featureFlags.skaermtid_enabled, 'keys:', Object.keys(featureFlags).filter(k => k.includes('skaerm')));
+
+      // Superadmin feature flag enforcement: override institution flags
+      const saFlags = childData?.feature_flags || {};
+      if (saFlags.skaermtid === 'forced_off') featureFlags.skaermtid_enabled = false;
+      if (saFlags.sugar_policy === 'forced_off') featureFlags.parent_portal_sugar_policy = false;
+      if (saFlags.diet_preferences === 'forced_off') {
+        featureFlags.parent_portal_diet = false;
+        featureFlags.parent_portal_vegetarian_only = false;
+        featureFlags.parent_portal_no_pork = false;
+      }
+      if (saFlags.allergens === 'forced_off') featureFlags.parent_portal_allergens = false;
+      if (saFlags.spending_limits === 'forced_off') {
+        featureFlags.parent_portal_spending_limit = false;
+        featureFlags.parent_portal_product_limit = false;
+      }
+      if (saFlags.events === 'forced_off') featureFlags.cafe_events_enabled = false;
+      if (saFlags.portal_sections === 'forced_off') {
+        featureFlags.parent_portal_events = false;
+        featureFlags.parent_portal_purchase_profile = false;
+        featureFlags.parent_portal_history = false;
+        featureFlags.parent_portal_sortiment = false;
+        featureFlags.parent_portal_feedback = false;
+      }
+      if (saFlags.profile_pic_upload === 'forced_off' && saFlags.profile_pic_camera === 'forced_off' && saFlags.profile_pic_ai === 'forced_off' && saFlags.profile_pic_library === 'forced_off') {
+        featureFlags.parent_portal_profile_pictures = false;
+      }
 
       // Load screentime data if enabled
       if (featureFlags.skaermtid_enabled === true) {
@@ -1028,12 +1117,29 @@
           </div>
           <div class="sidebar-child-section" id="sidebar-children"></div>
           <div class="sidebar-divider"></div>
-          <div style="padding:0 var(--s5);margin-bottom:var(--s2)"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted)">Funktioner</span></div>
           <nav class="sidebar-nav" id="sidebar-nav"></nav>
           <div class="sidebar-footer">
             <div class="sidebar-footer-btn" id="sidebar-logout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Log ud af denne enhed</div>
           </div>
         </aside>
+
+        <!-- DESKTOP TOP TAB BAR -->
+        <nav class="desktop-topnav">
+          <div class="desktop-topnav-inner">
+            <div class="brand">
+              <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">🍊</div>
+              <div><div class="brand-name">Flango</div><div class="brand-sub">Forældreportal</div></div>
+            </div>
+            <div class="desktop-tab-bar">
+              <button class="dtab-item active" data-tab="tab-home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Overblik</span></button>
+              <button class="dtab-item" data-tab="tab-pay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span>Indbetal</span></button>
+              <button class="dtab-item" data-tab="tab-limits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Grænser</span></button>
+              ${showScreentime ? '<button class="dtab-item" data-tab="tab-screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span>Skærmtid</span></button>' : ''}
+              <button class="dtab-item" data-tab="tab-profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></button>
+              <button class="dtab-item" data-tab="tab-privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Privatliv</span></button>
+            </div>
+          </div>
+        </nav>
 
         <!-- MOBILE TOP NAV -->
         <header class="topnav">
@@ -1117,7 +1223,6 @@
             ${renderInviteParentSection()}
             ${renderFeedbackSection()}
             ${renderPinSection()}
-            <a href="index.html" class="v1-link">Vis original portal</a>
           </div>
 
           <!-- TAB: PRIVACY & RIGHTS -->
@@ -1150,7 +1255,7 @@
 
     // Render dynamic sidebar content first, then bind all events
     renderSidebarChildren();
-    renderSidebarNav();
+    renderSidebarNav('tab-home');
     bindEvents();
 
     // Auto-load purchase profile (always open by default)
@@ -1788,39 +1893,60 @@
   }
 
   function renderProfilePictureSection() {
-    // Show if admin has enabled the profile picture section in portal sidebar
     if (featureFlags?.parent_portal_profile_pictures === false) return '';
 
     const optOutAula = childData?.profile_picture_opt_out_aula || false;
     const optOutCamera = childData?.profile_picture_opt_out_camera || false;
     const optOutAi = childData?.profile_picture_opt_out_ai || false;
-
     const allOptedOut = optOutAula && optOutCamera && optOutAi;
+    const library = childData?.profile_picture_library || [];
+    const childName = getChildName();
+    const initials = childName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+    // Build gallery HTML
+    let galleryHtml = '';
+    if (library.length > 0) {
+      const thumbs = library.map(pic => {
+        const border = pic.is_active ? '3px solid #22c55e' : '3px solid transparent';
+        const typeLabel = pic.picture_type === 'ai_avatar' ? 'AI' : (pic.picture_type === 'aula' ? 'Aula' : (pic.picture_type === 'camera' ? 'Foto' : (pic.picture_type === 'upload' ? 'Upload' : (pic.picture_type === 'library' ? 'Bibliotek' : (pic.picture_type === 'icon' ? 'Ikon' : pic.picture_type || '')))));
+        // Library/icon paths are relative to cafe app — prefix with appropriate base URL
+        let imgUrl = pic.signed_url || '';
+        if ((pic.picture_type === 'library' || pic.picture_type === 'icon') && imgUrl && !imgUrl.startsWith('http')) {
+          const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+          const cafeBase = isLocal ? 'http://127.0.0.1:3000/' : 'https://flango.dk/app/';
+          imgUrl = cafeBase + imgUrl;
+        }
+        return `<div class="pp-gallery-item" data-pic-id="${esc(pic.id)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;position:relative;">
+          <img src="${esc(imgUrl)}" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:${border};transition:border-color 0.2s;" onerror="this.style.opacity='0.2'">
+          <span style="font-size:10px;color:var(--ink-muted)">${esc(typeLabel)}${pic.is_active ? ' ●' : ''}</span>
+          <div style="display:flex;gap:4px;">
+            ${!pic.is_active ? `<button class="pp-activate-btn" data-pic-id="${esc(pic.id)}" style="font-size:10px;padding:2px 6px;border:1px solid #22c55e;border-radius:4px;background:var(--bg);color:#22c55e;cursor:pointer;">Brug</button>` : ''}
+            <button class="pp-download-btn" data-pic-url="${esc(imgUrl)}" data-pic-type="${esc(pic.picture_type || '')}" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--ink-muted);cursor:pointer;">⬇</button>
+            <button class="pp-delete-btn" data-pic-id="${esc(pic.id)}" style="font-size:10px;padding:2px 6px;border:1px solid #ef4444;border-radius:4px;background:var(--bg);color:#ef4444;cursor:pointer;">✕</button>
+          </div>
+        </div>`;
+      }).join('');
+      galleryHtml = `
+        <div style="margin-bottom:var(--s3)">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Billeder (${library.length})</div>
+          <div id="pp-gallery" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">${thumbs}</div>
+        </div>`;
+    } else {
+      galleryHtml = `<div style="display:flex;align-items:center;gap:var(--s4);margin-bottom:var(--s4)">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--flango-light);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--flango-dark);border:2px solid var(--border)">${initials}</div>
+        <div><div style="font-weight:600">${esc(childName)}</div><div style="font-size:12px;color:var(--ink-muted)">Ingen profilbilleder endnu</div></div>
+      </div>`;
+    }
 
     return `
       <div class="section" id="section-profile-picture">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:#e0e7ff">📷</div><div><div class="section-title">Profilbilleder</div><div class="section-subtitle">Samtykke til billeder i caféen</div></div></div>
+          <div class="section-title-row"><div class="section-icon" style="background:#e0e7ff">📷</div><div><div class="section-title">Profilbilleder</div><div class="section-subtitle">Billeder og samtykke</div></div></div>
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          ${(() => {
-            const picUrl = childData?.profile_picture_url;
-            const childName = getChildName();
-            const initials = childName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-            if (picUrl) {
-              return `<div style="display:flex;align-items:center;gap:var(--s4);margin-bottom:var(--s4)">
-                <img src="${esc(picUrl)}" alt="Profilbillede" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--border)" />
-                <div><div style="font-weight:600">${esc(childName)}</div><div style="font-size:12px;color:var(--ink-muted)">Aktuelt profilbillede</div></div>
-              </div>`;
-            } else {
-              return `<div style="display:flex;align-items:center;gap:var(--s4);margin-bottom:var(--s4)">
-                <div style="width:80px;height:80px;border-radius:50%;background:var(--flango-light);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:var(--flango-dark);border:2px solid var(--border)">${initials}</div>
-                <div><div style="font-weight:600">${esc(childName)}</div><div style="font-size:12px;color:var(--ink-muted)">Ingen profilbillede (standard-avatar)</div></div>
-              </div>`;
-            }
-          })()}
-          <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Institutionen kan bruge profilbilleder i caféen for at bekræfte dit barns identitet ved køb. Billedet er kun synligt for børn og personale i denne institution.</span></div>
+          ${galleryHtml}
+          <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Profilbilleder bruges i caféen for at bekræfte dit barns identitet ved køb. Billederne er kun synlige for børn og personale i denne institution.</span></div>
 
           <div class="setting-row" style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:var(--s3);margin-bottom:var(--s2)">
             <div class="setting-info"><div class="setting-label" style="font-weight:700">Tillad profilbilleder</div><div class="setting-desc">Slå fra for at fravælge alle billedtyper på én gang</div></div>
@@ -1829,17 +1955,15 @@
 
           <div id="pp-type-toggles" style="${allOptedOut ? 'opacity:0.4;pointer-events:none' : ''}">
             <div class="setting-row">
-              <div class="setting-info"><div class="setting-label">Aula-profilbillede</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen. Billedet kopieres til Flango og vises ved køb.</div></div>
+              <div class="setting-info"><div class="setting-label">Aula-profilbillede</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div></div>
               <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''}><span class="toggle-track"></span></label>
             </div>
-
             <div class="setting-row">
-              <div class="setting-info"><div class="setting-label">Kamera-foto</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed. Billedet bruges kun til identifikation ved køb og opbevares krypteret i EU.</div></div>
+              <div class="setting-info"><div class="setting-label">Kamera-foto</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
               <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''}><span class="toggle-track"></span></label>
             </div>
-
             <div class="setting-row" style="opacity:0.55;pointer-events:none">
-              <div class="setting-info"><div class="setting-label">AI-genereret avatar</div><div class="setting-desc">Et foto af dit barn bruges til at generere en tegnet avatar i animationsstil. Fotoet sendes til en AI-tjeneste, avataren returneres, og fotoet slettes straks. Kun avataren gemmes.<br><span style="font-size:11px;color:var(--warning);margin-top:4px;display:inline-block">⏳ Afventer kommunal tilladelse</span><br><span style="font-size:11px;color:var(--text-muted, #9ca3af)">Denne funktion er ikke tilgængelig endnu. Den kræver særskilt godkendelse fra kommunen.</span></div></div>
+              <div class="setting-info"><div class="setting-label">AI-genereret avatar</div><div class="setting-desc">Et foto bruges til at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.<br><span style="font-size:11px;color:var(--warning);margin-top:4px;display:inline-block">⏳ Afventer kommunal tilladelse</span></div></div>
               <label class="toggle"><input type="checkbox" id="pp-consent-ai" ${!optOutAi ? 'checked' : ''} disabled><span class="toggle-track"></span></label>
             </div>
           </div>
@@ -2126,9 +2250,100 @@
   //  SIDEBAR
   // ═══════════════════════════════════════
 
+  let sidebarSearchQuery = '';
+
   function renderSidebarChildren() {
     const container = document.getElementById('sidebar-children');
     if (!container) return;
+
+    const useDropdown = children.length > 4;
+
+    if (useDropdown) {
+      // Compact dropdown mode for many children (admin-parent)
+      const selectedName = esc(selectedChild?.child_name || selectedChild?.name || 'Vælg barn');
+      const selectedBal = selectedChild?.balance != null ? `${formatKr(selectedChild.balance)} kr` : '';
+      const selectedEmoji = selectedChild?.avatar_emoji || selectedChild?.emoji || '🧒';
+
+      let filtered = children;
+      if (sidebarSearchQuery) {
+        const q = sidebarSearchQuery.toLowerCase();
+        filtered = children.filter(c => (c.child_name || c.name || '').toLowerCase().includes(q));
+      }
+
+      const optionsHtml = filtered.map(c => {
+        const isActive = c.child_id === selectedChild?.child_id;
+        const emoji = c.avatar_emoji || c.emoji || '🧒';
+        const bal = c.balance != null ? `${formatKr(c.balance)} kr` : '';
+        const name = esc(c.child_name || c.name);
+        return `<div class="sidebar-dropdown-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-radius:6px;${isActive ? 'background:var(--flango-light,#fff3e0);font-weight:600;' : ''}">${emoji} <span style="flex:1;">${name}</span> <span style="font-size:11px;opacity:0.6;">${bal}</span></div>`;
+      }).join('');
+
+      container.innerHTML = `
+        <div style="padding:4px 0;">
+          <div id="sidebar-selected-child" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border:1.5px solid var(--border,#e2e8f0);border-radius:10px;background:var(--flango-light,#fff9f0);">
+            <span style="font-size:18px;">${selectedEmoji}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${selectedName}</div>
+              <div style="font-size:11px;opacity:0.6;">${selectedBal} · ${children.length} børn</div>
+            </div>
+            <span style="font-size:12px;opacity:0.4;">▼</span>
+          </div>
+          <div id="sidebar-child-dropdown" style="display:none;margin-top:4px;border:1.5px solid var(--border,#e2e8f0);border-radius:10px;background:var(--bg,#fff);max-height:50vh;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+            <div style="padding:6px;position:sticky;top:0;background:inherit;z-index:1;">
+              <input type="text" id="sidebar-child-search" placeholder="🔍 Søg barn..." value="${esc(sidebarSearchQuery)}"
+                style="width:100%;padding:7px 10px;border:1.5px solid var(--border,#e2e8f0);border-radius:8px;font-size:12px;box-sizing:border-box;outline:none;">
+            </div>
+            <div id="sidebar-dropdown-list" style="padding:4px 6px;">${optionsHtml}</div>
+          </div>
+        </div>
+      `;
+
+      // Wire toggle dropdown
+      const selectedEl = container.querySelector('#sidebar-selected-child');
+      const dropdownEl = container.querySelector('#sidebar-child-dropdown');
+      selectedEl?.addEventListener('click', () => {
+        const isOpen = dropdownEl.style.display !== 'none';
+        dropdownEl.style.display = isOpen ? 'none' : 'block';
+        if (!isOpen) {
+          const searchEl = container.querySelector('#sidebar-child-search');
+          if (searchEl) setTimeout(() => searchEl.focus(), 50);
+        }
+      });
+
+      // Wire search
+      const searchEl = container.querySelector('#sidebar-child-search');
+      if (searchEl) {
+        searchEl.oninput = () => {
+          sidebarSearchQuery = searchEl.value;
+          const q = sidebarSearchQuery.toLowerCase();
+          container.querySelectorAll('.sidebar-dropdown-item').forEach(item => {
+            const text = item.textContent.toLowerCase();
+            item.style.display = (!q || text.includes(q)) ? '' : 'none';
+          });
+        };
+      }
+
+      // Wire item selection
+      container.querySelector('#sidebar-dropdown-list')?.addEventListener('click', (e) => {
+        const item = e.target.closest('.sidebar-dropdown-item');
+        if (!item) return;
+        dropdownEl.style.display = 'none';
+        sidebarSearchQuery = '';
+        // Trigger child selection via existing handler
+        const childId = item.dataset.childId;
+        const child = children.find(c => c.child_id === childId);
+        if (child) {
+          selectedChild = child;
+          loadChildData().then(() => {
+            renderApp();
+          });
+        }
+      });
+
+      return; // Don't render normal list
+    }
+
+    // Normal mode (1-4 children)
     const items = children.map(c => {
       const isActive = c.child_id === selectedChild?.child_id;
       const emoji = c.avatar_emoji || c.emoji || '🧒';
@@ -2138,50 +2353,58 @@
     container.innerHTML = items + `<div class="sidebar-add-child" id="add-child-btn-sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tilknyt barn</div>`;
   }
 
+  // Build reverse lookup: section-id → tab-id
+  const SECTION_TO_TAB = {};
+  Object.entries(TAB_SECTIONS).forEach(([tabId, sectionIds]) => {
+    sectionIds.forEach(id => { SECTION_TO_TAB[id] = tabId; });
+  });
+
   function renderSidebarNav() {
     const nav = document.getElementById('sidebar-nav');
     if (!nav) return;
     const showScreentime = featureFlags.skaermtid_enabled === true;
-    const items = [
-      { id: 'section-balance', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', label: 'Overblik' },
-      { id: 'section-events', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', label: 'Arrangementer' },
-      { id: 'section-profile', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>', label: 'Købsprofil' },
-      { id: 'section-history', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', label: 'Overblik' },
-      { id: 'section-sortiment', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>', label: 'Sortiment' },
-      { id: 'section-topup', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', label: 'Indbetaling' },
-      { id: 'section-spending-limit', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>', label: 'Daglig grænse' },
-      { id: 'section-product-limits', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>', label: 'Købsgrænser' },
-      { id: 'section-sugar', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>', label: 'Sukkerpolitik' },
-      { id: 'section-diet', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg>', label: 'Kostpræferencer' },
-      { id: 'section-allergens', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>', label: 'Allergier' },
-    ];
-    if (showScreentime) {
-      items.push(
-        { id: 'section-screentime', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>', label: 'Skærmtid' },
-        { id: 'section-games', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="17" cy="10" r="1"/><circle cx="15" cy="13" r="1"/></svg>', label: 'Godkend spil' },
-        { id: 'section-st-chart', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label: 'Spilletidsoversigt' },
-      );
-    }
-    items.push(
-      { id: 'section-notifications', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Notifikationer' },
-      { id: 'section-feedback', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>', label: 'Feedback' },
-      { id: 'section-pin', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>', label: 'Adgangskode' },
-    );
-    // Privacy & Rights sections
-    items.push(
-      { id: 'section-privacy-policy', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', label: 'Privatlivspolitik' },
-      { id: 'section-child-name', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', label: 'Barnets navn' },
-      { id: 'section-profile-picture', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>', label: 'Profilbilleder' },
-      { id: 'section-data-insight', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', label: 'Dataindsigt' },
-      { id: 'section-linked-parents', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label: 'Forældrekonti' },
-      { id: 'section-delete-child', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>', label: 'Slet data' },
-      { id: 'section-delete-account', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>', label: 'Slet konto' },
-      { id: 'section-contact', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Kontakt' },
-    );
+    const tabLabels = { 'tab-home': 'Overblik', 'tab-pay': 'Indbetaling', 'tab-limits': 'Grænser & Kost', 'tab-screen': 'Skærmtid', 'tab-profile': 'Profil', 'tab-privacy': 'Privatliv' };
+    const tabOrder = ['tab-home','tab-pay','tab-limits','tab-screen','tab-profile','tab-privacy'];
+    let html = '';
+    let isFirst = true;
+    tabOrder.forEach(tabId => {
+      if (tabId === 'tab-screen' && !showScreentime) return;
+      const sectionIds = TAB_SECTIONS[tabId] || [];
+      if (!sectionIds.length) return;
+      // Group divider with label
+      html += `<div class="sidebar-group-label">${tabLabels[tabId] || ''}</div>`;
+      sectionIds.forEach(id => {
+        if (!showScreentime && ['section-screentime','section-games','section-st-chart'].includes(id)) return;
+        const item = SECTION_LABELS[id];
+        if (!item) return;
+        html += `<div class="sidebar-nav-item${isFirst ? ' active' : ''}" data-scroll="${id}" data-tab="${tabId}">${item.icon}${item.label}</div>`;
+        isFirst = false;
+      });
+    });
+    nav.innerHTML = html;
 
-    nav.innerHTML = items.map((item, i) =>
-      `<div class="sidebar-nav-item${i === 0 ? ' active' : ''}" data-scroll="${item.id}">${item.icon}${item.label}</div>`
-    ).join('');
+    // Bind scroll tracking for the active tab's sections
+    rebindSidebarScrollTracking();
+  }
+
+  function rebindSidebarScrollTracking() {
+    if (_sidebarObserver) _sidebarObserver.disconnect();
+    if (isMobile()) return;
+    const activeTab = document.querySelector('.tab-view.active');
+    if (!activeTab) return;
+    const activeTabId = activeTab.id;
+    const sectionIds = (TAB_SECTIONS[activeTabId] || []);
+    if (!sectionIds.length) return;
+    _sidebarObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          document.querySelectorAll('.sidebar-nav-item').forEach(i => {
+            i.classList.toggle('active', i.dataset.scroll === entry.target.id);
+          });
+        }
+      });
+    }, { rootMargin: '-20% 0px -60% 0px' });
+    sectionIds.forEach(id => { const el = document.getElementById(id); if (el) _sidebarObserver.observe(el); });
   }
 
   // ═══════════════════════════════════════
@@ -2234,6 +2457,26 @@
       const childId = chip.dataset.childId;
       const child = children.find(c => c.child_id === childId);
       if (child) switchChild(child);
+    });
+
+    // Sidebar nav click — delegated, auto-switches tab if needed
+    document.addEventListener('click', function (e) {
+      const item = e.target.closest('.sidebar-nav-item[data-scroll]');
+      if (!item) return;
+      document.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      const target = item.dataset.scroll;
+      const targetTab = item.dataset.tab || SECTION_TO_TAB[target];
+      const activeTab = document.querySelector('.tab-view.active');
+      if (targetTab && (!activeTab || activeTab.id !== targetTab)) {
+        // Switch to the correct tab first, then scroll
+        switchTab(targetTab);
+        requestAnimationFrame(() => { setTimeout(() => scrollToSection(target), 80); });
+      } else if (target === 'section-balance') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        scrollToSection(target);
+      }
     });
 
     // Event registration — delegated, only bind once
@@ -2297,12 +2540,12 @@
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 
-    // Quick actions
+    // Quick actions — works on both mobile and desktop now
     document.querySelectorAll('[data-qa-scroll]').forEach(btn => {
       btn.addEventListener('click', () => {
         const sectionId = btn.dataset.qaScroll;
         const tabId = btn.dataset.qaTab;
-        if (isMobile() && tabId) {
+        if (tabId) {
           switchTab(tabId);
           requestAnimationFrame(() => { setTimeout(() => scrollToSection(sectionId), 80); });
         } else { scrollToSection(sectionId); }
@@ -2311,45 +2554,13 @@
 
     // Balance card nav buttons
     document.querySelectorAll('[data-nav-tab]').forEach(btn => {
-      btn.addEventListener('click', () => { isMobile() ? switchTab(btn.dataset.navTab) : scrollToSection('section-topup'); });
+      btn.addEventListener('click', () => switchTab(btn.dataset.navTab));
     });
 
-    // Desktop sidebar nav
-    const privacySections = ['section-privacy-policy','section-child-name','section-profile-picture','section-data-insight','section-linked-parents','section-delete-child','section-delete-account','section-contact'];
-    document.querySelectorAll('.sidebar-nav-item[data-scroll]').forEach(item => {
-      item.addEventListener('click', () => {
-        document.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        const target = item.dataset.scroll;
-        if (target === 'section-balance') {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else {
-          // On mobile, switch to the correct tab first
-          if (isMobile() && privacySections.includes(target)) {
-            switchTab('tab-privacy');
-            requestAnimationFrame(() => { setTimeout(() => scrollToSection(target, true), 80); });
-          } else {
-            scrollToSection(target);
-          }
-        }
-      });
+    // Desktop top tab bar clicks
+    document.querySelectorAll('.dtab-item[data-tab]').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
-
-    // Desktop sidebar scroll tracking
-    if (!isMobile()) {
-      const sectionIds = [...document.querySelectorAll('.sidebar-nav-item[data-scroll]')].map(i => i.dataset.scroll);
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            document.querySelectorAll('.sidebar-nav-item').forEach(i => {
-              i.classList.toggle('active', i.dataset.scroll === entry.target.id);
-            });
-          }
-        });
-      }, { rootMargin: '-20% 0px -60% 0px' });
-      sectionIds.forEach(id => { const el = document.getElementById(id); if (el) observer.observe(el); });
-    }
-
 
     // Chip groups (spending limit, etc.)
     document.querySelectorAll('.chip-group').forEach(group => {
@@ -2435,6 +2646,70 @@
     });
     if (ppAula) ppAula.addEventListener('change', () => saveProfilePictureConsent());
     if (ppCamera) ppCamera.addEventListener('change', () => saveProfilePictureConsent());
+
+    // Profile picture gallery: "Brug" button to set active
+    document.querySelectorAll('.pp-activate-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const picId = btn.dataset.picId;
+        if (!picId || !selectedChild) return;
+        if (!confirm('Brug dette billede som profilbillede?')) return;
+        try {
+          await API.manageProfilePicture(selectedChild.child_id, 'set_active', picId);
+          showToast('Profilbillede opdateret', 'success');
+          await loadChildData();
+          renderApp();
+        } catch (err) {
+          console.error('[Portal] Set active picture error:', err);
+          showToast('Kunne ikke opdatere', 'error');
+        }
+      });
+    });
+
+    // Profile picture gallery: "✕" button to delete
+    document.querySelectorAll('.pp-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const picId = btn.dataset.picId;
+        if (!picId || !selectedChild) return;
+        if (!confirm('Vil du slette dette billede permanent?')) return;
+        try {
+          await API.manageProfilePicture(selectedChild.child_id, 'delete', picId);
+          showToast('Billede slettet', 'success');
+          await loadChildData();
+          renderApp();
+        } catch (err) {
+          console.error('[Portal] Delete picture error:', err);
+          showToast('Kunne ikke slette', 'error');
+        }
+      });
+    });
+
+    // Profile picture download buttons
+    document.querySelectorAll('.pp-download-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation(); // Don't trigger gallery item click
+        const url = btn.dataset.picUrl;
+        if (!url) return;
+        try {
+          const resp = await fetch(url);
+          const blob = await resp.blob();
+          const ext = blob.type === 'image/png' ? '.png' : '.webp';
+          const childName = (getChildName() || 'profilbillede').replace(/[\/\\:*?"<>|]/g, '_');
+          const picType = btn.dataset.picType || '';
+          const fileName = `${childName}${picType ? '_' + picType : ''}${ext}`;
+          const dlUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = dlUrl; a.download = fileName;
+          document.body.appendChild(a); a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(dlUrl);
+        } catch (err) {
+          console.error('[Portal] Download fejl:', err);
+          showToast('Kunne ikke downloade', 'error');
+        }
+      });
+    });
 
     // ─── Privacy & Rights event listeners ───
     bindPrivacyEventListeners();
@@ -2527,13 +2802,17 @@
   }
 
   function switchTab(tabId) {
-    if (!isMobile()) return;
     document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.dtab-item').forEach(b => b.classList.remove('active'));
     const tab = document.getElementById(tabId);
     if (tab) { tab.classList.add('active'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     const navBtn = document.querySelector(`.bnav-item[data-tab="${tabId}"]`);
     if (navBtn) navBtn.classList.add('active');
+    const dtabBtn = document.querySelector(`.dtab-item[data-tab="${tabId}"]`);
+    if (dtabBtn) dtabBtn.classList.add('active');
+    // Update sidebar scroll tracking for new active tab
+    if (!isMobile()) rebindSidebarScrollTracking();
   }
 
   function scrollToSection(sectionId, openIt) {

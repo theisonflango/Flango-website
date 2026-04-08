@@ -1,21 +1,16 @@
 // js/ui/product-management.js
 import { getProductIconInfo, PRODUCT_ICON_CLASS_MAP } from '../domain/products-and-cart.js';
+import { isCurrentUserAdmin } from '../domain/session-store.js';
 import { getOrder } from '../domain/order-store.js';
 import { refetchAllProducts } from '../core/data-refetch.js';
 import { runWithAuthRetry } from '../core/auth-retry.js';
 import {
-    STANDARD_ICONS,
-    uploadProductIcon,
-    removeProductIcon,
     formatIconUpdateTime,
     fetchInstitutionIconLibrary,
     fetchSharedIconLibrary,
-    getInstitutionIconCount,
     deleteInstitutionIcon,
     renameInstitutionIcon,
     fetchIconSharingSettings,
-    processImageForUpload,
-    takeProductPhoto,
 } from '../core/product-icon-utils.js';
 
 // Sæt til true ved fejlsøgning; hold false i prod for mindre console-støj
@@ -38,7 +33,7 @@ export function renderProductsInModal(allProducts, modalProductList) {
         const iconInfo = getProductIconInfo(product);
         const emojiDisplay = iconInfo
             ? `<img src="${iconInfo.path}" alt="${product.name}" class="product-icon-small">`
-            : (product.emoji || '❓');
+            : (product.emoji || '🛒');
 
         productDiv.innerHTML = `
             <div class="modal-entry-info">
@@ -123,14 +118,15 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
 
         if (isPlaceholder) {
             productBtn.className = 'product-btn product-placeholder';
+            const adminPlaceholder = isCurrentUserAdmin();
             productBtn.innerHTML = `
                 <div class="product-btn-inner placeholder-inner">
                     <div class="product-info-box">
                     </div>
-                    <div class="placeholder-actions">
+                    ${adminPlaceholder ? `<div class="placeholder-actions">
                         <button type="button" class="placeholder-action-btn" data-placeholder-action="select" data-placeholder-id="${productBtn.dataset.placeholderId}">Vælg Produkt</button>
                         <button type="button" class="placeholder-action-btn" data-placeholder-action="create" data-placeholder-id="${productBtn.dataset.placeholderId}">Opret Nyt Produkt</button>
-                    </div>
+                    </div>` : ''}
                 </div>
                 <div class="product-remove-overlay" data-placeholder-id="${productBtn.dataset.placeholderId}">
                     <span class="product-remove-x">✕</span>
@@ -159,8 +155,10 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
         if (iconInfo) {
             customClass = PRODUCT_ICON_CLASS_MAP[productNameLower] || '';
             visualMarkup = `<img src="${iconInfo.path}" alt="${iconInfo.alt}" class="product-icon">`;
+        } else if (product.emoji) {
+            visualMarkup = `<div class="product-emoji">${product.emoji}</div>`;
         } else {
-            visualMarkup = `<div class="product-emoji">${product.emoji || '❓'}</div>`;
+            visualMarkup = `<div class="product-title-visual" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px;gap:8px;z-index:0;overflow:hidden;"><span style="font-size:clamp(1.4rem,4vw,2.6rem);font-weight:800;line-height:1.1;word-break:break-word;">${displayName}</span><span style="font-size:clamp(1.8rem,5vw,3.5rem);">🛒</span></div>`;
         }
 
         productBtn.className = `product-btn${customClass}${isRefill ? ' product-refill' : ''}`;
@@ -198,13 +196,14 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
         }
 
         const priceInWholeKr = Math.round(Number(displayPrice ?? 0));
-        const nameMarkup = isReorderMode
+        const canEditDetails = isReorderMode && isCurrentUserAdmin();
+        const nameMarkup = canEditDetails
             ? `<span class="product-name-wrapper">
                 <span class="product-edit-icon">✎</span>
                 <span class="product-name product-edit-name" contenteditable="true" data-product-id="${product.id}">${displayName || ''}</span>
                </span>`
             : `<span class="product-name">${displayName}</span>`;
-        const priceMarkup = isReorderMode
+        const priceMarkup = canEditDetails
             ? `<span class="product-price${isRefill ? ' refill-price' : ''} product-edit-price-wrap">
                     <span class="product-edit-icon">✎</span>
                     <input type="number" class="product-edit-price-input" data-product-id="${product.id}" value="${priceInWholeKr}" min="0" step="1" inputmode="numeric">
@@ -230,9 +229,9 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
             <div class="product-remove-overlay" data-product-id="${product.id}">
                 <span class="product-remove-x">✕</span>
             </div>
-            <div class="product-edit-pencil" data-product-id="${product.id}">
+            ${isCurrentUserAdmin() ? `<div class="product-edit-pencil" data-product-id="${product.id}">
                 <span>✏️</span>
-            </div>`;
+            </div>` : ''}`;
 
         if (typeof onProductClick === 'function') {
             // Debounce state per produkt-knap for at forhindre dobbeltklik og repeat-klik
@@ -783,15 +782,16 @@ export function createProductManagementUI(options = {}) {
         // Load parent portal settings and sugar policy to determine which fields to show
         const { data: portalSettings } = await supabaseClient
             .from('institutions')
-            .select('parent_portal_allergens, parent_portal_vegetarian_only, parent_portal_no_pork, sugar_policy_enabled, restaurant_mode_enabled')
+            .select('parent_portal_allergens, parent_portal_vegetarian_only, parent_portal_no_pork, parent_portal_diet, parent_portal_sugar_policy, sugar_policy_enabled, restaurant_mode_enabled')
             .eq('id', institutionId)
             .single();
 
+        const dietEnabled = portalSettings?.parent_portal_diet !== false;
         const showAllergens = portalSettings?.parent_portal_allergens !== false;
-        const showVegetarian = portalSettings?.parent_portal_vegetarian_only !== false;
-        const showPork = portalSettings?.parent_portal_no_pork !== false;
-        // Only show "Usund Vare" checkbox if sugar policy is enabled
-        const showUnhealthy = portalSettings?.sugar_policy_enabled === true;
+        const showVegetarian = dietEnabled && portalSettings?.parent_portal_vegetarian_only !== false;
+        const showPork = dietEnabled && portalSettings?.parent_portal_no_pork !== false;
+        // Only show "Usund Vare" checkbox if sugar policy is enabled on both institution and portal level
+        const showUnhealthy = portalSettings?.sugar_policy_enabled === true || portalSettings?.parent_portal_sugar_policy === true;
         const showRestaurantVariants = portalSettings?.restaurant_mode_enabled === true;
         // Hent eksisterende varianter fra produktet
         let restaurantVariantsArray = isEditing && Array.isArray(product?.restaurant_variants)
@@ -816,6 +816,22 @@ export function createProductManagementUI(options = {}) {
                 <input type="text" id="product-name-input" placeholder="Produktnavn" value="${isEditing ? product.name : ''}">
                 <input type="number" id="product-price-input" placeholder="Pris (kr)" step="1" value="${isEditing ? product.price.toFixed(2) : ''}">
                 <input type="number" id="product-max-per-day-input" placeholder="Købsgrænse (Ubegrænset)" step="1" value="${maxPerDayValue}">
+                <!-- Produktikon -->
+                <div style="padding: 12px 0;">
+                    <div id="icon-preview-container" style="display: flex; align-items: center; gap: 16px; padding: 14px; background: var(--secondary-bg, #f5f5f5); border-radius: 12px;">
+                        <div id="icon-preview" style="width: 64px; height: 64px; flex-shrink: 0; border-radius: 10px; overflow: visible; background: #fff; position: relative; display: ${isEditing && (product.icon_url || product.emoji) ? 'flex' : 'none'}; align-items: center; justify-content: center; border: 2px solid #e0e0e0;">
+                            ${isEditing && product.emoji ? `<span style="font-size: 32px;">${product.emoji}</span>` : isEditing && product.icon_url ? `<img src="${product.icon_url}" style="width:100%;height:100%;object-fit:cover;">` : ''}
+                            <button type="button" id="icon-remove-btn" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:white;font-size:12px;line-height:20px;text-align:center;cursor:pointer;padding:0;z-index:1;" title="Fjern ikon">✕</button>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; gap: 10px;">
+                                <button type="button" id="open-icon-picker-btn" style="flex:1; padding: 14px 20px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 15px; cursor: pointer; white-space: nowrap;">📁 Vælg ikon</button>
+                                <button type="button" id="open-icon-create-btn" style="flex:1; padding: 14px 20px; background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 15px; cursor: pointer; white-space: nowrap;">🪄 Opret ikon</button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="product-emoji-input" value="${isEditing && product.emoji ? product.emoji : ''}">
+                </div>
                 ${showAllergens ? `
                 <div class="collapsible-section">
                     <h4 class="collapsible-header" data-target="allergen-content" style="cursor: pointer; user-select: none; padding: 10px; background: var(--secondary-bg, #f5f5f5); border-radius: 8px; margin: 10px 0;">
@@ -910,229 +926,7 @@ export function createProductManagementUI(options = {}) {
                         </div>
                     </div>
                 </div>` : ''}
-                <div class="collapsible-section">
-                    <h4 class="collapsible-header" data-target="icon-section-content" style="cursor: pointer; user-select: none; padding: 10px; background: var(--secondary-bg, #f5f5f5); border-radius: 8px; margin: 10px 0;">
-                        <span class="collapse-arrow" style="display: inline-block; transition: transform 0.2s; margin-right: 8px;">▶</span> Produktikon
-                    </h4>
-                    <div id="icon-section-content" class="collapsible-content" style="display: none; padding: 10px 0;">
-
-                        <!-- Icon Preview -->
-                        <div id="icon-preview-container" style="text-align: center; margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 12px;">
-                            <div id="icon-preview" style="width: 80px; height: 80px; margin: 0 auto 10px; border-radius: 10px; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center; border: 2px solid #e0e0e0;">
-                                <span style="font-size: 40px;">❓</span>
-                            </div>
-                            <div id="icon-status" style="font-size: 12px; color: #666;"></div>
-                        </div>
-
-                        <!-- Icon Type Selection (5 tabs, wrapping) -->
-                        <div id="icon-type-selector" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
-                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
-                                <input type="radio" name="icon-type" value="standard" style="display: none;">
-                                <div style="font-size: 20px; margin-bottom: 3px;">📁</div>
-                                <div style="font-weight: 600; font-size: 11px;">Standard</div>
-                            </label>
-                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
-                                <input type="radio" name="icon-type" value="institution" style="display: none;">
-                                <div style="font-size: 20px; margin-bottom: 3px;">🏠</div>
-                                <div style="font-weight: 600; font-size: 11px;" id="institution-icons-tab-label">Jeres ikoner</div>
-                            </label>
-                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
-                                <input type="radio" name="icon-type" value="shared" style="display: none;">
-                                <div style="font-size: 20px; margin-bottom: 3px;">🌐</div>
-                                <div style="font-weight: 600; font-size: 11px;">Fra andre</div>
-                            </label>
-                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
-                                <input type="radio" name="icon-type" value="camera" style="display: none;">
-                                <div style="font-size: 20px; margin-bottom: 3px;">📸</div>
-                                <div style="font-weight: 600; font-size: 11px;">Tag Billede</div>
-                            </label>
-                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
-                                <input type="radio" name="icon-type" value="custom" style="display: none;">
-                                <div style="font-size: 20px; margin-bottom: 3px;">📤</div>
-                                <div style="font-weight: 600; font-size: 11px;">Upload</div>
-                            </label>
-                            <label class="icon-type-card" style="flex: 1 1 calc(33% - 6px); min-width: 90px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
-                                <input type="radio" name="icon-type" value="ai" style="display: none;">
-                                <div style="font-size: 20px; margin-bottom: 3px;">🪄</div>
-                                <div style="font-weight: 600; font-size: 11px;">AI Generer</div>
-                            </label>
-                        </div>
-
-                        <!-- Standard Icon Section (Flango Standard only) -->
-                        <div id="standard-icon-section" style="display: none;">
-                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #4682b4;">Flango Standard</label>
-                            <div id="standard-icon-grid" class="custom-icon-grid"></div>
-
-                            <label style="margin-top: 15px; display: block; font-weight: 500;">Eller vælg emoji</label>
-                            <input type="text" id="product-emoji-input" placeholder="Indtast emoji her..." value="${isEditing && product.emoji ? product.emoji : ''}" style="margin-top: 5px;">
-                            <div id="product-emoji-grid" class="emoji-grid" style="padding-top: 10px;"></div>
-                        </div>
-
-                        <!-- Institution Icons Section (own uploaded + AI-generated) -->
-                        <div id="institution-icons-section" style="display: none;">
-                            <label id="institution-icons-heading" style="display: block; font-weight: 600; margin-bottom: 8px; color: #7c3aed;">Jeres ikoner</label>
-                            <div id="institution-icons-grid" class="custom-icon-grid"></div>
-                            <div id="institution-icons-empty" style="display: none; padding: 15px; text-align: center; color: #94a3b8; font-size: 13px; background: #f8f9fa; border-radius: 8px;">
-                                Ingen egne ikoner endnu — upload eller generer via AI.
-                            </div>
-                        </div>
-
-                        <!-- Shared Icons from Other Institutions -->
-                        <div id="shared-icons-section" style="display: none;">
-                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #059669;">Ikoner fra andre institutioner</label>
-                            <div id="shared-icons-grid" class="custom-icon-grid"></div>
-                            <div id="shared-icons-empty" style="display: none; padding: 15px; text-align: center; color: #94a3b8; font-size: 13px; background: #f8f9fa; border-radius: 8px;">
-                                Ingen delte ikoner tilgængelige.
-                            </div>
-                        </div>
-
-                        <!-- Camera Capture Section -->
-                        <div id="camera-section" style="display: none;">
-                            <div id="camera-preview-area" style="text-align: center;">
-                                <div id="camera-placeholder" style="border: 2px dashed #60a5fa; border-radius: 12px; padding: 30px 20px; background: #eff6ff; cursor: pointer; transition: all 0.2s;">
-                                    <div style="font-size: 40px; margin-bottom: 10px;">📸</div>
-                                    <div style="font-weight: 600; margin-bottom: 5px; color: #1e40af;">Klik for at tage billede</div>
-                                    <div style="font-size: 12px; color: #64748b;">Billedet konverteres automatisk til ikon-format</div>
-                                </div>
-                                <div id="camera-captured-preview" style="display: none; margin-top: 12px;">
-                                    <div style="position: relative; display: inline-block;">
-                                        <img id="camera-captured-img" style="width: 120px; height: 120px; object-fit: cover; border-radius: 12px; border: 3px solid #60a5fa;">
-                                        <button type="button" id="camera-retake-btn" style="position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%; background: #ef4444; color: white; border: none; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center;">&#10005;</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div id="camera-actions" style="display: none; margin-top: 15px; flex-direction: column; gap: 10px;">
-                                <button type="button" id="camera-use-as-icon-btn" style="display: none; width: 100%; padding: 12px 20px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s;">
-                                    Brug som ikon
-                                </button>
-                                <button type="button" id="camera-use-as-ai-ref-btn" style="display: none; width: 100%; padding: 12px 20px; background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s;">
-                                    Brug som AI-reference
-                                </button>
-                            </div>
-
-                            <div id="camera-progress" style="display: none; margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 14px; color: #1976d2;">Behandler billede...</div>
-                            </div>
-
-                            <div id="camera-error" style="display: none; margin-top: 15px; padding: 15px; background: #ffebee; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 14px; color: #c62828;"></div>
-                            </div>
-                        </div>
-
-                        <!-- Custom Upload Section -->
-                        <div id="custom-upload-section" style="display: none;">
-                            <div id="upload-dropzone" style="border: 2px dashed #ccc; border-radius: 12px; padding: 30px 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa;">
-                                <div style="font-size: 40px; margin-bottom: 10px;">🖼️</div>
-                                <div style="font-weight: 600; margin-bottom: 5px;">Træk billede hertil</div>
-                                <div style="font-size: 12px; color: #666; margin-bottom: 10px;">eller klik for at vælge fil</div>
-                                <div style="font-size: 11px; color: #999;">WebP, PNG, JPEG • Konverteres automatisk til 256×256 WebP</div>
-                                <input type="file" id="icon-file-input" accept=".webp,.png,.jpg,.jpeg,image/webp,image/png,image/jpeg" style="display: none;">
-                            </div>
-
-                            <!-- Background Removal Option -->
-                            <label id="remove-bg-option" style="display: flex; align-items: flex-start; gap: 10px; margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; cursor: pointer; user-select: none;">
-                                <input type="checkbox" id="remove-bg-checkbox" style="margin-top: 2px; width: 18px; height: 18px; cursor: pointer;">
-                                <div>
-                                    <div style="font-weight: 600; font-size: 14px; color: #333;">Forsøg at fjerne baggrund</div>
-                                    <div style="font-size: 12px; color: #666; margin-top: 3px;">Virker bedst på billeder med ensfarvet baggrund (fx hvid). Resultatet kan variere.</div>
-                                </div>
-                            </label>
-
-                            <div id="upload-progress" style="display: none; margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 14px; color: #1976d2;">Uploader...</div>
-                            </div>
-
-                            <div id="upload-error" style="display: none; margin-top: 15px; padding: 15px; background: #ffebee; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 14px; color: #c62828;"></div>
-                            </div>
-
-                            <button type="button" id="remove-custom-icon-btn" style="display: none; margin-top: 15px; width: 100%; padding: 10px; background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; border-radius: 8px; cursor: pointer; font-weight: 500;">
-                                🗑️ Fjern custom ikon
-                            </button>
-                        </div>
-
-                        <!-- AI Icon Generation Section -->
-                        <div id="ai-icon-section" style="display: none;">
-                            <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Produktnavn</label>
-                            <input type="text" id="ai-icon-input" placeholder="fx Pasta med kødsovs" maxlength="100" style="width: 100%; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; margin-bottom: 12px; box-sizing: border-box;">
-
-                            <!-- Stil-vaelger (Clay / Pixar / Fri prompt) -->
-                            <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Stil</label>
-                            <div id="ai-style-selector" style="display: flex; gap: 8px; margin-bottom: 12px;">
-                                <button type="button" class="ai-style-btn" data-style="clay" style="flex: 1; padding: 10px 12px; border: 2px solid #7c3aed; background: #f5f3ff; border-radius: 10px; cursor: pointer; text-align: center; font-weight: 600; font-size: 13px; color: #7c3aed; transition: all 0.2s;">
-                                    Clay
-                                </button>
-                                <button type="button" class="ai-style-btn" data-style="pixar" style="flex: 1; padding: 10px 12px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; font-weight: 600; font-size: 13px; color: #64748b; transition: all 0.2s;">
-                                    Pixar
-                                </button>
-                                <button type="button" class="ai-style-btn" data-style="custom" style="flex: 1; padding: 10px 12px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; font-weight: 600; font-size: 13px; color: #64748b; transition: all 0.2s;">
-                                    Fri prompt
-                                </button>
-                            </div>
-
-                            <!-- Fri prompt textarea (kun synlig naar 'custom' er valgt) -->
-                            <div id="ai-custom-prompt-section" style="display: none; margin-bottom: 12px;">
-                                <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Din prompt</label>
-                                <textarea id="ai-custom-prompt" maxlength="500" placeholder="A golden crispy croissant floating in space with sparkles" style="width: 100%; min-height: 80px; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box;"></textarea>
-                                <div style="font-size: 10px; color: #94a3b8; margin-top: 4px;">Prompten sendes direkte til AI — ingen automatisk stil tilføjes</div>
-                            </div>
-
-                            <!-- Foto-reference (valgfrit) -->
-                            <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                                📷 Foto
-                                <span style="font-size: 11px; font-weight: 500; color: #94a3b8; background: #f1f5f9; padding: 1px 8px; border-radius: 8px;">valgfrit</span>
-                            </label>
-                            <div id="ai-photo-upload-area" style="margin-bottom: 12px;">
-                                <input type="file" id="ai-reference-file" accept="image/*" style="display: none;">
-                                <div style="display: flex; gap: 8px; align-items: stretch;">
-                                    <div id="ai-photo-dropzone" style="flex: 1; border: 2px dashed #d1d5db; border-radius: 10px; padding: 14px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa;">
-                                        <div style="font-size: 13px; color: #64748b;">📸 Klik eller træk et foto hertil</div>
-                                    </div>
-                                    <button type="button" id="ai-use-current-icon-btn" style="padding: 10px 14px; border: 2px dashed #a78bfa; border-radius: 10px; background: #faf5ff; color: #7c3aed; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; transition: all 0.2s;">🖼️ Brug<br>valgte ikon</button>
-                                </div>
-                                <div id="ai-reference-preview" style="display: none; margin-top: 8px; position: relative;">
-                                    <img id="ai-reference-img" style="width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 2px solid #e0e0e0;">
-                                    <button type="button" id="ai-remove-photo-btn" style="position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #ef4444; color: white; border: none; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">✕</button>
-                                </div>
-                            </div>
-
-                            <!-- Foto-tilstand (Reference / Motiv) — kun synlig naar foto er uploadet -->
-                            <div id="ai-photo-mode-selector" style="display: none; margin-bottom: 12px;">
-                                <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Foto-tilstand</label>
-                                <div style="display: flex; gap: 8px;">
-                                    <button type="button" class="ai-photo-mode-btn" data-mode="reference" style="flex: 1; padding: 8px 10px; border: 2px solid #7c3aed; background: #f5f3ff; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
-                                        <div style="font-weight: 600; font-size: 12px; color: #7c3aed;">Reference</div>
-                                        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Identificer maden</div>
-                                    </button>
-                                    <button type="button" class="ai-photo-mode-btn" data-mode="motiv" style="flex: 1; padding: 8px 10px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
-                                        <div style="font-weight: 600; font-size: 12px; color: #64748b;">Motiv</div>
-                                        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Genskab komposition</div>
-                                    </button>
-                                    <button type="button" class="ai-photo-mode-btn" data-mode="portrait" style="flex: 1; padding: 8px 10px; border: 2px solid #e0e0e0; background: #fff; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s;">
-                                        <div style="font-weight: 600; font-size: 12px; color: #64748b;">Portræt</div>
-                                        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Animeret version</div>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <button type="button" id="ai-generate-btn" style="width: 100%; padding: 12px 20px; background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s; margin-bottom: 12px; position: relative; z-index: 2; -webkit-tap-highlight-color: rgba(124, 58, 237, 0.3); touch-action: manipulation;">
-                                ✨ Generer
-                            </button>
-
-                            <div id="ai-icon-preview" style="min-height: 0; text-align: center; transition: all 0.3s;"></div>
-                            <div id="ai-icon-actions" style="display: none; margin-top: 12px; gap: 10px;">
-                                <button type="button" id="ai-icon-accept-btn" style="flex: 1; padding: 10px; background: #22c55e; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">
-                                    Brug dette ikon
-                                </button>
-                                <button type="button" id="ai-icon-retry-btn" style="flex: 1; padding: 10px; background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; border-radius: 10px; font-weight: 600; cursor: pointer;">
-                                    🔄 Prøv igen
-                                </button>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>`;
+                `;
         // Setup collapsible sections
         document.querySelectorAll('.collapsible-header').forEach(header => {
             header.addEventListener('click', () => {
@@ -1237,871 +1031,137 @@ export function createProductManagementUI(options = {}) {
                 }
             });
         }
-        // ===== ICON SECTION SETUP =====
-        const emojiGrid = document.getElementById('product-emoji-grid');
+        // ===== ICON SECTION SETUP (via product-icon-picker) =====
         const emojiInput = document.getElementById('product-emoji-input');
-        const standardIconGrid = document.getElementById('standard-icon-grid');
         const iconPreview = document.getElementById('icon-preview');
-        const iconStatus = document.getElementById('icon-status');
-        const standardIconSection = document.getElementById('standard-icon-section');
-        const institutionIconsSection = document.getElementById('institution-icons-section');
-        const sharedIconsSection = document.getElementById('shared-icons-section');
-        const customUploadSection = document.getElementById('custom-upload-section');
-        const uploadDropzone = document.getElementById('upload-dropzone');
-        const iconFileInput = document.getElementById('icon-file-input');
-        const uploadProgress = document.getElementById('upload-progress');
-        const uploadError = document.getElementById('upload-error');
-        const removeCustomIconBtn = document.getElementById('remove-custom-icon-btn');
-        const iconTypeCards = document.querySelectorAll('.icon-type-card');
-
-        // Set institution name in tab label and heading
-        const instName = localStorage.getItem('flango_institution_name') || 'Jeres';
-        const instTabLabel = document.getElementById('institution-icons-tab-label');
-        const instHeading = document.getElementById('institution-icons-heading');
-        if (instTabLabel) instTabLabel.textContent = `${instName}s`;
-        if (instHeading) instHeading.textContent = `${instName}s ikoner`;
+        const iconRemoveBtn = document.getElementById('icon-remove-btn');
 
         // Track current state
         let selectedStandardIcon = existingCustomIcon;
         let currentIconUrl = isEditing ? product?.icon_url : null;
         let currentIconStoragePath = isEditing ? product?.icon_storage_path : null;
         let currentIconUpdatedAt = isEditing ? product?.icon_updated_at : null;
-        let isUploading = false;
 
         // Update icon preview
         const updateIconPreview = () => {
             let iconSrc = null;
-            let statusText = '';
 
             if (currentIconUrl) {
-                // Custom uploaded icon
                 const timestamp = currentIconUpdatedAt ? new Date(currentIconUpdatedAt).getTime() : Date.now();
                 iconSrc = `${currentIconUrl}?v=${timestamp}`;
-                statusText = `✅ Custom ikon (uploadet ${formatIconUpdateTime(currentIconUpdatedAt)})`;
             } else if (selectedStandardIcon) {
-                // Standard icon from emoji field
                 iconSrc = selectedStandardIcon;
-                statusText = '📁 Bruger standard ikon';
             } else if (emojiInput?.value && !emojiInput.value.startsWith(CUSTOM_ICON_PREFIX)) {
-                // Emoji
-                iconPreview.innerHTML = `<span style="font-size: 40px;">${emojiInput.value}</span>`;
-                iconStatus.textContent = '😀 Bruger emoji';
+                iconPreview.style.display = 'flex';
+                iconPreview.innerHTML = `<span style="font-size: 40px;">${emojiInput.value}</span><button type="button" id="icon-remove-btn" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:white;font-size:12px;line-height:20px;text-align:center;cursor:pointer;padding:0;z-index:1;" title="Fjern ikon">✕</button>`;
+                bindIconRemoveBtn();
                 return;
             }
 
             if (iconSrc) {
-                iconPreview.innerHTML = `<img src="${iconSrc}" alt="Produkt ikon" style="width: 100%; height: 100%; object-fit: contain;">`;
+                iconPreview.style.display = 'flex';
+                iconPreview.innerHTML = `<img src="${iconSrc}" alt="Produkt ikon" style="width: 100%; height: 100%; object-fit: contain;"><button type="button" id="icon-remove-btn" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:white;font-size:12px;line-height:20px;text-align:center;cursor:pointer;padding:0;z-index:1;" title="Fjern ikon">✕</button>`;
+                bindIconRemoveBtn();
             } else {
-                iconPreview.innerHTML = `<span style="font-size: 40px;">❓</span>`;
-                statusText = 'Intet ikon valgt';
+                iconPreview.style.display = 'none';
+                iconPreview.innerHTML = '';
             }
-            iconStatus.textContent = statusText;
         };
 
-        // Switch between standard, institution, shared, camera, custom, and AI icon sections
-        const aiIconSection = document.getElementById('ai-icon-section');
-        const cameraSection = document.getElementById('camera-section');
-        const switchIconType = (type) => {
-            iconTypeCards.forEach(card => {
-                const radio = card.querySelector('input[type="radio"]');
-                const isSelected = radio.value === type;
-                radio.checked = isSelected;
-                card.style.borderColor = isSelected ? '#4682b4' : '#e0e0e0';
-                card.style.background = isSelected ? '#e3f2fd' : '#fff';
-            });
-
-            standardIconSection.style.display = type === 'standard' ? 'block' : 'none';
-            if (institutionIconsSection) institutionIconsSection.style.display = type === 'institution' ? 'block' : 'none';
-            if (sharedIconsSection) sharedIconsSection.style.display = type === 'shared' ? 'block' : 'none';
-            if (cameraSection) cameraSection.style.display = type === 'camera' ? 'block' : 'none';
-            customUploadSection.style.display = type === 'custom' ? 'block' : 'none';
-            if (aiIconSection) aiIconSection.style.display = type === 'ai' ? 'block' : 'none';
-
-            // Show/hide remove button
-            removeCustomIconBtn.style.display = (type === 'custom' && currentIconUrl) ? 'block' : 'none';
-        };
-
-        // Initialize icon type based on current state
-        const initIconType = currentIconUrl ? 'custom' : 'standard';
-        switchIconType(initIconType);
-
-        // Icon type card click handlers
-        iconTypeCards.forEach(card => {
-            card.addEventListener('click', () => {
-                const radio = card.querySelector('input[type="radio"]');
-                const type = radio.value;
-                switchIconType(type);
-                // Lazy-load shared icons on first visit
-                if (type === 'shared' && !sharedIconsLoaded) {
-                    sharedIconsLoaded = true;
-                    loadSharedIcons();
-                }
-            });
-        });
-
-        // ===== STANDARD ICON GRID =====
-        const suggestions = ['🍫', '🍽️', '🍷', '🍎', '🥜', '🥪', '🍕', '🥤', '🍚', '🍣', '🥢', '🍞', '🥝', '🍇', '🍐', '🍉', '🍙', '🍲', '🥘', '🫘', '🍔', '🌶️', '🧄', '🍳', '🔥', '😋', '🍰', '♨️', '🍪'];
-        suggestions.forEach(emoji => {
-            const emojiSpan = document.createElement('span');
-            emojiSpan.textContent = emoji;
-            emojiSpan.onclick = () => {
-                emojiInput.value = emoji;
-                selectedStandardIcon = null;
-                updateStandardIconSelection();
-                updateIconPreview();
-            };
-            emojiGrid.appendChild(emojiSpan);
-        });
-
-        // Standard icons from STANDARD_ICONS constant
-        STANDARD_ICONS.forEach(icon => {
-            const option = document.createElement('div');
-            option.className = 'custom-icon-option';
-            option.innerHTML = `<img src="${icon.path}" alt="${icon.label}"><span>${icon.label}</span>`;
-            option.dataset.path = icon.path;
-            standardIconGrid.appendChild(option);
-        });
-
-        // Standard icon grid click handler (event delegation)
-        const handleStandardIconClick = (e) => {
-            const option = e.target.closest('.custom-icon-option');
-            if (!option) return;
-
-            selectedStandardIcon = option.dataset.path;
-            emojiInput.value = `${CUSTOM_ICON_PREFIX}${selectedStandardIcon}`;
-            // Clear custom icon_url so the selected standard/institution/shared icon takes priority in preview
+        // Remove icon handler
+        const removeIcon = () => {
             currentIconUrl = null;
+            currentIconStoragePath = null;
             currentIconUpdatedAt = null;
-            updateStandardIconSelection();
+            selectedStandardIcon = null;
+            if (emojiInput) emojiInput.value = '';
             updateIconPreview();
         };
-        standardIconGrid.addEventListener('click', handleStandardIconClick);
 
-        // ===== INSTITUTION ICONS (own uploaded + AI-generated) =====
-        const institutionIconsGrid = document.getElementById('institution-icons-grid');
-        const institutionIconsEmpty = document.getElementById('institution-icons-empty');
-
-        const loadInstitutionIcons = async () => {
-            if (!institutionIconsGrid) return;
-            institutionIconsGrid.innerHTML = '';
-
-            const libraryIcons = await fetchInstitutionIconLibrary(institutionId);
-
-            if (libraryIcons.length === 0) {
-                if (institutionIconsEmpty) institutionIconsEmpty.style.display = 'block';
-                return;
-            }
-            if (institutionIconsEmpty) institutionIconsEmpty.style.display = 'none';
-
-            libraryIcons.forEach(icon => {
-                const option = document.createElement('div');
-                option.className = 'custom-icon-option';
-                option.dataset.path = icon.icon_url;
-                const sourceTag = icon.source === 'uploaded' ? '📤' : '🪄';
-                option.innerHTML = `<img src="${icon.icon_url}" alt="${icon.name}"><span>${sourceTag} ${icon.name}</span>`;
-                institutionIconsGrid.appendChild(option);
-            });
-
-            updateStandardIconSelection();
+        const bindIconRemoveBtn = () => {
+            const btn = document.getElementById('icon-remove-btn');
+            btn?.addEventListener('click', (e) => { e.stopPropagation(); removeIcon(); });
         };
 
-        // Click handler for institution icons grid
-        institutionIconsGrid?.addEventListener('click', handleStandardIconClick);
+        // Bind initial remove button (if icon exists on load)
+        bindIconRemoveBtn();
 
-        // Load institution icons
-        loadInstitutionIcons();
-
-        // ===== SHARED ICONS (from other institutions) =====
-        const sharedIconsGrid = document.getElementById('shared-icons-grid');
-        const sharedIconsEmpty = document.getElementById('shared-icons-empty');
-
-        const loadSharedIcons = async () => {
-            if (!sharedIconsGrid) return;
-            sharedIconsGrid.innerHTML = '';
-
-            // Check if our institution has "use shared" enabled
-            const settings = await fetchIconSharingSettings(institutionId);
-            if (!settings.icon_use_shared_enabled) {
-                if (sharedIconsEmpty) {
-                    sharedIconsEmpty.textContent = 'Brug af delte ikoner er ikke aktiveret. Slå det til under Institutionsindstillinger.';
-                    sharedIconsEmpty.style.display = 'block';
-                }
-                return;
-            }
-
-            const sharedIcons = await fetchSharedIconLibrary(institutionId);
-
-            if (sharedIcons.length === 0) {
-                if (sharedIconsEmpty) sharedIconsEmpty.style.display = 'block';
-                return;
-            }
-            if (sharedIconsEmpty) sharedIconsEmpty.style.display = 'none';
-
-            sharedIcons.forEach(icon => {
-                const option = document.createElement('div');
-                option.className = 'custom-icon-option';
-                option.dataset.path = icon.icon_url;
-                option.innerHTML = `<img src="${icon.icon_url}" alt="${icon.name}"><span>${icon.name}</span>`;
-                sharedIconsGrid.appendChild(option);
-            });
-
-            updateStandardIconSelection();
-        };
-
-        // Click handler for shared icons grid
-        sharedIconsGrid?.addEventListener('click', handleStandardIconClick);
-
-        // Load shared icons (lazy — only when tab is opened for the first time)
-        let sharedIconsLoaded = false;
-
-        const updateStandardIconSelection = () => {
-            const allOptions = [
-                ...standardIconGrid.querySelectorAll('.custom-icon-option'),
-                ...(institutionIconsGrid?.querySelectorAll('.custom-icon-option') || []),
-                ...(sharedIconsGrid?.querySelectorAll('.custom-icon-option') || []),
-            ];
-            allOptions.forEach(opt => {
-                opt.classList.toggle('selected', !!selectedStandardIcon && opt.dataset.path === selectedStandardIcon);
-            });
-        };
-        updateStandardIconSelection();
-
-        // Emoji input change handler
-        emojiInput?.addEventListener('input', () => {
-            if (!emojiInput.value.startsWith(CUSTOM_ICON_PREFIX)) {
-                selectedStandardIcon = null;
-                updateStandardIconSelection();
-            }
-            updateIconPreview();
-        });
-
-        // ===== CUSTOM UPLOAD HANDLERS =====
-        const removeBgCheckbox = document.getElementById('remove-bg-checkbox');
-
-        const handleFileUpload = async (file) => {
-            if (!file || !isEditing) return;
-
-            // Validate file type
-            const validTypes = ['image/webp', 'image/png', 'image/jpeg'];
-            if (!validTypes.includes(file.type)) {
-                uploadError.style.display = 'block';
-                uploadError.querySelector('div').textContent = 'Ugyldig filtype. Brug WebP, PNG eller JPEG.';
-                return;
-            }
-
-            // Hide error, show progress
-            uploadError.style.display = 'none';
-            uploadProgress.style.display = 'block';
-            uploadDropzone.style.opacity = '0.5';
-            uploadDropzone.style.pointerEvents = 'none';
-            isUploading = true;
-
-            try {
-                // Get admin user ID
-                const adminUserId = adminProfile?.user_id;
-                if (!adminUserId) {
-                    throw new Error('Admin bruger ID ikke fundet');
-                }
-
-                // Process image client-side: resize to 256x256, convert to WebP, compress
-                const processedBlob = await processImageForUpload(file);
-                const processedFile = new File([processedBlob], `${currentProduct.id}.webp`, { type: 'image/webp' });
-
-                const result = await uploadProductIcon(processedFile, institutionId, currentProduct.id, adminUserId);
-
-                if (result.success) {
-                    currentIconUrl = result.icon_signed_url || result.icon_url;
-                    currentIconStoragePath = result.icon_storage_path || null;
-                    currentIconUpdatedAt = result.icon_updated_at;
+        // ===== "Vælg ikon" button → opens product-icon-picker modal =====
+        const openIconPickerBtn = document.getElementById('open-icon-picker-btn');
+        openIconPickerBtn?.addEventListener('click', async () => {
+            const { openProductIconPicker } = await import('./product-icon-picker.js');
+            openProductIconPicker({
+                mode: 'product',
+                institutionId,
+                productId: currentProduct?.id,
+                productName: document.getElementById('product-name-input')?.value?.trim() || product?.name || '',
+                currentIcon: currentIconUrl ? { url: currentIconUrl, storagePath: currentIconStoragePath } : null,
+                adminProfile,
+                showCustomAlert,
+                playSound,
+                onResult: (result) => {
+                    if (result.type === 'emoji') {
+                        if (emojiInput) emojiInput.value = result.emoji;
+                        selectedStandardIcon = null;
+                        currentIconUrl = null;
+                        currentIconUpdatedAt = null;
+                    } else if (result.type === 'standard' || result.type === 'icon') {
+                        if (emojiInput) emojiInput.value = result.emoji || '';
+                        selectedStandardIcon = result.url;
+                        currentIconUrl = null;
+                        currentIconUpdatedAt = null;
+                    } else if (result.type === 'upload' || result.type === 'ai') {
+                        currentIconUrl = result.url;
+                        currentIconStoragePath = result.storagePath || null;
+                        currentIconUpdatedAt = result.updatedAt || null;
+                        selectedStandardIcon = null;
+                    }
                     updateIconPreview();
-                    removeCustomIconBtn.style.display = 'block';
-                    playSound?.('success');
-                    // Refresh institution icons grid (upload also saves to library)
-                    loadInstitutionIcons();
-                } else {
-                    throw new Error(result.error || 'Upload fejlede');
-                }
-
-            } catch (err) {
-                console.error('[handleFileUpload] Error:', err);
-                uploadError.style.display = 'block';
-                uploadError.querySelector('div').textContent = err.message || 'Upload fejlede';
-                playSound?.('error');
-            } finally {
-                uploadProgress.style.display = 'none';
-                uploadDropzone.style.opacity = '1';
-                uploadDropzone.style.pointerEvents = 'auto';
-                isUploading = false;
-            }
-        };
-
-        // Dropzone click → trigger file input
-        uploadDropzone?.addEventListener('click', () => {
-            if (!isUploading) iconFileInput?.click();
+                },
+            });
         });
 
-        // File input change
-        iconFileInput?.addEventListener('change', (e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFileUpload(file);
-            e.target.value = ''; // Reset for same file selection
-        });
-
-        // Drag & drop handlers
-        uploadDropzone?.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadDropzone.style.borderColor = '#4682b4';
-            uploadDropzone.style.background = '#e3f2fd';
-        });
-
-        uploadDropzone?.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            uploadDropzone.style.borderColor = '#ccc';
-            uploadDropzone.style.background = '#fafafa';
-        });
-
-        uploadDropzone?.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadDropzone.style.borderColor = '#ccc';
-            uploadDropzone.style.background = '#fafafa';
-
-            const file = e.dataTransfer?.files?.[0];
-            if (file) handleFileUpload(file);
-        });
-
-        // Remove custom icon button
-        removeCustomIconBtn?.addEventListener('click', async () => {
-            if (!currentProduct?.id || !currentIconUrl) return;
-
-            removeCustomIconBtn.disabled = true;
-            removeCustomIconBtn.textContent = 'Fjerner...';
-
-            try {
-                const result = await removeProductIcon(currentProduct.id);
-                if (result.success) {
-                    currentIconUrl = null;
-                    currentIconUpdatedAt = null;
+        // "Opret ikon" button → opens picker directly on AI tab
+        const openIconCreateBtn = document.getElementById('open-icon-create-btn');
+        openIconCreateBtn?.addEventListener('click', async () => {
+            const { openProductIconPicker } = await import('./product-icon-picker.js');
+            openProductIconPicker({
+                mode: 'product',
+                institutionId,
+                productId: currentProduct?.id,
+                productName: document.getElementById('product-name-input')?.value?.trim() || product?.name || '',
+                currentIcon: currentIconUrl ? { url: currentIconUrl, storagePath: currentIconStoragePath } : null,
+                adminProfile,
+                showCustomAlert,
+                playSound,
+                defaultSource: 'ai',
+                onResult: (result) => {
+                    if (result.type === 'emoji') {
+                        if (emojiInput) emojiInput.value = result.emoji;
+                        selectedStandardIcon = null;
+                        currentIconUrl = null;
+                        currentIconUpdatedAt = null;
+                    } else if (result.type === 'standard' || result.type === 'icon') {
+                        if (emojiInput) emojiInput.value = result.emoji || '';
+                        selectedStandardIcon = result.url;
+                        currentIconUrl = null;
+                        currentIconUpdatedAt = null;
+                    } else if (result.type === 'upload' || result.type === 'ai') {
+                        currentIconUrl = result.url;
+                        currentIconStoragePath = result.storagePath || null;
+                        currentIconUpdatedAt = result.updatedAt || null;
+                        selectedStandardIcon = null;
+                    }
                     updateIconPreview();
-                    removeCustomIconBtn.style.display = 'none';
-                    playSound?.('success');
-                } else {
-                    throw new Error(result.error);
-                }
-            } catch (err) {
-                console.error('[removeCustomIcon] Error:', err);
-                showAlert?.('Kunne ikke fjerne ikon: ' + err.message);
-            } finally {
-                removeCustomIconBtn.disabled = false;
-                removeCustomIconBtn.textContent = '🗑️ Fjern custom ikon';
-            }
-        });
-
-        // ===== CAMERA CAPTURE HANDLERS =====
-        const cameraPlaceholder = document.getElementById('camera-placeholder');
-        const cameraCapturedPreview = document.getElementById('camera-captured-preview');
-        const cameraCapturedImg = document.getElementById('camera-captured-img');
-        const cameraRetakeBtn = document.getElementById('camera-retake-btn');
-        const cameraUseAsIconBtn = document.getElementById('camera-use-as-icon-btn');
-        const cameraUseAsAiRefBtn = document.getElementById('camera-use-as-ai-ref-btn');
-        const cameraActions = document.getElementById('camera-actions');
-        const cameraProgress = document.getElementById('camera-progress');
-        const cameraError = document.getElementById('camera-error');
-        let cameraCapturedFile = null;
-        let _injectPhotoToAiRef = null; // Set later when AI section initializes
-
-        const resetCameraUI = () => {
-            cameraCapturedFile = null;
-            if (cameraCapturedImg?.src?.startsWith('blob:')) URL.revokeObjectURL(cameraCapturedImg.src);
-            if (cameraCapturedImg) cameraCapturedImg.src = '';
-            if (cameraCapturedPreview) cameraCapturedPreview.style.display = 'none';
-            if (cameraPlaceholder) cameraPlaceholder.style.display = 'block';
-            if (cameraActions) cameraActions.style.display = 'none';
-            if (cameraUseAsIconBtn) cameraUseAsIconBtn.style.display = 'none';
-            if (cameraUseAsAiRefBtn) cameraUseAsAiRefBtn.style.display = 'none';
-            if (cameraProgress) cameraProgress.style.display = 'none';
-            if (cameraError) cameraError.style.display = 'none';
-        };
-
-        const showCameraPreview = (file) => {
-            cameraCapturedFile = file;
-            if (cameraCapturedImg) cameraCapturedImg.src = URL.createObjectURL(file);
-            if (cameraCapturedPreview) cameraCapturedPreview.style.display = 'block';
-            if (cameraPlaceholder) cameraPlaceholder.style.display = 'none';
-            if (cameraActions) cameraActions.style.display = 'flex';
-            if (cameraUseAsIconBtn) cameraUseAsIconBtn.style.display = 'block';
-            if (cameraUseAsAiRefBtn) cameraUseAsAiRefBtn.style.display = 'block';
-        };
-
-        const triggerCameraCapture = async () => {
-            if (cameraError) cameraError.style.display = 'none';
-            try {
-                const file = await takeProductPhoto({ showCustomAlert });
-                if (file) showCameraPreview(file);
-            } catch (err) {
-                console.error('[cameraCapture] Error:', err);
-                if (cameraError) {
-                    cameraError.style.display = 'block';
-                    const errDiv = cameraError.querySelector('div');
-                    if (errDiv) errDiv.textContent = 'Kunne ikke tage billede: ' + (err.message || 'Ukendt fejl');
-                }
-            }
-        };
-
-        cameraPlaceholder?.addEventListener('click', triggerCameraCapture);
-        cameraRetakeBtn?.addEventListener('click', () => {
-            resetCameraUI();
-            triggerCameraCapture();
-        });
-
-        // "Brug som ikon" — process + upload directly
-        cameraUseAsIconBtn?.addEventListener('click', async () => {
-            if (!cameraCapturedFile || !isEditing || !currentProduct?.id) {
-                if (!isEditing) showCustomAlert('Gem produkt', 'Produktet skal gemmes inden du kan tilfoeje et ikon.');
-                return;
-            }
-            if (cameraError) cameraError.style.display = 'none';
-            if (cameraProgress) cameraProgress.style.display = 'block';
-            cameraUseAsIconBtn.disabled = true;
-            cameraUseAsAiRefBtn.disabled = true;
-
-            try {
-                const adminUserId = adminProfile?.user_id;
-                if (!adminUserId) throw new Error('Admin bruger ID ikke fundet');
-
-                const processedBlob = await processImageForUpload(cameraCapturedFile);
-                const processedFile = new File([processedBlob], `${currentProduct.id}.webp`, { type: 'image/webp' });
-                const result = await uploadProductIcon(processedFile, institutionId, currentProduct.id, adminUserId);
-
-                if (result.success) {
-                    currentIconUrl = result.icon_signed_url || result.icon_url;
-                    currentIconStoragePath = result.icon_storage_path || null;
-                    currentIconUpdatedAt = result.icon_updated_at;
-                    updateIconPreview();
-                    playSound?.('success');
-                    loadInstitutionIcons();
-                    resetCameraUI();
-                } else {
-                    throw new Error(result.error || 'Upload fejlede');
-                }
-            } catch (err) {
-                console.error('[cameraUseAsIcon] Error:', err);
-                if (cameraError) {
-                    cameraError.style.display = 'block';
-                    const errDiv = cameraError.querySelector('div');
-                    if (errDiv) errDiv.textContent = err.message || 'Kunne ikke uploade billede';
-                }
-                playSound?.('error');
-            } finally {
-                if (cameraProgress) cameraProgress.style.display = 'none';
-                cameraUseAsIconBtn.disabled = false;
-                cameraUseAsAiRefBtn.disabled = false;
-            }
-        });
-
-        // "Brug som AI-reference" — switch to AI tab and insert the captured photo
-        cameraUseAsAiRefBtn?.addEventListener('click', () => {
-            if (!cameraCapturedFile) return;
-            // Switch to AI tab
-            switchIconType('ai');
-            // Insert captured file into AI photo reference using the existing showPhotoPreview
-            // (showPhotoPreview is defined in the AI photo reference section below)
-            if (_injectPhotoToAiRef) _injectPhotoToAiRef(cameraCapturedFile);
-            resetCameraUI();
-        });
-
-        // ===== AI ICON GENERATION =====
-        const aiIconInput = document.getElementById('ai-icon-input');
-        const aiGenerateBtn = document.getElementById('ai-generate-btn');
-        const aiIconPreview = document.getElementById('ai-icon-preview');
-        const aiIconActions = document.getElementById('ai-icon-actions');
-        const aiIconAcceptBtn = document.getElementById('ai-icon-accept-btn');
-        const aiIconRetryBtn = document.getElementById('ai-icon-retry-btn');
-        let aiGeneratedUrl = null;
-        let aiIsGenerating = false;
-
-        // Pre-fill AI input with product name
-        if (isEditing && product?.name && aiIconInput) {
-            aiIconInput.value = product.name;
-        }
-
-        // ===== AI STYLE SELECTOR (Clay / Pixar / Fri prompt) =====
-        let aiSelectedStyle = 'clay'; // 'clay', 'pixar', or 'custom'
-        const aiStyleBtns = document.querySelectorAll('.ai-style-btn');
-        const aiCustomPromptSection = document.getElementById('ai-custom-prompt-section');
-        const aiCustomPromptInput = document.getElementById('ai-custom-prompt');
-        const aiProductNameSection = document.getElementById('ai-icon-input')?.parentElement ? document.getElementById('ai-icon-input') : null;
-        const aiProductNameLabel = aiProductNameSection?.previousElementSibling;
-        const aiPhotoUploadArea = document.getElementById('ai-photo-upload-area');
-        const aiPhotoLabel = aiPhotoUploadArea?.previousElementSibling;
-
-        const updateStyleBtns = () => {
-            aiStyleBtns.forEach(btn => {
-                const isActive = btn.dataset.style === aiSelectedStyle;
-                btn.style.borderColor = isActive ? '#7c3aed' : '#e0e0e0';
-                btn.style.background = isActive ? '#f5f3ff' : '#fff';
-                btn.style.color = isActive ? '#7c3aed' : '#64748b';
-            });
-            // Show/hide custom prompt section
-            const isCustom = aiSelectedStyle === 'custom';
-            if (aiCustomPromptSection) aiCustomPromptSection.style.display = isCustom ? 'block' : 'none';
-            // Hide product name input when custom (user writes full prompt)
-            if (aiProductNameSection) aiProductNameSection.style.display = isCustom ? 'none' : '';
-            if (aiProductNameLabel) aiProductNameLabel.style.display = isCustom ? 'none' : '';
-            // Photo upload stays visible in custom mode (optional photo)
-            // But photo label text changes
-            if (aiPhotoLabel && aiPhotoLabel.tagName === 'LABEL') {
-                const photoLabelSpan = aiPhotoLabel.querySelector('span');
-                if (photoLabelSpan) photoLabelSpan.textContent = 'valgfrit';
-            }
-            // Hide photo-mode selector when custom
-            updatePhotoModeVisibility(!!aiSelectedPhoto);
-            // If portrait was selected but we switched to Clay, reset to reference
-            updatePortraitAvailability();
-        };
-        aiStyleBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                aiSelectedStyle = btn.dataset.style;
-                updateStyleBtns();
+                },
             });
         });
 
-        // ===== AI PHOTO MODE SELECTOR (Reference / Motiv / Portrait) =====
-        let aiSelectedPhotoMode = 'reference';
-        const aiPhotoModeSelector = document.getElementById('ai-photo-mode-selector');
-        const aiPhotoModeBtns = document.querySelectorAll('.ai-photo-mode-btn');
-        const portraitBtn = document.querySelector('.ai-photo-mode-btn[data-mode="portrait"]');
-
-        const updatePortraitAvailability = () => {
-            // Portrait is available for all styles (clay, pixar, custom)
-            if (portraitBtn) {
-                portraitBtn.style.display = '';
-                // Legacy: keep reset logic but it won't trigger since isAvailable is always true
-                const isAvailable = true;
-                if (!isAvailable && aiSelectedPhotoMode === 'portrait') {
-                    aiSelectedPhotoMode = 'reference';
-                }
-            }
-            updatePhotoModeBtns();
-        };
-
-        const updatePhotoModeBtns = () => {
-            aiPhotoModeBtns.forEach(btn => {
-                if (btn.style.display === 'none') return; // skip hidden portrait
-                const isActive = btn.dataset.mode === aiSelectedPhotoMode;
-                btn.style.borderColor = isActive ? '#7c3aed' : '#e0e0e0';
-                btn.style.background = isActive ? '#f5f3ff' : '#fff';
-                const titleDiv = btn.querySelector('div:first-child');
-                if (titleDiv) titleDiv.style.color = isActive ? '#7c3aed' : '#64748b';
-            });
-        };
-        aiPhotoModeBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                aiSelectedPhotoMode = btn.dataset.mode;
-                updatePhotoModeBtns();
-            });
-        });
-
-        // Show/hide photo-mode selector when photo is added/removed
-        const updatePhotoModeVisibility = (hasPhoto) => {
-            if (aiPhotoModeSelector) {
-                // Hide when custom mode or no photo
-                const show = hasPhoto && aiSelectedStyle !== 'custom';
-                aiPhotoModeSelector.style.display = show ? 'block' : 'none';
-            }
-        };
-
-        // Initial portrait availability
-        updatePortraitAvailability();
-
-        // ===== PHOTO REFERENCE HANDLERS =====
-        const aiReferenceFile = document.getElementById('ai-reference-file');
-        const aiPhotoDropzone = document.getElementById('ai-photo-dropzone');
-        const aiReferencePreview = document.getElementById('ai-reference-preview');
-        const aiReferenceImg = document.getElementById('ai-reference-img');
-        const aiRemovePhotoBtn = document.getElementById('ai-remove-photo-btn');
-        let aiSelectedPhoto = null; // Store file reference directly (iOS can lose input.files)
-
-        const showPhotoPreview = (file) => {
-            if (!file || !aiReferenceImg || !aiReferencePreview || !aiPhotoDropzone) return;
-            aiSelectedPhoto = file;
-            aiReferenceImg.src = URL.createObjectURL(file);
-            aiReferencePreview.style.display = 'block';
-            aiPhotoDropzone.parentElement.style.display = 'none'; // Hide dropzone + "brug ikon" btn
-            updatePhotoModeVisibility(true);
-        };
-
-        // Bridge: allows camera section to inject a captured photo into the AI reference
-        _injectPhotoToAiRef = showPhotoPreview;
-
-        const removePhotoPreview = () => {
-            aiSelectedPhoto = null;
-            if (aiReferenceFile) aiReferenceFile.value = '';
-            if (aiReferencePreview) aiReferencePreview.style.display = 'none';
-            if (aiPhotoDropzone) {
-                aiPhotoDropzone.style.display = 'block';
-                aiPhotoDropzone.parentElement.style.display = 'flex'; // Show dropzone + "brug ikon" btn
-            }
-            updatePhotoModeVisibility(false);
-            if (aiReferenceImg) {
-                if (aiReferenceImg.src.startsWith('blob:')) URL.revokeObjectURL(aiReferenceImg.src);
-                aiReferenceImg.src = '';
-            }
-        };
-
-        aiPhotoDropzone?.addEventListener('click', () => aiReferenceFile?.click());
-        aiReferenceFile?.addEventListener('change', (e) => {
-            const file = e.target.files?.[0];
-            if (file) showPhotoPreview(file);
-        });
-        aiRemovePhotoBtn?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            removePhotoPreview();
-        });
-
-        // "Brug valgte ikon" — henter det aktuelle produktikon som foto-reference
-        const aiUseCurrentIconBtn = document.getElementById('ai-use-current-icon-btn');
-        aiUseCurrentIconBtn?.addEventListener('click', async () => {
-            // Find current icon URL from the product being edited
-            const iconPreviewImg = document.querySelector('#icon-preview-container img, #current-icon-preview img');
-            let iconSrc = currentIconUrl || iconPreviewImg?.src || '';
-
-            // If no custom icon, try the icon from the product icon info
-            if (!iconSrc && currentProduct) {
-                const iconInfo = getProductIconInfo(currentProduct);
-                if (iconInfo?.path) iconSrc = iconInfo.path;
-            }
-
-            if (!iconSrc) {
-                // Try the emoji/standard icon shown in the UI
-                const emojiEl = document.querySelector('#icon-preview-container .product-icon-preview');
-                if (emojiEl?.src) iconSrc = emojiEl.src;
-            }
-
-            if (!iconSrc) {
-                showAlert?.('Intet ikon fundet — vælg først et ikon for produktet');
-                return;
-            }
-
-            try {
-                aiUseCurrentIconBtn.disabled = true;
-                aiUseCurrentIconBtn.textContent = '⏳';
-                const response = await fetch(iconSrc);
-                const blob = await response.blob();
-                const file = new File([blob], 'current-icon.webp', { type: blob.type || 'image/webp' });
-                const processed = await processImageForUpload(file);
-                showPhotoPreview(processed);
-            } catch (err) {
-                console.error('[useCurrentIcon]', err);
-                showAlert?.('Kunne ikke hente ikonet');
-            } finally {
-                aiUseCurrentIconBtn.disabled = false;
-                aiUseCurrentIconBtn.innerHTML = '🖼️ Brug<br>valgte ikon';
-            }
-        });
-
-        // Drag & drop on photo dropzone
-        aiPhotoDropzone?.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            aiPhotoDropzone.style.borderColor = '#7c3aed';
-            aiPhotoDropzone.style.background = '#f5f3ff';
-        });
-        aiPhotoDropzone?.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            aiPhotoDropzone.style.borderColor = '#d1d5db';
-            aiPhotoDropzone.style.background = '#fafafa';
-        });
-        aiPhotoDropzone?.addEventListener('drop', (e) => {
-            e.preventDefault();
-            aiPhotoDropzone.style.borderColor = '#d1d5db';
-            aiPhotoDropzone.style.background = '#fafafa';
-            const file = e.dataTransfer?.files?.[0];
-            if (file && file.type.startsWith('image/')) {
-                showPhotoPreview(file);
-            }
-        });
-
-        // ===== AI GENERATE HANDLER =====
-        const handleAiGenerate = async () => {
-            if (aiIsGenerating) return;
-            if (!currentProduct?.id) {
-                // Product not yet saved — offer to save first so we can generate an icon
-                const nameVal = document.getElementById('product-name-input')?.value?.trim();
-                const priceVal = document.getElementById('product-price-input')?.value?.trim();
-                if (!nameVal || !priceVal) {
-                    showCustomAlert('Manglende felter', 'Udfyld produktnavn og pris før du genererer et ikon.');
-                    return;
-                }
-                const confirmed = await showCustomAlert(
-                    'Gem produkt',
-                    'Produktet skal gemmes før et AI-ikon kan genereres.',
-                    {
-                        type: 'confirm',
-                        okText: 'Gem og Generer Ikon',
-                        cancelText: 'Annuller',
-                    }
-                );
-                if (!confirmed) return;
-                // Save product to get an ID for icon generation
-                saveBtn.disabled = true;
-                saveBtn.textContent = 'Gemmer...';
-                try {
-                    const formData = await collectFormData();
-                    if (!formData) {
-                        saveBtn.disabled = false;
-                        saveBtn.textContent = 'Gem Produkt';
-                        return;
-                    }
-                    const savedData = await handleAddProduct(formData);
-                    if (!savedData) {
-                        saveBtn.disabled = false;
-                        saveBtn.textContent = 'Gem Produkt';
-                        return;
-                    }
-                    currentProduct = savedData;
-                    title.textContent = 'Rediger Produkt';
-                } catch (err) {
-                    showAlert?.('Fejl ved gemning: ' + (err.message || 'Ukendt fejl'));
-                    return;
-                } finally {
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = 'Gem Produkt';
-                }
-            }
-            const isCustomMode = aiSelectedStyle === 'custom';
-            const name = aiIconInput?.value?.trim();
-            const customPrompt = aiCustomPromptInput?.value?.trim();
-            const referenceFile = aiSelectedPhoto || aiReferenceFile?.files?.[0] || null;
-
-            if (isCustomMode) {
-                if (!customPrompt) {
-                    showAlert?.('Skriv en prompt i tekstfeltet');
-                    return;
-                }
-            } else if (!name && !referenceFile) {
-                showAlert?.('Skriv et produktnavn eller upload et foto');
-                return;
-            }
-
-            aiIsGenerating = true;
-            aiGenerateBtn.disabled = true;
-            aiGenerateBtn.textContent = referenceFile ? '⏳ Analyserer foto...' : '⏳ Genererer...';
-            aiIconPreview.innerHTML = `<div style="padding: 30px; text-align: center;"><div style="font-size: 32px; animation: pulse 1.5s infinite;">🪄</div><div style="font-size: 13px; color: #64748b; margin-top: 8px;">${referenceFile ? 'Analyserer foto og genererer ikon...' : 'Genererer ikon...'}</div></div>`;
-            aiIconActions.style.display = 'none';
-            aiGeneratedUrl = null;
-
-            try {
-                const adminUserId = adminProfile?.user_id;
-                if (!adminUserId) throw new Error('Admin bruger ID ikke fundet');
-
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                const accessToken = session?.access_token || '';
-
-                const supabaseUrl = supabaseClient.supabaseUrl || supabaseClient.rest?.url?.replace('/rest/v1', '') || 'https://jbknjgbpghrbrstqwoxj.supabase.co';
-
-                // Build request — FormData if photo, JSON if text-only
-                let body;
-                const headers = {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'x-admin-user-id': adminUserId,
-                };
-
-                if (referenceFile) {
-                    // Photo-mode: FormData (no Content-Type — browser sets boundary)
-                    body = new FormData();
-                    body.append('product_id', currentProduct.id);
-                    body.append('product_name', name || '');
-                    body.append('reference_image', referenceFile);
-                    if (isCustomMode) {
-                        body.append('prompt_mode', 'custom');
-                        body.append('custom_prompt', customPrompt);
-                    } else {
-                        body.append('style', aiSelectedStyle);
-                        body.append('photo_mode', aiSelectedPhotoMode);
-                    }
-                } else {
-                    // Text-mode: JSON (backward compatible)
-                    headers['Content-Type'] = 'application/json';
-                    if (isCustomMode) {
-                        body = JSON.stringify({
-                            product_id: currentProduct.id,
-                            product_name: name || '',
-                            prompt_mode: 'custom',
-                            custom_prompt: customPrompt,
-                        });
-                    } else {
-                        body = JSON.stringify({
-                            product_name: name,
-                            product_id: currentProduct.id,
-                            style: aiSelectedStyle,
-                            photo_mode: aiSelectedPhotoMode,
-                        });
-                    }
-                }
-
-                const response = await fetch(
-                    `${supabaseUrl}/functions/v1/generate-product-icon`,
-                    { method: 'POST', headers, body }
-                );
-
-                const result = await response.json();
-                if (!result.success) throw new Error(result.error || 'Generering fejlede');
-
-                aiGeneratedUrl = result.icon_signed_url || result.icon_url;
-                currentIconUrl = result.icon_signed_url || result.icon_url;
-                currentIconStoragePath = result.icon_storage_path || null;
-                currentIconUpdatedAt = result.icon_updated_at;
-
-                // Show preview — build mode label
-                const timestamp = result.icon_updated_at ? new Date(result.icon_updated_at).getTime() : Date.now();
-                let modeLabel;
-                if (result.prompt_mode === 'custom') {
-                    modeLabel = result.mode?.includes('photo') ? '🎨 Fri prompt + foto' : '🎨 Fri prompt';
-                } else if (result.mode === 'photo-portrait') {
-                    modeLabel = '🎭 Portræt';
-                } else if (result.mode === 'photo-reference') {
-                    modeLabel = '📷 Reference';
-                } else if (result.mode === 'photo-motiv') {
-                    modeLabel = '📷 Motiv';
-                } else {
-                    modeLabel = '✏️ Tekst';
-                }
-                const styleLabel = result.prompt_mode === 'custom' ? '' : ` · ${result.style === 'pixar' ? '🎬 Pixar' : '🏺 Clay'}`;
-                aiIconPreview.innerHTML = `
-                    <div style="padding: 15px; background: #f8f9fa; border-radius: 12px; text-align: center;">
-                        <img src="${result.icon_signed_url || result.icon_url}?v=${timestamp}" alt="${name || customPrompt}" style="width: 128px; height: 128px; border-radius: 12px; background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">${modeLabel}${styleLabel}</div>
-                    </div>`;
-                aiIconActions.style.display = 'flex';
-                updateIconPreview();
-                playSound?.('success');
-
-            } catch (err) {
-                console.error('[AI Icon] Error:', err);
-                aiIconPreview.innerHTML = `<div style="padding: 15px; background: #fef2f2; border-radius: 8px; text-align: center; color: #dc2626; font-size: 13px;">${err.message || 'Generering fejlede'}</div>`;
-                playSound?.('error');
-            } finally {
-                aiIsGenerating = false;
-                aiGenerateBtn.disabled = false;
-                aiGenerateBtn.textContent = '✨ Generer';
-            }
-        };
-
-        aiGenerateBtn?.addEventListener('click', handleAiGenerate);
-        aiIconRetryBtn?.addEventListener('click', handleAiGenerate);
-
-        aiIconAcceptBtn?.addEventListener('click', () => {
-            if (!aiGeneratedUrl) return;
-            // Icon is already saved by Edge Function — just update preview and close AI section
-            updateIconPreview();
-            aiIconActions.style.display = 'none';
-            aiIconPreview.innerHTML = '<div style="padding: 10px; text-align: center; color: #22c55e; font-weight: 600;">✅ Ikon gemt!</div>';
-            playSound?.('success');
-            // Refresh institution icons grid to include the new icon
-            loadInstitutionIcons();
-        });
-
-        // Initial preview update
+        // Initial icon preview
         updateIconPreview();
+
+
+        // ===== BULK DISCOUNT, REFILL, etc. =====
         const bulkDiscountEnabledCheckbox = document.getElementById('product-bulk-discount-enabled');
         const bulkDiscountFields = document.getElementById('bulk-discount-fields');
         const bulkDiscountQtyInput = document.getElementById('product-bulk-discount-qty');
@@ -2382,8 +1442,6 @@ export function createProductManagementUI(options = {}) {
         const closeEditProductModal = () => {
             modal.style.display = 'none';
             saveBtn.onclick = null;
-            // OPTIMERING: Cleanup event listener for at forhindre memory leaks
-            standardIconGrid?.removeEventListener('click', handleStandardIconClick);
             if (returnToProductModal) {
                 renderProductsInModalFn?.(getProducts(), modalProductList);
                 productModal.style.display = 'flex';
@@ -2649,13 +1707,36 @@ export function createProductManagementUI(options = {}) {
         const iconMgmtEditBtn = document.getElementById('icon-mgmt-edit-btn');
         const iconMgmtCreateBtn = document.getElementById('icon-mgmt-create-btn');
 
-        let allIcons = [];
+        let allIcons = [];           // combined from all sources
+        let allInstitutionIcons = []; // just institution's own
+        let allProducts_cached = null;
         let iconLimit = 50;
+        let activeCategory = 'all';   // 'all', 'institution', 'standard', 'emoji', 'shared'
         let activeFilter = 'all';
         let searchQuery = '';
         let editModeActive = false;
         let searchDebounceTimer = null;
-        let openIconCreateModal = () => {}; // Assigned in icon-create-modal block below
+        let listViewActive = false;
+        // Open icon create modal via product-icon-picker
+        const openIconCreateModal = async (existingIcon) => {
+            const { openProductIconPicker } = await import('./product-icon-picker.js');
+            openProductIconPicker({
+                mode: existingIcon ? 'library' : 'product',
+                defaultSource: existingIcon ? undefined : 'ai',
+                institutionId: adminProfile?.institution_id,
+                productName: existingIcon?.name || '',
+                editingIcon: existingIcon || undefined,
+                adminProfile,
+                showCustomAlert,
+                playSound,
+                onResult: () => {
+                    // Reload icon grid after creating/editing
+                    loadIconManagementGrid();
+                },
+            });
+        };
+
+        let _iconMgmtReturnTo = null; // tracks where to go back to
 
         const closeIconMgmt = () => {
             iconMgmtModal.style.display = 'none';
@@ -2663,10 +1744,17 @@ export function createProductManagementUI(options = {}) {
             iconMgmtGrid?.classList.remove('edit-mode');
             iconMgmtEditBtn?.classList.remove('active');
         };
-        iconMgmtCloseBtn?.addEventListener('click', closeIconMgmt);
-        iconMgmtCloseFooter?.addEventListener('click', closeIconMgmt);
+        iconMgmtCloseBtn?.addEventListener('click', () => { _iconMgmtReturnTo = null; closeIconMgmt(); });
+        iconMgmtCloseFooter?.addEventListener('click', () => { _iconMgmtReturnTo = null; closeIconMgmt(); });
+        document.getElementById('icon-mgmt-back-btn')?.addEventListener('click', () => {
+            const returnFn = _iconMgmtReturnTo;
+            _iconMgmtReturnTo = null;
+            closeIconMgmt();
+            if (typeof returnFn === 'function') returnFn();
+        });
 
-        manageIconsBtn.addEventListener('click', async () => {
+        const openIconLibrary = async (returnTo) => {
+            _iconMgmtReturnTo = typeof returnTo === 'function' ? returnTo : null;
             iconMgmtModal.style.display = 'flex';
             searchQuery = '';
             activeFilter = 'all';
@@ -2676,7 +1764,9 @@ export function createProductManagementUI(options = {}) {
                 c.classList.toggle('active', c.dataset.filter === 'all');
             });
             await loadIconManagementGrid();
-        });
+        };
+        manageIconsBtn.addEventListener('click', () => openIconLibrary(null));
+        window.__flangoOpenIconLibrary = openIconLibrary;
 
         // --- Search ---
         iconMgmtSearch?.addEventListener('input', () => {
@@ -2687,7 +1777,17 @@ export function createProductManagementUI(options = {}) {
             }, 300);
         });
 
-        // --- Filter chips ---
+        // --- Category filter ---
+        const iconMgmtCategories = document.getElementById('icon-mgmt-categories');
+        iconMgmtCategories?.addEventListener('click', (e) => {
+            const chip = e.target.closest('.icon-mgmt-cat-chip');
+            if (!chip) return;
+            activeCategory = chip.dataset.category;
+            iconMgmtCategories.querySelectorAll('.icon-mgmt-cat-chip').forEach(c => c.classList.toggle('active', c.dataset.category === activeCategory));
+            renderFilteredIcons();
+        });
+
+        // --- Type filter chips ---
         iconMgmtFilters?.addEventListener('click', (e) => {
             const chip = e.target.closest('.icon-mgmt-chip');
             if (!chip) return;
@@ -2726,9 +1826,18 @@ export function createProductManagementUI(options = {}) {
         function filterIcons(icons) {
             let filtered = icons;
 
-            // Search filter
+            // Category filter
+            if (activeCategory !== 'all') {
+                filtered = filtered.filter(i => i._category === activeCategory);
+            }
+
+            // Search filter (also search tags)
             if (searchQuery) {
-                filtered = filtered.filter(i => i.name.toLowerCase().includes(searchQuery));
+                filtered = filtered.filter(i =>
+                    i.name.toLowerCase().includes(searchQuery) ||
+                    (i.tags || '').toLowerCase().includes(searchQuery) ||
+                    (i._emoji || '').includes(searchQuery)
+                );
             }
 
             // Chip filters
@@ -2765,7 +1874,7 @@ export function createProductManagementUI(options = {}) {
             const filtered = filterIcons(allIcons);
 
             iconMgmtGrid.innerHTML = '';
-            if (iconMgmtCounter) iconMgmtCounter.textContent = `${filtered.length} af ${allIcons.length} · ${allIcons.length} / ${iconLimit} brugt`;
+            if (iconMgmtCounter) iconMgmtCounter.textContent = `${filtered.length} ikoner · ${allInstitutionIcons.length} / ${iconLimit} egne`;
 
             if (filtered.length === 0) {
                 if (iconMgmtEmpty) { iconMgmtEmpty.style.display = 'block'; iconMgmtEmpty.textContent = searchQuery ? 'Ingen ikoner matcher søgningen.' : 'Ingen ikoner fundet.'; }
@@ -2773,31 +1882,45 @@ export function createProductManagementUI(options = {}) {
             }
             if (iconMgmtEmpty) iconMgmtEmpty.style.display = 'none';
 
+            if (listViewActive) {
+                iconMgmtGrid.classList.remove('icon-mgmt-grid');
+                renderIconListView(filtered);
+                return;
+            }
+
+            iconMgmtGrid.classList.add('icon-mgmt-grid');
+            iconMgmtGrid.classList.remove('icon-mgmt-list');
             const isEdit = editModeActive;
 
             filtered.forEach(icon => {
                 const card = document.createElement('div');
                 card.className = 'icon-mgmt-card';
                 card.dataset.iconId = icon.id;
-                // All critical styles inline to avoid CSS cache issues
-                card.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;padding:12px 8px 8px;border:2px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.04);cursor:default;overflow:hidden;min-width:0;transition:border-color 0.15s,transform 0.15s;';
-                const badgeColor = icon.source === 'uploaded' ? 'background:#dbeafe;color:#1d4ed8' : 'background:#ede9fe;color:#6d28d9';
-                const badgeLabel = icon.source === 'uploaded' ? '📤' : '🪄';
+                card.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;padding:12px 8px 8px;border:2px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.04);cursor:default;overflow:visible;min-width:0;transition:border-color 0.15s,transform 0.15s;';
+
+                const isReadonly = icon._readonly;
+                const badgeMap = { uploaded: { bg: '#dbeafe', color: '#1d4ed8', label: '📤' }, ai_generated: { bg: '#ede9fe', color: '#6d28d9', label: '🪄' }, standard: { bg: '#d1fae5', color: '#065f46', label: '📁' }, emoji: { bg: '#fef3c7', color: '#92400e', label: '😀' } };
+                const badge = badgeMap[icon.source] || badgeMap.uploaded;
+                const catLabel = icon._categoryLabel || '';
+
+                const imgHtml = icon._emoji
+                    ? `<span style="font-size:48px;line-height:1;">${icon._emoji}</span>`
+                    : `<img src="${icon.icon_url}" alt="${icon.name}" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:10px;flex-shrink:0;">`;
+
                 card.innerHTML = `
-                    <span style="position:absolute;top:4px;left:4px;font-size:10px;padding:1px 5px;border-radius:8px;font-weight:600;line-height:1.4;${badgeColor};">${badgeLabel}</span>
-                    <button type="button" class="icon-mgmt-preview-btn" title="Forstør"
-                        style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;cursor:pointer;font-size:13px;display:${isEdit ? 'none' : 'flex'};align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;z-index:5;">🔍</button>
-                    <button type="button" class="icon-mgmt-download-btn" data-url="${icon.icon_url}" data-name="${icon.name}" title="Download"
-                        style="position:absolute;bottom:4px;left:4px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;cursor:pointer;font-size:13px;display:${isEdit ? 'none' : 'flex'};align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;z-index:5;">⬇️</button>
-                    <button type="button" class="icon-mgmt-delete-btn" data-icon-id="${icon.id}" title="Slet ikon"
-                        style="position:absolute;top:-1px;right:-1px;width:24px;height:24px;border-radius:50%;background:#ef4444;color:white;border:2px solid rgba(0,0,0,0.2);font-size:12px;cursor:pointer;align-items:center;justify-content:center;line-height:1;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.3);display:${isEdit ? 'flex' : 'none'};">✕</button>
-                    <button type="button" class="icon-mgmt-settings-btn" data-icon-id="${icon.id}" title="Redigér med AI"
-                        style="position:absolute;bottom:2px;right:2px;width:24px;height:24px;border-radius:50%;background:#475569;color:white;border:2px solid rgba(0,0,0,0.2);font-size:12px;cursor:pointer;align-items:center;justify-content:center;line-height:1;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.3);display:${isEdit ? 'flex' : 'none'};">⚙️</button>
-                    <img src="${icon.icon_url}" alt="${icon.name}" loading="lazy"
-                        style="width:80px;height:80px;object-fit:cover;border-radius:10px;flex-shrink:0;">
-                    <span class="icon-mgmt-card-name" style="font-size:11px;color:#94a3b8;margin-top:6px;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:${isEdit ? 'none' : 'block'};">${icon.name}</span>
-                    <input type="text" class="icon-mgmt-rename-input" value="${icon.name}" data-icon-id="${icon.id}" maxlength="60"
-                        style="width:100%;padding:3px 4px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;font-size:11px;text-align:center;margin-top:4px;box-sizing:border-box;background:rgba(255,255,255,0.06);color:inherit;display:${isEdit ? 'block' : 'none'};">
+                    <span style="position:absolute;top:4px;left:4px;font-size:10px;padding:1px 5px;border-radius:8px;font-weight:600;line-height:1.4;background:${badge.bg};color:${badge.color};">${badge.label}</span>
+                    ${!isReadonly ? `<button type="button" class="icon-mgmt-preview-btn" title="Forstør"
+                        style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;cursor:pointer;font-size:13px;display:${isEdit ? 'none' : 'flex'};align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;z-index:5;">🔍</button>` : ''}
+                    ${!isReadonly ? `<button type="button" class="icon-mgmt-download-btn" data-url="${icon.icon_url}" data-name="${icon.name}" title="Download"
+                        style="position:absolute;bottom:4px;left:4px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;cursor:pointer;font-size:13px;display:${isEdit ? 'none' : 'flex'};align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;z-index:5;">⬇️</button>` : ''}
+                    ${!isReadonly && isEdit ? `<button type="button" class="icon-mgmt-delete-btn" data-icon-id="${icon.id}" title="Slet ikon"
+                        style="position:absolute;top:-1px;right:-1px;width:24px;height:24px;border-radius:50%;background:#ef4444;color:white;border:2px solid rgba(0,0,0,0.2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.3);">✕</button>` : ''}
+                    ${!isReadonly && isEdit ? `<button type="button" class="icon-mgmt-settings-btn" data-icon-id="${icon.id}" title="Redigér med AI"
+                        style="position:absolute;bottom:2px;right:2px;width:24px;height:24px;border-radius:50%;background:#475569;color:white;border:2px solid rgba(0,0,0,0.2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.3);">⚙️</button>` : ''}
+                    ${imgHtml}
+                    <span class="icon-mgmt-card-name" style="font-size:11px;color:#94a3b8;margin-top:6px;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:${isEdit && !isReadonly ? 'none' : 'block'};">${icon.name}${catLabel ? `<br><small style="color:#64748b">${catLabel}</small>` : ''}</span>
+                    ${!isReadonly ? `<input type="text" class="icon-mgmt-rename-input" value="${icon.name}" data-icon-id="${icon.id}" maxlength="60"
+                        style="width:100%;padding:3px 4px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;font-size:11px;text-align:center;margin-top:4px;box-sizing:border-box;background:rgba(255,255,255,0.06);color:inherit;display:${isEdit ? 'block' : 'none'};">` : ''}
                 `;
                 // Hover effect for preview btn
                 card.addEventListener('mouseenter', () => {
@@ -2826,19 +1949,282 @@ export function createProductManagementUI(options = {}) {
             else iconMgmtGrid.classList.remove('edit-mode');
         }
 
+        let listSortCol = null; // 'name', 'type', 'tags', 'product'
+        let listSortDir = 'asc';
+
+        function renderTagPills(tagsStr) {
+            if (!tagsStr) return '';
+            return tagsStr.split(',').map(t => t.trim()).filter(Boolean)
+                .map(t => `<span class="icon-tag-pill">${t}<button type="button" class="icon-tag-remove" data-tag="${t}">✕</button></span>`)
+                .join('');
+        }
+
+        async function saveIconTags(iconId, tagsStr) {
+            const icon = allIcons.find(i => i.id === iconId);
+            if (!icon || icon._readonly) return;
+            icon.tags = tagsStr;
+            await supabaseClient.from('institution_icons').update({ tags: tagsStr }).eq('id', iconId);
+        }
+
+        function getIconTags(iconId) {
+            const icon = allIcons.find(i => i.id === iconId);
+            return (icon?.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+        }
+
+        function renderIconListView(filtered) {
+            iconMgmtGrid.classList.remove('icon-mgmt-grid');
+            iconMgmtGrid.classList.add('icon-mgmt-list');
+
+            // Sort
+            if (listSortCol) {
+                filtered = [...filtered].sort((a, b) => {
+                    let va, vb;
+                    if (listSortCol === 'name') { va = a.name.toLowerCase(); vb = b.name.toLowerCase(); }
+                    else if (listSortCol === 'type') { va = getIconMetaLabel(a); vb = getIconMetaLabel(b); }
+                    else if (listSortCol === 'tags') { va = (a.tags || '').toLowerCase(); vb = (b.tags || '').toLowerCase(); }
+                    else if (listSortCol === 'product') {
+                        va = getProductsUsingIcon(a).map(p => p.name).join(',');
+                        vb = getProductsUsingIcon(b).map(p => p.name).join(',');
+                    }
+                    if (va < vb) return listSortDir === 'asc' ? -1 : 1;
+                    if (va > vb) return listSortDir === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            const sortClass = (col) => listSortCol === col ? (listSortDir === 'asc' ? 'sorted-asc' : 'sorted-desc') : '';
+
+            const table = document.createElement('table');
+            table.className = 'icon-list-table';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th style="width:60px;cursor:default">Ikon</th>
+                        <th data-sort="name" class="${sortClass('name')}">Navn</th>
+                        <th data-sort="type" class="${sortClass('type')}">Type</th>
+                        <th data-sort="tags" class="${sortClass('tags')}">Tags</th>
+                        <th data-sort="product" class="${sortClass('product')}">Produkt</th>
+                        <th style="width:50px;cursor:default">Download</th>
+                        <th style="width:50px;cursor:default">Slet</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+
+            const tbody = table.querySelector('tbody');
+
+            filtered.forEach(icon => {
+                const products = getProductsUsingIcon(icon);
+                const productNames = products.map(p => p.name).join(', ') || '—';
+                const typeLabel = getIconMetaLabel(icon);
+                const tagsValue = icon.tags || '';
+                const isReadonly = icon._readonly;
+
+                const imgCell = icon._emoji
+                    ? `<span style="font-size:32px">${icon._emoji}</span>`
+                    : `<img src="${icon.icon_url}" alt="${icon.name}" style="width:44px;height:44px;object-fit:cover;border-radius:8px;">`;
+
+                const tr = document.createElement('tr');
+                tr.dataset.iconId = icon.id;
+                tr.innerHTML = `
+                    <td>${imgCell}</td>
+                    <td>${isReadonly
+                        ? `<span style="font-weight:600;font-size:13px">${icon.name}</span>`
+                        : `<input type="text" class="icon-list-editable" data-field="name" data-icon-id="${icon.id}" value="${icon.name}" maxlength="60">`}</td>
+                    <td style="font-size:12px;color:#94a3b8">${typeLabel}</td>
+                    <td>${isReadonly
+                        ? '<span style="color:#64748b;font-size:12px">—</span>'
+                        : `<div class="icon-tags-cell" data-icon-id="${icon.id}">${renderTagPills(tagsValue)}<input type="text" class="icon-tag-input" placeholder="+ tag" data-icon-id="${icon.id}"></div>`}</td>
+                    <td style="font-size:12px;color:${products.length ? '#22c55e' : '#64748b'}">${productNames}</td>
+                    <td>${icon.icon_url ? `<button type="button" class="icon-mgmt-download-btn" data-url="${icon.icon_url}" data-name="${icon.name}" title="Download">⬇️</button>` : ''}</td>
+                    <td>${!isReadonly ? `<button type="button" class="icon-list-delete-btn" data-icon-id="${icon.id}" title="Slet ikon">🗑️</button>` : ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            iconMgmtGrid.appendChild(table);
+
+            // Sort click on headers
+            table.querySelectorAll('th[data-sort]').forEach(th => {
+                th.addEventListener('click', () => {
+                    const col = th.dataset.sort;
+                    if (listSortCol === col) {
+                        listSortDir = listSortDir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        listSortCol = col;
+                        listSortDir = 'asc';
+                    }
+                    renderFilteredIcons();
+                });
+            });
+
+            // Inline edit — name and tags
+            // Use input event to track changes, save on blur
+            const pendingEdits = new Map();
+
+            table.addEventListener('input', (e) => {
+                const input = e.target.closest('.icon-list-editable');
+                if (!input) return;
+                pendingEdits.set(input, { iconId: input.dataset.iconId, field: input.dataset.field, value: input.value.trim() });
+            });
+
+            table.addEventListener('focusout', async (e) => {
+                const input = e.target.closest('.icon-list-editable');
+                if (!input || !pendingEdits.has(input)) return;
+                const { iconId, field, value } = pendingEdits.get(input);
+                pendingEdits.delete(input);
+                if (!iconId || !value) return;
+
+                const icon = allIcons.find(i => i.id === iconId);
+                if (!icon || icon._readonly) return;
+
+                console.log(`[icon-list] Saving ${field}="${value}" for icon ${iconId}`);
+
+                if (field === 'name' && value !== icon.name) {
+                    icon.name = value;
+                    await renameInstitutionIcon(iconId, value);
+                }
+            });
+
+            table.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.target.classList.contains('icon-list-editable')) {
+                    e.preventDefault();
+                    e.target.blur();
+                }
+                // Tag input: Enter or comma adds tag
+                const tagInput = e.target.closest('.icon-tag-input');
+                if (tagInput && (e.key === 'Enter' || e.key === ',')) {
+                    e.preventDefault();
+                    const newTag = tagInput.value.replace(/,/g, '').trim();
+                    if (!newTag) return;
+                    const iconId = tagInput.dataset.iconId;
+                    const tags = getIconTags(iconId);
+                    if (!tags.includes(newTag)) {
+                        tags.push(newTag);
+                        const tagsStr = tags.join(', ');
+                        saveIconTags(iconId, tagsStr);
+                        // Re-render pills
+                        const cell = tagInput.closest('.icon-tags-cell');
+                        if (cell) {
+                            tagInput.value = '';
+                            // Remove old pills, keep input
+                            cell.querySelectorAll('.icon-tag-pill').forEach(p => p.remove());
+                            tagInput.insertAdjacentHTML('beforebegin', renderTagPills(tagsStr));
+                        }
+                    } else {
+                        tagInput.value = '';
+                    }
+                }
+            });
+
+            // Remove tag pill
+            table.addEventListener('click', (e) => {
+                const removeBtn = e.target.closest('.icon-tag-remove');
+                if (!removeBtn) return;
+                const pill = removeBtn.closest('.icon-tag-pill');
+                const cell = removeBtn.closest('.icon-tags-cell');
+                if (!pill || !cell) return;
+                const iconId = cell.dataset.iconId;
+                const tagToRemove = removeBtn.dataset.tag;
+                const tags = getIconTags(iconId).filter(t => t !== tagToRemove);
+                const tagsStr = tags.join(', ');
+                saveIconTags(iconId, tagsStr);
+                pill.remove();
+            });
+
+            // Edit & Delete buttons
+            table.addEventListener('click', async (e) => {
+                const editBtn = e.target.closest('.icon-list-edit-btn');
+                if (editBtn) {
+                    const icon = allIcons.find(i => i.id === editBtn.dataset.iconId);
+                    if (icon) openIconCreateModal(icon);
+                    return;
+                }
+                const deleteBtn = e.target.closest('.icon-list-delete-btn');
+                if (deleteBtn) {
+                    const iconId = deleteBtn.dataset.iconId;
+                    const confirmed = await showCustomAlert('Slet ikon?', 'Ikonet fjernes fra biblioteket. Produkter der bruger det beholder deres kopi.', 'confirm');
+                    if (!confirmed) return;
+                    const result = await deleteInstitutionIcon(iconId);
+                    if (result.success) {
+                        allIcons = allIcons.filter(i => i.id !== iconId);
+                        renderFilteredIcons();
+                    } else {
+                        showAlert?.(result.error || 'Kunne ikke slette ikonet');
+                    }
+                    return;
+                }
+            });
+        }
+
         async function loadIconManagementGrid() {
             const institutionId = adminProfile?.institution_id;
             if (!institutionId) return;
 
             if (iconMgmtGrid) iconMgmtGrid.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;">Indlæser...</div>';
 
-            const [icons, settings] = await Promise.all([
+            const instName = localStorage.getItem('flango_institution_name') || 'Klubben';
+
+            const [icons, settings, products, sharedIcons] = await Promise.all([
                 fetchInstitutionIconLibrary(institutionId),
                 fetchIconSharingSettings(institutionId),
+                supabaseClient.from('products').select('id, name, icon_url, icon_storage_path, emoji').eq('institution_id', institutionId).then(r => r.data || []),
+                fetchSharedIconLibrary(institutionId).catch(() => []),
             ]);
 
-            allIcons = icons;
+            allInstitutionIcons = icons;
+            allProducts_cached = products;
             iconLimit = settings.icon_limit || 50;
+
+            // Build combined list with _category marker
+            allIcons = [];
+
+            // Institution's own
+            icons.forEach(ic => allIcons.push({ ...ic, _category: 'institution', _categoryLabel: instName }));
+
+            // Standard Flango icons
+            const { STANDARD_ICONS } = await import('../core/product-icon-utils.js');
+            STANDARD_ICONS.forEach(ic => allIcons.push({
+                id: 'std_' + ic.label,
+                name: ic.label,
+                icon_url: ic.path,
+                source: 'standard',
+                tags: '',
+                _category: 'standard',
+                _categoryLabel: 'Standard',
+                _readonly: true,
+            }));
+
+            // Emojis
+            const EMOJIS = [
+                { emoji: '🍫', name: 'Chokolade' }, { emoji: '🍽️', name: 'Tallerken' }, { emoji: '🍷', name: 'Glas' },
+                { emoji: '🍎', name: 'Æble' }, { emoji: '🥜', name: 'Nødder' }, { emoji: '🥪', name: 'Sandwich' },
+                { emoji: '🍕', name: 'Pizza' }, { emoji: '🥤', name: 'Sodavand' }, { emoji: '🍚', name: 'Ris' },
+                { emoji: '🍣', name: 'Sushi' }, { emoji: '🥢', name: 'Spisepinde' }, { emoji: '🍞', name: 'Brød' },
+                { emoji: '🥝', name: 'Kiwi' }, { emoji: '🍇', name: 'Vindruer' }, { emoji: '🍐', name: 'Pære' },
+                { emoji: '🍉', name: 'Vandmelon' }, { emoji: '🍙', name: 'Risbolle' }, { emoji: '🍲', name: 'Gryde' },
+                { emoji: '🥘', name: 'Pande' }, { emoji: '🫘', name: 'Bønner' }, { emoji: '🍔', name: 'Burger' },
+                { emoji: '🌶️', name: 'Chili' }, { emoji: '🧄', name: 'Hvidløg' }, { emoji: '🍳', name: 'Stegepande' },
+                { emoji: '🔥', name: 'Ild' }, { emoji: '😋', name: 'Lækkert' }, { emoji: '🍰', name: 'Kage' },
+                { emoji: '♨️', name: 'Varmt' }, { emoji: '🍪', name: 'Småkage' },
+            ];
+            EMOJIS.forEach(e => allIcons.push({
+                id: 'emoji_' + e.emoji,
+                name: e.name,
+                icon_url: null,
+                _emoji: e.emoji,
+                source: 'emoji',
+                tags: '',
+                _category: 'emoji',
+                _categoryLabel: 'Emoji',
+                _readonly: true,
+            }));
+
+            // Shared
+            if (settings.icon_use_shared_enabled && sharedIcons.length) {
+                sharedIcons.forEach(ic => allIcons.push({ ...ic, _category: 'shared', _categoryLabel: 'Delt', _readonly: true }));
+            }
+
             renderFilteredIcons();
         }
 
@@ -2909,16 +2295,22 @@ export function createProductManagementUI(options = {}) {
         });
 
         // --- Rename (blur/enter on input) ---
-        iconMgmtGrid?.addEventListener('change', async (e) => {
+        let gridRenamePending = null;
+        iconMgmtGrid?.addEventListener('input', (e) => {
             const input = e.target.closest('.icon-mgmt-rename-input');
-            if (!input) return;
-            const iconId = input.dataset.iconId;
-            const newName = input.value.trim();
-            if (!iconId || !newName) return;
+            if (input) gridRenamePending = { iconId: input.dataset.iconId, value: input.value.trim() };
+        });
+        iconMgmtGrid?.addEventListener('focusout', async (e) => {
+            const input = e.target.closest('.icon-mgmt-rename-input');
+            if (!input || !gridRenamePending) return;
+            const { iconId, value } = gridRenamePending;
+            gridRenamePending = null;
+            if (!iconId || !value) return;
             const icon = allIcons.find(i => i.id === iconId);
-            if (icon && icon.name !== newName) {
-                icon.name = newName; // Optimistic
-                await renameInstitutionIcon(iconId, newName);
+            if (icon && !icon._readonly && icon.name !== value) {
+                icon.name = value;
+                console.log(`[icon-grid] Saving name="${value}" for icon ${iconId}`);
+                await renameInstitutionIcon(iconId, value);
             }
         });
 
@@ -2933,8 +2325,26 @@ export function createProductManagementUI(options = {}) {
             editModeActive = !editModeActive;
             iconMgmtEditBtn.classList.toggle('active', editModeActive);
             iconMgmtEditBtn.textContent = editModeActive ? '✅ Færdig' : '✏️ Redigér';
-            renderFilteredIcons(); // Re-render with inline styles updated
+            renderFilteredIcons();
         });
+
+        // --- View toggle (grid / list) ---
+        const viewToggleBtn = document.getElementById('icon-mgmt-view-toggle');
+        viewToggleBtn?.addEventListener('click', () => {
+            listViewActive = !listViewActive;
+            viewToggleBtn.textContent = listViewActive ? '▦ Grid' : '☰ Liste';
+            renderFilteredIcons();
+        });
+
+        // --- Get products using each icon (for list view) ---
+        function getProductsUsingIcon(icon) {
+            if (!allProducts_cached) return [];
+            return allProducts_cached.filter(p => {
+                if (p.icon_url && p.icon_url === icon.icon_url) return true;
+                if (p.icon_storage_path && icon.storage_path && p.icon_storage_path === icon.storage_path) return true;
+                return false;
+            });
+        }
 
         // --- Lightbox preview ---
         function showIconPreviewModal(icons, startIndex = 0) {
@@ -2993,612 +2403,10 @@ export function createProductManagementUI(options = {}) {
             modal.style.display = 'flex';
         }
 
-        // ===== ICON CREATE SUB-MODAL =====
-        const iconCreateModal = document.getElementById('icon-create-modal');
-        if (iconCreateModal) {
-            // --- Create icon button (must be inside this block so openIconCreateModal is accessible) ---
+        // ===== ICON CREATE — now uses product-icon-picker.js =====
+        {
+            // "+ Opret" button in icon management modal
             iconMgmtCreateBtn?.addEventListener('click', () => openIconCreateModal(null));
-            const createCloseBtn = iconCreateModal.querySelector('.close-btn');
-            const createCancelBtn = document.getElementById('icon-create-cancel-btn');
-            const createSaveBtn = document.getElementById('icon-create-save-btn');
-            const createNameInput = document.getElementById('icon-create-name');
-            const createTabs = iconCreateModal.querySelectorAll('.icon-create-tab');
-            const createTabContents = iconCreateModal.querySelectorAll('.icon-create-tab-content');
-            const createStatus = document.getElementById('icon-create-status');
-            const createStatusText = document.getElementById('icon-create-status-text');
-
-            // Upload tab elements
-            const createDropzone = document.getElementById('icon-create-dropzone');
-            const createFileInput = document.getElementById('icon-create-file-input');
-            const createUploadPreview = document.getElementById('icon-create-upload-preview');
-            const createUploadImg = document.getElementById('icon-create-upload-img');
-
-            // Camera tab
-            const createCameraBtn = document.getElementById('icon-create-camera-btn');
-            const createCameraPreview = document.getElementById('icon-create-camera-preview');
-            const createCameraImg = document.getElementById('icon-create-camera-img');
-
-            // AI tab elements
-            const createStyleBtns = iconCreateModal.querySelectorAll('.icon-create-style-card, .icon-create-style-btn');
-            const createCustomPromptSection = document.getElementById('icon-create-custom-prompt-section');
-            const createCustomPrompt = document.getElementById('icon-create-custom-prompt');
-            const createAiDropzone = document.getElementById('icon-create-ai-dropzone');
-            const createAiFileInput = document.getElementById('icon-create-ai-file-input');
-            const createAiPhotoPreview = document.getElementById('icon-create-ai-photo-preview');
-            const createAiPhotoImg = document.getElementById('icon-create-ai-photo-img');
-            const createAiPhotoRemove = document.getElementById('icon-create-ai-photo-remove');
-            const createPhotoModeSection = document.getElementById('icon-create-photo-mode-section');
-            const createPhotoModeBtns = iconCreateModal.querySelectorAll('.icon-create-mode-btn, .icon-create-photo-mode-btn');
-            const createGenerateBtn = document.getElementById('icon-create-generate-btn');
-            const createAiResult = document.getElementById('icon-create-ai-result');
-            const createAiResultImg = document.getElementById('icon-create-ai-result-img');
-            const createAiResultLabel = document.getElementById('icon-create-ai-result-label');
-            const createAiPhotoSection = document.getElementById('icon-create-ai-photo-section');
-
-            // Advanced prompt elements
-            // Advanced prompt elements (split: style prompt + photo-mode prompt)
-            const advancedToggle = document.getElementById('icon-create-advanced-toggle');
-            const advancedArrow = document.getElementById('icon-create-advanced-arrow');
-            const resetPromptBtn = document.getElementById('icon-create-reset-prompt-btn');
-            const stylePromptSection = document.getElementById('icon-create-style-prompt-section');
-            const stylePromptEl = document.getElementById('icon-create-style-prompt');
-            const photoPromptSection = document.getElementById('icon-create-photo-prompt-section');
-            const photoPromptEl = document.getElementById('icon-create-photo-prompt');
-            let advancedOpen = false;
-            let stylePromptEdited = false;
-            let photoPromptEdited = false;
-
-            // --- Client-side prompt builder (mirrors Edge Function prompts) ---
-            const STYLE_CLAY = `A single centered food product icon in soft 3D clay style. Rounded puffy shapes, smooth matte clay texture, subtle soft shadows on the object only. Pastel color palette, gentle highlights, no harsh edges. Friendly, playful, child-safe aesthetic like premium mobile app UI icons. Skeuomorphic but simplified - Apple-like simplicity with minimal detail. No text, no labels, no table, no background elements. The object floats on a perfectly transparent background. Clean crisp edges suitable for UI overlay.`;
-            const STYLE_PIXAR = `A single centered food product icon in Pixar-style 3D rendering. Glossy, smooth surfaces with vibrant saturated colors. Soft rounded shapes, subtle specular highlights, gentle ambient occlusion shadows on the object only. Friendly, appealing, child-safe aesthetic. Clean and simple - minimal detail, maximum charm. No text, no labels, no background elements. The object floats on a perfectly transparent background with clean crisp edges suitable for UI overlay.`;
-            const STYLE_PORTRAIT_CLAY = `3D clay-animated style rendering. Rounded puffy shapes, smooth matte clay texture, pastel color palette, gentle highlights, no harsh edges. Friendly, playful, child-safe aesthetic. Characters should look like high-quality clay figurines with warm, expressive faces.`;
-            const STYLE_PORTRAIT_PIXAR = `Pixar/Dreamworks-style 3D animated rendering. Glossy, smooth surfaces with vibrant saturated colors. Soft rounded shapes, subtle specular highlights. Friendly, appealing, child-safe aesthetic with maximum charm. Characters should look like they belong in a Pixar feature film.`;
-
-            function buildStylePrompt() {
-                if (createSelectedStyle === 'custom') return '';
-                const isPersonMode = (createSelectedPhotoMode === 'portrait' || createSelectedPhotoMode === 'avatar') && !!createAiPhotoFile;
-                if (isPersonMode) {
-                    return createSelectedStyle === 'pixar' ? STYLE_PORTRAIT_PIXAR : STYLE_PORTRAIT_CLAY;
-                }
-                return createSelectedStyle === 'pixar' ? STYLE_PIXAR : STYLE_CLAY;
-            }
-
-            function buildPhotoModePrompt() {
-                const name = createNameInput?.value?.trim() || '';
-                const style = createSelectedStyle;
-                const mode = createSelectedPhotoMode;
-                if (style === 'custom') return '';
-
-                if (!createAiPhotoFile) {
-                    return `The food item is: ${name}\nInclude a bowl, plate, cup, or container only if the food needs one to make visual sense (soup, yoghurt, drinks, plated dishes). Otherwise show the food on its own.`;
-                }
-                if (mode === 'avatar') {
-                    const styleName = style === 'clay' ? 'clay-animated' : 'Pixar/Dreamworks-style animated';
-                    const movieStyle = style === 'clay' ? 'clay-animated' : 'Pixar';
-                    return `Transform the person in the reference photo into a ${styleName} character portrait. Focus ONLY on the person — create a close-up portrait or upper-body shot. Faithfully preserve their facial features, hair, skin tone, expressions, and clothing so they are clearly recognizable as an animated version of themselves. Do NOT include any food, dishes, plates, or kitchen items. The background should be clean and simple (solid color or soft gradient). The result should look like a ${movieStyle} character portrait. Maintain natural, flattering facial proportions - do not exaggerate noses, ears, or chins. Aim for a polished animated look, not caricature.${name ? ` The person's name is: ${name}` : ''}`;
-                }
-                if (mode === 'portrait') {
-                    const styleName = style === 'clay' ? 'clay-animated' : 'Pixar/Dreamworks-style animated';
-                    const movieStyle = style === 'clay' ? 'clay-animated' : 'Pixar';
-                    return `Transform the reference photo into a ${styleName} version. The image should show a person (cook/chef) proudly presenting, holding, or showing off a dish or food item. Faithfully preserve the person's facial features, expressions, and clothing from the photo so they are clearly recognizable as an animated version of themselves. Include the food item prominently — the person should be interacting with it (holding a plate, presenting a dish, etc.). The result should look like a still frame from a ${movieStyle} movie. Maintain natural, flattering facial proportions - do not exaggerate noses, ears, or chins. Aim for a polished animated look, not caricature.${name ? ` The product/dish is: ${name}` : ''}`;
-                }
-                if (mode === 'motiv') {
-                    const charStyle = style === 'pixar' ? 'stylized Pixar-like animated characters' : 'stylized clay characters';
-                    const sceneStyle = style === 'pixar' ? 'a miniature Pixar scene' : 'a miniature clay diorama';
-                    const renderStyle = style === 'pixar' ? 'glossy Pixar' : 'the Flango clay';
-                    return `Recreate the composition and subject from the reference photo as a 3D ${style === 'pixar' ? 'Pixar-style' : 'clay'} icon. Keep the food's arrangement, plating, and visual identity from the photo, but render everything in ${renderStyle} style. If people or faces appear in the photo, include them as ${charStyle} that resemble the original. The result should look like ${sceneStyle} of the actual scene.${name ? ` The product is called: ${name}` : ''}`;
-                }
-                // Reference
-                const styleName = style === 'pixar' ? 'Pixar-style' : 'clay-style';
-                const vesselStyle = style === 'pixar' ? 'glossy style' : 'clay style';
-                return `Use the reference photo only to identify the food item. Create a fresh ${styleName} icon of that food - do NOT recreate the photo. Ignore the photo's background, angle, lighting, and surroundings. Include a container only if the food naturally needs one. If the photo shows a distinctive serving vessel, you may include it in the same ${vesselStyle}.${name ? ` The product is called: ${name}` : ''}`;
-            }
-
-            function updateAdvancedPrompt() {
-                if (!advancedOpen) return;
-                const isCustom = createSelectedStyle === 'custom';
-                if (stylePromptSection) stylePromptSection.style.display = isCustom ? 'none' : 'block';
-                if (stylePromptEl && !stylePromptEdited) stylePromptEl.value = buildStylePrompt();
-                if (photoPromptSection) photoPromptSection.style.display = isCustom ? 'none' : 'block';
-                if (photoPromptEl && !photoPromptEdited) photoPromptEl.value = buildPhotoModePrompt();
-            }
-
-            // Helper: style active/inactive buttons inline (no CSS dependency)
-            const ACTIVE_BTN_STYLE = 'background:#fff;color:#1e293b;box-shadow:0 1px 3px rgba(0,0,0,0.1);';
-            const INACTIVE_BTN_STYLE = 'background:transparent;color:#94a3b8;box-shadow:none;';
-            const applyBtnGroupStyles = (btns, activeBtn) => {
-                btns.forEach(b => {
-                    const isActive = b === activeBtn || (typeof activeBtn === 'string' && b.dataset.style === activeBtn) || (typeof activeBtn === 'string' && b.dataset.mode === activeBtn) || (typeof activeBtn === 'string' && b.dataset.tab === activeBtn);
-                    b.classList.toggle('active', isActive);
-                    b.classList.toggle('selected', isActive);
-                    // Only apply inline styles for legacy tab buttons (not style cards or mode btns)
-                    if (b.classList.contains('icon-create-tab')) {
-                        Object.assign(b.style, { background: '', color: '', boxShadow: '' });
-                    } else if (!b.classList.contains('icon-create-style-card') && !b.classList.contains('icon-create-mode-btn')) {
-                        Object.assign(b.style, { background: isActive ? '#fff' : 'transparent', color: isActive ? '#1e293b' : '#94a3b8', boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' });
-                    }
-                });
-            };
-
-            let createCurrentTab = 'upload';
-            let createSelectedStyle = 'clay';
-            let createSelectedPhotoMode = 'reference';
-            let createUploadedFile = null;       // For upload tab
-            let createAiPhotoFile = null;         // For AI photo reference
-            let createAiResultUrl = null;         // Generated AI icon URL
-            let createEditingIcon = null;         // Icon being edited (for ⚙️ flow)
-
-            const closeCreateModal = () => {
-                iconCreateModal.style.display = 'none';
-                resetCreateModal();
-            };
-
-            function resetCreateModal() {
-                createUploadedFile = null;
-                createAiPhotoFile = null;
-                createAiResultUrl = null;
-                createEditingIcon = null;
-                if (createNameInput) createNameInput.value = '';
-                if (createUploadPreview) createUploadPreview.style.display = 'none';
-                if (createCameraPreview) createCameraPreview.style.display = 'none';
-                if (createAiPhotoPreview) createAiPhotoPreview.style.display = 'none';
-                if (createPhotoModeSection) createPhotoModeSection.style.display = 'none';
-                if (createAiResult) createAiResult.style.display = 'none';
-                if (createStatus) createStatus.style.display = 'none';
-                if (createCustomPromptSection) createCustomPromptSection.style.display = 'none';
-                if (createCustomPrompt) createCustomPrompt.value = '';
-                // Reset advanced
-                advancedOpen = false;
-                stylePromptEdited = false;
-                photoPromptEdited = false;
-                if (stylePromptSection) stylePromptSection.style.display = 'none';
-                if (photoPromptSection) photoPromptSection.style.display = 'none';
-                if (stylePromptEl) stylePromptEl.value = '';
-                if (photoPromptEl) photoPromptEl.value = '';
-                if (advancedArrow) advancedArrow.style.transform = '';
-                if (resetPromptBtn) resetPromptBtn.style.display = 'none';
-                if (createSaveBtn) { createSaveBtn.disabled = true; createSaveBtn.textContent = 'Gem ikon'; }
-                // Reset to upload tab
-                createCurrentTab = 'upload';
-                applyBtnGroupStyles(createTabs, 'upload');
-                createTabContents.forEach(tc => {
-                    tc.classList.remove('active');
-                    tc.style.display = 'none';
-                });
-                const uploadTab = document.getElementById('icon-create-upload-tab');
-                if (uploadTab) { uploadTab.classList.add('active'); uploadTab.style.display = 'block'; }
-                // Reset style
-                createSelectedStyle = 'clay';
-                applyBtnGroupStyles(createStyleBtns, 'clay');
-                createSelectedPhotoMode = 'reference';
-                applyBtnGroupStyles(createPhotoModeBtns, 'reference');
-                updatePortraitVisibility();
-            }
-
-            function updatePortraitVisibility() {
-                // Portrait and avatar available for all styles (clay, pixar, custom)
-                const portraitBtn = iconCreateModal.querySelector('[data-mode="portrait"]');
-                const avatarBtn = iconCreateModal.querySelector('[data-mode="avatar"]');
-                if (portraitBtn) portraitBtn.style.display = '';
-                if (avatarBtn) avatarBtn.style.display = '';
-            }
-
-            function updateSaveEnabled() {
-                if (!createSaveBtn) return;
-                if (createCurrentTab === 'upload') {
-                    createSaveBtn.disabled = !createUploadedFile;
-                } else if (createCurrentTab === 'camera') {
-                    createSaveBtn.disabled = !createUploadedFile;
-                } else if (createCurrentTab === 'ai') {
-                    createSaveBtn.disabled = !createAiResultUrl;
-                }
-            }
-
-            createCloseBtn?.addEventListener('click', closeCreateModal);
-            createCancelBtn?.addEventListener('click', closeCreateModal);
-
-            // Tab switching
-            createTabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    createCurrentTab = tab.dataset.tab;
-                    applyBtnGroupStyles(createTabs, tab);
-                    createTabContents.forEach(tc => { tc.classList.remove('active'); tc.style.display = 'none'; });
-                    const content = document.getElementById(`icon-create-${createCurrentTab}-tab`);
-                    if (content) { content.classList.add('active'); content.style.display = 'block'; }
-                    updateSaveEnabled();
-                });
-            });
-
-            // Upload tab — dropzone + file input
-            createDropzone?.addEventListener('click', () => createFileInput?.click());
-            createDropzone?.addEventListener('dragover', (e) => { e.preventDefault(); createDropzone.classList.add('dragover'); });
-            createDropzone?.addEventListener('dragleave', () => createDropzone.classList.remove('dragover'));
-            createDropzone?.addEventListener('drop', async (e) => {
-                e.preventDefault();
-                createDropzone.classList.remove('dragover');
-                const file = e.dataTransfer.files[0];
-                if (file) await handleCreateUploadFile(file);
-            });
-            createFileInput?.addEventListener('change', async () => {
-                const file = createFileInput.files[0];
-                if (file) await handleCreateUploadFile(file);
-                createFileInput.value = '';
-            });
-
-            async function handleCreateUploadFile(file) {
-                try {
-                    createUploadedFile = await processImageForUpload(file);
-                    const url = URL.createObjectURL(createUploadedFile);
-                    if (createUploadImg) createUploadImg.src = url;
-                    if (createUploadPreview) createUploadPreview.style.display = 'block';
-                    if (!createNameInput.value) createNameInput.value = file.name.replace(/\.[^.]+$/, '');
-                    updateSaveEnabled();
-                } catch (err) {
-                    console.error('[handleCreateUploadFile]', err);
-                }
-            }
-
-            // Camera tab
-            createCameraBtn?.addEventListener('click', async () => {
-                try {
-                    const file = await takeProductPhoto();
-                    if (file) {
-                        createUploadedFile = await processImageForUpload(file);
-                        const url = URL.createObjectURL(createUploadedFile);
-                        if (createCameraImg) createCameraImg.src = url;
-                        if (createCameraPreview) createCameraPreview.style.display = 'block';
-                        if (!createNameInput.value) createNameInput.value = 'Foto';
-                        updateSaveEnabled();
-                    }
-                } catch (err) {
-                    console.error('[createCameraCapture]', err);
-                }
-            });
-
-            // AI tab — style selector
-            const styleDescs = {
-                clay: '🏺 Blødt 3D-look med runde former og pastelfarver.',
-                pixar: '🎬 Blankt Pixar-look med klare farver og glans.',
-                custom: '✍️ Du skriver din egen prompt. Foto-tilstand ignoreres — din tekst styrer alt.',
-            };
-            const styleDescEl = document.getElementById('icon-create-style-desc');
-
-            createStyleBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    createSelectedStyle = btn.dataset.style;
-                    applyBtnGroupStyles(createStyleBtns, btn);
-                    if (styleDescEl) styleDescEl.textContent = styleDescs[createSelectedStyle] || '';
-                    const isCustom = createSelectedStyle === 'custom';
-                    if (createCustomPromptSection) createCustomPromptSection.style.display = isCustom ? 'block' : 'none';
-                    // Hide photo-mode selector in custom mode (user's prompt replaces everything)
-                    if (createPhotoModeSection && createAiPhotoFile) {
-                        createPhotoModeSection.style.display = isCustom ? 'none' : 'block';
-                    }
-                    updatePortraitVisibility();
-                    updateAdvancedPrompt();
-                });
-            });
-
-            // AI tab — photo reference
-            createAiDropzone?.addEventListener('click', () => createAiFileInput?.click());
-            createAiDropzone?.addEventListener('dragover', (e) => { e.preventDefault(); createAiDropzone.classList.add('dragover'); });
-            createAiDropzone?.addEventListener('dragleave', () => createAiDropzone.classList.remove('dragover'));
-            createAiDropzone?.addEventListener('drop', async (e) => {
-                e.preventDefault();
-                createAiDropzone.classList.remove('dragover');
-                const file = e.dataTransfer.files[0];
-                if (file) await handleCreateAiPhoto(file);
-            });
-            createAiFileInput?.addEventListener('change', async () => {
-                const file = createAiFileInput.files[0];
-                if (file) await handleCreateAiPhoto(file);
-                createAiFileInput.value = '';
-            });
-
-            async function handleCreateAiPhoto(file) {
-                try {
-                    createAiPhotoFile = await processImageForUpload(file);
-                    const url = URL.createObjectURL(createAiPhotoFile);
-                    if (createAiPhotoImg) createAiPhotoImg.src = url;
-                    if (createAiPhotoPreview) createAiPhotoPreview.style.display = 'block';
-                    if (createPhotoModeSection) createPhotoModeSection.style.display = 'block';
-                    if (createAiDropzone) createAiDropzone.style.display = 'none';
-                    updateAdvancedPrompt();
-                } catch (err) {
-                    console.error('[handleCreateAiPhoto]', err);
-                }
-            }
-
-            createAiPhotoRemove?.addEventListener('click', () => {
-                createAiPhotoFile = null;
-                if (createAiPhotoPreview) createAiPhotoPreview.style.display = 'none';
-                if (createPhotoModeSection) createPhotoModeSection.style.display = 'none';
-                if (createAiDropzone) createAiDropzone.style.display = 'block';
-                updateAdvancedPrompt();
-            });
-
-            // Photo mode selector
-            const photoModeDescs = {
-                reference: '📷 AI\'en ser kun maden på fotoet og laver et helt nyt ikon fra bunden.',
-                motiv: '🖼️ AI\'en genskaber hele kompositionen (mad, tallerkener, personer) i valgt stil.',
-                avatar: '👤 AI\'en laver en Pixar-figur af personen på fotoet. Kun personen — ingen mad.',
-                portrait: '🍽️ AI\'en laver en Pixar-figur af kokken der præsenterer/holder retten.',
-            };
-            const photoModeDescEl = document.getElementById('icon-create-photo-mode-desc');
-
-            function updatePhotoModeDesc() {
-                if (photoModeDescEl) photoModeDescEl.textContent = photoModeDescs[createSelectedPhotoMode] || '';
-            }
-
-            createPhotoModeBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    createSelectedPhotoMode = btn.dataset.mode;
-                    applyBtnGroupStyles(createPhotoModeBtns, btn);
-                    updatePhotoModeDesc();
-                    updateAdvancedPrompt();
-                });
-            });
-
-            // Set initial description
-            updatePhotoModeDesc();
-
-            // --- Advanced toggle ---
-            advancedToggle?.addEventListener('click', () => {
-                advancedOpen = !advancedOpen;
-                if (advancedArrow) advancedArrow.style.transform = advancedOpen ? 'rotate(90deg)' : '';
-                if (resetPromptBtn) resetPromptBtn.style.display = advancedOpen ? 'inline' : 'none';
-                if (advancedOpen) {
-                    stylePromptEdited = false;
-                    photoPromptEdited = false;
-                    updateAdvancedPrompt();
-                } else {
-                    if (stylePromptSection) stylePromptSection.style.display = 'none';
-                    if (photoPromptSection) photoPromptSection.style.display = 'none';
-                }
-            });
-
-            resetPromptBtn?.addEventListener('click', () => {
-                stylePromptEdited = false;
-                photoPromptEdited = false;
-                updateAdvancedPrompt();
-            });
-
-            stylePromptEl?.addEventListener('input', () => { stylePromptEdited = true; });
-            photoPromptEl?.addEventListener('input', () => { photoPromptEdited = true; });
-
-            // Update prompt when name changes
-            createNameInput?.addEventListener('input', () => {
-                updateAdvancedPrompt();
-            });
-
-            // AI Generate
-            createGenerateBtn?.addEventListener('click', async () => {
-                const iconName = createNameInput?.value.trim() || 'Ikon';
-                const institutionId = adminProfile?.institution_id;
-                if (!institutionId) return;
-
-                if (createStatus) { createStatus.style.display = 'block'; }
-                if (createStatusText) createStatusText.textContent = '🪄 Genererer ikon...';
-                if (createGenerateBtn) createGenerateBtn.disabled = true;
-
-                try {
-                    const adminUserId = adminProfile?.user_id;
-                    if (!adminUserId) throw new Error('Admin bruger ID ikke fundet');
-
-                    const { data: { session } } = await supabaseClient.auth.getSession();
-                    const accessToken = session?.access_token || '';
-                    const supabaseUrl = supabaseClient.supabaseUrl || supabaseClient.rest?.url?.replace('/rest/v1', '') || '';
-
-                    const isCustomMode = createSelectedStyle === 'custom';
-                    const hasPhoto = !!createAiPhotoFile;
-                    // If either advanced prompt was manually edited, combine and send as custom
-                    const useAdvancedPrompt = advancedOpen && (stylePromptEdited || photoPromptEdited);
-                    const combinedAdvancedPrompt = useAdvancedPrompt
-                        ? ((stylePromptEl?.value?.trim() || '') + '\n\n' + (photoPromptEl?.value?.trim() || '')).trim()
-                        : '';
-
-                    let response;
-
-                    if (hasPhoto && !isCustomMode && !useAdvancedPrompt) {
-                        // Photo-based generation (FormData)
-                        const formData = new FormData();
-                        formData.append('photo', createAiPhotoFile, 'photo.webp');
-                        formData.append('institution_id', institutionId);
-                        formData.append('product_name', iconName);
-                        formData.append('style', createSelectedStyle);
-                        formData.append('photo_mode', createSelectedPhotoMode);
-                        formData.append('save_to_library_only', 'true');
-
-                        response = await fetch(`${supabaseUrl}/functions/v1/generate-product-icon`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${accessToken}`,
-                                'x-admin-user-id': adminUserId,
-                            },
-                            body: formData,
-                        });
-                    } else if (hasPhoto && useAdvancedPrompt) {
-                        // Photo + manually edited prompt → send as custom via FormData
-                        const formData = new FormData();
-                        formData.append('photo', createAiPhotoFile, 'photo.webp');
-                        formData.append('institution_id', institutionId);
-                        formData.append('product_name', iconName);
-                        formData.append('prompt_mode', 'custom');
-                        formData.append('custom_prompt', combinedAdvancedPrompt);
-                        formData.append('save_to_library_only', 'true');
-
-                        response = await fetch(`${supabaseUrl}/functions/v1/generate-product-icon`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${accessToken}`,
-                                'x-admin-user-id': adminUserId,
-                            },
-                            body: formData,
-                        });
-                    } else {
-                        // Text-based or custom generation (JSON)
-                        const body = {
-                            institution_id: institutionId,
-                            product_name: iconName,
-                            style: isCustomMode ? 'custom' : createSelectedStyle,
-                            save_to_library_only: true,
-                        };
-                        if (isCustomMode || useAdvancedPrompt) {
-                            body.prompt_mode = 'custom';
-                            body.custom_prompt = useAdvancedPrompt
-                                ? combinedAdvancedPrompt
-                                : (createCustomPrompt?.value?.trim() || iconName);
-                        }
-
-                        response = await fetch(`${supabaseUrl}/functions/v1/generate-product-icon`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${accessToken}`,
-                                'x-admin-user-id': adminUserId,
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(body),
-                        });
-                    }
-
-                    const result = await response.json();
-                    if (!result.success) throw new Error(result.error || 'Generation failed');
-
-                    createAiResultUrl = result.library_icon_url || result.icon_signed_url || result.icon_url;
-                    if (createAiResultImg) createAiResultImg.src = createAiResultUrl;
-                    if (createAiResult) createAiResult.style.display = 'block';
-                    if (createAiResultLabel) {
-                        const labels = [];
-                        if (result.style) labels.push(result.style === 'clay' ? '🏺 Clay' : result.style === 'pixar' ? '🎬 Pixar' : '✍️ Fri prompt');
-                        if (result.mode) {
-                            const modeLabels = { 'photo-reference': '📷 Reference', 'photo-motiv': '🖼️ Motiv', 'photo-avatar': '👤 Avatar', 'photo-portrait': '🍽️ Mad Portræt', 'text': '✏️ Tekst', 'custom-photo': '🎨 Fri prompt', 'custom-text': '🎨 Fri prompt' };
-                            labels.push(modeLabels[result.mode] || result.mode);
-                        }
-                        createAiResultLabel.textContent = labels.join(' · ');
-                    }
-                    updateSaveEnabled();
-
-                    // Reload the grid since the icon is already saved to library by the Edge Function
-                    await loadIconManagementGrid();
-
-                } catch (err) {
-                    console.error('[createAiGenerate]', err);
-                    if (createStatusText) createStatusText.textContent = `❌ ${err.message}`;
-                    setTimeout(() => { if (createStatus) createStatus.style.display = 'none'; }, 3000);
-                } finally {
-                    if (createGenerateBtn) createGenerateBtn.disabled = false;
-                    if (createStatus && createAiResultUrl) createStatus.style.display = 'none';
-                }
-            });
-
-            // Save button
-            createSaveBtn?.addEventListener('click', async () => {
-                const institutionId = adminProfile?.institution_id;
-                if (!institutionId) return;
-
-                if (createCurrentTab === 'ai') {
-                    // AI icons are already saved by the edge function — just close
-                    closeCreateModal();
-                    return;
-                }
-
-                // Upload or Camera — save to library
-                if (!createUploadedFile) return;
-                createSaveBtn.disabled = true;
-                createSaveBtn.textContent = 'Gemmer...';
-
-                try {
-                    const iconName = createNameInput?.value.trim() || 'Ikon';
-                    const tempProductId = crypto.randomUUID();
-                    const adminUserId = adminProfile?.user_id || adminProfile?.id;
-
-                    const result = await uploadProductIcon(createUploadedFile, institutionId, tempProductId, adminUserId);
-                    if (!result.success) throw new Error(result.error || 'Upload failed');
-
-                    // Reload grid
-                    await loadIconManagementGrid();
-                    closeCreateModal();
-                } catch (err) {
-                    console.error('[createSave]', err);
-                    createSaveBtn.textContent = 'Gem ikon';
-                    createSaveBtn.disabled = false;
-                }
-            });
-
-            // Open create modal (optionally with existing icon as reference)
-            openIconCreateModal = (existingIcon) => {
-                resetCreateModal();
-                iconCreateModal.style.display = 'flex';
-
-                const tabsBar = iconCreateModal.querySelector('.icon-create-tabs');
-                const photoRemoveBtn = document.getElementById('icon-create-ai-photo-remove');
-
-                if (existingIcon) {
-                    createEditingIcon = existingIcon;
-                    const title = document.getElementById('icon-create-title');
-                    if (title) title.textContent = 'Redigér ikon med AI';
-                    if (createNameInput) createNameInput.value = existingIcon.name;
-
-                    // Show preview of the icon being edited
-                    let editPreview = iconCreateModal.querySelector('.icon-edit-preview');
-                    if (!editPreview) {
-                        editPreview = document.createElement('div');
-                        editPreview.className = 'icon-edit-preview';
-                        editPreview.style.cssText = 'text-align:center;padding:16px 0 8px;';
-                        const nameInput = document.getElementById('icon-create-name');
-                        if (nameInput) nameInput.parentElement.insertBefore(editPreview, nameInput.parentElement.firstChild);
-                    }
-                    editPreview.style.display = 'block';
-                    editPreview.innerHTML = `
-                        <img src="${existingIcon.icon_url}" style="width:100px;height:100px;object-fit:cover;border-radius:14px;border:2px solid rgba(255,255,255,0.15);box-shadow:0 4px 16px rgba(0,0,0,0.2);">
-                        <div style="font-size:13px;color:#94a3b8;margin-top:6px;">${existingIcon.name}</div>
-                    `;
-
-                    // Hide tabs — Upload/Kamera irrelevant when editing existing icon
-                    if (tabsBar) tabsBar.style.display = 'none';
-
-                    // Show AI tab directly
-                    createCurrentTab = 'ai';
-                    createTabContents.forEach(tc => { tc.classList.remove('active'); tc.style.display = 'none'; });
-                    const aiTab = document.getElementById('icon-create-ai-tab');
-                    if (aiTab) { aiTab.classList.add('active'); aiTab.style.display = 'block'; }
-
-                    // Default to Portræt mode when editing (most natural for re-generating an existing icon)
-                    createSelectedPhotoMode = 'portrait';
-                    applyBtnGroupStyles(createPhotoModeBtns, 'portrait');
-                    updatePhotoModeDesc();
-
-                    // Pre-load existing icon as locked photo reference
-                    if (createAiPhotoImg) createAiPhotoImg.src = existingIcon.icon_url;
-                    if (createAiPhotoPreview) createAiPhotoPreview.style.display = 'block';
-                    if (createPhotoModeSection) createPhotoModeSection.style.display = 'block';
-                    // Hide dropzone and "Fjern" — reference locked to existing icon
-                    if (createAiDropzone) createAiDropzone.style.display = 'none';
-                    if (createAiPhotoSection) createAiPhotoSection.querySelector('.icon-create-dropzone')?.parentElement && (createAiPhotoSection.querySelector('.icon-create-dropzone').parentElement.style.display = 'none');
-                    if (photoRemoveBtn) photoRemoveBtn.style.display = 'none';
-
-                    // Fetch existing icon as blob for AI reference
-                    fetch(existingIcon.icon_url)
-                        .then(r => r.blob())
-                        .then(blob => {
-                            createAiPhotoFile = new File([blob], 'reference.webp', { type: 'image/webp' });
-                            updateAdvancedPrompt(); // Refresh prompts now that photo file is ready
-                        })
-                        .catch(err => console.error('[fetchExistingIcon]', err));
-
-                    // Update prompts immediately (portrait mode + style)
-                    updateAdvancedPrompt();
-                } else {
-                    const title = document.getElementById('icon-create-title');
-                    if (title) title.textContent = 'Opret nyt ikon';
-                    // Show tabs in create mode
-                    if (tabsBar) tabsBar.style.display = '';
-                    if (photoRemoveBtn) photoRemoveBtn.style.display = '';
-                    // Hide edit preview
-                    const editPreview = iconCreateModal.querySelector('.icon-edit-preview');
-                    if (editPreview) editPreview.style.display = 'none';
-                }
-            };
         }
 
         // Expose globally

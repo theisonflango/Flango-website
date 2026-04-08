@@ -216,7 +216,8 @@ body[data-theme="klart"] .pp-inline-default {
     margin: 0;
     font-size: 18px;
     font-weight: 700;
-    color: #f8fafc;
+    color: #f8fafc !important;
+    -webkit-text-fill-color: #f8fafc !important;
 }
 
 .profile-pic-modal-close {
@@ -353,6 +354,20 @@ body[data-theme="klart"] .pp-inline-default {
     background: rgba(99, 102, 241, 0.15);
     border-color: rgba(99, 102, 241, 0.5);
     color: #a5b4fc;
+}
+
+.profile-pic-type-btn.pp-type-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.pp-type-disabled-reason {
+    font-size: 9px;
+    color: #ef4444;
+    margin-top: 2px;
+    font-weight: 600;
+    line-height: 1.2;
 }
 
 /* --- Sub-view container --- */

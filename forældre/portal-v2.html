@@ -8,7 +8,7 @@
     script-src 'self' 'unsafe-inline' cdn.jsdelivr.net unpkg.com https://js.stripe.com https://challenges.cloudflare.com;
     style-src 'self' 'unsafe-inline' fonts.googleapis.com;
     font-src 'self' fonts.gstatic.com;
-    img-src 'self' data: blob: https://jbknjgbpghrbrstqwoxj.supabase.co https://api.qrserver.com;
+    img-src 'self' data: blob: https://jbknjgbpghrbrstqwoxj.supabase.co https://api.qrserver.com https://flango.dk http://127.0.0.1:3000 http://localhost:3000;
     connect-src 'self' https://jbknjgbpghrbrstqwoxj.supabase.co https://jbknjgbpghrbrstqwoxj.functions.supabase.co wss://jbknjgbpghrbrstqwoxj.supabase.co https://api.stripe.com https://challenges.cloudflare.com;
     frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com;
     object-src 'none';
@@ -16,7 +16,7 @@
 ">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Flango Forældreportal</title>
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script>if(!['localhost','127.0.0.1'].includes(location.hostname)){var s=document.createElement('script');s.src='https://challenges.cloudflare.com/turnstile/v0/api.js';s.async=s.defer=true;document.head.appendChild(s)}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">

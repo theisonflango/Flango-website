@@ -10,8 +10,9 @@ import { parseBadgeList, formatBadgeList, renderSimpleBadgeDisplay } from '../do
 import { showAlert, showCustomAlert } from './sound-and-alerts.js';
 import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
 import { refetchUserBalance } from '../core/data-refetch.js';
-import { getCachedProfilePictureUrl, getProfilePictureUrl, invalidateProfilePictureCache } from '../core/profile-picture-cache.js';
-import { removeProfilePicture } from '../core/profile-picture-utils.js';
+import { getCachedProfilePictureUrl, getProfilePictureUrl, invalidateProfilePictureCache, batchPreWarmProfilePictures } from '../core/profile-picture-cache.js';
+import { removeProfilePicture, fetchUserProfilePictures, applyProfilePicture } from '../core/profile-picture-utils.js';
+import { supabaseClient } from '../core/config-and-supabase.js';
 
 function extractBalanceFromRpcData(data) {
     if (data == null) return null;
@@ -192,22 +193,82 @@ export function setupAdminUserManagerFromModule(config = {}) {
         }
     });
 
+    // ── Toggle tabs (Børn / Admins) ──
+    const toggleCustomersBtn = modal.querySelector('#admin-toggle-customers');
+    const toggleAdminsBtn = modal.querySelector('#admin-toggle-admins');
+
     const applyUserManagerMode = () => {
         const isAdminMode = getMode() === 'admins';
         modal.dataset.roleFilter = isAdminMode ? 'admin' : 'kunde';
-        if (headerTitleEl) {
-            headerTitleEl.textContent = isAdminMode ? 'Rediger Admin' : 'Rediger Brugere';
-        }
         if (addUserBtn) {
             addUserBtn.textContent = isAdminMode ? '➕ Tilføj Admin' : '➕ Tilføj Ny Bruger';
         }
-        // Vis kun Admin Regler i admin-tilstand
-        const adminRulesSection = modal.querySelector('#admin-rules-inline');
-        if (adminRulesSection) {
-            adminRulesSection.style.display = isAdminMode ? 'block' : 'none';
+        // Auto-import knap kun for børn
+        const autoImportBtn = modal.querySelector('#auto-import-open-btn');
+        if (autoImportBtn) autoImportBtn.style.display = isAdminMode ? 'none' : '';
+        // Klasse-kolonne kun for børn
+        const gradeHeader = modal.querySelector('#admin-sort-by-grade-btn');
+        if (gradeHeader) gradeHeader.style.display = isAdminMode ? 'none' : '';
+        // Toggle-knapper aktiv-state
+        if (toggleCustomersBtn && toggleAdminsBtn) {
+            toggleCustomersBtn.classList.toggle('active', !isAdminMode);
+            toggleAdminsBtn.classList.toggle('active', isAdminMode);
         }
     };
     applyUserManagerMode();
+
+    if (toggleCustomersBtn) {
+        toggleCustomersBtn.onclick = () => {
+            if (getMode() === 'customers') return;
+            setMode('customers');
+            applyUserManagerMode();
+            if (searchInput) { searchInput.value = ''; adminUserSelectionIndex = 0; }
+            renderAdminUserListFromModule();
+        };
+    }
+    if (toggleAdminsBtn) {
+        toggleAdminsBtn.onclick = () => {
+            if (getMode() === 'admins') return;
+            setMode('admins');
+            applyUserManagerMode();
+            if (searchInput) { searchInput.value = ''; adminUserSelectionIndex = 0; }
+            renderAdminUserListFromModule();
+        };
+    }
+
+    // Direct edit: open detail modal for a specific user without showing the list
+    // Optional focusField: 'name' | 'number' | 'balance' | 'grade' — focuses that input after open
+    window.__flangoOpenEditUser = (user, focusField) => {
+        if (!user) return;
+        currentAdminUserDetail = user;
+        openAdminUserDetail(user);
+        if (focusField) {
+            const fieldMap = {
+                name: '#edit-user-name-input',
+                number: '#edit-user-number-input',
+                balance: '#edit-user-balance-input',
+                grade: '#edit-user-grade-level',
+                badge: '#assign-badge-btn',
+            };
+            const selector = fieldMap[focusField];
+            if (selector) {
+                // Open the accordion section containing the field, then focus
+                setTimeout(() => {
+                    const el = detailModal.querySelector(selector);
+                    if (!el) return;
+                    // Find and open the parent accordion section
+                    const section = el.closest('.eu-section');
+                    if (section) {
+                        const header = section.querySelector('.eu-section-header');
+                        if (header && !header.classList.contains('active')) {
+                            header.click();
+                        }
+                    }
+                    setTimeout(() => { el.focus(); el.select?.(); }, 100);
+                }, 150);
+            }
+        }
+    };
 
     window.__flangoOpenAdminUserManager = async (mode = adminManagerMode) => {
         const normalizedMode = mode === 'admins' ? 'admins' : 'customers';
@@ -221,41 +282,6 @@ export function setupAdminUserManagerFromModule(config = {}) {
         renderAdminUserListFromModule();
         modal.style.display = 'flex';
         setTimeout(() => searchInput.focus(), 50);
-
-        // Load and wire up admin rules if supabaseClient is available
-        if (supabaseClient && adminProfile?.institution_id) {
-            const showAdminsCheckbox = modal.querySelector('#admin-rules-show-admins-inline');
-            const adminsFreeCheckbox = modal.querySelector('#admin-rules-admins-free-inline');
-
-            if (showAdminsCheckbox && adminsFreeCheckbox) {
-                // Load current settings
-                const { data } = await supabaseClient
-                    .from('institutions')
-                    .select('show_admins_in_user_list, admins_purchase_free')
-                    .eq('id', adminProfile.institution_id)
-                    .single();
-
-                if (data) {
-                    showAdminsCheckbox.checked = data.show_admins_in_user_list || false;
-                    adminsFreeCheckbox.checked = data.admins_purchase_free || false;
-                }
-
-                // Auto-save on change
-                const saveAdminRules = async () => {
-                    await supabaseClient
-                        .from('institutions')
-                        .update({
-                            show_admins_in_user_list: showAdminsCheckbox.checked,
-                            admins_purchase_free: adminsFreeCheckbox.checked
-                        })
-                        .eq('id', adminProfile.institution_id);
-                };
-
-                // Remove old listeners and add new ones
-                showAdminsCheckbox.onchange = saveAdminRules;
-                adminsFreeCheckbox.onchange = saveAdminRules;
-            }
-        }
     };
 
     const handleAdminKeydown = (e) => {
@@ -374,11 +400,51 @@ export function setupAdminUserManagerFromModule(config = {}) {
         });
     }
 
+    function setupEditUserAccordion(modal) {
+        const sections = modal.querySelectorAll('.eu-section');
+        sections.forEach(section => {
+            const header = section.querySelector('.eu-section-header');
+            if (!header) return;
+            // Prevent stacking listeners on repeated opens — clone to remove old handlers
+            const freshHeader = header.cloneNode(true);
+            header.parentNode.replaceChild(freshHeader, header);
+            freshHeader.addEventListener('click', (e) => {
+                e.preventDefault();
+                const isActive = freshHeader.classList.contains('active');
+                // Close all sections
+                sections.forEach(s => {
+                    s.querySelector('.eu-section-header')?.classList.remove('active');
+                    s.querySelector('.eu-section-content')?.classList.remove('active');
+                });
+                // Toggle this one
+                if (!isActive) {
+                    freshHeader.classList.add('active');
+                    section.querySelector('.eu-section-content')?.classList.add('active');
+                }
+            });
+        });
+    }
+
     function openAdminUserDetail(user) {
         if (!user) return;
         currentAdminUserDetail = user;
+        const isAdmin = user.role === 'admin';
         detailModal.style.display = 'flex';
-        detailModal.querySelector('#edit-user-detail-title').textContent = `Rediger ${user.name}`;
+        detailModal.querySelector('#edit-user-detail-title').textContent = isAdmin ? `Rediger Admin: ${user.name}` : `Rediger ${user.name}`;
+
+        const editForm = detailModal.querySelector('.edit-user-form');
+
+        // Clean up previous admin sections
+        const adminArea = detailModal.querySelector('#eu-admin-account-area');
+        if (adminArea) adminArea.innerHTML = '';
+        editForm.querySelectorAll('.admin-account-section').forEach(el => el.remove());
+
+        // Brugernummer og klasse kun for børn
+        const numberGroup = editUserNumberInput?.closest('.form-group');
+        const gradeGroup = editUserGradeLevelSelect?.closest('.form-group');
+        if (numberGroup) numberGroup.style.display = isAdmin ? 'none' : '';
+        if (gradeGroup) gradeGroup.style.display = isAdmin ? 'none' : '';
+
         editUserNameInput.value = user.name || '';
         editUserNumberInput.value = user.number || '';
         if (editUserGradeLevelSelect) {
@@ -407,21 +473,222 @@ export function setupAdminUserManagerFromModule(config = {}) {
         assignBadgeBtn.disabled = isSelf;
         if (assignBadgeNote) {
             if (isSelf) {
-                assignBadgeNote.textContent = 'Du kan ikke tildele badges til dig selv. Bed en kollega om hjælp 😊';
+                assignBadgeNote.textContent = 'Du kan ikke tildele badges til dig selv. Bed en kollega om hjælp.';
                 assignBadgeNote.style.display = 'block';
             } else {
                 assignBadgeNote.style.display = 'none';
             }
         }
 
+        // --- Admin-specifikke sektioner ---
+        if (isAdmin && adminArea) {
+            renderAdminAccountSection(user, adminArea, isSelf);
+        }
+
         // --- Profile picture section ---
         renderProfilePictureSection(user, detailModal);
+
+        // --- Close all sections (clean state) ---
+        detailModal.querySelectorAll('.eu-section-header').forEach(h => h.classList.remove('active'));
+        detailModal.querySelectorAll('.eu-section-content').forEach(c => c.classList.remove('active'));
+
+        // --- Setup accordion ---
+        setupEditUserAccordion(detailModal);
     }
+
+    function renderAdminAccountSection(user, editForm, isSelf) {
+        const section = document.createElement('div');
+        section.className = 'admin-account-section';
+        section.style.cssText = 'border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 14px; margin-bottom: 14px; background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(255,255,255,0.02));';
+
+        const sectionTitle = document.createElement('div');
+        sectionTitle.style.cssText = 'font-weight: 700; font-size: 14px; margin-bottom: 12px; color: var(--text-primary, #fff);';
+        sectionTitle.textContent = 'Admin Konto';
+        section.appendChild(sectionTitle);
+
+        // Email
+        const emailGroup = document.createElement('div');
+        emailGroup.className = 'form-group';
+        emailGroup.innerHTML = `
+            <label>Email</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <input type="email" id="admin-email-input" value="${user.email || ''}" placeholder="admin@email.dk" style="flex:1;" autocomplete="off">
+                <button type="button" id="admin-save-email-btn" class="action-button secondary-action" style="padding:8px 14px;font-size:13px;white-space:nowrap;">Gem email</button>
+            </div>
+            <div id="admin-email-status" style="font-size:12px;margin-top:4px;display:none;"></div>
+        `;
+        section.appendChild(emailGroup);
+
+        // Password
+        const pwGroup = document.createElement('div');
+        pwGroup.className = 'form-group';
+        pwGroup.innerHTML = `
+            <label>Skift adgangskode</label>
+            ${!isSelf ? `<input type="password" id="admin-current-pw-input" placeholder="Nuværende adgangskode (påkrævet)" autocomplete="off" style="margin-bottom:6px;">` : ''}
+            <input type="password" id="admin-new-pw-input" placeholder="Ny adgangskode (min. 10 tegn)" autocomplete="new-password">
+            <input type="password" id="admin-confirm-pw-input" placeholder="Gentag ny adgangskode" autocomplete="new-password" style="margin-top:6px;">
+            <div style="display:flex;gap:8px;margin-top:8px;">
+                <button type="button" id="admin-save-pw-btn" class="action-button secondary-action" style="padding:8px 14px;font-size:13px;">Gem adgangskode</button>
+            </div>
+            <div id="admin-pw-status" style="font-size:12px;margin-top:4px;display:none;"></div>
+        `;
+        section.appendChild(pwGroup);
+
+        // Per-admin toggles
+        const togglesGroup = document.createElement('div');
+        togglesGroup.className = 'form-group';
+        togglesGroup.style.cssText = 'margin-top:10px;';
+        togglesGroup.innerHTML = `
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:8px;">
+                <input type="checkbox" id="admin-toggle-show-in-list" ${user.show_in_user_list !== false ? 'checked' : ''} style="cursor:pointer;width:18px;height:18px;">
+                <div>
+                    <strong>Vis i 'Vælg Bruger' listen</strong>
+                    <div style="font-size:11px;opacity:0.6;">Denne admin kan vælges som kunde i caféen</div>
+                </div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                <input type="checkbox" id="admin-toggle-purchase-free" ${user.purchase_free ? 'checked' : ''} style="cursor:pointer;width:18px;height:18px;">
+                <div>
+                    <strong>Skal ikke betale</strong>
+                    <div style="font-size:11px;opacity:0.6;">Køber for 0 kr (registreres stadig i historik)</div>
+                </div>
+            </label>
+        `;
+        section.appendChild(togglesGroup);
+
+        // Indsæt i admin-account-area (accordion brugerdata-sektion)
+        editForm.appendChild(section);
+
+        // Wire up email save
+        const saveEmailBtn = section.querySelector('#admin-save-email-btn');
+        const emailInput = section.querySelector('#admin-email-input');
+        const emailStatus = section.querySelector('#admin-email-status');
+        saveEmailBtn.onclick = async () => {
+            const newEmail = emailInput.value.trim();
+            if (!newEmail || newEmail === user.email) {
+                showStatus(emailStatus, 'Ingen ændring.', 'orange');
+                return;
+            }
+            saveEmailBtn.disabled = true;
+            saveEmailBtn.textContent = 'Gemmer...';
+            try {
+                // Brug altid Edge Function (admin API) — auth.updateUser kræver AAL2 ved MFA
+                const { data, error: fnErr } = await supabaseClient.functions.invoke('update-admin-account', {
+                    body: { target_user_id: user.id, new_email: newEmail },
+                });
+                if (fnErr) {
+                    let msg = fnErr.message;
+                    try { const b = await fnErr.context?.json(); if (b?.error) msg = b.error; } catch {}
+                    throw new Error(msg);
+                }
+                if (data?.error) throw new Error(data.error);
+                user.email = newEmail;
+                showStatus(emailStatus, 'Email opdateret.', 'green');
+            } catch (e) {
+                showStatus(emailStatus, e.message || 'Fejl ved opdatering.', 'red');
+            } finally {
+                saveEmailBtn.disabled = false;
+                saveEmailBtn.textContent = 'Gem email';
+            }
+        };
+
+        // Wire up password save
+        const savePwBtn = section.querySelector('#admin-save-pw-btn');
+        const currentPwInput = section.querySelector('#admin-current-pw-input');
+        const newPwInput = section.querySelector('#admin-new-pw-input');
+        const confirmPwInput = section.querySelector('#admin-confirm-pw-input');
+        const pwStatus = section.querySelector('#admin-pw-status');
+        savePwBtn.onclick = async () => {
+            const newPw = newPwInput.value;
+            const confirmPw = confirmPwInput.value;
+            const currentPw = currentPwInput?.value || '';
+
+            // Validering
+            if (newPw.length < 10) {
+                showStatus(pwStatus, 'Adgangskoden skal være mindst 10 tegn.', 'red');
+                return;
+            }
+            if (!/[a-zA-ZæøåÆØÅ]/.test(newPw) || !/\d/.test(newPw)) {
+                showStatus(pwStatus, 'Adgangskoden skal indeholde både bogstaver og tal.', 'red');
+                return;
+            }
+            if (newPw !== confirmPw) {
+                showStatus(pwStatus, 'Adgangskoderne er ikke ens.', 'red');
+                confirmPwInput.value = '';
+                confirmPwInput.focus();
+                return;
+            }
+            if (!isSelf && !currentPw) {
+                showStatus(pwStatus, 'Du skal angive den nuværende adgangskode.', 'red');
+                return;
+            }
+
+            savePwBtn.disabled = true;
+            savePwBtn.textContent = 'Gemmer...';
+            try {
+                // Brug altid Edge Function (admin API) — auth.updateUser kræver AAL2 ved MFA
+                const body = { target_user_id: user.id, new_password: newPw };
+                if (!isSelf && currentPw) body.current_password_of_target = currentPw;
+                const { data, error: fnErr } = await supabaseClient.functions.invoke('update-admin-account', {
+                    body,
+                });
+                if (fnErr) {
+                    let msg = fnErr.message;
+                    try { const b = await fnErr.context?.json(); if (b?.error) msg = b.error; } catch {}
+                    throw new Error(msg);
+                }
+                if (data?.error) throw new Error(data.error);
+                newPwInput.value = '';
+                confirmPwInput.value = '';
+                if (currentPwInput) currentPwInput.value = '';
+                showStatus(pwStatus, 'Adgangskode opdateret.', 'green');
+            } catch (e) {
+                showStatus(pwStatus, e.message || 'Fejl ved opdatering.', 'red');
+            } finally {
+                savePwBtn.disabled = false;
+                savePwBtn.textContent = 'Gem adgangskode';
+            }
+        };
+
+        // Wire up per-admin toggles (auto-save)
+        const showInListCheckbox = section.querySelector('#admin-toggle-show-in-list');
+        const purchaseFreeCheckbox = section.querySelector('#admin-toggle-purchase-free');
+        const saveToggle = async () => {
+            await supabaseClient
+                .from('users')
+                .update({
+                    show_in_user_list: showInListCheckbox.checked,
+                    purchase_free: purchaseFreeCheckbox.checked,
+                })
+                .eq('id', user.id);
+            user.show_in_user_list = showInListCheckbox.checked;
+            user.purchase_free = purchaseFreeCheckbox.checked;
+        };
+        showInListCheckbox.onchange = saveToggle;
+        purchaseFreeCheckbox.onchange = saveToggle;
+    }
+
+    function showStatus(el, message, color) {
+        if (!el) return;
+        el.textContent = message;
+        el.style.display = 'block';
+        el.style.color = color === 'green' ? 'var(--success-color, #22c55e)' : color === 'red' ? 'var(--danger-color, #ef4444)' : 'var(--warning-color, #f59e0b)';
+        setTimeout(() => { el.style.display = 'none'; }, 5000);
+    }
+
+    // State for pending profile picture selection (used by handleSaveAdminUserDetail)
+    // null = no change, { entry } = select this, 'clear' = deselect all
+    let pendingProfilePicture = undefined; // undefined = no change pending
+
+    const TYPE_LABELS = { upload: 'Upload', camera: 'Kamera', library: 'Bibliotek', icon: 'Ikon', ai_avatar: 'AI' };
 
     function renderProfilePictureSection(user, modal) {
         // Remove any existing profile picture section
         const existing = modal.querySelector('#profile-pic-section');
         if (existing) existing.remove();
+        // Clear accordion profile content area
+        const profileContent = modal.querySelector('#eu-profile-content');
+        if (profileContent) profileContent.innerHTML = '';
 
         const inst = window.__flangoGetInstitutionById?.(user.institution_id);
         if (!inst?.profile_pictures_enabled) return;
@@ -430,54 +697,126 @@ export function setupAdminUserManagerFromModule(config = {}) {
         section.id = 'profile-pic-section';
 
         const isOptOut = user.profile_picture_opt_out === true;
-        const hasPic = user.profile_picture_url && !isOptOut;
-
-        // Build granular opt-out message
-        const optOuts = [];
-        if (user.profile_picture_opt_out_camera) optOuts.push('kamera-foto');
-        if (user.profile_picture_opt_out_ai) optOuts.push('AI-avatar');
-        if (user.profile_picture_opt_out_aula) optOuts.push('Aula-billede');
 
         if (isOptOut) {
             section.innerHTML = `<p class="profile-pic-opt-out-msg">Forælderen har fravalgt alle profilbilleder for dette barn</p>`;
-        } else {
-            const cachedUrl = hasPic ? getCachedProfilePictureUrl(user) : null;
-            const previewHtml = cachedUrl
-                ? `<img src="${cachedUrl}" alt="" class="profile-pic-detail-preview">`
-                : `<span class="profile-pic-detail-placeholder">👤</span>`;
-
-            const typeLabel = user.profile_picture_type
-                ? { upload: 'Uploadet', camera: 'Kamera', library: 'Bibliotek', ai_avatar: 'AI-Avatar' }[user.profile_picture_type] || ''
-                : '';
-
-            section.innerHTML = `
-                <div class="profile-pic-detail-row">
-                    <span id="pp-detail-preview">${previewHtml}</span>
-                    <div style="flex:1;min-width:0;overflow:hidden;">
-                        <div class="pp-detail-label">Profilbillede</div>
-                        ${hasPic ? `<div class="pp-detail-sublabel">${typeLabel}</div>` : `<div class="pp-detail-sublabel">Intet billede sat</div>`}
-                    </div>
-                    <div style="display:flex;gap:8px;flex-shrink:0;">
-                        <button type="button" id="pp-change-btn" class="action-button secondary-action" style="padding:8px 14px;font-size:13px;white-space:nowrap;">
-                            ${hasPic ? 'Skift' : 'Tilføj'}
-                        </button>
-                        ${hasPic ? `<button type="button" id="pp-remove-btn" class="action-button" style="padding:8px 14px;font-size:13px;background:var(--danger-color);white-space:nowrap;">Fjern</button>` : ''}
-                    </div>
-                </div>
-                ${optOuts.length > 0 ? `<div style="font-size:12px;color:var(--warning-color,#f59e0b);margin-top:6px;">⚠️ Forælder har fravalgt: ${optOuts.join(', ')}</div>` : ''}`;
-
-            // Async load preview if not cached
-            if (hasPic && !cachedUrl) {
-                getProfilePictureUrl(user).then(url => {
-                    const previewEl = section.querySelector('#pp-detail-preview');
-                    if (url && previewEl) {
-                        previewEl.innerHTML = `<img src="${url}" alt="" class="profile-pic-detail-preview">`;
-                    }
-                });
-            }
+            insertSection(section, modal);
+            return;
         }
 
-        // Insert before the save button's parent form-group
+        section.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px;">
+                <button type="button" id="pp-add-btn" class="action-button secondary-action" style="padding:6px 12px;font-size:12px;">+ Tilføj nyt</button>
+            </div>
+            <div style="position:relative;">
+                <button type="button" id="pp-nav-left" class="pp-carousel-nav pp-carousel-left" style="display:none;">‹</button>
+                <div id="pp-grid-container" class="pp-carousel-track">
+                    <div style="color:#94a3b8;font-size:12px;padding:16px;">Henter billeder...</div>
+                </div>
+                <button type="button" id="pp-nav-right" class="pp-carousel-nav pp-carousel-right" style="display:none;">›</button>
+            </div>`;
+
+        insertSection(section, modal);
+
+        // Wire add button
+        section.querySelector('#pp-add-btn')?.addEventListener('click', async () => {
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js');
+            openProfilePictureModal(user, {
+                showCustomAlert,
+                onSaved: (updatedUser) => {
+                    Object.assign(user, updatedUser);
+                    invalidateProfilePictureCache(user.id);
+                    pendingProfilePicture = undefined;
+                    renderProfilePictureSection(user, modal);
+                    if (typeof renderAdminUserListFromModule === 'function') renderAdminUserListFromModule();
+                },
+            });
+        });
+
+        // Fetch library entries and render grid
+        fetchUserProfilePictures(user.id, user).then(async (entries) => {
+            const gridContainer = section.querySelector('#pp-grid-container');
+            if (!gridContainer) return;
+
+            if (entries.length === 0) {
+                gridContainer.innerHTML = `<div style="color:#94a3b8;font-size:12px;padding:12px;">Ingen billeder endnu. Tryk "+ Tilføj" for at oprette.</div>`;
+                return;
+            }
+
+            // Generate signed URLs for storage-based entries
+            const urlMap = new Map();
+            const storageEntries = entries.filter(e => e.storage_path && !e.storage_path.startsWith('http') && e.picture_type !== 'library' && e.picture_type !== 'icon');
+            if (storageEntries.length > 0) {
+                const paths = storageEntries.map(e => e.storage_path);
+                const { data: signedData } = await supabaseClient.storage
+                    .from('profile-pictures')
+                    .createSignedUrls(paths, 3600);
+                if (signedData) {
+                    signedData.forEach((item, i) => {
+                        if (item.signedUrl) urlMap.set(storageEntries[i].id, item.signedUrl);
+                    });
+                }
+            }
+
+            // Determine which entry is currently selected
+            const activeEntry = entries.find(e => e.is_active);
+
+            // Reset pending state when re-rendering
+            pendingProfilePicture = undefined;
+
+            gridContainer.innerHTML = entries.map((entry, i) => {
+                const isActive = entry.is_active;
+                const url = urlMap.get(entry.id) || entry.storage_path;
+                const label = entry.ai_style
+                    ? `AI-${entry.ai_style.charAt(0).toUpperCase() + entry.ai_style.slice(1)}`
+                    : (TYPE_LABELS[entry.picture_type] || '');
+                return `
+                    <div data-entry-index="${i}" data-selected="${isActive}" class="pp-carousel-item">
+                        <img src="${url}" alt="" class="pp-carousel-img" style="border-color:${isActive ? '#22c55e' : 'transparent'};">
+                        <div class="pp-carousel-label">${label}</div>
+                    </div>`;
+            }).join('');
+
+            // Setup carousel navigation
+            setupCarouselNav(section, gridContainer);
+
+            // Click handlers for toggle selection
+            gridContainer.querySelectorAll('[data-entry-index]').forEach(thumb => {
+                thumb.addEventListener('click', () => {
+                    const idx = parseInt(thumb.dataset.entryIndex);
+                    const entry = entries[idx];
+                    if (!entry) return;
+
+                    const isCurrentlySelected = thumb.dataset.selected === 'true';
+
+                    // Clear all selections
+                    gridContainer.querySelectorAll('[data-entry-index]').forEach(el => {
+                        el.dataset.selected = 'false';
+                        el.querySelector('img').style.borderColor = 'transparent';
+                    });
+
+                    if (isCurrentlySelected) {
+                        // Toggle off — deselect
+                        pendingProfilePicture = 'clear';
+                    } else {
+                        // Select this one
+                        thumb.dataset.selected = 'true';
+                        thumb.querySelector('img').style.borderColor = '#22c55e';
+                        pendingProfilePicture = entry;
+                    }
+                });
+            });
+        });
+    }
+
+    function insertSection(section, modal) {
+        // Insert into accordion profile content area
+        const profileContent = modal.querySelector('#eu-profile-content');
+        if (profileContent) {
+            profileContent.appendChild(section);
+            return;
+        }
+        // Fallback
         const saveBtn = modal.querySelector('#save-edit-user-btn');
         const insertTarget = saveBtn?.closest('.form-group') || saveBtn?.parentElement;
         if (insertTarget) {
@@ -485,53 +824,31 @@ export function setupAdminUserManagerFromModule(config = {}) {
         } else {
             modal.querySelector('.modal-content')?.appendChild(section);
         }
+    }
 
-        // Wire up buttons
-        const changeBtn = section.querySelector('#pp-change-btn');
-        const removeBtn = section.querySelector('#pp-remove-btn');
+    function setupCarouselNav(section, track) {
+        const leftBtn = section.querySelector('#pp-nav-left');
+        const rightBtn = section.querySelector('#pp-nav-right');
+        if (!leftBtn || !rightBtn || !track) return;
 
-        if (changeBtn) {
-            changeBtn.addEventListener('click', async () => {
-                // Dynamically import and open the profile picture modal
-                const { openProfilePictureModal } = await import('./profile-picture-modal.js');
-                openProfilePictureModal(user, {
-                    showCustomAlert: showCustomAlert,
-                    onSaved: (updatedUser) => {
-                        // Update local user object
-                        Object.assign(user, updatedUser);
-                        invalidateProfilePictureCache(user.id);
-                        // Re-render this section
-                        renderProfilePictureSection(user, modal);
-                        // Re-render user list if available
-                        if (typeof renderAdminUserListFromModule === 'function') renderAdminUserListFromModule();
-                    },
-                });
-            });
-        }
+        const updateNavVisibility = () => {
+            const canScroll = track.scrollWidth > track.clientWidth;
+            leftBtn.style.display = canScroll && track.scrollLeft > 4 ? '' : 'none';
+            rightBtn.style.display = canScroll && track.scrollLeft < track.scrollWidth - track.clientWidth - 4 ? '' : 'none';
+        };
 
-        if (removeBtn) {
-            removeBtn.addEventListener('click', async () => {
-                const confirmed = await showCustomAlert({
-                    title: 'Fjern profilbillede?',
-                    message: `Er du sikker på du vil fjerne profilbilledet for ${user.name}?`,
-                    buttons: [
-                        { text: 'Annuller', value: false },
-                        { text: 'Fjern', value: true, className: 'danger' },
-                    ],
-                });
-                if (!confirmed) return;
+        const scrollAmount = 150;
+        leftBtn.addEventListener('click', () => {
+            track.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        });
+        rightBtn.addEventListener('click', () => {
+            track.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        });
 
-                const result = await removeProfilePicture(user.id, user.institution_id, user.profile_picture_type);
-                if (result.success) {
-                    user.profile_picture_url = null;
-                    user.profile_picture_type = null;
-                    renderProfilePictureSection(user, modal);
-                    if (typeof renderAdminUserListFromModule === 'function') renderAdminUserListFromModule();
-                } else {
-                    showAlert(result.error || 'Kunne ikke fjerne billedet');
-                }
-            });
-        }
+        track.addEventListener('scroll', updateNavVisibility);
+        // Initial check after images load
+        setTimeout(updateNavVisibility, 100);
+        setTimeout(updateNavVisibility, 500);
     }
 
     async function handleSaveAdminUserDetail() {
@@ -598,6 +915,23 @@ export function setupAdminUserManagerFromModule(config = {}) {
             }
             const { error } = await updateUserPin(user.id, pinVal);
             if (error) return showAlert(`Fejl ved opdatering af PIN: ${error.message}`);
+        }
+
+        // Save profile picture change if pending
+        if (pendingProfilePicture !== undefined) {
+            const entry = pendingProfilePicture === 'clear' ? null : pendingProfilePicture;
+            const ppResult = await applyProfilePicture(user.id, entry);
+            if (ppResult.success) {
+                if (entry) {
+                    user.profile_picture_url = entry.storage_path;
+                    user.profile_picture_type = entry.picture_type;
+                } else {
+                    user.profile_picture_url = null;
+                    user.profile_picture_type = null;
+                }
+                invalidateProfilePictureCache(user.id);
+            }
+            pendingProfilePicture = undefined;
         }
 
         editUserDepositInput.value = '';
@@ -718,6 +1052,14 @@ export function setupAdminUserManagerFromModule(config = {}) {
             return;
         }
     userList.innerHTML = buildUserAdminTableRows(filteredUsers, adminUserSelectionIndex);
+
+    // Pre-warm profile picture URLs then re-render with images
+    const usersWithPics = filteredUsers.filter(u => u.profile_picture_url && !u.profile_picture_opt_out && !getCachedProfilePictureUrl(u));
+    if (usersWithPics.length > 0) {
+        batchPreWarmProfilePictures(usersWithPics).then(() => {
+            userList.innerHTML = buildUserAdminTableRows(filteredUsers, adminUserSelectionIndex);
+        }).catch(() => {});
+    }
 }
 
 window.__flangoRenderAdminUserList = () => renderAdminUserListFromModule();

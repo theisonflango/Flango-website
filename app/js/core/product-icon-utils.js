@@ -519,7 +519,7 @@ export async function fetchInstitutionIconLibrary(institutionId) {
     try {
         const { data, error } = await supabaseClient
             .from('institution_icons')
-            .select('id, name, icon_url, storage_path, source, created_at, ai_style, ai_photo_mode, ai_prompt_mode')
+            .select('id, name, icon_url, storage_path, source, created_at, ai_style, ai_photo_mode, ai_prompt_mode, tags')
             .eq('institution_id', institutionId)
             .order('created_at', { ascending: false });
 

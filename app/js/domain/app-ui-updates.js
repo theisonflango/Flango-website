@@ -8,7 +8,7 @@ import { getCurrentCustomer } from './cafe-session-store.js';
 import { getOrderTotal } from './order-store.js';
 import { getFinancialState } from './cafe-session-store.js';
 import { calculateLevel } from './statistics-data.js';
-import { getProfilePictureUrl, getCachedProfilePictureUrl } from '../core/profile-picture-cache.js';
+import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js';
 import { renderKlartTotalDivider } from './order-ui.js';
 
 /**
@@ -46,7 +46,7 @@ export function updateLoggedInUserDisplay(clerkProfile, avatarCache, constants) 
     }
     const header = document.querySelector('.sidebar-main-header');
     if (header) {
-        header.querySelectorAll('.aurora-institution-info, .aurora-user-info, .klart-institution-info').forEach(el => el.remove());
+        header.querySelectorAll('.aurora-institution-info, .aurora-user-info, .klart-institution-info, .klart-user-info, .klart-session-cards').forEach(el => el.remove());
     }
     // Reset visibility (Aurora/Klart hide these)
     if (userDisplay) userDisplay.style.display = '';
@@ -148,37 +148,64 @@ export function updateLoggedInUserDisplay(clerkProfile, avatarCache, constants) 
             }
         }
 } else if (sessionBanner && getCurrentTheme() === 'klart') {
-        // Klart theme: Simple header — institution info (left) + action buttons (right)
-        // Avatar stays inside header-actions. Timer becomes a button in header-actions.
+        // Klart theme: same pattern as Aurora — user info in header-actions
         userDisplay.style.display = 'none';
         sessionBanner.style.display = 'none';
 
         if (header) {
             // Institution info — left side of header
             const institutionName = localStorage.getItem('flango_institution_name') || '';
-            const isClerkMode = clerkProfile?.role !== 'admin';
-            const roleLabel = isClerkMode ? `${clerkName} · Voksen: ${adultName}` : adultName;
 
             const instInfo = document.createElement('div');
             instInfo.className = 'klart-institution-info';
             instInfo.innerHTML = `
-                <span class="klart-inst-icon">🏠</span>
+                <div class="klart-inst-icon">🏠</div>
                 <div class="klart-inst-text">
                     <div class="klart-inst-name">${institutionName}</div>
-                    <div class="klart-inst-meta">${roleLabel}</div>
+                    <div class="klart-inst-meta">Flango System</div>
                 </div>
             `;
             header.insertBefore(instInfo, header.firstChild);
 
-            // Move shift-timer pill into header-actions (before avatar)
+            // Clerk and Adult info in header-actions (before avatar) — same as Aurora
+            const clerkFirstName = clerkName.split(' ')[0];
+            const clerkLevel = calculateLevel(
+                clerkProfile?.total_minutes_worked || 0,
+                clerkProfile?.total_sales_count || 0
+            );
+            const starsHtml = clerkLevel.stars ? `<span class="klart-stars">${clerkLevel.stars}</span>` : '';
+
+            const userInfo = document.createElement('div');
+            userInfo.className = 'klart-user-info';
+            userInfo.innerHTML = `
+                <div class="klart-user-role">
+                    <div class="klart-role-label">Ekspedient</div>
+                    <div class="klart-role-name">${clerkFirstName} ${starsHtml}</div>
+                </div>
+                <div class="klart-user-role klart-adult-role">
+                    <div class="klart-role-label">🔐 Ansvarlig</div>
+                    <div class="klart-role-name">${adultName}</div>
+                </div>
+            `;
+
             const headerActions = header.querySelector('.header-actions');
-            const shiftTimerPill = document.getElementById('shift-timer-pill');
-            if (shiftTimerPill && headerActions) {
+            if (headerActions) {
                 const avatarBtn = headerActions.querySelector('#logged-in-user-avatar-container');
                 if (avatarBtn) {
-                    headerActions.insertBefore(shiftTimerPill, avatarBtn);
+                    headerActions.insertBefore(userInfo, avatarBtn);
                 } else {
-                    headerActions.prepend(shiftTimerPill);
+                    headerActions.prepend(userInfo);
+                }
+            }
+
+            // Move shift-timer pill into header-actions
+            const shiftTimerPill = document.getElementById('shift-timer-pill');
+            if (shiftTimerPill && headerActions) {
+                const historyBtn = headerActions.querySelector('#toolbar-history-btn');
+                if (historyBtn) {
+                    headerActions.insertBefore(shiftTimerPill, historyBtn);
+                } else {
+                    headerActions.appendChild(shiftTimerPill);
                 }
             }
         }
@@ -481,8 +508,25 @@ export function updateSelectedUserInfo() {
                 if (savedAvatar) {
                     el.innerHTML = `<img src="${savedAvatar}" alt="" class="${imgClass}">`;
                 } else {
-                    const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-                    el.textContent = initials;
+                    // Use institution default profile picture setting
+                    const def = getDefaultProfilePicture(name, inst);
+                    if (def.type === 'anonymous') {
+                        el.textContent = '👤';
+                    } else if (def.type === 'image' && def.value) {
+                        el.innerHTML = `<img src="${def.value}" alt="" class="${imgClass}">`;
+                    } else if (def.type === 'image') {
+                        // Need async resolution for signed URL
+                        el.textContent = '...';
+                        getDefaultProfilePictureAsync(name, inst).then(res => {
+                            if (res.type === 'image' && res.value && el.isConnected) {
+                                el.innerHTML = `<img src="${res.value}" alt="" class="${imgClass}">`;
+                            } else if (el.isConnected) {
+                                el.textContent = res.value || '?';
+                            }
+                        });
+                    } else {
+                        el.textContent = def.value; // initials
+                    }
                 }
             }
         }

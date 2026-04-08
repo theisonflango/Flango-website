@@ -251,6 +251,12 @@ export function setupKeyboardShortcuts({
                 window.__flangoOpenAdminUserManager('customers');
             }
         }
+
+        // B: Åbn Brugerpanel (kun admin)
+        if (key === 'b') {
+            event.preventDefault();
+            import('./user-admin-panel.js').then(m => m.openUserAdminPanel());
+        }
     };
 
     document.addEventListener('keydown', mainKeydownHandler);
