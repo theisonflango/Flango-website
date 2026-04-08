@@ -152,31 +152,9 @@ export async function openProfilePictureModal(user, options = {}) {
         }
     }
 
-    // If AI avatar was pre-selected with a reference image, inject it after render
+    // If AI avatar was pre-selected with a reference image, pass URL for renderAiAvatarView to fetch
     if (preSelectType === 'ai_avatar' && referenceImageUrl) {
-        setTimeout(async () => {
-            try {
-                const resp = await fetch(referenceImageUrl);
-                const blob = await resp.blob();
-                // Find the AI preview area and inject the reference image
-                const previewEl = modal.querySelector('#pp-ai-preview');
-                const optionsEl = modal.querySelector('#pp-ai-options');
-                if (previewEl) {
-                    previewEl.style.display = 'block';
-                    previewEl.innerHTML = `
-                        <div style="text-align:center;margin:12px 0;">
-                            <img src="${URL.createObjectURL(blob)}" alt="" style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:3px solid rgba(245,158,11,0.4);">
-                            <div style="font-size:11px;color:#94a3b8;margin-top:6px;">Referencebillede fra bibliotek</div>
-                        </div>
-                    `;
-                    // Store blob in window for AI view to pick up
-                    window.__ppAiReferenceBlob = blob;
-                }
-                if (optionsEl) optionsEl.style.display = 'block';
-            } catch (err) {
-                console.warn('[profile-picture-modal] Kunne ikke hente reference:', err);
-            }
-        }, 500);
+        window.__ppAiReferenceUrl = referenceImageUrl;
     }
 }
 
@@ -546,11 +524,11 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
     let referenceBlob = window.__ppAiReferenceBlob || null;
     let hatEnabled = false;
     let heroEnabled = false;
+    const pendingReferenceUrl = window.__ppAiReferenceUrl || null;
 
-    // Clear global reference after pickup
-    if (window.__ppAiReferenceBlob) {
-        delete window.__ppAiReferenceBlob;
-    }
+    // Clear global references after pickup
+    delete window.__ppAiReferenceBlob;
+    delete window.__ppAiReferenceUrl;
 
     container.innerHTML = `
         <div class="profile-pic-subview">
@@ -876,6 +854,18 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
             previewArea.innerHTML = `<div style="color:#f87171;text-align:center;padding:12px;">${escapeHtml(err.message)}</div>`;
         }
     });
+
+    // If reference was pre-injected from lightbox, show preview with generate button immediately
+    if (referenceBlob) {
+        showReferencePreview(referenceBlob, 'Referencebillede fra bibliotek');
+    } else if (pendingReferenceUrl) {
+        fetch(pendingReferenceUrl).then(r => r.blob()).then(blob => {
+            if (blob) {
+                referenceBlob = blob;
+                showReferencePreview(blob, 'Referencebillede fra bibliotek');
+            }
+        }).catch(err => console.warn('[ai-avatar] Kunne ikke hente reference:', err));
+    }
 
     // --- Build source grid with library thumbnails + camera + upload ---
     fetchUserProfilePictures(user.id, user).then(async (entries) => {

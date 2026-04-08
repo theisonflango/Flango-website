@@ -17,7 +17,7 @@ import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
 import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
 import { escapeHtml } from '../core/escape-html.js';
 import { formatKr } from '../ui/confirm-modals.js';
-import { getProfilePictureUrl, getCachedProfilePictureUrl } from '../core/profile-picture-cache.js';
+import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js';
 import { processEventItemsInCheckout } from '../ui/cafe-event-strip.js';
 
 
@@ -144,7 +144,24 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
             if (savedAvatar) {
                 el.innerHTML = `<img src="${savedAvatar}" alt="" style="${imgStyle}">`;
             } else {
-                el.textContent = (user?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                const def = getDefaultProfilePicture(user?.name, inst);
+                if (def.type === 'anonymous') {
+                    el.textContent = '👤';
+                    el.style.fontSize = `${Math.round(size * 0.45)}px`;
+                } else if (def.type === 'image' && def.value) {
+                    el.innerHTML = `<img src="${def.value}" alt="" style="${imgStyle}">`;
+                } else if (def.type === 'image') {
+                    el.textContent = '...';
+                    getDefaultProfilePictureAsync(user?.name, inst).then(res => {
+                        if (res.type === 'image' && res.value && el.isConnected) {
+                            el.innerHTML = `<img src="${res.value}" alt="" style="${imgStyle}">`;
+                        } else if (el.isConnected) {
+                            el.textContent = res.value || '?';
+                        }
+                    });
+                } else {
+                    el.textContent = def.value; // initials
+                }
             }
         }
         return el;

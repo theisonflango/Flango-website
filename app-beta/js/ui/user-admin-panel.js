@@ -9,7 +9,7 @@
 
 import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js';
 import { getInstitutionId } from '../domain/session-store.js';
-import { getCachedProfilePictureUrl, batchPreWarmProfilePictures, invalidateProfilePictureCache } from '../core/profile-picture-cache.js';
+import { getCachedProfilePictureUrl, batchPreWarmProfilePictures, invalidateProfilePictureCache, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js';
 import { escapeHtml } from '../core/escape-html.js';
 import { openHistorikV3ForUser } from './historik-v3.js';
 
@@ -296,13 +296,42 @@ function switchTab(key) {
 function renderActiveTab() {
     // Clear toolbar extras (filters, view toggles) unless pictures tab sets them
     const toolbarExtra = panelEl?.querySelector('#uap-toolbar-extra');
-    if (toolbarExtra && activeTab !== 'pictures') toolbarExtra.innerHTML = '';
+    if (toolbarExtra && activeTab !== 'pictures' && activeTab !== 'overview') toolbarExtra.innerHTML = '';
 
-    if (activeTab === 'overview') renderOverviewTab();
+    if (activeTab === 'overview') {
+        // Render overview toolbar: filter toggles + download
+        if (toolbarExtra) {
+            toolbarExtra.innerHTML = `
+                <div class="uap-filters" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+                    <button class="uap-chip ${ovFilterLowBalance ? 'active' : ''}" data-ov="lowBalance">Lav saldo</button>
+                    <button class="uap-chip ${ovFilterNoActivity ? 'active' : ''}" data-ov="noActivity">Aldrig handlet</button>
+                    <button class="uap-chip ${ovFilterHideInactive ? 'active' : ''}" data-ov="hideInactive">Kun aktive</button>
+                    <span style="width:1px;height:20px;background:rgba(255,255,255,0.12);margin:0 4px;"></span>
+                    <button class="uap-chip" data-ov="download">⬇ Download liste</button>
+                </div>
+            `;
+            toolbarExtra.querySelectorAll('.uap-chip[data-ov]').forEach(chip => {
+                chip.onclick = () => {
+                    const action = chip.dataset.ov;
+                    if (action === 'lowBalance') { ovFilterLowBalance = !ovFilterLowBalance; chip.classList.toggle('active'); }
+                    else if (action === 'noActivity') { ovFilterNoActivity = !ovFilterNoActivity; chip.classList.toggle('active'); }
+                    else if (action === 'hideInactive') { ovFilterHideInactive = !ovFilterHideInactive; chip.classList.toggle('active'); }
+                    else if (action === 'download') { downloadOverviewCSV(); return; }
+                    renderOverviewTab();
+                };
+            });
+        }
+        renderOverviewTab();
+    }
     else if (activeTab === 'parents') renderParentsTab();
     else if (activeTab === 'stats') renderStatsTab();
     else if (activeTab === 'pictures') renderPicturesTab();
 }
+
+// ─── Overview filters ───
+let ovFilterLowBalance = false;
+let ovFilterNoActivity = false;
+let ovFilterHideInactive = false;
 
 // ─── Shared helpers ───
 
@@ -313,6 +342,16 @@ function getFilteredUsers() {
             (u.name || '').toLowerCase().includes(searchQuery) ||
             (u.number || '').toLowerCase().includes(searchQuery)
         );
+    }
+    // Overview filters (kombinerbare)
+    if (ovFilterLowBalance) {
+        users = users.filter(u => (u.balance || 0) <= 0);
+    }
+    if (ovFilterNoActivity) {
+        users = users.filter(u => !u._lastActivity);
+    }
+    if (ovFilterHideInactive) {
+        users = users.filter(u => !!u._lastActivity);
     }
     return users;
 }
@@ -326,12 +365,34 @@ function sortUsers(users, col, dir) {
         else if (col === 'balance') { va = a.balance || 0; vb = b.balance || 0; }
         else if (col === 'activity') { va = a._lastActivity || ''; vb = b._lastActivity || ''; }
         else if (col === 'lastDeposit') { va = a._lastDeposit?.date || ''; vb = b._lastDeposit?.date || ''; }
+        else if (col === 'active') { va = a.show_in_user_list !== false ? 1 : 0; vb = b.show_in_user_list !== false ? 1 : 0; }
         else { va = (a[col] || ''); vb = (b[col] || ''); }
 
         if (va < vb) return dir === 'asc' ? -1 : 1;
         if (va > vb) return dir === 'asc' ? 1 : -1;
         return 0;
     });
+}
+
+function downloadOverviewCSV() {
+    let users = getFilteredUsers();
+    users = sortUsers(users, sortCol, sortDir);
+    const rows = [['Navn', 'Nummer', 'Klassetrin', 'Saldo', 'Seneste indbetaling', 'Seneste aktivitet']];
+    for (const u of users) {
+        const grade = u.grade_level != null ? `${u.grade_level}. kl.` : '';
+        const balance = (u.balance || 0).toFixed(2);
+        const lastDep = u._lastDeposit?.date ? new Date(u._lastDeposit.date).toLocaleDateString('da-DK') + (u._lastDeposit.amount ? ` (${u._lastDeposit.amount} kr.)` : '') : '';
+        const lastAct = u._lastActivity ? new Date(u._lastActivity).toLocaleDateString('da-DK') : 'Ingen';
+        rows.push([u.name || '', u.number || '', grade, balance, lastDep, lastAct]);
+    }
+    const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `brugeroversigt_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 function buildSortableHeader(columns, theadId) {
@@ -365,6 +426,15 @@ function profileThumb(user) {
     const url = getCachedProfilePictureUrl(user);
     if (url) {
         return `<span class="uap-thumb-link" data-user-id="${user.id}"><img src="${url}" alt="" class="uap-thumb"></span>`;
+    }
+    // Use institution default profile picture
+    const inst = window.__flangoGetInstitutionById?.(user.institution_id);
+    const def = getDefaultProfilePicture(user.name, inst);
+    if (def.type === 'anonymous') {
+        return `<span class="uap-thumb-link" data-user-id="${user.id}"><div class="uap-thumb-placeholder" style="font-size:18px;">👤</div></span>`;
+    }
+    if (def.type === 'image' && def.value) {
+        return `<span class="uap-thumb-link" data-user-id="${user.id}"><img src="${def.value}" alt="" class="uap-thumb"></span>`;
     }
     const initials = (user.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     return `<span class="uap-thumb-link" data-user-id="${user.id}"><div class="uap-thumb-placeholder">${initials}</div></span>`;
@@ -744,7 +814,7 @@ const OVERVIEW_COLS = [
     { key: 'activity', label: 'Seneste aktivitet' },
     { key: 'badges', label: 'Badges', sortable: false },
     { key: 'history', label: 'Historik', sortable: false },
-    { key: 'active', label: 'Aktiv', sortable: false },
+    { key: 'active', label: 'Aktiv' },
     { key: 'actions', label: '', sortable: false },
 ];
 
@@ -919,6 +989,7 @@ function renderStatsTab() {
 let ppEntries = null; // cached profile_picture_library entries
 let ppSignedUrls = new Map();
 let ppFilter = 'all';
+let ppHasFilter = 'with'; // 'all' | 'with' | 'without' — filter by has/hasn't picture
 let ppViewMode = 'list'; // 'grid' | 'list'
 let ppSortCol = 'created_at';
 let ppSortDir = 'desc';
@@ -934,10 +1005,10 @@ const PP_TYPE_LABELS = {
 
 const PP_FILTERS = [
     { key: 'all', label: 'Alle' },
+    { key: 'ai_avatar', label: '🤖 AI' },
     { key: 'upload', label: '📤 Upload' },
     { key: 'aula', label: '📥 Aula' },
     { key: 'camera', label: '📷 Kamera' },
-    { key: 'ai_avatar', label: '🤖 AI' },
     { key: 'library', label: '🎨 Bibliotek' },
 ];
 
@@ -951,18 +1022,28 @@ async function renderPicturesTab() {
         <div class="uap-filters" id="uap-pp-filters">
             ${PP_FILTERS.map(f => `<button class="uap-chip ${ppFilter === f.key ? 'active' : ''}" data-filter="${f.key}">${f.label}</button>`).join('')}
             <span style="width:1px;height:20px;background:rgba(255,255,255,0.12);margin:0 4px;"></span>
+            <button class="uap-chip ${ppHasFilter === 'all' ? 'active' : ''}" data-has="all">Alle</button>
+            <button class="uap-chip ${ppHasFilter === 'with' ? 'active' : ''}" data-has="with">Med billede</button>
+            <button class="uap-chip ${ppHasFilter === 'without' ? 'active' : ''}" data-has="without">Uden billede</button>
+            <span style="width:1px;height:20px;background:rgba(255,255,255,0.12);margin:0 4px;"></span>
             <button class="uap-chip ${ppViewMode === 'list' ? 'active' : ''}" data-view="list">📋 Liste</button>
             <button class="uap-chip ${ppViewMode === 'grid' ? 'active' : ''}" data-view="grid">🔲 Grid</button>
         </div>
     `;
 
-    // Wire filter chips + view toggles (all in same row)
+    // Wire filter chips + has-filter + view toggles (all in same row)
     toolbarExtra.querySelectorAll('.uap-chip').forEach(chip => {
         if (chip.dataset.filter) {
             chip.onclick = () => {
                 ppFilter = chip.dataset.filter;
                 renderPicturesContent();
                 toolbarExtra.querySelectorAll('.uap-chip[data-filter]').forEach(c => c.classList.toggle('active', c.dataset.filter === ppFilter));
+            };
+        } else if (chip.dataset.has) {
+            chip.onclick = () => {
+                ppHasFilter = chip.dataset.has;
+                renderPicturesContent();
+                toolbarExtra.querySelectorAll('.uap-chip[data-has]').forEach(c => c.classList.toggle('active', c.dataset.has === ppHasFilter));
             };
         } else if (chip.dataset.view) {
             chip.onclick = () => {
@@ -1034,12 +1115,11 @@ function renderPicturesContent() {
     const uniqueUsers = new Set(entries.map(e => e.user_id));
     counter.textContent = `${entries.length} billeder · ${uniqueUsers.size} brugere`;
 
-    if (entries.length === 0) {
-        content.innerHTML = '<div class="uap-empty">Ingen profilbilleder fundet.</div>';
-        return;
-    }
-
     if (ppViewMode === 'grid') {
+        if (entries.length === 0) {
+            content.innerHTML = '<div class="uap-empty">Ingen profilbilleder fundet.</div>';
+            return;
+        }
         renderPicturesGrid(content, entries);
     } else {
         renderPicturesList(content, entries);
@@ -1090,17 +1170,41 @@ function renderPicturesList(container, entries) {
         byUser.get(entry.user_id).push(entry);
     }
 
-    // Build sortable user rows
-    let userRows = [...byUser.entries()].map(([userId, userEntries]) => {
-        const user = allUsers.find(u => u.id === userId);
-        return { userId, user, entries: userEntries, name: userEntries[0]?.user_name || user?.name || '' };
-    });
+    // Build rows for ALL users (not just those with pictures)
+    let userRows = allUsers
+        .filter(u => u.role === 'kunde' || u.role === 'admin' || byUser.has(u.id))
+        .map(u => ({
+            userId: u.id,
+            user: u,
+            entries: byUser.get(u.id) || [],
+            name: u.name || '',
+        }));
 
-    // Sort
+    // Apply has/hasn't picture filter
+    if (ppHasFilter === 'with') {
+        userRows = userRows.filter(row => row.entries.length > 0);
+    } else if (ppHasFilter === 'without') {
+        userRows = userRows.filter(row => row.entries.length === 0);
+    }
+
+    // Apply search filter on user name (includes users without pictures)
+    if (searchQuery) {
+        userRows = userRows.filter(row => row.name.toLowerCase().includes(searchQuery));
+    }
+
+    // Sort — all columns sortable
     userRows.sort((a, b) => {
         let va, vb;
         if (ppSortCol === 'user') { va = a.name.toLowerCase(); vb = b.name.toLowerCase(); }
-        else if (ppSortCol === 'count') { va = a.entries.length; vb = b.entries.length; }
+        else if (ppSortCol === 'number') {
+            va = a.user?.number != null ? parseInt(a.user.number) : Infinity;
+            vb = b.user?.number != null ? parseInt(b.user.number) : Infinity;
+        }
+        else if (ppSortCol === 'grade') {
+            va = a.user?.grade_level != null ? a.user.grade_level : Infinity;
+            vb = b.user?.grade_level != null ? b.user.grade_level : Infinity;
+        }
+        else if (ppSortCol === 'pictures' || ppSortCol === 'count') { va = a.entries.length; vb = b.entries.length; }
         else { va = a.name.toLowerCase(); vb = b.name.toLowerCase(); }
         if (va < vb) return ppSortDir === 'asc' ? -1 : 1;
         if (va > vb) return ppSortDir === 'asc' ? 1 : -1;
@@ -1109,9 +1213,9 @@ function renderPicturesList(container, entries) {
 
     const LIST_COLS = [
         { key: 'user', label: 'Bruger' },
-        { key: 'number', label: 'Nummer', sortable: false },
-        { key: 'grade', label: 'Klassetrin', sortable: false },
-        { key: 'pictures', label: 'Profilbilleder', sortable: false },
+        { key: 'number', label: 'Nummer' },
+        { key: 'grade', label: 'Klassetrin' },
+        { key: 'pictures', label: 'Profilbilleder' },
         { key: 'count', label: 'Antal' },
     ];
 
@@ -1134,21 +1238,37 @@ function renderPicturesList(container, entries) {
 
     const tbody = container.querySelector('#uap-pp-list-tbody');
     tbody.innerHTML = userRows.map(row => {
-        const thumbs = row.entries.map(entry => {
-            const url = getPPUrl(entry);
-            const typeInfo = PP_TYPE_LABELS[entry.picture_type] || PP_TYPE_LABELS.upload;
-            const activeBorder = entry.is_active ? '2px solid #22c55e' : '2px solid transparent';
-            return `<div class="uap-pp-list-thumb" data-entry-id="${entry.id}" title="${typeInfo.label}${entry.is_active ? ' (aktiv)' : ''} — klik for at aktivere" style="position:relative;cursor:pointer;flex-shrink:0;">
-                <img src="${url}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:${activeBorder};transition:border-color 0.15s;" loading="lazy" onerror="this.style.display='none';">
-                <span style="position:absolute;bottom:-2px;right:-2px;font-size:9px;padding:0 3px;border-radius:6px;background:${typeInfo.bg};color:${typeInfo.color};font-weight:700;line-height:1.4;">${typeInfo.emoji}</span>
-            </div>`;
-        }).join('');
+        let picCell;
+        if (row.entries.length > 0) {
+            const thumbs = row.entries.map(entry => {
+                const url = getPPUrl(entry);
+                const typeInfo = PP_TYPE_LABELS[entry.picture_type] || PP_TYPE_LABELS.upload;
+                const activeBorder = entry.is_active ? '2px solid #22c55e' : '2px solid transparent';
+                return `<div class="uap-pp-list-thumb" data-entry-id="${entry.id}" title="${typeInfo.label}${entry.is_active ? ' (aktiv)' : ''} — klik for at aktivere" style="position:relative;cursor:pointer;flex-shrink:0;">
+                    <img src="${url}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:${activeBorder};transition:border-color 0.15s;" loading="lazy" onerror="this.style.display='none';">
+                    <span style="position:absolute;bottom:-2px;right:-2px;font-size:9px;padding:0 3px;border-radius:6px;background:${typeInfo.bg};color:${typeInfo.color};font-weight:700;line-height:1.4;">${typeInfo.emoji}</span>
+                </div>`;
+            }).join('');
+            picCell = `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${thumbs}</div>`;
+        } else {
+            // Show institution default profile picture
+            const inst = window.__flangoGetInstitutionById?.(row.user?.institution_id);
+            const def = getDefaultProfilePicture(row.name, inst);
+            if (def.type === 'anonymous') {
+                picCell = `<div style="width:44px;height:44px;border-radius:50%;background:rgba(148,163,184,0.15);display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;" title="Klik for at tilføje billede">👤</div>`;
+            } else if (def.type === 'image' && def.value) {
+                picCell = `<img src="${def.value}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px dashed rgba(255,255,255,0.15);" title="Klik for at tilføje billede">`;
+            } else {
+                const initials = (row.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                picCell = `<div style="width:44px;height:44px;border-radius:50%;background:rgba(99,102,241,0.12);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#6366f1;cursor:pointer;" title="Klik for at tilføje billede">${initials}</div>`;
+            }
+        }
 
-        return `<tr data-user-id="${row.userId}">
+        return `<tr data-user-id="${row.userId}" style="${row.entries.length === 0 ? 'opacity:0.8;' : ''}">
             <td>${escapeHtml(row.name)}</td>
             <td>${escapeHtml(row.user?.number || '—')}</td>
             <td>${gradeLabel(row.user?.grade_level)}</td>
-            <td><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${thumbs}</div></td>
+            <td>${picCell}</td>
             <td>${row.entries.length}</td>
         </tr>`;
     }).join('');
@@ -1174,14 +1294,35 @@ function renderPicturesList(container, entries) {
         };
     });
 
-    // Wire row click → open lightbox for first/active pic
+    // Wire row click → open lightbox for first/active pic, or open modal for users without pics
     tbody.querySelectorAll('tr').forEach(tr => {
-        tr.onclick = (e) => {
+        tr.onclick = async (e) => {
             if (e.target.closest('.uap-pp-list-thumb')) return;
             const userId = tr.dataset.userId;
             const activeEntry = ppEntries.find(en => en.user_id === userId && en.is_active)
                 || ppEntries.find(en => en.user_id === userId);
-            if (activeEntry) openPPLightbox(activeEntry, 'user', userRows);
+            if (activeEntry) {
+                openPPLightbox(activeEntry, 'user', userRows);
+            } else {
+                // No pictures — create a fake "default" entry and open lightbox
+                const user = allUsers.find(u => u.id === userId);
+                if (user) {
+                    const inst = window.__flangoGetInstitutionById?.(user.institution_id);
+                    const def = await getDefaultProfilePictureAsync(user.name, inst);
+                    const fakeEntry = {
+                        id: '__default__' + userId,
+                        user_id: userId,
+                        user_name: user.name,
+                        picture_type: 'default',
+                        is_active: false,
+                        storage_path: def.type === 'image' ? def.value : null,
+                        _isDefault: true,
+                        _defaultType: def.type,
+                        _defaultValue: def.value,
+                    };
+                    openPPLightbox(fakeEntry, 'user', userRows);
+                }
+            }
         };
     });
 }
@@ -1211,6 +1352,10 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
             userRowIdx = userRows.findIndex(r => r.userId === entry.user_id);
             if (userRowIdx < 0) userRowIdx = 0;
             userEntries = userRows[userRowIdx]?.entries || [];
+            // If user has no entries but we have a default fake entry, use it
+            if (userEntries.length === 0 && entry._isDefault) {
+                userEntries = [entry];
+            }
             navigable = userEntries;
             currentIdx = navigable.findIndex(e => e.id === entry.id);
             if (currentIdx < 0) currentIdx = 0;
@@ -1229,33 +1374,49 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
     function renderLightboxContent() {
         const current = navigable[currentIdx];
         if (!current) return;
-        const url = getPPUrl(current);
-        const typeInfo = PP_TYPE_LABELS[current.picture_type] || PP_TYPE_LABELS.upload;
+        const isDefault = current._isDefault === true;
+        const url = isDefault
+            ? (current._defaultType === 'image' ? current._defaultValue : null)
+            : getPPUrl(current);
+        const typeInfo = isDefault
+            ? { emoji: '⚙️', label: 'Standard', bg: 'rgba(100,116,139,0.2)', color: '#94a3b8' }
+            : (PP_TYPE_LABELS[current.picture_type] || PP_TYPE_LABELS.upload);
         const user = allUsers.find(u => u.id === current.user_id);
         const created = current.created_at ? new Date(current.created_at).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
         const pos = `${currentIdx + 1} / ${navigable.length}`;
+
+        // Default image display — uses same uap-lightbox-img class for consistent sizing
+        let imgHtml;
+        if (isDefault && !url) {
+            const defType = current._defaultType;
+            if (defType === 'anonymous') {
+                imgHtml = `<div class="uap-lightbox-img uap-lightbox-img-default" style="background:#334155;">
+                    <svg viewBox="0 0 24 24" fill="rgba(148,163,184,0.5)" style="width:55%;height:55%;"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+                </div>`;
+            } else {
+                const initials = (user?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                imgHtml = `<div class="uap-lightbox-img uap-lightbox-img-default" style="background:rgba(99,102,241,0.15);color:#6366f1;">${initials}</div>`;
+            }
+        } else {
+            imgHtml = `<img src="${url}" alt="" class="uap-lightbox-img" style="cursor:zoom-in;" title="Klik for fuld størrelse">`;
+        }
 
         lb.innerHTML = `
             <button class="uap-lightbox-close">&times;</button>
             <button class="uap-lb-nav uap-lb-prev" ${currentIdx === 0 ? 'disabled' : ''}>‹</button>
             <div class="uap-lightbox-inner">
-                <img src="${url}" alt="" class="uap-lightbox-img">
+                ${imgHtml}
                 <div style="font-size:22px;font-weight:700;margin-bottom:4px;color:var(--text-primary,#e2e8f0);">${escapeHtml(user?.name || current.user_name || 'Ukendt')}</div>
                 <div style="font-size:15px;color:var(--text-secondary,#94a3b8);margin-bottom:12px;">
-                    ${user?.number ? `#${user.number}` : ''}${user?.number && user?.grade_level != null ? ' · ' : ''}${user?.grade_level != null ? gradeLabel(user.grade_level) : ''}${created ? ` · ${created}` : ''}
-                </div>
-                <div style="margin-bottom:16px;">
-                    <span style="padding:4px 12px;border-radius:10px;font-size:12px;font-weight:600;background:${typeInfo.bg};color:${typeInfo.color};">${typeInfo.emoji} ${typeInfo.label}</span>
-                    ${current.is_active ? '<span style="margin-left:8px;color:#22c55e;font-weight:600;font-size:13px;">● Aktiv</span>' : ''}
-                    ${current.ai_style ? `<span style="margin-left:8px;font-size:12px;opacity:0.6;">Stil: ${current.ai_style}</span>` : ''}
+                    ${user?.number ? `#${user.number}` : ''}${user?.number && user?.grade_level != null ? ' · ' : ''}${user?.grade_level != null ? gradeLabel(user.grade_level) : ''}${!isDefault && created ? ` · ${created}` : ''}
                 </div>
                 <div class="uap-lb-actions">
-                    ${!current.is_active ? `<button class="uap-lb-btn uap-lb-activate" style="background:#22c55e;">Sæt som aktiv</button>` : ''}
+                    ${!current.is_active && !isDefault ? `<button class="uap-lb-btn uap-lb-activate" style="background:#22c55e;">Sæt som aktiv</button>` : ''}
                     <button class="uap-lb-btn uap-lb-add" style="background:#8b5cf6;">＋ Tilføj nyt</button>
-                    <button class="uap-lb-btn uap-lb-edit" style="background:#3b82f6;">✏️ Rediger</button>
-                    <button class="uap-lb-btn uap-lb-avatar" style="background:#f59e0b;">🤖 Avatar</button>
-                    <button class="uap-lb-btn uap-lb-download" style="background:#0ea5e9;">⬇ Download</button>
-                    <button class="uap-lb-btn uap-lb-delete" style="background:#ef4444;">Slet</button>
+                    ${!isDefault ? `<button class="uap-lb-btn uap-lb-edit" style="background:#3b82f6;">✏️ Rediger</button>` : ''}
+                    <button class="uap-lb-btn uap-lb-avatar" style="background:${isDefault ? '#64748b' : '#f59e0b'};${isDefault ? 'opacity:0.5;cursor:not-allowed;' : ''}">🤖 Avatar</button>
+                    ${!isDefault ? `<button class="uap-lb-btn uap-lb-download" style="background:#0ea5e9;">⬇ Download</button>` : ''}
+                    ${!isDefault ? `<button class="uap-lb-btn uap-lb-delete" style="background:#ef4444;">Slet</button>` : ''}
                 </div>
                 <div class="uap-lb-editor" style="display:none;">
                     <div style="margin-bottom:12px;font-size:13px;color:var(--text-secondary,#94a3b8);">Træk for at flytte · Scroll for at zoome</div>
@@ -1274,7 +1435,11 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
                         <button class="uap-crop-save" style="padding:8px 20px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Gem beskæring</button>
                     </div>
                 </div>
-                <div style="font-size:11px;color:var(--text-secondary,#64748b);">${pos}${mode === 'user' && userRows && userRows.length > 1 ? ` · Bruger ${userRowIdx + 1}/${userRows.length}` : ''} · ← → billeder${mode === 'user' ? ' · ↑ ↓ brugere' : ''}</div>
+                <div style="display:flex;align-items:center;font-size:11px;color:var(--text-secondary,#64748b);">
+                    <div style="flex:1;text-align:left;">Kilde: ${typeInfo.label}${current.ai_style ? ` · ${current.ai_style}` : ''}${current.ai_prompt ? ' · <span class="uap-lb-show-prompt" style="cursor:pointer;color:#f59e0b;font-weight:600;text-transform:uppercase;">Vis Prompt</span>' : ''}</div>
+                    <div style="flex:0 0 auto;text-align:center;">${pos}${mode === 'user' && userRows && userRows.length > 1 ? ` · Bruger ${userRowIdx + 1}/${userRows.length}` : ''} · ← → billeder${mode === 'user' ? ' · ↑ ↓ brugere' : ''}</div>
+                    <div style="flex:1;text-align:right;font-weight:600;">${current.is_active ? '<span style="color:#22c55e;">● Aktiv</span>' : (isDefault ? '<span style="opacity:0.5;">Intet billede</span>' : '')}</div>
+                </div>
             </div>
             <button class="uap-lb-nav uap-lb-next" ${currentIdx >= navigable.length - 1 ? 'disabled' : ''}>›</button>
         `;
@@ -1286,6 +1451,88 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
         // Wire nav
         lb.querySelector('.uap-lb-prev').onclick = (e) => { e.stopPropagation(); navigate(-1); };
         lb.querySelector('.uap-lb-next').onclick = (e) => { e.stopPropagation(); navigate(1); };
+
+        // Wire zoom — click on image to view full size
+        // Wire zoom — click on image to view full size with navigation
+        const lbImg = lb.querySelector('.uap-lightbox-img');
+        if (lbImg && url && !isDefault) {
+            lbImg.onclick = (e) => {
+                e.stopPropagation();
+                openZoomOverlay();
+            };
+        }
+
+        function openZoomOverlay() {
+            const cur = navigable[currentIdx];
+            if (!cur || cur._isDefault) return;
+            const zoomUrl = getPPUrl(cur);
+            if (!zoomUrl) return;
+
+            const existing = document.querySelector('.uap-zoom-overlay');
+            if (existing) existing.remove();
+
+            const zoom = document.createElement('div');
+            zoom.className = 'uap-zoom-overlay';
+            zoom.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,0.95);display:flex;align-items:center;justify-content:center;';
+            zoom.innerHTML = `
+                <button class="uap-zoom-prev" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:36px;width:50px;height:50px;border-radius:50%;cursor:pointer;z-index:2;" ${currentIdx === 0 ? 'disabled' : ''}>‹</button>
+                <img src="${zoomUrl}" alt="" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 0 60px rgba(0,0,0,0.5);cursor:zoom-out;">
+                <button class="uap-zoom-next" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:36px;width:50px;height:50px;border-radius:50%;cursor:pointer;z-index:2;" ${currentIdx >= navigable.length - 1 ? 'disabled' : ''}>›</button>
+                <div class="uap-zoom-info" style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);font-size:12px;">${currentIdx + 1} / ${navigable.length}${mode === 'user' && userRows && userRows.length > 1 ? ` · Bruger ${userRowIdx + 1}/${userRows.length} · ↑ ↓ brugere` : ''}</div>
+            `;
+            document.body.appendChild(zoom);
+
+            function updateZoom() {
+                const c = navigable[currentIdx];
+                if (!c || c._isDefault) { closeZoom(); return; }
+                const u = getPPUrl(c);
+                if (!u) { closeZoom(); return; }
+                zoom.querySelector('img').src = u;
+                zoom.querySelector('.uap-zoom-prev').disabled = currentIdx === 0;
+                zoom.querySelector('.uap-zoom-next').disabled = currentIdx >= navigable.length - 1;
+                zoom.querySelector('.uap-zoom-info').textContent = `${currentIdx + 1} / ${navigable.length}${mode === 'user' && userRows && userRows.length > 1 ? ` · Bruger ${userRowIdx + 1}/${userRows.length} · ↑ ↓ brugere` : ''}`;
+            }
+
+            function zoomNav(dir) {
+                const newIdx = currentIdx + dir;
+                if (newIdx < 0 || newIdx >= navigable.length) return;
+                currentIdx = newIdx;
+                updateZoom();
+            }
+
+            function zoomNavUser(dir) {
+                if (mode !== 'user' || !userRows || userRows.length <= 1) return;
+                const newRowIdx = userRowIdx + dir;
+                if (newRowIdx < 0 || newRowIdx >= userRows.length) return;
+                userRowIdx = newRowIdx;
+                const row = userRows[userRowIdx];
+                userEntries = row?.entries || [];
+                if (userEntries.length === 0) { zoomNavUser(dir); return; } // skip users without pics
+                navigable = userEntries;
+                currentIdx = 0;
+                updateZoom();
+            }
+
+            zoom.querySelector('img').onclick = (ev) => { ev.stopPropagation(); closeZoom(); };
+            zoom.onclick = (ev) => { if (ev.target === zoom) closeZoom(); };
+            zoom.querySelector('.uap-zoom-prev').onclick = (ev) => { ev.stopPropagation(); zoomNav(-1); };
+            zoom.querySelector('.uap-zoom-next').onclick = (ev) => { ev.stopPropagation(); zoomNav(1); };
+
+            const zoomKey = (ev) => {
+                if (ev.key === 'Escape') { closeZoom(); ev.stopPropagation(); }
+                else if (ev.key === 'ArrowLeft') { zoomNav(-1); ev.stopPropagation(); }
+                else if (ev.key === 'ArrowRight') { zoomNav(1); ev.stopPropagation(); }
+                else if (ev.key === 'ArrowUp') { ev.preventDefault(); ev.stopPropagation(); zoomNavUser(-1); }
+                else if (ev.key === 'ArrowDown') { ev.preventDefault(); ev.stopPropagation(); zoomNavUser(1); }
+            };
+            document.addEventListener('keydown', zoomKey, true);
+
+            function closeZoom() {
+                zoom.remove();
+                document.removeEventListener('keydown', zoomKey, true);
+                renderLightboxContent();
+            }
+        }
 
         // Wire activate
         lb.querySelector('.uap-lb-activate')?.addEventListener('click', async (e) => {
@@ -1322,6 +1569,31 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
             }
         });
 
+        // Wire "Vis Prompt"
+        lb.querySelector('.uap-lb-show-prompt')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const current = navigable[currentIdx];
+            if (!current?.ai_prompt) return;
+            // Split into main prompt and suffix (old images have "\nDo NOT reproduce..." appended server-side)
+            const suffixMatch = current.ai_prompt.match(/^([\s\S]*?)(\nDo NOT reproduce the photo\..*)$/);
+            const mainPrompt = suffixMatch ? suffixMatch[1] : current.ai_prompt;
+            const suffixText = suffixMatch ? suffixMatch[2].trim() : '';
+            const overlay = document.createElement('div');
+            overlay.className = 'uap-prompt-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:24px;';
+            overlay.innerHTML = `<div style="max-width:640px;width:100%;max-height:80vh;overflow-y:auto;background:#1e293b;border-radius:12px;padding:24px;color:#e2e8f0;font-family:monospace;font-size:13px;white-space:pre-wrap;word-break:break-word;line-height:1.6;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <span style="font-family:inherit;font-weight:700;font-size:14px;color:#f59e0b;">AI Prompt</span>
+                    <button class="uap-prompt-close" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;padding:0 4px;">&times;</button>
+                </div>${escapeHtml(mainPrompt)}${suffixText ? `\n\n<span style="color:#64748b;font-size:11px;font-weight:600;">SUFFIX (auto-tilføjet):</span>\n<span style="color:#64748b;font-size:12px;">${escapeHtml(suffixText)}</span>` : ''}</div>`;
+            lb.appendChild(overlay);
+            const closePrompt = () => overlay.remove();
+            overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closePrompt(); });
+            overlay.querySelector('.uap-prompt-close').addEventListener('click', closePrompt);
+            const escHandler = (ev) => { if (ev.key === 'Escape') { closePrompt(); ev.stopPropagation(); document.removeEventListener('keydown', escHandler, true); } };
+            document.addEventListener('keydown', escHandler, true);
+        });
+
         // Wire add new (open profile picture modal for this user)
         lb.querySelector('.uap-lb-add')?.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -1339,9 +1611,10 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
             });
         });
 
-        // Wire avatar (AI generation from current image)
+        // Wire avatar (AI generation from current image) — disabled for default entries
         lb.querySelector('.uap-lb-avatar')?.addEventListener('click', async (e) => {
             e.stopPropagation();
+            if (current._isDefault) return; // Don't use default image as AI reference
             const currentUser = allUsers.find(u => u.id === current.user_id) || { ...current, id: current.user_id, name: current.user_name };
             const { openProfilePictureModal } = await import('./profile-picture-modal.js');
             openProfilePictureModal(currentUser, {
@@ -1600,7 +1873,24 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
         const newRowIdx = userRowIdx + dir;
         if (newRowIdx < 0 || newRowIdx >= userRows.length) return;
         userRowIdx = newRowIdx;
-        userEntries = userRows[userRowIdx]?.entries || [];
+        const row = userRows[userRowIdx];
+        userEntries = row?.entries || [];
+        // If user has no entries, create a fake default entry
+        if (userEntries.length === 0 && row) {
+            const inst = window.__flangoGetInstitutionById?.(row.user?.institution_id);
+            const def = getDefaultProfilePicture(row.name, inst);
+            userEntries = [{
+                id: '__default__' + row.userId,
+                user_id: row.userId,
+                user_name: row.name,
+                picture_type: 'default',
+                is_active: false,
+                storage_path: def.type === 'image' ? def.value : null,
+                _isDefault: true,
+                _defaultType: def.type,
+                _defaultValue: def.value,
+            }];
+        }
         navigable = userEntries;
         currentIdx = 0;
         // Find active entry for this user, or first

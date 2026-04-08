@@ -1,7 +1,7 @@
 // js/ui/customer-picker.js
 import { buildCustomerSelectionEntryElement } from '../domain/users-and-admin.js';
 import { SEARCH_DEBOUNCE_MS } from '../core/constants.js';
-import { batchPreWarmProfilePictures } from '../core/profile-picture-cache.js';
+import { batchPreWarmProfilePictures, preWarmDefaultProfilePicture } from '../core/profile-picture-cache.js';
 
 // Filter state - enklere: kun ét valg ad gangen
 let userFilterMode = 'all'; // 'all' | 'children' | 'adults'
@@ -42,16 +42,16 @@ export function renderCustomerListUI(options) {
     const searchTerm = (searchInput.value || '').toLowerCase();
 
     // Filtrer brugere baseret på filter mode
-    // Admins vises kun hvis de individuelt har show_in_user_list = true
-    let filteredUsers = allUsers;
+    // Respekter show_in_user_list for alle roller (børn + admins)
+    let filteredUsers = allUsers.filter(u => u.show_in_user_list !== false);
 
     if (userFilterMode === 'children') {
         filteredUsers = filteredUsers.filter((u) => u.role === 'kunde');
     } else if (userFilterMode === 'adults') {
-        filteredUsers = filteredUsers.filter((u) => u.role === 'admin' && u.show_in_user_list !== false);
+        filteredUsers = filteredUsers.filter((u) => u.role === 'admin');
     } else {
-        // 'all' — vis alle børn + admins der har show_in_user_list
-        filteredUsers = filteredUsers.filter((u) => u.role === 'kunde' || (u.role === 'admin' && u.show_in_user_list !== false));
+        // 'all' — vis alle børn + admins (begge allerede filtreret på show_in_user_list)
+        filteredUsers = filteredUsers.filter((u) => u.role === 'kunde' || u.role === 'admin');
     }
 
     if (searchTerm) {
@@ -179,9 +179,11 @@ export function openCustomerSelectionModalUI(options) {
 
     // Pre-warm profile picture URLs (async), then re-render to show pictures
     if (options.allUsers) {
-        batchPreWarmProfilePictures(options.allUsers)
-            .then(() => renderList())
-            .catch(() => {});
+        const inst = window.__flangoGetInstitutionById?.(options.allUsers[0]?.institution_id);
+        Promise.all([
+            batchPreWarmProfilePictures(options.allUsers),
+            preWarmDefaultProfilePicture(inst),
+        ]).then(() => renderList()).catch(() => {});
     }
 
     // Render den aktuelle kundeliste (immediate — shows initials if pics not cached yet)

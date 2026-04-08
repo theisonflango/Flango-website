@@ -4,7 +4,7 @@
 
 import { supabaseClient } from '../core/config-and-supabase.js';
 import { escapeHtml } from '../core/escape-html.js';
-import { getCachedProfilePictureUrl } from '../core/profile-picture-cache.js';
+import { getCachedProfilePictureUrl, renderDefaultProfilePictureHtml } from '../core/profile-picture-cache.js';
 
 const adminCacheByInstitutionUsers = {};
 
@@ -21,8 +21,7 @@ function inlineProfilePic(user) {
         const url = getCachedProfilePictureUrl(user);
         if (url) return `<img src="${url}" alt="" class="pp-inline-thumb">`;
     }
-    // Default placeholder — small neutral avatar
-    return `<span class="pp-inline-default">👤</span>`;
+    return renderDefaultProfilePictureHtml(user.name, inst, 26, 'pp-inline-thumb');
 }
 
 export function getCurrentInstitutionId(adminProfile, clerkProfile) {

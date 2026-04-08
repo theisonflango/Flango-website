@@ -8,7 +8,7 @@ import { getCurrentCustomer } from './cafe-session-store.js';
 import { getOrderTotal } from './order-store.js';
 import { getFinancialState } from './cafe-session-store.js';
 import { calculateLevel } from './statistics-data.js';
-import { getProfilePictureUrl, getCachedProfilePictureUrl } from '../core/profile-picture-cache.js';
+import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js';
 import { renderKlartTotalDivider } from './order-ui.js';
 
 /**
@@ -508,8 +508,25 @@ export function updateSelectedUserInfo() {
                 if (savedAvatar) {
                     el.innerHTML = `<img src="${savedAvatar}" alt="" class="${imgClass}">`;
                 } else {
-                    const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-                    el.textContent = initials;
+                    // Use institution default profile picture setting
+                    const def = getDefaultProfilePicture(name, inst);
+                    if (def.type === 'anonymous') {
+                        el.textContent = '👤';
+                    } else if (def.type === 'image' && def.value) {
+                        el.innerHTML = `<img src="${def.value}" alt="" class="${imgClass}">`;
+                    } else if (def.type === 'image') {
+                        // Need async resolution for signed URL
+                        el.textContent = '...';
+                        getDefaultProfilePictureAsync(name, inst).then(res => {
+                            if (res.type === 'image' && res.value && el.isConnected) {
+                                el.innerHTML = `<img src="${res.value}" alt="" class="${imgClass}">`;
+                            } else if (el.isConnected) {
+                                el.textContent = res.value || '?';
+                            }
+                        });
+                    } else {
+                        el.textContent = def.value; // initials
+                    }
                 }
             }
         }

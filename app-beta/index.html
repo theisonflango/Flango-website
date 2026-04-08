@@ -910,6 +910,40 @@
                     </button>
                     <p style="font-size: 11px; color: #888; margin: 6px 0 0 0; text-align: center;">Upload billeder hentet fra Aula — matcher automatisk på navn og klassetrin</p>
                 </div>
+                <!-- Standard profilbillede for brugere uden eget -->
+                <div id="pp-default-section" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; display: none;">
+                    <p style="font-size: 13px; font-weight: 600; margin: 0 0 10px 0;">Standard profilbillede</p>
+                    <p style="font-size: 11px; color: #888; margin: 0 0 12px 0;">Vises for brugere der ikke har fået tildelt et profilbillede.</p>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label class="pp-default-option" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s;">
+                            <input type="radio" name="pp-default-mode" value="initials" checked style="width: 18px; height: 18px; cursor: pointer;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(99,102,241,0.15); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #6366f1; flex-shrink: 0;">AB</div>
+                            <div>
+                                <strong style="font-size: 13px;">Initialer</strong>
+                                <div style="font-size: 11px; color: #888;">Viser brugerens initialer i en cirkel</div>
+                            </div>
+                        </label>
+                        <label class="pp-default-option" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s;">
+                            <input type="radio" name="pp-default-mode" value="anonymous" style="width: 18px; height: 18px; cursor: pointer;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: #e8e8e8; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">👤</div>
+                            <div>
+                                <strong style="font-size: 13px;">Anonym bruger-ikon</strong>
+                                <div style="font-size: 11px; color: #888;">Viser et generisk bruger-ikon</div>
+                            </div>
+                        </label>
+                        <label class="pp-default-option" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s;">
+                            <input type="radio" name="pp-default-mode" value="image" style="width: 18px; height: 18px; cursor: pointer;">
+                            <div id="pp-default-image-preview" style="width: 36px; height: 36px; border-radius: 50%; background: #e8e8e8; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; overflow: hidden;">🖼️</div>
+                            <div style="flex: 1;">
+                                <strong style="font-size: 13px;">Brugerdefineret billede</strong>
+                                <div style="font-size: 11px; color: #888;">Ét fælles billede for alle uden profilbillede</div>
+                            </div>
+                        </label>
+                        <div id="pp-default-image-actions" style="display: none; padding: 8px 12px;">
+                            <button id="pp-default-image-choose-btn" style="padding: 8px 16px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px;">Vælg billede...</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer" style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: space-between;">
                 <button id="back-to-preferences-pp-settings-btn" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">← Tilbage</button>

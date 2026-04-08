@@ -1641,7 +1641,7 @@ async function openProfilePictureSettingsModal() {
     // Load current settings
     const { data, error } = await supabaseClient
         .from('institutions')
-        .select('profile_pictures_enabled, profile_picture_types, profile_pictures_ai_enabled')
+        .select('profile_pictures_enabled, profile_picture_types, profile_pictures_ai_enabled, default_profile_picture_mode, default_profile_picture_url')
         .eq('id', institutionId)
         .single();
 
@@ -1693,6 +1693,73 @@ async function openProfilePictureSettingsModal() {
         aiWarning.style.display = aiAvatarCb.checked ? 'block' : 'none';
     };
 
+    // --- Default profile picture section ---
+    const defaultSection = document.getElementById('pp-default-section');
+    const defaultRadios = modal.querySelectorAll('input[name="pp-default-mode"]');
+    const defaultImageActions = document.getElementById('pp-default-image-actions');
+    const defaultImagePreview = document.getElementById('pp-default-image-preview');
+    const defaultImageChooseBtn = document.getElementById('pp-default-image-choose-btn');
+
+    // Show/hide default section based on enabled toggle
+    function updateDefaultSectionVisibility() {
+        if (defaultSection) defaultSection.style.display = enabledToggle.checked ? 'block' : 'none';
+    }
+    updateDefaultSectionVisibility();
+    const origOnChange = enabledToggle.onchange;
+    enabledToggle.onchange = () => {
+        origOnChange?.();
+        updateDefaultSectionVisibility();
+    };
+
+    // Load saved default mode
+    if (data) {
+        const defaultMode = data.default_profile_picture_mode || 'initials';
+        const defaultUrl = data.default_profile_picture_url;
+        defaultRadios.forEach(r => { r.checked = (r.value === defaultMode); });
+        if (defaultImageActions) defaultImageActions.style.display = defaultMode === 'image' ? 'block' : 'none';
+        if (defaultUrl && defaultImagePreview) {
+            // Show current default image preview
+            supabaseClient.storage.from('profile-pictures').createSignedUrl(defaultUrl, 3600).then(({ data: sd }) => {
+                if (sd?.signedUrl) {
+                    defaultImagePreview.innerHTML = `<img src="${sd.signedUrl}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
+                }
+            });
+        }
+    }
+
+    // Toggle image actions visibility on radio change
+    defaultRadios.forEach(r => {
+        r.addEventListener('change', () => {
+            if (defaultImageActions) defaultImageActions.style.display = r.value === 'image' && r.checked ? 'block' : 'none';
+        });
+    });
+
+    // Choose default image button — open profile picture modal in "default" mode
+    if (defaultImageChooseBtn) {
+        defaultImageChooseBtn.onclick = async () => {
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js');
+            // Use a fake user object for the default image
+            const fakeUser = { id: '__default__', name: 'Standard billede', institution_id: institutionId };
+            openProfilePictureModal(fakeUser, {
+                onSaved: async (result) => {
+                    if (result?.profile_picture_url) {
+                        // Move to institution default path
+                        const storagePath = result.profile_picture_url;
+                        if (defaultImagePreview) {
+                            const { data: sd } = await supabaseClient.storage.from('profile-pictures').createSignedUrl(storagePath, 3600);
+                            if (sd?.signedUrl) {
+                                defaultImagePreview.innerHTML = `<img src="${sd.signedUrl}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
+                            }
+                        }
+                        // Store URL temporarily — will be saved with "Gem indstillinger"
+                        modal.dataset.pendingDefaultUrl = storagePath;
+                    }
+                },
+                showCustomAlert: (title, msg) => alert(msg),
+            });
+        };
+    }
+
     // Aula import button
     const aulaImportBtn = document.getElementById('pp-aula-import-btn');
     if (aulaImportBtn) {
@@ -1732,10 +1799,16 @@ async function openProfilePictureSettingsModal() {
                 if (libraryCb.checked) types.push('library');
                 if (aiAvatarCb.checked) types.push('ai_avatar');
 
+                // Get default profile picture mode
+                const selectedDefault = modal.querySelector('input[name="pp-default-mode"]:checked')?.value || 'initials';
+                const pendingDefaultUrl = modal.dataset.pendingDefaultUrl || data?.default_profile_picture_url || null;
+
                 const updates = {
                     profile_pictures_enabled: enabledToggle.checked,
                     profile_picture_types: types,
                     profile_pictures_ai_enabled: aiAvatarCb.checked,
+                    default_profile_picture_mode: selectedDefault,
+                    default_profile_picture_url: selectedDefault === 'image' ? pendingDefaultUrl : null,
                 };
 
                 const { error: saveError } = await supabaseClient

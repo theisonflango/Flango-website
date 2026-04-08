@@ -502,8 +502,8 @@
     background: var(--modal-bg, #1e1e2e);
     border-radius: 20px;
     padding: 32px 40px;
-    max-width: 520px;
-    width: 90%;
+    max-width: 620px;
+    width: 95%;
     text-align: center;
 }
 .uap-lightbox-img {
@@ -513,6 +513,16 @@
     object-fit: cover;
     margin-bottom: 20px;
     box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+}
+.uap-lightbox-img-default {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: min(120px, 18vw);
+    font-weight: 700;
+    margin-left: auto;
+    margin-right: auto;
+    flex-shrink: 0;
 }
 .uap-lightbox-close {
     position: absolute;
@@ -554,10 +564,10 @@
     gap: 6px;
     justify-content: center;
     margin-bottom: 12px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 .uap-lb-btn {
-    padding: 6px 14px;
+    padding: 7px 14px;
     color: #fff;
     border: none;
     border-radius: 8px;

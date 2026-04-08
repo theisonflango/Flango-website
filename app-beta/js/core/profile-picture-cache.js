@@ -5,6 +5,7 @@
  */
 
 import { supabaseClient } from './config-and-supabase.js';
+import { escapeHtml } from './escape-html.js';
 
 const BUCKET = 'profile-pictures';
 const SIGNED_URL_TTL_MS = 55 * 60 * 1000; // 55 min (URLs valid 60 min)
@@ -128,6 +129,98 @@ export function invalidateProfilePictureCache(userId) {
 /** Clear entire cache */
 export function clearProfilePictureCache() {
     signedUrlCache.clear();
+    defaultImageSignedUrl = null;
+    defaultImageSignedUrlExpires = 0;
+}
+
+/**
+ * Pre-warm the default profile picture signed URL for an institution.
+ * Call this at app init so sync getDefaultProfilePicture() works immediately.
+ */
+export async function preWarmDefaultProfilePicture(inst) {
+    if (inst?.default_profile_picture_mode === 'image' && inst?.default_profile_picture_url) {
+        try {
+            const { data } = await supabaseClient.storage
+                .from(BUCKET)
+                .createSignedUrl(inst.default_profile_picture_url, SIGNED_URL_DURATION_SEC);
+            if (data?.signedUrl) {
+                defaultImageSignedUrl = data.signedUrl;
+                defaultImageSignedUrlExpires = Date.now() + SIGNED_URL_TTL_MS;
+            }
+        } catch (err) {
+            console.warn('[profile-picture-cache] Pre-warm default fejl:', err.message);
+        }
+    }
+}
+
+// --- Default profile picture for users without one ---
+
+// Cache for default image signed URL
+let defaultImageSignedUrl = null;
+let defaultImageSignedUrlExpires = 0;
+
+/**
+ * Returns the default profile picture info for a user without their own picture.
+ * @param {string} userName - User's display name (for initials)
+ * @param {object} inst - Institution object (from __flangoGetInstitutionById)
+ * @returns {{ type: 'initials'|'anonymous'|'image', value: string }}
+ */
+export function getDefaultProfilePicture(userName, inst) {
+    const mode = inst?.default_profile_picture_mode || 'initials';
+    if (mode === 'anonymous') return { type: 'anonymous', value: '👤' };
+    if (mode === 'image' && inst?.default_profile_picture_url) {
+        // Return cached signed URL if available
+        if (defaultImageSignedUrl && defaultImageSignedUrlExpires > Date.now()) {
+            return { type: 'image', value: defaultImageSignedUrl };
+        }
+        return { type: 'image', value: null }; // URL needs async resolution
+    }
+    const initials = (userName || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    return { type: 'initials', value: initials };
+}
+
+/**
+ * Async version that resolves signed URL for image-type default pictures.
+ */
+export async function getDefaultProfilePictureAsync(userName, inst) {
+    const mode = inst?.default_profile_picture_mode || 'initials';
+    if (mode === 'anonymous') return { type: 'anonymous', value: '👤' };
+    if (mode === 'image' && inst?.default_profile_picture_url) {
+        if (defaultImageSignedUrl && defaultImageSignedUrlExpires > Date.now()) {
+            return { type: 'image', value: defaultImageSignedUrl };
+        }
+        try {
+            const { data } = await supabaseClient.storage
+                .from(BUCKET)
+                .createSignedUrl(inst.default_profile_picture_url, SIGNED_URL_DURATION_SEC);
+            if (data?.signedUrl) {
+                defaultImageSignedUrl = data.signedUrl;
+                defaultImageSignedUrlExpires = Date.now() + SIGNED_URL_TTL_MS;
+                return { type: 'image', value: data.signedUrl };
+            }
+        } catch (err) {
+            console.warn('[profile-picture-cache] Default image URL fejl:', err.message);
+        }
+    }
+    const initials = (userName || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    return { type: 'initials', value: initials };
+}
+
+/**
+ * Renders default profile picture HTML for a given size.
+ */
+export function renderDefaultProfilePictureHtml(userName, inst, size = 26, imgClass = '') {
+    const def = getDefaultProfilePicture(userName, inst);
+    if (def.type === 'anonymous') {
+        return `<span class="pp-inline-default" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.55)}px;">👤</span>`;
+    }
+    if (def.type === 'image' && def.value) {
+        return `<img src="${escapeHtml(def.value)}" alt="" class="${imgClass || 'pp-inline-thumb'}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;">`;
+    }
+    // Initials or image-without-url fallback
+    const fontSize = Math.round(size * 0.28);
+    const initials = (userName || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:50%;background:rgba(99,102,241,0.15);font-weight:700;font-size:${fontSize}px;color:#6366f1;flex-shrink:0;">${initials}</span>`;
 }
 
 // --- Internal ---
