@@ -1,6 +1,6 @@
-import { supabaseClient } from './config-and-supabase.js?v=3.0.63';
-import { safeDbCall } from './safe-db-call.js?v=3.0.63';
-import { setCustomerBalance, getCurrentCustomer } from '../domain/cafe-session-store.js?v=3.0.63';
+import { supabaseClient } from './config-and-supabase.js?v=3.0.64';
+import { safeDbCall } from './safe-db-call.js?v=3.0.64';
+import { setCustomerBalance, getCurrentCustomer } from '../domain/cafe-session-store.js?v=3.0.64';
 
 // Event listeners for balance changes
 const balanceChangeListeners = new Map();

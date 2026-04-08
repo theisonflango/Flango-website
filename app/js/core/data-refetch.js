@@ -2,11 +2,11 @@
 // Unified data refetch functions for ensuring UI stays in sync with database
 // Part of "Refetch After Write" pattern for failsafe data consistency
 
-import { supabaseClient } from './config-and-supabase.js?v=3.0.63';
-import { runWithAuthRetry } from './auth-retry.js?v=3.0.63';
-import { safeDbCall } from './safe-db-call.js?v=3.0.63';
-import { getCurrentCustomer, setCustomerBalance } from '../domain/cafe-session-store.js?v=3.0.63';
-import { batchPreWarmProductIcons, preWarmStandardIcons } from './product-icon-cache.js?v=3.0.63';
+import { supabaseClient } from './config-and-supabase.js?v=3.0.64';
+import { runWithAuthRetry } from './auth-retry.js?v=3.0.64';
+import { safeDbCall } from './safe-db-call.js?v=3.0.64';
+import { getCurrentCustomer, setCustomerBalance } from '../domain/cafe-session-store.js?v=3.0.64';
+import { batchPreWarmProductIcons, preWarmStandardIcons } from './product-icon-cache.js?v=3.0.64';
 
 // Race condition protection: Track in-flight requests
 let usersRefetchToken = 0;

@@ -39,8 +39,8 @@
  * ============================================================
  */
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.63';
-import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.63';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.64';
+import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.64';
 
 // ============================================================
 // STATE

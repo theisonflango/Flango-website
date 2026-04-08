@@ -1,4 +1,4 @@
-import { showAlert } from './sound-and-alerts.js?v=3.0.63';
+import { showAlert } from './sound-and-alerts.js?v=3.0.64';
 
 export function showPinModal(userName) {
     const pinModal = document.getElementById('pin-modal');

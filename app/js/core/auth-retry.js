@@ -1,6 +1,6 @@
 // js/core/auth-retry.js
 // Central helper: refresh Supabase session and retry once on auth errors.
-import { supabaseClient } from './config-and-supabase.js?v=3.0.63';
+import { supabaseClient } from './config-and-supabase.js?v=3.0.64';
 
 function isAuthError(error) {
     if (!error) return false;
