@@ -1,20 +1,20 @@
-import { playSound, showAlert, showCustomAlert } from '../ui/sound-and-alerts.js';
-import { logDebugEvent } from '../core/debug-flight-recorder.js';
-import { supabaseClient } from '../core/config-and-supabase.js';
+import { playSound, showAlert, showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.62';
+import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.62';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.62';
 import {
     calculateCurrentStats,
     loadFlangoAdminStats,
     mergeRemoteStatsWithSession,
     getStatsSummaryHTML,
     addWorkMinutesForToday, getStatsAccordionSectionsHTML,
-} from './stats-and-badges.js';
-import { clearCurrentCustomer } from './cafe-session-store.js';
-import { stopInactivityTimeout } from '../core/inactivity-timeout.js';
-import { showScreen } from '../ui/shell-and-theme.js';
-import { handlePrintAllBalances } from './history-and-reports.js';
-import { resetShiftTimer } from './shift-timer.js';
-import { stopRealtimeSync } from '../core/realtime-sync.js';
-import { clearAllToasts } from '../ui/toast-notifications.js';
+} from './stats-and-badges.js?v=3.0.62';
+import { clearCurrentCustomer } from './cafe-session-store.js?v=3.0.62';
+import { stopInactivityTimeout } from '../core/inactivity-timeout.js?v=3.0.62';
+import { showScreen } from '../ui/shell-and-theme.js?v=3.0.62';
+import { handlePrintAllBalances } from './history-and-reports.js?v=3.0.62';
+import { resetShiftTimer } from './shift-timer.js?v=3.0.62';
+import { stopRealtimeSync } from '../core/realtime-sync.js?v=3.0.62';
+import { clearAllToasts } from '../ui/toast-notifications.js?v=3.0.62';
 
 export function setupLogoutFlow({ clerkProfile, sessionStartTime, getSessionSalesCount, logoutBtn, settingsLogoutBtn }) {
     if (logoutBtn) logoutBtn.onclick = async () => {

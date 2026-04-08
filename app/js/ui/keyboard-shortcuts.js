@@ -1,5 +1,5 @@
-import { logDebugEvent } from '../core/debug-flight-recorder.js';
-import { isCalculatorModeActive, handleCalculatorKeyboard } from './calculator-mode.js';
+import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.62';
+import { isCalculatorModeActive, handleCalculatorKeyboard } from './calculator-mode.js?v=3.0.62';
 
 export function setupKeyboardShortcuts({
     getAllProducts,
@@ -255,7 +255,7 @@ export function setupKeyboardShortcuts({
         // B: Åbn Brugerpanel (kun admin)
         if (key === 'b') {
             event.preventDefault();
-            import('./user-admin-panel.js').then(m => m.openUserAdminPanel());
+            import('./user-admin-panel.js?v=3.0.62').then(m => m.openUserAdminPanel());
         }
     };
 
