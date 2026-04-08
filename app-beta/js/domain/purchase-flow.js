@@ -1,24 +1,24 @@
-import { showAlert, showCustomAlert, playSound } from '../ui/sound-and-alerts.js?v=3.0.62';
-import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.62';
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.62';
-import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.62';
-import { OVERDRAFT_LIMIT } from '../core/constants.js?v=3.0.62';
-import { setOrder, getOrder, clearOrder, getOrderTotal } from './order-store.js?v=3.0.62';
-import { evaluatePurchase } from './cafe-session.js?v=3.0.62';
+import { showAlert, showCustomAlert, playSound } from '../ui/sound-and-alerts.js?v=3.0.63';
+import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.63';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.63';
+import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.63';
+import { OVERDRAFT_LIMIT } from '../core/constants.js?v=3.0.63';
+import { setOrder, getOrder, clearOrder, getOrderTotal } from './order-store.js?v=3.0.63';
+import { evaluatePurchase } from './cafe-session.js?v=3.0.63';
 import {
     applyEvaluation,
     getFinancialState,
     clearCurrentCustomer,
-} from './cafe-session-store.js?v=3.0.62';
-import { renderOrder } from './order-ui.js?v=3.0.62';
-import { getProductIconInfo, getBulkDiscountedUnitPrice, getBulkDiscountSummary } from './products-and-cart.js?v=3.0.62';
-import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild, getChildSugarPolicySnapshot } from './purchase-limits.js?v=3.0.62';
-import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js?v=3.0.62';
-import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js?v=3.0.62';
-import { escapeHtml } from '../core/escape-html.js?v=3.0.62';
-import { formatKr } from '../ui/confirm-modals.js?v=3.0.62';
-import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js?v=3.0.62';
-import { processEventItemsInCheckout } from '../ui/cafe-event-strip.js?v=3.0.62';
+} from './cafe-session-store.js?v=3.0.63';
+import { renderOrder } from './order-ui.js?v=3.0.63';
+import { getProductIconInfo, getBulkDiscountedUnitPrice, getBulkDiscountSummary } from './products-and-cart.js?v=3.0.63';
+import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild, getChildSugarPolicySnapshot } from './purchase-limits.js?v=3.0.63';
+import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js?v=3.0.63';
+import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js?v=3.0.63';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.63';
+import { formatKr } from '../ui/confirm-modals.js?v=3.0.63';
+import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js?v=3.0.63';
+import { processEventItemsInCheckout } from '../ui/cafe-event-strip.js?v=3.0.63';
 
 
 // ============================================================================

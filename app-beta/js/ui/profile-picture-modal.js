@@ -4,12 +4,12 @@
  * Sub-views: Upload, Camera, Library.
  */
 
-import { AVATAR_URLS } from './avatar-picker.js?v=3.0.62';
-import { processImageForProfilePicture, uploadProfilePicture, saveLibraryProfilePicture, fetchUserProfilePictures } from '../core/profile-picture-utils.js?v=3.0.62';
-import { getProfilePictureUrl, invalidateProfilePictureCache } from '../core/profile-picture-cache.js?v=3.0.62';
-import { escapeHtml } from '../core/escape-html.js?v=3.0.62';
-import { supabaseClient, SUPABASE_URL } from '../core/config-and-supabase.js?v=3.0.62';
-import { fetchInstitutionIconLibrary } from '../core/product-icon-utils.js?v=3.0.62';
+import { AVATAR_URLS } from './avatar-picker.js?v=3.0.63';
+import { processImageForProfilePicture, uploadProfilePicture, saveLibraryProfilePicture, fetchUserProfilePictures } from '../core/profile-picture-utils.js?v=3.0.63';
+import { getProfilePictureUrl, invalidateProfilePictureCache } from '../core/profile-picture-cache.js?v=3.0.63';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.63';
+import { supabaseClient, SUPABASE_URL } from '../core/config-and-supabase.js?v=3.0.63';
+import { fetchInstitutionIconLibrary } from '../core/product-icon-utils.js?v=3.0.63';
 
 /**
  * Open the profile picture modal for a given user.
@@ -713,13 +713,17 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
             <div class="profile-pic-preview-container">
                 <img src="${photoUrl}" alt="Reference" class="profile-pic-preview-img" style="border-color:rgba(245,158,11,0.4);">
                 <div style="font-size:11px;color:#94a3b8;text-align:center;">${escapeHtml(label)}</div>
-                <div class="profile-pic-preview-actions">
-                    <button class="profile-pic-btn profile-pic-btn-primary" id="pp-ai-generate" style="background:linear-gradient(135deg,#f59e0b,#d97706);">Generer avatar</button>
-                    <button class="profile-pic-btn profile-pic-btn-secondary" id="pp-ai-change-ref">Skift billede</button>
+                <div class="profile-pic-preview-actions" style="flex-direction:column;gap:8px;">
+                    <div style="display:flex;gap:8px;width:100%;">
+                        <button class="profile-pic-btn profile-pic-btn-primary" id="pp-ai-generate-openai" style="background:linear-gradient(135deg,#10b981,#059669);flex:1;">Generer (OpenAI)</button>
+                        <button class="profile-pic-btn profile-pic-btn-primary" id="pp-ai-generate-flux" style="background:linear-gradient(135deg,#6366f1,#4f46e5);flex:1;">Generer (FLUX)</button>
+                    </div>
+                    <button class="profile-pic-btn profile-pic-btn-secondary" id="pp-ai-change-ref" style="width:100%;">Skift billede</button>
                 </div>
             </div>`;
 
-        previewArea.querySelector('#pp-ai-generate').addEventListener('click', () => generateAvatar(blob, photoUrl));
+        previewArea.querySelector('#pp-ai-generate-openai').addEventListener('click', () => generateAvatar(blob, photoUrl, 'openai'));
+        previewArea.querySelector('#pp-ai-generate-flux').addEventListener('click', () => generateAvatar(blob, photoUrl, 'flux'));
         previewArea.querySelector('#pp-ai-change-ref').addEventListener('click', () => {
             URL.revokeObjectURL(photoUrl);
             referenceBlob = null;
@@ -731,10 +735,12 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
     }
 
     // --- Generate avatar (shared for all sources) ---
-    async function generateAvatar(blob, photoUrl) {
+    async function generateAvatar(blob, photoUrl, provider = 'openai') {
+        const providerLabel = provider === 'flux' ? 'FLUX' : 'OpenAI';
+        const timeHint = provider === 'flux' ? '10-30 sek' : '5-15 sek';
         previewArea.innerHTML = `<div class="profile-pic-loading" style="padding:30px;text-align:center;">
             <span class="profile-pic-spinner"></span>
-            <div style="margin-top:8px;font-size:13px;">Genererer avatar... (5-15 sek)</div>
+            <div style="margin-top:8px;font-size:13px;">Genererer avatar via ${providerLabel}... (${timeHint})</div>
         </div>`;
 
         try {
@@ -758,6 +764,7 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
             formData.append('photo', new File([blob], 'photo.jpg', { type: 'image/jpeg' }));
             if (finalPrompt) formData.append('custom_prompt', finalPrompt);
             formData.append('ai_style', selectedPreset.key);
+            formData.append('ai_provider', provider);
 
             // Send hat reference image if enabled
             if (hatEnabled) {

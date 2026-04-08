@@ -1,4 +1,4 @@
-import { showAlert } from './ui/sound-and-alerts.js?v=3.0.62';
+import { showAlert } from './ui/sound-and-alerts.js?v=3.0.63';
 import {
     initFlangoTheme,
     setupThemePickerUI,
@@ -8,14 +8,14 @@ import {
     setupSettingsModal,
     setupHelpButton,
     initToolbarSettings,
-} from './ui/shell-and-theme.js?v=3.0.62';
-import { supabaseClient } from './core/config-and-supabase.js?v=3.0.62';
-import { getCurrentUserProfile } from './domain/auth-and-session.js?v=3.0.62';
-import { ensureActiveInstitution, fetchInstitutions } from './domain/institution-store.js?v=3.0.62';
-import { setupFullLoginScreen, setupDeviceUnlockScreen } from './domain/login-flow.js?v=3.0.62';
-import { hasDeviceUsers } from './domain/device-trust.js?v=3.0.62';
-import { startApp, setupAdminLoginScreen } from './domain/app-main.js?v=3.0.62';
-import { initUpdateChip, startVersionChecking } from './core/version-check.js?v=3.0.62';
+} from './ui/shell-and-theme.js?v=3.0.63';
+import { supabaseClient } from './core/config-and-supabase.js?v=3.0.63';
+import { getCurrentUserProfile } from './domain/auth-and-session.js?v=3.0.63';
+import { ensureActiveInstitution, fetchInstitutions } from './domain/institution-store.js?v=3.0.63';
+import { setupFullLoginScreen, setupDeviceUnlockScreen } from './domain/login-flow.js?v=3.0.63';
+import { hasDeviceUsers } from './domain/device-trust.js?v=3.0.63';
+import { startApp, setupAdminLoginScreen } from './domain/app-main.js?v=3.0.63';
+import { initUpdateChip, startVersionChecking } from './core/version-check.js?v=3.0.63';
 
 document.addEventListener('DOMContentLoaded', () => {
     // INIT tema første gang siden indlæses
@@ -107,7 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
 
             if (session) {
-                // Active admin session exists
+                // Active admin session exists — re-fetch med fuld data (authed)
+                await fetchInstitutions(true);
                 const adminProfile = await getCurrentUserProfile(session);
                 if (adminProfile && adminProfile.role === 'admin') {
                     // Ensure institution is remembered

@@ -5,7 +5,7 @@
  * Pattern matches profile-picture-cache.js.
  */
 
-import { supabaseClient } from './config-and-supabase.js?v=3.0.62';
+import { supabaseClient } from './config-and-supabase.js?v=3.0.63';
 
 const BUCKET = 'product-icons';
 const SIGNED_URL_TTL_MS = 55 * 60 * 1000;   // 55 min (URLs valid 60 min)

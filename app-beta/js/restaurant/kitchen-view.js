@@ -3,11 +3,11 @@
  * Handles: auth, data loading, Realtime subscription, rendering, serve/unserve.
  * iPad-first, no-scroll, scale-to-fit design.
  */
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.62';
-import { authenticateKitchen, getKitchenInstitutionId, getKitchenInstitutionName, logoutKitchen } from './kitchen-auth.js?v=3.0.62';
-import { renderKitchenCard, updateAllCardTimes } from './kitchen-cards.js?v=3.0.62';
-import { sortOrders, sortOrdersByColumn } from './kitchen-sort.js?v=3.0.62';
-import { initKitchenSound, setKitchenSound, playNewOrderSound, playServeSound, toggleMute, isSoundMuted, setOrderSound, setServeSound, getOrderSoundFile, getServeSoundFile } from './kitchen-sound.js?v=3.0.62';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.63';
+import { authenticateKitchen, getKitchenInstitutionId, getKitchenInstitutionName, logoutKitchen } from './kitchen-auth.js?v=3.0.63';
+import { renderKitchenCard, updateAllCardTimes } from './kitchen-cards.js?v=3.0.63';
+import { sortOrders, sortOrdersByColumn } from './kitchen-sort.js?v=3.0.63';
+import { initKitchenSound, setKitchenSound, playNewOrderSound, playServeSound, toggleMute, isSoundMuted, setOrderSound, setServeSound, getOrderSoundFile, getServeSoundFile } from './kitchen-sound.js?v=3.0.63';
 
 let institutionId = null;
 let institutionName = null;
