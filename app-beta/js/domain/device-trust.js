@@ -9,10 +9,43 @@
  */
 
 import { supabaseClient } from '../core/config-and-supabase.js';
+import { getOrCreateDeviceId } from './mfa-utils.js';
 
 const DEVICE_USERS_KEY = 'flango_device_users';
+const DEVICE_USERS_COOKIE = 'flango_device_users_bk';
 const SUPABASE_URL = supabaseClient.supabaseUrl || 'https://jbknjgbpghrbrstqwoxj.supabase.co';
 const SUPABASE_ANON_KEY = supabaseClient.supabaseKey || supabaseClient.rest?.headers?.apikey || '';
+
+// ─── Cookie helpers (for device users backup) ──────────────────
+
+function _setCookie(name, value, days) {
+    const expires = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = `${name}=${value}; expires=${expires}; path=/; SameSite=Strict; Secure`;
+}
+
+function _getCookie(name) {
+    return document.cookie.split('; ').find(r => r.startsWith(name + '='))?.split('=')[1] || null;
+}
+
+/** Backup device users summary til cookie (kun navne, ikke tokens — pga 4KB cookie limit) */
+function _backupDeviceUsersToCookie(users) {
+    try {
+        const summary = users.map(u => ({ u: u.userId, f: u.firstName, i: u.institutionId }));
+        _setCookie(DEVICE_USERS_COOKIE, btoa(JSON.stringify(summary)), 365);
+    } catch {}
+}
+
+/** Hent device users backup fra cookie. Returnerer kun summary (uden tokens). */
+function _getDeviceUsersFromCookie() {
+    try {
+        const raw = _getCookie(DEVICE_USERS_COOKIE);
+        if (!raw) return [];
+        const parsed = JSON.parse(atob(raw));
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
 
 // ─── localStorage helpers ───────────────────────────────────────
 
@@ -29,6 +62,15 @@ export function getDeviceUsers() {
     } catch {
         return [];
     }
+}
+
+/**
+ * Check if device previously had registered users (via cookie backup).
+ * Useful when localStorage is cleared but cookie persists.
+ * @returns {boolean}
+ */
+export function hadDeviceUsers() {
+    return _getDeviceUsersFromCookie().length > 0;
 }
 
 /**
@@ -51,6 +93,8 @@ export function addDeviceUser({ token, userId, firstName, institutionId }) {
     } catch (e) {
         console.error('[device-trust] Failed to save device user:', e);
     }
+    // Cookie backup (navne only, ikke tokens)
+    _backupDeviceUsersToCookie(filtered);
 }
 
 /**
@@ -63,6 +107,7 @@ export function removeDeviceUser(userId) {
     } catch (e) {
         console.error('[device-trust] Failed to remove device user:', e);
     }
+    _backupDeviceUsersToCookie(users);
 }
 
 /**
@@ -72,6 +117,7 @@ export function clearAllDeviceUsers() {
     try {
         localStorage.removeItem(DEVICE_USERS_KEY);
     } catch {}
+    _backupDeviceUsersToCookie([]);
 }
 
 // ─── Token hashing (client-side SHA-256 for lookup) ─────────────
@@ -97,9 +143,11 @@ async function sha256(text) {
  */
 export async function registerDeviceToken(pin) {
     const deviceName = _getDeviceName();
+    const deviceId = getOrCreateDeviceId();
     const { data, error } = await supabaseClient.rpc('register_device_token', {
         p_pin: pin,
         p_device_name: deviceName,
+        p_device_id: deviceId,
     });
 
     if (error) {

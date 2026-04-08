@@ -62,6 +62,9 @@
     { id: 'section-pin', icon: ICONS.lock, label: 'Adgangskode', check: false },
   ];
 
+  // ─── Feature flags state (sættes ved render) ───
+  let _featureFlags = null;
+
   // ─── Helper: determine if a feature is on ───
   function isFeatureOn(nav, settings) {
     if (!nav.check) return true;
@@ -71,18 +74,41 @@
     return nav.defaultChecked !== undefined ? nav.defaultChecked : false;
   }
 
+  // ─── Feature flag state for en sidebar nav item ───
+  function getNavFlagState(nav) {
+    const FM = window.FeatureModules;
+    if (!FM || !_featureFlags || !nav.settingKey) return 'unlocked';
+    const moduleKey = FM.SETTING_KEY_TO_MODULE[nav.settingKey];
+    if (!moduleKey) return 'unlocked';
+    // Tjek parent_portal override (lukker alt)
+    if (_featureFlags.parent_portal === 'forced_off' && moduleKey !== 'parent_portal') {
+      return 'forced_off';
+    }
+    return FM.getModuleState(_featureFlags, moduleKey);
+  }
+
   // ─── Build sidebar HTML ───
   function buildSidebar(settings, institutionName) {
     let navItems = '';
     for (const nav of SIDEBAR_NAV) {
-      const checked = isFeatureOn(nav, settings);
+      const flagState = getNavFlagState(nav);
+      const isForcedOff = flagState === 'forced_off';
+      const isForcedOn = flagState === 'forced_on';
+      const checked = isForcedOn ? true : isForcedOff ? false : isFeatureOn(nav, settings);
       const featureOffClass = (!checked && nav.check) ? ' feature-off' : '';
+      const lockedClass = (isForcedOff || isForcedOn) ? ' superadmin-locked' : '';
+      const disabledAttr = (isForcedOff || isForcedOn) ? ' disabled' : '';
+      const lockIcon = isForcedOn
+        ? '<span class="sa-lock sa-lock-on" title="Påkrævet af administrator">🔒</span>'
+        : isForcedOff
+        ? '<span class="sa-lock sa-lock-off" title="Deaktiveret af administrator">🔒</span>'
+        : '';
       const checkboxHtml = nav.check
-        ? `<input type="checkbox" class="sidebar-check" data-section="${nav.id}" ${checked ? 'checked' : ''}>`
+        ? `<input type="checkbox" class="sidebar-check" data-section="${nav.id}" ${checked ? 'checked' : ''}${disabledAttr}>`
         : '';
       navItems += `
-      <div class="sidebar-nav-item${featureOffClass}" data-scroll="${nav.id}">
-        ${checkboxHtml}${nav.icon}${nav.label}
+      <div class="sidebar-nav-item${featureOffClass}${lockedClass}" data-scroll="${nav.id}">
+        ${checkboxHtml}${nav.icon}${nav.label}${lockIcon}
       </div>`;
     }
 
@@ -692,9 +718,10 @@
   }
   function fmtBalShort(n) { return Math.round(n) + ' kr'; }
 
-  function render(container, institutionSettings, institutionName, previewUsersArr) {
+  function render(container, institutionSettings, institutionName, previewUsersArr, featureFlags) {
     const settings = institutionSettings || {};
     _instName = institutionName || 'Stampen SFO';
+    _featureFlags = featureFlags || null;
 
     // Use real admin/test users if provided, otherwise fallback
     if (previewUsersArr && previewUsersArr.length > 0) {

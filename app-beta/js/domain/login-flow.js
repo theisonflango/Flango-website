@@ -44,7 +44,9 @@ import {
     enrollTotp,
     challengeAndVerify,
     shouldRequireMfa,
-    setMfaDeviceTrusted,
+    setMfaDeviceTrustedDurable,
+    isMfaDeviceTrusted,
+    checkServerMfaTrust,
 } from './mfa-utils.js';
 
 // ─── Turnstile verification helper ──────────────────────────────
@@ -648,7 +650,17 @@ async function handleMfaGate(adminProfile) {
             .single();
 
         const policy = inst?.admin_mfa_policy || 'off';
-        if (!shouldRequireMfa(policy, 'admin')) return false;
+        if (policy === 'off') return false;
+
+        if (policy === 'new_device') {
+            // Hurtig check: localStorage
+            if (isMfaDeviceTrusted('admin')) return false;
+
+            // Fallback: cookie + server-side check (overlever cache-rydning)
+            const serverTrusted = await checkServerMfaTrust('admin');
+            if (serverTrusted) return false;
+        }
+        // policy === 'always' falder igennem til MFA
 
         // Tjek om brugeren har enrollet TOTP
         const factors = await getMfaFactors();
@@ -726,8 +738,8 @@ function setupMfaEnrollScreen(adminProfile) {
             return;
         }
 
-        // Succes
-        setMfaDeviceTrusted('admin');
+        // Succes — gem MFA trust i alle 3 lag (localStorage + cookie + server)
+        await setMfaDeviceTrustedDurable('admin');
         logAuditEvent('MFA_ENROLLED', {
             institutionId: adminProfile.institution_id,
             adminUserId: adminProfile.user_id,
@@ -778,8 +790,8 @@ function setupMfaChallengeScreen(adminProfile, factorId) {
             return;
         }
 
-        // Succes
-        setMfaDeviceTrusted('admin');
+        // Succes — gem MFA trust i alle 3 lag (localStorage + cookie + server)
+        await setMfaDeviceTrustedDurable('admin');
         logAuditEvent('MFA_VERIFIED', {
             institutionId: adminProfile.institution_id,
             adminUserId: adminProfile.user_id,

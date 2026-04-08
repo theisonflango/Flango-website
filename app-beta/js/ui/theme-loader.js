@@ -19,10 +19,10 @@ const THEME_CSS_FILES = [
 const MOBILE_CSS_FILE = 'mobile.css';
 
 // Themes that use a complete theme-pack (CSS file replacement)
-const THEME_PACK_THEMES = ['flango-unstoppable', 'klart', 'aurora'];
+const THEME_PACK_THEMES = ['klart', 'flango-unstoppable', 'aurora'];
 
 // All valid themes
-const ALL_VALID_THEMES = ['flango-unstoppable', 'klart', 'aurora'];
+const ALL_VALID_THEMES = ['klart', 'flango-unstoppable', 'aurora'];
 
 /**
  * Check if a theme uses a theme-pack (complete CSS replacement)
@@ -121,7 +121,7 @@ function loadThemePack(themeName) {
  */
 export function initThemeLoader() {
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-    const themeName = ALL_VALID_THEMES.includes(savedTheme) ? savedTheme : 'flango-unstoppable';
+    const themeName = ALL_VALID_THEMES.includes(savedTheme) ? savedTheme : 'klart';
 
     // Set data-theme attribute
     document.body.dataset.theme = themeName;
@@ -144,7 +144,7 @@ export function onThemeChange(fn) {
 
 export function switchTheme(themeName) {
     if (!ALL_VALID_THEMES.includes(themeName)) {
-        themeName = 'flango-unstoppable';
+        themeName = 'klart';
     }
 
     // Save to localStorage
@@ -164,7 +164,7 @@ export function switchTheme(themeName) {
  * Get current theme name
  */
 export function getCurrentTheme() {
-    return document.body.dataset.theme || 'flango-unstoppable';
+    return document.body.dataset.theme || 'klart';
 }
 
 /**

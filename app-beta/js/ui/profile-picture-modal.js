@@ -23,7 +23,26 @@ export async function openProfilePictureModal(user, options = {}) {
     const inst = window.__flangoGetInstitutionById?.(user.institution_id);
     if (!inst) return;
 
-    const allowedTypes = inst.profile_picture_types || ['upload', 'camera', 'library'];
+    let allowedTypes = inst.profile_picture_types || ['upload', 'camera', 'library'];
+
+    // Feature flag enforcement: filtrer typer der er forced_off af superadmin
+    const FM = window.FeatureModules;
+    let _ffFlags = null;
+    if (FM && typeof window.PortalData?.getFeatureFlags === 'function') {
+      try { _ffFlags = await window.PortalData.getFeatureFlags(user.institution_id); } catch (e) { /* fail-open */ }
+    }
+    if (_ffFlags && FM) {
+      allowedTypes = allowedTypes.filter(type => {
+        const moduleKey = FM.PROFILE_PIC_MODULE_MAP[type];
+        return !moduleKey || !FM.isModuleForcedOff(_ffFlags, moduleKey);
+      });
+      // forced_on: sørg for at typen er med (admin kan ikke fjerne den)
+      for (const [type, moduleKey] of Object.entries(FM.PROFILE_PIC_MODULE_MAP)) {
+        if (FM.isModuleForcedOn(_ffFlags, moduleKey) && !allowedTypes.includes(type)) {
+          allowedTypes.push(type);
+        }
+      }
+    }
 
     // Build overlay
     const overlay = document.createElement('div');

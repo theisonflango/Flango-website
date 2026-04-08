@@ -155,8 +155,16 @@ export async function performFullRefresh() {
         const institutionId = localStorage.getItem('flango_institution_id');
         const institutionName = localStorage.getItem('flango_institution_name');
 
-        // 2. Ryd localStorage (behold kun institution info)
-        const keysToKeep = ['flango_institution_id', 'flango_institution_name'];
+        // 2. Ryd localStorage (behold institution, device trust, MFA og tema)
+        const keysToKeep = [
+            'flango_institution_id',
+            'flango_institution_name',
+            'flango_device_users',           // Device PIN tokens
+            'flango_mfa_trusted_admin',      // MFA device trust
+            'flango_device_id_backup',       // Device UUID backup
+            'flango-ui-theme',               // Tema-valg
+            'flango_device_restaurant_mode', // Restaurant mode preference
+        ];
         const allKeys = Object.keys(localStorage);
 
         allKeys.forEach(key => {

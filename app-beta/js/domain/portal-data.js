@@ -46,6 +46,69 @@ function daysAgo(n) {
   return d.toISOString();
 }
 
+// ─── Feature Flags ────────────────────────────────────────────
+
+/** Cache for feature flags (invalideres ved nyt institutionsvalg) */
+let _featureFlagsCache = null;
+let _featureFlagsCacheId = null;
+
+/**
+ * Hent feature flags for institution.
+ * Returnerer objekt: { moduleKey: 'unlocked'|'forced_on'|'forced_off', ... }
+ * Tomt objekt = alt ulåst = uændret adfærd.
+ */
+async function getFeatureFlags(institutionId) {
+  const client = db();
+  const instId = resolveInstitutionId(institutionId);
+  if (!client || !instId) return {};
+
+  // Cache-hit
+  if (_featureFlagsCacheId === instId && _featureFlagsCache) return _featureFlagsCache;
+
+  try {
+    const { data, error } = await client.rpc('get_feature_flags', { p_institution_id: instId });
+    if (error) {
+      console.warn('[portal-data] Kunne ikke hente feature flags:', error.message);
+      return {};
+    }
+    _featureFlagsCache = data || {};
+    _featureFlagsCacheId = instId;
+    return _featureFlagsCache;
+  } catch (e) {
+    console.warn('[portal-data] Fejl i getFeatureFlags:', e);
+    return {};
+  }
+}
+
+/**
+ * Hent feature constraints for institution.
+ * Returnerer objekt: { constraintKey: jsonbValue, ... }
+ * Tomt objekt = ingen constraints = uændret adfærd.
+ */
+async function getFeatureConstraints(institutionId) {
+  const client = db();
+  const instId = resolveInstitutionId(institutionId);
+  if (!client || !instId) return {};
+
+  try {
+    const { data, error } = await client.rpc('get_feature_constraints', { p_institution_id: instId });
+    if (error) {
+      console.warn('[portal-data] Kunne ikke hente feature constraints:', error.message);
+      return {};
+    }
+    return data || {};
+  } catch (e) {
+    console.warn('[portal-data] Fejl i getFeatureConstraints:', e);
+    return {};
+  }
+}
+
+/** Invalidér feature flags cache (kald ved institutions-skift) */
+function invalidateFeatureFlagsCache() {
+  _featureFlagsCache = null;
+  _featureFlagsCacheId = null;
+}
+
 // ─── Paginerings-hjælper ───────────────────────────────────────
 
 const PAGE_SIZE = 1000;
@@ -178,10 +241,18 @@ async function saveInstitutionSettings(institutionId, settings) {
     'parent_portal_profile_pictures',
   ];
 
-  const filtered = {};
+  let filtered = {};
   for (const key of ALLOWED_FIELDS) {
     if (key in settings) {
       filtered[key] = settings[key];
+    }
+  }
+
+  // Feature flag enforcement: fjern felter fra låste moduler
+  if (typeof window !== 'undefined' && window.FeatureModules) {
+    const flags = await getFeatureFlags(instId);
+    if (flags && Object.keys(flags).length > 0) {
+      filtered = window.FeatureModules.filterFieldsByFlags(filtered, flags);
     }
   }
 
@@ -1121,6 +1192,9 @@ window.PortalData = {
   generateSinglePortalCode,
   generatePortalCodesBatch,
   getAulaMessageTemplate,
+  getFeatureFlags,
+  getFeatureConstraints,
+  invalidateFeatureFlagsCache,
 };
 
 console.log('[portal-data] PortalData modul registreret på window.PortalData');
