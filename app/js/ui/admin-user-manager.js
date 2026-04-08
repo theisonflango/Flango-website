@@ -5,14 +5,14 @@ import {
     setUserBalanceDirectly,
     updateUserPin,
     updateUserBadgeLabel,
-} from '../domain/users-and-admin.js?v=3.0.62';
-import { parseBadgeList, formatBadgeList, renderSimpleBadgeDisplay } from '../domain/stats-and-badges.js?v=3.0.62';
-import { showAlert, showCustomAlert } from './sound-and-alerts.js?v=3.0.62';
-import { updateCustomerBalanceGlobally } from '../core/balance-manager.js?v=3.0.62';
-import { refetchUserBalance } from '../core/data-refetch.js?v=3.0.62';
-import { getCachedProfilePictureUrl, getProfilePictureUrl, invalidateProfilePictureCache, batchPreWarmProfilePictures } from '../core/profile-picture-cache.js?v=3.0.62';
-import { removeProfilePicture, fetchUserProfilePictures, applyProfilePicture } from '../core/profile-picture-utils.js?v=3.0.62';
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.62';
+} from '../domain/users-and-admin.js?v=3.0.63';
+import { parseBadgeList, formatBadgeList, renderSimpleBadgeDisplay } from '../domain/stats-and-badges.js?v=3.0.63';
+import { showAlert, showCustomAlert } from './sound-and-alerts.js?v=3.0.63';
+import { updateCustomerBalanceGlobally } from '../core/balance-manager.js?v=3.0.63';
+import { refetchUserBalance } from '../core/data-refetch.js?v=3.0.63';
+import { getCachedProfilePictureUrl, getProfilePictureUrl, invalidateProfilePictureCache, batchPreWarmProfilePictures } from '../core/profile-picture-cache.js?v=3.0.63';
+import { removeProfilePicture, fetchUserProfilePictures, applyProfilePicture } from '../core/profile-picture-utils.js?v=3.0.63';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.63';
 
 function extractBalanceFromRpcData(data) {
     if (data == null) return null;
@@ -720,7 +720,7 @@ export function setupAdminUserManagerFromModule(config = {}) {
 
         // Wire add button
         section.querySelector('#pp-add-btn')?.addEventListener('click', async () => {
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.62');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.63');
             openProfilePictureModal(user, {
                 showCustomAlert,
                 onSaved: (updatedUser) => {

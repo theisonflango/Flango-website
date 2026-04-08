@@ -3,7 +3,7 @@ import {
     saveParentPortalTemplateToDatabase as saveParentPortalTemplateToDatabaseHelper,
     renderParentPortalMessageFromTemplate,
     buildParentPortalAdminTableRows,
-} from '../domain/parent-portal.js?v=3.0.62';
+} from '../domain/parent-portal.js?v=3.0.63';
 
 let parentPortalMessageTemplate = `
 Kære forældre

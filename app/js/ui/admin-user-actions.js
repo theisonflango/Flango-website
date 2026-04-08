@@ -1,6 +1,6 @@
-import { updateCustomerBalanceGlobally } from '../core/balance-manager.js?v=3.0.62';
-import { refetchUserBalance } from '../core/data-refetch.js?v=3.0.62';
-import { logAuditEvent } from '../core/audit-events.js?v=3.0.62';
+import { updateCustomerBalanceGlobally } from '../core/balance-manager.js?v=3.0.63';
+import { refetchUserBalance } from '../core/data-refetch.js?v=3.0.63';
+import { logAuditEvent } from '../core/audit-events.js?v=3.0.63';
 
 function extractBalanceFromRpcData(data) {
     if (data == null) return null;

@@ -1,4 +1,4 @@
-import { supabaseClient, INSTITUTION_ID_KEY, INSTITUTION_NAME_KEY } from '../core/config-and-supabase.js?v=3.0.62';
+import { supabaseClient, INSTITUTION_ID_KEY, INSTITUTION_NAME_KEY } from '../core/config-and-supabase.js?v=3.0.63';
 
 let activeInstitution = null;
 let institutionsCache = [];
