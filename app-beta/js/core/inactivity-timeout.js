@@ -6,7 +6,7 @@
  * POS-mode (børn handler) fungerer stadig — kun admin-sessionen invalideres.
  */
 
-import { supabaseClient } from './config-and-supabase.js';
+import { supabaseClient } from './config-and-supabase.js?v=3.0.62';
 
 const INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutter
 
