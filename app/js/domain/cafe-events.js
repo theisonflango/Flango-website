@@ -1,10 +1,10 @@
 // Domain-lag: Café Event Strip
 // Henter events relevante for valgt barn i café-view og cacher resultater.
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.64';
-import { checkClassMatch, registerUserForEvent, formatEventDate, formatTime } from './event-management.js?v=3.0.64';
-import { updateInstitutionCache } from './institution-store.js?v=3.0.64';
-import { getCurrentSessionAdmin } from './session-store.js?v=3.0.64';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.65';
+import { checkClassMatch, registerUserForEvent, formatEventDate, formatTime } from './event-management.js?v=3.0.65';
+import { updateInstitutionCache } from './institution-store.js?v=3.0.65';
+import { getCurrentSessionAdmin } from './session-store.js?v=3.0.65';
 
 // ============================================================================
 // In-memory cache: childId → { events, fetchedAt }

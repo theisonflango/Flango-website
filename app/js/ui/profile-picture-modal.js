@@ -4,12 +4,12 @@
  * Sub-views: Upload, Camera, Library.
  */
 
-import { AVATAR_URLS } from './avatar-picker.js?v=3.0.64';
-import { processImageForProfilePicture, uploadProfilePicture, saveLibraryProfilePicture, fetchUserProfilePictures } from '../core/profile-picture-utils.js?v=3.0.64';
-import { getProfilePictureUrl, invalidateProfilePictureCache } from '../core/profile-picture-cache.js?v=3.0.64';
-import { escapeHtml } from '../core/escape-html.js?v=3.0.64';
-import { supabaseClient, SUPABASE_URL } from '../core/config-and-supabase.js?v=3.0.64';
-import { fetchInstitutionIconLibrary } from '../core/product-icon-utils.js?v=3.0.64';
+import { AVATAR_URLS } from './avatar-picker.js?v=3.0.65';
+import { processImageForProfilePicture, uploadProfilePicture, saveLibraryProfilePicture, fetchUserProfilePictures } from '../core/profile-picture-utils.js?v=3.0.65';
+import { getProfilePictureUrl, invalidateProfilePictureCache } from '../core/profile-picture-cache.js?v=3.0.65';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.65';
+import { supabaseClient, SUPABASE_URL } from '../core/config-and-supabase.js?v=3.0.65';
+import { fetchInstitutionIconLibrary } from '../core/product-icon-utils.js?v=3.0.65';
 
 /**
  * Open the profile picture modal for a given user.
@@ -516,8 +516,8 @@ const AI_AVATAR_HERO_PROMPT = `The person is depicted as a superhero. They wear 
 const AI_AVATAR_PRESETS = [
     {
         key: 'pixar',
-        label: '🎬 Pixar/Disney',
-        prompt: `Create a Pixar/Disney-style 3D animated portrait based on the person in the photo. Closely match their actual facial structure, face shape, nose, jawline, hair color, hair style, eye color, eye shape, eyebrows, and skin tone. The character should be clearly recognizable as the same person. Use soft studio lighting, subtle subsurface scattering on skin. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        label: '🎬 Pixar',
+        prompt: `Create a Pixar-style 3D animated portrait based on the person in the photo. Closely match their actual facial structure, face shape, nose, jawline, hair color, hair style, eye color, eye shape, eyebrows, and skin tone. The character should be clearly recognizable as the same person. Use soft studio lighting, subtle subsurface scattering on skin. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
     },
     {
         key: 'clay',
@@ -671,9 +671,11 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
         if (advArrow) advArrow.style.transform = advancedOpen ? 'rotate(90deg)' : '';
         if (promptSection) promptSection.style.display = advancedOpen ? 'block' : 'none';
     });
-    promptTextarea?.addEventListener('input', () => { customPrompt = promptTextarea.value; });
+    let promptEdited = false;
+    promptTextarea?.addEventListener('input', () => { customPrompt = promptTextarea.value; promptEdited = true; });
     resetBtn?.addEventListener('click', () => {
         customPrompt = selectedPreset.prompt;
+        promptEdited = false;
         if (promptTextarea) promptTextarea.value = selectedPreset.prompt;
     });
 
@@ -765,6 +767,7 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
             if (finalPrompt) formData.append('custom_prompt', finalPrompt);
             formData.append('ai_style', selectedPreset.key);
             formData.append('ai_provider', provider);
+            if (promptEdited) formData.append('prompt_edited', 'true');
 
             // Send hat reference image if enabled
             if (hatEnabled) {

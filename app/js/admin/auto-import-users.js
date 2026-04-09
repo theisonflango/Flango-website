@@ -1,5 +1,5 @@
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.64';
-import { getInstitutionId } from '../domain/session-store.js?v=3.0.64';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.65';
+import { getInstitutionId } from '../domain/session-store.js?v=3.0.65';
 
 (function initAutoImport() {
     const modal = document.getElementById('auto-import-modal');

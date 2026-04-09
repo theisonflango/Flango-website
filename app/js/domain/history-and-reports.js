@@ -1,20 +1,20 @@
 // Historik- og rapporthåndtering
 
-import { showAlert, showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.64';
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.64';
-import { getInstitutionId, getCurrentClerk } from './session-store.js?v=3.0.64';
-import { getProductIconInfo } from './products-and-cart.js?v=3.0.64';
-import { initHistoryStore, loadSalesHistory } from './history-store.js?v=3.0.64';
-import { formatKr, buildAdjustmentTexts, showConfirmModal } from '../ui/confirm-modals.js?v=3.0.64';
-import { updateCustomerBalanceGlobally } from '../core/balance-manager.js?v=3.0.64';
-import { invalidateTodaysSalesCache } from './purchase-limits.js?v=3.0.64';
+import { showAlert, showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.65';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.65';
+import { getInstitutionId, getCurrentClerk } from './session-store.js?v=3.0.65';
+import { getProductIconInfo } from './products-and-cart.js?v=3.0.65';
+import { initHistoryStore, loadSalesHistory } from './history-store.js?v=3.0.65';
+import { formatKr, buildAdjustmentTexts, showConfirmModal } from '../ui/confirm-modals.js?v=3.0.65';
+import { updateCustomerBalanceGlobally } from '../core/balance-manager.js?v=3.0.65';
+import { invalidateTodaysSalesCache } from './purchase-limits.js?v=3.0.65';
 import { 
     openCustomerSelectionModalUI, 
     renderCustomerListUI, 
     setupCustomerSearchKeyboardNavigation,
     setupUserFilterButtons,
     resetUserFilters
-} from '../ui/customer-picker.js?v=3.0.64';
+} from '../ui/customer-picker.js?v=3.0.65';
 
 const HISTORY_DEBUG = false;
 

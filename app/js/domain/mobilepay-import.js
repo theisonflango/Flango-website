@@ -6,9 +6,9 @@
  * Dependencies: PapaParse (loaded via CDN in HTML)
  */
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.64';
-import { showAlert, showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.64';
-import { showConfirmModal } from '../ui/confirm-modals.js?v=3.0.64';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.65';
+import { showAlert, showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.65';
+import { showConfirmModal } from '../ui/confirm-modals.js?v=3.0.65';
 
 // ============================================================================
 // KONFIGURATION
