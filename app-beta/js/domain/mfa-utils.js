@@ -6,7 +6,7 @@
  * Bruges af café-app login-flow og admin settings.
  */
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.63';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.64';
 
 // ─── Supabase MFA API wrappers ────────────────────────────────────
 

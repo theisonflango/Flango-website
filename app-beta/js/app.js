@@ -1,4 +1,4 @@
-import { showAlert } from './ui/sound-and-alerts.js?v=3.0.63';
+import { showAlert } from './ui/sound-and-alerts.js?v=3.0.64';
 import {
     initFlangoTheme,
     setupThemePickerUI,
@@ -8,14 +8,14 @@ import {
     setupSettingsModal,
     setupHelpButton,
     initToolbarSettings,
-} from './ui/shell-and-theme.js?v=3.0.63';
-import { supabaseClient } from './core/config-and-supabase.js?v=3.0.63';
-import { getCurrentUserProfile } from './domain/auth-and-session.js?v=3.0.63';
-import { ensureActiveInstitution, fetchInstitutions } from './domain/institution-store.js?v=3.0.63';
-import { setupFullLoginScreen, setupDeviceUnlockScreen } from './domain/login-flow.js?v=3.0.63';
-import { hasDeviceUsers } from './domain/device-trust.js?v=3.0.63';
-import { startApp, setupAdminLoginScreen } from './domain/app-main.js?v=3.0.63';
-import { initUpdateChip, startVersionChecking } from './core/version-check.js?v=3.0.63';
+} from './ui/shell-and-theme.js?v=3.0.64';
+import { supabaseClient } from './core/config-and-supabase.js?v=3.0.64';
+import { getCurrentUserProfile } from './domain/auth-and-session.js?v=3.0.64';
+import { ensureActiveInstitution, fetchInstitutions } from './domain/institution-store.js?v=3.0.64';
+import { setupFullLoginScreen, setupDeviceUnlockScreen } from './domain/login-flow.js?v=3.0.64';
+import { hasDeviceUsers } from './domain/device-trust.js?v=3.0.64';
+import { startApp, setupAdminLoginScreen } from './domain/app-main.js?v=3.0.64';
+import { initUpdateChip, startVersionChecking } from './core/version-check.js?v=3.0.64';
 
 document.addEventListener('DOMContentLoaded', () => {
     // INIT tema første gang siden indlæses

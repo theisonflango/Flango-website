@@ -14,7 +14,7 @@ import {
     setSortBy,
     getChartData,
     formatKr
-} from '../domain/purchase-profiles.js?v=3.0.63';
+} from '../domain/purchase-profiles.js?v=3.0.64';
 
 // ============================================================
 // STATE
