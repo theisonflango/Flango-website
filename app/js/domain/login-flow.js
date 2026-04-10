@@ -24,12 +24,12 @@
  *   State 3 "No"  → setupAdminLoginScreen()
  */
 
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { rememberInstitution, ensureActiveInstitution, fetchInstitutions } from './institution-store.js';
-import { getInstitutionId } from './session-store.js';
-import { performLogin, getCurrentUserProfile } from './auth-and-session.js';
-import { showScreen } from '../ui/shell-and-theme.js';
-import { logAuditEvent } from '../core/audit-events.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.65';
+import { rememberInstitution, ensureActiveInstitution, fetchInstitutions } from './institution-store.js?v=3.0.65';
+import { getInstitutionId } from './session-store.js?v=3.0.65';
+import { performLogin, getCurrentUserProfile } from './auth-and-session.js?v=3.0.65';
+import { showScreen } from '../ui/shell-and-theme.js?v=3.0.65';
+import { logAuditEvent } from '../core/audit-events.js?v=3.0.65';
 import {
     hasDeviceUsers,
     getDeviceUsers,
@@ -38,14 +38,16 @@ import {
     registerDeviceToken,
     removeDeviceUser,
     clearAllDeviceUsers,
-} from './device-trust.js';
+} from './device-trust.js?v=3.0.65';
 import {
     getMfaFactors,
     enrollTotp,
     challengeAndVerify,
     shouldRequireMfa,
-    setMfaDeviceTrusted,
-} from './mfa-utils.js';
+    setMfaDeviceTrustedDurable,
+    isMfaDeviceTrusted,
+    checkServerMfaTrust,
+} from './mfa-utils.js?v=3.0.65';
 
 // ─── Turnstile verification helper ──────────────────────────────
 
@@ -53,17 +55,31 @@ async function verifyTurnstileToken(widgetId) {
     // Skip Turnstile on localhost (not available outside production)
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return { ok: true };
-    const token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
-    if (!token) return { ok: false, error: 'Bekræft venligst at du ikke er en robot.' };
+    let token = null;
     try {
-        const res = await supabaseClient.functions.invoke('verify-turnstile', { body: { token } });
+        token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
+    } catch (e) {
+        console.warn('[login] Turnstile getResponse error:', e?.message, '— fail-open');
+        return { ok: true };
+    }
+    if (!token) {
+        console.warn('[login] Turnstile token missing — skipping verification (fail-open)');
+        return { ok: true };
+    }
+    try {
+        // Timeout: fail-open efter 5 sekunder hvis Edge Function hænger
+        const res = await Promise.race([
+            supabaseClient.functions.invoke('verify-turnstile', { body: { token } }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+        ]);
         if (res.error || !res.data?.success) {
             if (typeof turnstile !== 'undefined') turnstile.reset(widgetId);
             return { ok: false, error: 'Sikkerhedsverifikation fejlede. Prøv igen.' };
         }
         return { ok: true };
     } catch {
-        return { ok: true }; // Fail-open: tillad login hvis Edge Function er nede
+        console.warn('[login] Turnstile verification failed/timed out — fail-open');
+        return { ok: true }; // Fail-open: tillad login hvis Edge Function er nede eller timeout
     }
 }
 
@@ -144,9 +160,9 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
             return;
         }
 
-        // Auto-set institution from admin profile
+        // Auto-set institution from admin profile — forceRefresh for fuld data (authed)
         if (adminProfile.institution_id) {
-            const institutions = await fetchInstitutions();
+            const institutions = await fetchInstitutions(true);
             const inst = institutions.find(i => String(i.id) === String(adminProfile.institution_id));
             if (inst) rememberInstitution(inst);
 
@@ -181,7 +197,7 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
         const existingDeviceUsers = getDeviceUsers();
         const alreadyRegistered = existingDeviceUsers.some(u => u.userId === session.user.id);
         if (alreadyRegistered) {
-            const { setupAdminLoginScreen } = await import('./app-main.js');
+            const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.65');
             setupAdminLoginScreen(adminProfile);
         } else {
             setupRememberDeviceScreen(adminProfile);
@@ -310,7 +326,7 @@ export async function setupDeviceUnlockScreen() {
         localStorage.getItem('flango_device_restaurant_mode'); // already saved
 
         // Go to admin welcome screen
-        const { setupAdminLoginScreen } = await import('./app-main.js');
+        const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.65');
         setupAdminLoginScreen(adminProfile);
     };
 
@@ -399,13 +415,13 @@ export function setupRememberDeviceScreen(adminProfile) {
         });
 
         // Proceed to admin welcome
-        const { setupAdminLoginScreen } = await import('./app-main.js');
+        const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.65');
         setupAdminLoginScreen(adminProfile);
     };
 
     noBtn.onclick = async () => {
         // Skip device registration, go straight to admin welcome
-        const { setupAdminLoginScreen } = await import('./app-main.js');
+        const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.65');
         setupAdminLoginScreen(adminProfile);
     };
 
@@ -513,7 +529,7 @@ export function setupPinLockedScreen(adminName) {
         const existingDeviceUsers = getDeviceUsers();
         const alreadyRegistered = existingDeviceUsers.some(u => u.userId === session.user.id);
         if (alreadyRegistered) {
-            const { setupAdminLoginScreen: startAdmin } = await import('./app-main.js');
+            const { setupAdminLoginScreen: startAdmin } = await import('./app-main.js?v=3.0.65');
             startAdmin(adminProfile);
         } else {
             setupRememberDeviceScreen(adminProfile);
@@ -634,7 +650,17 @@ async function handleMfaGate(adminProfile) {
             .single();
 
         const policy = inst?.admin_mfa_policy || 'off';
-        if (!shouldRequireMfa(policy, 'admin')) return false;
+        if (policy === 'off') return false;
+
+        if (policy === 'new_device') {
+            // Hurtig check: localStorage
+            if (isMfaDeviceTrusted('admin')) return false;
+
+            // Fallback: cookie + server-side check (overlever cache-rydning)
+            const serverTrusted = await checkServerMfaTrust('admin');
+            if (serverTrusted) return false;
+        }
+        // policy === 'always' falder igennem til MFA
 
         // Tjek om brugeren har enrollet TOTP
         const factors = await getMfaFactors();
@@ -712,8 +738,8 @@ function setupMfaEnrollScreen(adminProfile) {
             return;
         }
 
-        // Succes
-        setMfaDeviceTrusted('admin');
+        // Succes — gem MFA trust i alle 3 lag (localStorage + cookie + server)
+        await setMfaDeviceTrustedDurable('admin');
         logAuditEvent('MFA_ENROLLED', {
             institutionId: adminProfile.institution_id,
             adminUserId: adminProfile.user_id,
@@ -764,8 +790,8 @@ function setupMfaChallengeScreen(adminProfile, factorId) {
             return;
         }
 
-        // Succes
-        setMfaDeviceTrusted('admin');
+        // Succes — gem MFA trust i alle 3 lag (localStorage + cookie + server)
+        await setMfaDeviceTrustedDurable('admin');
         logAuditEvent('MFA_VERIFIED', {
             institutionId: adminProfile.institution_id,
             adminUserId: adminProfile.user_id,
