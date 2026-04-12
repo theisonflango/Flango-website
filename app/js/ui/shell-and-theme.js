@@ -1,27 +1,27 @@
 // Tema og shell-funktioner
-import { getCurrentClerk, getCurrentAdmin, isCurrentUserAdmin, getInstitutionId } from '../domain/session-store.js?v=3.0.66';
-import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js?v=3.0.66';
-import { setupHelpModule, openHelpManually } from './help.js?v=3.0.66';
-import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js?v=3.0.66';
-import { getCurrentCustomer } from '../domain/cafe-session-store.js?v=3.0.66';
-import { getOrder } from '../domain/order-store.js?v=3.0.66';
-import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js?v=3.0.66';
-import { logAuditEvent } from '../core/audit-events.js?v=3.0.66';
+import { getCurrentClerk, getCurrentAdmin, isCurrentUserAdmin, getInstitutionId } from '../domain/session-store.js?v=3.0.67';
+import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js?v=3.0.67';
+import { setupHelpModule, openHelpManually } from './help.js?v=3.0.67';
+import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js?v=3.0.67';
+import { getCurrentCustomer } from '../domain/cafe-session-store.js?v=3.0.67';
+import { getOrder } from '../domain/order-store.js?v=3.0.67';
+import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js?v=3.0.67';
+import { logAuditEvent } from '../core/audit-events.js?v=3.0.67';
 import {
     initThemeLoader,
     switchTheme as themePackSwitchTheme,
     getCurrentTheme,
     isThemePackTheme,
     ALL_VALID_THEMES
-} from './theme-loader.js?v=3.0.66';
-import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js?v=3.0.66';
-import { updateInstitutionCache } from '../domain/institution-store.js?v=3.0.66';
-import { showCustomAlert } from './sound-and-alerts.js?v=3.0.66';
-import { refetchAllProducts } from '../core/data-refetch.js?v=3.0.66';
-import { invalidateAllLimitCaches } from '../domain/purchase-limits.js?v=3.0.66';
-import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js?v=3.0.66';
-import { openAulaImportModal } from './aula-import-modal.js?v=3.0.66';
-import { openUserAdminPanel, openParentPortalAsAdmin } from './user-admin-panel.js?v=3.0.66';
+} from './theme-loader.js?v=3.0.67';
+import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js?v=3.0.67';
+import { updateInstitutionCache } from '../domain/institution-store.js?v=3.0.67';
+import { showCustomAlert } from './sound-and-alerts.js?v=3.0.67';
+import { refetchAllProducts } from '../core/data-refetch.js?v=3.0.67';
+import { invalidateAllLimitCaches } from '../domain/purchase-limits.js?v=3.0.67';
+import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js?v=3.0.67';
+import { openAulaImportModal } from './aula-import-modal.js?v=3.0.67';
+import { openUserAdminPanel, openParentPortalAsAdmin } from './user-admin-panel.js?v=3.0.67';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 
@@ -592,7 +592,7 @@ function renderProductRulesTable() {
         }
         tdIcon.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const { openProductIconPicker } = await import('./product-icon-picker.js?v=3.0.66');
+            const { openProductIconPicker } = await import('./product-icon-picker.js?v=3.0.67');
             openProductIconPicker({
                 mode: 'product',
                 institutionId: productRulesState.institutionId,
@@ -1737,7 +1737,7 @@ async function openProfilePictureSettingsModal() {
     // Choose default image button — open profile picture modal in "default" mode
     if (defaultImageChooseBtn) {
         defaultImageChooseBtn.onclick = async () => {
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.66');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.67');
             // Use a fake user object for the default image
             const fakeUser = { id: '__default__', name: 'Standard billede', institution_id: institutionId };
             openProfilePictureModal(fakeUser, {
@@ -5273,13 +5273,13 @@ export function setupToolbarHistoryButton() {
     historyBtn.onclick = async (event) => {
         event.preventDefault();
         try {
-            const { openHistorikV3 } = await import('./historik-v3.js?v=3.0.66');
+            const { openHistorikV3 } = await import('./historik-v3.js?v=3.0.67');
             openHistorikV3();
         } catch (err) {
             console.error('Kunne ikke åbne Historik v3:', err);
             // Fallback til v2
             try {
-                const { openHistorikModal } = await import('./historik-modal.js?v=3.0.66');
+                const { openHistorikModal } = await import('./historik-modal.js?v=3.0.67');
                 openHistorikModal();
             } catch (err2) {
                 console.error('Kunne ikke åbne Historik v2:', err2);

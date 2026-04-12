@@ -2,13 +2,13 @@
 // Lommeregner-mode for Flango Café POS
 // Håndterer toggle, numpad, display, quick-products, add-to-cart
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.66';
-import { getCurrentCustomer } from '../domain/cafe-session-store.js?v=3.0.66';
-import { getInstitutionId } from '../domain/session-store.js?v=3.0.66';
-import { getOrder, setOrder } from '../domain/order-store.js?v=3.0.66';
-import { playSound, showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.66';
-import { STANDARD_ICONS } from '../core/product-icon-utils.js?v=3.0.66';
-import { CUSTOM_ICON_PREFIX } from '../domain/products-and-cart.js?v=3.0.66';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.67';
+import { getCurrentCustomer } from '../domain/cafe-session-store.js?v=3.0.67';
+import { getInstitutionId } from '../domain/session-store.js?v=3.0.67';
+import { getOrder, setOrder } from '../domain/order-store.js?v=3.0.67';
+import { playSound, showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.67';
+import { STANDARD_ICONS } from '../core/product-icon-utils.js?v=3.0.67';
+import { CUSTOM_ICON_PREFIX } from '../domain/products-and-cart.js?v=3.0.67';
 
 // ─── Emoji/ikon-vælger ────────────────────────────────────────
 const EMOJI_SUGGESTIONS = [

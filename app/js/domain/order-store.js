@@ -1,6 +1,6 @@
 // Simpelt state-modul for indkøbskurven (ingen UI/Supabase). Kan udvides senere.
-import { calculateOrderTotal } from './products-and-cart.js?v=3.0.66';
-import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.66';
+import { calculateOrderTotal } from './products-and-cart.js?v=3.0.67';
+import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.67';
 
 let currentOrder = [];
 
