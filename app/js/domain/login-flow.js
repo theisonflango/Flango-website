@@ -24,12 +24,12 @@
  *   State 3 "No"  → setupAdminLoginScreen()
  */
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.65';
-import { rememberInstitution, ensureActiveInstitution, fetchInstitutions } from './institution-store.js?v=3.0.65';
-import { getInstitutionId } from './session-store.js?v=3.0.65';
-import { performLogin, getCurrentUserProfile } from './auth-and-session.js?v=3.0.65';
-import { showScreen } from '../ui/shell-and-theme.js?v=3.0.65';
-import { logAuditEvent } from '../core/audit-events.js?v=3.0.65';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.66';
+import { rememberInstitution, ensureActiveInstitution, fetchInstitutions } from './institution-store.js?v=3.0.66';
+import { getInstitutionId } from './session-store.js?v=3.0.66';
+import { performLogin, getCurrentUserProfile } from './auth-and-session.js?v=3.0.66';
+import { showScreen } from '../ui/shell-and-theme.js?v=3.0.66';
+import { logAuditEvent } from '../core/audit-events.js?v=3.0.66';
 import {
     hasDeviceUsers,
     getDeviceUsers,
@@ -38,7 +38,7 @@ import {
     registerDeviceToken,
     removeDeviceUser,
     clearAllDeviceUsers,
-} from './device-trust.js?v=3.0.65';
+} from './device-trust.js?v=3.0.66';
 import {
     getMfaFactors,
     enrollTotp,
@@ -47,7 +47,7 @@ import {
     setMfaDeviceTrustedDurable,
     isMfaDeviceTrusted,
     checkServerMfaTrust,
-} from './mfa-utils.js?v=3.0.65';
+} from './mfa-utils.js?v=3.0.66';
 
 // ─── Turnstile verification helper ──────────────────────────────
 
@@ -197,7 +197,7 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
         const existingDeviceUsers = getDeviceUsers();
         const alreadyRegistered = existingDeviceUsers.some(u => u.userId === session.user.id);
         if (alreadyRegistered) {
-            const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.65');
+            const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.66');
             setupAdminLoginScreen(adminProfile);
         } else {
             setupRememberDeviceScreen(adminProfile);
@@ -326,7 +326,7 @@ export async function setupDeviceUnlockScreen() {
         localStorage.getItem('flango_device_restaurant_mode'); // already saved
 
         // Go to admin welcome screen
-        const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.65');
+        const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.66');
         setupAdminLoginScreen(adminProfile);
     };
 
@@ -415,13 +415,13 @@ export function setupRememberDeviceScreen(adminProfile) {
         });
 
         // Proceed to admin welcome
-        const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.65');
+        const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.66');
         setupAdminLoginScreen(adminProfile);
     };
 
     noBtn.onclick = async () => {
         // Skip device registration, go straight to admin welcome
-        const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.65');
+        const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.66');
         setupAdminLoginScreen(adminProfile);
     };
 
@@ -529,7 +529,7 @@ export function setupPinLockedScreen(adminName) {
         const existingDeviceUsers = getDeviceUsers();
         const alreadyRegistered = existingDeviceUsers.some(u => u.userId === session.user.id);
         if (alreadyRegistered) {
-            const { setupAdminLoginScreen: startAdmin } = await import('./app-main.js?v=3.0.65');
+            const { setupAdminLoginScreen: startAdmin } = await import('./app-main.js?v=3.0.66');
             startAdmin(adminProfile);
         } else {
             setupRememberDeviceScreen(adminProfile);

@@ -16,10 +16,21 @@
       // Hele forældreportalen — forced_off lukker alt
     ],
     portal_sections: [
+      // Legacy samlet flag — bruges stadig hvis sat, men nye individuelle flags har forrang
       'parent_portal_events', 'parent_portal_purchase_profile', 'parent_portal_history',
       'parent_portal_sortiment', 'parent_portal_feedback', 'parent_portal_daily_special',
       'parent_portal_daily_special_price',
     ],
+    // Individuelle portal-sektioner (nye — overskriver portal_sections hvis sat)
+    portal_events: ['parent_portal_events'],
+    portal_purchase_profile: ['parent_portal_purchase_profile'],
+    portal_history: ['parent_portal_history'],
+    portal_sortiment: ['parent_portal_sortiment'],
+    portal_feedback: ['parent_portal_feedback'],
+    portal_daily_special: ['parent_portal_daily_special', 'parent_portal_daily_special_price'],
+    portal_notifications: ['parent_portal_email_notifications'],
+    portal_payment: [],  // Indbetaling — enforcement via UI, ikke institution-felter
+    portal_profile_pictures: ['parent_portal_profile_pictures'],
     spending_limits: [
       'spending_limit_enabled', 'spending_limit_amount',
       'spending_limit_applies_to_admins', 'spending_limit_applies_to_regular_users',
@@ -57,17 +68,37 @@
     profile_pic_ai: [
       'profile_pictures_ai_enabled',
     ],
+    profile_pic_ai_openai: [],  // Sub-flag: OpenAI DALL·E provider
+    profile_pic_ai_flux: [],    // Sub-flag: Black Forest Labs FLUX 2 provider
     profile_pic_library: [],
-    grade_level: [],           // Enforcement via UI-felter, ikke institutions-felter
+    // Profilbilleder master + ikon-deling
+    profile_pictures: ['profile_pictures_enabled'],
+    icon_sharing: ['icon_sharing_enabled'],
+    icon_use_shared: ['icon_use_shared_enabled'],
+    // Privatliv & Data
+    grade_level: [],
+    auto_delete: ['auto_delete_inactive_enabled'],
+    // Økonomi sub-toggles
+    spending_limits_regular: ['spending_limit_applies_to_regular_users'],
+    spending_limits_admins: ['spending_limit_applies_to_admins'],
+    spending_limits_test: ['spending_limit_applies_to_test_users'],
+    balance_limits_exempt_admins: ['balance_limit_exempt_admins'],
+    balance_limits_exempt_test: ['balance_limit_exempt_test_users'],
+    // Kost sub-toggles
+    sugar_policy_per_product: ['sugar_policy_max_per_product_enabled'],
+    sugar_policy_total: ['sugar_policy_max_unhealthy_enabled'],
+    // Funktioner
     restaurant_mode: [
       'restaurant_mode_enabled', 'restaurant_sound',
     ],
+    restaurant_table_numbers: ['restaurant_table_numbers_enabled'],
     events: [
       'cafe_events_enabled', 'cafe_events_as_products',
     ],
     security_mfa: [
-      'admin_mfa_policy', 'parent_mfa_new_device',
+      'admin_mfa_policy',
     ],
+    security_mfa_parent: ['parent_mfa_new_device'],
     skaermtid: [
       'skaermtid_enabled', 'skaermtid_show_usage', 'skaermtid_show_remaining',
       'skaermtid_show_rules', 'skaermtid_allow_personal_limits',
@@ -85,15 +116,16 @@
 
   // ─── Sidebar settingKey → modul (for admin-portal-settings.js) ───
   const SETTING_KEY_TO_MODULE = {
-    // Portal sektioner
-    parent_portal_events: 'portal_sections',
-    parent_portal_purchase_profile: 'portal_sections',
-    parent_portal_history: 'portal_sections',
-    parent_portal_sortiment: 'portal_sections',
-    parent_portal_feedback: 'portal_sections',
-    parent_portal_daily_special: 'portal_sections',
-    // Payment
-    parent_portal_payment: 'balance_limits', // Indbetaling-sektionen
+    // Portal sektioner (individuelle flags, fallback til portal_sections)
+    parent_portal_events: 'portal_events',
+    parent_portal_purchase_profile: 'portal_purchase_profile',
+    parent_portal_history: 'portal_history',
+    parent_portal_sortiment: 'portal_sortiment',
+    parent_portal_feedback: 'portal_feedback',
+    parent_portal_daily_special: 'portal_daily_special',
+    parent_portal_email_notifications: 'portal_notifications',
+    // Payment / indbetaling
+    parent_portal_payment: 'portal_payment',
     // Spending
     parent_portal_spending_limit: 'spending_limits',
     parent_portal_product_limit: 'spending_limits',
@@ -107,16 +139,14 @@
     // Allergens
     parent_portal_allergens: 'allergens',
     // Profile pictures
-    parent_portal_profile_pictures: 'profile_pic_upload', // Master toggle maps to upload
+    parent_portal_profile_pictures: 'portal_profile_pictures',
     // Screentime
     skaermtid_enabled: 'skaermtid',
     skaermtid_allow_game_approval: 'skaermtid',
     skaermtid_show_usage: 'skaermtid',
-    // Notifications
-    parent_portal_email_notifications: 'portal_sections',
     // MFA
     admin_mfa_policy: 'security_mfa',
-    parent_mfa_new_device: 'security_mfa',
+    parent_mfa_new_device: 'security_mfa_parent',
   };
 
   // ─── Profilbillede-type → modul ───
@@ -138,20 +168,44 @@
     skaermtid: ['skaermtid_enabled'],
   };
 
-  // ─── Helper: hent modul-state fra flags-objekt ───
+  // Portal-sektioner der falder tilbage til legacy portal_sections flag
+  const PORTAL_SECTION_MODULES = new Set([
+    'portal_events', 'portal_purchase_profile', 'portal_history',
+    'portal_sortiment', 'portal_feedback', 'portal_daily_special',
+    'portal_notifications', 'portal_payment', 'portal_profile_pictures',
+  ]);
+
+  // ─── Helper: hent modul-flag fra flags-objekt ───
+  // Returnerer { locked: bool, lock_reason: string|null } eller null
+  function getModuleFlag(flags, moduleKey) {
+    if (!flags) return null;
+    if (flags[moduleKey]) return flags[moduleKey];
+    // Fallback: portal_sections for individuelle portal-flags
+    if (PORTAL_SECTION_MODULES.has(moduleKey) && flags['portal_sections']) {
+      return flags['portal_sections'];
+    }
+    return null;
+  }
+
+  // ─── Helper: er modul låst? ───
+  function isModuleLocked(flags, moduleKey) {
+    const flag = getModuleFlag(flags, moduleKey);
+    return flag?.locked === true;
+  }
+
+  // Bagudkompatible wrappers (bruges af admin-portal-settings.js m.fl.)
   function getModuleState(flags, moduleKey) {
-    if (!flags || !flags[moduleKey]) return 'unlocked';
-    return flags[moduleKey];
+    // Locked = institution kan ikke ændre (forced)
+    return isModuleLocked(flags, moduleKey) ? 'forced' : 'unlocked';
   }
-
-  // ─── Helper: er modul tvunget fra? ───
   function isModuleForcedOff(flags, moduleKey) {
-    return getModuleState(flags, moduleKey) === 'forced_off';
+    return isModuleLocked(flags, moduleKey);
   }
-
-  // ─── Helper: er modul tvunget til? ───
   function isModuleForcedOn(flags, moduleKey) {
-    return getModuleState(flags, moduleKey) === 'forced_on';
+    return isModuleLocked(flags, moduleKey);
+  }
+  function isModuleOff(flags, moduleKey) {
+    return false; // Value lever nu i institutions-tabellen, ikke feature_flags
   }
 
   // ─── Helper: filtrer felter baseret på feature flags (til save) ───
@@ -162,24 +216,13 @@
     for (const [key, value] of Object.entries(fields)) {
       const moduleKey = FIELD_TO_MODULE[key];
       if (!moduleKey) {
-        // Felt tilhører intet modul — tillad altid
         filtered[key] = value;
         continue;
       }
 
-      const state = getModuleState(flags, moduleKey);
-      if (state === 'forced_off') {
-        // Modul deaktiveret — fjern alle felter
-        console.warn(`[feature-flags] Blokeret felt "${key}" — modul "${moduleKey}" er forced_off`);
+      if (isModuleLocked(flags, moduleKey)) {
+        console.warn(`[feature-flags] Blokeret felt "${key}" — modul "${moduleKey}" er låst`);
         continue;
-      }
-      if (state === 'forced_on') {
-        // Modul tvunget til — fjern enable/disable-felter
-        const enableFields = MODULE_ENABLE_FIELDS[moduleKey] || [];
-        if (enableFields.includes(key)) {
-          console.warn(`[feature-flags] Blokeret enable-felt "${key}" — modul "${moduleKey}" er forced_on`);
-          continue;
-        }
       }
       filtered[key] = value;
     }
@@ -220,8 +263,11 @@
     PROFILE_PIC_MODULE_MAP,
     MODULE_ENABLE_FIELDS,
     getModuleState,
+    getModuleFlag,
     isModuleForcedOff,
     isModuleForcedOn,
+    isModuleOff,
+    isModuleLocked,
     filterFieldsByFlags,
     formatUserDisplayName,
     setConstraintsCache,

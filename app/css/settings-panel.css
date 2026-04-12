@@ -1,0 +1,342 @@
+/* ═══════════════════════════════════════════════════════════════
+   Flango Settings Panel (fsp-) — Redesigned settings UI
+   All classes prefixed fsp- and scoped under .fsp-overlay
+   Values copied directly from flango_settings.html mockup
+   ═══════════════════════════════════════════════════════════════ */
+
+.fsp-overlay {
+  --fsp-bg: #1a1520;
+  --fsp-bg2: #211c28;
+  --fsp-bg4: #362f40;
+  --fsp-accent: #e8734a;
+  --fsp-accent2: #f4a261;
+  --fsp-accent-g: linear-gradient(135deg, #e8734a, #f4a261);
+  --fsp-txt: #f0ece6;
+  --fsp-txt2: #b0a8b8;
+  --fsp-txt3: #7a7182;
+  --fsp-card-h: #332b3d;
+  --fsp-rad: 10px;
+  --fsp-content-bg: #15111a;
+  --fsp-tab-h: 62px;
+
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--fsp-bg);
+  color: var(--fsp-txt);
+  overflow: hidden;
+}
+.fsp-overlay *, .fsp-overlay *::before, .fsp-overlay *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Header ── */
+.fsp-hdr { display: flex; align-items: center; justify-content: space-between; padding: 16px 28px; background: linear-gradient(135deg, #2a1f30, #1e1828); border-bottom: 1px solid rgba(232,115,74,0.12); flex-shrink: 0; }
+.fsp-hdr-left { display: flex; align-items: center; gap: 14px; }
+.fsp-hdr-logo { width: 40px; height: 40px; border-radius: 11px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.fsp-hdr-logo img { width: 32px; height: 32px; object-fit: contain; }
+.fsp-hdr h1 { font-size: 19px; font-weight: 600; }
+.fsp-hdr-sub { font-size: 11.5px; color: var(--fsp-txt3); margin-top: 2px; }
+.fsp-close-btn { width: 36px; height: 36px; border-radius: 9px; border: none; background: rgba(255,255,255,0.06); color: var(--fsp-txt2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+.fsp-close-btn:hover { background: rgba(232,115,74,0.15); color: var(--fsp-accent); }
+
+/* ── Main layout ── */
+.fsp-main { display: flex; flex: 1; min-height: 0; }
+
+/* ── Sidebar ── */
+.fsp-side { width: 270px; flex-shrink: 0; background: var(--fsp-bg2); display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.06); }
+.fsp-side-hdr { height: var(--fsp-tab-h); flex-shrink: 0; display: flex; align-items: center; gap: 9px; padding: 0 22px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.fsp-side-hdr-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--fsp-accent); flex-shrink: 0; }
+.fsp-side-hdr-text { font-size: 14px; font-weight: 600; color: var(--fsp-accent); }
+.fsp-side-items { flex: 1; overflow-y: auto; padding: 10px; }
+.fsp-side-back { flex-shrink: 0; padding: 10px; border-top: 1px solid rgba(255,255,255,0.05); }
+.fsp-side-back button { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 14px; border-radius: var(--fsp-rad); border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); color: var(--fsp-txt2); font-size: 14px; font-weight: 500; cursor: pointer; transition: all .15s; font-family: inherit; }
+.fsp-side-back button:hover { background: rgba(232,115,74,0.1); border-color: rgba(232,115,74,0.2); color: var(--fsp-txt); }
+
+/* ── Sidebar items ── */
+.fsp-si { display: flex; align-items: center; gap: 11px; padding: 10px 14px; border-radius: var(--fsp-rad); cursor: pointer; transition: all .15s; border: 1px solid transparent; margin-bottom: 2px; }
+.fsp-si .fsp-si-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fsp-si .fsp-si-text { font-size: 14px; color: var(--fsp-txt2); line-height: 1.3; flex: 1; }
+.fsp-si:hover { background: var(--fsp-card-h); border-color: rgba(255,255,255,0.04); }
+.fsp-si:hover .fsp-si-text { color: var(--fsp-txt); }
+.fsp-si.active { background: rgba(232,115,74,0.1); border-color: rgba(232,115,74,0.18); }
+.fsp-si.active .fsp-si-icon { color: #fff; }
+.fsp-si.active .fsp-si-text { color: var(--fsp-txt); font-weight: 500; }
+.fsp-si:not(.active) .fsp-si-icon { color: var(--fsp-txt3); }
+.fsp-si-dot { width: 8px; height: 8px; border-radius: 50%; background: #5dca7a; flex-shrink: 0; }
+
+/* ── Right panel ── */
+.fsp-right { flex: 1; display: flex; flex-direction: column; background: var(--fsp-content-bg); position: relative; }
+
+/* ── Tabs ── */
+.fsp-tabs { height: var(--fsp-tab-h); flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 24px; background: var(--fsp-bg2); border-bottom: 1px solid rgba(255,255,255,0.04); overflow-x: auto; }
+.fsp-tab { padding: 11px 22px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: var(--fsp-txt3); font-size: 14px; font-weight: 500; cursor: pointer; border-radius: 10px; transition: all .15s; display: flex; align-items: center; gap: 9px; white-space: nowrap; font-family: inherit; }
+.fsp-tab svg { opacity: 0.5; transition: opacity .15s; }
+.fsp-tab:hover { color: var(--fsp-txt2); background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+.fsp-tab:hover svg { opacity: 0.8; }
+.fsp-tab.active { color: #fff; background: var(--fsp-accent); border-color: var(--fsp-accent); }
+.fsp-tab.active svg { opacity: 1; }
+
+/* ── Content ── */
+.fsp-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem; overflow-y: auto; }
+
+/* ── Placeholder (for unimplemented sections) ── */
+.fsp-ph { text-align: center; }
+.fsp-ph-ring { width: 72px; height: 72px; border-radius: 18px; border: 2px dashed var(--fsp-txt3); margin: 0 auto 18px; display: flex; align-items: center; justify-content: center; }
+.fsp-ph-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.fsp-ph-desc { font-size: 13px; color: var(--fsp-txt3); }
+
+/* ── Big cards ── */
+.fsp-big-cards { display: flex; gap: 32px; align-items: center; justify-content: center; width: 100%; max-width: 900px; }
+.fsp-big-card { width: 440px; height: 440px; background: var(--fsp-bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all .2s; text-align: center; position: relative; }
+.fsp-big-card:hover { background: var(--fsp-card-h); border-color: rgba(232,115,74,0.25); transform: translateY(-2px); }
+.fsp-big-card-icon { width: 160px; height: 160px; border-radius: 36px; display: flex; align-items: center; justify-content: center; }
+.fsp-big-card-label { position: absolute; top: 48px; left: 0; right: 0; font-size: 21px; font-weight: 600; color: var(--fsp-txt); }
+.fsp-big-card-desc { position: absolute; bottom: 48px; left: 28px; right: 28px; font-size: 14px; color: var(--fsp-txt3); line-height: 1.5; }
+
+/* ── Toggle switch ── */
+.fsp-toggle { width: 44px; height: 26px; border-radius: 13px; background: var(--fsp-bg4); cursor: pointer; position: relative; transition: background .2s; flex-shrink: 0; }
+.fsp-toggle.on { background: var(--fsp-accent); }
+.fsp-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.fsp-toggle.on::after { transform: translateX(18px); }
+
+/* ── Radio dots ── */
+.fsp-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.15); cursor: pointer; position: relative; flex-shrink: 0; }
+.fsp-radio.on { border-color: var(--fsp-accent); }
+.fsp-radio.on::after { content: ''; position: absolute; top: 3px; left: 3px; width: 10px; height: 10px; border-radius: 50%; background: var(--fsp-accent); }
+
+/* ── Page wrapper (used by most content sections) ── */
+.fsp-page { width: 100%; max-width: 720px; align-self: flex-start; padding: 40px 48px 60px; }
+.fsp-page-title { font-size: 22px; font-weight: 600; color: var(--fsp-txt); margin-bottom: 8px; }
+.fsp-page-desc { font-size: 14px; color: var(--fsp-txt3); line-height: 1.6; margin-bottom: 28px; }
+
+/* ── Block / Row (settings sections) ── */
+.fsp-block { background: var(--fsp-bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 18px 22px; }
+.fsp-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.fsp-row-title { font-size: 14px; font-weight: 500; color: var(--fsp-txt); margin-bottom: 3px; }
+.fsp-row-desc { font-size: 12px; color: var(--fsp-txt3); }
+.fsp-section { margin-bottom: 16px; }
+
+/* ── Main toggle (like Restaurant Mode header) ── */
+.fsp-main-toggle { background: var(--fsp-bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.fsp-main-title { font-size: 15px; font-weight: 600; color: var(--fsp-txt); margin-bottom: 4px; }
+.fsp-main-desc { font-size: 12px; color: var(--fsp-txt3); }
+
+/* ── Expand / collapse ── */
+.fsp-expand { overflow: hidden; max-height: 0; opacity: 0; transition: max-height .3s, opacity .3s; }
+.fsp-expand.open { max-height: 400px; opacity: 1; }
+.fsp-body { overflow: hidden; max-height: 0; opacity: 0; transition: max-height .4s, opacity .3s; }
+.fsp-body.open { max-height: 1200px; opacity: 1; }
+
+/* ── Collapse button ── */
+.fsp-collapse-btn { display: flex; align-items: center; gap: 8px; padding: 14px 18px; background: var(--fsp-bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; cursor: pointer; transition: all .15s; width: 100%; border: 1px solid rgba(255,255,255,0.06); font-family: inherit; color: inherit; }
+.fsp-collapse-btn:hover { background: var(--fsp-card-h); }
+.fsp-collapse-btn svg { transition: transform .2s; }
+.fsp-collapse-btn.open svg { transform: rotate(90deg); }
+.fsp-collapse-btn span { font-size: 13px; font-weight: 600; color: var(--fsp-txt2); }
+.fsp-collapse-body { overflow: hidden; max-height: 0; opacity: 0; transition: max-height .35s, opacity .3s; }
+.fsp-collapse-body.open { max-height: 600px; opacity: 1; overflow: visible; }
+.fsp-collapse-body-inner { padding: 12px 0 0; }
+
+/* ── Number stepper ── */
+.fsp-overlay input[type=number]::-webkit-inner-spin-button,
+.fsp-overlay input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+.fsp-overlay input[type=number] { -moz-appearance: textfield; }
+.fsp-overlay .fsp-num-wrap { display: flex; align-items: center; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 10px; background: #1a1520 !important; overflow: hidden; }
+.fsp-overlay .fsp-num-wrap:focus-within { border-color: var(--fsp-accent) !important; }
+.fsp-overlay .fsp-num-wrap input { flex: 1; padding: 11px 14px; border: none !important; background: transparent !important; color: #f0ece6 !important; font-size: 14px; outline: none; font-family: inherit; min-width: 0; }
+.fsp-overlay .fsp-num-wrap input::placeholder { color: var(--fsp-txt3); }
+.fsp-num-btns { display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,0.06); }
+.fsp-num-btn { width: 32px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--fsp-txt3); transition: all .12s; background: none; border: none; padding: 0; }
+.fsp-num-btn:hover { background: rgba(232,115,74,0.1); color: var(--fsp-accent); }
+.fsp-num-btns .fsp-num-btn:first-child { border-bottom: 1px solid rgba(255,255,255,0.06); }
+
+/* ── Buttons ── */
+.fsp-btn { padding: 11px 28px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; border: none; font-family: inherit; }
+.fsp-btn-primary { background: var(--fsp-accent); color: #fff; }
+.fsp-btn-primary:hover { background: #d4683f; }
+.fsp-btn-ghost { background: none; border: 1px solid rgba(255,255,255,0.08); color: var(--fsp-txt2); }
+.fsp-btn-ghost:hover { background: rgba(255,255,255,0.04); color: var(--fsp-txt); }
+.fsp-save-row { display: flex; justify-content: flex-end; margin-top: 28px; }
+
+/* ── Sub-option rows ── */
+.fsp-sub { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: background .15s; }
+.fsp-sub:hover { background: rgba(255,255,255,0.04); }
+.fsp-sub-title { font-size: 13px; font-weight: 500; color: var(--fsp-txt); }
+.fsp-sub-hint { font-size: 11px; color: var(--fsp-txt3); margin-top: 2px; }
+
+/* ── Role rows (beloebsgraense) ── */
+.fsp-role { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 10px; margin-bottom: 6px; }
+.fsp-role-left { display: flex; align-items: center; gap: 10px; flex: 1; }
+.fsp-role-emoji { font-size: 16px; flex-shrink: 0; }
+.fsp-role-name { font-size: 13px; font-weight: 500; color: var(--fsp-txt); }
+
+/* ── Grey-out (disabled state) ── */
+.fsp-off { opacity: 0.35; pointer-events: none; filter: grayscale(0.6); transition: all .25s; }
+
+/* ── Slide panel ── */
+.fsp-slide-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 10; }
+.fsp-slide-overlay.open { opacity: 1; pointer-events: all; }
+.fsp-slide-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 520px; background: var(--fsp-bg2); border-left: 1px solid rgba(232,115,74,0.12); transform: translateX(100%); transition: transform .3s cubic-bezier(.4,0,.2,1); z-index: 11; display: flex; flex-direction: column; }
+.fsp-slide-panel.open { transform: translateX(0); }
+.fsp-slide-hdr { display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
+.fsp-slide-hdr h2 { font-size: 18px; font-weight: 600; color: var(--fsp-txt); }
+.fsp-slide-close { width: 32px; height: 32px; border-radius: 8px; border: none; background: rgba(255,255,255,0.06); color: var(--fsp-txt2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+.fsp-slide-close:hover { background: rgba(232,115,74,0.15); color: var(--fsp-accent); }
+.fsp-slide-body { flex: 1; overflow-y: auto; padding: 24px 28px 32px; }
+.fsp-slide-footer { flex-shrink: 0; padding: 16px 28px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ── Form elements (slide panel) ── */
+.fsp-form-group { margin-bottom: 22px; }
+.fsp-form-label { font-size: 12px; font-weight: 600; color: var(--fsp-txt3); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+.fsp-overlay .fsp-input { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08) !important; background: #1a1520 !important; color: #f0ece6 !important; font-size: 14px; outline: none; font-family: inherit; }
+.fsp-overlay .fsp-input:focus { border-color: var(--fsp-accent) !important; }
+.fsp-overlay .fsp-input::placeholder { color: var(--fsp-txt3) !important; }
+.fsp-overlay textarea.fsp-input { resize: vertical; min-height: 72px; line-height: 1.5; }
+
+/* ── Date/time block (slide panel) ── */
+.fsp-dt-block { background: var(--fsp-bg); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px 16px; }
+.fsp-dt-row { display: flex; gap: 8px; }
+.fsp-dt-row input { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: var(--fsp-bg2); color: var(--fsp-txt); font-size: 13px; outline: none; font-family: inherit; text-align: center; }
+.fsp-dt-row input:focus { border-color: var(--fsp-accent); }
+.fsp-overlay select, .fsp-overlay input[type="date"], .fsp-overlay input[type="time"] { color-scheme: dark; }
+/* ── Form row (side-by-side groups) ── */
+.fsp-form-row { display: flex; gap: 12px; }
+.fsp-form-row .fsp-form-group { flex: 1; }
+.fsp-form-hint { font-size: 11px; color: var(--fsp-txt3); margin-top: 8px; }
+
+/* ── Chips ── */
+.fsp-chip { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: var(--fsp-txt3); font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s; user-select: none; }
+.fsp-chip:hover { background: rgba(255,255,255,0.05); color: var(--fsp-txt2); }
+.fsp-chip.on { background: rgba(232,115,74,0.12); border-color: rgba(232,115,74,0.3); color: var(--fsp-accent); }
+
+/* ── Theme cards ── */
+.fsp-theme-card { cursor: pointer; border: 2px solid transparent; border-radius: 16px; padding: 12px; transition: all .2s; background: var(--fsp-bg2); }
+.fsp-theme-card:hover { border-color: rgba(255,255,255,0.1); background: var(--fsp-card-h); }
+.fsp-theme-card.active { border-color: var(--fsp-accent); background: rgba(232,115,74,0.06); }
+.fsp-theme-preview { height: 100px; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+.fsp-theme-name { font-size: 14px; font-weight: 600; color: var(--fsp-txt); margin-bottom: 2px; }
+.fsp-theme-desc { font-size: 12px; color: var(--fsp-txt3); }
+
+/* ── Help accordion ── */
+.fsp-overlay .fsp-help-search { width: 100%; padding: 12px 16px 12px 42px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08) !important; background: #211c28 !important; color: #f0ece6 !important; font-size: 14px; outline: none; font-family: inherit; transition: border-color .15s; }
+.fsp-help-search:focus { border-color: var(--fsp-accent); }
+.fsp-help-search::placeholder { color: var(--fsp-txt3); }
+.fsp-help-search-wrap { position: relative; margin-bottom: 24px; }
+.fsp-help-search-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.fsp-help-item { border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; margin-bottom: 8px; overflow: hidden; background: var(--fsp-bg2); transition: border-color .15s; }
+.fsp-help-item:hover { border-color: rgba(255,255,255,0.1); }
+.fsp-help-hdr { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; cursor: pointer; gap: 12px; }
+.fsp-help-hdr-title { font-size: 14px; font-weight: 500; color: var(--fsp-txt); }
+.fsp-help-hdr svg { flex-shrink: 0; transition: transform .2s; color: var(--fsp-txt3); }
+.fsp-help-item.open .fsp-help-hdr svg { transform: rotate(180deg); }
+.fsp-help-body { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+.fsp-help-item.open .fsp-help-body { max-height: 600px; }
+.fsp-help-body-inner { padding: 0 20px 18px; font-size: 13px; color: var(--fsp-txt2); line-height: 1.7; }
+
+/* ── Sound settings ── */
+.fsp-snd-slider-wrap { display: flex; align-items: center; gap: 10px; flex: 1; }
+.fsp-snd-slider-wrap input[type=range] { flex: 1; height: 4px; -webkit-appearance: none; appearance: none; background: var(--fsp-bg4); border-radius: 2px; outline: none; }
+.fsp-snd-slider-wrap input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--fsp-accent); cursor: pointer; }
+.fsp-snd-val { font-size: 12px; font-weight: 600; color: var(--fsp-accent); min-width: 36px; text-align: right; font-family: monospace; }
+.fsp-snd-select { padding: 7px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: var(--fsp-bg); color: var(--fsp-txt); font-size: 12px; outline: none; font-family: inherit; cursor: pointer; min-width: 100px; }
+.fsp-snd-select:focus { border-color: var(--fsp-accent); }
+.fsp-snd-play { width: 30px; height: 30px; border-radius: 8px; border: none; background: rgba(232,115,74,0.1); color: var(--fsp-accent); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
+.fsp-snd-play:hover { background: rgba(232,115,74,0.2); }
+.fsp-snd-row { background: var(--fsp-bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px 20px; margin-bottom: 8px; }
+.fsp-snd-row-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.fsp-snd-row-label { font-size: 13px; font-weight: 600; color: var(--fsp-txt); min-width: 110px; }
+
+/* ── Payment method cards ── */
+.fsp-pm-badge { display: inline-flex; padding: 3px 9px; border-radius: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.2px; white-space: nowrap; }
+.fsp-pm-badge-green { background: rgba(93,202,122,0.12); color: #5dca7a; }
+.fsp-pm-badge-blue { background: rgba(91,160,216,0.12); color: #5ba0d8; }
+.fsp-pm-badge-orange { background: rgba(244,162,97,0.12); color: #f4a261; }
+.fsp-pm-badge-red { background: rgba(232,90,111,0.12); color: #e85a6f; }
+.fsp-pm-badge-gray { background: rgba(255,255,255,0.06); color: var(--fsp-txt3); }
+.fsp-pm-card { background: var(--fsp-bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; margin-bottom: 12px; overflow: hidden; transition: border-color .15s; }
+.fsp-pm-card:hover { border-color: rgba(255,255,255,0.1); }
+.fsp-pm-card-hdr { padding: 18px 22px; display: flex; align-items: flex-start; gap: 14px; cursor: pointer; }
+.fsp-pm-card-left { flex: 1; min-width: 0; }
+.fsp-pm-card-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.fsp-pm-card-title { font-size: 15px; font-weight: 600; color: var(--fsp-txt); }
+.fsp-pm-card-desc { font-size: 12px; color: var(--fsp-txt3); line-height: 1.5; }
+.fsp-pm-card-expand { overflow: hidden; max-height: 0; opacity: 0; transition: max-height .35s ease, opacity .25s ease; }
+.fsp-pm-card-expand.open { max-height: 2000px; opacity: 1; }
+.fsp-pm-card-body { padding: 0 22px 20px; border-top: 1px solid rgba(255,255,255,0.04); }
+.fsp-pm-card-body-inner { padding-top: 16px; }
+.fsp-pm-detail { font-size: 13px; color: var(--fsp-txt2); line-height: 1.6; margin-bottom: 14px; }
+.fsp-pm-detail strong { color: var(--fsp-txt); font-weight: 500; }
+
+/* ── Toolbar ── */
+.fsp-tb-preview { background: var(--fsp-bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 16px 20px; margin-bottom: 28px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fsp-tb-preview-label { font-size: 11px; font-weight: 600; color: var(--fsp-txt3); text-transform: uppercase; letter-spacing: 0.6px; margin-right: 4px; }
+.fsp-tb-preview-icon { width: 36px; height: 36px; border-radius: 9px; background: rgba(232,115,74,0.1); display: none; align-items: center; justify-content: center; font-size: 16px; transition: all .2s; }
+.fsp-tb-preview-icon.vis { display: flex; }
+.fsp-tb-item { background: var(--fsp-bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 14px; margin-bottom: 8px; transition: all .15s; }
+.fsp-tb-item:hover { border-color: rgba(255,255,255,0.1); }
+.fsp-tb-item-emoji { font-size: 20px; flex-shrink: 0; width: 36px; text-align: center; }
+.fsp-tb-item-info { flex: 1; }
+.fsp-tb-item-name { font-size: 14px; font-weight: 500; color: var(--fsp-txt); margin-bottom: 2px; }
+.fsp-tb-item-desc { font-size: 12px; color: var(--fsp-txt3); }
+.fsp-tb-item-note { font-size: 11px; color: var(--fsp-accent); margin-top: 2px; }
+.fsp-tb-item-drag { width: 24px; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: grab; padding: 8px 0; flex-shrink: 0; opacity: 0.3; transition: opacity .15s; }
+.fsp-tb-item:hover .fsp-tb-item-drag { opacity: 0.7; }
+.fsp-tb-item-drag:active { cursor: grabbing; opacity: 1; }
+.fsp-tb-item-drag span { display: block; width: 14px; height: 2px; border-radius: 1px; background: var(--fsp-txt2); }
+.fsp-tb-item.dragging { opacity: 0.4; border-style: dashed; }
+.fsp-tb-item.drag-over { border-color: var(--fsp-accent); background: rgba(232,115,74,0.05); }
+
+/* ── Arrangementer ── */
+.fsp-arr-tabs { display: flex; gap: 8px; margin-bottom: 32px; }
+.fsp-arr-tab { padding: 10px 22px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: var(--fsp-txt3); font-size: 14px; font-weight: 500; cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 8px; font-family: inherit; }
+.fsp-arr-tab:hover { background: rgba(255,255,255,0.05); color: var(--fsp-txt2); }
+.fsp-arr-tab.active { background: var(--fsp-accent); border-color: var(--fsp-accent); color: #fff; }
+.fsp-arr-badge { font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+.fsp-arr-tab.active .fsp-arr-badge { background: rgba(255,255,255,0.2); color: #fff; }
+.fsp-arr-tab:not(.active) .fsp-arr-badge { background: rgba(255,255,255,0.06); color: var(--fsp-txt3); }
+.fsp-arr-create { padding: 12px 24px; border-radius: 10px; border: 1px dashed rgba(232,115,74,0.35); background: rgba(232,115,74,0.06); color: var(--fsp-accent); font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 8px; margin-bottom: 36px; font-family: inherit; }
+.fsp-arr-create:hover { background: rgba(232,115,74,0.12); border-color: rgba(232,115,74,0.5); }
+.fsp-arr-section-title { font-size: 12px; font-weight: 600; color: var(--fsp-txt3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+.fsp-arr-card { background: var(--fsp-bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 18px 22px; display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+.fsp-arr-card-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.fsp-arr-card-name { font-size: 14px; font-weight: 500; color: var(--fsp-txt); margin-bottom: 3px; }
+.fsp-arr-card-meta { font-size: 12px; color: var(--fsp-txt3); }
+.fsp-arr-card-count { font-size: 13px; color: var(--fsp-txt2); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.fsp-arr-setting { background: var(--fsp-bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 20px 24px; }
+
+/* ── Tooltip ── */
+.fsp-tt-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.12); color: var(--fsp-txt3); font-size: 9px; font-style: italic; font-weight: 600; font-family: Georgia, serif; cursor: help; vertical-align: middle; position: relative; }
+.fsp-tt { display: none; position: absolute; top: calc(100% + 8px); left: 0; background: var(--fsp-bg); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 12px 16px; font-size: 12px; color: var(--fsp-txt2); line-height: 1.5; z-index: 50; pointer-events: none; min-width: 280px; }
+.fsp-tt-label { font-size: 10px; font-weight: 600; color: var(--fsp-txt3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.fsp-tt-icon:hover + .fsp-tt, .fsp-tt-icon:hover ~ .fsp-tt { display: block; }
+
+/* ── Feedback section ── */
+.fsp-feedback-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+
+/* ── Device rows ── */
+.fsp-device-row { background: var(--fsp-bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 18px 22px; display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+.fsp-device-emoji { font-size: 22px; flex-shrink: 0; }
+.fsp-device-left { flex: 1; }
+.fsp-device-title { font-size: 14px; font-weight: 500; color: var(--fsp-txt); }
+.fsp-device-meta { font-size: 12px; color: var(--fsp-txt3); margin-top: 2px; }
+
+/* ── Restaurant Mode specifics ── */
+.fsp-rm-sound { background: var(--fsp-bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 18px 22px; }
+.fsp-rm-sound-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.fsp-rm-sound-title { font-size: 14px; font-weight: 500; color: var(--fsp-txt); }
+.fsp-rm-sound-desc { font-size: 12px; color: var(--fsp-txt3); margin-bottom: 12px; }
+.fsp-rm-sound-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fsp-rm-schip { padding: 7px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: var(--fsp-txt3); font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s; user-select: none; }
+.fsp-rm-schip:hover { background: rgba(255,255,255,0.05); color: var(--fsp-txt2); }
+.fsp-rm-schip.on { background: rgba(232,115,74,0.12); border-color: rgba(232,115,74,0.3); color: var(--fsp-accent); }
+
+/* ── Num row (in-section) ── */
+.fsp-num-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.04); }
+.fsp-num-row label { font-size: 13px; font-weight: 500; color: var(--fsp-txt2); }
+
+/* ── Gem-knap (save button) — disabled by default, active when dirty ── */
+.fsp-save-btn { padding: 12px 36px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: default; transition: all .2s; border: none; font-family: inherit; background: var(--fsp-bg4); color: var(--fsp-txt3); pointer-events: none; }
+.fsp-save-btn.dirty { background: var(--fsp-accent); color: #fff; cursor: pointer; pointer-events: all; }
+.fsp-save-btn.dirty:hover { background: #d4683f; }

@@ -4,9 +4,9 @@
  * Reuses patterns from product-icon-utils.js but with profile-picture-specific params.
  */
 
-import { supabaseClient } from './config-and-supabase.js?v=3.0.65';
-import { runWithAuthRetry } from './auth-retry.js?v=3.0.65';
-import { invalidateProfilePictureCache } from './profile-picture-cache.js?v=3.0.65';
+import { supabaseClient } from './config-and-supabase.js?v=3.0.66';
+import { runWithAuthRetry } from './auth-retry.js?v=3.0.66';
+import { invalidateProfilePictureCache } from './profile-picture-cache.js?v=3.0.66';
 
 const BUCKET = 'profile-pictures';
 const TARGET_SIZE = 400;         // 400x400px

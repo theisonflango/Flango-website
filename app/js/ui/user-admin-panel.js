@@ -7,11 +7,11 @@
  * Tab 4: 📸 Profilbilleder — grid/liste over alle billeder
  */
 
-import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js?v=3.0.65';
-import { getInstitutionId } from '../domain/session-store.js?v=3.0.65';
-import { getCachedProfilePictureUrl, batchPreWarmProfilePictures, invalidateProfilePictureCache, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js?v=3.0.65';
-import { escapeHtml } from '../core/escape-html.js?v=3.0.65';
-import { openHistorikV3ForUser } from './historik-v3.js?v=3.0.65';
+import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js?v=3.0.66';
+import { getInstitutionId } from '../domain/session-store.js?v=3.0.66';
+import { getCachedProfilePictureUrl, batchPreWarmProfilePictures, invalidateProfilePictureCache, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js?v=3.0.66';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.66';
+import { openHistorikV3ForUser } from './historik-v3.js?v=3.0.66';
 
 // ─── State ───
 let panelEl = null;
@@ -127,7 +127,6 @@ function buildPanelHTML() {
                     <span class="uap-search-icon">🔍</span>
                     <input type="text" class="uap-search" placeholder="Søg efter navn eller nummer..." autocomplete="off">
                     <button class="uap-search-clear" id="uap-search-clear" style="display:none;">&times;</button>
-                    <div class="uap-search-dropdown" id="uap-search-dropdown" style="display:none;"></div>
                 </div>
                 <span class="uap-counter"></span>
                 <div id="uap-toolbar-extra"></div>
@@ -180,7 +179,6 @@ function wireHeader() {
 
 function wireSearch() {
     const input = panelEl.querySelector('.uap-search');
-    const dropdown = panelEl.querySelector('#uap-search-dropdown');
     const clearBtn = panelEl.querySelector('#uap-search-clear');
     let debounce;
 
@@ -189,44 +187,15 @@ function wireSearch() {
         input.value = '';
         searchQuery = '';
         clearBtn.style.display = 'none';
-        dropdown.style.display = 'none';
+        highlightedUserId = null;
         renderActiveTab();
         input.focus();
     };
 
-    // Build dropdown items from users
-    const customers = allUsers.filter(u => u.role === 'kunde').sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    dropdown.innerHTML = customers.map(u =>
-        `<div class="uap-search-dropdown-item" data-name="${escapeHtml(u.name || '')}">${escapeHtml(u.name || '')} <span style="opacity:0.5;">#${u.number || ''}</span></div>`
-    ).join('');
-
-    function filterDropdownItems(query) {
-        const q = (query || '').toLowerCase().trim();
-        dropdown.querySelectorAll('.uap-search-dropdown-item').forEach(item => {
-            item.style.display = (!q || item.textContent.toLowerCase().includes(q)) ? '' : 'none';
-        });
-    }
-
-    input.onfocus = () => {
-        // Only show dropdown if there's text
-        if (input.value.trim()) {
-            filterDropdownItems(input.value);
-            dropdown.style.display = 'block';
-        }
-    };
-    input.onblur = () => {
-        setTimeout(() => { dropdown.style.display = 'none'; }, 150);
-    };
     input.oninput = () => {
         clearTimeout(debounce);
         const val = input.value.trim();
         clearBtn.style.display = val ? 'block' : 'none';
-        if (val) {
-            filterDropdownItems(val);
-            dropdown.style.display = 'block';
-        } else {
-            dropdown.style.display = 'none';
-        }
         debounce = setTimeout(() => {
             searchQuery = val.toLowerCase();
             // Auto-highlight first matching user
@@ -253,21 +222,6 @@ function wireSearch() {
             e.preventDefault();
             moveHighlight(-1);
         }
-    });
-
-    // Click on dropdown item → select user
-    dropdown.addEventListener('click', (e) => {
-        const item = e.target.closest('.uap-search-dropdown-item');
-        if (!item) return;
-        const name = item.dataset.name;
-        input.value = name;
-        searchQuery = name.toLowerCase().trim();
-        dropdown.style.display = 'none';
-        clearBtn.style.display = 'block';
-        // Auto-highlight the selected user
-        const filtered = getFilteredUsers();
-        highlightedUserId = filtered.length > 0 ? filtered[0].id : null;
-        renderActiveTab();
     });
 
     // Auto-focus
@@ -872,7 +826,7 @@ function renderOverviewTab() {
             e.stopPropagation();
             const user = allUsers.find(u => u.id === link.dataset.userId);
             if (!user) return;
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.65');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.66');
             openProfilePictureModal(user, {
                 onSaved: (updatedUser) => {
                     Object.assign(user, updatedUser);
@@ -1537,7 +1491,7 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
         // Wire activate
         lb.querySelector('.uap-lb-activate')?.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const { applyProfilePicture } = await import('../core/profile-picture-utils.js?v=3.0.65');
+            const { applyProfilePicture } = await import('../core/profile-picture-utils.js?v=3.0.66');
             const result = await applyProfilePicture(current.user_id, current);
             if (result.success) {
                 ppEntries.forEach(en => {
@@ -1598,7 +1552,7 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
         lb.querySelector('.uap-lb-add')?.addEventListener('click', async (e) => {
             e.stopPropagation();
             const currentUser = allUsers.find(u => u.id === current.user_id) || { ...current, id: current.user_id, name: current.user_name };
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.65');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.66');
             openProfilePictureModal(currentUser, {
                 onSaved: (updatedUser) => {
                     Object.assign(currentUser, updatedUser);
@@ -1616,7 +1570,7 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
             e.stopPropagation();
             if (current._isDefault) return; // Don't use default image as AI reference
             const currentUser = allUsers.find(u => u.id === current.user_id) || { ...current, id: current.user_id, name: current.user_name };
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.65');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.66');
             openProfilePictureModal(currentUser, {
                 preSelectType: 'ai_avatar',
                 referenceImageUrl: url,
@@ -1793,7 +1747,7 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
                         ppSignedUrls.set(current.id, signedData[0].signedUrl);
                     }
 
-                    const { invalidateProfilePictureCache } = await import('../core/profile-picture-cache.js?v=3.0.65');
+                    const { invalidateProfilePictureCache } = await import('../core/profile-picture-cache.js?v=3.0.66');
                     invalidateProfilePictureCache(current.user_id);
 
                     renderLightboxContent();
@@ -1811,7 +1765,7 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
             e.stopPropagation();
             const typeLabel = (PP_TYPE_LABELS[current.picture_type] || PP_TYPE_LABELS.upload).label;
             if (!confirm(`Slet dette ${typeLabel.toLowerCase()}-billede for ${current.user_name}?`)) return;
-            const { removeProfilePicture } = await import('../core/profile-picture-utils.js?v=3.0.65');
+            const { removeProfilePicture } = await import('../core/profile-picture-utils.js?v=3.0.66');
 
             const { error: delError } = await supabaseClient.from('profile_picture_library').delete().eq('id', current.id);
             if (delError) { console.error('[uap] Delete fejl:', delError); alert('Kunne ikke slette: ' + delError.message); return; }

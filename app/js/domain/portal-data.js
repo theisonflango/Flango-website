@@ -2,8 +2,8 @@
 // Ansvar: Hent og gem institutions-indstillinger, forældre-statistik, forældreliste, adoption-data.
 // Importerer supabaseClient direkte fra config-and-supabase.js (samme autentificerede klient).
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.65';
-import { getInstitutionId } from './session-store.js?v=3.0.65';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.66';
+import { getInstitutionId } from './session-store.js?v=3.0.66';
 
 // ─── Hjælpere ──────────────────────────────────────────────────
 
@@ -54,8 +54,8 @@ let _featureFlagsCacheId = null;
 
 /**
  * Hent feature flags for institution.
- * Returnerer objekt: { moduleKey: 'unlocked'|'forced_on'|'forced_off', ... }
- * Tomt objekt = alt ulåst = uændret adfærd.
+ * Returnerer objekt: { moduleKey: { locked: bool, lock_reason: string|null }, ... }
+ * Tomt objekt = ingen flags sat = intet låst.
  */
 async function getFeatureFlags(institutionId) {
   const client = db();

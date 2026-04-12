@@ -74,34 +74,35 @@
     return nav.defaultChecked !== undefined ? nav.defaultChecked : false;
   }
 
-  // ─── Feature flag state for en sidebar nav item ───
+  // ─── Feature flag lock-state for en sidebar nav item ───
   function getNavFlagState(nav) {
     const FM = window.FeatureModules;
-    if (!FM || !_featureFlags || !nav.settingKey) return 'unlocked';
+    if (!FM || !_featureFlags || !nav.settingKey) return { locked: false, lockReason: null };
     const moduleKey = FM.SETTING_KEY_TO_MODULE[nav.settingKey];
-    if (!moduleKey) return 'unlocked';
-    // Tjek parent_portal override (lukker alt)
-    if (_featureFlags.parent_portal === 'forced_off' && moduleKey !== 'parent_portal') {
-      return 'forced_off';
+    if (!moduleKey) return { locked: false, lockReason: null };
+    // Tjek parent_portal override (låser alt)
+    const parentFlag = _featureFlags.parent_portal;
+    if (parentFlag?.locked && moduleKey !== 'parent_portal') {
+      return { locked: true, lockReason: parentFlag.lock_reason || null };
     }
-    return FM.getModuleState(_featureFlags, moduleKey);
+    const flag = FM.getModuleFlag(_featureFlags, moduleKey);
+    const locked = flag?.locked === true;
+    const lockReason = flag?.lock_reason || null;
+    return { locked, lockReason };
   }
 
   // ─── Build sidebar HTML ───
   function buildSidebar(settings, institutionName) {
     let navItems = '';
     for (const nav of SIDEBAR_NAV) {
-      const flagState = getNavFlagState(nav);
-      const isForcedOff = flagState === 'forced_off';
-      const isForcedOn = flagState === 'forced_on';
-      const checked = isForcedOn ? true : isForcedOff ? false : isFeatureOn(nav, settings);
+      const { locked, lockReason } = getNavFlagState(nav);
+      const checked = locked ? isFeatureOn(nav, settings) : isFeatureOn(nav, settings);
       const featureOffClass = (!checked && nav.check) ? ' feature-off' : '';
-      const lockedClass = (isForcedOff || isForcedOn) ? ' superadmin-locked' : '';
-      const disabledAttr = (isForcedOff || isForcedOn) ? ' disabled' : '';
-      const lockIcon = isForcedOn
-        ? '<span class="sa-lock sa-lock-on" title="Påkrævet af administrator">🔒</span>'
-        : isForcedOff
-        ? '<span class="sa-lock sa-lock-off" title="Deaktiveret af administrator">🔒</span>'
+      const lockedClass = locked ? ' superadmin-locked' : '';
+      const disabledAttr = locked ? ' disabled' : '';
+      const lockTitle = lockReason || 'Låst af administrator';
+      const lockIcon = locked
+        ? `<span class="sa-lock" title="${lockTitle}">🔒</span>`
         : '';
       const checkboxHtml = nav.check
         ? `<input type="checkbox" class="sidebar-check" data-section="${nav.id}" ${checked ? 'checked' : ''}${disabledAttr}>`

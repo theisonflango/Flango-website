@@ -1542,6 +1542,7 @@
             <button class="topup-option" data-amount="50"><div class="topup-option-amount">50 kr</div><div class="topup-option-label">Lille optankning</div></button>
             <button class="topup-option selected" data-amount="100"><div class="topup-option-amount">100 kr</div><div class="topup-option-label">Anbefalet</div></button>
             <button class="topup-option" data-amount="150"><div class="topup-option-amount">150 kr</div><div class="topup-option-label">Stor optankning</div></button>
+            <button class="topup-option" data-amount="200"><div class="topup-option-amount">200 kr</div><div class="topup-option-label">Ekstra stor</div></button>
             <button class="topup-option custom" data-amount="custom"><div class="topup-option-amount">Andet</div><div class="topup-option-label">Vælg selv</div></button>
           </div>
           <div class="topup-method-section">
@@ -1962,9 +1963,9 @@
               <div class="setting-info"><div class="setting-label">Kamera-foto</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
               <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''}><span class="toggle-track"></span></label>
             </div>
-            <div class="setting-row" style="opacity:0.55;pointer-events:none">
-              <div class="setting-info"><div class="setting-label">AI-genereret avatar</div><div class="setting-desc">Et foto bruges til at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.<br><span style="font-size:11px;color:var(--warning);margin-top:4px;display:inline-block">⏳ Afventer kommunal tilladelse</span></div></div>
-              <label class="toggle"><input type="checkbox" id="pp-consent-ai" ${!optOutAi ? 'checked' : ''} disabled><span class="toggle-track"></span></label>
+            <div class="setting-row">
+              <div class="setting-info"><div class="setting-label">AI-genereret avatar</div><div class="setting-desc">Et foto bruges til at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.</div></div>
+              <label class="toggle"><input type="checkbox" id="pp-consent-ai" ${!optOutAi ? 'checked' : ''}><span class="toggle-track"></span></label>
             </div>
           </div>
 
@@ -2807,6 +2808,9 @@
     document.querySelectorAll('.dtab-item').forEach(b => b.classList.remove('active'));
     const tab = document.getElementById(tabId);
     if (tab) { tab.classList.add('active'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    if (tabId === 'tab-pay') {
+      setTimeout(() => { const s = document.getElementById('section-topup'); if (s && !s.classList.contains('open')) toggleSection(s); }, 100);
+    }
     const navBtn = document.querySelector(`.bnav-item[data-tab="${tabId}"]`);
     if (navBtn) navBtn.classList.add('active');
     const dtabBtn = document.querySelector(`.dtab-item[data-tab="${tabId}"]`);
@@ -3566,7 +3570,7 @@
         return;
       }
       let html = `<p style="color:var(--ink-soft);margin:0 0 var(--s3)">Disse forældrekonti har adgang til ${esc(getChildName())} i Flango:</p>`;
-      parents.forEach(p => {
+      parents.filter(p => !p.email?.endsWith('@flango.internal')).forEach(p => {
         const date = p.linked_at ? new Date(p.linked_at).toLocaleDateString('da-DK') : '—';
         const youTag = p.is_current_user ? ' <span style="color:var(--positive);font-weight:600">(dig)</span>' : '';
         html += `<div style="display:flex;align-items:center;gap:var(--s2);padding:var(--s2) 0;border-bottom:1px solid var(--surface-sunken)">

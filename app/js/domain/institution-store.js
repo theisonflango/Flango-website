@@ -1,4 +1,4 @@
-import { supabaseClient, INSTITUTION_ID_KEY, INSTITUTION_NAME_KEY } from '../core/config-and-supabase.js?v=3.0.65';
+import { supabaseClient, INSTITUTION_ID_KEY, INSTITUTION_NAME_KEY } from '../core/config-and-supabase.js?v=3.0.66';
 
 let activeInstitution = null;
 let institutionsCache = [];
@@ -14,6 +14,8 @@ if (typeof window !== 'undefined') {
         return institutionsCache.find(inst => String(inst.id) === strId) || null;
     };
     window.__flangoGetAllInstitutions = () => institutionsCache;
+    // Eksponér getInstitutionId globalt for IIFE-baserede moduler (settings-panel.js m.fl.)
+    window.getInstitutionId = () => activeInstitution?.id || localStorage.getItem('flango_institution_id') || null;
 }
 
 export async function fetchInstitutions(forceRefresh = false) {

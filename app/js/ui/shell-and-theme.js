@@ -1,27 +1,27 @@
 // Tema og shell-funktioner
-import { getCurrentClerk, getCurrentAdmin, isCurrentUserAdmin, getInstitutionId } from '../domain/session-store.js?v=3.0.65';
-import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js?v=3.0.65';
-import { setupHelpModule, openHelpManually } from './help.js?v=3.0.65';
-import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js?v=3.0.65';
-import { getCurrentCustomer } from '../domain/cafe-session-store.js?v=3.0.65';
-import { getOrder } from '../domain/order-store.js?v=3.0.65';
-import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js?v=3.0.65';
-import { logAuditEvent } from '../core/audit-events.js?v=3.0.65';
+import { getCurrentClerk, getCurrentAdmin, isCurrentUserAdmin, getInstitutionId } from '../domain/session-store.js?v=3.0.66';
+import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js?v=3.0.66';
+import { setupHelpModule, openHelpManually } from './help.js?v=3.0.66';
+import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js?v=3.0.66';
+import { getCurrentCustomer } from '../domain/cafe-session-store.js?v=3.0.66';
+import { getOrder } from '../domain/order-store.js?v=3.0.66';
+import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js?v=3.0.66';
+import { logAuditEvent } from '../core/audit-events.js?v=3.0.66';
 import {
     initThemeLoader,
     switchTheme as themePackSwitchTheme,
     getCurrentTheme,
     isThemePackTheme,
     ALL_VALID_THEMES
-} from './theme-loader.js?v=3.0.65';
-import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js?v=3.0.65';
-import { updateInstitutionCache } from '../domain/institution-store.js?v=3.0.65';
-import { showCustomAlert } from './sound-and-alerts.js?v=3.0.65';
-import { refetchAllProducts } from '../core/data-refetch.js?v=3.0.65';
-import { invalidateAllLimitCaches } from '../domain/purchase-limits.js?v=3.0.65';
-import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js?v=3.0.65';
-import { openAulaImportModal } from './aula-import-modal.js?v=3.0.65';
-import { openUserAdminPanel } from './user-admin-panel.js?v=3.0.65';
+} from './theme-loader.js?v=3.0.66';
+import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js?v=3.0.66';
+import { updateInstitutionCache } from '../domain/institution-store.js?v=3.0.66';
+import { showCustomAlert } from './sound-and-alerts.js?v=3.0.66';
+import { refetchAllProducts } from '../core/data-refetch.js?v=3.0.66';
+import { invalidateAllLimitCaches } from '../domain/purchase-limits.js?v=3.0.66';
+import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js?v=3.0.66';
+import { openAulaImportModal } from './aula-import-modal.js?v=3.0.66';
+import { openUserAdminPanel, openParentPortalAsAdmin } from './user-admin-panel.js?v=3.0.66';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 
@@ -592,7 +592,7 @@ function renderProductRulesTable() {
         }
         tdIcon.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const { openProductIconPicker } = await import('./product-icon-picker.js?v=3.0.65');
+            const { openProductIconPicker } = await import('./product-icon-picker.js?v=3.0.66');
             openProductIconPicker({
                 mode: 'product',
                 institutionId: productRulesState.institutionId,
@@ -1737,7 +1737,7 @@ async function openProfilePictureSettingsModal() {
     // Choose default image button — open profile picture modal in "default" mode
     if (defaultImageChooseBtn) {
         defaultImageChooseBtn.onclick = async () => {
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.65');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.66');
             // Use a fake user object for the default image
             const fakeUser = { id: '__default__', name: 'Standard billede', institution_id: institutionId };
             openProfilePictureModal(fakeUser, {
@@ -2942,6 +2942,15 @@ async function openShiftTimerSettingsModal() {
  * Åbner Restaurant Mode indstillinger modal
  */
 window.__flangoOpenRestaurantModeSettings = () => openRestaurantModeSettingsModal();
+
+// ── Settings panel hooks (used by settings-panel.js / settings-sections.js) ──
+window.openSugarPolicyModal = () => openSugarPolicyModal();
+window.openUserAdminPanel = () => openUserAdminPanel();
+window.openParentPortalAsAdmin = () => openParentPortalAsAdmin();
+window.openMobilePayImportModal = () => openMobilePayImportModal();
+window.openResetRequestDialog = () => openResetRequestDialog();
+window.__flangoSupabaseClient = supabaseClient;
+window.__flangoDeviceTrust = { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers };
 
 async function openRestaurantModeSettingsModal() {
     const backdrop = document.getElementById('settings-modal-backdrop');
@@ -5227,15 +5236,35 @@ export function setupToolbarGearMenu() {
     const gearBtn = document.getElementById('toolbar-gear-btn');
     if (!gearBtn) return;
 
-    gearBtn.onclick = (event) => {
-        event.preventDefault();
-        const settingsBtn = document.getElementById('open-settings-btn');
-        if (settingsBtn) {
-            settingsBtn.click();
+    // Normal click → new settings panel (admin) or old modal (non-admin)
+    // Long press 3s → old settings modal (fallback)
+    let pressTimer = null;
+    let didLongPress = false;
+
+    gearBtn.addEventListener('pointerdown', (e) => {
+        didLongPress = false;
+        pressTimer = setTimeout(() => {
+            didLongPress = true;
+            openSettingsModal();
+        }, 3000);
+    });
+
+    gearBtn.addEventListener('pointerup', (e) => {
+        clearTimeout(pressTimer);
+        if (didLongPress) return;
+        e.preventDefault();
+        const clerkProfile = getCurrentClerk();
+        const isAdmin = clerkProfile?.role === 'admin';
+        if (isAdmin && window.FlangoSettings) {
+            window.FlangoSettings.open();
         } else {
             openSettingsModal();
         }
-    };
+    });
+
+    gearBtn.addEventListener('pointerleave', () => {
+        clearTimeout(pressTimer);
+    });
 }
 
 export function setupToolbarHistoryButton() {
@@ -5244,13 +5273,13 @@ export function setupToolbarHistoryButton() {
     historyBtn.onclick = async (event) => {
         event.preventDefault();
         try {
-            const { openHistorikV3 } = await import('./historik-v3.js?v=3.0.65');
+            const { openHistorikV3 } = await import('./historik-v3.js?v=3.0.66');
             openHistorikV3();
         } catch (err) {
             console.error('Kunne ikke åbne Historik v3:', err);
             // Fallback til v2
             try {
-                const { openHistorikModal } = await import('./historik-modal.js?v=3.0.65');
+                const { openHistorikModal } = await import('./historik-modal.js?v=3.0.66');
                 openHistorikModal();
             } catch (err2) {
                 console.error('Kunne ikke åbne Historik v2:', err2);
