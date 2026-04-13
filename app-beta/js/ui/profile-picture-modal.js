@@ -548,6 +548,8 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
     let selectedPreset = AI_AVATAR_PRESETS[0];
     let advancedOpen = false;
     let customPrompt = selectedPreset.prompt;
+    let customFluxPrompt = selectedPreset.fluxPrompt || '';
+    let viewingProvider = 'openai'; // which prompt is shown in textarea
     let referenceBlob = window.__ppAiReferenceBlob || null;
     let hatEnabled = false;
     let heroEnabled = false;
@@ -627,6 +629,10 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
                         <span id="pp-ai-adv-arrow" style="display:inline-block;transition:transform 0.2s;">▶</span> Avanceret — redigér prompt
                     </button>
                     <div id="pp-ai-prompt-section" style="display:none;margin-top:8px;">
+                        <div style="display:flex;gap:4px;margin-bottom:6px;">
+                            <button type="button" class="pp-ai-provider-tab" data-provider="openai" style="flex:1;padding:5px 8px;border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.1);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;color:#10b981;">OpenAI</button>
+                            <button type="button" class="pp-ai-provider-tab" data-provider="flux" style="flex:1;padding:5px 8px;border:1px solid rgba(255,255,255,0.1);background:transparent;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;color:#94a3b8;">FLUX</button>
+                        </div>
                         <textarea id="pp-ai-prompt-textarea" style="width:100%;min-height:80px;padding:8px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;box-sizing:border-box;background:rgba(255,255,255,0.04);color:inherit;">${escapeHtml(selectedPreset.prompt)}</textarea>
                         <button type="button" id="pp-ai-reset-prompt" style="background:none;border:none;color:#1a8a6e;font-size:11px;cursor:pointer;padding:2px 0;margin-top:4px;">↺ Nulstil til preset</button>
                     </div>
@@ -658,7 +664,9 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
             if (!preset) return;
             selectedPreset = preset;
             customPrompt = preset.prompt;
-            if (promptTextarea) promptTextarea.value = preset.prompt;
+            customFluxPrompt = preset.fluxPrompt || '';
+            promptEdited = false;
+            if (promptTextarea) promptTextarea.value = viewingProvider === 'flux' ? customFluxPrompt : customPrompt;
             presetBtns.forEach(b => {
                 const isActive = b.dataset.preset === preset.key;
                 b.style.borderColor = isActive ? '#f59e0b' : 'rgba(255,255,255,0.1)';
@@ -680,11 +688,37 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
         if (promptSection) promptSection.style.display = advancedOpen ? 'block' : 'none';
     });
     let promptEdited = false;
-    promptTextarea?.addEventListener('input', () => { customPrompt = promptTextarea.value; promptEdited = true; });
+    promptTextarea?.addEventListener('input', () => {
+        if (viewingProvider === 'flux') {
+            customFluxPrompt = promptTextarea.value;
+        } else {
+            customPrompt = promptTextarea.value;
+        }
+        promptEdited = true;
+    });
     resetBtn?.addEventListener('click', () => {
         customPrompt = selectedPreset.prompt;
+        customFluxPrompt = selectedPreset.fluxPrompt || '';
         promptEdited = false;
-        if (promptTextarea) promptTextarea.value = selectedPreset.prompt;
+        if (promptTextarea) promptTextarea.value = viewingProvider === 'flux' ? customFluxPrompt : customPrompt;
+    });
+
+    // --- Provider tabs (switch prompt view) ---
+    const providerTabs = container.querySelectorAll('.pp-ai-provider-tab');
+    providerTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            viewingProvider = tab.dataset.provider;
+            providerTabs.forEach(t => {
+                const isActive = t.dataset.provider === viewingProvider;
+                const color = t.dataset.provider === 'flux' ? '#6366f1' : '#10b981';
+                t.style.borderColor = isActive ? `${color}66` : 'rgba(255,255,255,0.1)';
+                t.style.background = isActive ? `${color}1a` : 'transparent';
+                t.style.color = isActive ? color : '#94a3b8';
+            });
+            if (promptTextarea) {
+                promptTextarea.value = viewingProvider === 'flux' ? customFluxPrompt : customPrompt;
+            }
+        });
     });
 
     // --- Hat toggle ---
@@ -770,11 +804,8 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
             if (!token) throw new Error('Ikke logget ind');
             const adminUserId = session?.user?.id;
 
-            // Build prompt: use FLUX-specific prompt if FLUX and user hasn't edited
-            let basePrompt = customPrompt || '';
-            if (provider === 'flux' && !promptEdited && selectedPreset.fluxPrompt) {
-                basePrompt = selectedPreset.fluxPrompt;
-            }
+            // Build prompt: use the correct prompt for the chosen provider
+            let basePrompt = provider === 'flux' ? (customFluxPrompt || selectedPreset.fluxPrompt || '') : (customPrompt || '');
             let finalPrompt = basePrompt;
             if (hatEnabled) {
                 finalPrompt += '\n' + AI_AVATAR_HAT_PROMPT;
