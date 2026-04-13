@@ -1066,7 +1066,12 @@
       if (!nav.check || !nav.settingKey) return;
       var checkbox = container.querySelector('.sidebar-check[data-section="' + nav.id + '"]');
       if (checkbox) {
-        settings[nav.settingKey] = checkbox.checked;
+        // parent_portal_payment er JSONB — brug null (fra) / {} (til) i stedet for boolean
+        if (nav.settingKey === 'parent_portal_payment') {
+          settings[nav.settingKey] = checkbox.checked ? {} : null;
+        } else {
+          settings[nav.settingKey] = checkbox.checked;
+        }
       }
     });
 

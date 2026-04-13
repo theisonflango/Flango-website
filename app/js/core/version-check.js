@@ -1,8 +1,8 @@
 // js/core/version-check.js
 // Version check and update notification system
 
-import { FLANGO_VERSION } from './config-and-supabase.js';
-import { showCustomAlert } from '../ui/sound-and-alerts.js';
+import { FLANGO_VERSION } from './config-and-supabase.js?v=3.0.69';
+import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.69';
 
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutter
 const CACHE_PROBLEM_THRESHOLD = 24 * 60 * 60 * 1000; // 24 timer

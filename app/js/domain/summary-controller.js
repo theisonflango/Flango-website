@@ -1,7 +1,7 @@
 // Controller for Summary/Opsummering feature
-import { fetchSummaryData, invalidateSummaryData } from './summary-data.js';
-import { renderSummaryTable } from '../ui/summary-ui.js';
-import { showCustomAlert } from '../ui/sound-and-alerts.js';
+import { fetchSummaryData, invalidateSummaryData } from './summary-data.js?v=3.0.69';
+import { renderSummaryTable } from '../ui/summary-ui.js?v=3.0.69';
+import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.69';
 import {
     setSummaryViewMode,
     setSummaryDateRange,
@@ -11,10 +11,10 @@ import {
     setIncludeTestUsers,
     setOnlyTestUsers,
     setEmployeeRole
-} from './summary-store.js';
-import { setupPurchaseProfilesUI, openPurchaseProfilesView, closePurchaseProfilesView } from '../ui/purchase-profiles-ui.js';
-import { initStatisticsUI, renderStatisticsView, refreshStatistics } from '../ui/statistics-ui.js';
-import { setSelectedUserId } from './purchase-profiles.js';
+} from './summary-store.js?v=3.0.69';
+import { setupPurchaseProfilesUI, openPurchaseProfilesView, closePurchaseProfilesView } from '../ui/purchase-profiles-ui.js?v=3.0.69';
+import { initStatisticsUI, renderStatisticsView, refreshStatistics } from '../ui/statistics-ui.js?v=3.0.69';
+import { setSelectedUserId } from './purchase-profiles.js?v=3.0.69';
 
 let institutionId = null;
 let getAllUsersAccessor = null;

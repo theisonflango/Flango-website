@@ -9,11 +9,11 @@
  *  3. Fuzzy: fornavn med bindestreg/mellemrum-normalisering + klassetrin → kræver godkendelse
  */
 
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { getInstitutionId } from '../domain/session-store.js';
-import { processImageForProfilePicture, uploadProfilePicture, saveToLibrary } from '../core/profile-picture-utils.js';
-import { invalidateProfilePictureCache } from '../core/profile-picture-cache.js';
-import { runWithAuthRetry } from '../core/auth-retry.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.69';
+import { getInstitutionId } from '../domain/session-store.js?v=3.0.69';
+import { processImageForProfilePicture, uploadProfilePicture, saveToLibrary } from '../core/profile-picture-utils.js?v=3.0.69';
+import { invalidateProfilePictureCache } from '../core/profile-picture-cache.js?v=3.0.69';
+import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.69';
 
 const BUCKET = 'profile-pictures';
 
