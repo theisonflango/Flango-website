@@ -377,12 +377,23 @@
           const d = new Date(ev.event_date);
           const dateStr = d.toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'short' });
           const timeStr = (ev.start_time || '').slice(0, 5) + (ev.end_time ? ' \u2013 ' + ev.end_time.slice(0, 5) : '');
-          return `<div class="fsp-arr-card">
+          return `<div class="fsp-arr-card" data-event-id="${ev.id}" style="cursor:pointer">
             <div class="fsp-arr-card-dot" style="background:${colors[i % colors.length]}"></div>
             <div style="flex:1"><div class="fsp-arr-card-name">${ev.title}</div><div class="fsp-arr-card-meta">${dateStr} \u00b7 ${timeStr}</div></div>
             ${ev.capacity ? `<div class="fsp-arr-card-count">/ ${ev.capacity}</div>` : ''}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.4;flex-shrink:0"><path d="M6 4l4 4-4 4"/></svg>
           </div>`;
         }).join('');
+
+      // Click handler: open event detail in event-admin modal
+      listEl.querySelectorAll('[data-event-id]').forEach(card => {
+        card.addEventListener('click', () => {
+          const eventId = card.dataset.eventId;
+          if (!eventId) return;
+          window.FlangoSettings.close();
+          window.__flangoOpenEventDetail?.(eventId);
+        });
+      });
     } catch (e) {
       listEl.innerHTML = '<div class="fsp-arr-section-title">Kommende arrangementer</div><div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">Kunne ikke hente arrangementer.</div>';
     }

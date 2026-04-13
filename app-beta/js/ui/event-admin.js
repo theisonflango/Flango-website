@@ -884,4 +884,9 @@ export function setupEventAdminModule(config) {
     // Window hook (called from shell-and-theme.js)
     // ========================================================================
     window.__flangoOpenEventAdmin = openEventAdmin;
+    window.__flangoOpenEventDetail = (eventId) => {
+        openEventAdmin();
+        // Small delay to let modal render, then navigate to detail
+        setTimeout(() => openEventDetail(eventId), 100);
+    };
 }
