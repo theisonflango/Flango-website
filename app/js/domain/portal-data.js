@@ -185,7 +185,7 @@ async function getInstitutionSettings(institutionId) {
         .select('skaermtid_enabled, skaermtid_show_usage, skaermtid_show_remaining, skaermtid_show_rules, skaermtid_allow_personal_limits, skaermtid_allow_extra_time_requests, skaermtid_allow_game_approval')
         .eq('institution_id', instId)
         .maybeSingle()
-        .catch(() => ({ data: null })),
+        .then(res => res, () => ({ data: null })),
     ]);
 
     if (instResult.error) {
