@@ -1213,6 +1213,20 @@
       const tableOn = !!inst.restaurant_table_numbers_enabled;
       const tableCount = inst.restaurant_table_count ?? 8;
       const deviceOn = !!localStorage.getItem('flango_device_restaurant_mode');
+      const rmSounds = [
+        { v: '', label: 'Ingen lyd' },
+        { v: 'sounds/Accept/accepter-1.mp3', label: 'Accept\u00e9r 1' },
+        { v: 'sounds/Accept/accepter-2.mp3', label: 'Accept\u00e9r 2' },
+        { v: 'sounds/Accept/accepter-3.mp3', label: 'Accept\u00e9r 3' },
+        { v: 'sounds/Accept/accepter-4.mp3', label: 'Accept\u00e9r 4' },
+        { v: 'sounds/Accept/accepter-5.mp3', label: 'Accept\u00e9r 5' },
+        { v: 'sounds/Accept/accepter-6.mp3', label: 'Accept\u00e9r 6' },
+        { v: 'sounds/Accept/accepter-7.mp3', label: 'Accept\u00e9r 7' },
+        { v: 'sounds/Add Item/Add1.mp3', label: 'Tilf\u00f8j 1' },
+        { v: 'sounds/Add Item/Add2.mp3', label: 'Tilf\u00f8j 2' },
+        { v: 'sounds/Login/Login1.mp3', label: 'Login 1' },
+        { v: 'sounds/Login/Login2.mp3', label: 'Login 2' },
+      ];
       return `<div class="fsp-page">
         <div class="fsp-page-title">Restaurant Mode</div>
         <div class="fsp-page-desc">Restaurant Mode sender caf\u00e9-k\u00f8b til en k\u00f8kkensk\u00e6rm der viser ordrer i realtid. For hvert salg kan tjeneren tilf\u00f8je bordnummer, varianter, og besked til k\u00f8kkenet.</div>
@@ -1239,30 +1253,13 @@
           <div class="fsp-section"><div class="fsp-block">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><span style="font-size:16px">\uD83D\uDD14</span><div class="fsp-row-title">Lyd ved ny ordre</div><button class="fsp-rm-play" data-action="play-new-order" style="margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 13,8 5,13"/></svg></button></div>
             <div class="fsp-rm-sound" data-sound-group="new_order" style="display:flex;flex-wrap:wrap;gap:6px">
-              ${[
-                { v: '', label: 'Ingen lyd' },
-                { v: 'sounds/Accept/accepter-1.mp3', label: 'Accept\u00e9r 1' },
-                { v: 'sounds/Accept/accepter-2.mp3', label: 'Accept\u00e9r 2' },
-                { v: 'sounds/Accept/accepter-3.mp3', label: 'Accept\u00e9r 3' },
-                { v: 'sounds/Add Item/Add1.mp3', label: 'Tilf\u00f8j 1' },
-                { v: 'sounds/Add Item/Add2.mp3', label: 'Tilf\u00f8j 2' },
-                { v: 'sounds/Login/Login1.mp3', label: 'Login 1' },
-                { v: 'sounds/Login/Login2.mp3', label: 'Login 2' },
-              ].map(s => `<div class="fsp-rm-schip${(inst.restaurant_sound === s.v || (!inst.restaurant_sound && !s.v)) ? ' on' : ''}" data-sound-value="${s.v}">${s.label}</div>`).join('')}
+              ${rmSounds.map(s => `<div class="fsp-rm-schip${(inst.restaurant_sound === s.v || (!inst.restaurant_sound && !s.v)) ? ' on' : ''}" data-sound-value="${s.v}">${s.label}</div>`).join('')}
             </div>
           </div></div>
           <div class="fsp-section"><div class="fsp-block">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><span style="font-size:16px">\u2705</span><div class="fsp-row-title">Lyd ved godkendt servering</div><button class="fsp-rm-play" data-action="play-served" style="margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 13,8 5,13"/></svg></button></div>
             <div class="fsp-rm-sound" data-sound-group="served" style="display:flex;flex-wrap:wrap;gap:6px">
-              ${[
-                { v: '', label: 'Ingen lyd' },
-                { v: 'sounds/Accept/accepter-4.mp3', label: 'Accept\u00e9r 4' },
-                { v: 'sounds/Accept/accepter-5.mp3', label: 'Accept\u00e9r 5' },
-                { v: 'sounds/Accept/accepter-6.mp3', label: 'Accept\u00e9r 6' },
-                { v: 'sounds/Accept/accepter-7.mp3', label: 'Accept\u00e9r 7' },
-                { v: 'sounds/Delete Item/Slet.mp3', label: 'Serveret 1' },
-                { v: 'sounds/Delete Item/Slet1.mp3', label: 'Serveret 2' },
-              ].map(s => `<div class="fsp-rm-schip${(inst.restaurant_serve_sound === s.v || (!inst.restaurant_serve_sound && !s.v)) ? ' on' : ''}" data-sound-value="${s.v}">${s.label}</div>`).join('')}
+              ${rmSounds.map(s => `<div class="fsp-rm-schip${(inst.restaurant_serve_sound === s.v || (!inst.restaurant_serve_sound && !s.v)) ? ' on' : ''}" data-sound-value="${s.v}">${s.label}</div>`).join('')}
             </div>
           </div></div>
           <div class="fsp-save-row"><button class="fsp-save-btn" data-action="save-settings">Gem indstillinger</button></div>
@@ -1286,12 +1283,16 @@
           });
         });
       });
-      // Expand/collapse
+      // Expand/collapse + update sidebar dot
       const mainToggle = container.querySelector('[data-expand="rm-body"]');
       mainToggle?.addEventListener('click', () => {
+        const isOn = mainToggle.classList.contains('on');
         const target = container.querySelector('[data-expand-target="rm-body"]');
-        if (target) target.classList.toggle('open', mainToggle.classList.contains('on'));
-        ctx.setRmActive(mainToggle.classList.contains('on'));
+        if (target) target.classList.toggle('open', isOn);
+        ctx.setRmActive(isOn);
+        // Update green dot in sidebar
+        const dot = ctx.overlay?.querySelector('.fsp-si-dot');
+        if (dot) dot.style.display = isOn ? '' : 'none';
       });
       // Play sound preview
       container.querySelector('[data-action="play-new-order"]')?.addEventListener('click', () => {
