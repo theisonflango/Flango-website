@@ -522,21 +522,25 @@ const AI_AVATAR_PRESETS = [
         key: 'pixar',
         label: '🎬 Pixar',
         prompt: `Create a Pixar-style 3D animated portrait based on the person in the photo. Closely match their actual facial structure, face shape, nose, jawline, hair color, hair style, eye color, eye shape, eyebrows, and skin tone. The character should be clearly recognizable as the same person. ${AI_AVATAR_AGE} Use soft studio lighting, subtle subsurface scattering on skin. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        fluxPrompt: `Transform into a Pixar-style 3D animated character. Match features closely. ${AI_AVATAR_AGE} Soft studio lighting. ${AI_AVATAR_BG}`,
     },
     {
         key: 'clay',
         label: '🏺 Clay-figur',
         prompt: `Create a 3D clay-animated portrait based on the person in the photo. Closely match their actual facial structure, face shape, hair color, hair style, eye color, skin tone, and expression. Rounded puffy shapes, smooth matte clay texture with visible soft material quality. The figurine should be clearly recognizable as the same person. ${AI_AVATAR_AGE} Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        fluxPrompt: `Transform into a 3D clay figurine. Rounded puffy shapes, smooth matte clay texture. Match features closely. ${AI_AVATAR_AGE} ${AI_AVATAR_BG}`,
     },
     {
         key: 'cartoon',
         label: '✏️ Tegneserie',
         prompt: `Create a cartoon-style portrait based on the person in the photo. Closely match their actual face shape, hair color, hair style, eye color, skin tone, and distinguishing features. Use clean outlines, vibrant but natural colors. The character should be clearly recognizable as the same person, not a generic cartoon. ${AI_AVATAR_AGE} Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        fluxPrompt: `Transform into a cartoon character. Clean outlines, vibrant colors. Match features closely, not a generic cartoon. ${AI_AVATAR_AGE} ${AI_AVATAR_BG}`,
     },
     {
         key: 'realistic',
         label: '🎨 Illustration',
         prompt: `Create a semi-realistic digital illustration portrait based on the person in the photo. Closely match their actual facial proportions, face shape, hair color, hair style, eye color, skin tone, and expression. Soft painterly brush strokes, warm lighting, slightly stylized but highly recognizable. ${AI_AVATAR_AGE} Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        fluxPrompt: `Transform into a semi-realistic digital illustration. Soft painterly style, warm lighting. Match features closely. ${AI_AVATAR_AGE} ${AI_AVATAR_BG}`,
     },
 ];
 
@@ -766,8 +770,12 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
             if (!token) throw new Error('Ikke logget ind');
             const adminUserId = session?.user?.id;
 
-            // Build prompt with optional hat instructions
-            let finalPrompt = customPrompt || '';
+            // Build prompt: use FLUX-specific prompt if FLUX and user hasn't edited
+            let basePrompt = customPrompt || '';
+            if (provider === 'flux' && !promptEdited && selectedPreset.fluxPrompt) {
+                basePrompt = selectedPreset.fluxPrompt;
+            }
+            let finalPrompt = basePrompt;
             if (hatEnabled) {
                 finalPrompt += '\n' + AI_AVATAR_HAT_PROMPT;
             }
