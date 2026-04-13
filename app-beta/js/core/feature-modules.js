@@ -199,10 +199,13 @@
     return isModuleLocked(flags, moduleKey) ? 'forced' : 'unlocked';
   }
   function isModuleForcedOff(flags, moduleKey) {
-    return isModuleLocked(flags, moduleKey);
+    // Locked = admin kan ikke ændre (enforced server-side via trigger).
+    // Det betyder IKKE at featuren er slået fra — on/off lever i institutions-tabellen.
+    return false;
   }
   function isModuleForcedOn(flags, moduleKey) {
-    return isModuleLocked(flags, moduleKey);
+    // Locked = admin kan ikke ændre. Ikke at featuren er tvunget til.
+    return false;
   }
   function isModuleOff(flags, moduleKey) {
     return false; // Value lever nu i institutions-tabellen, ikke feature_flags
