@@ -23,9 +23,12 @@
 
   /** Wire all fsp-toggle elements with data-field to dirty-tracking */
   function wireToggles(container, ctx) {
-    container.querySelectorAll('.fsp-toggle[data-field]').forEach(toggle => {
+    const toggles = container.querySelectorAll('.fsp-toggle[data-field]');
+    console.log(`[wireToggles] Found ${toggles.length} toggles:`, [...toggles].map(t => t.dataset.field));
+    toggles.forEach(toggle => {
       toggle.addEventListener('click', () => {
         toggle.classList.toggle('on');
+        console.log(`[wireToggles] Clicked: ${toggle.dataset.field} → ${toggle.classList.contains('on')}`);
         ctx.markDirty(toggle.dataset.field, toggle.classList.contains('on'));
       });
     });
