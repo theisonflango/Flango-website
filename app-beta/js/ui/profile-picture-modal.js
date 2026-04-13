@@ -31,6 +31,8 @@ export async function openProfilePictureModal(user, options = {}) {
     if (FM && typeof window.PortalData?.getFeatureFlags === 'function') {
       try { _ffFlags = await window.PortalData.getFeatureFlags(user.institution_id); } catch (e) { /* fail-open */ }
     }
+    // Expose for renderAiAvatarView (separate function scope)
+    window.__flangoAiFeatureFlags = _ffFlags;
     if (_ffFlags && FM) {
       allowedTypes = allowedTypes.filter(type => {
         const moduleKey = FM.PROFILE_PIC_MODULE_MAP[type];
@@ -712,9 +714,12 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
 
         const photoUrl = URL.createObjectURL(blob);
 
-        // Check per-provider feature flags
-        const showOpenAI = !(_ffFlags && FM && FM.isModuleForcedOff(_ffFlags, 'profile_pic_ai_openai'));
-        const showFlux = !(_ffFlags && FM && FM.isModuleForcedOff(_ffFlags, 'profile_pic_ai_flux'));
+        // Check per-provider feature flags (FM and _ffFlags are in openProfilePictureModal scope, access via window)
+        const _FM = window.FeatureModules;
+        let _ff = null;
+        try { if (_FM && window.PortalData?.getFeatureFlags) _ff = window.__flangoAiFeatureFlags; } catch (e) { /* fail-open */ }
+        const showOpenAI = !(_ff && _FM && _FM.isModuleForcedOff(_ff, 'profile_pic_ai_openai'));
+        const showFlux = !(_ff && _FM && _FM.isModuleForcedOff(_ff, 'profile_pic_ai_flux'));
 
         const providerButtons = [];
         if (showOpenAI) providerButtons.push(`<button class="profile-pic-btn profile-pic-btn-primary" id="pp-ai-generate-openai" style="background:linear-gradient(135deg,#10b981,#059669);flex:1;">Generer (OpenAI)</button>`);
