@@ -1545,7 +1545,16 @@
     wire(container, ctx) {
       pageAlign(container);
       container.querySelector('[data-action="reload"]')?.addEventListener('click', () => {
-        location.reload();
+        // Clear all caches and force fresh load
+        if ('caches' in window) {
+          caches.keys().then(names => names.forEach(name => caches.delete(name)));
+        }
+        // Clear institution/feature flag caches
+        window.__flangoInstitutionCache = null;
+        window.__flangoAiFeatureFlags = null;
+        if (window.PortalData?.invalidateFeatureFlagsCache) window.PortalData.invalidateFeatureFlagsCache();
+        // Hard reload (bypass browser cache)
+        location.href = location.href.split('#')[0] + '?_=' + Date.now();
       });
       container.querySelector('[data-action="check-update"]')?.addEventListener('click', async () => {
         const btn = container.querySelector('[data-action="check-update"]');
