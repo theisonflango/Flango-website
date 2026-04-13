@@ -66,6 +66,7 @@ export async function fetchInstitutions(forceRefresh = false) {
                     restaurant_mode_enabled, restaurant_table_numbers_enabled, restaurant_table_count, restaurant_sound, restaurant_serve_sound,
                     toolbar_kitchen, toolbar_calculator, toolbar_history, toolbar_help, toolbar_min_flango, toolbar_logout, toolbar_products, toolbar_deposit,
                     profile_pictures_enabled, profile_picture_types, profile_pictures_ai_enabled,
+                    ai_provider_openai, ai_provider_flux,
                     default_profile_picture_mode, default_profile_picture_url,
                     auto_delete_inactive_enabled, auto_delete_inactive_months
                 `)

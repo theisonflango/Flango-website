@@ -124,16 +124,12 @@ export async function openAulaImportModal() {
     const institutionId = getInstitutionId();
     if (!institutionId) return;
 
-    // Feature flag check: profile_pic_upload forced_off → bloker Aula-import
-    const FM = window.FeatureModules;
-    if (FM && typeof window.PortalData?.getFeatureFlags === 'function') {
-      try {
-        const flags = await window.PortalData.getFeatureFlags(institutionId);
-        if (FM.isModuleForcedOff(flags, 'profile_pic_upload')) {
-          alert('Aula-import er deaktiveret af administrator.');
-          return;
-        }
-      } catch (e) { /* fail-open */ }
+    // Check om upload er aktiveret for institutionen
+    const inst = window.__flangoGetInstitutionById?.(institutionId);
+    const types = inst?.profile_picture_types || ['upload', 'camera', 'library'];
+    if (!types.includes('upload')) {
+        alert('Upload af profilbilleder er ikke aktiveret for denne institution.');
+        return;
     }
 
     const { data: users, error } = await supabaseClient

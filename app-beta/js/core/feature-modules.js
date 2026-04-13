@@ -68,8 +68,8 @@
     profile_pic_ai: [
       'profile_pictures_ai_enabled',
     ],
-    profile_pic_ai_openai: [],  // Sub-flag: OpenAI DALL·E provider
-    profile_pic_ai_flux: [],    // Sub-flag: Black Forest Labs FLUX 2 provider
+    profile_pic_ai_openai: ['ai_provider_openai'],
+    profile_pic_ai_flux: ['ai_provider_flux'],
     profile_pic_library: [],
     // Profilbilleder master + ikon-deling
     profile_pictures: ['profile_pictures_enabled'],

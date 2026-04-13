@@ -294,3 +294,14 @@ export function checkClassMatch(userGradeLevel, allowedClasses) {
     }
     return { match: true, reason: null };
 }
+
+// ============================================================================
+// Bridge: Expose functions for non-module consumers (settings-sections.js IIFE)
+// ============================================================================
+
+window.__flangoEventMgmt = {
+    fetchEvents, fetchEventDetail, createEvent, updateEvent,
+    registerUserForEvent, cancelRegistration, payRegistration,
+    cancelEventWithRefunds, checkClassMatch, fetchInstitutionBalanceLimit,
+    formatEventDate, formatTime, splitDatetimeLocal, joinDatetimeLocal,
+};

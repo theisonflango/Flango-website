@@ -386,16 +386,26 @@
       if (btn) { close(); return; }
     });
 
-    // Escape key
+    // Escape key — cascade: warn → pay/reg → user-picker → slide → settings
     const onKey = (e) => {
       if (e.key === 'Escape') {
-        // Close slide panel first if open
+        // 1. Close class mismatch warning in user picker
+        const warn = overlay?.querySelector('.fsp-up-warn.open');
+        if (warn) { warn.classList.remove('open'); return; }
+        // 2. Close pay/register confirmation modals (can be on top of user picker)
+        const payOrReg = overlay?.querySelector('.fsp-pay-overlay.open, .fsp-reg-overlay.open, .fsp-rm-overlay.open');
+        if (payOrReg) { payOrReg.classList.remove('open'); return; }
+        // 3. Close user picker
+        const upOverlay = overlay?.querySelector('.fsp-up-overlay.open');
+        if (upOverlay) { upOverlay.classList.remove('open'); return; }
+        // 4. Close slide panel if open
         const slideOverlay = overlay?.querySelector('#fsp-slide-overlay');
         if (slideOverlay?.classList.contains('open')) {
           slideOverlay.classList.remove('open');
           overlay.querySelector('#fsp-slide-panel')?.classList.remove('open');
           return;
         }
+        // 5. Close settings
         close();
       }
     };

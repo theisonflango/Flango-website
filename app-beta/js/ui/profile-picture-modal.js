@@ -25,26 +25,8 @@ export async function openProfilePictureModal(user, options = {}) {
 
     let allowedTypes = inst.profile_picture_types || ['upload', 'camera', 'library'];
 
-    // Feature flag enforcement: filtrer typer der er forced_off af superadmin
-    const FM = window.FeatureModules;
-    let _ffFlags = null;
-    if (FM && typeof window.PortalData?.getFeatureFlags === 'function') {
-      try { _ffFlags = await window.PortalData.getFeatureFlags(user.institution_id); } catch (e) { /* fail-open */ }
-    }
-    // Expose for renderAiAvatarView (separate function scope)
-    window.__flangoAiFeatureFlags = _ffFlags;
-    if (_ffFlags && FM) {
-      allowedTypes = allowedTypes.filter(type => {
-        const moduleKey = FM.PROFILE_PIC_MODULE_MAP[type];
-        return !moduleKey || !FM.isModuleForcedOff(_ffFlags, moduleKey);
-      });
-      // forced_on: sørg for at typen er med (admin kan ikke fjerne den)
-      for (const [type, moduleKey] of Object.entries(FM.PROFILE_PIC_MODULE_MAP)) {
-        if (FM.isModuleForcedOn(_ffFlags, moduleKey) && !allowedTypes.includes(type)) {
-          allowedTypes.push(type);
-        }
-      }
-    }
+    // On/off styres af institutions-felter (profile_picture_types array + ai_provider_* booleans).
+    // Lås-enforcement sker server-side via DB trigger (enforce_feature_locks_institutions).
 
     // Build overlay
     const overlay = document.createElement('div');
@@ -754,12 +736,9 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
 
         const photoUrl = URL.createObjectURL(blob);
 
-        // Check per-provider feature flags (FM and _ffFlags are in openProfilePictureModal scope, access via window)
-        const _FM = window.FeatureModules;
-        let _ff = null;
-        try { if (_FM && window.PortalData?.getFeatureFlags) _ff = window.__flangoAiFeatureFlags; } catch (e) { /* fail-open */ }
-        const showOpenAI = !(_ff && _FM && _FM.isModuleForcedOff(_ff, 'profile_pic_ai_openai'));
-        const showFlux = !(_ff && _FM && _FM.isModuleForcedOff(_ff, 'profile_pic_ai_flux'));
+        // Check institution DB fields for provider availability
+        const showOpenAI = inst.ai_provider_openai !== false; // default true
+        const showFlux = !!inst.ai_provider_flux; // default false
 
         const providerButtons = [];
         if (showOpenAI) providerButtons.push(`<button class="profile-pic-btn profile-pic-btn-primary" id="pp-ai-generate-openai" style="background:linear-gradient(135deg,#10b981,#059669);flex:1;">Generer (OpenAI)</button>`);

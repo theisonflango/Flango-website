@@ -296,3 +296,6 @@ export function clearAllToasts() {
     visibleToasts = [];
     toastQueue = [];
 }
+
+// Bridge for non-module consumers (settings-sections.js IIFE)
+window.__flangoShowBalanceToast = showBalanceToast;
