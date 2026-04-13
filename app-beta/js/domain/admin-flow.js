@@ -1,13 +1,13 @@
-import { showAlert, showCustomAlert, playSound } from '../ui/sound-and-alerts.js?v=3.0.64';
-import { setupCustomerSearchKeyboardNavigation } from '../ui/customer-picker.js?v=3.0.64';
-import { showAddUserModal, showBalanceModal } from '../ui/user-modals.js?v=3.0.64';
-import { createAdminUserActions } from '../ui/admin-user-actions.js?v=3.0.64';
-import { setupAdminUserManagerFromModule } from '../ui/admin-user-manager.js?v=3.0.64';
-import { setupEventAdminModule } from '../ui/event-admin.js?v=3.0.64';
-import { createParentPortalAdminUI } from '../ui/parent-portal-admin.js?v=3.0.64';
-import { mergeUsersWithParentNotifications } from './users-and-admin.js?v=3.0.64';
-import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.64';
-import { logAuditEvent } from '../core/audit-events.js?v=3.0.64';
+import { showAlert, showCustomAlert, playSound } from '../ui/sound-and-alerts.js';
+import { setupCustomerSearchKeyboardNavigation } from '../ui/customer-picker.js';
+import { showAddUserModal, showBalanceModal } from '../ui/user-modals.js';
+import { createAdminUserActions } from '../ui/admin-user-actions.js';
+import { setupAdminUserManagerFromModule } from '../ui/admin-user-manager.js';
+import { setupEventAdminModule } from '../ui/event-admin.js';
+import { createParentPortalAdminUI } from '../ui/parent-portal-admin.js';
+import { mergeUsersWithParentNotifications } from './users-and-admin.js';
+import { runWithAuthRetry } from '../core/auth-retry.js';
+import { logAuditEvent } from '../core/audit-events.js';
 
 export async function loadUsersAndNotifications({
     adminProfile,

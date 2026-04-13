@@ -1,4 +1,4 @@
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.64';
+import { supabaseClient } from '../core/config-and-supabase.js';
 
 const LIMITS_DEBUG = false;
 

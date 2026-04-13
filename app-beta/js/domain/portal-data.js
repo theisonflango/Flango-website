@@ -2,8 +2,8 @@
 // Ansvar: Hent og gem institutions-indstillinger, forældre-statistik, forældreliste, adoption-data.
 // Importerer supabaseClient direkte fra config-and-supabase.js (samme autentificerede klient).
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.64';
-import { getInstitutionId } from './session-store.js?v=3.0.64';
+import { supabaseClient } from '../core/config-and-supabase.js';
+import { getInstitutionId } from './session-store.js';
 
 // ─── Hjælpere ──────────────────────────────────────────────────
 
@@ -54,8 +54,8 @@ let _featureFlagsCacheId = null;
 
 /**
  * Hent feature flags for institution.
- * Returnerer objekt: { moduleKey: 'unlocked'|'forced_on'|'forced_off', ... }
- * Tomt objekt = alt ulåst = uændret adfærd.
+ * Returnerer objekt: { moduleKey: { locked: bool, lock_reason: string|null }, ... }
+ * Tomt objekt = ingen flags sat = intet låst.
  */
 async function getFeatureFlags(institutionId) {
   const client = db();
@@ -165,6 +165,13 @@ async function getInstitutionSettings(institutionId) {
           parent_portal_daily_special_price,
           parent_portal_payment,
           parent_portal_message_template,
+          parent_portal_events,
+          parent_portal_purchase_profile,
+          parent_portal_history,
+          parent_portal_sortiment,
+          parent_portal_feedback,
+          parent_portal_diet,
+          parent_portal_profile_pictures,
           institution_contact_phone,
           institution_contact_phone_enabled,
           sugar_policy_info_text,

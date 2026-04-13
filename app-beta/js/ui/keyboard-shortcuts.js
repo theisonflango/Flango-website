@@ -1,5 +1,5 @@
-import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.64';
-import { isCalculatorModeActive, handleCalculatorKeyboard } from './calculator-mode.js?v=3.0.64';
+import { logDebugEvent } from '../core/debug-flight-recorder.js';
+import { isCalculatorModeActive, handleCalculatorKeyboard } from './calculator-mode.js';
 
 export function setupKeyboardShortcuts({
     getAllProducts,
@@ -174,10 +174,19 @@ export function setupKeyboardShortcuts({
         }
         // S: Åbn/luk indstillinger
         else if (key === 's') {
+            // Luk nyt settings panel hvis åbent (men ikke hvis man skriver i et felt)
+            const newSettingsOpen = document.querySelector('.fsp-overlay');
+            if (newSettingsOpen) {
+                if (isTyping) return; // Don't close when typing in search/input fields
+                event.preventDefault();
+                window.FlangoSettings?.close();
+                return;
+            }
+
             const settingsModal = document.getElementById('settings-modal-backdrop');
             const isSettingsOpen = settingsModal && settingsModal.style.display !== 'none' && settingsModal.style.display !== '';
 
-            // Hvis indstillinger er åben, luk den (selv hvis man skriver i et felt)
+            // Hvis gammel indstillinger er åben, luk den (selv hvis man skriver i et felt)
             if (isSettingsOpen) {
                 event.preventDefault();
                 settingsModal.style.display = 'none';
@@ -191,9 +200,11 @@ export function setupKeyboardShortcuts({
             event.preventDefault();
             const anyModalOpen = document.querySelector('.modal[style*="display: flex"], .settings-modal-backdrop[style*="display: flex"]');
             if (!anyModalOpen) {
-                const settingsBtn = document.getElementById('toolbar-gear-btn');
-                if (settingsBtn) {
-                    settingsBtn.click();
+                if (window.FlangoSettings) {
+                    window.FlangoSettings.open();
+                } else {
+                    const settingsBtn = document.getElementById('toolbar-gear-btn');
+                    if (settingsBtn) settingsBtn.click();
                 }
             }
         }
@@ -255,7 +266,7 @@ export function setupKeyboardShortcuts({
         // B: Åbn Brugerpanel (kun admin)
         if (key === 'b') {
             event.preventDefault();
-            import('./user-admin-panel.js?v=3.0.64').then(m => m.openUserAdminPanel());
+            import('./user-admin-panel.js').then(m => m.openUserAdminPanel());
         }
     };
 

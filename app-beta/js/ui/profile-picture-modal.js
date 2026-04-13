@@ -4,12 +4,12 @@
  * Sub-views: Upload, Camera, Library.
  */
 
-import { AVATAR_URLS } from './avatar-picker.js?v=3.0.64';
-import { processImageForProfilePicture, uploadProfilePicture, saveLibraryProfilePicture, fetchUserProfilePictures } from '../core/profile-picture-utils.js?v=3.0.64';
-import { getProfilePictureUrl, invalidateProfilePictureCache } from '../core/profile-picture-cache.js?v=3.0.64';
-import { escapeHtml } from '../core/escape-html.js?v=3.0.64';
-import { supabaseClient, SUPABASE_URL } from '../core/config-and-supabase.js?v=3.0.64';
-import { fetchInstitutionIconLibrary } from '../core/product-icon-utils.js?v=3.0.64';
+import { AVATAR_URLS } from './avatar-picker.js';
+import { processImageForProfilePicture, uploadProfilePicture, saveLibraryProfilePicture, fetchUserProfilePictures } from '../core/profile-picture-utils.js';
+import { getProfilePictureUrl, invalidateProfilePictureCache } from '../core/profile-picture-cache.js';
+import { escapeHtml } from '../core/escape-html.js';
+import { supabaseClient, SUPABASE_URL } from '../core/config-and-supabase.js';
+import { fetchInstitutionIconLibrary } from '../core/product-icon-utils.js';
 
 /**
  * Open the profile picture modal for a given user.
@@ -711,21 +711,29 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
         optionsSection.style.display = 'block';
 
         const photoUrl = URL.createObjectURL(blob);
+
+        // Check per-provider feature flags
+        const showOpenAI = !(_ffFlags && FM && FM.isModuleForcedOff(_ffFlags, 'profile_pic_ai_openai'));
+        const showFlux = !(_ffFlags && FM && FM.isModuleForcedOff(_ffFlags, 'profile_pic_ai_flux'));
+
+        const providerButtons = [];
+        if (showOpenAI) providerButtons.push(`<button class="profile-pic-btn profile-pic-btn-primary" id="pp-ai-generate-openai" style="background:linear-gradient(135deg,#10b981,#059669);flex:1;">Generer (OpenAI)</button>`);
+        if (showFlux) providerButtons.push(`<button class="profile-pic-btn profile-pic-btn-primary" id="pp-ai-generate-flux" style="background:linear-gradient(135deg,#6366f1,#4f46e5);flex:1;">Generer (FLUX)</button>`);
+
         previewArea.innerHTML = `
             <div class="profile-pic-preview-container">
                 <img src="${photoUrl}" alt="Reference" class="profile-pic-preview-img" style="border-color:rgba(245,158,11,0.4);">
                 <div style="font-size:11px;color:#94a3b8;text-align:center;">${escapeHtml(label)}</div>
                 <div class="profile-pic-preview-actions" style="flex-direction:column;gap:8px;">
                     <div style="display:flex;gap:8px;width:100%;">
-                        <button class="profile-pic-btn profile-pic-btn-primary" id="pp-ai-generate-openai" style="background:linear-gradient(135deg,#10b981,#059669);flex:1;">Generer (OpenAI)</button>
-                        <button class="profile-pic-btn profile-pic-btn-primary" id="pp-ai-generate-flux" style="background:linear-gradient(135deg,#6366f1,#4f46e5);flex:1;">Generer (FLUX)</button>
+                        ${providerButtons.join('\n                        ')}
                     </div>
                     <button class="profile-pic-btn profile-pic-btn-secondary" id="pp-ai-change-ref" style="width:100%;">Skift billede</button>
                 </div>
             </div>`;
 
-        previewArea.querySelector('#pp-ai-generate-openai').addEventListener('click', () => generateAvatar(blob, photoUrl, 'openai'));
-        previewArea.querySelector('#pp-ai-generate-flux').addEventListener('click', () => generateAvatar(blob, photoUrl, 'flux'));
+        if (showOpenAI) previewArea.querySelector('#pp-ai-generate-openai').addEventListener('click', () => generateAvatar(blob, photoUrl, 'openai'));
+        if (showFlux) previewArea.querySelector('#pp-ai-generate-flux').addEventListener('click', () => generateAvatar(blob, photoUrl, 'flux'));
         previewArea.querySelector('#pp-ai-change-ref').addEventListener('click', () => {
             URL.revokeObjectURL(photoUrl);
             referenceBlob = null;

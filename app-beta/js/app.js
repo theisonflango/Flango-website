@@ -1,4 +1,4 @@
-import { showAlert } from './ui/sound-and-alerts.js?v=3.0.64';
+import { showAlert } from './ui/sound-and-alerts.js';
 import {
     initFlangoTheme,
     setupThemePickerUI,
@@ -8,14 +8,14 @@ import {
     setupSettingsModal,
     setupHelpButton,
     initToolbarSettings,
-} from './ui/shell-and-theme.js?v=3.0.64';
-import { supabaseClient } from './core/config-and-supabase.js?v=3.0.64';
-import { getCurrentUserProfile } from './domain/auth-and-session.js?v=3.0.64';
-import { ensureActiveInstitution, fetchInstitutions } from './domain/institution-store.js?v=3.0.64';
-import { setupFullLoginScreen, setupDeviceUnlockScreen } from './domain/login-flow.js?v=3.0.64';
-import { hasDeviceUsers } from './domain/device-trust.js?v=3.0.64';
-import { startApp, setupAdminLoginScreen } from './domain/app-main.js?v=3.0.64';
-import { initUpdateChip, startVersionChecking } from './core/version-check.js?v=3.0.64';
+} from './ui/shell-and-theme.js';
+import { supabaseClient } from './core/config-and-supabase.js';
+import { getCurrentUserProfile } from './domain/auth-and-session.js';
+import { ensureActiveInstitution, fetchInstitutions } from './domain/institution-store.js';
+import { setupFullLoginScreen, setupDeviceUnlockScreen } from './domain/login-flow.js';
+import { hasDeviceUsers } from './domain/device-trust.js';
+import { startApp, setupAdminLoginScreen } from './domain/app-main.js';
+import { initUpdateChip, startVersionChecking } from './core/version-check.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // INIT tema første gang siden indlæses
@@ -102,6 +102,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
     async function initializeApp() {
         try {
+            // ── Support-mode: fjernstyring fra super-admin panel ──
+            const _urlParams = new URLSearchParams(window.location.search);
+            const _supportToken = _urlParams.get('support_token');
+            const _supportRefresh = _urlParams.get('support_refresh');
+            if (_supportToken && _supportRefresh) {
+                // Remove tokens from URL immediately (security)
+                window.history.replaceState(null, '', window.location.pathname);
+                const { data: supportData, error: supportErr } = await supabaseClient.auth.setSession({
+                    access_token: _supportToken,
+                    refresh_token: _supportRefresh,
+                });
+                if (supportData?.session && !supportErr) {
+                    window.__flangoSupportMode = true;
+                    await fetchInstitutions(true);
+                    const adminProfile = await getCurrentUserProfile(supportData.session);
+                    if (adminProfile && adminProfile.role === 'admin') {
+                        if (adminProfile.institution_id) {
+                            await ensureActiveInstitution();
+                        }
+                        setupAdminLoginScreen(adminProfile);
+                        return;
+                    }
+                }
+                // Fall through to normal login if support session failed
+            }
+
             await fetchInstitutions();
 
             const { data: { session } } = await supabaseClient.auth.getSession();

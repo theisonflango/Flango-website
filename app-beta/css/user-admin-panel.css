@@ -152,34 +152,6 @@
     background: rgba(255,255,255,0.1);
 }
 
-/* Search dropdown */
-.uap-search-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    max-height: 300px;
-    overflow-y: auto;
-    background: #1e1e2e;
-    border: 1px solid rgba(255,255,255,0.12);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    z-index: 100;
-}
-.uap-search-dropdown-item {
-    padding: 8px 12px 8px 36px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.1s;
-    color: #e2e8f0;
-}
-.uap-search-dropdown-item span {
-    color: #94a3b8;
-}
-.uap-search-dropdown-item:hover {
-    background: rgba(99,102,241,0.15);
-}
 
 .uap-counter {
     font-size: 12px;
