@@ -515,26 +515,28 @@ const AI_AVATAR_HAT_PROMPT = `IMPORTANT: The person MUST be wearing a tall white
 const AI_AVATAR_HAT_PATH = 'Icons/webp/Function/Flango-Kokkehue.webp';
 const AI_AVATAR_HERO_PROMPT = `The person is depicted as a superhero. They wear a vibrant superhero cape and suit with the Flango orange fruit logo on the chest. Heroic confident pose, dynamic lighting with subtle glow effects. The costume colors should complement the person's features. Keep the face highly recognizable.`;
 
+const AI_AVATAR_AGE = 'CRITICAL: Preserve the exact age of the person — this is a child. Do NOT age them up or make them look older. Keep youthful proportions: rounder face, larger eyes relative to face, softer features. The result must look like a child, not a teenager or adult.';
+
 const AI_AVATAR_PRESETS = [
     {
         key: 'pixar',
         label: '🎬 Pixar',
-        prompt: `Create a Pixar-style 3D animated portrait based on the person in the photo. Closely match their actual facial structure, face shape, nose, jawline, hair color, hair style, eye color, eye shape, eyebrows, and skin tone. The character should be clearly recognizable as the same person. Use soft studio lighting, subtle subsurface scattering on skin. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        prompt: `Create a Pixar-style 3D animated portrait based on the person in the photo. Closely match their actual facial structure, face shape, nose, jawline, hair color, hair style, eye color, eye shape, eyebrows, and skin tone. The character should be clearly recognizable as the same person. ${AI_AVATAR_AGE} Use soft studio lighting, subtle subsurface scattering on skin. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
     },
     {
         key: 'clay',
         label: '🏺 Clay-figur',
-        prompt: `Create a 3D clay-animated portrait based on the person in the photo. Closely match their actual facial structure, face shape, hair color, hair style, eye color, skin tone, and expression. Rounded puffy shapes, smooth matte clay texture with visible soft material quality. The figurine should be clearly recognizable as the same person. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        prompt: `Create a 3D clay-animated portrait based on the person in the photo. Closely match their actual facial structure, face shape, hair color, hair style, eye color, skin tone, and expression. Rounded puffy shapes, smooth matte clay texture with visible soft material quality. The figurine should be clearly recognizable as the same person. ${AI_AVATAR_AGE} Head-and-shoulders framing. ${AI_AVATAR_BG}`,
     },
     {
         key: 'cartoon',
         label: '✏️ Tegneserie',
-        prompt: `Create a cartoon-style portrait based on the person in the photo. Closely match their actual face shape, hair color, hair style, eye color, skin tone, and distinguishing features. Use clean outlines, vibrant but natural colors. The character should be clearly recognizable as the same person, not a generic cartoon. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        prompt: `Create a cartoon-style portrait based on the person in the photo. Closely match their actual face shape, hair color, hair style, eye color, skin tone, and distinguishing features. Use clean outlines, vibrant but natural colors. The character should be clearly recognizable as the same person, not a generic cartoon. ${AI_AVATAR_AGE} Head-and-shoulders framing. ${AI_AVATAR_BG}`,
     },
     {
         key: 'realistic',
         label: '🎨 Illustration',
-        prompt: `Create a semi-realistic digital illustration portrait based on the person in the photo. Closely match their actual facial proportions, face shape, hair color, hair style, eye color, skin tone, and expression. Soft painterly brush strokes, warm lighting, slightly stylized but highly recognizable. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        prompt: `Create a semi-realistic digital illustration portrait based on the person in the photo. Closely match their actual facial proportions, face shape, hair color, hair style, eye color, skin tone, and expression. Soft painterly brush strokes, warm lighting, slightly stylized but highly recognizable. ${AI_AVATAR_AGE} Head-and-shoulders framing. ${AI_AVATAR_BG}`,
     },
 ];
 
