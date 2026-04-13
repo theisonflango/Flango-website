@@ -2,14 +2,14 @@
 // UI update funktioner fra app-main.js
 // Refactored to accept dependencies as parameters instead of using closures
 
-import { getCurrentSessionAdmin } from './session-store.js?v=3.0.69';
-import { getCurrentTheme } from '../ui/theme-loader.js?v=3.0.69';
-import { getCurrentCustomer } from './cafe-session-store.js?v=3.0.69';
-import { getOrderTotal } from './order-store.js?v=3.0.69';
-import { getFinancialState } from './cafe-session-store.js?v=3.0.69';
-import { calculateLevel } from './statistics-data.js?v=3.0.69';
-import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js?v=3.0.69';
-import { renderKlartTotalDivider } from './order-ui.js?v=3.0.69';
+import { getCurrentSessionAdmin } from './session-store.js';
+import { getCurrentTheme } from '../ui/theme-loader.js';
+import { getCurrentCustomer } from './cafe-session-store.js';
+import { getOrderTotal } from './order-store.js';
+import { getFinancialState } from './cafe-session-store.js';
+import { calculateLevel } from './statistics-data.js';
+import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js';
+import { renderKlartTotalDivider } from './order-ui.js';
 
 /**
  * Deselect user function - exposed via window for use in UI

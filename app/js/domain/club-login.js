@@ -1,8 +1,8 @@
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.69';
-import { rememberInstitution, clearSavedInstitution, ensureActiveInstitution, fetchInstitutions } from './institution-store.js?v=3.0.69';
-import { performLogin } from './auth-and-session.js?v=3.0.69';
-import { fetchAdminsForInstitution } from './users-and-admin.js?v=3.0.69';
-import { showScreen } from '../ui/shell-and-theme.js?v=3.0.69';
+import { supabaseClient } from '../core/config-and-supabase.js';
+import { rememberInstitution, clearSavedInstitution, ensureActiveInstitution, fetchInstitutions } from './institution-store.js';
+import { performLogin } from './auth-and-session.js';
+import { fetchAdminsForInstitution } from './users-and-admin.js';
+import { showScreen } from '../ui/shell-and-theme.js';
 
 const CLUB_LOGIN_CODE_KEY = 'flango_club_login_code';
 let lastClubLoginCode = null;

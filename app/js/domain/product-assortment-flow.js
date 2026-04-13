@@ -1,7 +1,7 @@
-import { getCurrentCustomer } from './cafe-session-store.js?v=3.0.69';
-import { isCurrentUserAdmin } from './session-store.js?v=3.0.69';
-import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.69';
-import { applyProductLimitsToButtons, getProductIconInfo } from './products-and-cart.js?v=3.0.69';
+import { getCurrentCustomer } from './cafe-session-store.js';
+import { isCurrentUserAdmin } from './session-store.js';
+import { runWithAuthRetry } from '../core/auth-retry.js';
+import { applyProductLimitsToButtons, getProductIconInfo } from './products-and-cart.js';
 let flangoReorderMode = false;
 let flangoLongPressTimer = null;
 let flangoDraggedCard = null;

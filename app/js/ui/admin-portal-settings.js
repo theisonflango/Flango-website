@@ -68,10 +68,18 @@
   // ─── Helper: determine if a feature is on ───
   function isFeatureOn(nav, settings) {
     if (!nav.check) return true;
-    if (nav.settingKey && settings && settings[nav.settingKey] !== undefined && settings[nav.settingKey] !== null) {
-      return !!settings[nav.settingKey];
+    if (nav.settingKey && settings) {
+      var val = settings[nav.settingKey];
+      if (val === undefined || val === null) {
+        // Aldrig sat → brug default
+        return nav.defaultChecked !== undefined ? nav.defaultChecked : false;
+      }
+      // parent_portal_payment er JSONB med { enabled: bool }
+      if (nav.settingKey === 'parent_portal_payment' && typeof val === 'object') {
+        return val.enabled !== false;
+      }
+      return !!val;
     }
-    // null/undefined → brug default (nye kolonner har DEFAULT true men eksisterende rækker kan være null)
     return nav.defaultChecked !== undefined ? nav.defaultChecked : false;
   }
 
@@ -1066,9 +1074,9 @@
       if (!nav.check || !nav.settingKey) return;
       var checkbox = container.querySelector('.sidebar-check[data-section="' + nav.id + '"]');
       if (checkbox) {
-        // parent_portal_payment er JSONB — brug null (fra) / {} (til) i stedet for boolean
+        // parent_portal_payment er JSONB — brug { enabled: true/false }
         if (nav.settingKey === 'parent_portal_payment') {
-          settings[nav.settingKey] = checkbox.checked ? {} : null;
+          settings[nav.settingKey] = { enabled: checkbox.checked };
         } else {
           settings[nav.settingKey] = checkbox.checked;
         }
