@@ -511,7 +511,7 @@ async function renderIconLibraryView(container, user, closeModal, onSaved) {
 
 // AI Avatar prompt presets
 const AI_AVATAR_BG = 'Plain warm beige background (#F5EDE0), smooth and uniform with no gradients or patterns.';
-const AI_AVATAR_HAT_PROMPT = `The person is wearing a white chef's toque (tall puffed chef hat) with a small orange Flango fruit logo embroidered on the headband. The hat matches the reference hat image exactly. Keep the hat prominent and clearly visible.`;
+const AI_AVATAR_HAT_PROMPT = `IMPORTANT: The person MUST be wearing a tall white classic chef's toque (traditional puffed chef hat, tall and cylindrical with pleats). The hat has a thin headband with a small orange fruit logo (an orange/tangerine). The chef hat must be prominent, clearly visible on top of the head, and take up significant space in the image. Do NOT skip the hat.`;
 const AI_AVATAR_HAT_PATH = 'Icons/webp/Function/Flango-Kokkehue.webp';
 const AI_AVATAR_HERO_PROMPT = `The person is depicted as a superhero. They wear a vibrant superhero cape and suit with the Flango orange fruit logo on the chest. Heroic confident pose, dynamic lighting with subtle glow effects. The costume colors should complement the person's features. Keep the face highly recognizable.`;
 
