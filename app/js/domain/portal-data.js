@@ -198,6 +198,7 @@ async function getInstitutionSettings(institutionId) {
     if (gamingResult.data) {
       Object.assign(merged, gamingResult.data);
     }
+    console.log('[portal-data] getInstitutionSettings keys:', Object.keys(merged), 'parent_portal_events:', merged.parent_portal_events, 'parent_portal_payment:', merged.parent_portal_payment);
 
     return merged;
   } catch (e) {
