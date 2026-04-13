@@ -23,12 +23,9 @@
 
   /** Wire all fsp-toggle elements with data-field to dirty-tracking */
   function wireToggles(container, ctx) {
-    const toggles = container.querySelectorAll('.fsp-toggle[data-field]');
-    console.log(`[wireToggles] Found ${toggles.length} toggles:`, [...toggles].map(t => t.dataset.field));
-    toggles.forEach(toggle => {
+    container.querySelectorAll('.fsp-toggle[data-field]').forEach(toggle => {
       toggle.addEventListener('click', () => {
         toggle.classList.toggle('on');
-        console.log(`[wireToggles] Clicked: ${toggle.dataset.field} → ${toggle.classList.contains('on')}`);
         ctx.markDirty(toggle.dataset.field, toggle.classList.contains('on'));
       });
     });
@@ -1265,8 +1262,8 @@
               ${rmSounds.map(s => `<div class="fsp-rm-schip${(inst.restaurant_serve_sound === s.v || (!inst.restaurant_serve_sound && !s.v)) ? ' on' : ''}" data-sound-value="${s.v}">${s.label}</div>`).join('')}
             </div>
           </div></div>
-          <div class="fsp-save-row"><button class="fsp-save-btn" data-action="save-settings">Gem indstillinger</button></div>
         </div>
+        <div class="fsp-save-row"><button class="fsp-save-btn" data-action="save-settings">Gem indstillinger</button></div>
       </div>`;
     },
     wire(container, ctx) {
