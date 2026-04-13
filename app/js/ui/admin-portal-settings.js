@@ -70,6 +70,7 @@
     if (!nav.check) return true;
     if (nav.settingKey && settings) {
       var val = settings[nav.settingKey];
+      console.log('[APS] isFeatureOn', nav.settingKey, '=', val, '→', val === undefined || val === null ? 'DEFAULT' : (nav.settingKey === 'parent_portal_payment' && typeof val === 'object') ? val.enabled !== false : !!val);
       if (val === undefined || val === null) {
         // Aldrig sat → brug default
         return nav.defaultChecked !== undefined ? nav.defaultChecked : false;
