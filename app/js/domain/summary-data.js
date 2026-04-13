@@ -1,11 +1,11 @@
 // Data fetcher for Summary/Opsummering feature
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.67';
+import { supabaseClient } from '../core/config-and-supabase.js';
 import {
     setSummaryData,
     setSummaryLoading,
     setSummaryError,
     getSummaryState
-} from './summary-store.js?v=3.0.67';
+} from './summary-store.js';
 
 /**
  * Fetch summary data based on current state

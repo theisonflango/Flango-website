@@ -68,9 +68,10 @@
   // ─── Helper: determine if a feature is on ───
   function isFeatureOn(nav, settings) {
     if (!nav.check) return true;
-    if (nav.settingKey && settings && settings[nav.settingKey] !== undefined) {
+    if (nav.settingKey && settings && settings[nav.settingKey] !== undefined && settings[nav.settingKey] !== null) {
       return !!settings[nav.settingKey];
     }
+    // null/undefined → brug default (nye kolonner har DEFAULT true men eksisterende rækker kan være null)
     return nav.defaultChecked !== undefined ? nav.defaultChecked : false;
   }
 

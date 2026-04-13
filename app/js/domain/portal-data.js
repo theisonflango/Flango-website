@@ -2,8 +2,8 @@
 // Ansvar: Hent og gem institutions-indstillinger, forældre-statistik, forældreliste, adoption-data.
 // Importerer supabaseClient direkte fra config-and-supabase.js (samme autentificerede klient).
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.67';
-import { getInstitutionId } from './session-store.js?v=3.0.67';
+import { supabaseClient } from '../core/config-and-supabase.js';
+import { getInstitutionId } from './session-store.js';
 
 // ─── Hjælpere ──────────────────────────────────────────────────
 
@@ -165,6 +165,13 @@ async function getInstitutionSettings(institutionId) {
           parent_portal_daily_special_price,
           parent_portal_payment,
           parent_portal_message_template,
+          parent_portal_events,
+          parent_portal_purchase_profile,
+          parent_portal_history,
+          parent_portal_sortiment,
+          parent_portal_feedback,
+          parent_portal_diet,
+          parent_portal_profile_pictures,
           institution_contact_phone,
           institution_contact_phone_enabled,
           sugar_policy_info_text,
