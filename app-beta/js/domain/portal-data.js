@@ -2,8 +2,8 @@
 // Ansvar: Hent og gem institutions-indstillinger, forældre-statistik, forældreliste, adoption-data.
 // Importerer supabaseClient direkte fra config-and-supabase.js (samme autentificerede klient).
 
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { getInstitutionId } from './session-store.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.75';
+import { getInstitutionId } from './session-store.js?v=3.0.75';
 
 // ─── Hjælpere ──────────────────────────────────────────────────
 
@@ -185,7 +185,7 @@ async function getInstitutionSettings(institutionId) {
         .select('skaermtid_enabled, skaermtid_show_usage, skaermtid_show_remaining, skaermtid_show_rules, skaermtid_allow_personal_limits, skaermtid_allow_extra_time_requests, skaermtid_allow_game_approval')
         .eq('institution_id', instId)
         .maybeSingle()
-        .catch(() => ({ data: null })),
+        .then(res => res, () => ({ data: null })),
     ]);
 
     if (instResult.error) {
@@ -198,7 +198,6 @@ async function getInstitutionSettings(institutionId) {
     if (gamingResult.data) {
       Object.assign(merged, gamingResult.data);
     }
-
     return merged;
   } catch (e) {
     console.error('[portal-data] Uventet fejl i getInstitutionSettings:', e);

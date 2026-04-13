@@ -1,7 +1,7 @@
 // Ansvar: Alle Supabase-queries til Historik v2.
 // Fase 1 — kun læser fra eksisterende tabeller, views og RPCs.
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { getInstitutionId, getCurrentAdmin } from './session-store.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.75';
+import { getInstitutionId, getCurrentAdmin } from './session-store.js?v=3.0.75';
 
 // ─── HJÆLPERE ───
 

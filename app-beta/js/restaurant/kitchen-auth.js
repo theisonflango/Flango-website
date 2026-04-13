@@ -2,7 +2,7 @@
  * Kitchen view authentication.
  * Reuses verify_club_login RPC for institution-level access.
  */
-import { supabaseClient } from '../core/config-and-supabase.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.75';
 
 const KITCHEN_INSTITUTION_KEY = 'flango_kitchen_institution_id';
 const KITCHEN_INSTITUTION_NAME_KEY = 'flango_kitchen_institution_name';

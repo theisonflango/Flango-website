@@ -1,5 +1,5 @@
 // UI rendering for Summary/Opsummering feature
-import { getSummaryState } from '../domain/summary-store.js';
+import { getSummaryState } from '../domain/summary-store.js?v=3.0.75';
 
 /**
  * Render summary table based on current state

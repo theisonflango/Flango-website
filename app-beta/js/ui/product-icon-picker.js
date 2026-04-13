@@ -25,10 +25,10 @@ import {
     fetchIconSharingSettings,
     processImageForUpload,
     takeProductPhoto,
-} from '../core/product-icon-utils.js';
-import { getProductIconInfo, CUSTOM_ICON_PREFIX } from '../domain/products-and-cart.js';
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { escapeHtml } from '../core/escape-html.js';
+} from '../core/product-icon-utils.js?v=3.0.75';
+import { getProductIconInfo, CUSTOM_ICON_PREFIX } from '../domain/products-and-cart.js?v=3.0.75';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.75';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.75';
 
 // ─── Prompt templates ───
 const STYLE_CLAY = `A single centered food product icon in soft 3D clay style. Rounded puffy shapes, smooth matte clay texture, subtle soft shadows on the object only. Pastel color palette, gentle highlights, no harsh edges. Friendly, playful, child-safe aesthetic like premium mobile app UI icons. Skeuomorphic but simplified - Apple-like simplicity with minimal detail. No text, no labels, no table, no background elements. The object floats on a perfectly transparent background. Clean crisp edges suitable for UI overlay.`;

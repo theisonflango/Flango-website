@@ -1,13 +1,13 @@
 // js/domain/order-ui.js
-import { getOrderTotal, setOrder, getOrder } from './order-store.js';
-import { getProductIconInfo, addProductToOrder, removeProductFromOrder, getBulkDiscountSummary } from './products-and-cart.js';
-import { canChildPurchase } from './purchase-limits.js';
-import { playSound } from '../ui/sound-and-alerts.js';
-import { getCurrentCustomer, clearEvaluation } from './cafe-session-store.js';
-import { MAX_ITEMS_PER_ORDER } from '../core/constants.js';
-import { formatKr } from '../ui/confirm-modals.js';
-import { getCurrentTheme } from '../ui/theme-loader.js';
-import { updateKlartCartCountBadge } from './app-ui-updates.js';
+import { getOrderTotal, setOrder, getOrder } from './order-store.js?v=3.0.75';
+import { getProductIconInfo, addProductToOrder, removeProductFromOrder, getBulkDiscountSummary } from './products-and-cart.js?v=3.0.75';
+import { canChildPurchase } from './purchase-limits.js?v=3.0.75';
+import { playSound } from '../ui/sound-and-alerts.js?v=3.0.75';
+import { getCurrentCustomer, clearEvaluation } from './cafe-session-store.js?v=3.0.75';
+import { MAX_ITEMS_PER_ORDER } from '../core/constants.js?v=3.0.75';
+import { formatKr } from '../ui/confirm-modals.js?v=3.0.75';
+import { getCurrentTheme } from '../ui/theme-loader.js?v=3.0.75';
+import { updateKlartCartCountBadge } from './app-ui-updates.js?v=3.0.75';
 
 /**
  * Tjekker om den nuværende kunde er en admin med gratis-køb
