@@ -2,6 +2,9 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
+    <!-- Cache Control: altid revalider HTML-dokumentet -->
+    <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
     <!-- Content Security Policy -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
@@ -31,26 +34,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Modular CSS Architecture -->
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/products.css">
-    <link rel="stylesheet" href="css/users.css">
-    <link rel="stylesheet" href="css/features.css">
-    <link rel="stylesheet" href="css/events.css">
-    <link rel="stylesheet" href="css/historik.css">
-    <link rel="stylesheet" href="css/historik-v3.css">
-    <link rel="stylesheet" href="css/admin-portal-v2.css">
-    <link rel="stylesheet" href="css/icon-library.css">
-    <link rel="stylesheet" href="css/product-icon-picker.css">
-    <link rel="stylesheet" href="css/profile-pictures.css">
-    <link rel="stylesheet" href="css/edit-user-accordion.css">
-    <link rel="stylesheet" href="css/user-admin-panel.css">
-    <link rel="stylesheet" href="css/settings-panel.css?v=3">
-    <link rel="stylesheet" href="mobile.css">
+    <link rel="stylesheet" href="css/base.css?v=3.0.76">
+    <link rel="stylesheet" href="css/layout.css?v=3.0.76">
+    <link rel="stylesheet" href="css/components.css?v=3.0.76">
+    <link rel="stylesheet" href="css/products.css?v=3.0.76">
+    <link rel="stylesheet" href="css/users.css?v=3.0.76">
+    <link rel="stylesheet" href="css/features.css?v=3.0.76">
+    <link rel="stylesheet" href="css/events.css?v=3.0.76">
+    <link rel="stylesheet" href="css/historik.css?v=3.0.76">
+    <link rel="stylesheet" href="css/historik-v3.css?v=3.0.76">
+    <link rel="stylesheet" href="css/admin-portal-v2.css?v=3.0.76">
+    <link rel="stylesheet" href="css/icon-library.css?v=3.0.76">
+    <link rel="stylesheet" href="css/product-icon-picker.css?v=3.0.76">
+    <link rel="stylesheet" href="css/profile-pictures.css?v=3.0.76">
+    <link rel="stylesheet" href="css/edit-user-accordion.css?v=3.0.76">
+    <link rel="stylesheet" href="css/user-admin-panel.css?v=3.0.76">
+    <link rel="stylesheet" href="css/settings-panel.css?v=3.0.76">
+    <link rel="stylesheet" href="mobile.css?v=3.0.76">
     <!-- Theme: flango-unstoppable (only active theme - CSS loaded dynamically by theme-loader.js) -->
     <!-- DISABLED: pos-pro.css not in use -->
-    <!-- <link rel="stylesheet" href="css/themes/pos-pro.css"> -->
+    <!-- <link rel="stylesheet" href="css/themes/pos-pro.css?v=3.0.76"> -->
     <style>
         .settings-modal-backdrop {
             position: fixed;
@@ -531,7 +534,7 @@
     <!-- Tilstand 3: Café-UI (eksisterende app) -->
     <div id="main-app" style="display: none;">
         <div class="sidebar-main-header">
-            <button id="restaurant-mode-badge" style="display:none; border:none; cursor:pointer; background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-size:12px; font-weight:700; padding:6px 14px; border-radius:20px; white-space:nowrap; margin-left:16px;" title="Restaurant Mode indstillinger">🍽️ Restaurant Mode er aktiv!</button>
+            <button id="restaurant-mode-badge" style="display:none; border:none; cursor:pointer; background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-size:12px; font-weight:700; padding:6px 14px; border-radius:20px; white-space:nowrap;" title="Restaurant Mode indstillinger">🍽️ Restaurant Mode er aktiv!</button>
             <div class="header-actions">
                 <button id="logged-in-user-avatar-container" class="header-action-btn" title="Min Flango"></button>
                 <button id="toolbar-history-btn" class="header-action-btn" title="Historik"><img src="Icons/webp/Function/historik.webp" alt="Historik"></button>
@@ -1854,7 +1857,7 @@
         </div>
     </div>
 
-    <template id="login-modal-template"><div class="modal-content"><div class="modal-header"><h2>Login</h2><span class="close-btn">&times;</span></div><div class="modal-controls" style="flex-direction: column; gap: 10px;"><input type="email" id="login-email-input" placeholder="E-mail" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" autocomplete="off"><input type="password" id="login-password-input" placeholder="Adgangskode" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" autocomplete="new-password"><button id="perform-login-btn" class="action-button" style="background-color: var(--success-color); margin-top: 10px; margin-bottom: 0;">Log ind</button><button id="developer-login-btn" class="action-button" style="background-color: var(--warning-color); margin-top: 10px; margin-bottom: 0;">Developer Login</button><p id="login-error-msg" style="color: var(--danger-color); text-align: center; display: none; margin-top: 10px;"></p></div></div></template>
+    <template id="login-modal-template"><div class="modal-content"><div class="modal-header"><h2>Login</h2><span class="close-btn">&times;</span></div><div class="modal-controls" style="flex-direction: column; gap: 10px;"><input type="email" id="login-email-input" placeholder="E-mail" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" autocomplete="off"><input type="password" id="login-password-input" placeholder="Adgangskode" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" autocomplete="new-password"><button id="perform-login-btn" class="action-button" style="background-color: var(--success-color); margin-top: 10px; margin-bottom: 0;">Log ind</button><p id="login-error-msg" style="color: var(--danger-color); text-align: center; display: none; margin-top: 10px;"></p></div></div></template>
     <template id="user-modal-template"><div class="modal-content"><div class="modal-header"><h2 id="user-modal-title">Vælg en kunde</h2><div id="user-filter-buttons" class="user-filter-buttons" style="display: none;"><button id="filter-all-btn" class="filter-btn active">Vis Alle</button><button id="filter-children-btn" class="filter-btn">Vis Børn</button><button id="filter-adults-btn" class="filter-btn">Vis Voksne</button></div><span class="close-btn">&times;</span></div><div id="admin-controls-modal"></div><div class="modal-controls"><input type="text" id="search-user-input" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="user-list-header"><div id="sort-by-name-btn" class="sort-header active">Navn</div><div id="sort-by-number-btn" class="sort-header">Nummer</div><div id="sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handling</div></div><div id="modal-user-list" class="modal-user-list"></div></div></template>
     <template id="admin-user-manager-modal-template"><div class="modal-content"><div class="modal-header"><h2>Indbetal penge &amp; Rediger brugere</h2><span class="close-btn">&times;</span></div><div id="admin-role-toggle" class="admin-role-toggle"><button id="admin-toggle-customers" class="admin-role-toggle-btn active" type="button">Børn</button><button id="admin-toggle-admins" class="admin-role-toggle-btn" type="button">Admins</button></div><div id="admin-controls-modal"><button id="add-user-btn-modal" class="action-button admin-btn" style="margin-bottom: 10px;">➕ Tilføj Ny Bruger</button></div><div class="modal-controls"><input type="text" id="admin-search-user-input" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="user-list-header"><div id="admin-sort-by-name-btn" class="sort-header active">Navn</div><div id="admin-sort-by-number-btn" class="sort-header">Nummer</div><div id="admin-sort-by-grade-btn" class="sort-header">Klasse</div><div id="admin-sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handlinger</div></div><div id="admin-modal-user-list" class="modal-user-list"></div></div></template>
     <template id="avatar-picker-modal-template"><div class="modal-content"><div class="modal-header"><h2>Min Flango</h2><span class="close-btn">&times;</span></div><div id="avatar-picker-scroll-wrapper">
@@ -2040,16 +2043,16 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.min.js" integrity="sha384-DgmC6Xe2bSN2WjTDXzWYbUbxyhNP+NNkGDR/g78pCXV7E7rcVTGxVg0uIVCUUcBc" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" integrity="sha384-D/t0ZMqQW31H3az8ktEiNb39wyKnS82iFY52QPACM+IjKW3jDUhyIgh2PApRqJZs" crossorigin="anonymous"></script>
-    <script src="js/core/feature-modules.js"></script>
-    <script type="module" src="js/domain/portal-data.js?v=2"></script>
-    <script src="js/ui/settings-panel.js?v=4"></script>
-    <script src="js/ui/settings-sections.js?v=11"></script>
-    <script src="js/ui/admin-portal-settings.js?v=2"></script>
-    <script src="js/ui/admin-portal-v2.js"></script>
-    <script type="module" src="js/admin/auto-import-users.js"></script>
-    <script type="module" src="js/app.js?v=2"></script>
-    <script type="module" src="js/restaurant/kitchen-inline-panel.js"></script>
-    <script src="js/ui/cookie-banner.js"></script>
+    <script src="js/core/feature-modules.js?v=3.0.76"></script>
+    <script type="module" src="js/domain/portal-data.js?v=3.0.76"></script>
+    <script src="js/ui/settings-panel.js?v=3.0.76"></script>
+    <script src="js/ui/settings-sections.js?v=3.0.76"></script>
+    <script src="js/ui/admin-portal-settings.js?v=3.0.76"></script>
+    <script src="js/ui/admin-portal-v2.js?v=3.0.76"></script>
+    <script type="module" src="js/admin/auto-import-users.js?v=3.0.76"></script>
+    <script type="module" src="js/app.js?v=3.0.76"></script>
+    <script type="module" src="js/restaurant/kitchen-inline-panel.js?v=3.0.76"></script>
+    <script src="js/ui/cookie-banner.js?v=3.0.76"></script>
 
 </body>
 </html>

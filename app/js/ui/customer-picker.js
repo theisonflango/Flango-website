@@ -1,7 +1,7 @@
 // js/ui/customer-picker.js
-import { buildCustomerSelectionEntryElement } from '../domain/users-and-admin.js';
-import { SEARCH_DEBOUNCE_MS } from '../core/constants.js';
-import { batchPreWarmProfilePictures, preWarmDefaultProfilePicture } from '../core/profile-picture-cache.js';
+import { buildCustomerSelectionEntryElement } from '../domain/users-and-admin.js?v=3.0.76';
+import { SEARCH_DEBOUNCE_MS } from '../core/constants.js?v=3.0.76';
+import { batchPreWarmProfilePictures, preWarmDefaultProfilePicture } from '../core/profile-picture-cache.js?v=3.0.76';
 
 // Filter state - enklere: kun ét valg ad gangen
 let userFilterMode = 'all'; // 'all' | 'children' | 'adults'
@@ -41,17 +41,15 @@ export function renderCustomerListUI(options) {
 
     const searchTerm = (searchInput.value || '').toLowerCase();
 
-    // Filtrer brugere baseret på filter mode
-    // Respekter show_in_user_list for alle roller (børn + admins)
-    let filteredUsers = allUsers.filter(u => u.show_in_user_list !== false);
+    // Filtrering på admin_apps, show_in_user_list, deactivated_at sker i get_cafe_users RPC
+    let filteredUsers = [...allUsers];
 
     if (userFilterMode === 'children') {
         filteredUsers = filteredUsers.filter((u) => u.role === 'kunde');
     } else if (userFilterMode === 'adults') {
-        filteredUsers = filteredUsers.filter((u) => u.role === 'admin');
+        filteredUsers = filteredUsers.filter((u) => u.role === 'admin' || u.role === 'superadmin');
     } else {
-        // 'all' — vis alle børn + admins (begge allerede filtreret på show_in_user_list)
-        filteredUsers = filteredUsers.filter((u) => u.role === 'kunde' || u.role === 'admin');
+        filteredUsers = filteredUsers.filter((u) => u.role === 'kunde' || u.role === 'admin' || u.role === 'superadmin');
     }
 
     if (searchTerm) {

@@ -1,7 +1,7 @@
 // Ansvar: Historik v3 — modal lifecycle, sidebar, page routing, alle 8 page-render funktioner.
 // Genbruger data-laget fra historik-data.js og eksport fra historik-export.js.
-import { getCurrentAdmin, getInstitutionId, isCurrentUserAdmin } from '../domain/session-store.js';
-import { initPurchaseProfiles, getChartData as ppGetChartData } from '../domain/purchase-profiles.js';
+import { getCurrentAdmin, getInstitutionId, isCurrentUserAdmin } from '../domain/session-store.js?v=3.0.76';
+import { initPurchaseProfiles, getChartData as ppGetChartData } from '../domain/purchase-profiles.js?v=3.0.76';
 import {
   periodRange, fmtDate, fmtDateTime, fmtMinutes, fmtKr, fmtDayDate, getLevel,
   getMyRevenue, getMyTransactionCount, getMyTransactionSplit, getClubStats, getTotalDeposits,
@@ -12,20 +12,20 @@ import {
   getTransactions, getSaleItems, undoSale, registerSaleAdjustment,
   getEmployeeSummary, getAdminSalesSplit, getAdminTimeSplit, getAdminDeposits,
   getFirstSaleDate, getAdminCafeDays, getCustomerStats,
-} from '../domain/historik-data.js';
-import { exportSalesReport, exportAllBalances, exportNegativeBalances, exportTransactionsCsv, exportClerkReport, exportPeriodReport } from './historik-export.js';
-import { showConfirmModal } from './confirm-modals.js';
-import { showCustomAlert } from './sound-and-alerts.js';
-import { invalidateTodaysSalesCache } from '../domain/purchase-limits.js';
+} from '../domain/historik-data.js?v=3.0.76';
+import { exportSalesReport, exportAllBalances, exportNegativeBalances, exportTransactionsCsv, exportClerkReport, exportPeriodReport } from './historik-export.js?v=3.0.76';
+import { showConfirmModal } from './confirm-modals.js?v=3.0.76';
+import { showCustomAlert } from './sound-and-alerts.js?v=3.0.76';
+import { invalidateTodaysSalesCache } from '../domain/purchase-limits.js?v=3.0.76';
 import {
   renderAreaChart, renderBarChart, renderHorizontalBars, renderDonutChart,
   renderGauge, attachChartTooltips, progressBar, renderRankingList,
   animateChartEntrance,
   BAR_COLORS, escHtml, fmtNum,
-} from './historik-v3-charts.js';
+} from './historik-v3-charts.js?v=3.0.76';
 
 // ─── CONSTANTS ───
-import { getCachedProductIconUrl } from '../core/product-icon-cache.js';
+import { getCachedProductIconUrl } from '../core/product-icon-cache.js?v=3.0.76';
 
 const ICON_PREFIX = '::icon::';
 function productIcon(emoji, iconUrl, size = 18, storagePath = '') {
@@ -101,6 +101,7 @@ let includeTestUsers = false;
 let toplistTab = 'produkter';
 let toplistPeriod = 'Altid';
 let toplistSort = 'Antal';
+let todayTopSort = 'Omsætning';
 let overviewRange = '30 dage';
 let overviewHideWE = true;
 let statsRange = '30 dage';
@@ -115,7 +116,9 @@ let txSearchCustomerOnly = false; // When true, search only matches target/custo
 let txSearchClerkOnly = false; // When true, search only matches clerk/expedient name
 let allTransactions = [];
 let _txIconMap = {};
-let txPeriod = '30 dage';
+let txPeriod = 'Idag';
+let txCustomDateFrom = '';
+let txCustomDateTo = '';
 let ppSelectedUserId = null;
 let ppSelectedUserName = '';
 let ppPeriod = 'Altid';
@@ -176,7 +179,7 @@ export function openHistorikV3() {
     btn.addEventListener('click', async () => {
       if (btn.dataset.page === 'v2') {
         closeHistorikV3();
-        const { openHistorikModal } = await import('./historik-modal.js');
+        const { openHistorikModal } = await import('./historik-modal.js?v=3.0.76');
         openHistorikModal();
         return;
       }
@@ -387,7 +390,7 @@ async function renderPageToday() {
     const firstSaleDate = await getFirstSaleDate();
     const allTimeFrom = firstSaleDate || new Date('2020-01-01');
     const allTimeTo = new Date(); allTimeTo.setHours(23, 59, 59, 999);
-    const [split, clubToday, clubAllTime, deposits, minutesWorked, hourly, week, clerks] = await Promise.all([
+    const [split, clubToday, clubAllTime, deposits, minutesWorked, hourly, week, clerks, topProducts] = await Promise.all([
       getMyTransactionSplit(from, to, includeTestUsers),
       getClubStats(from, to, includeTestUsers),
       getClubStats(allTimeFrom, allTimeTo, includeTestUsers),
@@ -396,11 +399,12 @@ async function renderPageToday() {
       getHourlyRevenue(new Date(), includeTestUsers),
       getWeekRevenue(new Date(), includeTestUsers),
       getDailyClerks(from, to, includeTestUsers),
+      getTopProducts(from, to, 5, includeTestUsers),
     ]);
-    d = { split, clubToday, clubAllTime, deposits, minutesWorked, hourly, week, clerks };
+    d = { split, clubToday, clubAllTime, deposits, minutesWorked, hourly, week, clerks, topProducts };
     setCache(ck, d);
   }
-  const { split, clubToday, clubAllTime, deposits, minutesWorked, hourly, week, clerks } = d;
+  const { split, clubToday, clubAllTime, deposits, minutesWorked, hourly, week, clerks, topProducts } = d;
 
   const todayRev = clubToday.totalRevenue;
   const avgDaily = clubAllTime.cafeDays > 0 ? Math.round(clubAllTime.totalRevenue / clubAllTime.cafeDays) : 0;
@@ -433,10 +437,69 @@ async function renderPageToday() {
       ${statCard('Indbetalinger', fmtKr(deposits.amount), {
         icon: '💳', sub: `${deposits.count} indbetalinger`
       })}
-      ${statCard('Min tid i dag', fmtMinutes(minutesWorked), {
-        icon: '⏱️', sub: 'ansvarlig'
-      })}
+      ${(() => {
+        const childMinutes = clerks.filter(c => c.role === 'kunde').reduce((s, c) => s + (c.minutes || 0), 0);
+        const adminMinutes = minutesWorked;
+        const total = childMinutes + adminMinutes;
+        const childPct = total > 0 ? Math.round(childMinutes / total * 100) : 0;
+        const adminPct = total > 0 ? 100 - childPct : 0;
+        return `<div class="hv3-stat">
+          <div class="hv3-stat-top">
+            <div>
+              <div class="hv3-stat-label">Tid i dag</div>
+              <div class="hv3-stat-value">${fmtMinutes(total)}</div>
+            </div>
+            <span class="hv3-stat-icon">⏱️</span>
+          </div>
+          <div style="margin-top:8px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--hv3-text-muted);margin-bottom:4px">
+              <span>👤 Dig: ${fmtMinutes(adminMinutes)} (${adminPct}%)</span>
+              <span>👦 Børn: ${fmtMinutes(childMinutes)} (${childPct}%)</span>
+            </div>
+            <div style="display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--hv3-pill-bg)">
+              ${adminPct > 0 ? `<div style="width:${adminPct}%;background:var(--hv3-accent);border-radius:99px 0 0 99px"></div>` : ''}
+              ${childPct > 0 ? `<div style="width:${childPct}%;background:#22c55e;border-radius:0 99px 99px 0"></div>` : ''}
+            </div>
+          </div>
+        </div>`;
+      })()}
     </div>
+
+    <!-- Top products today -->
+    ${(() => {
+      const prods = (topProducts || []).map(p => ({
+        name: p.name || p.product_name || 'Ukendt',
+        emoji: p.emoji || '',
+        icon_url: p.icon_url || '',
+        icon_storage_path: p.icon_storage_path || '',
+        sold: p.antal || p.total_qty || 0,
+        revenue: p.beloeb || p.total_revenue || 0,
+      })).sort((a, b) => todayTopSort === 'Antal' ? b.sold - a.sold : b.revenue - a.revenue);
+      if (!prods.length) return '';
+      const maxVal = prods[0] ? (todayTopSort === 'Antal' ? prods[0].sold : prods[0].revenue) : 1;
+      const medals = ['🥇', '🥈', '🥉'];
+      return `<div class="hv3-card" style="padding:22px 24px">
+        ${sectionTitle(`🔥 ${todayTopSort === 'Antal' ? 'Mest solgte (antal)' : 'Størst omsætning'}`,
+          filterPills(['Antal', 'Omsætning'], todayTopSort, '__hv3SetTodayTopSort', true))}
+        <div class="hv3-ranking" style="margin-top:4px">
+          ${prods.map((p, i) => {
+            const val = todayTopSort === 'Antal' ? p.sold : p.revenue;
+            const sub = todayTopSort === 'Antal' ? `${p.revenue} kr` : `${p.sold} stk`;
+            const color = BAR_COLORS[i % BAR_COLORS.length];
+            return `<div class="hv3-ranking-item">
+              <span class="hv3-ranking-medal">${i < 3 ? medals[i] : `<span class="hv3-ranking-number">${i + 1}</span>`}</span>
+              <span style="font-size:18px">${productIcon(p.emoji, p.icon_url, 18, p.icon_storage_path)}</span>
+              <span class="hv3-ranking-name" style="width:130px">${escHtml(p.name)}</span>
+              <div class="hv3-ranking-bar"><div class="hv3-ranking-bar-fill" style="width:${(val / maxVal) * 100}%;background:linear-gradient(90deg,${color},${color}dd)"></div></div>
+              <div class="hv3-ranking-value">
+                <span class="hv3-ranking-value-main">${todayTopSort === 'Antal' ? `${fmtNum(val)} stk` : `${fmtNum(val)} kr`}</span>
+                <span class="hv3-ranking-value-sub">· ${sub}</span>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    })()}
 
     <!-- Transaction split -->
     <div class="hv3-card">
@@ -625,6 +688,7 @@ async function renderPageOverblik() {
 window.__hv3SetToplistTab = (tab) => { toplistTab = tab; cdSelectedPerson = null; cdCachedDays = null; kundeCached = null; renderPageToplister(); };
 window.__hv3SetToplistPeriod = (p) => { toplistPeriod = p; cdCachedDays = null; kundeCached = null; renderPageToplister(); };
 window.__hv3SetToplistSort = (s) => { toplistSort = s; renderPageToplister(); };
+window.__hv3SetTodayTopSort = (s) => { todayTopSort = s; renderPageToday(); };
 window.__hv3SetPersonnelView = (v) => { personnelView = v; renderPageToplister(); };
 // Café-dage drilldown handlers
 window.__hv3CdSelectPerson = async (clerkId, clerkName) => {
@@ -1712,24 +1776,78 @@ async function renderPageTransaktioner() {
   _preserveFilters = false;
 
   // Compute period
-  const { from, to } = periodRange(txPeriod === '7 dage' ? 'uge' : txPeriod === '30 dage' ? 'maaned' : 'altid');
+  let from, to;
+  if (txPeriod === 'Dato' && txCustomDateFrom) {
+    from = new Date(txCustomDateFrom + 'T00:00:00');
+    const endDate = txCustomDateTo || txCustomDateFrom;
+    to = new Date(endDate + 'T23:59:59.999');
+  } else {
+    ({ from, to } = periodRange(txPeriod === 'Idag' ? 'idag' : txPeriod === '7 dage' ? 'uge' : txPeriod === '30 dage' ? 'maaned' : 'altid'));
+  }
+
+  // Date picker values — always reflect active period range
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const dateFromVal = from.toISOString().slice(0, 10);
+  const dateToVal = to.toISOString().slice(0, 10);
 
   c.innerHTML = `
-  <div class="hv3-tx-toolbar">
-    ${filterPills(['7 dage', '30 dage', 'Altid'], txPeriod, '__hv3SetTxPeriod', true)}
-    <div style="flex:1"></div>
+  <div class="hv3-tx-bar">
+    ${filterPills(['Idag', '7 dage', '30 dage', 'Altid'], txPeriod === 'Dato' ? '' : txPeriod, '__hv3SetTxPeriod', false)}
+    <div class="hv3-tx-bar-sep"></div>
+    <div class="hv3-tx-datewrap">
+      <input type="date" class="hv3-tx-bar-date" id="hv3-tx-date-from" value="${dateFromVal}" max="${todayStr}">
+      <button type="button" class="hv3-tx-date-btn" onclick="document.getElementById('hv3-tx-date-from').showPicker()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+    </div>
+    <span class="hv3-tx-bar-datesep">til</span>
+    <div class="hv3-tx-datewrap">
+      <input type="date" class="hv3-tx-bar-date" id="hv3-tx-date-to" value="${dateToVal}" max="${todayStr}">
+      <button type="button" class="hv3-tx-date-btn" onclick="document.getElementById('hv3-tx-date-to').showPicker()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+    </div>
+    <div class="hv3-tx-bar-spacer"></div>
+    <label class="hv3-tx-bar-check"><input type="checkbox" id="hv3-tx-test" ${includeTestUsers ? 'checked' : ''}> Testbrugere</label>
+  </div>
+  <div class="hv3-tx-bar">
     <div style="position:relative;" id="hv3-tx-search-wrap">
       <input type="text" class="hv3-tx-search" id="hv3-tx-search" placeholder="Søg barn, ekspedient..." autocomplete="off">
       <div class="hv3-tx-dropdown" id="hv3-tx-dropdown" style="display:none;"></div>
     </div>
+    <div class="hv3-tx-bar-sep"></div>
+    ${filterPills(['Alle', '🛒 Køb', '🧑‍🍳 Ekspedient', '💰 Indbetalinger', '✏️ Justeringer', '🎫 Arrangementer'], txActiveFilterLabel(), '__hv3SetTxType', false)}
+    <div class="hv3-tx-bar-spacer"></div>
     <span class="hv3-tx-count" id="hv3-tx-count">…</span>
   </div>
-  <div class="hv3-tx-type-filter" style="margin-bottom:16px">
-    ${filterPills(['Alle', '🛒 Køb', '🧑‍🍳 Ekspedient', '💰 Indbetalinger', '✏️ Justeringer', '🎫 Arrangementer'], txActiveFilterLabel(), '__hv3SetTxType', true)}
-  </div>
-  <div class="hv3-card" style="padding:0;overflow:hidden">
+  <div class="hv3-card hv3-tx-card" style="padding:0;overflow:hidden">
     <div id="hv3-tx-table-wrap"><div class="hv3-loading"><div class="hv3-spinner"></div>Indlæser transaktioner...</div></div>
   </div>`;
+
+  // Wire date range pickers
+  const dateFromEl = document.getElementById('hv3-tx-date-from');
+  const dateToEl = document.getElementById('hv3-tx-date-to');
+  const onDateChange = () => {
+    txCustomDateFrom = dateFromEl.value;
+    txCustomDateTo = dateToEl.value;
+    // Ensure from <= to
+    if (txCustomDateFrom && txCustomDateTo && txCustomDateFrom > txCustomDateTo) {
+      txCustomDateTo = txCustomDateFrom;
+      dateToEl.value = txCustomDateFrom;
+    }
+    txPeriod = 'Dato';
+    _preserveFilters = true;
+    renderPageTransaktioner();
+  };
+  if (dateFromEl) dateFromEl.addEventListener('change', onDateChange);
+  if (dateToEl) dateToEl.addEventListener('change', onDateChange);
+
+  // Wire testbrugere toggle
+  const testEl = document.getElementById('hv3-tx-test');
+  if (testEl) {
+    testEl.addEventListener('change', () => {
+      includeTestUsers = testEl.checked;
+      _preserveFilters = true;
+      invalidateAllCaches();
+      renderPageTransaktioner();
+    });
+  }
 
   // Wire search with dropdown
   const searchEl = document.getElementById('hv3-tx-search');
@@ -1801,8 +1919,9 @@ async function renderPageTransaktioner() {
       txTypeFilter = typeMap[label] || 'alle';
     }
 
-    // Update pill active states (only one active at a time)
-    const filterWrap = c.querySelector('.hv3-tx-type-filter .hv3-pills');
+    // Update pill active states (only one active at a time) — second bar's pills
+    const bars = c.querySelectorAll('.hv3-tx-bar');
+    const filterWrap = bars[1]?.querySelector('.hv3-pills');
     if (filterWrap) {
       filterWrap.querySelectorAll('.hv3-pill').forEach(p => {
         p.classList.toggle('active', p.textContent.trim() === label);
@@ -1811,9 +1930,12 @@ async function renderPageTransaktioner() {
     renderTxRows();
   };
 
-  // Period handler
+  // Period handler — sync date inputs to match period
   window.__hv3SetTxPeriod = (p) => {
     txPeriod = p;
+    const { from: pf, to: pt } = periodRange(p === 'Idag' ? 'idag' : p === '7 dage' ? 'uge' : p === '30 dage' ? 'maaned' : 'altid');
+    txCustomDateFrom = pf.toISOString().slice(0, 10);
+    txCustomDateTo = pt.toISOString().slice(0, 10);
     _preserveFilters = true;
     renderPageTransaktioner();
   };
@@ -2041,6 +2163,8 @@ async function loadTxExpandDetails(eventId, expandRow) {
           </div>
         </div>
         <div class="hv3-tx-adjust-meta">
+          <span>Kunde: <strong>${escHtml(customerName)}</strong></span>
+          <span>Tidspunkt: <strong>${fmtDateTime(event.created_at)}</strong></span>
           <span>Ekspedient: <strong>${escHtml(event.clerk?.name || event.admin?.name || '—')}</strong>${event.clerk?.role === 'kunde' ? ' (barn)' : ''}</span>
           <span>Ansvarlig: <strong>${escHtml(event.session_admin_name || event.admin?.name || '—')}</strong></span>
         </div>

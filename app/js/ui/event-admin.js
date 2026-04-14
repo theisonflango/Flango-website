@@ -1,9 +1,9 @@
 // UI-modul: Event Admin (Arrangementer)
 // Tre views i én modal: event-liste, event-detalje, opret/rediger form.
 
-import { escapeHtml } from '../core/escape-html.js';
-import { showAlert, showCustomAlert } from './sound-and-alerts.js';
-import { showConfirmModal } from './confirm-modals.js';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.76';
+import { showAlert, showCustomAlert } from './sound-and-alerts.js?v=3.0.76';
+import { showConfirmModal } from './confirm-modals.js?v=3.0.76';
 import {
     fetchEvents,
     fetchEventDetail,
@@ -19,7 +19,7 @@ import {
     joinDatetimeLocal,
     formatEventDate,
     formatTime,
-} from '../domain/event-management.js';
+} from '../domain/event-management.js?v=3.0.76';
 
 /**
  * Setup function — kaldt én gang fra admin-flow.js.
@@ -884,4 +884,9 @@ export function setupEventAdminModule(config) {
     // Window hook (called from shell-and-theme.js)
     // ========================================================================
     window.__flangoOpenEventAdmin = openEventAdmin;
+    window.__flangoOpenEventDetail = (eventId) => {
+        openEventAdmin();
+        // Small delay to let modal render, then navigate to detail
+        setTimeout(() => openEventDetail(eventId), 100);
+    };
 }

@@ -5,14 +5,14 @@ import {
     setUserBalanceDirectly,
     updateUserPin,
     updateUserBadgeLabel,
-} from '../domain/users-and-admin.js';
-import { parseBadgeList, formatBadgeList, renderSimpleBadgeDisplay } from '../domain/stats-and-badges.js';
-import { showAlert, showCustomAlert } from './sound-and-alerts.js';
-import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
-import { refetchUserBalance } from '../core/data-refetch.js';
-import { getCachedProfilePictureUrl, getProfilePictureUrl, invalidateProfilePictureCache, batchPreWarmProfilePictures } from '../core/profile-picture-cache.js';
-import { removeProfilePicture, fetchUserProfilePictures, applyProfilePicture } from '../core/profile-picture-utils.js';
-import { supabaseClient } from '../core/config-and-supabase.js';
+} from '../domain/users-and-admin.js?v=3.0.76';
+import { parseBadgeList, formatBadgeList, renderSimpleBadgeDisplay } from '../domain/stats-and-badges.js?v=3.0.76';
+import { showAlert, showCustomAlert } from './sound-and-alerts.js?v=3.0.76';
+import { updateCustomerBalanceGlobally } from '../core/balance-manager.js?v=3.0.76';
+import { refetchUserBalance } from '../core/data-refetch.js?v=3.0.76';
+import { getCachedProfilePictureUrl, getProfilePictureUrl, invalidateProfilePictureCache, batchPreWarmProfilePictures } from '../core/profile-picture-cache.js?v=3.0.76';
+import { removeProfilePicture, fetchUserProfilePictures, applyProfilePicture } from '../core/profile-picture-utils.js?v=3.0.76';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.76';
 
 function extractBalanceFromRpcData(data) {
     if (data == null) return null;
@@ -720,7 +720,7 @@ export function setupAdminUserManagerFromModule(config = {}) {
 
         // Wire add button
         section.querySelector('#pp-add-btn')?.addEventListener('click', async () => {
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.76');
             openProfilePictureModal(user, {
                 showCustomAlert,
                 onSaved: (updatedUser) => {
@@ -1013,6 +1013,7 @@ export function setupAdminUserManagerFromModule(config = {}) {
         ].filter(Boolean);
 
         const sourceUsers = getUsersSource();
+        // Filtrering på admin_apps, show_in_user_list, deactivated_at sker i get_cafe_users RPC
         let filteredUsers = sourceUsers.filter((user) => user.role === roleFilter);
         if (searchTerm) {
             filteredUsers = filteredUsers.filter(

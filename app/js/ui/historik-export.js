@@ -4,8 +4,8 @@ import {
   getClubStats, getTotalDeposits, getTotalBalances, getTopProducts,
   getTransactions, getAllBalances, getNegativeBalances,
   getDailySummary, getEmployeeSummary,
-} from '../domain/historik-data.js';
-import { showCustomAlert } from './sound-and-alerts.js';
+} from '../domain/historik-data.js?v=3.0.76';
+import { showCustomAlert } from './sound-and-alerts.js?v=3.0.76';
 
 /** Download en fil via Blob + createObjectURL. */
 function downloadFile(filename, content, mime = 'text/plain') {

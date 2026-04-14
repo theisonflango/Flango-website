@@ -1,8 +1,8 @@
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { rememberInstitution, clearSavedInstitution, ensureActiveInstitution, fetchInstitutions } from './institution-store.js';
-import { performLogin } from './auth-and-session.js';
-import { fetchAdminsForInstitution } from './users-and-admin.js';
-import { showScreen } from '../ui/shell-and-theme.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.76';
+import { rememberInstitution, clearSavedInstitution, ensureActiveInstitution, fetchInstitutions } from './institution-store.js?v=3.0.76';
+import { performLogin } from './auth-and-session.js?v=3.0.76';
+import { fetchAdminsForInstitution } from './users-and-admin.js?v=3.0.76';
+import { showScreen } from '../ui/shell-and-theme.js?v=3.0.76';
 
 const CLUB_LOGIN_CODE_KEY = 'flango_club_login_code';
 let lastClubLoginCode = null;
@@ -96,7 +96,6 @@ export async function setupLockedScreen(clubLoginCode = null) {
     const emailInput = document.getElementById('admin-email-input');
     const passwordInput = document.getElementById('admin-password-input');
     const loginBtn = document.getElementById('admin-login-btn');
-    const developerLoginBtn = document.getElementById('developer-login-btn');
     const errorEl = document.getElementById('locked-screen-error');
     const clubLabel = document.getElementById('active-club-label');
     const switchClubBtn = document.getElementById('switch-club-btn');
@@ -310,22 +309,4 @@ export async function setupLockedScreen(clubLoginCode = null) {
         }
     };
 
-    developerLoginBtn.onclick = async () => {
-        errorEl.textContent = '';
-        developerLoginBtn.disabled = true;
-        developerLoginBtn.textContent = 'Logger ind...';
-
-        const { success } = await performLogin('authadmin@flango.dk', '123456');
-
-        if (success) {
-            // Gem per-enhed restaurant mode valg før reload
-            const rmCb = document.getElementById('restaurant-mode-login-checkbox');
-            localStorage.setItem('flango_device_restaurant_mode', rmCb?.checked ? 'true' : 'false');
-            location.reload();
-        } else {
-            errorEl.textContent = 'Developer login fejlede. Er brugeren oprettet?';
-            developerLoginBtn.disabled = false;
-            developerLoginBtn.textContent = 'Developer Login';
-        }
-    };
 }

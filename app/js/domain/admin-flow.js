@@ -1,13 +1,13 @@
-import { showAlert, showCustomAlert, playSound } from '../ui/sound-and-alerts.js';
-import { setupCustomerSearchKeyboardNavigation } from '../ui/customer-picker.js';
-import { showAddUserModal, showBalanceModal } from '../ui/user-modals.js';
-import { createAdminUserActions } from '../ui/admin-user-actions.js';
-import { setupAdminUserManagerFromModule } from '../ui/admin-user-manager.js';
-import { setupEventAdminModule } from '../ui/event-admin.js';
-import { createParentPortalAdminUI } from '../ui/parent-portal-admin.js';
-import { mergeUsersWithParentNotifications } from './users-and-admin.js';
-import { runWithAuthRetry } from '../core/auth-retry.js';
-import { logAuditEvent } from '../core/audit-events.js';
+import { showAlert, showCustomAlert, playSound } from '../ui/sound-and-alerts.js?v=3.0.76';
+import { setupCustomerSearchKeyboardNavigation } from '../ui/customer-picker.js?v=3.0.76';
+import { showAddUserModal, showBalanceModal } from '../ui/user-modals.js?v=3.0.76';
+import { createAdminUserActions } from '../ui/admin-user-actions.js?v=3.0.76';
+import { setupAdminUserManagerFromModule } from '../ui/admin-user-manager.js?v=3.0.76';
+import { setupEventAdminModule } from '../ui/event-admin.js?v=3.0.76';
+import { createParentPortalAdminUI } from '../ui/parent-portal-admin.js?v=3.0.76';
+import { mergeUsersWithParentNotifications } from './users-and-admin.js?v=3.0.76';
+import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.76';
+import { logAuditEvent } from '../core/audit-events.js?v=3.0.76';
 
 export async function loadUsersAndNotifications({
     adminProfile,
@@ -66,13 +66,8 @@ export async function loadUsersAndNotifications({
     };
 
     const buildUsersQuery = () => {
-        // Hent altid alle brugere (både børn og admins) — filtrering sker i customer-picker
-        // baseret på per-admin show_in_user_list felt
-        return supabaseClient
-            .from('users')
-            .select('*, last_parent_login_at, parent_pin_is_custom')
-            .eq('institution_id', institutionId)
-            .order('name');
+        // Hent kun café-relevante brugere (børn + café-admins, ekskl. deaktiverede og skjulte)
+        return supabaseClient.rpc('get_cafe_users', { p_institution_id: institutionId });
     };
 
     const buildNotificationsQuery = () => supabaseClient

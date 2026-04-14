@@ -1,27 +1,27 @@
 // Tema og shell-funktioner
-import { getCurrentClerk, getCurrentAdmin, isCurrentUserAdmin, getInstitutionId } from '../domain/session-store.js';
-import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js';
-import { setupHelpModule, openHelpManually } from './help.js';
-import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js';
-import { getCurrentCustomer } from '../domain/cafe-session-store.js';
-import { getOrder } from '../domain/order-store.js';
-import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js';
-import { logAuditEvent } from '../core/audit-events.js';
+import { getCurrentClerk, getCurrentAdmin, isCurrentUserAdmin, getInstitutionId } from '../domain/session-store.js?v=3.0.76';
+import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js?v=3.0.76';
+import { setupHelpModule, openHelpManually } from './help.js?v=3.0.76';
+import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js?v=3.0.76';
+import { getCurrentCustomer } from '../domain/cafe-session-store.js?v=3.0.76';
+import { getOrder } from '../domain/order-store.js?v=3.0.76';
+import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js?v=3.0.76';
+import { logAuditEvent } from '../core/audit-events.js?v=3.0.76';
 import {
     initThemeLoader,
     switchTheme as themePackSwitchTheme,
     getCurrentTheme,
     isThemePackTheme,
     ALL_VALID_THEMES
-} from './theme-loader.js';
-import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js';
-import { updateInstitutionCache } from '../domain/institution-store.js';
-import { showCustomAlert } from './sound-and-alerts.js';
-import { refetchAllProducts } from '../core/data-refetch.js';
-import { invalidateAllLimitCaches } from '../domain/purchase-limits.js';
-import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js';
-import { openAulaImportModal } from './aula-import-modal.js';
-import { openUserAdminPanel, openParentPortalAsAdmin } from './user-admin-panel.js';
+} from './theme-loader.js?v=3.0.76';
+import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js?v=3.0.76';
+import { updateInstitutionCache } from '../domain/institution-store.js?v=3.0.76';
+import { showCustomAlert } from './sound-and-alerts.js?v=3.0.76';
+import { refetchAllProducts } from '../core/data-refetch.js?v=3.0.76';
+import { invalidateAllLimitCaches } from '../domain/purchase-limits.js?v=3.0.76';
+import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js?v=3.0.76';
+import { openAulaImportModal } from './aula-import-modal.js?v=3.0.76';
+import { openUserAdminPanel, openParentPortalAsAdmin } from './user-admin-panel.js?v=3.0.76';
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 
@@ -48,89 +48,18 @@ const sugarPolicyState = {
 const VALID_THEMES = ALL_VALID_THEMES;
 
 function setFlangoTheme(themeName) {
-    if (!VALID_THEMES.includes(themeName)) {
-        themeName = 'default';
-    }
-
-    // For theme-pack themes (like flango-unstoppable), use the theme loader
-    // which will reload the page to swap CSS files
-    const currentTheme = getCurrentTheme();
-    if (isThemePackTheme(themeName) || isThemePackTheme(currentTheme)) {
-        themePackSwitchTheme(themeName);
-        return; // Page will reload for theme-pack themes
-    }
-
-    // For non-theme-pack themes (default, pastel-pop, pos-pro)
-    document.body.dataset.theme = themeName;
-    localStorage.setItem(THEME_STORAGE_KEY, themeName);
-
-    // Update all theme radio buttons
-    VALID_THEMES.forEach(theme => {
-        const radio = document.getElementById(`theme-${theme}`);
-        if (radio) {
-            radio.checked = themeName === theme;
-        }
-    });
+    // Only klart is active — ignore other themes
+    if (themeName !== 'klart') return;
+    themePackSwitchTheme('klart');
 }
 
 export function initFlangoTheme() {
-    // Use the theme loader which handles both regular themes and theme-packs
     initThemeLoader();
-
-    // Update radio buttons to match current theme
-    const currentTheme = getCurrentTheme();
-    VALID_THEMES.forEach(theme => {
-        const radio = document.getElementById(`theme-${theme}`);
-        if (radio) {
-            radio.checked = currentTheme === theme;
-        }
-    });
 }
 
 export function setupThemePickerUI() {
-    const openThemePickerBtn = document.getElementById('open-theme-picker');
-    const themePickerBackdrop = document.getElementById('theme-picker-backdrop');
-    const themePickerCloseBtn = document.getElementById('theme-picker-close');
-
-    if (!openThemePickerBtn || !themePickerBackdrop || !themePickerCloseBtn) {
-        console.warn('Tema-picker elementer ikke fundet i DOM');
-        return;
-    }
-
-    openThemePickerBtn.addEventListener('click', () => {
-        const currentThemeValue = getCurrentTheme();
-        // Update all theme radios
-        VALID_THEMES.forEach(theme => {
-            const radio = document.getElementById(`theme-${theme}`);
-            if (radio) {
-                radio.checked = currentThemeValue === theme;
-            }
-        });
-
-        themePickerBackdrop.style.display = 'flex';
-    });
-
-    themePickerCloseBtn.addEventListener('click', () => {
-        themePickerBackdrop.style.display = 'none';
-    });
-
-    themePickerBackdrop.addEventListener('click', (event) => {
-        if (event.target === themePickerBackdrop) {
-            themePickerBackdrop.style.display = 'none';
-        }
-    });
-
-    // Set up listeners for all theme radios
-    VALID_THEMES.forEach(theme => {
-        const radio = document.getElementById(`theme-${theme}`);
-        if (radio) {
-            radio.addEventListener('change', () => {
-                if (radio.checked) {
-                    setFlangoTheme(theme);
-                }
-            });
-        }
-    });
+    // Theme picker is no longer used — Klart is the only active theme.
+    // Theme selection is handled in settings modal (Udseende section).
 }
 
 // isCurrentUserAdmin is imported from session-store.js
@@ -592,7 +521,7 @@ function renderProductRulesTable() {
         }
         tdIcon.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const { openProductIconPicker } = await import('./product-icon-picker.js');
+            const { openProductIconPicker } = await import('./product-icon-picker.js?v=3.0.76');
             openProductIconPicker({
                 mode: 'product',
                 institutionId: productRulesState.institutionId,
@@ -1737,7 +1666,7 @@ async function openProfilePictureSettingsModal() {
     // Choose default image button — open profile picture modal in "default" mode
     if (defaultImageChooseBtn) {
         defaultImageChooseBtn.onclick = async () => {
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.76');
             // Use a fake user object for the default image
             const fakeUser = { id: '__default__', name: 'Standard billede', institution_id: institutionId };
             openProfilePictureModal(fakeUser, {
@@ -5273,13 +5202,13 @@ export function setupToolbarHistoryButton() {
     historyBtn.onclick = async (event) => {
         event.preventDefault();
         try {
-            const { openHistorikV3 } = await import('./historik-v3.js');
+            const { openHistorikV3 } = await import('./historik-v3.js?v=3.0.76');
             openHistorikV3();
         } catch (err) {
             console.error('Kunne ikke åbne Historik v3:', err);
             // Fallback til v2
             try {
-                const { openHistorikModal } = await import('./historik-modal.js');
+                const { openHistorikModal } = await import('./historik-modal.js?v=3.0.76');
                 openHistorikModal();
             } catch (err2) {
                 console.error('Kunne ikke åbne Historik v2:', err2);

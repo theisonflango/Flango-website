@@ -1,6 +1,6 @@
-import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
-import { refetchUserBalance } from '../core/data-refetch.js';
-import { logAuditEvent } from '../core/audit-events.js';
+import { updateCustomerBalanceGlobally } from '../core/balance-manager.js?v=3.0.76';
+import { refetchUserBalance } from '../core/data-refetch.js?v=3.0.76';
+import { logAuditEvent } from '../core/audit-events.js?v=3.0.76';
 
 function extractBalanceFromRpcData(data) {
     if (data == null) return null;
@@ -197,7 +197,7 @@ export function createAdminUserActions(options = {}) {
             if (salesCount > 0) parts.push(`${salesCount} salg`);
             if (eventsCount > 0) parts.push(`${eventsCount} events`);
             if (rd.user_daily_stats > 0) parts.push(`${rd.user_daily_stats} statistik-rækker`);
-            showAlert(parts.join(' · '));
+            showCustomAlert('Bruger slettet', parts.join(' · '));
             console.log('[handleDeleteUser] Deletion receipt:', receipt);
         }
 

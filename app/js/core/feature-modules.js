@@ -68,8 +68,8 @@
     profile_pic_ai: [
       'profile_pictures_ai_enabled',
     ],
-    profile_pic_ai_openai: [],  // Sub-flag: OpenAI DALL·E provider
-    profile_pic_ai_flux: [],    // Sub-flag: Black Forest Labs FLUX 2 provider
+    profile_pic_ai_openai: ['ai_provider_openai'],
+    profile_pic_ai_flux: ['ai_provider_flux'],
     profile_pic_library: [],
     // Profilbilleder master + ikon-deling
     profile_pictures: ['profile_pictures_enabled'],
@@ -199,10 +199,13 @@
     return isModuleLocked(flags, moduleKey) ? 'forced' : 'unlocked';
   }
   function isModuleForcedOff(flags, moduleKey) {
-    return isModuleLocked(flags, moduleKey);
+    // Locked = admin kan ikke ændre (enforced server-side via trigger).
+    // Det betyder IKKE at featuren er slået fra — on/off lever i institutions-tabellen.
+    return false;
   }
   function isModuleForcedOn(flags, moduleKey) {
-    return isModuleLocked(flags, moduleKey);
+    // Locked = admin kan ikke ændre. Ikke at featuren er tvunget til.
+    return false;
   }
   function isModuleOff(flags, moduleKey) {
     return false; // Value lever nu i institutions-tabellen, ikke feature_flags

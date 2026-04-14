@@ -1,10 +1,10 @@
 // js/ui/theme-loader.js
-// Theme Pack Loader for Flango
-// Swaps between default CSS and theme-pack CSS files (Unstoppable, Klart)
+// Theme loader for Flango — consolidated to Klart as only active theme.
+// Aurora and Unstoppable CSS files are preserved on disk but not loaded.
 
 const THEME_STORAGE_KEY = 'flango-ui-theme';
 
-// CSS files that make up a complete theme-pack
+// CSS files that make up the Klart theme-pack
 const THEME_CSS_FILES = [
     'base.css',
     'layout.css',
@@ -18,34 +18,15 @@ const THEME_CSS_FILES = [
 // Mobile CSS is separate
 const MOBILE_CSS_FILE = 'mobile.css';
 
-// Themes that use a complete theme-pack (CSS file replacement)
+// All valid themes (Aurora/Unstoppable kept for reference but disabled in settings)
+const ALL_VALID_THEMES = ['klart', 'flango-unstoppable', 'aurora'];
 const THEME_PACK_THEMES = ['klart', 'flango-unstoppable', 'aurora'];
 
-// All valid themes
-const ALL_VALID_THEMES = ['klart', 'flango-unstoppable', 'aurora'];
-
 /**
- * Check if a theme uses a theme-pack (complete CSS replacement)
+ * Check if a theme uses a theme-pack
  */
 function isThemePackTheme(themeName) {
     return THEME_PACK_THEMES.includes(themeName);
-}
-
-/**
- * Get the CSS path for a theme
- * @param {string} themeName
- * @param {string} cssFile
- * @returns {string} Full path to CSS file
- */
-function getThemeCssPath(themeName, cssFile) {
-    if (isThemePackTheme(themeName)) {
-        return `css/themes/${themeName}/${cssFile}`;
-    }
-    // Default path
-    if (cssFile === MOBILE_CSS_FILE) {
-        return cssFile; // mobile.css is in root
-    }
-    return `css/${cssFile}`;
 }
 
 /**
@@ -61,79 +42,49 @@ function createCssLink(href, id) {
 }
 
 /**
- * Load theme-pack CSS files
- * Replaces the default CSS with theme-specific CSS
+ * Load Klart theme-pack CSS files
  */
-function loadThemePack(themeName) {
+function loadKlartThemePack() {
     const head = document.head;
 
     // Remove any existing theme-managed CSS
     document.querySelectorAll('link[data-theme-managed="true"]').forEach(el => el.remove());
 
-    // Also remove default CSS links if loading a theme-pack
-    if (isThemePackTheme(themeName)) {
-        // Find and disable default CSS
-        document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
-            const href = link.getAttribute('href') || '';
-            // Check if it's a default CSS file we need to replace
-            const isDefaultCss = THEME_CSS_FILES.some(file => href === `css/${file}`);
-            const isMobileCss = href === MOBILE_CSS_FILE;
-            const isThemeCss = href.includes('css/themes/') && !href.includes(themeName);
+    // Disable default CSS links
+    document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+        const href = link.getAttribute('href') || '';
+        const isDefaultCss = THEME_CSS_FILES.some(file => href === `css/${file}`);
+        const isMobileCss = href === MOBILE_CSS_FILE;
 
-            if (isDefaultCss || isMobileCss) {
-                link.dataset.originalCss = 'true';
-                link.disabled = true;
-            }
-
-            // Disable other theme CSS files
-            if (isThemeCss) {
-                link.disabled = true;
-            }
-        });
-
-        // Load theme-pack CSS files
-        THEME_CSS_FILES.forEach(file => {
-            const path = getThemeCssPath(themeName, file);
-            const link = createCssLink(path, `theme-${file.replace('.css', '')}`);
-            head.appendChild(link);
-        });
-
-        // Load theme-pack mobile CSS
-        const mobilePath = getThemeCssPath(themeName, MOBILE_CSS_FILE);
-        const mobileLink = createCssLink(mobilePath, 'theme-mobile');
-        head.appendChild(mobileLink);
-    } else {
-        // Re-enable default CSS for non-theme-pack themes
-        document.querySelectorAll('link[data-original-css="true"]').forEach(link => {
-            link.disabled = false;
-        });
-
-        // For pos-pro theme, make sure its CSS is loaded
-        if (themeName === 'pos-pro') {
-            const posPro = document.querySelector('link[href*="pos-pro.css"]');
-            if (posPro) posPro.disabled = false;
+        if (isDefaultCss || isMobileCss) {
+            link.dataset.originalCss = 'true';
+            link.disabled = true;
         }
-    }
+    });
+
+    // Load Klart CSS files
+    THEME_CSS_FILES.forEach(file => {
+        const path = `css/themes/klart/${file}`;
+        const link = createCssLink(path, `theme-${file.replace('.css', '')}`);
+        head.appendChild(link);
+    });
+
+    // Load Klart mobile CSS
+    const mobileLink = createCssLink(`css/themes/klart/${MOBILE_CSS_FILE}`, 'theme-mobile');
+    head.appendChild(mobileLink);
 }
 
 /**
- * Initialize theme on page load
+ * Initialize theme on page load — always Klart
  */
 export function initThemeLoader() {
-    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-    const themeName = ALL_VALID_THEMES.includes(savedTheme) ? savedTheme : 'klart';
-
-    // Set data-theme attribute
-    document.body.dataset.theme = themeName;
-
-    // Load theme-pack if needed
-    if (isThemePackTheme(themeName)) {
-        loadThemePack(themeName);
-    }
+    localStorage.setItem(THEME_STORAGE_KEY, 'klart');
+    document.body.dataset.theme = 'klart';
+    loadKlartThemePack();
 }
 
 /**
- * Switch to a different theme
+ * Theme change listeners (kept for API compatibility)
  */
 /** @type {Array<() => void>} */
 const themeChangeListeners = [];
@@ -142,36 +93,29 @@ export function onThemeChange(fn) {
     themeChangeListeners.push(fn);
 }
 
+/**
+ * Switch theme — only klart is accepted, others are ignored
+ */
 export function switchTheme(themeName) {
-    if (!ALL_VALID_THEMES.includes(themeName)) {
-        themeName = 'klart';
-    }
-
-    // Save to localStorage
-    localStorage.setItem(THEME_STORAGE_KEY, themeName);
-
-    // Update data-theme attribute
-    document.body.dataset.theme = themeName;
-
-    // Swap CSS dynamically — no reload needed
-    loadThemePack(themeName);
-
-    // Notify listeners (e.g. re-render header for new theme)
+    if (themeName !== 'klart') return; // Only klart is active
+    localStorage.setItem(THEME_STORAGE_KEY, 'klart');
+    document.body.dataset.theme = 'klart';
+    loadKlartThemePack();
     themeChangeListeners.forEach(fn => fn());
 }
 
 /**
- * Get current theme name
+ * Get current theme — always klart
  */
 export function getCurrentTheme() {
-    return document.body.dataset.theme || 'klart';
+    return 'klart';
 }
 
 /**
  * Check if current theme is a theme-pack
  */
 export function isCurrentThemePack() {
-    return isThemePackTheme(getCurrentTheme());
+    return true;
 }
 
 // Export for use in other modules

@@ -4,12 +4,12 @@
  * Sub-views: Upload, Camera, Library.
  */
 
-import { AVATAR_URLS } from './avatar-picker.js';
-import { processImageForProfilePicture, uploadProfilePicture, saveLibraryProfilePicture, fetchUserProfilePictures } from '../core/profile-picture-utils.js';
-import { getProfilePictureUrl, invalidateProfilePictureCache } from '../core/profile-picture-cache.js';
-import { escapeHtml } from '../core/escape-html.js';
-import { supabaseClient, SUPABASE_URL } from '../core/config-and-supabase.js';
-import { fetchInstitutionIconLibrary } from '../core/product-icon-utils.js';
+import { AVATAR_URLS } from './avatar-picker.js?v=3.0.76';
+import { processImageForProfilePicture, uploadProfilePicture, saveLibraryProfilePicture, fetchUserProfilePictures } from '../core/profile-picture-utils.js?v=3.0.76';
+import { getProfilePictureUrl, invalidateProfilePictureCache } from '../core/profile-picture-cache.js?v=3.0.76';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.76';
+import { supabaseClient, SUPABASE_URL } from '../core/config-and-supabase.js?v=3.0.76';
+import { fetchInstitutionIconLibrary } from '../core/product-icon-utils.js?v=3.0.76';
 
 /**
  * Open the profile picture modal for a given user.
@@ -25,24 +25,8 @@ export async function openProfilePictureModal(user, options = {}) {
 
     let allowedTypes = inst.profile_picture_types || ['upload', 'camera', 'library'];
 
-    // Feature flag enforcement: filtrer typer der er forced_off af superadmin
-    const FM = window.FeatureModules;
-    let _ffFlags = null;
-    if (FM && typeof window.PortalData?.getFeatureFlags === 'function') {
-      try { _ffFlags = await window.PortalData.getFeatureFlags(user.institution_id); } catch (e) { /* fail-open */ }
-    }
-    if (_ffFlags && FM) {
-      allowedTypes = allowedTypes.filter(type => {
-        const moduleKey = FM.PROFILE_PIC_MODULE_MAP[type];
-        return !moduleKey || !FM.isModuleForcedOff(_ffFlags, moduleKey);
-      });
-      // forced_on: sørg for at typen er med (admin kan ikke fjerne den)
-      for (const [type, moduleKey] of Object.entries(FM.PROFILE_PIC_MODULE_MAP)) {
-        if (FM.isModuleForcedOn(_ffFlags, moduleKey) && !allowedTypes.includes(type)) {
-          allowedTypes.push(type);
-        }
-      }
-    }
+    // On/off styres af institutions-felter (profile_picture_types array + ai_provider_* booleans).
+    // Lås-enforcement sker server-side via DB trigger (enforce_feature_locks_institutions).
 
     // Build overlay
     const overlay = document.createElement('div');
@@ -126,8 +110,8 @@ export async function openProfilePictureModal(user, options = {}) {
     const referenceImageUrl = options.referenceImageUrl || null;
 
     for (const tc of typeConfig) {
-        // Skip types not enabled by institution (except icons which always show)
-        if (tc.key !== 'icons' && !allowedTypes.includes(tc.key)) continue;
+        // Skip types not enabled by institution (except icons which always show, and ai_avatar which uses its own flag)
+        if (tc.key !== 'icons' && tc.key !== 'ai_avatar' && !allowedTypes.includes(tc.key)) continue;
         if (tc.requiresAi && !inst.profile_pictures_ai_enabled) {
             // Show as disabled with explanation
             const btn = document.createElement('button');
@@ -509,30 +493,36 @@ async function renderIconLibraryView(container, user, closeModal, onSaved) {
 
 // AI Avatar prompt presets
 const AI_AVATAR_BG = 'Plain warm beige background (#F5EDE0), smooth and uniform with no gradients or patterns.';
-const AI_AVATAR_HAT_PROMPT = `The person is wearing a white chef's toque (tall puffed chef hat) with a small orange Flango fruit logo embroidered on the headband. The hat matches the reference hat image exactly. Keep the hat prominent and clearly visible.`;
+const AI_AVATAR_HAT_PROMPT = `IMPORTANT: The person MUST be wearing a tall white classic chef's toque (traditional puffed chef hat, tall and cylindrical with pleats). The hat has a thin headband with a small orange fruit logo (an orange/tangerine). The chef hat must be prominent, clearly visible on top of the head, and take up significant space in the image. Do NOT skip the hat.`;
 const AI_AVATAR_HAT_PATH = 'Icons/webp/Function/Flango-Kokkehue.webp';
 const AI_AVATAR_HERO_PROMPT = `The person is depicted as a superhero. They wear a vibrant superhero cape and suit with the Flango orange fruit logo on the chest. Heroic confident pose, dynamic lighting with subtle glow effects. The costume colors should complement the person's features. Keep the face highly recognizable.`;
+
+const AI_AVATAR_AGE = 'CRITICAL: Preserve the exact age of the person — this is a child. Do NOT age them up or make them look older. Keep youthful proportions: rounder face, larger eyes relative to face, softer features. The result must look like a child, not a teenager or adult.';
 
 const AI_AVATAR_PRESETS = [
     {
         key: 'pixar',
         label: '🎬 Pixar',
-        prompt: `Create a Pixar-style 3D animated portrait based on the person in the photo. Closely match their actual facial structure, face shape, nose, jawline, hair color, hair style, eye color, eye shape, eyebrows, and skin tone. The character should be clearly recognizable as the same person. Use soft studio lighting, subtle subsurface scattering on skin. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        prompt: `Create a Pixar-style 3D animated portrait based on the person in the photo. Closely match their actual facial structure, face shape, nose, jawline, hair color, hair style, eye color, eye shape, eyebrows, and skin tone. The character should be clearly recognizable as the same person. ${AI_AVATAR_AGE} Use soft studio lighting, subtle subsurface scattering on skin. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        fluxPrompt: `Transform into a Pixar-style 3D animated character. Match features closely. ${AI_AVATAR_AGE} Soft studio lighting. ${AI_AVATAR_BG}`,
     },
     {
         key: 'clay',
         label: '🏺 Clay-figur',
-        prompt: `Create a 3D clay-animated portrait based on the person in the photo. Closely match their actual facial structure, face shape, hair color, hair style, eye color, skin tone, and expression. Rounded puffy shapes, smooth matte clay texture with visible soft material quality. The figurine should be clearly recognizable as the same person. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        prompt: `Create a 3D clay-animated portrait based on the person in the photo. Closely match their actual facial structure, face shape, hair color, hair style, eye color, skin tone, and expression. Rounded puffy shapes, smooth matte clay texture with visible soft material quality. The figurine should be clearly recognizable as the same person. ${AI_AVATAR_AGE} Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        fluxPrompt: `Transform into a 3D clay figurine. Rounded puffy shapes, smooth matte clay texture. Match features closely. ${AI_AVATAR_AGE} ${AI_AVATAR_BG}`,
     },
     {
         key: 'cartoon',
         label: '✏️ Tegneserie',
-        prompt: `Create a cartoon-style portrait based on the person in the photo. Closely match their actual face shape, hair color, hair style, eye color, skin tone, and distinguishing features. Use clean outlines, vibrant but natural colors. The character should be clearly recognizable as the same person, not a generic cartoon. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        prompt: `Create a cartoon-style portrait based on the person in the photo. Closely match their actual face shape, hair color, hair style, eye color, skin tone, and distinguishing features. Use clean outlines, vibrant but natural colors. The character should be clearly recognizable as the same person, not a generic cartoon. ${AI_AVATAR_AGE} Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        fluxPrompt: `Transform into a cartoon character. Clean outlines, vibrant colors. Match features closely, not a generic cartoon. ${AI_AVATAR_AGE} ${AI_AVATAR_BG}`,
     },
     {
         key: 'realistic',
         label: '🎨 Illustration',
-        prompt: `Create a semi-realistic digital illustration portrait based on the person in the photo. Closely match their actual facial proportions, face shape, hair color, hair style, eye color, skin tone, and expression. Soft painterly brush strokes, warm lighting, slightly stylized but highly recognizable. Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        prompt: `Create a semi-realistic digital illustration portrait based on the person in the photo. Closely match their actual facial proportions, face shape, hair color, hair style, eye color, skin tone, and expression. Soft painterly brush strokes, warm lighting, slightly stylized but highly recognizable. ${AI_AVATAR_AGE} Head-and-shoulders framing. ${AI_AVATAR_BG}`,
+        fluxPrompt: `Transform into a semi-realistic digital illustration. Soft painterly style, warm lighting. Match features closely. ${AI_AVATAR_AGE} ${AI_AVATAR_BG}`,
     },
 ];
 
@@ -540,6 +530,8 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
     let selectedPreset = AI_AVATAR_PRESETS[0];
     let advancedOpen = false;
     let customPrompt = selectedPreset.prompt;
+    let customFluxPrompt = selectedPreset.fluxPrompt || '';
+    let viewingProvider = 'openai'; // which prompt is shown in textarea
     let referenceBlob = window.__ppAiReferenceBlob || null;
     let hatEnabled = false;
     let heroEnabled = false;
@@ -619,6 +611,10 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
                         <span id="pp-ai-adv-arrow" style="display:inline-block;transition:transform 0.2s;">▶</span> Avanceret — redigér prompt
                     </button>
                     <div id="pp-ai-prompt-section" style="display:none;margin-top:8px;">
+                        <div style="display:flex;gap:4px;margin-bottom:6px;">
+                            <button type="button" class="pp-ai-provider-tab" data-provider="openai" style="flex:1;padding:5px 8px;border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.1);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;color:#10b981;">OpenAI</button>
+                            <button type="button" class="pp-ai-provider-tab" data-provider="flux" style="flex:1;padding:5px 8px;border:1px solid rgba(255,255,255,0.1);background:transparent;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;color:#94a3b8;">FLUX</button>
+                        </div>
                         <textarea id="pp-ai-prompt-textarea" style="width:100%;min-height:80px;padding:8px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-size:12px;font-family:inherit;resize:vertical;box-sizing:border-box;background:rgba(255,255,255,0.04);color:inherit;">${escapeHtml(selectedPreset.prompt)}</textarea>
                         <button type="button" id="pp-ai-reset-prompt" style="background:none;border:none;color:#1a8a6e;font-size:11px;cursor:pointer;padding:2px 0;margin-top:4px;">↺ Nulstil til preset</button>
                     </div>
@@ -650,7 +646,9 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
             if (!preset) return;
             selectedPreset = preset;
             customPrompt = preset.prompt;
-            if (promptTextarea) promptTextarea.value = preset.prompt;
+            customFluxPrompt = preset.fluxPrompt || '';
+            promptEdited = false;
+            if (promptTextarea) promptTextarea.value = viewingProvider === 'flux' ? customFluxPrompt : customPrompt;
             presetBtns.forEach(b => {
                 const isActive = b.dataset.preset === preset.key;
                 b.style.borderColor = isActive ? '#f59e0b' : 'rgba(255,255,255,0.1)';
@@ -672,11 +670,37 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
         if (promptSection) promptSection.style.display = advancedOpen ? 'block' : 'none';
     });
     let promptEdited = false;
-    promptTextarea?.addEventListener('input', () => { customPrompt = promptTextarea.value; promptEdited = true; });
+    promptTextarea?.addEventListener('input', () => {
+        if (viewingProvider === 'flux') {
+            customFluxPrompt = promptTextarea.value;
+        } else {
+            customPrompt = promptTextarea.value;
+        }
+        promptEdited = true;
+    });
     resetBtn?.addEventListener('click', () => {
         customPrompt = selectedPreset.prompt;
+        customFluxPrompt = selectedPreset.fluxPrompt || '';
         promptEdited = false;
-        if (promptTextarea) promptTextarea.value = selectedPreset.prompt;
+        if (promptTextarea) promptTextarea.value = viewingProvider === 'flux' ? customFluxPrompt : customPrompt;
+    });
+
+    // --- Provider tabs (switch prompt view) ---
+    const providerTabs = container.querySelectorAll('.pp-ai-provider-tab');
+    providerTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            viewingProvider = tab.dataset.provider;
+            providerTabs.forEach(t => {
+                const isActive = t.dataset.provider === viewingProvider;
+                const color = t.dataset.provider === 'flux' ? '#6366f1' : '#10b981';
+                t.style.borderColor = isActive ? `${color}66` : 'rgba(255,255,255,0.1)';
+                t.style.background = isActive ? `${color}1a` : 'transparent';
+                t.style.color = isActive ? color : '#94a3b8';
+            });
+            if (promptTextarea) {
+                promptTextarea.value = viewingProvider === 'flux' ? customFluxPrompt : customPrompt;
+            }
+        });
     });
 
     // --- Hat toggle ---
@@ -712,9 +736,9 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
 
         const photoUrl = URL.createObjectURL(blob);
 
-        // Check per-provider feature flags
-        const showOpenAI = !(_ffFlags && FM && FM.isModuleForcedOff(_ffFlags, 'profile_pic_ai_openai'));
-        const showFlux = !(_ffFlags && FM && FM.isModuleForcedOff(_ffFlags, 'profile_pic_ai_flux'));
+        // Check institution DB fields for provider availability
+        const showOpenAI = inst.ai_provider_openai !== false; // default true
+        const showFlux = !!inst.ai_provider_flux; // default false
 
         const providerButtons = [];
         if (showOpenAI) providerButtons.push(`<button class="profile-pic-btn profile-pic-btn-primary" id="pp-ai-generate-openai" style="background:linear-gradient(135deg,#10b981,#059669);flex:1;">Generer (OpenAI)</button>`);
@@ -759,8 +783,9 @@ function renderAiAvatarView(container, user, inst, closeModal, onSaved, setStrea
             if (!token) throw new Error('Ikke logget ind');
             const adminUserId = session?.user?.id;
 
-            // Build prompt with optional hat instructions
-            let finalPrompt = customPrompt || '';
+            // Build prompt: use the correct prompt for the chosen provider
+            let basePrompt = provider === 'flux' ? (customFluxPrompt || selectedPreset.fluxPrompt || '') : (customPrompt || '');
+            let finalPrompt = basePrompt;
             if (hatEnabled) {
                 finalPrompt += '\n' + AI_AVATAR_HAT_PROMPT;
             }

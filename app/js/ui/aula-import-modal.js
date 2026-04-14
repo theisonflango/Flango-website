@@ -9,11 +9,11 @@
  *  3. Fuzzy: fornavn med bindestreg/mellemrum-normalisering + klassetrin → kræver godkendelse
  */
 
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { getInstitutionId } from '../domain/session-store.js';
-import { processImageForProfilePicture, uploadProfilePicture, saveToLibrary } from '../core/profile-picture-utils.js';
-import { invalidateProfilePictureCache } from '../core/profile-picture-cache.js';
-import { runWithAuthRetry } from '../core/auth-retry.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.76';
+import { getInstitutionId } from '../domain/session-store.js?v=3.0.76';
+import { processImageForProfilePicture, uploadProfilePicture, saveToLibrary } from '../core/profile-picture-utils.js?v=3.0.76';
+import { invalidateProfilePictureCache } from '../core/profile-picture-cache.js?v=3.0.76';
+import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.76';
 
 const BUCKET = 'profile-pictures';
 
@@ -124,16 +124,12 @@ export async function openAulaImportModal() {
     const institutionId = getInstitutionId();
     if (!institutionId) return;
 
-    // Feature flag check: profile_pic_upload forced_off → bloker Aula-import
-    const FM = window.FeatureModules;
-    if (FM && typeof window.PortalData?.getFeatureFlags === 'function') {
-      try {
-        const flags = await window.PortalData.getFeatureFlags(institutionId);
-        if (FM.isModuleForcedOff(flags, 'profile_pic_upload')) {
-          alert('Aula-import er deaktiveret af administrator.');
-          return;
-        }
-      } catch (e) { /* fail-open */ }
+    // Check om upload er aktiveret for institutionen
+    const inst = window.__flangoGetInstitutionById?.(institutionId);
+    const types = inst?.profile_picture_types || ['upload', 'camera', 'library'];
+    if (!types.includes('upload')) {
+        alert('Upload af profilbilleder er ikke aktiveret for denne institution.');
+        return;
     }
 
     const { data: users, error } = await supabaseClient

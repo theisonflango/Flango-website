@@ -1,13 +1,16 @@
 // js/core/version-check.js
 // Version check and update notification system
 
-import { FLANGO_VERSION } from './config-and-supabase.js';
-import { showCustomAlert } from '../ui/sound-and-alerts.js';
+import { FLANGO_VERSION } from './config-and-supabase.js?v=3.0.76';
+import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.76';
 
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutter
 const CACHE_PROBLEM_THRESHOLD = 24 * 60 * 60 * 1000; // 24 timer
 const UPDATE_FIRST_SEEN_KEY = 'flango_update_first_seen';
 const UPDATE_VERSION_KEY = 'flango_update_version';
+const AUTO_REFRESH_KEY = 'flango_last_auto_refresh';
+const BANNER_SHOWN_KEY = 'flango_update_banner_shown'; // sessionStorage
+const BANNER_AUTO_DISMISS = 30 * 1000; // 30 sekunder
 
 let checkIntervalId = null;
 let latestRemoteVersion = null;
@@ -62,6 +65,68 @@ async function fetchRemoteVersion() {
 }
 
 /**
+ * Vis opdateringsbanner øverst i viewporten
+ */
+function showUpdateBanner(version, isCacheProblem) {
+    // Fjern evt. eksisterende banner
+    const existing = document.getElementById('flango-update-banner');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.id = 'flango-update-banner';
+    banner.style.cssText = `
+        position:fixed;top:0;left:0;right:0;z-index:999999;
+        background:linear-gradient(135deg,#1e293b 0%,#334155 100%);
+        border-bottom:2px solid #f59e0b;
+        padding:14px 20px;display:flex;align-items:center;justify-content:center;gap:16px;
+        font-family:system-ui,sans-serif;font-size:14px;color:#e2e8f0;
+        box-shadow:0 4px 20px rgba(0,0,0,0.4);animation:slideDown 0.3s ease-out;
+    `;
+
+    const msg = isCacheProblem
+        ? `⚠️ Din version er forældet (v${FLANGO_VERSION} → v${version}). Opdater venligst nu.`
+        : `🔄 Ny version tilgængelig: v${version}`;
+
+    banner.innerHTML = `
+        <span>${msg}</span>
+        <button id="flango-update-now" style="
+            background:#f59e0b;color:#1e293b;border:none;border-radius:6px;
+            padding:8px 18px;font-weight:600;font-size:13px;cursor:pointer;
+            transition:background 0.15s;
+        ">Opdater nu</button>
+        <button id="flango-update-later" style="
+            background:rgba(255,255,255,0.1);color:#94a3b8;border:1px solid rgba(255,255,255,0.15);
+            border-radius:6px;padding:8px 14px;font-size:13px;cursor:pointer;
+            transition:background 0.15s;
+        ">Senere</button>
+    `;
+
+    // Inject animation keyframes
+    if (!document.getElementById('flango-update-banner-style')) {
+        const style = document.createElement('style');
+        style.id = 'flango-update-banner-style';
+        style.textContent = `@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}`;
+        document.head.appendChild(style);
+    }
+
+    document.body.appendChild(banner);
+
+    banner.querySelector('#flango-update-now').onclick = async () => {
+        banner.querySelector('#flango-update-now').textContent = 'Opdaterer...';
+        banner.querySelector('#flango-update-now').disabled = true;
+        await performFullRefresh();
+    };
+    banner.querySelector('#flango-update-later').onclick = () => {
+        banner.remove();
+    };
+
+    // Auto-dismiss efter 30 sek (falder tilbage til chip)
+    if (!isCacheProblem) {
+        setTimeout(() => { if (banner.parentNode) banner.remove(); }, BANNER_AUTO_DISMISS);
+    }
+}
+
+/**
  * Check for updates
  */
 async function checkForUpdates() {
@@ -96,6 +161,13 @@ async function checkForUpdates() {
 
     // Opdater UI
     updateChipVisibility();
+
+    // Vis banner én gang pr. session ved ny opdatering
+    if (updateAvailable && !sessionStorage.getItem(BANNER_SHOWN_KEY)) {
+        sessionStorage.setItem(BANNER_SHOWN_KEY, '1');
+        const isCacheProblem = detectCacheProblem();
+        showUpdateBanner(remoteData.version, isCacheProblem);
+    }
 
     return {
         hasUpdate: updateAvailable,
@@ -164,6 +236,7 @@ export async function performFullRefresh() {
             'flango_device_id_backup',       // Device UUID backup
             'flango-ui-theme',               // Tema-valg
             'flango_device_restaurant_mode', // Restaurant mode preference
+            'flango_last_auto_refresh',      // Anti-loop guard for auto-refresh
         ];
         const allKeys = Object.keys(localStorage);
 
@@ -347,9 +420,23 @@ function formatTime(timestamp) {
 /**
  * Start periodic version checking
  */
-export function startVersionChecking() {
+export async function startVersionChecking() {
     // Initial check
-    checkForUpdates();
+    await checkForUpdates();
+
+    // Auto-refresh ved cache-problem (>24h gammel version) — kun ved app-start
+    if (detectCacheProblem()) {
+        const lastAutoRefresh = parseInt(localStorage.getItem(AUTO_REFRESH_KEY) || '0', 10);
+        const timeSinceLastRefresh = Date.now() - lastAutoRefresh;
+
+        // Max 1 auto-refresh pr. 24h for at undgå loop
+        if (timeSinceLastRefresh > CACHE_PROBLEM_THRESHOLD) {
+            console.warn('[version-check] Cache-problem: auto-refresh (version forældet >24h)');
+            localStorage.setItem(AUTO_REFRESH_KEY, Date.now().toString());
+            await performFullRefresh();
+            return; // performFullRefresh reloader siden
+        }
+    }
 
     // Periodic checks
     if (checkIntervalId) {

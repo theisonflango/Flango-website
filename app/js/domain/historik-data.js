@@ -1,7 +1,7 @@
 // Ansvar: Alle Supabase-queries til Historik v2.
 // Fase 1 — kun læser fra eksisterende tabeller, views og RPCs.
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { getInstitutionId, getCurrentAdmin } from './session-store.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.76';
+import { getInstitutionId, getCurrentAdmin } from './session-store.js?v=3.0.76';
 
 // ─── HJÆLPERE ───
 
@@ -100,7 +100,7 @@ export function periodRange(period) {
       break;
     }
     case 'altid': {
-      from = new Date('2020-01-01');
+      from = new Date('2025-12-08');
       break;
     }
     default: // 'idag'
@@ -572,34 +572,45 @@ async function getTopProductsFallback(from, to, limit, includeTestUsers = false)
       allItems = allItems.concat(items);
     }
 
-    // Hent produkt-info for emojis
+    // Hent produkt-info for emojis + daily special flag
     const productIds = [...new Set(allItems.map(i => i.product_id).filter(Boolean))];
     let productsMap = {};
+    const dailySpecialIds = new Set();
     if (productIds.length) {
       const { data: prods } = await supabaseClient
         .from('products')
-        .select('id, name, emoji, icon_url, icon_storage_path')
+        .select('id, name, emoji, icon_url, icon_storage_path, is_daily_special')
         .in('id', productIds);
-      (prods || []).forEach(p => { productsMap[p.id] = p; });
+      (prods || []).forEach(p => {
+        productsMap[p.id] = p;
+        if (p.is_daily_special) dailySpecialIds.add(p.id);
+      });
     }
 
-    // Aggreger
+    // Aggreger — samle daily specials under én "Dagens Ret" post
+    const DAILY_KEY = '__dagens_ret__';
     const agg = {};
     allItems.forEach(i => {
       const pid = i.product_id || 'unknown';
-      if (!agg[pid]) {
-        const prod = productsMap[pid];
-        agg[pid] = {
-          name: prod?.name || i.product_name_at_purchase || 'Ukendt',
-          emoji: prod?.emoji || '',
-          icon_url: prod?.icon_url || '',
-          icon_storage_path: prod?.icon_storage_path || '',
-          antal: 0,
-          beloeb: 0,
-        };
+      const isDailySpecial = dailySpecialIds.has(pid);
+      const key = isDailySpecial ? DAILY_KEY : pid;
+      if (!agg[key]) {
+        if (isDailySpecial) {
+          agg[key] = { name: 'Dagens Ret', emoji: '🍽️', icon_url: '', icon_storage_path: '', antal: 0, beloeb: 0 };
+        } else {
+          const prod = productsMap[pid];
+          agg[key] = {
+            name: prod?.name || i.product_name_at_purchase || 'Ukendt',
+            emoji: prod?.emoji || '',
+            icon_url: prod?.icon_url || '',
+            icon_storage_path: prod?.icon_storage_path || '',
+            antal: 0,
+            beloeb: 0,
+          };
+        }
       }
-      agg[pid].antal += Number(i.quantity || 0);
-      agg[pid].beloeb += Number(i.quantity || 0) * Number(i.price_at_purchase || 0);
+      agg[key].antal += Number(i.quantity || 0);
+      agg[key].beloeb += Number(i.quantity || 0) * Number(i.price_at_purchase || 0);
     });
 
     return Object.values(agg)
@@ -617,7 +628,7 @@ export async function getDailyClerks(from, to, includeTestUsers = false) {
     const rawRows = await fetchAllRows(() =>
       supabaseClient
         .from('sales')
-        .select('id, total_amount, clerk_user_id, admin_user_id, customer_id')
+        .select('id, total_amount, clerk_user_id, admin_user_id, customer_id, clerk_name, admin_name')
         .eq('institution_id', instId())
         .gte('created_at', from.toISOString())
         .lte('created_at', to.toISOString())
@@ -629,7 +640,7 @@ export async function getDailyClerks(from, to, includeTestUsers = false) {
     rows.forEach(s => {
       const uid = s.clerk_user_id || s.admin_user_id;
       if (!uid) return;
-      if (!byUser[uid]) byUser[uid] = { userId: uid, saleCount: 0, revenue: 0 };
+      if (!byUser[uid]) byUser[uid] = { userId: uid, saleCount: 0, revenue: 0, snapshotName: s.clerk_user_id ? s.clerk_name : s.admin_name };
       byUser[uid].saleCount++;
       byUser[uid].revenue += Number(s.total_amount || 0);
     });
@@ -663,7 +674,7 @@ export async function getDailyClerks(from, to, includeTestUsers = false) {
     return Object.values(byUser)
       .map(b => ({
         ...b,
-        name: usersMap[b.userId]?.name || 'Ukendt',
+        name: usersMap[b.userId]?.name || b.snapshotName || 'Ukendt',
         role: usersMap[b.userId]?.role || 'kunde',
         minutes: statsMap[b.userId] || 0,
       }))
@@ -686,7 +697,8 @@ export async function getTransactions(from, to, includeTestUsers = false) {
       .select(`
         id, created_at, event_type, details,
         session_admin_id, session_admin_name,
-        target_user_id, clerk_user_id, admin_user_id
+        target_user_id, clerk_user_id, admin_user_id,
+        admin_name, target_name, clerk_name
       `)
       .eq('institution_id', instId())
       .gte('created_at', from.toISOString())
@@ -718,9 +730,9 @@ export async function getTransactions(from, to, includeTestUsers = false) {
 
   let results = data.map(e => ({
     ...e,
-    target: usersMap[e.target_user_id] || null,
-    clerk: usersMap[e.clerk_user_id] || null,
-    admin: usersMap[e.admin_user_id] || null,
+    target: usersMap[e.target_user_id] || (e.target_name ? { name: e.target_name } : null),
+    clerk: usersMap[e.clerk_user_id] || (e.clerk_name ? { name: e.clerk_name } : null),
+    admin: usersMap[e.admin_user_id] || (e.admin_name ? { name: e.admin_name } : null),
   }));
 
   if (!includeTestUsers) {
@@ -1101,7 +1113,7 @@ export async function getTopClerks(from, to, limit = 5, includeTestUsers = false
     const rawRows = await fetchAllRows(() =>
       supabaseClient
         .from('sales')
-        .select('id, total_amount, clerk_user_id, customer_id')
+        .select('id, total_amount, clerk_user_id, customer_id, clerk_name')
         .eq('institution_id', instId())
         .not('clerk_user_id', 'is', null)
         .gte('created_at', from.toISOString())
@@ -1124,7 +1136,7 @@ export async function getTopClerks(from, to, limit = 5, includeTestUsers = false
     rows.forEach(s => {
       const u = usersMap[s.clerk_user_id];
       if (!u || u.role !== 'kunde') return;
-      if (!agg[s.clerk_user_id]) agg[s.clerk_user_id] = { name: u.name, antal_salg: 0, beloeb: 0 };
+      if (!agg[s.clerk_user_id]) agg[s.clerk_user_id] = { name: u.name || s.clerk_name || 'Ukendt', antal_salg: 0, beloeb: 0 };
       agg[s.clerk_user_id].antal_salg++;
       agg[s.clerk_user_id].beloeb += Number(s.total_amount || 0);
     });
@@ -1142,7 +1154,7 @@ export async function getTopCustomers(from, to, limit = 5, includeTestUsers = fa
     const rawRows = await fetchAllRows(() =>
       supabaseClient
         .from('sales')
-        .select('id, total_amount, customer_id')
+        .select('id, total_amount, customer_id, customer_name')
         .eq('institution_id', instId())
         .not('customer_id', 'is', null)
         .gte('created_at', from.toISOString())
@@ -1162,7 +1174,7 @@ export async function getTopCustomers(from, to, limit = 5, includeTestUsers = fa
 
     const agg = {};
     rows.forEach(s => {
-      if (!agg[s.customer_id]) agg[s.customer_id] = { name: usersMap[s.customer_id]?.name || 'Ukendt', antal_koeb: 0, forbrugt: 0 };
+      if (!agg[s.customer_id]) agg[s.customer_id] = { name: usersMap[s.customer_id]?.name || s.customer_name || 'Ukendt', antal_koeb: 0, forbrugt: 0 };
       agg[s.customer_id].antal_koeb++;
       agg[s.customer_id].forbrugt += Number(s.total_amount || 0);
     });

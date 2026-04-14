@@ -1,8 +1,8 @@
 // Domain-lag: Arrangementer (club_events, event_registrations, event_payments)
 // Alle Supabase-kald og RPC-wrappere for tilmeldingsmodulet.
 
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { getCurrentSessionAdmin } from './session-store.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.76';
+import { getCurrentSessionAdmin } from './session-store.js?v=3.0.76';
 
 // ============================================================================
 // Helpers: datetime-local ↔ (event_date, start_time / end_time) konvertering
@@ -294,3 +294,14 @@ export function checkClassMatch(userGradeLevel, allowedClasses) {
     }
     return { match: true, reason: null };
 }
+
+// ============================================================================
+// Bridge: Expose functions for non-module consumers (settings-sections.js IIFE)
+// ============================================================================
+
+window.__flangoEventMgmt = {
+    fetchEvents, fetchEventDetail, createEvent, updateEvent,
+    registerUserForEvent, cancelRegistration, payRegistration,
+    cancelEventWithRefunds, checkClassMatch, fetchInstitutionBalanceLimit,
+    formatEventDate, formatTime, splitDatetimeLocal, joinDatetimeLocal,
+};

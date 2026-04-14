@@ -2,14 +2,15 @@
 // UI update funktioner fra app-main.js
 // Refactored to accept dependencies as parameters instead of using closures
 
-import { getCurrentSessionAdmin } from './session-store.js';
-import { getCurrentTheme } from '../ui/theme-loader.js';
-import { getCurrentCustomer } from './cafe-session-store.js';
-import { getOrderTotal } from './order-store.js';
-import { getFinancialState } from './cafe-session-store.js';
-import { calculateLevel } from './statistics-data.js';
-import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js';
-import { renderKlartTotalDivider } from './order-ui.js';
+import { getCurrentSessionAdmin } from './session-store.js?v=3.0.76';
+// getCurrentTheme always returns 'klart' — kept for reference but no longer checked
+// import { getCurrentTheme } from '../ui/theme-loader.js?v=3.0.76';
+import { getCurrentCustomer } from './cafe-session-store.js?v=3.0.76';
+import { getOrderTotal } from './order-store.js?v=3.0.76';
+import { getFinancialState } from './cafe-session-store.js?v=3.0.76';
+import { calculateLevel } from './statistics-data.js?v=3.0.76';
+import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js?v=3.0.76';
+import { renderKlartTotalDivider } from './order-ui.js?v=3.0.76';
 
 /**
  * Deselect user function - exposed via window for use in UI
@@ -40,184 +41,84 @@ export function updateLoggedInUserDisplay(clerkProfile, avatarCache, constants) 
     const clerkName = clerkProfile?.name || adultName;
     userDisplay.textContent = `👤 ${clerkName}  |  🔐 ${adultName}`;
 
-    // --- Cleanup: remove ALL theme-specific elements before rendering current theme ---
-    if (sessionBanner) {
-        sessionBanner.querySelectorAll('.session-sticky-note').forEach(el => el.remove());
-    }
+    // --- Cleanup: remove previous klart elements before re-rendering ---
     const header = document.querySelector('.sidebar-main-header');
     if (header) {
-        header.querySelectorAll('.aurora-institution-info, .aurora-user-info, .klart-institution-info, .klart-user-info, .klart-session-cards').forEach(el => el.remove());
+        header.querySelectorAll('.klart-institution-info, .klart-user-info, .klart-session-cards').forEach(el => el.remove());
     }
-    // Reset visibility (Aurora/Klart hide these)
-    if (userDisplay) userDisplay.style.display = '';
-    if (sessionBanner) sessionBanner.style.display = '';
 
-    // Create sticky notes only for Unstoppable theme
-    if (sessionBanner && getCurrentTheme() === 'flango-unstoppable') {
+    // Klart theme: user info in header-actions
+    if (userDisplay) userDisplay.style.display = 'none';
+    if (sessionBanner) sessionBanner.style.display = 'none';
 
-        // Create clerk sticky note — show first name + level stars/crown
+    if (header) {
+        // Institution info — left side of header
+        const institutionName = localStorage.getItem('flango_institution_name') || '';
+
+        const instInfo = document.createElement('div');
+        instInfo.className = 'klart-institution-info';
+        instInfo.innerHTML = `
+            <div class="klart-inst-icon">🏠</div>
+            <div class="klart-inst-text">
+                <div class="klart-inst-name">${institutionName}</div>
+                <div class="klart-inst-meta">Flango System</div>
+            </div>
+        `;
+        header.insertBefore(instInfo, header.firstChild);
+
+        // Clerk and Adult info in header-actions (before avatar)
         const clerkFirstName = clerkName.split(' ')[0];
         const clerkLevel = calculateLevel(
             clerkProfile?.total_minutes_worked || 0,
             clerkProfile?.total_sales_count || 0
         );
-        const levelIndicator = clerkLevel.stars ? ` ${clerkLevel.stars}` : '';
-        const clerkNote = document.createElement('div');
-        clerkNote.className = 'session-sticky-note clerk-note';
-        clerkNote.innerHTML = `
-            <div class="sticky-label">Ekspedient:</div>
-            <div class="sticky-name">${clerkFirstName}${levelIndicator}</div>
+        const starsHtml = clerkLevel.stars ? `<span class="klart-stars">${clerkLevel.stars}</span>` : '';
+
+        const userInfo = document.createElement('div');
+        userInfo.className = 'klart-user-info';
+        userInfo.innerHTML = `
+            <div class="klart-user-role">
+                <div class="klart-role-label">Ekspedient</div>
+                <div class="klart-role-name">${clerkFirstName} ${starsHtml}</div>
+            </div>
+            <div class="klart-user-role klart-adult-role">
+                <div class="klart-role-label">🔐 Ansvarlig</div>
+                <div class="klart-role-name">${adultName}</div>
+            </div>
         `;
 
-        // Create adult sticky note
-        const adultNote = document.createElement('div');
-        adultNote.className = 'session-sticky-note adult-note';
-        adultNote.innerHTML = `
-            <div class="sticky-label">🔐 Voksen:</div>
-            <div class="sticky-name">${adultName}</div>
-        `;
+        const headerActions = header.querySelector('.header-actions');
+        if (headerActions) {
+            const avatarBtn = headerActions.querySelector('#logged-in-user-avatar-container');
+            if (avatarBtn) {
+                headerActions.insertBefore(userInfo, avatarBtn);
+            } else {
+                headerActions.prepend(userInfo);
+            }
+        }
 
-        sessionBanner.appendChild(clerkNote);
-        sessionBanner.appendChild(adultNote);
-
-        // Reposition shift-timer pill between clerk and adult notes (if it exists)
+        // Move shift-timer pill into header-actions
         const shiftTimerPill = document.getElementById('shift-timer-pill');
-        if (shiftTimerPill) {
-            sessionBanner.insertBefore(shiftTimerPill, adultNote);
-        }
-    
-    } else if (sessionBanner && getCurrentTheme() === 'aurora') {
-        userDisplay.style.display = 'none';
-        sessionBanner.style.display = 'none';
-
-        if (header) {
-
-            const institutionName = localStorage.getItem('flango_institution_name') || '';
-            const isClerkMode = clerkProfile?.role !== 'admin';
-            
-            // Get level and stars
-            const minutes = clerkProfile?.total_minutes_worked || 0;
-            const sales = clerkProfile?.total_sales_count || 0;
-            const levelInfo = typeof calculateLevel === 'function' ? calculateLevel(minutes, sales) : { name: 'Nybegynder', stars: '' };
-            const starsHtml = levelInfo.stars ? `<span class="aurora-stars">${levelInfo.stars}</span>` : '';
-
-            const instInfo = document.createElement('div');
-            instInfo.className = 'aurora-institution-info';
-            instInfo.innerHTML = `
-                <div class="aurora-inst-icon">🏢</div>
-                <div class="aurora-inst-text">
-                    <div class="aurora-inst-name">${institutionName}</div>
-                    <div class="aurora-inst-meta">Flango System</div>
-                </div>
-            `;
-            header.insertBefore(instInfo, header.firstChild);
-
-            // Clerk and Adult info next to avatar
-            const userInfo = document.createElement('div');
-            userInfo.className = 'aurora-user-info';
-            userInfo.innerHTML = `
-                <div class="aurora-user-role">
-                    <div class="aurora-role-label">Ekspedient</div>
-                    <div class="aurora-role-name">${clerkName} ${starsHtml}</div>
-                </div>
-                <div class="aurora-user-role adult-role">
-                    <div class="aurora-role-label">🔐 Ansvarlig</div>
-                    <div class="aurora-role-name">${adultName}</div>
-                </div>
-            `;
-            
-            const headerActions = header.querySelector('.header-actions');
-            if (headerActions) {
-                const avatarBtn = headerActions.querySelector('#logged-in-user-avatar-container');
-                if (avatarBtn) {
-                    headerActions.insertBefore(userInfo, avatarBtn);
-                } else {
-                    headerActions.prepend(userInfo);
-                }
-            }
-
-            const shiftTimerPill = document.getElementById('shift-timer-pill');
-            if (shiftTimerPill && headerActions) {
-                // Sørg for at den ligger pænt blandt de andre action-knapper, fx før historik
-                const historyBtn = headerActions.querySelector('#toolbar-history-btn');
-                if (historyBtn) {
-                    headerActions.insertBefore(shiftTimerPill, historyBtn);
-                } else {
-                    headerActions.appendChild(shiftTimerPill);
-                }
-            }
-        }
-} else if (sessionBanner && getCurrentTheme() === 'klart') {
-        // Klart theme: same pattern as Aurora — user info in header-actions
-        userDisplay.style.display = 'none';
-        sessionBanner.style.display = 'none';
-
-        if (header) {
-            // Institution info — left side of header
-            const institutionName = localStorage.getItem('flango_institution_name') || '';
-
-            const instInfo = document.createElement('div');
-            instInfo.className = 'klart-institution-info';
-            instInfo.innerHTML = `
-                <div class="klart-inst-icon">🏠</div>
-                <div class="klart-inst-text">
-                    <div class="klart-inst-name">${institutionName}</div>
-                    <div class="klart-inst-meta">Flango System</div>
-                </div>
-            `;
-            header.insertBefore(instInfo, header.firstChild);
-
-            // Clerk and Adult info in header-actions (before avatar) — same as Aurora
-            const clerkFirstName = clerkName.split(' ')[0];
-            const clerkLevel = calculateLevel(
-                clerkProfile?.total_minutes_worked || 0,
-                clerkProfile?.total_sales_count || 0
-            );
-            const starsHtml = clerkLevel.stars ? `<span class="klart-stars">${clerkLevel.stars}</span>` : '';
-
-            const userInfo = document.createElement('div');
-            userInfo.className = 'klart-user-info';
-            userInfo.innerHTML = `
-                <div class="klart-user-role">
-                    <div class="klart-role-label">Ekspedient</div>
-                    <div class="klart-role-name">${clerkFirstName} ${starsHtml}</div>
-                </div>
-                <div class="klart-user-role klart-adult-role">
-                    <div class="klart-role-label">🔐 Ansvarlig</div>
-                    <div class="klart-role-name">${adultName}</div>
-                </div>
-            `;
-
-            const headerActions = header.querySelector('.header-actions');
-            if (headerActions) {
-                const avatarBtn = headerActions.querySelector('#logged-in-user-avatar-container');
-                if (avatarBtn) {
-                    headerActions.insertBefore(userInfo, avatarBtn);
-                } else {
-                    headerActions.prepend(userInfo);
-                }
-            }
-
-            // Move shift-timer pill into header-actions
-            const shiftTimerPill = document.getElementById('shift-timer-pill');
-            if (shiftTimerPill && headerActions) {
-                const historyBtn = headerActions.querySelector('#toolbar-history-btn');
-                if (historyBtn) {
-                    headerActions.insertBefore(shiftTimerPill, historyBtn);
-                } else {
-                    headerActions.appendChild(shiftTimerPill);
-                }
+        if (shiftTimerPill && headerActions) {
+            const historyBtn = headerActions.querySelector('#toolbar-history-btn');
+            if (historyBtn) {
+                headerActions.insertBefore(shiftTimerPill, historyBtn);
+            } else {
+                headerActions.appendChild(shiftTimerPill);
             }
         }
 
-        // Add "Ryd kurv" button to sidebar header
-        setupKlartClearCartButton();
-        // Add SVG icons to footer buttons
-        decorateKlartFooterButtons();
-        // Render initial empty total-divider
-        renderKlartTotalDivider([], 0);
-
+        // Place RM badge right after userInfo
+        const rmBadge = document.getElementById('restaurant-mode-badge');
+        if (rmBadge) userInfo.appendChild(rmBadge);
     }
+
+    // Add "Ryd kurv" button to sidebar header
+    setupKlartClearCartButton();
+    // Add SVG icons to footer buttons
+    decorateKlartFooterButtons();
+    // Render initial empty total-divider
+    renderKlartTotalDivider([], 0);
 
     const userId = clerkProfile.id;
     const storageKey = `${AVATAR_STORAGE_PREFIX}${userId}`;
@@ -357,96 +258,78 @@ export function updateSelectedUserInfo() {
             return box;
         };
 
-        const currentTheme = getCurrentTheme();
-        const isKlart = currentTheme === 'klart';
-        const isAurora = currentTheme === 'aurora';
-
         if (!selectedUser) {
             console.log('[app-main] No user selected - showing empty state');
-            if (isKlart) {
-                // Remove customer card from checkout-stack if present
-                document.querySelector('#checkout-stack .klart-customer-card')?.remove();
+            // Remove customer card from checkout-stack if present
+            document.querySelector('#checkout-stack .klart-customer-card')?.remove();
 
-                // Build empty card using exact same structure as selected customer
-                const checkoutStack = document.getElementById('checkout-stack');
-                if (checkoutStack && !checkoutStack.querySelector('.klart-customer-empty')) {
-                    const customerCard = document.createElement('div');
-                    customerCard.className = 'klart-customer-card klart-customer-empty';
+            // Build empty card using exact same structure as selected customer
+            const checkoutStack = document.getElementById('checkout-stack');
+            if (checkoutStack && !checkoutStack.querySelector('.klart-customer-empty')) {
+                const customerCard = document.createElement('div');
+                customerCard.className = 'klart-customer-card klart-customer-empty';
 
-                    const avatarWrap = document.createElement('div');
-                    avatarWrap.className = 'klart-customer-avatar-wrap';
-                    const avatarRing = document.createElement('div');
-                    avatarRing.className = 'klart-customer-avatar-ring klart-avatar-empty';
-                    avatarRing.textContent = '?';
-                    avatarWrap.appendChild(avatarRing);
-                    customerCard.appendChild(avatarWrap);
+                const avatarWrap = document.createElement('div');
+                avatarWrap.className = 'klart-customer-avatar-wrap';
+                const avatarRing = document.createElement('div');
+                avatarRing.className = 'klart-customer-avatar-ring klart-avatar-empty';
+                avatarRing.textContent = '?';
+                avatarWrap.appendChild(avatarRing);
+                customerCard.appendChild(avatarWrap);
 
-                    const infoDiv = document.createElement('div');
-                    infoDiv.className = 'klart-customer-info';
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'klart-customer-info';
 
-                    const nameEl = document.createElement('div');
-                    nameEl.className = 'klart-customer-name klart-name-empty';
-                    nameEl.textContent = 'Vælg Kunde';
-                    infoDiv.appendChild(nameEl);
+                const nameEl = document.createElement('div');
+                nameEl.className = 'klart-customer-name klart-name-empty';
+                nameEl.textContent = 'Vælg Kunde';
+                infoDiv.appendChild(nameEl);
 
-                    const balanceRow = document.createElement('div');
-                    balanceRow.className = 'klart-balance-row';
-                    balanceRow.style.opacity = '0.35';
+                const balanceRow = document.createElement('div');
+                balanceRow.className = 'klart-balance-row';
+                balanceRow.style.opacity = '0.35';
 
-                    const col1 = document.createElement('div');
-                    col1.className = 'klart-balance-col';
-                    const label1 = document.createElement('div');
-                    label1.className = 'klart-balance-label';
-                    label1.textContent = 'Saldo';
-                    const val1 = document.createElement('div');
-                    val1.className = 'klart-balance-val';
-                    val1.textContent = '— kr.';
-                    col1.appendChild(label1);
-                    col1.appendChild(val1);
+                const col1 = document.createElement('div');
+                col1.className = 'klart-balance-col';
+                const label1 = document.createElement('div');
+                label1.className = 'klart-balance-label';
+                label1.textContent = 'Saldo';
+                const val1 = document.createElement('div');
+                val1.className = 'klart-balance-val';
+                val1.textContent = '— kr.';
+                col1.appendChild(label1);
+                col1.appendChild(val1);
 
-                    const col2 = document.createElement('div');
-                    col2.className = 'klart-balance-col klart-balance-new';
-                    const label2 = document.createElement('div');
-                    label2.className = 'klart-balance-label';
-                    label2.textContent = 'Ny saldo';
-                    const val2 = document.createElement('div');
-                    val2.className = 'klart-balance-val';
-                    val2.textContent = '— kr.';
-                    col2.appendChild(label2);
-                    col2.appendChild(val2);
+                const col2 = document.createElement('div');
+                col2.className = 'klart-balance-col klart-balance-new';
+                const label2 = document.createElement('div');
+                label2.className = 'klart-balance-label';
+                label2.textContent = 'Ny saldo';
+                const val2 = document.createElement('div');
+                val2.className = 'klart-balance-val';
+                val2.textContent = '— kr.';
+                col2.appendChild(label2);
+                col2.appendChild(val2);
 
-                    const arrow = document.createElement('div');
-                    arrow.className = 'klart-balance-arrow';
-                    arrow.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="14 7 19 12 14 17"/></svg>`;
+                const arrow = document.createElement('div');
+                arrow.className = 'klart-balance-arrow';
+                arrow.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="14 7 19 12 14 17"/></svg>`;
 
-                    balanceRow.appendChild(col1);
-                    balanceRow.appendChild(arrow);
-                    balanceRow.appendChild(col2);
-                    infoDiv.appendChild(balanceRow);
+                balanceRow.appendChild(col1);
+                balanceRow.appendChild(arrow);
+                balanceRow.appendChild(col2);
+                infoDiv.appendChild(balanceRow);
 
-                    customerCard.appendChild(infoDiv);
+                customerCard.appendChild(infoDiv);
 
-                    customerCard.style.cursor = 'pointer';
-                    customerCard.addEventListener('click', () => {
-                        document.getElementById('select-customer-main-btn')?.click();
-                    });
+                customerCard.style.cursor = 'pointer';
+                customerCard.addEventListener('click', () => {
+                    document.getElementById('select-customer-main-btn')?.click();
+                });
 
-                    checkoutStack.insertBefore(customerCard, checkoutStack.firstChild);
-                }
-            } else if (isAurora) {
-                // Aurora: no customer card when empty
-                document.querySelector('#checkout-stack .klart-customer-card')?.remove();
+                checkoutStack.insertBefore(customerCard, checkoutStack.firstChild);
             }
             userInfoEl.replaceChildren();
-            if (isAurora) {
-                userInfoEl.style.setProperty('display', 'none', 'important');
-            } else if (!isKlart) {
-                const box = createInfoBox('Ingen kunde valgt', 'Vælg en kunde for at se saldo..', {
-                    boxStyle: 'grid-column: 1 / -1;'
-                });
-                userInfoEl.appendChild(box);
-                userInfoEl.style.display = 'grid';
-            }
             console.log('[app-main] Empty state rendered');
             return;
         }
@@ -531,217 +414,116 @@ export function updateSelectedUserInfo() {
             }
         }
 
-        if (isKlart) {
-            // --- Klart layout: customer card + balance card ---
+        // --- Klart layout: customer card + balance card ---
 
-            // 1) Customer card with large avatar, number badge, name
-            const customerCard = document.createElement('div');
-            customerCard.className = 'klart-customer-card';
+        // 1) Customer card with large avatar, number badge, name
+        const customerCard = document.createElement('div');
+        customerCard.className = 'klart-customer-card';
 
-            // Avatar wrap (large avatar + number badge)
-            const avatarWrap = document.createElement('div');
-            avatarWrap.className = 'klart-customer-avatar-wrap';
+        // Avatar wrap (large avatar + number badge)
+        const avatarWrap = document.createElement('div');
+        avatarWrap.className = 'klart-customer-avatar-wrap';
 
-            const avatarRing = document.createElement('div');
-            avatarRing.className = 'klart-customer-avatar-ring';
-            populateAvatar(avatarRing, 'klart-avatar-img');
-            avatarWrap.appendChild(avatarRing);
+        const avatarRing = document.createElement('div');
+        avatarRing.className = 'klart-customer-avatar-ring';
+        populateAvatar(avatarRing, 'klart-avatar-img');
+        avatarWrap.appendChild(avatarRing);
 
-            // Number badge below avatar
-            if (number) {
-                const badge = document.createElement('div');
-                badge.className = 'klart-customer-number-badge';
-                badge.textContent = `#${number}`;
-                avatarWrap.appendChild(badge);
-            }
-            customerCard.appendChild(avatarWrap);
-
-            // Customer info (name + balance row inside card)
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'klart-customer-info';
-            const nameEl = document.createElement('div');
-            nameEl.className = 'klart-customer-name';
-            nameEl.textContent = name;
-            infoDiv.appendChild(nameEl);
-
-            // Balance row (inside customer card, below name)
-            const balanceRow = document.createElement('div');
-            balanceRow.className = 'klart-balance-row';
-
-            const col1 = document.createElement('div');
-            col1.className = 'klart-balance-col';
-            const label1 = document.createElement('div');
-            label1.className = 'klart-balance-label';
-            label1.textContent = 'Saldo';
-            const val1 = document.createElement('div');
-            val1.className = 'klart-balance-val';
-            val1.textContent = `${currentBalance.toFixed(0)} kr.`;
-            col1.appendChild(label1);
-            col1.appendChild(val1);
-
-            const col2 = document.createElement('div');
-            col2.className = 'klart-balance-col klart-balance-new';
-            const label2 = document.createElement('div');
-            label2.className = 'klart-balance-label';
-            label2.textContent = 'Ny saldo';
-            const val2 = document.createElement('div');
-            val2.className = 'klart-balance-val';
-            if (newBalance < 0) val2.classList.add('negative');
-            val2.textContent = `${newBalance.toFixed(0)} kr.`;
-            col2.appendChild(label2);
-            col2.appendChild(val2);
-
-            // Arrow between saldo columns
-            const arrow = document.createElement('div');
-            arrow.className = 'klart-balance-arrow';
-            arrow.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="14 7 19 12 14 17"/></svg>`;
-
-            balanceRow.appendChild(col1);
-            balanceRow.appendChild(arrow);
-            balanceRow.appendChild(col2);
-            infoDiv.appendChild(balanceRow);
-
-            customerCard.appendChild(infoDiv);
-
-            // Close/deselect button (top-right of customer info box)
-            const closeBtn = document.createElement('button');
-            closeBtn.innerHTML = '&times;';
-            closeBtn.className = 'deselect-user-btn';
-            closeBtn.title = 'Fjern valgt bruger';
-            closeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                deselectUser();
-            });
-            infoDiv.appendChild(closeBtn);
-
-            // Make customer card clickable to open customer selector
-            customerCard.style.cursor = 'pointer';
-            customerCard.addEventListener('click', (e) => {
-                if (e.target.closest('.deselect-user-btn')) return;
-                document.getElementById('select-customer-main-btn')?.click();
-            });
-
-            // Render customer card into checkout-stack (unified bottom panel)
-            const checkoutStack = document.getElementById('checkout-stack');
-            if (checkoutStack) {
-                // Remove previous klart customer card
-                checkoutStack.querySelector('.klart-customer-card')?.remove();
-                // Insert at the top of checkout-stack
-                checkoutStack.insertBefore(customerCard, checkoutStack.firstChild);
-            }
-
-            // Auto-scale name if it overflows its container
-            requestAnimationFrame(() => {
-                if (!nameEl.isConnected) return;
-                const container = nameEl.parentElement;
-                if (!container) return;
-                const containerWidth = container.clientWidth;
-                const nameWidth = nameEl.scrollWidth;
-                if (nameWidth > containerWidth && containerWidth > 0) {
-                    const scale = Math.max(0.6, containerWidth / nameWidth);
-                    nameEl.style.fontSize = `${19 * scale}px`;
-                }
-            });
-        } else if (isAurora) {
-            // --- Aurora layout: 2-row grid with small avatar ---
-            // Row 1: [Avatar] [Name + Number] [×]
-            // Row 2: [Avatar] [Saldo → Ny Saldo] [×]
-
-            const avatar = document.createElement('div');
-            avatar.className = 'customer-avatar';
-            populateAvatar(avatar, 'profile-pic-selected');
-
-            const nameBlock = document.createElement('div');
-            nameBlock.className = 'customer-name-block';
-            const nameEl = document.createElement('span');
-            nameEl.className = 'customer-name';
-            nameEl.textContent = name;
-            nameBlock.appendChild(nameEl);
-            if (number) {
-                const numEl = document.createElement('span');
-                numEl.className = 'customer-number';
-                numEl.textContent = `#${number}`;
-                nameBlock.appendChild(numEl);
-            }
-
-            const saldoContainer = document.createElement('div');
-            saldoContainer.className = 'customer-saldo-container';
-
-            const currentBox = createInfoBox('Saldo:', `${currentBalance.toFixed(0)} kr.`);
-            const arrowEl = document.createElement('span');
-            arrowEl.className = 'saldo-arrow';
-            arrowEl.textContent = '→';
-            const newBox = createInfoBox('Ny:', `${newBalance.toFixed(0)} kr.`, {
-                valueClass: newBalance < 0 ? 'negative' : ''
-            });
-
-            saldoContainer.appendChild(currentBox);
-            saldoContainer.appendChild(arrowEl);
-            saldoContainer.appendChild(newBox);
-
-            const closeBtn = document.createElement('button');
-            closeBtn.innerHTML = '&times;';
-            closeBtn.className = 'deselect-user-btn';
-            closeBtn.title = 'Fjern valgt bruger';
-            closeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                deselectUser();
-            });
-
-            userInfoEl.appendChild(avatar);
-            userInfoEl.appendChild(nameBlock);
-            userInfoEl.appendChild(saldoContainer);
-            userInfoEl.appendChild(closeBtn);
-            userInfoEl.style.display = 'grid';
-        } else {
-            // --- Default/Unstoppable layout: 3-column grid with small avatar ---
-            const avatar = document.createElement('div');
-            avatar.className = 'unstoppable-customer-avatar';
-            populateAvatar(avatar, 'unstoppable-avatar-img');
-
-            const nameLine = number ? `${name} (${number})` : name;
-            const valgtBox = createInfoBox('Valgt:', nameLine);
-
-            userInfoEl.appendChild(avatar);
-            userInfoEl.appendChild(valgtBox);
-            userInfoEl.appendChild(createInfoBox('Nuværende Saldo:', `${currentBalance.toFixed(2)} kr.`));
-            userInfoEl.appendChild(createInfoBox('Ny Saldo:', `${newBalance.toFixed(2)} kr.`, {
-                valueClass: newBalance < 0 ? 'negative' : ''
-            }));
-            userInfoEl.style.display = 'grid';
-
-            // Close button — positioned top-right of the entire container
-            const closeBtn = document.createElement('button');
-            closeBtn.innerHTML = '&times;';
-            closeBtn.className = 'deselect-user-btn';
-            closeBtn.style.cssText = `
-                position: absolute;
-                right: -8px;
-                top: -8px;
-                background: #fff;
-                border: 1px solid #d6e8f8;
-                border-radius: 50%;
-                width: 22px;
-                height: 22px;
-                cursor: pointer;
-                font-size: 14px;
-                line-height: 1;
-                color: #666;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-                transition: all 0.2s;
-                z-index: 15;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            `;
-            closeBtn.title = 'Fjern valgt bruger';
-            closeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                deselectUser();
-            });
-            userInfoEl.appendChild(closeBtn);
+        // Number badge below avatar
+        if (number) {
+            const badge = document.createElement('div');
+            badge.className = 'klart-customer-number-badge';
+            badge.textContent = `#${number}`;
+            avatarWrap.appendChild(badge);
         }
+        customerCard.appendChild(avatarWrap);
+
+        // Customer info (name + balance row inside card)
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'klart-customer-info';
+        const nameEl = document.createElement('div');
+        nameEl.className = 'klart-customer-name';
+        nameEl.textContent = name;
+        infoDiv.appendChild(nameEl);
+
+        // Balance row (inside customer card, below name)
+        const balanceRow = document.createElement('div');
+        balanceRow.className = 'klart-balance-row';
+
+        const col1 = document.createElement('div');
+        col1.className = 'klart-balance-col';
+        const label1 = document.createElement('div');
+        label1.className = 'klart-balance-label';
+        label1.textContent = 'Saldo';
+        const val1 = document.createElement('div');
+        val1.className = 'klart-balance-val';
+        val1.textContent = `${currentBalance.toFixed(0)} kr.`;
+        col1.appendChild(label1);
+        col1.appendChild(val1);
+
+        const col2 = document.createElement('div');
+        col2.className = 'klart-balance-col klart-balance-new';
+        const label2 = document.createElement('div');
+        label2.className = 'klart-balance-label';
+        label2.textContent = 'Ny saldo';
+        const val2 = document.createElement('div');
+        val2.className = 'klart-balance-val';
+        if (newBalance < 0) val2.classList.add('negative');
+        val2.textContent = `${newBalance.toFixed(0)} kr.`;
+        col2.appendChild(label2);
+        col2.appendChild(val2);
+
+        // Arrow between saldo columns
+        const arrow = document.createElement('div');
+        arrow.className = 'klart-balance-arrow';
+        arrow.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="14 7 19 12 14 17"/></svg>`;
+
+        balanceRow.appendChild(col1);
+        balanceRow.appendChild(arrow);
+        balanceRow.appendChild(col2);
+        infoDiv.appendChild(balanceRow);
+
+        customerCard.appendChild(infoDiv);
+
+        // Close/deselect button (top-right of customer info box)
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.className = 'deselect-user-btn';
+        closeBtn.title = 'Fjern valgt bruger';
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deselectUser();
+        });
+        infoDiv.appendChild(closeBtn);
+
+        // Make customer card clickable to open customer selector
+        customerCard.style.cursor = 'pointer';
+        customerCard.addEventListener('click', (e) => {
+            if (e.target.closest('.deselect-user-btn')) return;
+            document.getElementById('select-customer-main-btn')?.click();
+        });
+
+        // Render customer card into checkout-stack (unified bottom panel)
+        const checkoutStack = document.getElementById('checkout-stack');
+        if (checkoutStack) {
+            // Remove previous klart customer card
+            checkoutStack.querySelector('.klart-customer-card')?.remove();
+            // Insert at the top of checkout-stack
+            checkoutStack.insertBefore(customerCard, checkoutStack.firstChild);
+        }
+
+        // Auto-scale name if it overflows its container
+        requestAnimationFrame(() => {
+            if (!nameEl.isConnected) return;
+            const container = nameEl.parentElement;
+            if (!container) return;
+            const containerWidth = container.clientWidth;
+            const nameWidth = nameEl.scrollWidth;
+            if (nameWidth > containerWidth && containerWidth > 0) {
+                const scale = Math.max(0.6, containerWidth / nameWidth);
+                nameEl.style.fontSize = `${19 * scale}px`;
+            }
+        });
 
         console.log('[app-main] RENDERED! Children count:', userInfoEl.children.length);
     } catch (error) {
