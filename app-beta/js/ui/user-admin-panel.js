@@ -257,6 +257,10 @@ function renderActiveTab() {
         if (toolbarExtra) {
             toolbarExtra.innerHTML = `
                 <div class="uap-filters" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+                    <button class="uap-chip ${ovRoleFilter === 'kunde' ? 'active' : ''}" data-role="kunde">Børn</button>
+                    <button class="uap-chip ${ovRoleFilter === 'admin' ? 'active' : ''}" data-role="admin">Admins</button>
+                    <button class="uap-chip ${ovRoleFilter === 'all' ? 'active' : ''}" data-role="all">Alle</button>
+                    <span style="width:1px;height:20px;background:rgba(255,255,255,0.12);margin:0 4px;"></span>
                     <button class="uap-chip ${ovFilterLowBalance ? 'active' : ''}" data-ov="lowBalance">Lav saldo</button>
                     <button class="uap-chip ${ovFilterNoActivity ? 'active' : ''}" data-ov="noActivity">Aldrig handlet</button>
                     <button class="uap-chip ${ovFilterHideInactive ? 'active' : ''}" data-ov="hideInactive">Kun aktive</button>
@@ -264,6 +268,13 @@ function renderActiveTab() {
                     <button class="uap-chip" data-ov="download">⬇ Download liste</button>
                 </div>
             `;
+            toolbarExtra.querySelectorAll('.uap-chip[data-role]').forEach(chip => {
+                chip.onclick = () => {
+                    ovRoleFilter = chip.dataset.role;
+                    toolbarExtra.querySelectorAll('.uap-chip[data-role]').forEach(c => c.classList.toggle('active', c.dataset.role === ovRoleFilter));
+                    renderOverviewTab();
+                };
+            });
             toolbarExtra.querySelectorAll('.uap-chip[data-ov]').forEach(chip => {
                 chip.onclick = () => {
                     const action = chip.dataset.ov;
@@ -286,11 +297,15 @@ function renderActiveTab() {
 let ovFilterLowBalance = false;
 let ovFilterNoActivity = false;
 let ovFilterHideInactive = false;
+let ovRoleFilter = 'kunde'; // 'kunde' | 'admin' | 'all'
 
 // ─── Shared helpers ───
 
 function getFilteredUsers() {
-    let users = allUsers.filter(u => u.role === 'kunde');
+    // Filtrering på admin_apps, show_in_user_list, deactivated_at sker i get_cafe_users RPC
+    let users = ovRoleFilter === 'all'
+        ? [...allUsers]
+        : allUsers.filter(u => u.role === ovRoleFilter);
     if (searchQuery) {
         users = users.filter(u =>
             (u.name || '').toLowerCase().includes(searchQuery) ||
@@ -945,6 +960,7 @@ let ppSignedUrls = new Map();
 let ppFilter = 'all';
 let ppHasFilter = 'with'; // 'all' | 'with' | 'without' — filter by has/hasn't picture
 let ppViewMode = 'list'; // 'grid' | 'list'
+let ppRoleFilter = 'kunde'; // 'kunde' | 'admin' | 'all'
 let ppSortCol = 'created_at';
 let ppSortDir = 'desc';
 
@@ -974,6 +990,10 @@ async function renderPicturesTab() {
     // Render toolbar extras (filters + view toggle)
     toolbarExtra.innerHTML = `
         <div class="uap-filters" id="uap-pp-filters">
+            <button class="uap-chip ${ppRoleFilter === 'kunde' ? 'active' : ''}" data-pprole="kunde">Børn</button>
+            <button class="uap-chip ${ppRoleFilter === 'admin' ? 'active' : ''}" data-pprole="admin">Admins</button>
+            <button class="uap-chip ${ppRoleFilter === 'all' ? 'active' : ''}" data-pprole="all">Alle</button>
+            <span style="width:1px;height:20px;background:rgba(255,255,255,0.12);margin:0 4px;"></span>
             ${PP_FILTERS.map(f => `<button class="uap-chip ${ppFilter === f.key ? 'active' : ''}" data-filter="${f.key}">${f.label}</button>`).join('')}
             <span style="width:1px;height:20px;background:rgba(255,255,255,0.12);margin:0 4px;"></span>
             <button class="uap-chip ${ppHasFilter === 'all' ? 'active' : ''}" data-has="all">Alle</button>
@@ -985,8 +1005,17 @@ async function renderPicturesTab() {
         </div>
     `;
 
+    // Wire role filter chips
+    toolbarExtra.querySelectorAll('.uap-chip[data-pprole]').forEach(chip => {
+        chip.onclick = () => {
+            ppRoleFilter = chip.dataset.pprole;
+            renderPicturesContent();
+            toolbarExtra.querySelectorAll('.uap-chip[data-pprole]').forEach(c => c.classList.toggle('active', c.dataset.pprole === ppRoleFilter));
+        };
+    });
     // Wire filter chips + has-filter + view toggles (all in same row)
     toolbarExtra.querySelectorAll('.uap-chip').forEach(chip => {
+        if (chip.dataset.pprole) return; // already wired above
         if (chip.dataset.filter) {
             chip.onclick = () => {
                 ppFilter = chip.dataset.filter;
@@ -1052,10 +1081,16 @@ function renderPicturesContent() {
     const counter = panelEl.querySelector('.uap-counter');
     if (!content || !ppEntries) return;
 
-    // Filter
+    // Filter by type
     let entries = ppEntries;
     if (ppFilter !== 'all') {
         entries = entries.filter(e => e.picture_type === ppFilter);
+    }
+
+    // Filter entries by role (match user_id to allUsers role)
+    if (ppRoleFilter !== 'all') {
+        const roleUserIds = new Set(allUsers.filter(u => u.role === ppRoleFilter).map(u => u.id));
+        entries = entries.filter(e => roleUserIds.has(e.user_id));
     }
 
     // Search filter
@@ -1124,9 +1159,12 @@ function renderPicturesList(container, entries) {
         byUser.get(entry.user_id).push(entry);
     }
 
-    // Build rows for ALL users (not just those with pictures)
+    // Build rows filtered by role
     let userRows = allUsers
-        .filter(u => u.role === 'kunde' || u.role === 'admin' || byUser.has(u.id))
+        .filter(u => {
+            if (ppRoleFilter === 'all') return true;
+            return u.role === ppRoleFilter;
+        })
         .map(u => ({
             userId: u.id,
             user: u,

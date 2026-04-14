@@ -66,13 +66,8 @@ export async function loadUsersAndNotifications({
     };
 
     const buildUsersQuery = () => {
-        // Hent altid alle brugere (både børn og admins) — filtrering sker i customer-picker
-        // baseret på per-admin show_in_user_list felt
-        return supabaseClient
-            .from('users')
-            .select('*, last_parent_login_at, parent_pin_is_custom')
-            .eq('institution_id', institutionId)
-            .order('name');
+        // Hent kun café-relevante brugere (børn + café-admins, ekskl. deaktiverede og skjulte)
+        return supabaseClient.rpc('get_cafe_users', { p_institution_id: institutionId });
     };
 
     const buildNotificationsQuery = () => supabaseClient
