@@ -9,7 +9,7 @@ import {
     setNameSortOrder,
     getNumberSortOrder,
     setNumberSortOrder,
-} from '../ui/customer-picker.js?v=3.0.79';
+} from '../ui/customer-picker.js?v=3.0.80';
 
 export function setupCustomerPickerFlow({
     getAllUsers,

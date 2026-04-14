@@ -1,4 +1,4 @@
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.79';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.80';
 
 export async function getCurrentUserProfile(session) {
     if (!session) return null;

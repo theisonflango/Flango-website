@@ -2,15 +2,15 @@
 // UI update funktioner fra app-main.js
 // Refactored to accept dependencies as parameters instead of using closures
 
-import { getCurrentSessionAdmin } from './session-store.js?v=3.0.79';
+import { getCurrentSessionAdmin } from './session-store.js?v=3.0.80';
 // getCurrentTheme always returns 'klart' — kept for reference but no longer checked
-// import { getCurrentTheme } from '../ui/theme-loader.js?v=3.0.79';
-import { getCurrentCustomer } from './cafe-session-store.js?v=3.0.79';
-import { getOrderTotal } from './order-store.js?v=3.0.79';
-import { getFinancialState } from './cafe-session-store.js?v=3.0.79';
-import { calculateLevel } from './statistics-data.js?v=3.0.79';
-import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js?v=3.0.79';
-import { renderKlartTotalDivider } from './order-ui.js?v=3.0.79';
+// import { getCurrentTheme } from '../ui/theme-loader.js?v=3.0.80';
+import { getCurrentCustomer } from './cafe-session-store.js?v=3.0.80';
+import { getOrderTotal } from './order-store.js?v=3.0.80';
+import { getFinancialState } from './cafe-session-store.js?v=3.0.80';
+import { calculateLevel } from './statistics-data.js?v=3.0.80';
+import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js?v=3.0.80';
+import { renderKlartTotalDivider } from './order-ui.js?v=3.0.80';
 
 /**
  * Deselect user function - exposed via window for use in UI

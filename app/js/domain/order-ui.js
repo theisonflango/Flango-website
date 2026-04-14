@@ -1,13 +1,13 @@
 // js/domain/order-ui.js
-import { getOrderTotal, setOrder, getOrder } from './order-store.js?v=3.0.79';
-import { getProductIconInfo, addProductToOrder, removeProductFromOrder, getBulkDiscountSummary } from './products-and-cart.js?v=3.0.79';
-import { canChildPurchase } from './purchase-limits.js?v=3.0.79';
-import { playSound } from '../ui/sound-and-alerts.js?v=3.0.79';
-import { getCurrentCustomer, clearEvaluation } from './cafe-session-store.js?v=3.0.79';
-import { MAX_ITEMS_PER_ORDER } from '../core/constants.js?v=3.0.79';
-import { formatKr } from '../ui/confirm-modals.js?v=3.0.79';
+import { getOrderTotal, setOrder, getOrder } from './order-store.js?v=3.0.80';
+import { getProductIconInfo, addProductToOrder, removeProductFromOrder, getBulkDiscountSummary } from './products-and-cart.js?v=3.0.80';
+import { canChildPurchase } from './purchase-limits.js?v=3.0.80';
+import { playSound } from '../ui/sound-and-alerts.js?v=3.0.80';
+import { getCurrentCustomer, clearEvaluation } from './cafe-session-store.js?v=3.0.80';
+import { MAX_ITEMS_PER_ORDER } from '../core/constants.js?v=3.0.80';
+import { formatKr } from '../ui/confirm-modals.js?v=3.0.80';
 // getCurrentTheme always returns 'klart' — no longer needed for branching
-import { updateKlartCartCountBadge } from './app-ui-updates.js?v=3.0.79';
+import { updateKlartCartCountBadge } from './app-ui-updates.js?v=3.0.80';
 
 /**
  * Tjekker om den nuværende kunde er en admin med gratis-køb

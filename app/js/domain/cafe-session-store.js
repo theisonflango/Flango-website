@@ -1,8 +1,8 @@
 // Enkel session-store for café-køb: holder styr på nuværende kunde og seneste evaluering.
 // Ingen sideeffekter på Supabase eller UI; bruges kun som central kilde til balance/overtræk-data.
-import { invalidateChildLimitSnapshot } from './products-and-cart.js?v=3.0.79';
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.79';
-import { OVERDRAFT_LIMIT } from '../core/constants.js?v=3.0.79';
+import { invalidateChildLimitSnapshot } from './products-and-cart.js?v=3.0.80';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.80';
+import { OVERDRAFT_LIMIT } from '../core/constants.js?v=3.0.80';
 
 let currentCustomer = null;
 let lastEvaluation = null;

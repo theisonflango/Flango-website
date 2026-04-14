@@ -11,9 +11,9 @@
  *   (excluding daily specials already counted in "Dagens ret") are aggregated into "Andre varer".
  */
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.79';
-import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.79';
-import { getProductIconSrc } from '../core/product-icon-utils.js?v=3.0.79';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.80';
+import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.80';
+import { getProductIconSrc } from '../core/product-icon-utils.js?v=3.0.80';
 
 const BUCKET_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/';
 

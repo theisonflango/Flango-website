@@ -1,6 +1,6 @@
 // shift-timer.js - Bytte-timer for ekspedient-skift
 // Håndterer nedtælling (tid) og optælling (salg) med blocking popup ved timeout
-import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.79';
+import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.80';
 
 const STORAGE_KEY = 'flango_shift_timer';
 

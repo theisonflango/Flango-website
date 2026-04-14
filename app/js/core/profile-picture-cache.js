@@ -4,8 +4,8 @@
  * Library-type pictures use local paths and bypass the cache.
  */
 
-import { supabaseClient } from './config-and-supabase.js?v=3.0.79';
-import { escapeHtml } from './escape-html.js?v=3.0.79';
+import { supabaseClient } from './config-and-supabase.js?v=3.0.80';
+import { escapeHtml } from './escape-html.js?v=3.0.80';
 
 const BUCKET = 'profile-pictures';
 const SIGNED_URL_TTL_MS = 55 * 60 * 1000; // 55 min (URLs valid 60 min)

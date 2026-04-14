@@ -826,7 +826,7 @@
 
   async function openPPModal(user) {
     try {
-      var mod = await import('./profile-picture-modal.js?v=3.0.79');
+      var mod = await import('./profile-picture-modal.js?v=3.0.80');
       mod.openProfilePictureModal(user, {
         onSaved: function () {
           // Refresh user data in cache
