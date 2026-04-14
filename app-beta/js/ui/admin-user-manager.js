@@ -1013,7 +1013,11 @@ export function setupAdminUserManagerFromModule(config = {}) {
         ].filter(Boolean);
 
         const sourceUsers = getUsersSource();
-        let filteredUsers = sourceUsers.filter((user) => user.role === roleFilter);
+        let filteredUsers = sourceUsers.filter((user) => {
+            if (user.show_in_user_list === false) return false;
+            if (roleFilter === 'admin') return user.role === 'admin' && (!user.admin_apps || user.admin_apps.includes('cafe'));
+            return user.role === roleFilter;
+        });
         if (searchTerm) {
             filteredUsers = filteredUsers.filter(
                 (user) =>

@@ -197,7 +197,7 @@ export function createAdminUserActions(options = {}) {
             if (salesCount > 0) parts.push(`${salesCount} salg`);
             if (eventsCount > 0) parts.push(`${eventsCount} events`);
             if (rd.user_daily_stats > 0) parts.push(`${rd.user_daily_stats} statistik-rækker`);
-            showAlert(parts.join(' · '));
+            showCustomAlert('Bruger slettet', parts.join(' · '));
             console.log('[handleDeleteUser] Deletion receipt:', receipt);
         }
 

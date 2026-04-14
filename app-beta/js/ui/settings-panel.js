@@ -67,59 +67,52 @@
   let mpCsvOn = false;
   let institutionData = null;
 
-  // ── Dirty-tracking ──
-  const dirtyFields = new Map();  // key → new value
-  let baselineSnapshot = {};      // original values at open time
+  // ── Auto-save: gem enkelt felt direkte til DB ──
+  let baselineSnapshot = {};
 
-  function markDirty(key, value) {
-    // Compare with baseline — if same, remove from dirty
-    if (baselineSnapshot[key] === value) {
-      dirtyFields.delete(key);
-    } else {
-      dirtyFields.set(key, value);
-    }
-    updateSaveButton();
-  }
-
-  function isDirty() {
-    return dirtyFields.size > 0;
-  }
-
-  function updateSaveButton() {
-    if (!overlay) return;
-    const btn = overlay.querySelector('[data-action="save-settings"]');
-    if (!btn) return;
-    if (isDirty()) {
-      btn.classList.add('dirty');
-    } else {
-      btn.classList.remove('dirty');
-    }
-  }
-
-  async function saveAllDirty() {
-    if (!isDirty()) return;
+  async function saveField(key, value) {
     const instId = window.getInstitutionId?.();
-    const btn = overlay?.querySelector('[data-action="save-settings"]');
+    if (!instId) return;
 
-    if (!instId) {
-      if (btn) { btn.textContent = 'Ikke logget ind'; btn.style.color = '#e85a6f'; }
-      setTimeout(() => { if (btn) { btn.textContent = 'Gem indstillinger'; btn.style.color = ''; } }, 2000);
-      return;
-    }
-
-    if (btn) { btn.textContent = 'Gemmer...'; btn.style.pointerEvents = 'none'; }
+    const client = window.__flangoSupabaseClient;
+    if (!client) return;
 
     try {
-      // Build update object from dirty fields
-      const updates = {};
-      for (const [key, value] of dirtyFields) {
-        updates[key] = value;
+      const { error } = await client
+        .from('institutions')
+        .update({ [key]: value })
+        .eq('id', instId);
+
+      if (error) throw error;
+
+      // Update local state
+      baselineSnapshot[key] = value;
+      if (institutionData) institutionData[key] = value;
+      const cachedInst = window.__flangoGetInstitutionById?.(instId);
+      if (cachedInst) cachedInst[key] = value;
+
+      // Special-case: restaurant_mode_enabled → update header
+      if (key === 'restaurant_mode_enabled') {
+        rmActive = !!value;
+        const badge = document.getElementById('restaurant-mode-badge');
+        if (badge) badge.style.display = rmActive ? '' : 'none';
+        const kitchenBtn = document.getElementById('kitchen-btn');
+        if (kitchenBtn) kitchenBtn.style.display = rmActive ? '' : 'none';
       }
+    } catch (e) {
+      console.error(`[FlangoSettings] Save error for ${key}:`, e);
+    }
+  }
 
-      // Save to institutions table
-      const client = window.__flangoSupabaseClient;
-      if (!client) throw new Error('No Supabase client');
+  // Batch save multiple fields at once (for mini Gem-knap sections)
+  async function saveFields(updates) {
+    const instId = window.getInstitutionId?.();
+    if (!instId) return;
 
+    const client = window.__flangoSupabaseClient;
+    if (!client) return;
+
+    try {
       const { error } = await client
         .from('institutions')
         .update(updates)
@@ -127,29 +120,28 @@
 
       if (error) throw error;
 
-      // Update baseline and clear dirty
-      for (const [key, value] of dirtyFields) {
+      for (const [key, value] of Object.entries(updates)) {
         baselineSnapshot[key] = value;
         if (institutionData) institutionData[key] = value;
       }
-      dirtyFields.clear();
-      updateSaveButton();
+      const cachedInst = window.__flangoGetInstitutionById?.(instId);
+      if (cachedInst) Object.assign(cachedInst, updates);
 
-      // Update rmActive if restaurant_mode_enabled changed
       if ('restaurant_mode_enabled' in updates) {
         rmActive = !!updates.restaurant_mode_enabled;
+        const badge = document.getElementById('restaurant-mode-badge');
+        if (badge) badge.style.display = rmActive ? '' : 'none';
+        const kitchenBtn = document.getElementById('kitchen-btn');
+        if (kitchenBtn) kitchenBtn.style.display = rmActive ? '' : 'none';
       }
-
-      if (btn) btn.textContent = 'Gemt!';
-      setTimeout(() => { if (btn) btn.textContent = 'Gem indstillinger'; }, 1500);
     } catch (e) {
-      console.error('[FlangoSettings] Save error:', e);
-      if (btn) { btn.textContent = 'Fejl ved gem'; btn.style.color = '#e85a6f'; }
-      setTimeout(() => {
-        if (btn) { btn.textContent = 'Gem indstillinger'; btn.style.color = ''; }
-      }, 2000);
+      console.error('[FlangoSettings] Batch save error:', e);
     }
-    if (btn) btn.style.pointerEvents = '';
+  }
+
+  // Backward compat: markDirty now auto-saves (used by wireToggles etc.)
+  function markDirty(key, value) {
+    saveField(key, value);
   }
 
   // ── SVG helpers ──
@@ -178,7 +170,6 @@
 
   // ── Load institution state for sidebar conditionals ──
   async function loadInstitutionState() {
-    dirtyFields.clear();
     baselineSnapshot = {};
     try {
       const instId = window.getInstitutionId?.();
@@ -339,7 +330,7 @@
       const ctx = {
         at, ai, rmActive, mpCsvOn, institutionData,
         ic, bigIc, overlay,
-        markDirty, isDirty, saveAllDirty, baselineSnapshot,
+        markDirty, saveField, saveFields, baselineSnapshot,
         setRmActive: (val) => { rmActive = val; },
         setMpCsvOn: (val) => { mpCsvOn = val; },
         featureFlags: window.__flangoFeatureFlags || null,
@@ -425,6 +416,6 @@
   }
 
   // ── Public API ──
-  window.FlangoSettings = { open, close, T, icons, ic, bigIc, tabIcons, extLinkSvg, markDirty, saveAllDirty, isDirty };
+  window.FlangoSettings = { open, close, T, icons, ic, bigIc, tabIcons, extLinkSvg, markDirty, saveField, saveFields };
 
 })();

@@ -41,17 +41,16 @@ export function renderCustomerListUI(options) {
 
     const searchTerm = (searchInput.value || '').toLowerCase();
 
-    // Filtrer brugere baseret på filter mode
-    // Respekter show_in_user_list for alle roller (børn + admins)
+    // Filtrer brugere: respekter show_in_user_list + admin_apps (kun café-admins)
+    const isCafeAdmin = (u) => u.role === 'admin' && (!u.admin_apps || u.admin_apps.includes('cafe'));
     let filteredUsers = allUsers.filter(u => u.show_in_user_list !== false);
 
     if (userFilterMode === 'children') {
         filteredUsers = filteredUsers.filter((u) => u.role === 'kunde');
     } else if (userFilterMode === 'adults') {
-        filteredUsers = filteredUsers.filter((u) => u.role === 'admin');
+        filteredUsers = filteredUsers.filter(isCafeAdmin);
     } else {
-        // 'all' — vis alle børn + admins (begge allerede filtreret på show_in_user_list)
-        filteredUsers = filteredUsers.filter((u) => u.role === 'kunde' || u.role === 'admin');
+        filteredUsers = filteredUsers.filter((u) => u.role === 'kunde' || isCafeAdmin(u));
     }
 
     if (searchTerm) {

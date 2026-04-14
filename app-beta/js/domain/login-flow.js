@@ -152,7 +152,7 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
         }
 
         const adminProfile = await getCurrentUserProfile(session);
-        if (!adminProfile || adminProfile.role !== 'admin') {
+        if (!adminProfile || adminProfile.role !== 'admin' && adminProfile.role !== 'superadmin') {
             errorEl.textContent = 'Denne bruger er ikke administrator.';
             await supabaseClient.auth.signOut();
             loginBtn.disabled = false;
@@ -314,7 +314,7 @@ export async function setupDeviceUnlockScreen() {
         }
 
         const adminProfile = await getCurrentUserProfile(session);
-        if (!adminProfile || adminProfile.role !== 'admin') {
+        if (!adminProfile || adminProfile.role !== 'admin' && adminProfile.role !== 'superadmin') {
             errorEl.textContent = 'Bruger er ikke administrator.';
             await supabaseClient.auth.signOut();
             unlockBtn.disabled = false;
@@ -500,7 +500,7 @@ export function setupPinLockedScreen(adminName) {
         }
 
         const adminProfile = await getCurrentUserProfile(session);
-        if (!adminProfile || adminProfile.role !== 'admin') {
+        if (!adminProfile || adminProfile.role !== 'admin' && adminProfile.role !== 'superadmin') {
             errorEl.textContent = 'Denne bruger er ikke administrator.';
             await supabaseClient.auth.signOut();
             loginBtn.disabled = false;

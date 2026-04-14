@@ -2,23 +2,12 @@
 // DB-Historik modal UI - Superadmin feature for tracking database usage
 
 /**
- * Check if current user is authadmin (based on email)
+ * Check if current user is a superadmin/support user (via users.role)
  * @returns {boolean}
  */
 export function isAuthAdminUser() {
-    // Check admin profile first (from session-store or window)
     const admin = typeof window !== 'undefined' ? (window.__flangoCurrentAdminProfile || null) : null;
-    if (admin?.email) {
-        return admin.email.toLowerCase() === 'authadmin@flango.dk';
-    }
-
-    // Check clerk profile (if admin is logged in as clerk)
-    const clerk = typeof window !== 'undefined' ? (window.__flangoCurrentClerkProfile || null) : null;
-    if (clerk?.email) {
-        return clerk.email.toLowerCase() === 'authadmin@flango.dk';
-    }
-
-    return false;
+    return admin?.role === 'superadmin' || admin?.email?.endsWith('@flango.internal');
 }
 
 /**

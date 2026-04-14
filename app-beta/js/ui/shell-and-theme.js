@@ -48,89 +48,18 @@ const sugarPolicyState = {
 const VALID_THEMES = ALL_VALID_THEMES;
 
 function setFlangoTheme(themeName) {
-    if (!VALID_THEMES.includes(themeName)) {
-        themeName = 'default';
-    }
-
-    // For theme-pack themes (like flango-unstoppable), use the theme loader
-    // which will reload the page to swap CSS files
-    const currentTheme = getCurrentTheme();
-    if (isThemePackTheme(themeName) || isThemePackTheme(currentTheme)) {
-        themePackSwitchTheme(themeName);
-        return; // Page will reload for theme-pack themes
-    }
-
-    // For non-theme-pack themes (default, pastel-pop, pos-pro)
-    document.body.dataset.theme = themeName;
-    localStorage.setItem(THEME_STORAGE_KEY, themeName);
-
-    // Update all theme radio buttons
-    VALID_THEMES.forEach(theme => {
-        const radio = document.getElementById(`theme-${theme}`);
-        if (radio) {
-            radio.checked = themeName === theme;
-        }
-    });
+    // Only klart is active — ignore other themes
+    if (themeName !== 'klart') return;
+    themePackSwitchTheme('klart');
 }
 
 export function initFlangoTheme() {
-    // Use the theme loader which handles both regular themes and theme-packs
     initThemeLoader();
-
-    // Update radio buttons to match current theme
-    const currentTheme = getCurrentTheme();
-    VALID_THEMES.forEach(theme => {
-        const radio = document.getElementById(`theme-${theme}`);
-        if (radio) {
-            radio.checked = currentTheme === theme;
-        }
-    });
 }
 
 export function setupThemePickerUI() {
-    const openThemePickerBtn = document.getElementById('open-theme-picker');
-    const themePickerBackdrop = document.getElementById('theme-picker-backdrop');
-    const themePickerCloseBtn = document.getElementById('theme-picker-close');
-
-    if (!openThemePickerBtn || !themePickerBackdrop || !themePickerCloseBtn) {
-        console.warn('Tema-picker elementer ikke fundet i DOM');
-        return;
-    }
-
-    openThemePickerBtn.addEventListener('click', () => {
-        const currentThemeValue = getCurrentTheme();
-        // Update all theme radios
-        VALID_THEMES.forEach(theme => {
-            const radio = document.getElementById(`theme-${theme}`);
-            if (radio) {
-                radio.checked = currentThemeValue === theme;
-            }
-        });
-
-        themePickerBackdrop.style.display = 'flex';
-    });
-
-    themePickerCloseBtn.addEventListener('click', () => {
-        themePickerBackdrop.style.display = 'none';
-    });
-
-    themePickerBackdrop.addEventListener('click', (event) => {
-        if (event.target === themePickerBackdrop) {
-            themePickerBackdrop.style.display = 'none';
-        }
-    });
-
-    // Set up listeners for all theme radios
-    VALID_THEMES.forEach(theme => {
-        const radio = document.getElementById(`theme-${theme}`);
-        if (radio) {
-            radio.addEventListener('change', () => {
-                if (radio.checked) {
-                    setFlangoTheme(theme);
-                }
-            });
-        }
-    });
+    // Theme picker is no longer used — Klart is the only active theme.
+    // Theme selection is handled in settings modal (Udseende section).
 }
 
 // isCurrentUserAdmin is imported from session-store.js

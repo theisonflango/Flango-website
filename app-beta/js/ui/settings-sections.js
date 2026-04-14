@@ -142,12 +142,7 @@
     });
   }
 
-  /** Wire save button to saveAllDirty */
-  function wireSaveButton(container, ctx) {
-    container.querySelector('[data-action="save-settings"]')?.addEventListener('click', () => {
-      ctx.saveAllDirty();
-    });
-  }
+  // wireSaveButton removed — auto-save via markDirty/saveField
 
   // ═══════════════════════════════════════════════════
   // HOVEDMENU
@@ -1248,22 +1243,23 @@
           </div></div>
           <div class="fsp-section"><div class="fsp-block">
             <div class="fsp-row"><div style="flex:1"><div class="fsp-row-title">Vis bordnummer-knapper ved k\u00f8bsbekr\u00e6ftelse</div><div class="fsp-row-desc">Vises p\u00e5 tjenerens enhed, s\u00e5 hvert k\u00f8b kan knyttes til et bord.</div></div><div class="fsp-toggle${tableOn ? ' on' : ''}" data-field="restaurant_table_numbers_enabled"></div></div>
-            <div class="fsp-num-row"><label>Antal borde:</label><div class="fsp-num-wrap" style="width:120px"><input type="number" data-field="restaurant_table_count" value="${tableCount}" style="padding:8px 12px;font-size:13px"><div class="fsp-num-btns"><button class="fsp-num-btn" data-step-target="restaurant_table_count" data-step="1">${chevronUp}</button><button class="fsp-num-btn" data-step-target="restaurant_table_count" data-step="-1">${chevronDown}</button></div></div></div>
+            <div class="fsp-num-row"><label>Antal borde:</label><div class="fsp-num-wrap" style="width:120px"><input type="number" data-rm-local="restaurant_table_count" value="${tableCount}" style="padding:8px 12px;font-size:13px"><div class="fsp-num-btns"><button class="fsp-num-btn" data-step-target="restaurant_table_count" data-step="1">${chevronUp}</button><button class="fsp-num-btn" data-step-target="restaurant_table_count" data-step="-1">${chevronDown}</button></div></div><button class="fsp-mini-save" data-save-for="restaurant_table_count" disabled style="padding:6px 18px;border:none;border-radius:8px;background:#4b5563;color:#fff;font-size:13px;font-weight:600;cursor:default;margin-left:10px;white-space:nowrap;opacity:0.5;transition:all 0.15s;">Gem</button></div>
           </div></div>
           <div class="fsp-section"><div class="fsp-block">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><span style="font-size:16px">\uD83D\uDD14</span><div class="fsp-row-title">Lyd ved ny ordre</div><button class="fsp-rm-play" data-action="play-new-order" style="margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 13,8 5,13"/></svg></button></div>
             <div class="fsp-rm-sound" data-sound-group="new_order" style="display:flex;flex-wrap:wrap;gap:6px">
               ${rmSounds.map(s => `<div class="fsp-rm-schip${(inst.restaurant_sound === s.v || (!inst.restaurant_sound && !s.v)) ? ' on' : ''}" data-sound-value="${s.v}">${s.label}</div>`).join('')}
             </div>
+            <div style="text-align:center;margin-top:12px"><button class="fsp-mini-save" data-save-for="restaurant_sound" disabled style="padding:8px 28px;border:none;border-radius:8px;background:#4b5563;color:#fff;font-size:13px;font-weight:600;cursor:default;opacity:0.5;transition:all 0.15s;">Gem lyd</button></div>
           </div></div>
           <div class="fsp-section"><div class="fsp-block">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><span style="font-size:16px">\u2705</span><div class="fsp-row-title">Lyd ved godkendt servering</div><button class="fsp-rm-play" data-action="play-served" style="margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 13,8 5,13"/></svg></button></div>
             <div class="fsp-rm-sound" data-sound-group="served" style="display:flex;flex-wrap:wrap;gap:6px">
               ${rmSounds.map(s => `<div class="fsp-rm-schip${(inst.restaurant_serve_sound === s.v || (!inst.restaurant_serve_sound && !s.v)) ? ' on' : ''}" data-sound-value="${s.v}">${s.label}</div>`).join('')}
             </div>
+            <div style="text-align:center;margin-top:12px"><button class="fsp-mini-save" data-save-for="restaurant_serve_sound" disabled style="padding:8px 28px;border:none;border-radius:8px;background:#4b5563;color:#fff;font-size:13px;font-weight:600;cursor:default;opacity:0.5;transition:all 0.15s;">Gem lyd</button></div>
           </div></div>
         </div>
-        <div class="fsp-save-row"><button class="fsp-save-btn" data-action="save-settings">Gem indstillinger</button></div>
       </div>`;
     },
     wire(container, ctx) {
@@ -1271,18 +1267,114 @@
       wireToggles(container, ctx);
       wireNumberInputs(container, ctx);
       wireStepButtons(container);
-      wireSaveButton(container, ctx);
-      // Sound chip radio-style selection
+      // Sound chip radio-style selection (local dirty + mini Gem-knap)
       container.querySelectorAll('.fsp-rm-sound').forEach(group => {
+        const field = group.dataset.soundGroup === 'new_order' ? 'restaurant_sound' : 'restaurant_serve_sound';
+        let savedValue = ctx.institutionData?.[field] || '';
+        const saveBtn = container.querySelector(`[data-save-for="${field}"]`);
+
+        function updateSaveBtnState() {
+          if (!saveBtn) return;
+          const active = group.querySelector('.fsp-rm-schip.on');
+          const currentVal = active?.dataset.soundValue ?? '';
+          const changed = currentVal !== savedValue;
+          saveBtn.disabled = !changed;
+          saveBtn.style.background = changed ? '#059669' : '#4b5563';
+          saveBtn.style.opacity = changed ? '1' : '0.5';
+          saveBtn.style.cursor = changed ? 'pointer' : 'default';
+        }
+
+        // Two visual states:
+        // .on (filled/highlight) = currently previewing / clicked
+        // outline = saved in DB
+        // Mark the saved chip with outline on load
         group.querySelectorAll('.fsp-rm-schip').forEach(chip => {
+          if (chip.dataset.soundValue === savedValue || (!savedValue && !chip.dataset.soundValue)) {
+            chip.style.outline = '2px solid #059669';
+            chip.style.outlineOffset = '1px';
+          }
           chip.addEventListener('click', () => {
+            // Move .on (highlight) to clicked chip
             group.querySelectorAll('.fsp-rm-schip').forEach(c => c.classList.remove('on'));
             chip.classList.add('on');
-            const field = group.dataset.soundGroup === 'new_order' ? 'restaurant_sound' : 'restaurant_served_sound';
-            ctx.markDirty(field, chip.dataset.soundValue);
+            updateSaveBtnState();
           });
         });
+
+        if (saveBtn) {
+          updateSaveBtnState(); // Set initial state
+          saveBtn.addEventListener('click', () => {
+            if (saveBtn.disabled) return;
+            const active = group.querySelector('.fsp-rm-schip.on');
+            const val = active?.dataset.soundValue ?? '';
+            ctx.saveField(field, val);
+            savedValue = val;
+            // Move outline (saved indicator) to the newly saved chip
+            group.querySelectorAll('.fsp-rm-schip').forEach(c => {
+              c.style.outline = '';
+              c.style.outlineOffset = '';
+            });
+            if (active) {
+              active.style.outline = '2px solid #059669';
+              active.style.outlineOffset = '1px';
+            }
+            // Flash "Gemt!" feedback
+            const origText = saveBtn.textContent;
+            saveBtn.textContent = '✓ Gemt!';
+            saveBtn.style.background = '#059669';
+            saveBtn.style.opacity = '1';
+            setTimeout(() => {
+              saveBtn.textContent = origText;
+              saveBtn.style.background = '#4b5563';
+              saveBtn.style.opacity = '0.5';
+            }, 1200);
+            saveBtn.disabled = true;
+            saveBtn.style.background = '#4b5563';
+            saveBtn.style.opacity = '0.5';
+            saveBtn.style.cursor = 'default';
+          });
+        }
       });
+
+      // Antal borde: local dirty + mini Gem-knap
+      const tableInput = container.querySelector('[data-rm-local="restaurant_table_count"]');
+      const tableSaveBtn = container.querySelector('[data-save-for="restaurant_table_count"]');
+      if (tableInput && tableSaveBtn) {
+        let savedTableCount = ctx.institutionData?.restaurant_table_count ?? 8;
+        const updateTableSaveState = () => {
+          const current = parseInt(tableInput.value) || 8;
+          const changed = current !== savedTableCount;
+          tableSaveBtn.disabled = !changed;
+          tableSaveBtn.style.opacity = changed ? '1' : '0.5';
+          tableSaveBtn.style.background = changed ? '#059669' : '#4b5563';
+          tableSaveBtn.style.cursor = changed ? 'pointer' : 'default';
+        };
+        tableInput.addEventListener('change', updateTableSaveState);
+        tableInput.addEventListener('input', updateTableSaveState);
+        tableSaveBtn.addEventListener('click', () => {
+          if (tableSaveBtn.disabled) return;
+          const val = parseInt(tableInput.value) || 8;
+          ctx.saveField('restaurant_table_count', val);
+          savedTableCount = val;
+          tableSaveBtn.disabled = true;
+          const origText = tableSaveBtn.textContent;
+          tableSaveBtn.textContent = '✓ Gemt!';
+          tableSaveBtn.style.background = '#059669';
+          tableSaveBtn.style.opacity = '1';
+          tableSaveBtn.style.cursor = 'default';
+          setTimeout(() => {
+            tableSaveBtn.textContent = origText;
+            tableSaveBtn.style.opacity = '0.5'; tableSaveBtn.style.background = '#4b5563';
+          }, 1200);
+        });
+        // Step buttons for table count
+        container.querySelectorAll('[data-step-target="restaurant_table_count"]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            tableInput.value = Math.max(1, (parseInt(tableInput.value) || 0) + parseInt(btn.dataset.step));
+            updateTableSaveState();
+          });
+        });
+      }
       // Expand/collapse + update sidebar dot
       const mainToggle = container.querySelector('[data-expand="rm-body"]');
       mainToggle?.addEventListener('click', () => {
@@ -1290,9 +1382,20 @@
         const target = container.querySelector('[data-expand-target="rm-body"]');
         if (target) target.classList.toggle('open', isOn);
         ctx.setRmActive(isOn);
-        // Update green dot in sidebar
-        const dot = ctx.overlay?.querySelector('.fsp-si-dot');
-        if (dot) dot.style.display = isOn ? '' : 'none';
+        // Update green dot in sidebar — find the Restaurant Mode sidebar item
+        const sidebarItems = ctx.overlay?.querySelectorAll('.fsp-si');
+        sidebarItems?.forEach(si => {
+          if (si.textContent.includes('Restaurant')) {
+            const existingDot = si.querySelector('.fsp-si-dot');
+            if (isOn && !existingDot) {
+              const dot = document.createElement('div');
+              dot.className = 'fsp-si-dot';
+              si.appendChild(dot);
+            } else if (!isOn && existingDot) {
+              existingDot.remove();
+            }
+          }
+        });
       });
       // Play sound preview
       container.querySelector('[data-action="play-new-order"]')?.addEventListener('click', () => {
@@ -1363,13 +1466,25 @@
             <div class="fsp-toggle${it.on ? ' on' : ''}" data-tb-toggle="${it.key}"></div>
           </div>`).join('')}
         </div>
-        <div class="fsp-save-row"><button class="fsp-save-btn" data-action="save-settings">Gem indstillinger</button></div>
       </div>`;
     },
     wire(container, ctx) {
       pageAlign(container);
-      wireSaveButton(container, ctx);
       const items = this._getItems(ctx);
+
+      // Toolbar key → header button ID mapping
+      const tbBtnMap = {
+        toolbar_shift_timer: 'shift-timer-pill',
+        toolbar_calculator: 'calculator-mode-toggle',
+        toolbar_kitchen: 'kitchen-btn',
+        toolbar_products: 'toolbar-products-btn',
+        toolbar_deposit: 'toolbar-deposit-btn',
+        toolbar_history: 'toolbar-history-btn',
+        toolbar_help: 'flango-logo-button',
+        toolbar_min_flango: 'logged-in-user-avatar-container',
+        toolbar_logout: 'logout-btn',
+        toolbar_user_panel: 'toolbar-user-panel-btn',
+      };
 
       // Toggle visibility
       container.querySelectorAll('[data-tb-toggle]').forEach(toggle => {
@@ -1384,6 +1499,12 @@
           // Update items array
           const item = items.find(it => it.key === key);
           if (item) item.on = isOn;
+          // Live update: show/hide actual toolbar button in header
+          const btnId = tbBtnMap[key];
+          if (btnId) {
+            const btn = document.getElementById(btnId);
+            if (btn) btn.style.display = isOn ? '' : 'none';
+          }
         });
       });
 
@@ -1534,7 +1655,6 @@
           </div>
         </div></div>
 
-        <div class="fsp-save-row"><button class="fsp-save-btn" data-action="save-settings">Gem indstillinger</button></div>
       </div>`;
     },
     wire(container, ctx) {
@@ -1542,7 +1662,6 @@
       wireToggles(container, ctx);
       wireNumberInputs(container, ctx);
       wireStepButtons(container);
-      wireSaveButton(container, ctx);
       // Expand/collapse toggles
       container.querySelectorAll('[data-expand]').forEach(toggle => {
         toggle.addEventListener('click', () => {
@@ -1605,7 +1724,6 @@
             </div>
           </div></div>
         </div>
-        <div class="fsp-save-row"><button class="fsp-save-btn" data-action="save-settings">Gem indstillinger</button></div>
       </div>`;
     },
     wire(container, ctx) {
@@ -1613,7 +1731,6 @@
       wireToggles(container, ctx);
       wireNumberInputs(container, ctx);
       wireStepButtons(container);
-      wireSaveButton(container, ctx);
       // Main toggle grey-out
       const mainToggle = container.querySelector('[data-field="sugar_policy_enabled"]');
       const body = container.querySelector('[data-body="sp-body"]');
@@ -1744,7 +1861,6 @@
             <div class="fsp-pm-detail">${m.detail}</div>
           </div></div></div>
         </div>`).join('')}
-        <div class="fsp-save-row"><button class="fsp-save-btn" data-action="save-settings">Gem indstillinger</button></div>
       </div>`;
     },
     wire(container, ctx) {
@@ -1772,7 +1888,6 @@
       const stripeBtn = container.querySelector('[data-action="toggle-stripe-details"]');
       const stripeBody = container.querySelector('[data-collapse="stripe-details"]');
       stripeBtn?.addEventListener('click', () => { stripeBtn.classList.toggle('open'); stripeBody?.classList.toggle('open'); });
-      wireSaveButton(container, ctx);
     }
   };
 
@@ -1846,13 +1961,11 @@
             </div>
           </div>
         </div>
-        <div class="fsp-save-row"><button class="fsp-save-btn" data-action="save-settings">Gem indstillinger</button></div>
       </div>`;
     },
     wire(container, ctx) {
       pageAlign(container);
       wireToggles(container, ctx);
-      wireSaveButton(container, ctx);
       // Main toggle grey-out
       container.querySelector('[data-expand="pp-body"]')?.addEventListener('click', function () {
         const target = container.querySelector('[data-expand-target="pp-body"]');
@@ -1928,13 +2041,11 @@
           </div>
         </div></div>
         <button class="fsp-btn fsp-btn-ghost" data-action="show-icons" style="width:100%;display:flex;justify-content:center;padding:14px 24px;font-size:14px;gap:10px;margin-top:8px">\uD83C\uDFA8 Vis jeres ikoner</button>
-        <div class="fsp-save-row"><button class="fsp-save-btn" data-action="save-settings">Gem indstillinger</button></div>
       </div>`;
     },
     wire(container, ctx) {
       pageAlign(container);
       wireToggles(container, ctx);
-      wireSaveButton(container, ctx);
     }
   };
 
@@ -2026,14 +2137,12 @@
             </div>
           </div>
         </div>
-        <div class="fsp-save-row"><button class="fsp-save-btn" data-action="save-settings">Gem indstillinger</button></div>
       </div>`;
     },
     wire(container, ctx) {
       pageAlign(container);
       wireToggles(container, ctx);
       wireRadios(container, ctx);
-      wireSaveButton(container, ctx);
     }
   };
 
@@ -2062,13 +2171,11 @@
           </div>`).join('')}
           <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">For\u00e6ldre advares automatisk 30 dage inden sletning via e-mail.</div>
         </div>
-        <div class="fsp-save-row"><button class="fsp-save-btn" data-action="save-settings">Gem indstillinger</button></div>
       </div>`;
     },
     wire(container, ctx) {
       pageAlign(container);
       wireToggles(container, ctx);
-      wireSaveButton(container, ctx);
       // Expand/collapse
       container.querySelector('[data-expand]')?.addEventListener('click', function () {
         const target = container.querySelector(`[data-expand-target="${this.dataset.expand}"]`);
@@ -2243,20 +2350,19 @@
   // DIVERSE
   // ═══════════════════════════════════════════════════
 
-  // ── Udseende (standalone — live save to theme-loader/localStorage) ──
+  // ── Udseende (Klart is only active theme; Aurora/Unstoppable disabled) ──
   sections['Udseende'] = {
     render(ctx) {
-      const current = window.__flangoTheme?.getCurrentTheme?.() || localStorage.getItem('flango-ui-theme') || 'klart';
       const themes = [
-        { id: 'klart', name: 'Klart', desc: 'Rent og roligt design med bl\u00f8de pastelfarver', bg: 'linear-gradient(135deg, #f8f6f0, #ebe7df)', accent: '#e8734a', accent2: '#f4a261', card: '#ffffff', sidebar: '#f0ede7', txt: '#2d2a25' },
-        { id: 'flango-unstoppable', name: 'Flango Unstoppable', desc: 'Fedt og energisk med lilla accenter og gul kurv', bg: 'linear-gradient(135deg, #1a1d27, #252830)', accent: '#e8734a', accent2: '#f4a261', card: '#2a2d36', sidebar: '#1e2028', txt: '#e4e6eb' },
-        { id: 'aurora', name: 'Aurora', desc: 'M\u00f8rkt tema med neon-cyan og magenta accenter', bg: 'linear-gradient(135deg, #0f1923, #162233)', accent: '#5ba0d8', accent2: '#7bb8e0', card: '#1a2a3a', sidebar: '#0d1620', txt: '#c8d6e5' }
+        { id: 'klart', name: 'Klart', desc: 'Rent og roligt design med bløde pastelfarver', bg: 'linear-gradient(135deg, #f8f6f0, #ebe7df)', accent: '#e8734a', accent2: '#f4a261', card: '#ffffff', sidebar: '#f0ede7', txt: '#2d2a25', active: true },
+        { id: 'flango-unstoppable', name: 'Flango Unstoppable', desc: 'Fedt og energisk med lilla accenter og gul kurv', bg: 'linear-gradient(135deg, #1a1d27, #252830)', accent: '#e8734a', accent2: '#f4a261', card: '#2a2d36', sidebar: '#1e2028', txt: '#e4e6eb', disabled: true },
+        { id: 'aurora', name: 'Aurora', desc: 'Mørkt tema med neon-cyan og magenta accenter', bg: 'linear-gradient(135deg, #0f1923, #162233)', accent: '#5ba0d8', accent2: '#7bb8e0', card: '#1a2a3a', sidebar: '#0d1620', txt: '#c8d6e5', disabled: true }
       ];
       return `<div class="fsp-page">
         <div class="fsp-page-title">Udseende</div>
-        <div class="fsp-page-desc">V\u00e6lg tema for caf\u00e9en.</div>
+        <div class="fsp-page-desc">Vælg tema for caféen.</div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
-          ${themes.map(t => `<div class="fsp-theme-card${current === t.id ? ' active' : ''}" data-theme="${t.id}">
+          ${themes.map(t => `<div class="fsp-theme-card${t.active ? ' active' : ''}${t.disabled ? ' fsp-theme-disabled' : ''}" data-theme="${t.id}"${t.disabled ? ' style="opacity:0.5;pointer-events:none;position:relative"' : ''}>
             <div class="fsp-theme-preview" style="background:${t.bg};display:flex;gap:6px;overflow:hidden">
               <div style="width:28%;background:${t.sidebar};border-radius:6px;padding:6px">
                 <div style="height:5px;width:70%;border-radius:2px;background:${t.accent};margin-bottom:4px"></div>
@@ -2277,7 +2383,7 @@
                 </div>
               </div>
             </div>
-            <div class="fsp-theme-name">${t.name}</div>
+            <div class="fsp-theme-name">${t.name}${t.disabled ? ' <span style="display:inline-block;background:#f59e0b;color:#000;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle">Under Ombygning</span>' : ''}</div>
             <div class="fsp-theme-desc">${t.desc}</div>
           </div>`).join('')}
         </div>
@@ -2285,18 +2391,7 @@
     },
     wire(container, ctx) {
       pageAlign(container);
-      container.querySelectorAll('.fsp-theme-card').forEach(card => {
-        card.addEventListener('click', () => {
-          container.querySelectorAll('.fsp-theme-card').forEach(c => c.classList.remove('active'));
-          card.classList.add('active');
-          const themeId = card.dataset.theme;
-          if (window.__flangoTheme?.switchTheme) {
-            window.__flangoTheme.switchTheme(themeId);
-          } else {
-            localStorage.setItem('flango-ui-theme', themeId);
-          }
-        });
-      });
+      // No click handlers — Klart is hardcoded, disabled themes have pointer-events:none
     }
   };
 

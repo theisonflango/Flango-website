@@ -163,6 +163,9 @@
   max-width: 1000px;
   margin: 0 auto;
 }
+.hv3-content:has(.hv3-tx-bar) {
+  max-width: 100%;
+}
 
 .hv3-page-header {
   margin-bottom: 24px;
@@ -1129,13 +1132,7 @@
 
 /* ─── Transaktioner ─── */
 
-.hv3-tx-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
+/* (old toolbar removed — replaced by .hv3-tx-bar) */
 
 .hv3-tx-search {
   padding: 6px 14px;
@@ -1191,6 +1188,130 @@
   font-weight: 600;
   color: var(--hv3-text-muted);
   white-space: nowrap;
+}
+
+/* ─── Transaction toolbar bars ─── */
+.hv3-tx-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--hv3-card);
+  border: 1px solid var(--hv3-card-border);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  box-shadow: var(--hv3-card-shadow);
+}
+.hv3-tx-bar .hv3-pill {
+  padding: 7px 18px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.hv3-tx-bar .hv3-pills {
+  gap: 3px;
+  padding: 3px;
+}
+.hv3-tx-bar-sep {
+  width: 1px;
+  height: 26px;
+  background: var(--hv3-card-border);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+.hv3-tx-bar-spacer { flex: 1; }
+.hv3-tx-datewrap {
+  display: flex;
+  align-items: stretch;
+  border: 1.5px solid var(--hv3-card-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--hv3-card);
+  transition: border-color 0.15s;
+}
+.hv3-tx-datewrap:focus-within {
+  border-color: var(--hv3-accent);
+  box-shadow: 0 0 0 3px var(--hv3-accent-light);
+}
+.hv3-tx-bar-date {
+  width: 120px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  color: var(--hv3-text);
+  font-family: var(--hv3-font);
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+}
+.hv3-tx-bar-date::-webkit-calendar-picker-indicator {
+  display: none;
+}
+.hv3-tx-date-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  border: none;
+  border-left: 1.5px solid var(--hv3-card-border);
+  background: var(--hv3-pill-bg);
+  color: var(--hv3-accent);
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.hv3-tx-date-btn:hover {
+  background: var(--hv3-accent-light);
+  color: var(--hv3-accent-dark);
+}
+.hv3-tx-bar-datesep {
+  font-size: 12px;
+  color: var(--hv3-text-muted);
+  font-weight: 500;
+}
+.hv3-tx-bar-check {
+  font-size: 13px;
+  color: var(--hv3-text-muted);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.hv3-tx-bar-check input[type="checkbox"] {
+  accent-color: var(--hv3-accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+/* Transaction table: full width, larger text */
+.hv3-tx-card {
+  border-radius: var(--hv3-radius);
+}
+.hv3-tx-card .hv3-table {
+  font-size: 15px;
+}
+.hv3-tx-card .hv3-table th {
+  font-size: 13px;
+  font-weight: 800;
+  padding: 14px 16px;
+  color: var(--hv3-text);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 2.5px solid var(--hv3-text-muted);
+}
+.hv3-tx-card .hv3-table td {
+  padding: 14px 16px;
+  font-size: 15px;
+}
+.hv3-tx-card .hv3-tx-tag {
+  font-size: 13px;
+  padding: 4px 12px;
+  font-weight: 700;
 }
 
 /* Type Tags */
@@ -1285,12 +1406,12 @@
   padding-left: 24px;
 }
 .hv3-tx-adjust-section-title {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--hv3-text-light);
-  margin-bottom: 12px;
+  letter-spacing: 0.3px;
+  color: var(--hv3-text);
+  margin-bottom: 14px;
 }
 .hv3-tx-adjust-items {
   display: flex;
@@ -1301,19 +1422,19 @@
 .hv3-tx-adjust-item {
   display: grid;
   grid-template-columns: 1fr auto auto;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  font-size: 13px;
+  font-size: 15px;
 }
-.hv3-tx-adjust-item-name { font-weight: 500; }
-.hv3-tx-adjust-item-qty { color: var(--hv3-text-muted); font-size: 12px; }
-.hv3-tx-adjust-item-price { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.hv3-tx-adjust-item-name { font-weight: 600; }
+.hv3-tx-adjust-item-qty { color: var(--hv3-text-muted); font-size: 14px; }
+.hv3-tx-adjust-item-price { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; font-size: 15px; }
 .hv3-tx-adjust-total-line { border-top: 1px solid var(--hv3-card-border); padding-top: 8px; margin-top: 4px; }
 .hv3-tx-adjust-meta {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 14px;
   color: var(--hv3-text-muted);
 }
 
@@ -1331,8 +1452,8 @@
   align-items: center;
 }
 .hv3-tx-adjust-qty-name {
-  font-weight: 500;
-  font-size: 12px;
+  font-weight: 600;
+  font-size: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1343,21 +1464,21 @@
   gap: 6px;
 }
 .hv3-tx-adjust-qty-delta {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  min-width: 50px;
+  min-width: 60px;
   text-align: right;
 }
 .hv3-tx-qty-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   border: 1.5px solid var(--hv3-card-border);
   background: var(--hv3-card);
   color: var(--hv3-text);
   font-weight: 700;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1374,8 +1495,8 @@
 .hv3-tx-qty-diff {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  font-size: 13px;
-  min-width: 24px;
+  font-size: 16px;
+  min-width: 28px;
   text-align: center;
 }
 
@@ -1392,15 +1513,15 @@
   border: 1px solid var(--hv3-card-border);
 }
 .hv3-tx-adjust-manual-label {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--hv3-text-muted);
-  font-weight: 500;
+  font-weight: 600;
 }
 .hv3-tx-manual-display {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  font-size: 13px;
-  min-width: 40px;
+  font-size: 16px;
+  min-width: 44px;
   text-align: center;
 }
 
@@ -1416,12 +1537,12 @@
 .hv3-tx-adjust-summary-row {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--hv3-text-muted);
 }
 .hv3-tx-adjust-summary-total {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
   color: var(--hv3-text);
   padding-top: 6px;
   border-top: 1px solid var(--hv3-card-border);
@@ -1434,13 +1555,13 @@
 }
 .hv3-tx-adjust-save {
   flex: 1;
-  padding: 9px 16px;
+  padding: 12px 20px;
   border-radius: var(--hv3-radius-sm);
   border: none;
   background: var(--hv3-accent);
   color: #fff;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 15px;
   cursor: pointer;
   font-family: var(--hv3-font);
   transition: all 0.15s;
@@ -1448,13 +1569,13 @@
 .hv3-tx-adjust-save:hover:not(:disabled) { background: var(--hv3-accent-dark); }
 .hv3-tx-adjust-save:disabled { opacity: 0.4; cursor: not-allowed; }
 .hv3-tx-adjust-undo {
-  padding: 9px 16px;
+  padding: 12px 20px;
   border-radius: var(--hv3-radius-sm);
   border: 1.5px solid var(--hv3-red);
   background: transparent;
   color: var(--hv3-red);
   font-weight: 700;
-  font-size: 13px;
+  font-size: 15px;
   cursor: pointer;
   font-family: var(--hv3-font);
   transition: all 0.15s;
@@ -1463,7 +1584,6 @@
 
 /* Table-specific overrides for transactions */
 .hv3-tx-table td {
-  font-size: 12px;
   vertical-align: middle;
 }
 
@@ -1478,7 +1598,8 @@
     margin-bottom: 16px;
   }
   .hv3-tx-adjust-controls { padding-left: 0; }
-  .hv3-tx-toolbar { flex-direction: column; align-items: stretch; }
+  .hv3-tx-bar { flex-direction: column; align-items: stretch; }
+  .hv3-tx-bar-sep { display: none; }
   .hv3-tx-search { width: 100%; }
 }
 
