@@ -1,4 +1,4 @@
-import { supabaseClient, INSTITUTION_ID_KEY, INSTITUTION_NAME_KEY } from '../core/config-and-supabase.js?v=3.0.75';
+import { supabaseClient, INSTITUTION_ID_KEY, INSTITUTION_NAME_KEY } from '../core/config-and-supabase.js';
 
 let activeInstitution = null;
 let institutionsCache = [];
@@ -93,7 +93,7 @@ export async function fetchInstitutions(forceRefresh = false) {
     try {
         const result = await doFetch();
         institutionsCache = result;
-        console.log(`[institution-store] Hentet ${result.length} institutioner`);
+        console.debug(`[institution-store] Hentet ${result.length} institutioner`);
         return result;
     } catch (err) {
         const isAbort = err?.name === 'AbortError' || (err?.message || '').includes('aborted');

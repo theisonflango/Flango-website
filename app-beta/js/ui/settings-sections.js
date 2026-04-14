@@ -2391,7 +2391,6 @@
     },
     wire(container, ctx) {
       pageAlign(container);
-      // No click handlers — Klart is hardcoded, disabled themes have pointer-events:none
     }
   };
 

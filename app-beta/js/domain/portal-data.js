@@ -2,8 +2,8 @@
 // Ansvar: Hent og gem institutions-indstillinger, forældre-statistik, forældreliste, adoption-data.
 // Importerer supabaseClient direkte fra config-and-supabase.js (samme autentificerede klient).
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.75';
-import { getInstitutionId } from './session-store.js?v=3.0.75';
+import { supabaseClient } from '../core/config-and-supabase.js';
+import { getInstitutionId } from './session-store.js';
 
 // ─── Hjælpere ──────────────────────────────────────────────────
 
@@ -1203,4 +1203,4 @@ window.PortalData = {
   invalidateFeatureFlagsCache,
 };
 
-console.log('[portal-data] PortalData modul registreret på window.PortalData');
+console.debug('[portal-data] PortalData modul klar');

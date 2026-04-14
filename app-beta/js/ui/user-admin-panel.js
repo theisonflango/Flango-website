@@ -7,11 +7,11 @@
  * Tab 4: 📸 Profilbilleder — grid/liste over alle billeder
  */
 
-import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js?v=3.0.75';
-import { getInstitutionId } from '../domain/session-store.js?v=3.0.75';
-import { getCachedProfilePictureUrl, batchPreWarmProfilePictures, invalidateProfilePictureCache, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js?v=3.0.75';
-import { escapeHtml } from '../core/escape-html.js?v=3.0.75';
-import { openHistorikV3ForUser } from './historik-v3.js?v=3.0.75';
+import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js';
+import { getInstitutionId } from '../domain/session-store.js';
+import { getCachedProfilePictureUrl, batchPreWarmProfilePictures, invalidateProfilePictureCache, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js';
+import { escapeHtml } from '../core/escape-html.js';
+import { openHistorikV3ForUser } from './historik-v3.js';
 
 // ─── State ───
 let panelEl = null;
@@ -265,7 +265,13 @@ function renderActiveTab() {
                     <button class="uap-chip ${ovFilterNoActivity ? 'active' : ''}" data-ov="noActivity">Aldrig handlet</button>
                     <button class="uap-chip ${ovFilterHideInactive ? 'active' : ''}" data-ov="hideInactive">Kun aktive</button>
                     <span style="width:1px;height:20px;background:rgba(255,255,255,0.12);margin:0 4px;"></span>
-                    <button class="uap-chip" data-ov="download">⬇ Download liste</button>
+                    <span class="uap-download-wrap" style="position:relative;">
+                        <button class="uap-chip" data-ov="download">⬇ Download liste</button>
+                        <div class="uap-download-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:#1e293b;border:1px solid rgba(255,255,255,0.15);border-radius:8px;overflow:hidden;z-index:100;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
+                            <button class="uap-download-opt" data-fmt="csv" style="display:block;width:100%;padding:10px 14px;border:none;background:none;color:#e2e8f0;text-align:left;cursor:pointer;font-size:13px;transition:background 0.15s;">📊 CSV (Excel)</button>
+                            <button class="uap-download-opt" data-fmt="txt" style="display:block;width:100%;padding:10px 14px;border:none;background:none;color:#e2e8f0;text-align:left;cursor:pointer;font-size:13px;transition:background 0.15s;">📄 Rapport (.txt)</button>
+                        </div>
+                    </span>
                 </div>
             `;
             toolbarExtra.querySelectorAll('.uap-chip[data-role]').forEach(chip => {
@@ -276,15 +282,41 @@ function renderActiveTab() {
                 };
             });
             toolbarExtra.querySelectorAll('.uap-chip[data-ov]').forEach(chip => {
-                chip.onclick = () => {
+                chip.onclick = (e) => {
                     const action = chip.dataset.ov;
                     if (action === 'lowBalance') { ovFilterLowBalance = !ovFilterLowBalance; chip.classList.toggle('active'); }
                     else if (action === 'noActivity') { ovFilterNoActivity = !ovFilterNoActivity; chip.classList.toggle('active'); }
                     else if (action === 'hideInactive') { ovFilterHideInactive = !ovFilterHideInactive; chip.classList.toggle('active'); }
-                    else if (action === 'download') { downloadOverviewCSV(); return; }
+                    else if (action === 'download') {
+                        e.stopPropagation();
+                        const menu = chip.closest('.uap-download-wrap')?.querySelector('.uap-download-menu');
+                        if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+                        return;
+                    }
                     renderOverviewTab();
                 };
             });
+            // Wire download format options
+            toolbarExtra.querySelectorAll('.uap-download-opt').forEach(btn => {
+                btn.onmouseenter = () => { btn.style.background = 'rgba(255,255,255,0.1)'; };
+                btn.onmouseleave = () => { btn.style.background = 'none'; };
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const menu = btn.closest('.uap-download-menu');
+                    if (menu) menu.style.display = 'none';
+                    if (btn.dataset.fmt === 'csv') downloadOverviewCSV();
+                    else if (btn.dataset.fmt === 'txt') downloadOverviewTXT();
+                };
+            });
+            // Close dropdown on outside click
+            const closeDownloadMenu = (e) => {
+                const wrap = toolbarExtra.querySelector('.uap-download-wrap');
+                if (wrap && !wrap.contains(e.target)) {
+                    const menu = wrap.querySelector('.uap-download-menu');
+                    if (menu) menu.style.display = 'none';
+                }
+            };
+            document.addEventListener('click', closeDownloadMenu);
         }
         renderOverviewTab();
     }
@@ -343,23 +375,117 @@ function sortUsers(users, col, dir) {
     });
 }
 
+function getActiveFilterLabel() {
+    const parts = [];
+    if (ovRoleFilter === 'kunde') parts.push('Børn');
+    else if (ovRoleFilter === 'admin') parts.push('Admins');
+    else parts.push('Alle');
+    if (ovFilterLowBalance) parts.push('Lav saldo');
+    if (ovFilterNoActivity) parts.push('Aldrig handlet');
+    if (ovFilterHideInactive) parts.push('Kun aktive');
+    if (searchQuery) parts.push(`Søgning: "${searchQuery}"`);
+    return parts.join(' · ');
+}
+
+function getSortLabel() {
+    const labels = { name: 'Navn', number: 'Nummer', grade: 'Klassetrin', balance: 'Saldo', lastDeposit: 'Seneste indbetaling', activity: 'Seneste aktivitet' };
+    return `${labels[sortCol] || sortCol} (${sortDir === 'asc' ? 'stigende' : 'faldende'})`;
+}
+
+function getExportUsers() {
+    return sortUsers(getFilteredUsers(), sortCol, sortDir);
+}
+
+function formatUserRole(u) {
+    return u.role === 'admin' ? 'Admin' : u.role === 'kunde' ? 'Barn' : u.role || '';
+}
+
 function downloadOverviewCSV() {
-    let users = getFilteredUsers();
-    users = sortUsers(users, sortCol, sortDir);
-    const rows = [['Navn', 'Nummer', 'Klassetrin', 'Saldo', 'Seneste indbetaling', 'Seneste aktivitet']];
-    for (const u of users) {
+    const users = getExportUsers();
+    const instName = localStorage.getItem('flango_institution_name') || '';
+    const date = new Date().toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // Metadata header
+    const meta = [
+        [`Brugeroversigt — ${instName} — ${date}`],
+        [`Filter: ${getActiveFilterLabel()}`],
+        [`Sorteret efter: ${getSortLabel()}`],
+        [`Antal: ${users.length}`],
+        [''],
+    ];
+
+    const header = ['Navn', 'Nummer', 'Rolle', 'Klassetrin', 'Saldo', 'Seneste indbetaling', 'Seneste aktivitet', 'Aktiv'];
+    const dataRows = users.map(u => {
         const grade = u.grade_level != null ? `${u.grade_level}. kl.` : '';
         const balance = (u.balance || 0).toFixed(2);
         const lastDep = u._lastDeposit?.date ? new Date(u._lastDeposit.date).toLocaleDateString('da-DK') + (u._lastDeposit.amount ? ` (${u._lastDeposit.amount} kr.)` : '') : '';
         const lastAct = u._lastActivity ? new Date(u._lastActivity).toLocaleDateString('da-DK') : 'Ingen';
-        rows.push([u.name || '', u.number || '', grade, balance, lastDep, lastAct]);
-    }
-    const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n');
+        const active = u.show_in_user_list !== false ? 'Ja' : 'Nej';
+        return [u.name || '', u.number || '', formatUserRole(u), grade, balance, lastDep, lastAct, active];
+    });
+
+    const esc = c => `"${String(c).replace(/"/g, '""')}"`;
+    const rows = [...meta.map(r => r.map(esc).join(';')), header.map(esc).join(';'), ...dataRows.map(r => r.map(esc).join(';'))];
+    const csv = '\uFEFF' + rows.join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `brugeroversigt_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function downloadOverviewTXT() {
+    const users = getExportUsers();
+    const instName = localStorage.getItem('flango_institution_name') || '';
+    const date = new Date().toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // Column widths
+    const W = { name: 24, num: 8, role: 8, grade: 6, balance: 14, dep: 22, act: 18, active: 7 };
+    const sep = '─'.repeat(W.name + W.num + W.role + W.grade + W.balance + W.dep + W.act + W.active + 8);
+
+    const pad = (s, w) => String(s).padEnd(w);
+    const padR = (s, w) => String(s).padStart(w);
+
+    let txt = '';
+    txt += `Brugeroversigt — ${instName} — ${date}\n`;
+    txt += `Filter: ${getActiveFilterLabel()}\n`;
+    txt += `Sorteret efter: ${getSortLabel()}\n`;
+    txt += `${sep}\n`;
+    txt += `  ${pad('Navn', W.name)}${pad('Nr.', W.num)}${pad('Rolle', W.role)}${pad('Kl.', W.grade)}${padR('Saldo', W.balance)}  ${pad('Indbetaling', W.dep)}${pad('Aktivitet', W.act)}${pad('Aktiv', W.active)}\n`;
+    txt += `${sep}\n`;
+
+    for (const u of users) {
+        const name = (u.name || '').slice(0, W.name - 1);
+        const num = (u.number || '—').slice(0, W.num - 1);
+        const role = formatUserRole(u).slice(0, W.role - 1);
+        const grade = u.grade_level != null ? `${u.grade_level}.` : '';
+        const bal = (u.balance || 0).toLocaleString('da-DK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' kr.';
+        const dep = u._lastDeposit?.date ? new Date(u._lastDeposit.date).toLocaleDateString('da-DK') + (u._lastDeposit.amount ? ` (${u._lastDeposit.amount})` : '') : '';
+        const act = u._lastActivity ? new Date(u._lastActivity).toLocaleDateString('da-DK') : 'Ingen';
+        const active = u.show_in_user_list !== false ? 'Ja' : 'Nej';
+
+        txt += `  ${pad(name, W.name)}${pad(num, W.num)}${pad(role, W.role)}${pad(grade, W.grade)}${padR(bal, W.balance)}  ${pad(dep, W.dep)}${pad(act, W.act)}${pad(active, W.active)}\n`;
+    }
+
+    txt += `${sep}\n`;
+
+    // Summary
+    const totalBalance = users.reduce((s, u) => s + (u.balance || 0), 0);
+    const avgBalance = users.length ? totalBalance / users.length : 0;
+    const negCount = users.filter(u => (u.balance || 0) < 0).length;
+    const negTotal = users.filter(u => (u.balance || 0) < 0).reduce((s, u) => s + (u.balance || 0), 0);
+
+    txt += `  Antal: ${users.length}`;
+    txt += `  ·  Gns. saldo: ${avgBalance.toLocaleString('da-DK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr.`;
+    txt += `  ·  Negativ saldo: ${negCount} brugere (${negTotal.toLocaleString('da-DK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr.)\n`;
+
+    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `brugeroversigt_${new Date().toISOString().slice(0, 10)}.txt`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
@@ -841,7 +967,7 @@ function renderOverviewTab() {
             e.stopPropagation();
             const user = allUsers.find(u => u.id === link.dataset.userId);
             if (!user) return;
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.75');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js');
             openProfilePictureModal(user, {
                 onSaved: (updatedUser) => {
                     Object.assign(user, updatedUser);
@@ -1529,7 +1655,7 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
         // Wire activate
         lb.querySelector('.uap-lb-activate')?.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const { applyProfilePicture } = await import('../core/profile-picture-utils.js?v=3.0.75');
+            const { applyProfilePicture } = await import('../core/profile-picture-utils.js');
             const result = await applyProfilePicture(current.user_id, current);
             if (result.success) {
                 ppEntries.forEach(en => {
@@ -1590,7 +1716,7 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
         lb.querySelector('.uap-lb-add')?.addEventListener('click', async (e) => {
             e.stopPropagation();
             const currentUser = allUsers.find(u => u.id === current.user_id) || { ...current, id: current.user_id, name: current.user_name };
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.75');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js');
             openProfilePictureModal(currentUser, {
                 onSaved: (updatedUser) => {
                     Object.assign(currentUser, updatedUser);
@@ -1608,7 +1734,7 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
             e.stopPropagation();
             if (current._isDefault) return; // Don't use default image as AI reference
             const currentUser = allUsers.find(u => u.id === current.user_id) || { ...current, id: current.user_id, name: current.user_name };
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.75');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js');
             openProfilePictureModal(currentUser, {
                 preSelectType: 'ai_avatar',
                 referenceImageUrl: url,
@@ -1785,7 +1911,7 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
                         ppSignedUrls.set(current.id, signedData[0].signedUrl);
                     }
 
-                    const { invalidateProfilePictureCache } = await import('../core/profile-picture-cache.js?v=3.0.75');
+                    const { invalidateProfilePictureCache } = await import('../core/profile-picture-cache.js');
                     invalidateProfilePictureCache(current.user_id);
 
                     renderLightboxContent();
@@ -1803,7 +1929,7 @@ function openPPLightbox(entry, mode = 'all', userRows = null) {
             e.stopPropagation();
             const typeLabel = (PP_TYPE_LABELS[current.picture_type] || PP_TYPE_LABELS.upload).label;
             if (!confirm(`Slet dette ${typeLabel.toLowerCase()}-billede for ${current.user_name}?`)) return;
-            const { removeProfilePicture } = await import('../core/profile-picture-utils.js?v=3.0.75');
+            const { removeProfilePicture } = await import('../core/profile-picture-utils.js');
 
             const { error: delError } = await supabaseClient.from('profile_picture_library').delete().eq('id', current.id);
             if (delError) { console.error('[uap] Delete fejl:', delError); alert('Kunne ikke slette: ' + delError.message); return; }

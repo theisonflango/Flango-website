@@ -2,6 +2,9 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
+    <!-- Cache Control: altid revalider HTML-dokumentet -->
+    <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
     <!-- Content Security Policy -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
@@ -9,12 +12,13 @@
         style-src 'self' 'unsafe-inline' fonts.googleapis.com;
         font-src 'self' fonts.gstatic.com;
         img-src 'self' data: blob: https://jbknjgbpghrbrstqwoxj.supabase.co https://api.qrserver.com;
-        connect-src 'self' https://jbknjgbpghrbrstqwoxj.supabase.co https://jbknjgbpghrbrstqwoxj.functions.supabase.co wss://jbknjgbpghrbrstqwoxj.supabase.co https://challenges.cloudflare.com;
+        connect-src 'self' https://jbknjgbpghrbrstqwoxj.supabase.co https://jbknjgbpghrbrstqwoxj.functions.supabase.co wss://jbknjgbpghrbrstqwoxj.supabase.co https://challenges.cloudflare.com cdn.jsdelivr.net;
         frame-src https://challenges.cloudflare.com;
         object-src 'none';
         base-uri 'self';
     ">
-    <!-- iOS PWA / Fullscreen support -->
+    <!-- PWA / Fullscreen support -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -30,27 +34,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Modular CSS Architecture -->
-    <link rel="stylesheet" href="css/base.css?v=3.0.75">
-    <link rel="stylesheet" href="css/layout.css?v=3.0.75">
-    <link rel="stylesheet" href="css/components.css?v=3.0.75">
-    <link rel="stylesheet" href="css/products.css?v=3.0.75">
-    <link rel="stylesheet" href="css/users.css?v=3.0.75">
-    <link rel="stylesheet" href="css/features.css?v=3.0.75">
-    <link rel="stylesheet" href="css/events.css?v=3.0.75">
-    <link rel="stylesheet" href="css/historik.css?v=3.0.75">
-    <link rel="stylesheet" href="css/historik-v3.css?v=3.0.75">
-    <link rel="stylesheet" href="css/admin-portal-v2.css?v=3.0.75">
-    <link rel="stylesheet" href="css/icon-library.css?v=3.0.75">
-    <link rel="stylesheet" href="css/product-icon-picker.css?v=3.0.75">
-    <link rel="stylesheet" href="css/profile-pictures.css?v=3.0.75">
-    <link rel="stylesheet" href="css/edit-user-accordion.css?v=3.0.75">
-    <link rel="stylesheet" href="css/user-admin-panel.css?v=3.0.75">
-    <link rel="stylesheet" href="css/settings-panel.css?v=3.0.75">
-    <link rel="stylesheet" href="mobile.css?v=3.0.75">
-    <!-- Theme: flango-unstoppable (only active theme - CSS loaded dynamically by theme-loader.js) -->
-    <!-- DISABLED: pos-pro.css not in use -->
-    <!-- <link rel="stylesheet" href="css/themes/pos-pro.css?v=3.0.75"> -->
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/products.css">
+    <link rel="stylesheet" href="css/users.css">
+    <link rel="stylesheet" href="css/features.css">
+    <link rel="stylesheet" href="css/calculator.css">
+    <link rel="stylesheet" href="css/mobile.css">
+    <link rel="stylesheet" href="css/events.css">
+    <link rel="stylesheet" href="css/historik.css">
+    <link rel="stylesheet" href="css/historik-v3.css">
+    <link rel="stylesheet" href="css/admin-portal-v2.css">
+    <link rel="stylesheet" href="css/icon-library.css">
+    <link rel="stylesheet" href="css/product-icon-picker.css">
+    <link rel="stylesheet" href="css/profile-pictures.css">
+    <link rel="stylesheet" href="css/edit-user-accordion.css">
+    <link rel="stylesheet" href="css/user-admin-panel.css">
+    <link rel="stylesheet" href="css/settings-panel.css">
+    <link rel="stylesheet" href="css/restaurant.css">
     <style>
         .settings-modal-backdrop {
             position: fixed;
@@ -400,28 +403,30 @@
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.101.0" integrity="sha384-HS/sUFZexXk91zcjy7zGIBg3tNDxgxF8YbcifixByxxtxQoF2o8GBBT9p6DdGlAR" crossorigin="anonymous"></script>
 </head>
-<body>
+<body data-theme="klart">
 
     <!-- State 1: Fuldt login (email + kodeord) — ny enhed eller ingen registrerede admins -->
     <div id="screen-full-login" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
         <div class="lock-icon">🔒</div>
         <h1>Log ind</h1>
-        <label for="login-email-input">E-mail</label>
-        <input type="email" id="login-email-input" placeholder="din@email.dk" autocomplete="email">
-        <label for="login-password-input">Kodeord</label>
-        <input type="password" id="login-password-input" placeholder="Kodeord" autocomplete="current-password">
-        <label id="restaurant-mode-login-label" class="restaurant-mode-login-toggle" style="display: none;">
-            <input type="checkbox" id="restaurant-mode-login-checkbox">
-            <div>
-                <span>🍽️ Aktivér restaurant-mode på denne enhed</span>
-                <small>Bordvalg og køkkennote vises ved hvert køb</small>
-            </div>
-        </label>
-        <div id="turnstile-full-login" class="cf-turnstile" data-sitekey="0x4AAAAAACyNOCuIOJjI0pUa" data-theme="dark" style="margin: 12px 0;"></div>
-        <button id="full-login-btn">Log ind</button>
-        <button id="full-login-back-btn" class="secondary-action" style="display: none;">← Tilbage til PIN-login</button>
-        <p id="full-login-error" class="login-error"></p>
+        <form id="form-full-login" onsubmit="return false;" autocomplete="on">
+            <label for="login-email-input">E-mail</label>
+            <input type="email" id="login-email-input" placeholder="din@email.dk" autocomplete="email">
+            <label for="login-password-input">Kodeord</label>
+            <input type="password" id="login-password-input" placeholder="Kodeord" autocomplete="current-password">
+            <label id="restaurant-mode-login-label" class="restaurant-mode-login-toggle" style="display: none;">
+                <input type="checkbox" id="restaurant-mode-login-checkbox">
+                <div>
+                    <span>🍽️ Aktivér restaurant-mode på denne enhed</span>
+                    <small>Bordvalg og køkkennote vises ved hvert køb</small>
+                </div>
+            </label>
+            <div id="turnstile-full-login" style="margin: 12px 0;"></div>
+            <button type="button" id="full-login-btn">Log ind</button>
+            <button type="button" id="full-login-back-btn" class="secondary-action" style="display: none;">← Tilbage til PIN-login</button>
+            <p id="full-login-error" class="login-error"></p>
+        </form>
     </div>
 
     <!-- State 2: Admin-picker + PIN (hurtig unlock — enhed har registrerede admins) -->
@@ -429,15 +434,17 @@
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
         <div class="lock-icon">🔑</div>
         <h1>Vælg din profil</h1>
-        <label for="device-admin-select">Hvem er du?</label>
-        <select id="device-admin-select"></select>
-        <label for="device-pin-input">PIN-kode</label>
-        <div class="pin-input-group">
-            <input type="password" id="device-pin-input" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
-        </div>
-        <button id="device-unlock-btn">Lås op</button>
-        <button id="device-email-login-btn" class="secondary-action">Log ind med email</button>
-        <p id="device-unlock-error" class="login-error"></p>
+        <form id="form-device-unlock" onsubmit="return false;" autocomplete="off">
+            <label for="device-admin-select">Hvem er du?</label>
+            <select id="device-admin-select"></select>
+            <label for="device-pin-input">PIN-kode</label>
+            <div class="pin-input-group">
+                <input type="password" id="device-pin-input" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
+            </div>
+            <button type="button" id="device-unlock-btn">Lås op</button>
+            <button type="button" id="device-email-login-btn" class="secondary-action">Log ind med email</button>
+            <p id="device-unlock-error" class="login-error"></p>
+        </form>
         <a id="device-remove-btn" href="#" style="display: block; margin-top: 16px; font-size: 12px; color: #999; text-align: center; text-decoration: underline;">Glem mig på denne enhed</a>
     </div>
 
@@ -447,15 +454,17 @@
         <div class="lock-icon">📱</div>
         <h1>Vil du huske denne enhed?</h1>
         <p class="login-subtitle">Du kan fremover logge ind med en hurtig 4-cifret PIN-kode.</p>
-        <label for="remember-pin-input">Vælg PIN-kode</label>
-        <input type="password" id="remember-pin-input" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
-        <label for="remember-pin-confirm">Gentag PIN-kode</label>
-        <input type="password" id="remember-pin-confirm" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
-        <div class="login-options" style="margin-top: 10px;">
-            <button id="remember-device-yes-btn">Husk mig på denne enhed</button>
-            <button id="remember-device-no-btn" class="secondary-action">Nej tak</button>
-        </div>
-        <p id="remember-device-error" class="login-error"></p>
+        <form id="form-remember-device" onsubmit="return false;" autocomplete="off">
+            <label for="remember-pin-input">Vælg PIN-kode</label>
+            <input type="password" id="remember-pin-input" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
+            <label for="remember-pin-confirm">Gentag PIN-kode</label>
+            <input type="password" id="remember-pin-confirm" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
+            <div class="login-options" style="margin-top: 10px;">
+                <button type="button" id="remember-device-yes-btn">Husk mig på denne enhed</button>
+                <button type="button" id="remember-device-no-btn" class="secondary-action">Nej tak</button>
+            </div>
+            <p id="remember-device-error" class="login-error"></p>
+        </form>
     </div>
 
     <!-- State 4: PIN locked (3 fejlede forsøg — kræver fuldt login) -->
@@ -464,14 +473,16 @@
         <div class="lock-icon">🚫</div>
         <h1>For mange forsøg</h1>
         <p id="pin-locked-message" class="login-subtitle"></p>
-        <label for="locked-email-input">E-mail</label>
-        <input type="email" id="locked-email-input" placeholder="din@email.dk" autocomplete="email">
-        <label for="locked-password-input">Kodeord</label>
-        <input type="password" id="locked-password-input" placeholder="Kodeord" autocomplete="current-password">
-        <div id="turnstile-locked-login" class="cf-turnstile" data-sitekey="0x4AAAAAACyNOCuIOJjI0pUa" data-theme="dark" style="margin: 12px 0;"></div>
-        <button id="locked-login-btn">Log ind</button>
-        <button id="locked-back-btn" class="secondary-action">Tilbage til profiler</button>
-        <p id="locked-login-error" class="login-error"></p>
+        <form id="form-locked-login" onsubmit="return false;" autocomplete="on">
+            <label for="locked-email-input">E-mail</label>
+            <input type="email" id="locked-email-input" placeholder="din@email.dk" autocomplete="email">
+            <label for="locked-password-input">Kodeord</label>
+            <input type="password" id="locked-password-input" placeholder="Kodeord" autocomplete="current-password">
+            <div id="turnstile-locked-login" style="margin: 12px 0;"></div>
+            <button type="button" id="locked-login-btn">Log ind</button>
+            <button type="button" id="locked-back-btn" class="secondary-action">Tilbage til profiler</button>
+            <p id="locked-login-error" class="login-error"></p>
+        </form>
     </div>
 
     <!-- Tvunget kodeordsskift (efter login med svagt kodeord) -->
@@ -480,12 +491,14 @@
         <div class="lock-icon">🔐</div>
         <h1>Skift din adgangskode</h1>
         <p class="login-subtitle">Din adgangskode skal opdateres. Vælg en ny adgangskode med mindst 10 tegn (bogstaver + tal).</p>
-        <label for="force-pw-new">Ny adgangskode</label>
-        <input type="password" id="force-pw-new" placeholder="Min. 10 tegn" autocomplete="new-password">
-        <label for="force-pw-confirm">Gentag adgangskode</label>
-        <input type="password" id="force-pw-confirm" placeholder="Gentag" autocomplete="new-password">
-        <button id="force-pw-btn">Gem ny adgangskode</button>
-        <p id="force-pw-error" class="login-error"></p>
+        <form id="form-force-password" onsubmit="return false;" autocomplete="off">
+            <label for="force-pw-new">Ny adgangskode</label>
+            <input type="password" id="force-pw-new" placeholder="Min. 10 tegn" autocomplete="new-password">
+            <label for="force-pw-confirm">Gentag adgangskode</label>
+            <input type="password" id="force-pw-confirm" placeholder="Gentag" autocomplete="new-password">
+            <button type="button" id="force-pw-btn">Gem ny adgangskode</button>
+            <p id="force-pw-error" class="login-error"></p>
+        </form>
     </div>
 
     <!-- MFA: Enrollment (scan QR-kode) -->
@@ -1854,7 +1867,7 @@
         </div>
     </div>
 
-    <template id="login-modal-template"><div class="modal-content"><div class="modal-header"><h2>Login</h2><span class="close-btn">&times;</span></div><div class="modal-controls" style="flex-direction: column; gap: 10px;"><input type="email" id="login-email-input" placeholder="E-mail" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" autocomplete="off"><input type="password" id="login-password-input" placeholder="Adgangskode" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" autocomplete="new-password"><button id="perform-login-btn" class="action-button" style="background-color: var(--success-color); margin-top: 10px; margin-bottom: 0;">Log ind</button><p id="login-error-msg" style="color: var(--danger-color); text-align: center; display: none; margin-top: 10px;"></p></div></div></template>
+    <template id="login-modal-template"><div class="modal-content"><div class="modal-header"><h2>Login</h2><span class="close-btn">&times;</span></div><form onsubmit="return false;" autocomplete="off"><div class="modal-controls" style="flex-direction: column; gap: 10px;"><input type="email" id="login-email-input" placeholder="E-mail" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" autocomplete="off"><input type="password" id="login-password-input" placeholder="Adgangskode" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" autocomplete="new-password"><button type="button" id="perform-login-btn" class="action-button" style="background-color: var(--success-color); margin-top: 10px; margin-bottom: 0;">Log ind</button><p id="login-error-msg" style="color: var(--danger-color); text-align: center; display: none; margin-top: 10px;"></p></div></form></div></template>
     <template id="user-modal-template"><div class="modal-content"><div class="modal-header"><h2 id="user-modal-title">Vælg en kunde</h2><div id="user-filter-buttons" class="user-filter-buttons" style="display: none;"><button id="filter-all-btn" class="filter-btn active">Vis Alle</button><button id="filter-children-btn" class="filter-btn">Vis Børn</button><button id="filter-adults-btn" class="filter-btn">Vis Voksne</button></div><span class="close-btn">&times;</span></div><div id="admin-controls-modal"></div><div class="modal-controls"><input type="text" id="search-user-input" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="user-list-header"><div id="sort-by-name-btn" class="sort-header active">Navn</div><div id="sort-by-number-btn" class="sort-header">Nummer</div><div id="sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handling</div></div><div id="modal-user-list" class="modal-user-list"></div></div></template>
     <template id="admin-user-manager-modal-template"><div class="modal-content"><div class="modal-header"><h2>Indbetal penge &amp; Rediger brugere</h2><span class="close-btn">&times;</span></div><div id="admin-role-toggle" class="admin-role-toggle"><button id="admin-toggle-customers" class="admin-role-toggle-btn active" type="button">Børn</button><button id="admin-toggle-admins" class="admin-role-toggle-btn" type="button">Admins</button></div><div id="admin-controls-modal"><button id="add-user-btn-modal" class="action-button admin-btn" style="margin-bottom: 10px;">➕ Tilføj Ny Bruger</button></div><div class="modal-controls"><input type="text" id="admin-search-user-input" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="user-list-header"><div id="admin-sort-by-name-btn" class="sort-header active">Navn</div><div id="admin-sort-by-number-btn" class="sort-header">Nummer</div><div id="admin-sort-by-grade-btn" class="sort-header">Klasse</div><div id="admin-sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handlinger</div></div><div id="admin-modal-user-list" class="modal-user-list"></div></div></template>
     <template id="avatar-picker-modal-template"><div class="modal-content"><div class="modal-header"><h2>Min Flango</h2><span class="close-btn">&times;</span></div><div id="avatar-picker-scroll-wrapper">
@@ -1979,38 +1992,6 @@
     </div></div></template>
     <template id="event-admin-modal-template"><div class="modal-content event-admin-modal"><div class="modal-header event-admin-header"><button id="event-admin-back-btn" class="event-back-btn event-admin-back-hidden" type="button">← Tilbage</button><h2 id="event-admin-title" class="event-admin-title">Arrangementer</h2><span class="close-btn">&times;</span></div><div id="event-list-view" class="event-view"><div class="event-filter-bar"><button id="event-filter-active" class="event-filter-btn active" data-filter="active">Kommende</button><button id="event-filter-past" class="event-filter-btn" data-filter="past">Afsluttede</button><button id="event-filter-cancelled" class="event-filter-btn" data-filter="cancelled">Aflyste</button><button id="event-create-btn" class="event-create-btn">+ Opret Arrangement</button></div><div id="event-list-container" class="event-list-container"></div><div id="event-list-empty" class="event-list-empty" style="display:none;"><p>Ingen arrangementer fundet.</p></div></div><div id="event-detail-view" class="event-view" style="display:none;"><div id="event-detail-header" class="event-detail-header"></div><div id="event-detail-summary" class="event-detail-summary"></div><div id="event-detail-actions" class="event-detail-actions"></div><h4 class="event-reg-list-header">Tilmeldte brugere</h4><div id="event-reg-list" class="event-reg-list"></div></div><div id="event-form-view" class="event-view" style="display:none;"><h3 id="event-form-subtitle">Opret Arrangement</h3><div class="event-form"><input type="text" id="event-form-title" placeholder="Titel *" required><textarea id="event-form-description" placeholder="Beskrivelse (valgfrit)" rows="3"></textarea><input type="number" id="event-form-price" placeholder="Pris (kr.)" step="0.01" value="0.00"><input type="number" id="event-form-capacity" placeholder="Kapacitet (tom = ubegr&#230;nset)" min="1"><label style="font-size:13px;color:#666;">Startdato og -tid *</label><input type="datetime-local" id="event-form-start" required><label style="font-size:13px;color:#666;">Slutdato og -tid (valgfrit)</label><input type="datetime-local" id="event-form-end"><div class="event-class-section"><label style="font-size:13px;color:#666;">Tilladt klasse (ingen valgt = alle)</label><div id="event-form-classes" class="event-class-checkboxes"></div></div><div class="event-form-actions"><button id="event-form-save-btn" class="event-save-btn">Gem</button><button id="event-form-cancel-btn" class="event-cancel-btn">Annuller</button></div></div></div></div></template>
 
-    <!-- Theme picker -->
-    <button id="open-theme-picker" style="display:none;"></button>
-    <div id="theme-picker-backdrop" class="theme-picker-backdrop" style="display:none;">
-        <div class="theme-picker-modal">
-            <h2>Vælg tema</h2>
-            <div class="theme-option">
-                <input type="radio" name="flango-theme" id="theme-flango-unstoppable" value="flango-unstoppable" checked>
-                <label for="theme-flango-unstoppable">
-                    <strong>Flango Unstoppable</strong><br>
-                    Fedt og energisk design
-                </label>
-            </div>
-            <div class="theme-option">
-                <input type="radio" name="flango-theme" id="theme-klart" value="klart">
-                <label for="theme-klart">
-                    <strong>Klart</strong><br>
-                    Rent og roligt design
-                </label>
-            </div>
-            <div class="theme-option">
-                <input type="radio" name="flango-theme" id="theme-aurora" value="aurora">
-                <label for="theme-aurora">
-                    <strong>Aurora</strong><br>
-                    Mørkt med nordlys farver
-                </label>
-            </div>
-            <div class="theme-picker-actions">
-                <button id="theme-picker-close" class="settings-button">Luk</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Indstillinger modal -->
     <div id="settings-modal-backdrop" class="settings-modal-backdrop" style="display:none;">
         <div class="settings-modal">
@@ -2040,16 +2021,16 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.min.js" integrity="sha384-DgmC6Xe2bSN2WjTDXzWYbUbxyhNP+NNkGDR/g78pCXV7E7rcVTGxVg0uIVCUUcBc" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" integrity="sha384-D/t0ZMqQW31H3az8ktEiNb39wyKnS82iFY52QPACM+IjKW3jDUhyIgh2PApRqJZs" crossorigin="anonymous"></script>
-    <script src="js/core/feature-modules.js?v=3.0.75"></script>
-    <script type="module" src="js/domain/portal-data.js?v=3.0.75"></script>
-    <script src="js/ui/settings-panel.js?v=3.0.75"></script>
-    <script src="js/ui/settings-sections.js?v=3.0.75"></script>
-    <script src="js/ui/admin-portal-settings.js?v=3.0.75"></script>
-    <script src="js/ui/admin-portal-v2.js?v=3.0.75"></script>
-    <script type="module" src="js/admin/auto-import-users.js?v=3.0.75"></script>
-    <script type="module" src="js/app.js?v=3.0.75"></script>
-    <script type="module" src="js/restaurant/kitchen-inline-panel.js?v=3.0.75"></script>
-    <script src="js/ui/cookie-banner.js?v=3.0.75"></script>
+    <script src="js/core/feature-modules.js"></script>
+    <script type="module" src="js/domain/portal-data.js?v=2"></script>
+    <script src="js/ui/settings-panel.js?v=4"></script>
+    <script src="js/ui/settings-sections.js?v=11"></script>
+    <script src="js/ui/admin-portal-settings.js?v=2"></script>
+    <script src="js/ui/admin-portal-v2.js"></script>
+    <script type="module" src="js/admin/auto-import-users.js"></script>
+    <script type="module" src="js/app.js?v=2"></script>
+    <script type="module" src="js/restaurant/kitchen-inline-panel.js"></script>
+    <script src="js/ui/cookie-banner.js"></script>
 
 </body>
 </html>

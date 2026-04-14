@@ -1,8 +1,8 @@
 // Ansvar: Supabase-client, institutionsvalg, login, profiler, generel config.
-import { instrumentSupabase } from './db-instrumentation.js?v=3.0.75';
+import { instrumentSupabase } from './db-instrumentation.js';
 
 // App version - skal matche version.json efter deploy
-export const FLANGO_VERSION = '3.0.75';
+export const FLANGO_VERSION = '3.0.80';
 
 const SUPABASE_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co'; // Dette er din nye URL for Flango-3
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impia25qZ2JwZ2hyYnJzdHF3b3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MjIwNjMsImV4cCI6MjA3ODE5ODA2M30.ZMlxQyzmXuy43EcKIN6-eO8pJZs2F6kfDw_cfaks9qQ';
@@ -33,7 +33,7 @@ const authConfig = {
 const _rawClient = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, authConfig);
 export const supabaseClient = instrumentSupabase(_rawClient);
 
-console.log('Supabase client initialiseret til Flango-3.');
+console.debug('Supabase client initialiseret til Flango-3.');
 
 // Platform detection (Capacitor native vs. web)
 export const IS_NATIVE = typeof window !== 'undefined'

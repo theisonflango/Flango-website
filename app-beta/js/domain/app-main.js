@@ -1,50 +1,49 @@
-import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '../ui/sound-and-alerts.js?v=3.0.75';
-import { initializeSoundSettings, getAllSoundSettings, isGlobalMuted, setGlobalMute, getMasterVolume, setMasterVolume, getSoundVolume, setSoundVolume, getSoundFile, setSoundFile } from '../core/sound-manager.js?v=3.0.75';
-import { initDebugRecorder, logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.75';
-import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen, initToolbarSettings } from '../ui/shell-and-theme.js?v=3.0.75';
-import { getCurrentTheme, onThemeChange, switchTheme } from '../ui/theme-loader.js?v=3.0.75';
-import { configureHistoryModule, showTransactionsInSummary, showOverviewInSummary, resetSharedHistoryControls } from './history-and-reports.js?v=3.0.75';
-import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js?v=3.0.75';
-import { setupLogoutFlow } from './logout-flow.js?v=3.0.75';
-import { getFinancialState, setCurrentCustomer, getCurrentCustomer, clearEvaluation, getSelectionToken, clearCurrentCustomer } from './cafe-session-store.js?v=3.0.75';
-import { getOrderTotal, setOrder, getOrder } from './order-store.js?v=3.0.75';
-import { updateLoggedInUserDisplay, updateAvatarStorage, updateSelectedUserInfo } from './app-ui-updates.js?v=3.0.75';
-import { updateTotalPrice, renderOrder, handleOrderListClick, addToOrder, removeLastItemFromOrder, removeOneItemByName } from './order-ui.js?v=3.0.75';
-import { renderProductsInModal, renderProductsGrid, createProductManagementUI, updateProductQuantityBadges } from '../ui/product-management.js?v=3.0.75';
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.75';
+import { playSound, showAlert, showCustomAlert, openSoundSettingsModal } from '../ui/sound-and-alerts.js';
+import { initializeSoundSettings, getAllSoundSettings, isGlobalMuted, setGlobalMute, getMasterVolume, setMasterVolume, getSoundVolume, setSoundVolume, getSoundFile, setSoundFile } from '../core/sound-manager.js';
+import { initDebugRecorder, logDebugEvent } from '../core/debug-flight-recorder.js';
+import { closeTopMostOverlay, suspendSettingsReturn, resumeSettingsReturn, showScreen, initToolbarSettings } from '../ui/shell-and-theme.js';
+import { configureHistoryModule, showTransactionsInSummary, showOverviewInSummary, resetSharedHistoryControls } from './history-and-reports.js';
+import { setupSummaryModal, openSummaryModal, closeSummaryModal, exportToCSV } from './summary-controller.js';
+import { setupLogoutFlow } from './logout-flow.js';
+import { getFinancialState, setCurrentCustomer, getCurrentCustomer, clearEvaluation, getSelectionToken, clearCurrentCustomer } from './cafe-session-store.js';
+import { getOrderTotal, setOrder, getOrder } from './order-store.js';
+import { updateLoggedInUserDisplay, updateAvatarStorage, updateSelectedUserInfo } from './app-ui-updates.js';
+import { updateTotalPrice, renderOrder, handleOrderListClick, addToOrder, removeLastItemFromOrder, removeOneItemByName } from './order-ui.js';
+import { renderProductsInModal, renderProductsGrid, createProductManagementUI, updateProductQuantityBadges } from '../ui/product-management.js';
+import { supabaseClient } from '../core/config-and-supabase.js';
 import {
     CUSTOM_ICON_PREFIX,
     getCustomIconPath,
     preloadChildProductLimitSnapshot,
     applyProductLimitsToButtons,
-} from './products-and-cart.js?v=3.0.75';
-import { getChildSugarPolicySnapshot, getInstitutionSugarPolicy, getCachedCheckSugarPolicy, getUnhealthySnapshotFromSalesCache } from './purchase-limits.js?v=3.0.75';
-import { showPinModal } from '../ui/user-modals.js?v=3.0.75';
-import { setupAvatarPicker } from '../ui/avatar-picker.js?v=3.0.75';
-import { setupKeyboardShortcuts } from '../ui/keyboard-shortcuts.js?v=3.0.75';
-import { setupRuntimeUIEvents } from '../ui/runtime-ui-events.js?v=3.0.75';
-import { initCalculatorMode } from '../ui/calculator-mode.js?v=3.0.75';
+} from './products-and-cart.js';
+import { getChildSugarPolicySnapshot, getInstitutionSugarPolicy, getCachedCheckSugarPolicy, getUnhealthySnapshotFromSalesCache } from './purchase-limits.js';
+import { showPinModal } from '../ui/user-modals.js';
+import { setupAvatarPicker } from '../ui/avatar-picker.js';
+import { setupKeyboardShortcuts } from '../ui/keyboard-shortcuts.js';
+import { setupRuntimeUIEvents } from '../ui/runtime-ui-events.js';
+import { initCalculatorMode } from '../ui/calculator-mode.js';
 // VIGTIGT: shift-timer importeres FØR clerk-login-modal for at sætte window.__flangoOpenShiftTimer
-import { initShiftTimer } from './shift-timer.js?v=3.0.75';
-import { setupClerkLoginButton } from '../ui/clerk-login-modal.js?v=3.0.75';
+import { initShiftTimer } from './shift-timer.js';
+import { setupClerkLoginButton } from '../ui/clerk-login-modal.js';
 import {
     handleCompletePurchase,
     handleUndoLastSale,
     handleUndoPreviousSale,
-} from './purchase-flow.js?v=3.0.75';
-import { onBalanceChange } from '../core/balance-manager.js?v=3.0.75';
-import { startRealtimeSync } from '../core/realtime-sync.js?v=3.0.75';
-import { initToastNotifications, clearAllToasts } from '../ui/toast-notifications.js?v=3.0.75';
-import { setupCustomerPickerFlow } from './customer-picker-flow.js?v=3.0.75';
-import { setupAdminFlow, loadUsersAndNotifications } from './admin-flow.js?v=3.0.75';
-import { initDeletionRequests, checkPendingDeletionRequests } from './deletion-requests.js?v=3.0.75';
-import { startInactivityTimeout } from '../core/inactivity-timeout.js?v=3.0.75';
-import { logAuditEvent } from '../core/audit-events.js?v=3.0.75';
-import { setupProductAssortmentFlow } from './product-assortment-flow.js?v=3.0.75';
-import { batchPreWarmProfilePictures, preWarmDefaultProfilePicture } from '../core/profile-picture-cache.js?v=3.0.75';
-import { initCafeEventStrip, refreshCafeEventStrip, hideCafeEventStrip } from '../ui/cafe-event-strip.js?v=3.0.75';
-import { invalidateCafeEventsCache } from './cafe-events.js?v=3.0.75';
-import { isAuthAdminUser, openDbHistoryModal } from '../ui/db-history.js?v=3.0.75';
+} from './purchase-flow.js';
+import { onBalanceChange } from '../core/balance-manager.js';
+import { startRealtimeSync } from '../core/realtime-sync.js';
+import { initToastNotifications, clearAllToasts } from '../ui/toast-notifications.js';
+import { setupCustomerPickerFlow } from './customer-picker-flow.js';
+import { setupAdminFlow, loadUsersAndNotifications } from './admin-flow.js';
+import { initDeletionRequests, checkPendingDeletionRequests } from './deletion-requests.js';
+import { startInactivityTimeout } from '../core/inactivity-timeout.js';
+import { logAuditEvent } from '../core/audit-events.js';
+import { setupProductAssortmentFlow } from './product-assortment-flow.js';
+import { batchPreWarmProfilePictures, preWarmDefaultProfilePicture } from '../core/profile-picture-cache.js';
+import { initCafeEventStrip, refreshCafeEventStrip, hideCafeEventStrip } from '../ui/cafe-event-strip.js';
+import { invalidateCafeEventsCache } from './cafe-events.js';
+import { isAuthAdminUser, openDbHistoryModal } from '../ui/db-history.js';
 import {
     setCurrentAdmin,
     getCurrentAdmin,
@@ -56,7 +55,7 @@ import {
     markAppStarted,
     setSessionStartTime,
     getSessionStartTime,
-} from './session-store.js?v=3.0.75';
+} from './session-store.js';
 
 export async function startApp() {
     // Guard: undgå dobbelt initialisering (kan give multiple click-handlers)
@@ -87,9 +86,8 @@ export async function startApp() {
     let allUsers = [];
     window.__flangoAllUsers = allUsers; // Expose for balance-manager
 
-    // ── Settings panel hooks (sound + theme) ──
+    // ── Settings panel hooks (sound) ──
     window.__flangoSoundManager = { getAllSoundSettings, isGlobalMuted, setGlobalMute, getMasterVolume, setMasterVolume, getSoundVolume, setSoundVolume, getSoundFile, setSoundFile, playSound };
-    window.__flangoTheme = { getCurrentTheme, switchTheme };
     configureHistoryModule({ getAllUsers: () => allUsers });
     let allProducts = [];
     window.__flangoGetAllProducts = () => allProducts;
@@ -387,12 +385,6 @@ export async function startApp() {
     // Update logged-in user display (refactored to app-ui-updates.js)
     updateLoggedInUserDisplay(clerkProfile, avatarCache, { AVATAR_STORAGE_PREFIX, DEFAULT_AVATAR_URL });
 
-    // Re-render header when theme changes
-    onThemeChange(() => {
-        updateLoggedInUserDisplay(clerkProfile, avatarCache, { AVATAR_STORAGE_PREFIX, DEFAULT_AVATAR_URL });
-        updateSelectedUserInfo();
-    });
-
     // 3.5) DB-Historik button (superadmin only)
     const dbHistoryBtn = document.getElementById('toolbar-db-history-btn');
     function updateDbHistoryButtonVisibility() {
@@ -552,7 +544,7 @@ export async function startApp() {
         });
 
     // 6) Keyboard usage tip tracking
-    const { initKeyboardUsageTip } = await import('../ui/keyboard-usage-tip.js?v=3.0.75');
+    const { initKeyboardUsageTip } = await import('../ui/keyboard-usage-tip.js');
     initKeyboardUsageTip({
         productsContainer,
         selectUserButton: selectUserBtn,
@@ -676,7 +668,7 @@ export async function startApp() {
                         window.__flangoToggleKitchenFullscreen();
                     } else {
                         // Lazy-load kitchen-fullscreen module
-                        import('../restaurant/kitchen-fullscreen.js?v=3.0.75').then(() => {
+                        import('../restaurant/kitchen-fullscreen.js').then(() => {
                             window.__flangoToggleKitchenFullscreen?.();
                         }).catch(() => {
                             window.open('restaurant.html', '_blank');

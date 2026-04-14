@@ -2,13 +2,15 @@
 // Letvægts-instrumentering af Supabase-kald
 // Slå fra ved at sætte ENABLED = false
 
+const IS_LOCAL = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location?.hostname);
+
 const ENABLED = true;
 
-// Hvis true: print én linje pr kald. Hvis false: kun statistik via window.__flangoDbStats
-const PRINT_EACH_CALL = true;
+// Print én linje pr kald — kun på localhost for at undgå konsol-spam i produktion
+const PRINT_EACH_CALL = IS_LOCAL;
 
-// Hvis true: forsøger at udlede callsite (hvilken fil/funktion udløste DB-kaldet)
-const INCLUDE_CALLSITE = true;
+// Forsøger at udlede callsite (hvilken fil/funktion udløste DB-kaldet) — kun på localhost
+const INCLUDE_CALLSITE = IS_LOCAL;
 
 // Stack-linjer der typisk er interne wrappers og derfor skal ignoreres
 const CALLSITE_EXCLUDES = [
@@ -127,7 +129,7 @@ if (typeof window !== 'undefined') {
             console.log('Functions:', this.byFunction);
         }
     };
-    if (ENABLED) console.log('[Flango DB] Instrumentering AKTIV');
+    if (ENABLED) console.debug('[Flango DB] Instrumentering aktiv' + (PRINT_EACH_CALL ? ' (verbose)' : ''));
 }
 
 function logCall(type, name) {
