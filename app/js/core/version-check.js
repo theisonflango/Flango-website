@@ -1,8 +1,8 @@
 // js/core/version-check.js
 // Version check and update notification system
 
-import { FLANGO_VERSION } from './config-and-supabase.js?v=3.0.77';
-import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.77';
+import { FLANGO_VERSION } from './config-and-supabase.js?v=3.0.78';
+import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.78';
 
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutter
 const CACHE_PROBLEM_THRESHOLD = 24 * 60 * 60 * 1000; // 24 timer
@@ -418,27 +418,30 @@ function formatTime(timestamp) {
 }
 
 /**
- * Start periodic version checking
+ * Tidligt version-check ved page-load (før login).
+ * Tjekker én gang og viser banner/auto-refresh hvis nødvendigt.
  */
-export async function startVersionChecking() {
-    // Initial check
+export async function earlyVersionCheck() {
     await checkForUpdates();
 
-    // Auto-refresh ved cache-problem (>24h gammel version) — kun ved app-start
+    // Auto-refresh ved cache-problem (>24h gammel version)
     if (detectCacheProblem()) {
         const lastAutoRefresh = parseInt(localStorage.getItem(AUTO_REFRESH_KEY) || '0', 10);
         const timeSinceLastRefresh = Date.now() - lastAutoRefresh;
 
-        // Max 1 auto-refresh pr. 24h for at undgå loop
         if (timeSinceLastRefresh > CACHE_PROBLEM_THRESHOLD) {
             console.warn('[version-check] Cache-problem: auto-refresh (version forældet >24h)');
             localStorage.setItem(AUTO_REFRESH_KEY, Date.now().toString());
             await performFullRefresh();
-            return; // performFullRefresh reloader siden
         }
     }
+}
 
-    // Periodic checks
+/**
+ * Start periodic version checking (efter login)
+ */
+export async function startVersionChecking() {
+    // Periodic checks (earlyVersionCheck har allerede kørt ved page-load)
     if (checkIntervalId) {
         clearInterval(checkIntervalId);
     }

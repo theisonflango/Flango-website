@@ -2,9 +2,9 @@
 // Helper functions for product icon handling
 // Supports both standard local icons and custom uploaded icons
 
-import { supabaseClient, SUPABASE_URL } from './config-and-supabase.js?v=3.0.77';
-import { CUSTOM_ICON_PREFIX, getCustomIconPath } from '../domain/products-and-cart.js?v=3.0.77';
-import { getCachedProductIconUrl, batchPreWarmProductIcons, setCachedProductIconUrl } from './product-icon-cache.js?v=3.0.77';
+import { supabaseClient, SUPABASE_URL } from './config-and-supabase.js?v=3.0.78';
+import { CUSTOM_ICON_PREFIX, getCustomIconPath } from '../domain/products-and-cart.js?v=3.0.78';
+import { getCachedProductIconUrl, batchPreWarmProductIcons, setCachedProductIconUrl } from './product-icon-cache.js?v=3.0.78';
 
 // Standard icons — storagePath is canonical, path is public URL fallback
 const SUPABASE_STORAGE_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/standard';

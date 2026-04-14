@@ -1,8 +1,8 @@
 // Domain-lag: Arrangementer (club_events, event_registrations, event_payments)
 // Alle Supabase-kald og RPC-wrappere for tilmeldingsmodulet.
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.77';
-import { getCurrentSessionAdmin } from './session-store.js?v=3.0.77';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.78';
+import { getCurrentSessionAdmin } from './session-store.js?v=3.0.78';
 
 // ============================================================================
 // Helpers: datetime-local ↔ (event_date, start_time / end_time) konvertering

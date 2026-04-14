@@ -1,8 +1,8 @@
 // Ansvar: forældre-portal tekstskabelon, admin-overblik, RPC-save/load, notifikationer.
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.77';
-import { getCurrentInstitutionId } from '../domain/users-and-admin.js?v=3.0.77';
-import { showAlert, showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.77';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.78';
+import { getCurrentInstitutionId } from '../domain/users-and-admin.js?v=3.0.78';
+import { showAlert, showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.78';
 
 export async function loadParentPortalTemplateFromDatabase(currentTemplate, adminProfile, clerkProfile) {
     const institutionId = getCurrentInstitutionId(adminProfile, clerkProfile);

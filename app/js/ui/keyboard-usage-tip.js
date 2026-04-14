@@ -5,7 +5,7 @@
  * encouraging keyboard shortcuts when users rely heavily on the mouse.
  */
 
-import { openHelpManually } from './help.js?v=3.0.77';
+import { openHelpManually } from './help.js?v=3.0.78';
 
 const STORAGE_KEY = 'flango-keyboard-tip-dismissed';
 

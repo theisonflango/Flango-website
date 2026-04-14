@@ -1,8 +1,8 @@
 // Produkt-helpers: ikon-konstanter og helper-funktioner
-import { getChildProductLimitSnapshot, canChildPurchase, invalidateAllLimitCaches, getRefillEligibility } from './purchase-limits.js?v=3.0.77';
-import { getCurrentCustomer } from './cafe-session-store.js?v=3.0.77';
-import { MAX_ITEMS_PER_ORDER } from '../core/constants.js?v=3.0.77';
-import { getCachedProductIconUrl } from '../core/product-icon-cache.js?v=3.0.77';
+import { getChildProductLimitSnapshot, canChildPurchase, invalidateAllLimitCaches, getRefillEligibility } from './purchase-limits.js?v=3.0.78';
+import { getCurrentCustomer } from './cafe-session-store.js?v=3.0.78';
+import { MAX_ITEMS_PER_ORDER } from '../core/constants.js?v=3.0.78';
+import { getCachedProductIconUrl } from '../core/product-icon-cache.js?v=3.0.78';
 
 // Sæt til true ved fejlsøgning; hold false i prod for bedre UI/CPU og mindre console-støj
 const LIMITS_UI_DEBUG = false;

@@ -157,7 +157,7 @@
   const TRIGGERS = {
     'Historik': () => {
       if (window.__flangoOpenHistorikV3ForUser) { window.__flangoOpenHistorikV3ForUser(''); }
-      else { import('./historik-v3.js?v=3.0.77').then(m => m.openHistorikV3()).catch(() => {}); }
+      else { import('./historik-v3.js?v=3.0.78').then(m => m.openHistorikV3()).catch(() => {}); }
     },
     'Min Flango': () => window.__flangoOpenAvatarPicker?.(),
     'Dagens Sortiment': () => window.__flangoOpenAssortmentModal?.(),

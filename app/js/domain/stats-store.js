@@ -1,5 +1,5 @@
-import { supabaseClient, INSTITUTION_ID_KEY } from '../core/config-and-supabase.js?v=3.0.77';
-import { getCurrentAdmin, getCurrentClerk, getInstitutionId } from './session-store.js?v=3.0.77';
+import { supabaseClient, INSTITUTION_ID_KEY } from '../core/config-and-supabase.js?v=3.0.78';
+import { getCurrentAdmin, getCurrentClerk, getInstitutionId } from './session-store.js?v=3.0.78';
 
 // Stats-tilstand og Supabase-integration (ingen UI/badge-logik)
 const safeNumber = (value) => {
