@@ -24,7 +24,7 @@ import {
     formatMinutes,
     invalidateStatisticsCache,
     sortStatisticsRows
-} from '../domain/statistics-data.js?v=3.0.76';
+} from '../domain/statistics-data.js?v=3.0.77';
 
 // ============================================================
 // DOM REFERENCES

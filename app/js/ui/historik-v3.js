@@ -1,7 +1,7 @@
 // Ansvar: Historik v3 — modal lifecycle, sidebar, page routing, alle 8 page-render funktioner.
 // Genbruger data-laget fra historik-data.js og eksport fra historik-export.js.
-import { getCurrentAdmin, getInstitutionId, isCurrentUserAdmin } from '../domain/session-store.js?v=3.0.76';
-import { initPurchaseProfiles, getChartData as ppGetChartData } from '../domain/purchase-profiles.js?v=3.0.76';
+import { getCurrentAdmin, getInstitutionId, isCurrentUserAdmin } from '../domain/session-store.js?v=3.0.77';
+import { initPurchaseProfiles, getChartData as ppGetChartData } from '../domain/purchase-profiles.js?v=3.0.77';
 import {
   periodRange, fmtDate, fmtDateTime, fmtMinutes, fmtKr, fmtDayDate, getLevel,
   getMyRevenue, getMyTransactionCount, getMyTransactionSplit, getClubStats, getTotalDeposits,
@@ -12,20 +12,20 @@ import {
   getTransactions, getSaleItems, undoSale, registerSaleAdjustment,
   getEmployeeSummary, getAdminSalesSplit, getAdminTimeSplit, getAdminDeposits,
   getFirstSaleDate, getAdminCafeDays, getCustomerStats,
-} from '../domain/historik-data.js?v=3.0.76';
-import { exportSalesReport, exportAllBalances, exportNegativeBalances, exportTransactionsCsv, exportClerkReport, exportPeriodReport } from './historik-export.js?v=3.0.76';
-import { showConfirmModal } from './confirm-modals.js?v=3.0.76';
-import { showCustomAlert } from './sound-and-alerts.js?v=3.0.76';
-import { invalidateTodaysSalesCache } from '../domain/purchase-limits.js?v=3.0.76';
+} from '../domain/historik-data.js?v=3.0.77';
+import { exportSalesReport, exportAllBalances, exportNegativeBalances, exportTransactionsCsv, exportClerkReport, exportPeriodReport } from './historik-export.js?v=3.0.77';
+import { showConfirmModal } from './confirm-modals.js?v=3.0.77';
+import { showCustomAlert } from './sound-and-alerts.js?v=3.0.77';
+import { invalidateTodaysSalesCache } from '../domain/purchase-limits.js?v=3.0.77';
 import {
   renderAreaChart, renderBarChart, renderHorizontalBars, renderDonutChart,
   renderGauge, attachChartTooltips, progressBar, renderRankingList,
   animateChartEntrance,
   BAR_COLORS, escHtml, fmtNum,
-} from './historik-v3-charts.js?v=3.0.76';
+} from './historik-v3-charts.js?v=3.0.77';
 
 // ─── CONSTANTS ───
-import { getCachedProductIconUrl } from '../core/product-icon-cache.js?v=3.0.76';
+import { getCachedProductIconUrl } from '../core/product-icon-cache.js?v=3.0.77';
 
 const ICON_PREFIX = '::icon::';
 function productIcon(emoji, iconUrl, size = 18, storagePath = '') {
@@ -179,7 +179,7 @@ export function openHistorikV3() {
     btn.addEventListener('click', async () => {
       if (btn.dataset.page === 'v2') {
         closeHistorikV3();
-        const { openHistorikModal } = await import('./historik-modal.js?v=3.0.76');
+        const { openHistorikModal } = await import('./historik-modal.js?v=3.0.77');
         openHistorikModal();
         return;
       }

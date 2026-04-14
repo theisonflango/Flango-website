@@ -1,7 +1,7 @@
 // js/ui/customer-picker.js
-import { buildCustomerSelectionEntryElement } from '../domain/users-and-admin.js?v=3.0.76';
-import { SEARCH_DEBOUNCE_MS } from '../core/constants.js?v=3.0.76';
-import { batchPreWarmProfilePictures, preWarmDefaultProfilePicture } from '../core/profile-picture-cache.js?v=3.0.76';
+import { buildCustomerSelectionEntryElement } from '../domain/users-and-admin.js?v=3.0.77';
+import { SEARCH_DEBOUNCE_MS } from '../core/constants.js?v=3.0.77';
+import { batchPreWarmProfilePictures, preWarmDefaultProfilePicture } from '../core/profile-picture-cache.js?v=3.0.77';
 
 // Filter state - enklere: kun ét valg ad gangen
 let userFilterMode = 'all'; // 'all' | 'children' | 'adults'

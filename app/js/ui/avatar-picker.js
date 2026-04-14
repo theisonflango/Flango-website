@@ -1,11 +1,11 @@
-import { playSound } from './sound-and-alerts.js?v=3.0.76';
+import { playSound } from './sound-and-alerts.js?v=3.0.77';
 import {
     renderBadgeIcon,
     getStatsSummaryHTML,
     formatDurationWithSeconds,
     loadFlangoAdminStats,
     mergeRemoteStatsWithSession,
-} from '../domain/stats-and-badges.js?v=3.0.76';
+} from '../domain/stats-and-badges.js?v=3.0.77';
 
 export const AVATAR_URLS = [
     'Icons/webp/Avatar/Ekspedient-dreng-1star.webp',
@@ -47,7 +47,7 @@ export async function setupAvatarPicker(options) {
     }
 
     // Importer calculateCurrentStats dynamisk for at undgå cirkulære afhængigheder, hvis det er et problem
-    const { calculateCurrentStats } = await import('../domain/stats-store.js?v=3.0.76');
+    const { calculateCurrentStats } = await import('../domain/stats-store.js?v=3.0.77');
 
 
     const summaryContainer = modal.querySelector('#avatar-picker-summary');

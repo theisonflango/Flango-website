@@ -1,20 +1,20 @@
-import { playSound, showAlert, showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.76';
-import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.76';
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.76';
+import { playSound, showAlert, showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.77';
+import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.77';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.77';
 import {
     calculateCurrentStats,
     loadFlangoAdminStats,
     mergeRemoteStatsWithSession,
     getStatsSummaryHTML,
     addWorkMinutesForToday, getStatsAccordionSectionsHTML,
-} from './stats-and-badges.js?v=3.0.76';
-import { clearCurrentCustomer } from './cafe-session-store.js?v=3.0.76';
-import { stopInactivityTimeout } from '../core/inactivity-timeout.js?v=3.0.76';
-import { showScreen } from '../ui/shell-and-theme.js?v=3.0.76';
-import { handlePrintAllBalances } from './history-and-reports.js?v=3.0.76';
-import { resetShiftTimer } from './shift-timer.js?v=3.0.76';
-import { stopRealtimeSync } from '../core/realtime-sync.js?v=3.0.76';
-import { clearAllToasts } from '../ui/toast-notifications.js?v=3.0.76';
+} from './stats-and-badges.js?v=3.0.77';
+import { clearCurrentCustomer } from './cafe-session-store.js?v=3.0.77';
+import { stopInactivityTimeout } from '../core/inactivity-timeout.js?v=3.0.77';
+import { showScreen } from '../ui/shell-and-theme.js?v=3.0.77';
+import { handlePrintAllBalances } from './history-and-reports.js?v=3.0.77';
+import { resetShiftTimer } from './shift-timer.js?v=3.0.77';
+import { stopRealtimeSync } from '../core/realtime-sync.js?v=3.0.77';
+import { clearAllToasts } from '../ui/toast-notifications.js?v=3.0.77';
 
 export function setupLogoutFlow({ clerkProfile, sessionStartTime, getSessionSalesCount, logoutBtn, settingsLogoutBtn }) {
     if (logoutBtn) logoutBtn.onclick = async () => {

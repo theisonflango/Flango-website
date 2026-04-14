@@ -10,8 +10,8 @@ import {
     getSoundFile,
     setSoundFile,
     getAllSoundSettings
-} from '../core/sound-manager.js?v=3.0.76';
-import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.76';
+} from '../core/sound-manager.js?v=3.0.77';
+import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.77';
 
 const customAlertModal = document.getElementById('custom-alert-modal');
 const customAlertContent = document.getElementById('custom-alert-content');
