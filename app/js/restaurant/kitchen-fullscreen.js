@@ -9,16 +9,16 @@
  *   - kitchen-sound.js  → sounds, mute toggle, settings
  *   - config-and-supabase.js → supabaseClient
  */
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.80';
-import { escapeHtml } from '../core/escape-html.js?v=3.0.80';
-import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.80';
-import { renderKitchenCard, updateAllCardTimes } from './kitchen-cards.js?v=3.0.80';
-import { sortOrdersByColumn } from './kitchen-sort.js?v=3.0.80';
+import { supabaseClient } from '../core/config-and-supabase.js';
+import { escapeHtml } from '../core/escape-html.js';
+import { showCustomAlert } from '../ui/sound-and-alerts.js';
+import { renderKitchenCard, updateAllCardTimes } from './kitchen-cards.js';
+import { sortOrdersByColumn } from './kitchen-sort.js';
 import {
     initKitchenSound, playNewOrderSound, playServeSound,
     toggleMute, isSoundMuted,
     setOrderSound, setServeSound, getOrderSoundFile, getServeSoundFile,
-} from './kitchen-sound.js?v=3.0.80';
+} from './kitchen-sound.js';
 
 let isOpen = false;
 let institutionId = null;
@@ -65,7 +65,7 @@ async function openFullscreen() {
 
     // Close inline panel if open
     if (typeof window.__flangoToggleKitchenPanel === 'function') {
-        const { isKitchenModeActive } = await import('./kitchen-inline-panel.js?v=3.0.80');
+        const { isKitchenModeActive } = await import('./kitchen-inline-panel.js');
         if (isKitchenModeActive()) {
             window.__flangoToggleKitchenPanel(false);
         }
@@ -73,7 +73,7 @@ async function openFullscreen() {
 
     // Close calculator if open
     if (document.body.classList.contains('calculator-mode')) {
-        const { toggleCalculatorMode } = await import('../ui/calculator-mode.js?v=3.0.80');
+        const { toggleCalculatorMode } = await import('../ui/calculator-mode.js');
         toggleCalculatorMode(false);
     }
 

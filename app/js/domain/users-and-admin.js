@@ -2,9 +2,9 @@
 // TODO: Users/Admin modul er udskudt.
 // Al user/admin-logik lever lige nu i app.js af hensyn til stabilitet.
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.80';
-import { escapeHtml } from '../core/escape-html.js?v=3.0.80';
-import { getCachedProfilePictureUrl, renderDefaultProfilePictureHtml } from '../core/profile-picture-cache.js?v=3.0.80';
+import { supabaseClient } from '../core/config-and-supabase.js';
+import { escapeHtml } from '../core/escape-html.js';
+import { getCachedProfilePictureUrl, renderDefaultProfilePictureHtml } from '../core/profile-picture-cache.js';
 
 const adminCacheByInstitutionUsers = {};
 

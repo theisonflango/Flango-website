@@ -24,12 +24,12 @@
  *   State 3 "No"  → setupAdminLoginScreen()
  */
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.80';
-import { rememberInstitution, ensureActiveInstitution, fetchInstitutions } from './institution-store.js?v=3.0.80';
-import { getInstitutionId } from './session-store.js?v=3.0.80';
-import { performLogin, getCurrentUserProfile } from './auth-and-session.js?v=3.0.80';
-import { showScreen } from '../ui/shell-and-theme.js?v=3.0.80';
-import { logAuditEvent } from '../core/audit-events.js?v=3.0.80';
+import { supabaseClient } from '../core/config-and-supabase.js';
+import { rememberInstitution, ensureActiveInstitution, fetchInstitutions } from './institution-store.js';
+import { getInstitutionId } from './session-store.js';
+import { performLogin, getCurrentUserProfile } from './auth-and-session.js';
+import { showScreen } from '../ui/shell-and-theme.js';
+import { logAuditEvent } from '../core/audit-events.js';
 import {
     hasDeviceUsers,
     getDeviceUsers,
@@ -38,7 +38,7 @@ import {
     registerDeviceToken,
     removeDeviceUser,
     clearAllDeviceUsers,
-} from './device-trust.js?v=3.0.80';
+} from './device-trust.js';
 import {
     getMfaFactors,
     enrollTotp,
@@ -47,12 +47,32 @@ import {
     setMfaDeviceTrustedDurable,
     isMfaDeviceTrusted,
     checkServerMfaTrust,
-} from './mfa-utils.js?v=3.0.80';
+} from './mfa-utils.js';
 
-// ─── Turnstile verification helper ──────────────────────────────
+// ─── Turnstile lazy-render + verification ──────────────────────
+
+const TURNSTILE_SITEKEY = '0x4AAAAAACyNOCuIOJjI0pUa';
+const _renderedWidgets = new Set();
+
+/**
+ * Render Turnstile widget on-demand (lazy).
+ * Prevents all the sandbox/xr-spatial-tracking console noise
+ * from loading widgets for invisible login screens.
+ */
+function ensureTurnstileWidget(containerId) {
+    if (_renderedWidgets.has(containerId)) return;
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return;
+    if (typeof turnstile === 'undefined') return;
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    try {
+        turnstile.render(`#${containerId}`, { sitekey: TURNSTILE_SITEKEY, theme: 'dark' });
+        _renderedWidgets.add(containerId);
+    } catch { /* fail-open */ }
+}
 
 async function verifyTurnstileToken(widgetId) {
-    // Skip Turnstile on localhost (not available outside production)
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return { ok: true };
     let token = null;
@@ -63,11 +83,9 @@ async function verifyTurnstileToken(widgetId) {
         return { ok: true };
     }
     if (!token) {
-        console.warn('[login] Turnstile token missing — skipping verification (fail-open)');
-        return { ok: true };
+        return { ok: true }; // fail-open
     }
     try {
-        // Timeout: fail-open efter 5 sekunder hvis Edge Function hænger
         const res = await Promise.race([
             supabaseClient.functions.invoke('verify-turnstile', { body: { token } }),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
@@ -78,8 +96,7 @@ async function verifyTurnstileToken(widgetId) {
         }
         return { ok: true };
     } catch {
-        console.warn('[login] Turnstile verification failed/timed out — fail-open');
-        return { ok: true }; // Fail-open: tillad login hvis Edge Function er nede eller timeout
+        return { ok: true }; // fail-open
     }
 }
 
@@ -87,6 +104,7 @@ async function verifyTurnstileToken(widgetId) {
 
 export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
     showScreen('screen-full-login');
+    ensureTurnstileWidget('turnstile-full-login');
 
     const emailInput = document.getElementById('login-email-input');
     const passwordInput = document.getElementById('login-password-input');
@@ -197,7 +215,7 @@ export async function setupFullLoginScreen({ fromDeviceUnlock = false } = {}) {
         const existingDeviceUsers = getDeviceUsers();
         const alreadyRegistered = existingDeviceUsers.some(u => u.userId === session.user.id);
         if (alreadyRegistered) {
-            const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.80');
+            const { setupAdminLoginScreen } = await import('./app-main.js');
             setupAdminLoginScreen(adminProfile);
         } else {
             setupRememberDeviceScreen(adminProfile);
@@ -326,7 +344,7 @@ export async function setupDeviceUnlockScreen() {
         localStorage.getItem('flango_device_restaurant_mode'); // already saved
 
         // Go to admin welcome screen
-        const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.80');
+        const { setupAdminLoginScreen } = await import('./app-main.js');
         setupAdminLoginScreen(adminProfile);
     };
 
@@ -415,13 +433,13 @@ export function setupRememberDeviceScreen(adminProfile) {
         });
 
         // Proceed to admin welcome
-        const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.80');
+        const { setupAdminLoginScreen } = await import('./app-main.js');
         setupAdminLoginScreen(adminProfile);
     };
 
     noBtn.onclick = async () => {
         // Skip device registration, go straight to admin welcome
-        const { setupAdminLoginScreen } = await import('./app-main.js?v=3.0.80');
+        const { setupAdminLoginScreen } = await import('./app-main.js');
         setupAdminLoginScreen(adminProfile);
     };
 
@@ -435,6 +453,7 @@ export function setupRememberDeviceScreen(adminProfile) {
 
 export function setupPinLockedScreen(adminName) {
     showScreen('screen-pin-locked');
+    ensureTurnstileWidget('turnstile-locked-login');
 
     const messageEl = document.getElementById('pin-locked-message');
     const emailInput = document.getElementById('locked-email-input');
@@ -529,7 +548,7 @@ export function setupPinLockedScreen(adminName) {
         const existingDeviceUsers = getDeviceUsers();
         const alreadyRegistered = existingDeviceUsers.some(u => u.userId === session.user.id);
         if (alreadyRegistered) {
-            const { setupAdminLoginScreen: startAdmin } = await import('./app-main.js?v=3.0.80');
+            const { setupAdminLoginScreen: startAdmin } = await import('./app-main.js');
             startAdmin(adminProfile);
         } else {
             setupRememberDeviceScreen(adminProfile);

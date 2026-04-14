@@ -1,27 +1,21 @@
-import { showAlert } from './ui/sound-and-alerts.js?v=3.0.80';
+import { showAlert } from './ui/sound-and-alerts.js';
 import {
-    initFlangoTheme,
-    setupThemePickerUI,
     setupToolbarGearMenu,
     setupToolbarHistoryButton,
     setupToolbarShortcutButtons,
     setupSettingsModal,
     setupHelpButton,
     initToolbarSettings,
-} from './ui/shell-and-theme.js?v=3.0.80';
-import { supabaseClient } from './core/config-and-supabase.js?v=3.0.80';
-import { getCurrentUserProfile } from './domain/auth-and-session.js?v=3.0.80';
-import { ensureActiveInstitution, fetchInstitutions } from './domain/institution-store.js?v=3.0.80';
-import { setupFullLoginScreen, setupDeviceUnlockScreen } from './domain/login-flow.js?v=3.0.80';
-import { hasDeviceUsers } from './domain/device-trust.js?v=3.0.80';
-import { startApp, setupAdminLoginScreen } from './domain/app-main.js?v=3.0.80';
-import { initUpdateChip, startVersionChecking, earlyVersionCheck } from './core/version-check.js?v=3.0.80';
+} from './ui/shell-and-theme.js';
+import { supabaseClient } from './core/config-and-supabase.js';
+import { getCurrentUserProfile } from './domain/auth-and-session.js';
+import { ensureActiveInstitution, fetchInstitutions } from './domain/institution-store.js';
+import { setupFullLoginScreen, setupDeviceUnlockScreen } from './domain/login-flow.js';
+import { hasDeviceUsers } from './domain/device-trust.js';
+import { startApp, setupAdminLoginScreen } from './domain/app-main.js';
+import { initUpdateChip, startVersionChecking, earlyVersionCheck } from './core/version-check.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // INIT tema første gang siden indlæses
-    initFlangoTheme();
-    setupThemePickerUI();
-
     // Tidligt version-check (kører FØR login — viser banner/auto-refresh ved forældet version)
     earlyVersionCheck();
 

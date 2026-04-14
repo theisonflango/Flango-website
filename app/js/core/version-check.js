@@ -1,8 +1,8 @@
 // js/core/version-check.js
 // Version check and update notification system
 
-import { FLANGO_VERSION } from './config-and-supabase.js?v=3.0.80';
-import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.80';
+import { FLANGO_VERSION } from './config-and-supabase.js';
+import { showCustomAlert } from '../ui/sound-and-alerts.js';
 
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutter
 const CACHE_PROBLEM_THRESHOLD = 24 * 60 * 60 * 1000; // 24 timer
@@ -157,7 +157,11 @@ async function checkForUpdates() {
         localStorage.removeItem(UPDATE_FIRST_SEEN_KEY);
     }
 
-    console.log(`[version-check] Lokal: ${FLANGO_VERSION}, Remote: ${remoteData.version}, Update: ${updateAvailable}`);
+    if (updateAvailable) {
+        console.warn(`[version-check] Opdatering tilgængelig: ${FLANGO_VERSION} → ${remoteData.version}`);
+    } else {
+        console.debug(`[version-check] Lokal: ${FLANGO_VERSION}, Remote: ${remoteData.version} — OK`);
+    }
 
     // Opdater UI
     updateChipVisibility();
@@ -450,7 +454,7 @@ export async function startVersionChecking() {
         checkForUpdates();
     }, VERSION_CHECK_INTERVAL);
 
-    console.log('[version-check] Version checking started');
+    console.debug('[version-check] Interval startet (5 min)');
 }
 
 /**
@@ -481,7 +485,7 @@ export function initUpdateChip() {
     const chip = createUpdateChip();
     sessionBanner.appendChild(chip);
 
-    console.log('[version-check] Update chip tilføjet til status banner');
+    console.debug('[version-check] Update chip klar');
 }
 
 // Expose for Settings modal

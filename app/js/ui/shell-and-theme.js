@@ -1,29 +1,20 @@
-// Tema og shell-funktioner
-import { getCurrentClerk, getCurrentAdmin, isCurrentUserAdmin, getInstitutionId } from '../domain/session-store.js?v=3.0.80';
-import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js?v=3.0.80';
-import { setupHelpModule, openHelpManually } from './help.js?v=3.0.80';
-import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js?v=3.0.80';
-import { getCurrentCustomer } from '../domain/cafe-session-store.js?v=3.0.80';
-import { getOrder } from '../domain/order-store.js?v=3.0.80';
-import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js?v=3.0.80';
-import { logAuditEvent } from '../core/audit-events.js?v=3.0.80';
-import {
-    initThemeLoader,
-    switchTheme as themePackSwitchTheme,
-    getCurrentTheme,
-    isThemePackTheme,
-    ALL_VALID_THEMES
-} from './theme-loader.js?v=3.0.80';
-import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js?v=3.0.80';
-import { updateInstitutionCache } from '../domain/institution-store.js?v=3.0.80';
-import { showCustomAlert } from './sound-and-alerts.js?v=3.0.80';
-import { refetchAllProducts } from '../core/data-refetch.js?v=3.0.80';
-import { invalidateAllLimitCaches } from '../domain/purchase-limits.js?v=3.0.80';
-import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js?v=3.0.80';
-import { openAulaImportModal } from './aula-import-modal.js?v=3.0.80';
-import { openUserAdminPanel, openParentPortalAsAdmin } from './user-admin-panel.js?v=3.0.80';
-
-const THEME_STORAGE_KEY = 'flango-ui-theme';
+// Shell-funktioner (UI shell, settings modal, toolbar)
+import { getCurrentClerk, getCurrentAdmin, isCurrentUserAdmin, getInstitutionId } from '../domain/session-store.js';
+import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js';
+import { setupHelpModule, openHelpManually } from './help.js';
+import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js';
+import { getCurrentCustomer } from '../domain/cafe-session-store.js';
+import { getOrder } from '../domain/order-store.js';
+import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js';
+import { logAuditEvent } from '../core/audit-events.js';
+import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js';
+import { updateInstitutionCache } from '../domain/institution-store.js';
+import { showCustomAlert } from './sound-and-alerts.js';
+import { refetchAllProducts } from '../core/data-refetch.js';
+import { invalidateAllLimitCaches } from '../domain/purchase-limits.js';
+import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js';
+import { openAulaImportModal } from './aula-import-modal.js';
+import { openUserAdminPanel, openParentPortalAsAdmin } from './user-admin-panel.js';
 
 // Modal-stak: tilbage går altid til forrige visning
 let settingsModalBackStack = [];
@@ -44,23 +35,6 @@ const sugarPolicyState = {
     enabled: false,
     limitedProductIds: new Set(),
 };
-
-const VALID_THEMES = ALL_VALID_THEMES;
-
-function setFlangoTheme(themeName) {
-    // Only klart is active — ignore other themes
-    if (themeName !== 'klart') return;
-    themePackSwitchTheme('klart');
-}
-
-export function initFlangoTheme() {
-    initThemeLoader();
-}
-
-export function setupThemePickerUI() {
-    // Theme picker is no longer used — Klart is the only active theme.
-    // Theme selection is handled in settings modal (Udseende section).
-}
 
 // isCurrentUserAdmin is imported from session-store.js
 
@@ -88,7 +62,7 @@ function callButtonById(id) {
 }
 
 export function closeTopMostOverlay() {
-    const overlaySelectors = ['.modal', '#settings-modal-backdrop', '#theme-picker-backdrop'];
+    const overlaySelectors = ['.modal', '#settings-modal-backdrop'];
     const overlays = overlaySelectors.flatMap(sel => Array.from(document.querySelectorAll(sel)));
     const visibleOverlays = overlays.filter(el => {
         const style = window.getComputedStyle(el);
@@ -521,7 +495,7 @@ function renderProductRulesTable() {
         }
         tdIcon.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const { openProductIconPicker } = await import('./product-icon-picker.js?v=3.0.80');
+            const { openProductIconPicker } = await import('./product-icon-picker.js');
             openProductIconPicker({
                 mode: 'product',
                 institutionId: productRulesState.institutionId,
@@ -1666,7 +1640,7 @@ async function openProfilePictureSettingsModal() {
     // Choose default image button — open profile picture modal in "default" mode
     if (defaultImageChooseBtn) {
         defaultImageChooseBtn.onclick = async () => {
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.80');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js');
             // Use a fake user object for the default image
             const fakeUser = { id: '__default__', name: 'Standard billede', institution_id: institutionId };
             openProfilePictureModal(fakeUser, {
@@ -4934,8 +4908,6 @@ export function openSettingsModal() {
             } else { notifyToolbarUser('Ikke klar.'); }
         }, '', 'Vælg hvilke produkter der vises i caféen.', 'Kurv.webp'));
 
-        contentEl.appendChild(createSettingsItemBtn('Udseende', () => openViaSettings('theme-picker-backdrop', () => callButtonById('open-theme-picker')), '', 'Vælg tema og udseende.', 'image.webp'));
-
         contentEl.appendChild(createSettingsItemBtn('Ugeplan', () => {
             const instData = window.__flangoGetInstitutionById?.(getInstitutionId());
             const slug = instData?.slug || instData?.name?.toLowerCase().replace(/\s+/g, '-') || 'stampen';
@@ -5202,13 +5174,13 @@ export function setupToolbarHistoryButton() {
     historyBtn.onclick = async (event) => {
         event.preventDefault();
         try {
-            const { openHistorikV3 } = await import('./historik-v3.js?v=3.0.80');
+            const { openHistorikV3 } = await import('./historik-v3.js');
             openHistorikV3();
         } catch (err) {
             console.error('Kunne ikke åbne Historik v3:', err);
             // Fallback til v2
             try {
-                const { openHistorikModal } = await import('./historik-modal.js?v=3.0.80');
+                const { openHistorikModal } = await import('./historik-modal.js');
                 openHistorikModal();
             } catch (err2) {
                 console.error('Kunne ikke åbne Historik v2:', err2);

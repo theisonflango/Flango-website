@@ -1,4 +1,4 @@
-import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.80';
+import { runWithAuthRetry } from '../core/auth-retry.js';
 
 let _supabaseClient = null;
 let _getInstitutionId = null;

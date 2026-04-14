@@ -4,12 +4,12 @@
  * Sub-views: Upload, Camera, Library.
  */
 
-import { AVATAR_URLS } from './avatar-picker.js?v=3.0.80';
-import { processImageForProfilePicture, uploadProfilePicture, saveLibraryProfilePicture, fetchUserProfilePictures } from '../core/profile-picture-utils.js?v=3.0.80';
-import { getProfilePictureUrl, invalidateProfilePictureCache } from '../core/profile-picture-cache.js?v=3.0.80';
-import { escapeHtml } from '../core/escape-html.js?v=3.0.80';
-import { supabaseClient, SUPABASE_URL } from '../core/config-and-supabase.js?v=3.0.80';
-import { fetchInstitutionIconLibrary } from '../core/product-icon-utils.js?v=3.0.80';
+import { AVATAR_URLS } from './avatar-picker.js';
+import { processImageForProfilePicture, uploadProfilePicture, saveLibraryProfilePicture, fetchUserProfilePictures } from '../core/profile-picture-utils.js';
+import { getProfilePictureUrl, invalidateProfilePictureCache } from '../core/profile-picture-cache.js';
+import { escapeHtml } from '../core/escape-html.js';
+import { supabaseClient, SUPABASE_URL } from '../core/config-and-supabase.js';
+import { fetchInstitutionIconLibrary } from '../core/product-icon-utils.js';
 
 /**
  * Open the profile picture modal for a given user.
