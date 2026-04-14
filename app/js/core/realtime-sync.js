@@ -2,10 +2,10 @@
 // Realtime subscriptions for users (balance) and products (sortiment).
 // Event-based invalidation; throttled fallback on disconnect/visibility only.
 
-import { supabaseClient } from './config-and-supabase.js?v=3.0.78';
-import { updateCustomerBalanceGlobally } from './balance-manager.js?v=3.0.78';
-import { refreshBalances, refreshProductsAndAssortment, mergeProductIntoCache, removeProductFromCache } from './data-refetch.js?v=3.0.78';
-import { showBalanceToast, updateBalanceForToast } from '../ui/toast-notifications.js?v=3.0.78';
+import { supabaseClient } from './config-and-supabase.js?v=3.0.79';
+import { updateCustomerBalanceGlobally } from './balance-manager.js?v=3.0.79';
+import { refreshBalances, refreshProductsAndAssortment, mergeProductIntoCache, removeProductFromCache } from './data-refetch.js?v=3.0.79';
+import { showBalanceToast, updateBalanceForToast } from '../ui/toast-notifications.js?v=3.0.79';
 
 let usersChannel = null;
 let productsChannel = null;

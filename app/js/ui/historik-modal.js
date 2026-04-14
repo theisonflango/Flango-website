@@ -1,5 +1,5 @@
 // Ansvar: Historik v2 modal lifecycle, tab-switching, alle render-funktioner.
-import { getCurrentAdmin, isCurrentUserAdmin } from '../domain/session-store.js?v=3.0.78';
+import { getCurrentAdmin, isCurrentUserAdmin } from '../domain/session-store.js?v=3.0.79';
 import {
   periodRange, fmtDate, fmtDateTime, fmtMinutes, fmtKr, fmtDayDate, getLevel,
   getMyRevenue, getMyTransactionCount, getMyTransactionSplit, getClubStats, getTotalDeposits,
@@ -11,15 +11,15 @@ import {
   getTopClerks, getTopCustomers,
   getRevenueByDay, getBalanceDistribution, getProductsIconMap,
   undoSale, registerSaleAdjustment, getFirstSaleDate,
-} from '../domain/historik-data.js?v=3.0.78';
-import { renderBarChart, renderDailyRevenueChart, renderBalanceChart, renderAxisChart, renderLineChart } from './historik-charts.js?v=3.0.78';
-import { exportSalesReport, exportAllBalances, exportNegativeBalances, exportTransactionsCsv, exportClerkReport, exportPeriodReport } from './historik-export.js?v=3.0.78';
-import { showConfirmModal } from './confirm-modals.js?v=3.0.78';
-import { showCustomAlert } from './sound-and-alerts.js?v=3.0.78';
-import { invalidateTodaysSalesCache } from '../domain/purchase-limits.js?v=3.0.78';
+} from '../domain/historik-data.js?v=3.0.79';
+import { renderBarChart, renderDailyRevenueChart, renderBalanceChart, renderAxisChart, renderLineChart } from './historik-charts.js?v=3.0.79';
+import { exportSalesReport, exportAllBalances, exportNegativeBalances, exportTransactionsCsv, exportClerkReport, exportPeriodReport } from './historik-export.js?v=3.0.79';
+import { showConfirmModal } from './confirm-modals.js?v=3.0.79';
+import { showCustomAlert } from './sound-and-alerts.js?v=3.0.79';
+import { invalidateTodaysSalesCache } from '../domain/purchase-limits.js?v=3.0.79';
 
 // ─── HELPERS ───
-import { getCachedProductIconUrl } from '../core/product-icon-cache.js?v=3.0.78';
+import { getCachedProductIconUrl } from '../core/product-icon-cache.js?v=3.0.79';
 
 const ICON_PREFIX = '::icon::';
 /**

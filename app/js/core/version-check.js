@@ -1,8 +1,8 @@
 // js/core/version-check.js
 // Version check and update notification system
 
-import { FLANGO_VERSION } from './config-and-supabase.js?v=3.0.78';
-import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.78';
+import { FLANGO_VERSION } from './config-and-supabase.js?v=3.0.79';
+import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.79';
 
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutter
 const CACHE_PROBLEM_THRESHOLD = 24 * 60 * 60 * 1000; // 24 timer
@@ -40,7 +40,7 @@ function compareVersions(a, b) {
 async function fetchRemoteVersion() {
     try {
         const timestamp = Date.now();
-        // Brug relativ path så beta henter sin egen version.json (ikke prod's)
+        // Hver app-mappe har sin egen version.json (/app/ og /app-beta/)
         const basePath = window.location.pathname.includes('/app-beta') ? '/app-beta/' : '/app/';
         const response = await fetch(`${basePath}version.json?_=${timestamp}`, {
             cache: 'no-store',

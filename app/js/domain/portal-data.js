@@ -2,8 +2,8 @@
 // Ansvar: Hent og gem institutions-indstillinger, forældre-statistik, forældreliste, adoption-data.
 // Importerer supabaseClient direkte fra config-and-supabase.js (samme autentificerede klient).
 
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.78';
-import { getInstitutionId } from './session-store.js?v=3.0.78';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.79';
+import { getInstitutionId } from './session-store.js?v=3.0.79';
 
 // ─── Hjælpere ──────────────────────────────────────────────────
 

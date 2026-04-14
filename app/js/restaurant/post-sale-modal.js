@@ -3,9 +3,9 @@
  * Shows after a successful sale when restaurant_mode_enabled = true.
  * Allows waiter to add table number and kitchen note.
  */
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.78';
-import { escapeHtml } from '../core/escape-html.js?v=3.0.78';
-import { getProductIconInfo } from '../domain/products-and-cart.js?v=3.0.78';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.79';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.79';
+import { getProductIconInfo } from '../domain/products-and-cart.js?v=3.0.79';
 
 /**
  * Show the restaurant post-sale modal if restaurant mode is enabled.

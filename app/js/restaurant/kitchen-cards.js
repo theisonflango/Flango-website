@@ -4,9 +4,9 @@
  *   compact = true  → card-style <div> for the inline panel dropdown
  *   compact = false → <tr> table row for the standalone kitchen view
  */
-import { escapeHtml } from '../core/escape-html.js?v=3.0.78';
-import { CUSTOM_ICON_PREFIX, getCustomIconPath } from '../domain/products-and-cart.js?v=3.0.78';
-import { getCachedProductIconUrl } from '../core/product-icon-cache.js?v=3.0.78';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.79';
+import { CUSTOM_ICON_PREFIX, getCustomIconPath } from '../domain/products-and-cart.js?v=3.0.79';
+import { getCachedProductIconUrl } from '../core/product-icon-cache.js?v=3.0.79';
 
 /**
  * Resolve icon HTML for a sale item.

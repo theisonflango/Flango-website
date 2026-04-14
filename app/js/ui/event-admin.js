@@ -1,9 +1,9 @@
 // UI-modul: Event Admin (Arrangementer)
 // Tre views i én modal: event-liste, event-detalje, opret/rediger form.
 
-import { escapeHtml } from '../core/escape-html.js?v=3.0.78';
-import { showAlert, showCustomAlert } from './sound-and-alerts.js?v=3.0.78';
-import { showConfirmModal } from './confirm-modals.js?v=3.0.78';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.79';
+import { showAlert, showCustomAlert } from './sound-and-alerts.js?v=3.0.79';
+import { showConfirmModal } from './confirm-modals.js?v=3.0.79';
 import {
     fetchEvents,
     fetchEventDetail,
@@ -19,7 +19,7 @@ import {
     joinDatetimeLocal,
     formatEventDate,
     formatTime,
-} from '../domain/event-management.js?v=3.0.78';
+} from '../domain/event-management.js?v=3.0.79';
 
 /**
  * Setup function — kaldt én gang fra admin-flow.js.

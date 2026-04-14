@@ -6,11 +6,11 @@
  *
  * Reuses kitchen-cards.js for card rendering.
  */
-import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.78';
-import { renderKitchenCard, updateAllCardTimes } from './kitchen-cards.js?v=3.0.78';
-import { sortOrders } from './kitchen-sort.js?v=3.0.78';
-import { initKitchenSound, playNewOrderSound } from './kitchen-sound.js?v=3.0.78';
-import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.78';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.79';
+import { renderKitchenCard, updateAllCardTimes } from './kitchen-cards.js?v=3.0.79';
+import { sortOrders } from './kitchen-sort.js?v=3.0.79';
+import { initKitchenSound, playNewOrderSound } from './kitchen-sound.js?v=3.0.79';
+import { showCustomAlert } from '../ui/sound-and-alerts.js?v=3.0.79';
 
 let isOpen = false;
 let institutionId = null;
@@ -60,7 +60,7 @@ async function openPanel() {
     // Mutual exclusion: close calculator if open
     if (document.body.classList.contains('calculator-mode')) {
         // Import dynamically to avoid circular deps
-        const { toggleCalculatorMode } = await import('../ui/calculator-mode.js?v=3.0.78');
+        const { toggleCalculatorMode } = await import('../ui/calculator-mode.js?v=3.0.79');
         toggleCalculatorMode(false);
     }
 
