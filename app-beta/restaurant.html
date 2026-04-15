@@ -25,9 +25,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="css/restaurant.css?v=3.0.81">
 
-    <script type="module" src="js/vendor-shims.js?v=3.0.81"></script>
+  <script type="module" crossorigin src="/app/assets/restaurant-BLIIKKPS.js"></script>
+  <link rel="modulepreload" crossorigin href="/app/assets/kitchen-sound-ypT-jTxO.js">
+  <link rel="stylesheet" crossorigin href="/app/assets/restaurant-sUDVE1AZ.css">
 </head>
 <body>
     <!-- Login screen -->
@@ -91,12 +92,6 @@
     </div>
 
     <!-- DB instrumentation stub (required by config-and-supabase.js) -->
-    <script type="module">
-        if (!window.__dbInstrumentStub) {
-            window.__dbInstrumentStub = true;
-        }
-    </script>
-    <script type="module" src="js/restaurant/kitchen-view.js?v=3.0.81"></script>
-    <script src="js/ui/cookie-banner.js?v=3.0.81"></script>
+    <script src="js/ui/cookie-banner.js"></script>
 </body>
 </html>
