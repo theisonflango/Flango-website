@@ -1,11 +1,19 @@
 {
   "version": "0.2.0",
   "notes": "Auto-update, fullscreen, Flango-logo, CSP fix",
-  "pub_date": "2026-04-15T14:30:00Z",
+  "pub_date": "2026-04-15T19:02:21Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTlmV1VFSU9CTWliLzYxenk0OXhmUXRadjVEMDBTRjY3NlpiK0M3U1NnNEhCcWgrMkJSZmlHNGlOdkNqY1lSVklvdWRqUkdSYXJmekpFd2ZpNnlvbkFNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2MjYzNDgwCWZpbGU6RmxhbmdvIENhZsOpXzAuMi4wX3g2NC1zZXR1cC5leGUKSnhLYS9lSHdWeVE4MXp1Ym9NcUZvQUd4VTRpU3Y4Y0Y3ajF4WDRaeFdUOS80bnk5MHBWK1hheERjT3I0NkhjQWQ0TS9XZVZCSHhITlU3S0NnWjZhQmc9PQo=",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTFYeFBMZ0tUVDlxT055THRGZlV2WXdueXFFdHMrN1ByN256TVZyTlFHV3p4WmtlUTZPZERCNVQrbmYrWVFYdkIvRTdBZ2J0V1RNMlBQT2tsc3JLZ2dVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2Mjc5NTU3CWZpbGU6RmxhbmdvIENhZsOpXzAuMi4wX3g2NC1zZXR1cC5leGUKdklFZjBKNjBMRVBCeHN2WU5XcGVBZVpGVTdDdDRCNjhoUzEwWW43SWtFVG13V2FoMUZvZEFTN2ZLbDE3eFRsR1BIWXBLMDA3S3VKZzZvcFdXV2V4REE9PQo=",
       "url": "https://flango.dk/desktop/Flango-Cafe-v0.2.0-Setup.exe"
+    },
+    "darwin-aarch64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWXdwdkY5OUN6MUlUSksvQkJ0MzBLVWh5akZZVUtoa0xZb1AzOWg4ay9DM3gwYXlhbkxVUkhGVVRBdmloTHRZUXpBVnF2VVJyWU9xQzhTQnhLME5YZVE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2Mjc5MjAxCWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKY0g0NjEzRUQrSHJyK1l3bFJ0em1LOE9OVXV0Q3p0Q2pNaWNaY3BSckM4UXBubzJvMWVRZFBKaXdHZXNWNGE5RHpFbGcxbTkzYm9ZYVBzQUxNVWM3QVE9PQo=",
+      "url": "https://flango.dk/desktop/Flango-Cafe-v0.2.0.app.tar.gz"
+    },
+    "darwin-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTk4TG9LTmZtb2ZHQS9KenpVL1FrN3pXR0pZZkxOLzRmTmlQT1d5ZDBrUTNEdlM3Q0RyUDZjalJ3OEsvblBSdWh6RzVZQVpSU3M2QzNZMjU2WnJ0eGdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2Mjc5MzQ2CWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKU3BMdmo1Q3hKQXljT3NsTkc4ZmhrcUVaWWxlL0FOQXkvdDNPMzlXQThob1M3RG1sRTloL3cyR2ZVcXU2QisxUllsQjRhRHJqMk5RaExRczdLZHRmQXc9PQo=",
+      "url": "https://flango.dk/desktop/Flango-Cafe-v0.2.0-x64.app.tar.gz"
     }
   }
 }
