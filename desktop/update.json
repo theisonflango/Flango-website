@@ -1,19 +1,19 @@
 {
-  "version": "0.2.0",
-  "notes": "Auto-update, fullscreen, Flango-logo, CSP fix",
-  "pub_date": "2026-04-15T19:02:21Z",
+  "version": "0.2.1",
+  "notes": "Turnstile fix, dynamiske downloads, Flango-logo",
+  "pub_date": "2026-04-15T19:38:49Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTFYeFBMZ0tUVDlxT055THRGZlV2WXdueXFFdHMrN1ByN256TVZyTlFHV3p4WmtlUTZPZERCNVQrbmYrWVFYdkIvRTdBZ2J0V1RNMlBQT2tsc3JLZ2dVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2Mjc5NTU3CWZpbGU6RmxhbmdvIENhZsOpXzAuMi4wX3g2NC1zZXR1cC5leGUKdklFZjBKNjBMRVBCeHN2WU5XcGVBZVpGVTdDdDRCNjhoUzEwWW43SWtFVG13V2FoMUZvZEFTN2ZLbDE3eFRsR1BIWXBLMDA3S3VKZzZvcFdXV2V4REE9PQo=",
-      "url": "https://flango.dk/desktop/Flango-Cafe-v0.2.0-Setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTdXSWFPWHA0NmZ6ei9FNi8zbE50ZVVycVVPVFUrQVFwMVJJd25BbWpwL2xtT2hDSmthWUxGZ0VBRmN4VHBSSEprNVpucTQwbytCV1VXTCt0V0MyUEFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2MjgxNjI3CWZpbGU6RmxhbmdvIENhZsOpXzAuMi4xX3g2NC1zZXR1cC5leGUKMGlJSDNaRzlvT0NOTXViQlZWWDRtVWphRXBtdUxaMzNpVnJPc3hENFBIL2VpZ1RVbHJvQlhIRHd5M1NySDhhNGErMmVZbDI2MG1KVnpHMXFvU3RjRFE9PQo=",
+      "url": "https://flango.dk/desktop/Flango-Cafe-v0.2.1-Setup.exe"
     },
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWXdwdkY5OUN6MUlUSksvQkJ0MzBLVWh5akZZVUtoa0xZb1AzOWg4ay9DM3gwYXlhbkxVUkhGVVRBdmloTHRZUXpBVnF2VVJyWU9xQzhTQnhLME5YZVE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2Mjc5MjAxCWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKY0g0NjEzRUQrSHJyK1l3bFJ0em1LOE9OVXV0Q3p0Q2pNaWNaY3BSckM4UXBubzJvMWVRZFBKaXdHZXNWNGE5RHpFbGcxbTkzYm9ZYVBzQUxNVWM3QVE9PQo=",
-      "url": "https://flango.dk/desktop/Flango-Cafe-v0.2.0.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWXlqdlpkNUdDWldYNGc5dzRhM3J0R2swT0tvQld6SlV5RW1NbG5LbjRuUHRYaFVxYkRCMUxNdDBhZ2llU080T21vdFhSSTVqVlBRTFh5dm1wUDRvSVFzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2MjgxNDUxCWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKOFgvWFVMZEdvQkRjMnhlVnE2U2ZJZkc4RUNxalZZTVF0d0lxVzl5NGFSMGZmZGwwZGRqRklWS3pQZUMybEdPZWdoUEp4eDZNd0FremxsOW1nbXBRRHc9PQo=",
+      "url": "https://flango.dk/desktop/Flango-Cafe-v0.2.1.app.tar.gz"
     },
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTk4TG9LTmZtb2ZHQS9KenpVL1FrN3pXR0pZZkxOLzRmTmlQT1d5ZDBrUTNEdlM3Q0RyUDZjalJ3OEsvblBSdWh6RzVZQVpSU3M2QzNZMjU2WnJ0eGdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2Mjc5MzQ2CWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKU3BMdmo1Q3hKQXljT3NsTkc4ZmhrcUVaWWxlL0FOQXkvdDNPMzlXQThob1M3RG1sRTloL3cyR2ZVcXU2QisxUllsQjRhRHJqMk5RaExRczdLZHRmQXc9PQo=",
-      "url": "https://flango.dk/desktop/Flango-Cafe-v0.2.0-x64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWXg2YVFMWDgxYUNycm1LVlFlV1VYZ2xSckdLdzVlZDBvNnB0eFF3OUdPeHViYUU5WWJmbmF3cXdKZ2pTbFpDNGE5M1hFY2tubSt2WDA3eWhuN2I4dHdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2MjgxNTMwCWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKTzNXdkpIRHEwcE1sbStxa0pXV2Z5N3JPWnBhYXFCcFRoSloxMlcvNnkydlhyNUlWL2hCVTVzSUNqRjVHdDJVR2RGRHgyNXF5YmtQeTNCMWxUODdJQ2c9PQo=",
+      "url": "https://flango.dk/desktop/Flango-Cafe-v0.2.1-x64.app.tar.gz"
     }
   }
 }
