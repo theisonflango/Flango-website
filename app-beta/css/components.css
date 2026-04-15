@@ -269,7 +269,7 @@
 .modal {
     display: none;
     position: fixed;
-    z-index: 9999 !important;
+    z-index: var(--z-modal);
     left: 0;
     top: 0;
     width: 100%;
@@ -283,7 +283,7 @@
 
 .modal-overlay,
 #userModal {
-    z-index: 9999 !important;
+    z-index: var(--z-modal);
 }
 
 .modal-content {
@@ -319,6 +319,11 @@
     border-bottom: 1px solid var(--klart-border);
     padding-bottom: 15px;
     gap: 15px;
+}
+
+.modal-header h2 {
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .close-btn {
@@ -1296,7 +1301,7 @@
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--klart-accent) var(--klart-bg-inset);
-    z-index: 999999 !important;
+    z-index: var(--z-alert);
 }
 
 #custom-alert-modal::-webkit-scrollbar {

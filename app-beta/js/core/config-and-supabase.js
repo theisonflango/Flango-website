@@ -1,8 +1,8 @@
 // Ansvar: Supabase-client, institutionsvalg, login, profiler, generel config.
-import { instrumentSupabase } from './db-instrumentation.js';
+import { instrumentSupabase } from './db-instrumentation.js?v=3.0.81';
 
 // App version - skal matche version.json efter deploy
-export const FLANGO_VERSION = '3.0.80';
+export const FLANGO_VERSION = '3.0.81';
 
 const SUPABASE_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co'; // Dette er din nye URL for Flango-3
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impia25qZ2JwZ2hyYnJzdHF3b3hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MjIwNjMsImV4cCI6MjA3ODE5ODA2M30.ZMlxQyzmXuy43EcKIN6-eO8pJZs2F6kfDw_cfaks9qQ';
@@ -35,13 +35,16 @@ export const supabaseClient = instrumentSupabase(_rawClient);
 
 console.debug('Supabase client initialiseret til Flango-3.');
 
-// Platform detection (Capacitor native vs. web)
+// Platform detection
+export const IS_TAURI = typeof window !== 'undefined'
+    && window.__TAURI_INTERNALS__ !== undefined;
+
 export const IS_NATIVE = typeof window !== 'undefined'
     && window.Capacitor
     && window.Capacitor.isNativePlatform();
 
-export const PLATFORM = IS_NATIVE
-    ? window.Capacitor.getPlatform()  // 'ios' eller 'android'
+export const PLATFORM = IS_TAURI ? 'tauri'
+    : IS_NATIVE ? window.Capacitor.getPlatform()
     : 'web';
 
 const adminCacheByInstitution = {};

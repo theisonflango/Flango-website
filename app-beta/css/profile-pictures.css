@@ -175,7 +175,7 @@ body[data-theme="klart"] .pp-inline-default {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10000;
+    z-index: var(--z-modal-overlay);
     backdrop-filter: blur(4px);
 }
 

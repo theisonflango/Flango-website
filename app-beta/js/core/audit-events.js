@@ -5,7 +5,7 @@
  * Fire-and-forget — fejl logges til console men blokerer ikke UI.
  */
 
-import { supabaseClient } from './config-and-supabase.js';
+import { supabaseClient } from './config-and-supabase.js?v=3.0.81';
 
 /**
  * Log en audit-event til events-tabellen.

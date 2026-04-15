@@ -1,20 +1,20 @@
 // Shell-funktioner (UI shell, settings modal, toolbar)
-import { getCurrentClerk, getCurrentAdmin, isCurrentUserAdmin, getInstitutionId } from '../domain/session-store.js';
-import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js';
-import { setupHelpModule, openHelpManually } from './help.js';
-import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js';
-import { getCurrentCustomer } from '../domain/cafe-session-store.js';
-import { getOrder } from '../domain/order-store.js';
-import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js';
-import { logAuditEvent } from '../core/audit-events.js';
-import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js';
-import { updateInstitutionCache } from '../domain/institution-store.js';
-import { showCustomAlert } from './sound-and-alerts.js';
-import { refetchAllProducts } from '../core/data-refetch.js';
-import { invalidateAllLimitCaches } from '../domain/purchase-limits.js';
-import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js';
-import { openAulaImportModal } from './aula-import-modal.js';
-import { openUserAdminPanel, openParentPortalAsAdmin } from './user-admin-panel.js';
+import { getCurrentClerk, getCurrentAdmin, isCurrentUserAdmin, getInstitutionId } from '../domain/session-store.js?v=3.0.81';
+import { getProductIconInfo, applyProductLimitsToButtons, invalidateChildLimitSnapshot } from '../domain/products-and-cart.js?v=3.0.81';
+import { setupHelpModule, openHelpManually } from './help.js?v=3.0.81';
+import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../core/config-and-supabase.js?v=3.0.81';
+import { getCurrentCustomer } from '../domain/cafe-session-store.js?v=3.0.81';
+import { getOrder } from '../domain/order-store.js?v=3.0.81';
+import { getMyDeviceTokens, revokeDeviceToken, revokeAllDeviceTokens, clearAllDeviceUsers } from '../domain/device-trust.js?v=3.0.81';
+import { logAuditEvent } from '../core/audit-events.js?v=3.0.81';
+import { initMobilePayImport, injectStyles as injectMobilePayStyles } from '../domain/mobilepay-import.js?v=3.0.81';
+import { updateInstitutionCache } from '../domain/institution-store.js?v=3.0.81';
+import { showCustomAlert } from './sound-and-alerts.js?v=3.0.81';
+import { refetchAllProducts } from '../core/data-refetch.js?v=3.0.81';
+import { invalidateAllLimitCaches } from '../domain/purchase-limits.js?v=3.0.81';
+import { getCafeEventSettings, saveCafeEventSettings } from '../domain/cafe-events.js?v=3.0.81';
+import { openAulaImportModal } from './aula-import-modal.js?v=3.0.81';
+import { openUserAdminPanel, openParentPortalAsAdmin } from './user-admin-panel.js?v=3.0.81';
 
 // Modal-stak: tilbage går altid til forrige visning
 let settingsModalBackStack = [];
@@ -495,7 +495,7 @@ function renderProductRulesTable() {
         }
         tdIcon.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const { openProductIconPicker } = await import('./product-icon-picker.js');
+            const { openProductIconPicker } = await import('./product-icon-picker.js?v=3.0.81');
             openProductIconPicker({
                 mode: 'product',
                 institutionId: productRulesState.institutionId,
@@ -1640,7 +1640,7 @@ async function openProfilePictureSettingsModal() {
     // Choose default image button — open profile picture modal in "default" mode
     if (defaultImageChooseBtn) {
         defaultImageChooseBtn.onclick = async () => {
-            const { openProfilePictureModal } = await import('./profile-picture-modal.js');
+            const { openProfilePictureModal } = await import('./profile-picture-modal.js?v=3.0.81');
             // Use a fake user object for the default image
             const fakeUser = { id: '__default__', name: 'Standard billede', institution_id: institutionId };
             openProfilePictureModal(fakeUser, {
@@ -2114,7 +2114,7 @@ async function showToolbarSettingsView() {
     // Fetch current values from DB (include requirement columns)
     const extraCols = new Set();
     TOOLBAR_MAPPING.forEach(m => { if (m.requiresCol) extraCols.add(m.requiresCol); });
-    const selectCols = [...TOOLBAR_MAPPING.map(m => m.dbCol), ...extraCols].join(', ');
+    const selectCols = [...TOOLBAR_MAPPING.map(m => m.dbCol), ...extraCols, 'toolbar_order'].join(', ');
     const { data, error } = await supabaseClient
         .from('institutions')
         .select(selectCols)
@@ -2129,12 +2129,28 @@ async function showToolbarSettingsView() {
 
     contentEl.innerHTML = '';
 
+    // Sort TOOLBAR_MAPPING by stored order if available
+    let orderedMapping = [...TOOLBAR_MAPPING];
+    if (data.toolbar_order) {
+        const order = typeof data.toolbar_order === 'string' ? JSON.parse(data.toolbar_order) : data.toolbar_order;
+        if (Array.isArray(order) && order.length > 0) {
+            const orderMap = {};
+            order.forEach((key, idx) => { orderMap[key] = idx; });
+            orderedMapping.sort((a, b) => {
+                // Map TOOLBAR_MAPPING key to settings-sections key format
+                const aKey = 'toolbar_' + a.key;
+                const bKey = 'toolbar_' + b.key;
+                return (orderMap[aKey] ?? 999) - (orderMap[bKey] ?? 999);
+            });
+        }
+    }
+
     const desc = document.createElement('p');
     desc.style.cssText = 'margin: 0 0 16px; font-size: 13px; color: var(--text-secondary, #888); padding: 0 4px;';
     desc.textContent = 'Vælg hvilke genvejsknapper der vises i toolbaren over indkøbskurven.';
     contentEl.appendChild(desc);
 
-    TOOLBAR_MAPPING.forEach(item => {
+    orderedMapping.forEach(item => {
         const requirementMet = !item.requiresCol || data[item.requiresCol] === true;
         const isOn = data[item.dbCol] !== false;
         const row = document.createElement('button');
@@ -2187,14 +2203,47 @@ export async function initToolbarSettings() {
     try {
         const extraCols = new Set();
         TOOLBAR_MAPPING.forEach(m => { if (m.requiresCol) extraCols.add(m.requiresCol); });
-        const selectCols = [...TOOLBAR_MAPPING.map(m => m.dbCol), ...extraCols].join(', ');
+        const selectCols = [...TOOLBAR_MAPPING.map(m => m.dbCol), ...extraCols, 'toolbar_order'].join(', ');
         const { data } = await supabaseClient
             .from('institutions')
             .select(selectCols)
             .eq('id', institutionId)
             .single();
-        if (data) applyToolbarSettings(data);
+        if (data) {
+            applyToolbarSettings(data);
+            applyToolbarOrder(data.toolbar_order);
+        }
     } catch (e) { /* ignore */ }
+}
+
+function applyToolbarOrder(orderJson) {
+    if (!orderJson) return;
+    const order = typeof orderJson === 'string' ? JSON.parse(orderJson) : orderJson;
+    if (!Array.isArray(order) || order.length === 0) return;
+    const headerActions = document.querySelector('.header-actions');
+    if (!headerActions) return;
+    // Map settings-sections keys (toolbar_calculator) to button IDs
+    const keyToBtnId = {
+        toolbar_shift_timer: 'shift-timer-pill',
+        toolbar_calculator: 'calculator-mode-toggle',
+        toolbar_kitchen: 'kitchen-btn',
+        toolbar_products: 'toolbar-products-btn',
+        toolbar_deposit: 'toolbar-deposit-btn',
+        toolbar_history: 'toolbar-history-btn',
+        toolbar_help: 'flango-logo-button',
+        toolbar_min_flango: 'logged-in-user-avatar-container',
+        toolbar_logout: 'logout-btn',
+        toolbar_user_panel: 'toolbar-user-panel-btn',
+    };
+    // Gear button stays last — insert ordered buttons before it
+    const gearBtn = document.getElementById('toolbar-gear-btn');
+    order.forEach(key => {
+        const btnId = keyToBtnId[key];
+        if (btnId) {
+            const btn = document.getElementById(btnId);
+            if (btn) headerActions.insertBefore(btn, gearBtn);
+        }
+    });
 }
 
 function showAdministrationView() {
@@ -4949,8 +4998,11 @@ export function openSettingsModal() {
             window.FLANGO_DEBUG?.showBugReportPrompt?.() || notifyToolbarUser('Ikke klar.');
         }, 'settings-bug-report-btn', 'Rapporter en fejl eller uhensigtsmæssighed.', 'Flueben.webp'));
 
-        contentEl.appendChild(createSettingsItemBtn('Historik', () => {
-            window.__flangoOpenSalesHistory?.() || notifyToolbarUser('Ikke klar.');
+        contentEl.appendChild(createSettingsItemBtn('Historik', async () => {
+            try {
+                const { openHistorikV3 } = await import('./historik-v3.js?v=3.0.81');
+                openHistorikV3();
+            } catch { notifyToolbarUser('Ikke klar.'); }
         }, 'settings-history-btn', 'Se salgshistorik og fortryd køb.', 'historik.webp'));
 
         contentEl.appendChild(createSettingsItemBtn('Lydindstillinger', () => {
@@ -5174,23 +5226,11 @@ export function setupToolbarHistoryButton() {
     historyBtn.onclick = async (event) => {
         event.preventDefault();
         try {
-            const { openHistorikV3 } = await import('./historik-v3.js');
+            const { openHistorikV3 } = await import('./historik-v3.js?v=3.0.81');
             openHistorikV3();
         } catch (err) {
-            console.error('Kunne ikke åbne Historik v3:', err);
-            // Fallback til v2
-            try {
-                const { openHistorikModal } = await import('./historik-modal.js');
-                openHistorikModal();
-            } catch (err2) {
-                console.error('Kunne ikke åbne Historik v2:', err2);
-                // Fallback til v1
-                if (typeof window.__flangoOpenSalesHistory === 'function') {
-                    window.__flangoOpenSalesHistory();
-                } else {
-                    notifyToolbarUser('Historik-funktionen er ikke klar.');
-                }
-            }
+            console.error('Kunne ikke åbne Historik:', err);
+            notifyToolbarUser('Historik-funktionen er ikke klar.');
         }
     };
 }
@@ -5212,10 +5252,14 @@ export function showScreen(screenId) {
     ];
     screens.forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
+        if (el) {
+            el.classList.add('screen-hidden');
+            el.style.display = '';
+        }
     });
     const target = document.getElementById(screenId);
     if (target) {
-        target.style.display = (screenId === 'main-app') ? 'grid' : 'flex';
+        target.classList.remove('screen-hidden');
+        target.style.display = '';
     }
 }

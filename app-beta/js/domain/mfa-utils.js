@@ -6,7 +6,7 @@
  * Bruges af café-app login-flow og admin settings.
  */
 
-import { supabaseClient } from '../core/config-and-supabase.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.81';
 
 // ─── Supabase MFA API wrappers ────────────────────────────────────
 
@@ -27,22 +27,23 @@ export async function enrollTotp() {
     });
     if (error) {
         console.error('[mfa-utils] enroll fejl:', error.message);
-        return { error: error.message };
+        return { success: false, error: error.message };
     }
     return {
+        success: true,
         factorId: data.id,
         qrCodeUri: data.totp.uri,
         secret: data.totp.secret,
     };
 }
 
-/** Challenge + verify i ét kald. Returnerer { success } eller { error } */
+/** Challenge + verify i ét kald. Returnerer { success, error? } */
 export async function challengeAndVerify(factorId, code) {
     const { data: challengeData, error: challengeError } =
         await supabaseClient.auth.mfa.challenge({ factorId });
     if (challengeError) {
         console.error('[mfa-utils] challenge fejl:', challengeError.message);
-        return { error: challengeError.message };
+        return { success: false, error: challengeError.message };
     }
 
     const { data, error: verifyError } = await supabaseClient.auth.mfa.verify({
@@ -51,7 +52,7 @@ export async function challengeAndVerify(factorId, code) {
         code: code.trim(),
     });
     if (verifyError) {
-        return { error: verifyError.message };
+        return { success: false, error: verifyError.message };
     }
     return { success: true };
 }

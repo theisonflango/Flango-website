@@ -1,7 +1,7 @@
 // Ansvar: Historik v3 — modal lifecycle, sidebar, page routing, alle 8 page-render funktioner.
 // Genbruger data-laget fra historik-data.js og eksport fra historik-export.js.
-import { getCurrentAdmin, getInstitutionId, isCurrentUserAdmin } from '../domain/session-store.js';
-import { initPurchaseProfiles, getChartData as ppGetChartData } from '../domain/purchase-profiles.js';
+import { getCurrentAdmin, getInstitutionId, isCurrentUserAdmin } from '../domain/session-store.js?v=3.0.81';
+import { initPurchaseProfiles, getChartData as ppGetChartData } from '../domain/purchase-profiles.js?v=3.0.81';
 import {
   periodRange, fmtDate, fmtDateTime, fmtMinutes, fmtKr, fmtDayDate, getLevel,
   getMyRevenue, getMyTransactionCount, getMyTransactionSplit, getClubStats, getTotalDeposits,
@@ -12,20 +12,20 @@ import {
   getTransactions, getSaleItems, undoSale, registerSaleAdjustment,
   getEmployeeSummary, getAdminSalesSplit, getAdminTimeSplit, getAdminDeposits,
   getFirstSaleDate, getAdminCafeDays, getCustomerStats,
-} from '../domain/historik-data.js';
-import { exportSalesReport, exportAllBalances, exportNegativeBalances, exportTransactionsCsv, exportClerkReport, exportPeriodReport } from './historik-export.js';
-import { showConfirmModal } from './confirm-modals.js';
-import { showCustomAlert } from './sound-and-alerts.js';
-import { invalidateTodaysSalesCache } from '../domain/purchase-limits.js';
+} from '../domain/historik-data.js?v=3.0.81';
+import { exportSalesReport, exportAllBalances, exportNegativeBalances, exportTransactionsCsv, exportClerkReport, exportPeriodReport } from './historik-export.js?v=3.0.81';
+import { showConfirmModal } from './confirm-modals.js?v=3.0.81';
+import { showCustomAlert } from './sound-and-alerts.js?v=3.0.81';
+import { invalidateTodaysSalesCache } from '../domain/purchase-limits.js?v=3.0.81';
 import {
   renderAreaChart, renderBarChart, renderHorizontalBars, renderDonutChart,
   renderGauge, attachChartTooltips, progressBar, renderRankingList,
   animateChartEntrance,
   BAR_COLORS, escHtml, fmtNum,
-} from './historik-v3-charts.js';
+} from './historik-v3-charts.js?v=3.0.81';
 
 // ─── CONSTANTS ───
-import { getCachedProductIconUrl } from '../core/product-icon-cache.js';
+import { getCachedProductIconUrl } from '../core/product-icon-cache.js?v=3.0.81';
 
 const ICON_PREFIX = '::icon::';
 function productIcon(emoji, iconUrl, size = 18, storagePath = '') {
@@ -65,7 +65,6 @@ const NAV_ITEMS = [
   { id: 'timesaved', icon: '⏱️', label: 'Tidsbesparelse', section: 'INDSIGT' },
   { id: 'reconcile', icon: '⚖️', label: 'Afstemning', section: 'ØKONOMI' },
   { id: 'reports', icon: '📁', label: 'Rapporter', section: 'EKSPORT' },
-  { id: 'v2', icon: '🕰️', label: 'Historik V2', section: 'ANDET' },
 ];
 
 const PAGE_TITLES = {
@@ -176,13 +175,7 @@ export function openHistorikV3() {
 
   // Sidebar nav
   backdrop.querySelectorAll('.hv3-sidebar-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (btn.dataset.page === 'v2') {
-        closeHistorikV3();
-        const { openHistorikModal } = await import('./historik-modal.js');
-        openHistorikModal();
-        return;
-      }
+    btn.addEventListener('click', () => {
       activePage = btn.dataset.page;
       updateSidebarActive();
       renderActivePage();

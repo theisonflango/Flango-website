@@ -957,7 +957,7 @@
 .icon-preview-modal {
     position: fixed;
     inset: 0;
-    z-index: 10001;
+    z-index: var(--z-modal-nested);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1145,28 +1145,28 @@
 /* ===== DARK THEME FOR ICON LIBRARY ===== */
 
 .icon-mgmt-dark {
-    background: #1a1a2e !important;
-    color: #e2e8f0 !important;
+    background: #1a1a2e;
+    color: #e2e8f0;
 }
 
 .icon-mgmt-dark input,
 .icon-mgmt-dark textarea {
-    color: #e2e8f0 !important;
-    background: rgba(255, 255, 255, 0.08) !important;
-    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
 }
 
 .icon-mgmt-dark input::placeholder {
-    color: #64748b !important;
+    color: #64748b;
 }
 
 .icon-mgmt-dark input:focus {
-    outline: none !important;
-    border-color: #7c3aed !important;
+    outline: none;
+    border-color: #7c3aed;
 }
 
 .icon-mgmt-dark .close-btn {
-    color: #94a3b8 !important;
+    color: #94a3b8;
 }
 
 .icon-mgmt-dark .icon-mgmt-action-btn {
@@ -1180,9 +1180,9 @@
 }
 
 .icon-mgmt-dark .icon-mgmt-create-btn {
-    background: #7c3aed !important;
-    color: white !important;
-    border: none !important;
+    background: #7c3aed;
+    color: white;
+    border: none;
 }
 
 .icon-mgmt-dark .icon-mgmt-chip {
@@ -1200,7 +1200,7 @@
 /* ===== LIST VIEW ===== */
 
 .icon-mgmt-list {
-    display: block !important;
+    display: block;
 }
 
 .icon-list-table {
@@ -1292,12 +1292,12 @@
 }
 
 .icon-tag-pill {
-    display: inline-flex !important;
+    display: inline-flex;
     align-items: center;
     gap: 4px;
     padding: 3px 10px;
-    background: #7c3aed !important;
-    color: #fff !important;
+    background: #7c3aed;
+    color: #fff;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 600;
@@ -1319,28 +1319,28 @@
 }
 
 .icon-tag-input {
-    border: none !important;
-    background: none !important;
-    color: #94a3b8 !important;
-    font-size: 12px !important;
-    padding: 2px 4px !important;
+    border: none;
+    background: none;
+    color: #94a3b8;
+    font-size: 12px;
+    padding: 2px 4px;
     width: 70px;
     min-width: 50px;
 }
 
 .icon-tag-input:focus {
-    outline: none !important;
-    color: #e2e8f0 !important;
+    outline: none;
+    color: #e2e8f0;
 }
 
 .icon-tag-input::placeholder {
-    color: #475569 !important;
+    color: #475569;
 }
 
 .icon-list-delete-btn,
 .icon-list-table .icon-mgmt-download-btn {
-    background: none !important;
-    border: none !important;
+    background: none;
+    border: none;
     cursor: pointer;
     font-size: 18px;
     padding: 4px;

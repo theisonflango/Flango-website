@@ -463,8 +463,8 @@ body.kitchen-mode .kitchen-panel {
 
 /* === Kitchen: kompakt produktgrid === */
 body.kitchen-mode #products {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: var(--sp-2, 8px) !important;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-2, 8px);
     align-content: start;
 }
 
@@ -494,24 +494,24 @@ body.kitchen-mode .product-shortcut {
 
 /* === Toggle-knap aktiv tilstand === */
 .calculator-toggle.active {
-    background: var(--accent, #1a8a6e) !important;
-    color: #fff !important;
-    border-color: var(--accent, #1a8a6e) !important;
+    background: var(--accent, #1a8a6e);
+    color: #fff;
+    border-color: var(--accent, #1a8a6e);
     box-shadow: 0 2px 8px rgba(26, 138, 110, 0.3);
 }
 
 #kitchen-btn.active {
-    background: var(--accent, #1a8a6e) !important;
-    color: #fff !important;
-    border-color: var(--accent, #1a8a6e) !important;
+    background: var(--accent, #1a8a6e);
+    color: #fff;
+    border-color: var(--accent, #1a8a6e);
     box-shadow: 0 2px 8px rgba(26, 138, 110, 0.3);
     border-radius: var(--radius-sm, 6px);
 }
 
 /* === Kompakt produktgrid i calculator mode === */
 body.calculator-mode #products {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: var(--sp-2, 8px) !important;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-2, 8px);
     align-content: start;
 }
 
@@ -708,10 +708,10 @@ body.calculator-mode .calculator-panel {
 /* === Kitchen-mode overlay på tablet/iPad === */
 @media (max-width: 1199px) and (min-width: 768px) {
     body.kitchen-mode #main-app {
-        grid-template-columns: 1fr 380px !important;
+        grid-template-columns: 1fr 380px;
         grid-template-areas:
             "header     header"
-            "products   sidebar" !important;
+            "products   sidebar";
     }
     body.kitchen-mode .kitchen-panel {
         position: fixed;
@@ -728,13 +728,13 @@ body.calculator-mode .calculator-panel {
 /* === Responsivt === */
 @media (max-width: 1024px) {
     body.calculator-mode #main-app {
-        grid-template-columns: 1fr 340px !important;
+        grid-template-columns: 1fr 340px;
         grid-template-areas:
             "header     header"
-            "calculator sidebar" !important;
+            "calculator sidebar";
     }
     body.calculator-mode #products-area {
-        display: none !important;
+        display: none;
     }
 }
 
@@ -750,7 +750,7 @@ body.calculator-mode .calculator-panel {
     }
     body.calculator-mode #products-area,
     body.calculator-mode #sidebar {
-        display: none !important;
+        display: none;
     }
 
     body.kitchen-mode .kitchen-panel {
@@ -763,6 +763,6 @@ body.calculator-mode .calculator-panel {
     }
     body.kitchen-mode #products-area,
     body.kitchen-mode #sidebar {
-        display: none !important;
+        display: none;
     }
 }

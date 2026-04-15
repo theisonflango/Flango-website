@@ -1,7 +1,7 @@
 // Ansvar: Alle Supabase-queries til Historik v2.
 // Fase 1 — kun læser fra eksisterende tabeller, views og RPCs.
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { getInstitutionId, getCurrentAdmin } from './session-store.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.81';
+import { getInstitutionId, getCurrentAdmin } from './session-store.js?v=3.0.81';
 
 // ─── HJÆLPERE ───
 
@@ -557,20 +557,20 @@ async function getTopProductsFallback(from, to, limit, includeTestUsers = false)
     const sales = await filterTestUsers(rawSales, 'customer_id', includeTestUsers);
     if (!sales.length) return [];
 
-    // Hent sale_items i chunks (undgå for lang .in() URL)
+    // Hent sale_items i parallelle chunks (undgå for lang .in() URL)
     const saleIds = sales.map(s => s.id);
     const CHUNK = 500;
-    let allItems = [];
+    const chunkPromises = [];
     for (let i = 0; i < saleIds.length; i += CHUNK) {
       const chunk = saleIds.slice(i, i + CHUNK);
-      const items = await fetchAllRows(() =>
+      chunkPromises.push(fetchAllRows(() =>
         supabaseClient
           .from('sale_items')
           .select('product_id, quantity, price_at_purchase, product_name_at_purchase')
           .in('sale_id', chunk)
-      );
-      allItems = allItems.concat(items);
+      ));
     }
+    const allItems = (await Promise.all(chunkPromises)).flat();
 
     // Hent produkt-info for emojis + daily special flag
     const productIds = [...new Set(allItems.map(i => i.product_id).filter(Boolean))];
@@ -716,16 +716,22 @@ export async function getTransactions(from, to, includeTestUsers = false) {
   const uids = [...userIds];
   let usersMap = {};
   if (uids.length) {
-    // Hent brugere i chunks (undgå for lang .in() URL)
+    // Hent brugere i parallelle chunks (undgå for lang .in() URL)
     const CHUNK = 300;
+    const userChunkPromises = [];
     for (let i = 0; i < uids.length; i += CHUNK) {
       const chunk = uids.slice(i, i + CHUNK);
-      const { data: users } = await supabaseClient
-        .from('users')
-        .select('id, name, role, is_test_user')
-        .in('id', chunk);
-      (users || []).forEach(u => { usersMap[u.id] = u; });
+      userChunkPromises.push(
+        supabaseClient
+          .from('users')
+          .select('id, name, role, is_test_user')
+          .in('id', chunk)
+      );
     }
+    const userResults = await Promise.all(userChunkPromises);
+    userResults.forEach(({ data: users }) => {
+      (users || []).forEach(u => { usersMap[u.id] = u; });
+    });
   }
 
   let results = data.map(e => ({

@@ -1345,7 +1345,7 @@
 /* Expand row */
 .hv3-tx-expand-row { display: none; }
 .hv3-tx-expand-row.open { display: table-row; }
-.hv3-tx-expand-cell { padding: 0 !important; border-top: none !important; }
+.hv3-tx-expand-cell { padding: 0; border-top: none; }
 
 /* Expand button */
 .hv3-tx-expand-btn {
@@ -1920,20 +1920,20 @@
   transition: background 0.15s;
 }
 .hv3-cd-person-row:hover {
-  background: var(--hv3-bg) !important;
+  background: var(--hv3-bg);
 }
 .hv3-cd-person-row.selected {
-  background: var(--hv3-accent-light, #fef3e2) !important;
+  background: var(--hv3-accent-light, #fef3e2);
 }
 
 /* Stat cards with gradient backgrounds */
 .hv3-cd-stat-best {
-  background: linear-gradient(135deg, #f0fdf4, #dcfce7) !important;
-  border-color: #bbf7d0 !important;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border-color: #bbf7d0;
 }
 .hv3-cd-stat-worst {
-  background: linear-gradient(135deg, #fef2f2, #fee2e2) !important;
-  border-color: #fecaca !important;
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border-color: #fecaca;
 }
 
 /* Sortable table headers */
@@ -1990,14 +1990,14 @@
   transition: background 0.15s;
 }
 .hv3-kunde-row:hover {
-  background: #faf8f5 !important;
+  background: #faf8f5;
 }
 .hv3-kunde-row-neg {
-  background: #fefafa !important;
+  background: #fefafa;
 }
 .hv3-kunde-row-neg:hover {
-  background: #fef2f2 !important;
+  background: #fef2f2;
 }
 .hv3-kunde-search:focus {
-  border-color: var(--hv3-accent) !important;
+  border-color: var(--hv3-accent);
 }

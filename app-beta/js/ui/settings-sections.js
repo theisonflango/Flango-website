@@ -1443,9 +1443,19 @@
         { key: 'toolbar_min_flango', e: '\uD83D\uDC64', n: 'Min Flango', d: 'Vis avatar/profil genvej', on: inst.toolbar_min_flango !== false },
         { key: 'toolbar_logout', e: '\uD83D\uDEAA', n: 'Log ud', d: 'Vis log ud genvej', on: inst.toolbar_logout !== false }
       ];
+      // Apply stored order
+      if (inst.toolbar_order) {
+        const order = typeof inst.toolbar_order === 'string' ? JSON.parse(inst.toolbar_order) : inst.toolbar_order;
+        if (Array.isArray(order) && order.length > 0) {
+          const orderMap = {};
+          order.forEach((key, idx) => { orderMap[key] = idx; });
+          this._items.sort((a, b) => (orderMap[a.key] ?? 999) - (orderMap[b.key] ?? 999));
+        }
+      }
       return this._items;
     },
     render(ctx) {
+      this._items = null; // Reset cache so order is re-read from DB
       const items = this._getItems(ctx);
       return `<div class="fsp-page">
         <div class="fsp-page-title">Toolbar</div>
@@ -1538,10 +1548,32 @@
         // Reorder items array
         const [moved] = items.splice(dragIdx, 1);
         items.splice(dropIdx, 0, moved);
-        // Mark all toolbar order fields dirty
-        items.forEach((it, i) => {
-          ctx.markDirty(it.key + '_order', i);
-        });
+        // Save toolbar order as single JSONB array
+        ctx.markDirty('toolbar_order', items.map(it => it.key));
+        // Live reorder actual header buttons
+        const headerActions = document.querySelector('.header-actions');
+        if (headerActions) {
+          const tbBtnMap = {
+            toolbar_shift_timer: 'shift-timer-pill',
+            toolbar_calculator: 'calculator-mode-toggle',
+            toolbar_kitchen: 'kitchen-btn',
+            toolbar_products: 'toolbar-products-btn',
+            toolbar_deposit: 'toolbar-deposit-btn',
+            toolbar_history: 'toolbar-history-btn',
+            toolbar_help: 'flango-logo-button',
+            toolbar_min_flango: 'logged-in-user-avatar-container',
+            toolbar_logout: 'logout-btn',
+            toolbar_user_panel: 'toolbar-user-panel-btn',
+          };
+          const gearBtn = document.getElementById('toolbar-gear-btn');
+          items.forEach(it => {
+            const btnId = tbBtnMap[it.key];
+            if (btnId) {
+              const btn = document.getElementById(btnId);
+              if (btn) headerActions.insertBefore(btn, gearBtn);
+            }
+          });
+        }
         // Re-render items
         this._items = items;
         const parent = container.querySelector('.fsp-content') || container;
@@ -2468,6 +2500,21 @@
         <div style="display:flex;gap:10px">
           <button class="fsp-btn fsp-btn-ghost" data-action="reload" style="flex:1;display:flex;justify-content:center;padding:14px;align-items:center;gap:8px">\uD83D\uDD04 Genindl\u00e6s app</button>
           <button class="fsp-btn fsp-btn-primary" data-action="check-update" style="flex:1;display:flex;justify-content:center;padding:14px">Tjek for opdateringer</button>
+        </div>
+
+        <div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.06)">
+          <div style="font-size:15px;font-weight:600;color:var(--fsp-txt);margin-bottom:6px">\uD83D\uDCBB Desktop-app</div>
+          <div style="font-size:13px;color:var(--fsp-txt3);margin-bottom:16px;line-height:1.5">
+            Download Flango som desktop-app. Undg\u00e5r browser-problemer med kodeord, cache og fuldsk\u00e6rm.
+          </div>
+          <div style="display:flex;gap:10px">
+            <a href="https://flango.dk/desktop/Flango-Cafe-Setup.exe" class="fsp-btn fsp-btn-ghost" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+              \uD83E\uDE9F Windows (.exe)
+            </a>
+            <a href="https://flango.dk/desktop/Flango-Cafe.dmg" class="fsp-btn fsp-btn-ghost" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+              \uD83C\uDF4E macOS (.dmg)
+            </a>
+          </div>
         </div>
       </div>`;
     },

@@ -21,10 +21,8 @@
     --primary-dark: #157a60;
     --primary-light: #2aa080;
 
-    /* Secondary: Same green family */
+    /* Secondary: Same green family (--secondary-color brugt i index.html) */
     --secondary-color: #1a8a6e;
-    --secondary-dark: #157a60;
-    --secondary-light: #2aa080;
 
     /* Admin: Deep green */
     --admin-color: #157a60;
@@ -93,23 +91,27 @@
     --klart-cart-radius-lg: 20px;
     --klart-shadow-cart-card: 0 1px 3px rgba(26,26,24,.04), 0 4px 12px rgba(26,26,24,.06);
 
-    /* Unstoppable-compatible aliases (for any JS that references these) */
-    --unstoppable-glow: none;
-    --unstoppable-shadow: var(--klart-shadow-lg);
-    --unstoppable-shadow-hover: var(--klart-shadow-lg);
-    --unstoppable-radius: var(--klart-radius-lg);
-    --unstoppable-radius-lg: var(--klart-radius-xl);
-    --unstoppable-radius-sm: var(--klart-radius-md);
-
-    /* Gradient presets (simplified for Klart — mostly solid) */
+    /* Gradient presets */
     --gradient-primary: linear-gradient(135deg, #1a8a6e 0%, #157a60 100%);
     --gradient-secondary: linear-gradient(135deg, #1a8a6e 0%, #157a60 100%);
     --gradient-warm: linear-gradient(135deg, #fff4d4 0%, #ffe8d4 100%);
     --gradient-cool: linear-gradient(135deg, #e8f5f0 0%, #d4f0ea 100%);
-    --gradient-sunset: linear-gradient(135deg, #fff4d4 0%, #ffe8d4 50%, #e8f5f0 100%);
-    --gradient-candy: linear-gradient(135deg, #fce4ec 0%, #e8daf8 50%, #d4e8f8 100%);
     --gradient-body: linear-gradient(180deg, #f8f7f4 0%, #f0efeb 100%);
+
+    /* Z-index skala — brug disse i stedet for hardkodede værdier */
+    --z-element: 10;         /* Interne overlays (badges, ikoner) */
+    --z-sticky: 100;         /* Sticky headers, floating panels */
+    --z-mobile-info: 999;    /* Mobile selected-user-info */
+    --z-modal: 9999;         /* Standard modaler */
+    --z-modal-overlay: 10000; /* Overlay-modaler (user-admin, profil) */
+    --z-modal-nested: 10001; /* Nestet modal (ikon-opret over ikon-vælger) */
+    --z-alert: 999999;       /* Custom alert — altid øverst */
 }
+
+/* ============================================================
+   SCREEN VISIBILITY — bruges af showScreen() til at skifte views
+   ============================================================ */
+.screen-hidden { display: none !important; }
 
 /* ============================================================
    BODY RESET - KLART STYLE

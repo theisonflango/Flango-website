@@ -1,7 +1,7 @@
 // UI-modul: Café Event Mini-Strip
 // Viser arrangementer som små kort over produktgrid.
 
-import { escapeHtml } from '../core/escape-html.js';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.81';
 import {
     fetchCafeEventsForChild,
     invalidateCafeEventsCache,
@@ -9,9 +9,9 @@ import {
     cafeRegisterForEvent,
     cafePayExistingRegistration,
     formatTime,
-} from '../domain/cafe-events.js';
-import { showCustomAlert, playSound } from './sound-and-alerts.js';
-import { updateCustomerBalanceGlobally } from '../core/balance-manager.js';
+} from '../domain/cafe-events.js?v=3.0.81';
+import { showCustomAlert, playSound } from './sound-and-alerts.js?v=3.0.81';
+import { updateCustomerBalanceGlobally } from '../core/balance-manager.js?v=3.0.81';
 
 // ============================================================================
 // State

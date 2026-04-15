@@ -60,5 +60,4 @@ export function setupRuntimeUIEvents({
     window.__flangoOpenSoundSettingsModal = () => {
         openSoundSettingsModal();
     };
-    window.__flangoOpenSalesHistory = () => showSalesHistory();
 }

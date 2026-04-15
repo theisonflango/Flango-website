@@ -119,10 +119,13 @@ export function setupClerkLoginButton({
             }
         };
 
+        const clerkAbort = new AbortController();
+        const clerkOpts = { signal: clerkAbort.signal };
+
         if (searchInput) {
-            searchInput.addEventListener('input', handleSearch);
-            searchInput.addEventListener('keydown', handleKeyNavigation);
-            searchInput.focus(); // Synkront — iOS kræver gesture-kæden for tastatur
+            searchInput.addEventListener('input', handleSearch, clerkOpts);
+            searchInput.addEventListener('keydown', handleKeyNavigation, clerkOpts);
+            searchInput.focus();
         }
 
         const handleListKeyNavigation = (evt) => {
@@ -130,24 +133,18 @@ export function setupClerkLoginButton({
             handleKeyNavigation(evt);
         };
         userModal.classList.add('clerk-mode');
-        document.addEventListener('keydown', handleListKeyNavigation);
+        document.addEventListener('keydown', handleListKeyNavigation, clerkOpts);
 
         const cleanup = () => {
+            clerkAbort.abort();
             delete userModal.dataset.mode;
             if (controls) controls.style.display = '';
             if (adminControls) adminControls.style.display = '';
             if (modalTitle) modalTitle.textContent = 'Vælg en kunde';
             if (sortBalanceHeader) sortBalanceHeader.style.display = '';
             if (staticHeader) staticHeader.style.display = '';
-            if (searchInput) {
-                searchInput.removeEventListener('input', handleSearch);
-                searchInput.removeEventListener('keydown', handleKeyNavigation);
-                searchInput.value = '';
-            }
-            document.removeEventListener('keydown', handleListKeyNavigation);
+            if (searchInput) searchInput.value = '';
             userModal.classList.remove('clerk-mode');
-            userListContainer.removeEventListener('click', handleClerkPick);
-            if (closeBtn) closeBtn.removeEventListener('click', handleClose);
         };
 
         const handleClerkPick = async (evt) => {
@@ -246,7 +243,7 @@ export function setupClerkLoginButton({
             cleanup();
         };
 
-        userListContainer.addEventListener('click', handleClerkPick);
-        if (closeBtn) closeBtn.addEventListener('click', handleClose);
+        userListContainer.addEventListener('click', handleClerkPick, clerkOpts);
+        if (closeBtn) closeBtn.addEventListener('click', handleClose, clerkOpts);
     };
 }

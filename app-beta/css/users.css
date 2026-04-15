@@ -110,19 +110,19 @@
 
 /* Shift timer pill — Klart clean style */
 #shift-timer-pill {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    padding: 6px 14px !important;
-    background: var(--klart-bg-inset) !important;
-    border: 1px solid var(--klart-border) !important;
-    border-radius: var(--klart-radius-full) !important;
-    font-family: var(--font-body) !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    color: var(--klart-fg-soft) !important;
-    box-shadow: none !important;
-    margin: 0 4px !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: var(--klart-bg-inset);
+    border: 1px solid var(--klart-border);
+    border-radius: var(--klart-radius-full);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--klart-fg-soft);
+    box-shadow: none;
+    margin: 0 4px;
 }
 
 /* ============================================================
@@ -174,8 +174,8 @@
 
 #selected-user-info::before,
 #selected-user-info::after {
-    display: none !important;
-    content: none !important;
+    display: none;
+    content: none;
 }
 
 /* ─── Customer Card ─── */
@@ -339,7 +339,7 @@
 }
 
 .klart-balance-val.negative {
-    color: var(--danger-color) !important;
+    color: var(--danger-color);
 }
 
 /* Deselect user button — top-right corner of bottom panel */
@@ -377,16 +377,16 @@
 .klart-avatar-empty {
     opacity: 0.35;
     border-color: var(--klart-ink-muted) !important;
-    box-shadow: none !important;
+    box-shadow: none;
     background: linear-gradient(145deg, #e0ddd7, #d5d2cc) !important;
-    color: #999 !important;
+    color: #999;
 }
 
 .klart-name-empty {
-    color: var(--klart-ink-muted) !important;
+    color: var(--klart-ink-muted);
     font-style: italic;
-    position: static !important;
-    padding-bottom: 0 !important;
+    position: static;
+    padding-bottom: 0;
 }
 
 /* ─── No-customer mode: hide everything except "Vælg Kunde" ─── */
@@ -782,7 +782,7 @@
 .avatar-preview-modal {
     position: fixed;
     inset: 0;
-    z-index: 10000;
+    z-index: var(--z-modal-overlay);
     display: flex;
     align-items: center;
     justify-content: center;

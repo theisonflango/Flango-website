@@ -8,7 +8,7 @@
 .pip-overlay {
     position: fixed;
     inset: 0;
-    z-index: 10000;
+    z-index: var(--z-modal-overlay);
     display: flex;
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(6px);
@@ -31,20 +31,20 @@
 /* Force dark theme on all inputs/textareas inside picker (overrides app theme) */
 .pip-fullscreen input,
 .pip-fullscreen textarea {
-    color: #e2e8f0 !important;
-    background: rgba(255, 255, 255, 0.08) !important;
-    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
 }
 
 .pip-fullscreen input::placeholder,
 .pip-fullscreen textarea::placeholder {
-    color: #64748b !important;
+    color: #64748b;
 }
 
 .pip-fullscreen input:focus,
 .pip-fullscreen textarea:focus {
-    outline: none !important;
-    border-color: #7c3aed !important;
+    outline: none;
+    border-color: #7c3aed;
 }
 
 @keyframes pipOverlayIn {
@@ -142,24 +142,24 @@
 
 .pip-search-input {
     width: 100%;
-    padding: 10px 16px !important;
-    border: 2px solid rgba(255, 255, 255, 0.15) !important;
-    border-radius: 10px !important;
-    background: rgba(255, 255, 255, 0.1) !important;
-    color: #e2e8f0 !important;
-    font-size: 14px !important;
+    padding: 10px 16px;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    font-size: 14px;
     box-sizing: border-box;
     transition: border-color 0.15s;
 }
 
 .pip-search-input:focus {
-    outline: none !important;
-    border-color: #7c3aed !important;
-    background: rgba(255, 255, 255, 0.12) !important;
+    outline: none;
+    border-color: #7c3aed;
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .pip-search-input::placeholder {
-    color: #64748b !important;
+    color: #64748b;
 }
 
 .pip-search-clear {
@@ -668,8 +668,8 @@
 
 /* Mode section disabled state (when no photo uploaded) */
 .pip-mode-section.pip-disabled {
-    opacity: 0.4 !important;
-    pointer-events: none !important;
+    opacity: 0.4;
+    pointer-events: none;
 }
 
 .pip-mode-cards {
@@ -886,21 +886,21 @@
 
 .pip-name-input {
     flex: 1;
-    padding: 10px 14px !important;
-    border: 2px solid rgba(255, 255, 255, 0.12) !important;
-    border-radius: 10px !important;
-    background: rgba(255, 255, 255, 0.08) !important;
-    color: #e2e8f0 !important;
-    font-size: 14px !important;
+    padding: 10px 14px;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+    font-size: 14px;
 }
 
 .pip-name-input::placeholder {
-    color: #64748b !important;
+    color: #64748b;
 }
 
 .pip-name-input:focus {
-    outline: none !important;
-    border-color: #7c3aed !important;
+    outline: none;
+    border-color: #7c3aed;
 }
 
 .pip-footer-spacer {

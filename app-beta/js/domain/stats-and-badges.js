@@ -4,9 +4,9 @@ import {
     addWorkMinutesForToday,
     mergeRemoteStatsWithSession,
     FLANGO_LEVEL_MESSAGES,
-} from './stats-store.js';
-import { getProductIconInfo } from './products-and-cart.js';
-import { escapeHtml } from '../core/escape-html.js';
+} from './stats-store.js?v=3.0.81';
+import { getProductIconInfo } from './products-and-cart.js?v=3.0.81';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.81';
 
 // 1) Konstanter og basis-helpers
 export const BADGE_ICON_MAP = {

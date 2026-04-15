@@ -669,7 +669,7 @@
   .portal-v2 .bottomnav { display: none; }
   .portal-v2 .app { flex-direction: row; }
   .portal-v2 .topnav { display: none; }
-  .portal-v2 .tab-view { display: flex !important; animation: none !important; }
+  .portal-v2 .tab-view { display: flex; animation: none; }
   .portal-v2 .child-selector { display: none; }
   .portal-v2 .view-header.mobile-only { display: none; }
 

@@ -10,8 +10,8 @@ import {
     getSoundFile,
     setSoundFile,
     getAllSoundSettings
-} from '../core/sound-manager.js';
-import { logDebugEvent } from '../core/debug-flight-recorder.js';
+} from '../core/sound-manager.js?v=3.0.81';
+import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.81';
 
 const customAlertModal = document.getElementById('custom-alert-modal');
 const customAlertContent = document.getElementById('custom-alert-content');
@@ -290,8 +290,12 @@ function renderSoundSettingsModal() {
         }
     });
 
-    // Event listeners for per-sound volume sliders
-    soundOptionsList.addEventListener('input', (e) => {
+    // Event listeners for per-sound volume sliders (use event delegation on container)
+    // Remove previous listener to avoid accumulation on re-render
+    if (soundOptionsList._volumeHandler) {
+        soundOptionsList.removeEventListener('input', soundOptionsList._volumeHandler);
+    }
+    soundOptionsList._volumeHandler = (e) => {
         if (e.target.classList.contains('sound-volume-slider')) {
             const eventName = e.target.dataset.eventName;
             const volumePct = parseInt(e.target.value, 10);
@@ -301,7 +305,8 @@ function renderSoundSettingsModal() {
             }
             setSoundVolume(eventName, volumePct / 100);
         }
-    });
+    };
+    soundOptionsList.addEventListener('input', soundOptionsList._volumeHandler);
 }
 
 export function openSoundSettingsModal() {

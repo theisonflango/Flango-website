@@ -2,10 +2,13 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
+    <!-- Cache Control: altid revalider HTML-dokumentet -->
+    <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
     <!-- Content Security Policy -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        script-src 'self' 'unsafe-inline' cdn.jsdelivr.net;
+        script-src 'self' 'unsafe-inline';
         style-src 'self' 'unsafe-inline' fonts.googleapis.com;
         font-src 'self' fonts.gstatic.com;
         img-src 'self' data: blob: https://jbknjgbpghrbrstqwoxj.supabase.co https://api.qrserver.com;
@@ -22,9 +25,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="css/restaurant.css?v=3.0.75">
+    <link rel="stylesheet" href="css/restaurant.css?v=3.0.81">
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="js/vendor-shims.js?v=3.0.81"></script>
 </head>
 <body>
     <!-- Login screen -->
@@ -93,7 +96,7 @@
             window.__dbInstrumentStub = true;
         }
     </script>
-    <script type="module" src="js/restaurant/kitchen-view.js?v=3.0.75"></script>
-    <script src="js/ui/cookie-banner.js?v=3.0.75"></script>
+    <script type="module" src="js/restaurant/kitchen-view.js?v=3.0.81"></script>
+    <script src="js/ui/cookie-banner.js?v=3.0.81"></script>
 </body>
 </html>

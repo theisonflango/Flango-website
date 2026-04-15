@@ -2,9 +2,9 @@
 // Helper functions for product icon handling
 // Supports both standard local icons and custom uploaded icons
 
-import { supabaseClient, SUPABASE_URL } from './config-and-supabase.js';
-import { CUSTOM_ICON_PREFIX, getCustomIconPath } from '../domain/products-and-cart.js';
-import { getCachedProductIconUrl, batchPreWarmProductIcons, setCachedProductIconUrl } from './product-icon-cache.js';
+import { supabaseClient, SUPABASE_URL } from './config-and-supabase.js?v=3.0.81';
+import { CUSTOM_ICON_PREFIX, getCustomIconPath } from '../domain/products-and-cart.js?v=3.0.81';
+import { getCachedProductIconUrl, batchPreWarmProductIcons, setCachedProductIconUrl } from './product-icon-cache.js?v=3.0.81';
 
 // Standard icons — storagePath is canonical, path is public URL fallback
 const SUPABASE_STORAGE_URL = 'https://jbknjgbpghrbrstqwoxj.supabase.co/storage/v1/object/public/product-icons/standard';
@@ -205,7 +205,8 @@ export async function takeProductPhoto({ modalContainer, showCustomAlert } = {})
     // Method 1: Capacitor Camera plugin (native app)
     if (window.Capacitor?.isNativePlatform?.()) {
         try {
-            const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera');
+            const capacitorModule = '@' + 'capacitor/camera';
+            const { Camera, CameraResultType, CameraSource } = await import(capacitorModule);
             const image = await Camera.getPhoto({
                 quality: 90,
                 allowEditing: false,

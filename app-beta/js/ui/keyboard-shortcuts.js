@@ -1,5 +1,5 @@
-import { logDebugEvent } from '../core/debug-flight-recorder.js';
-import { isCalculatorModeActive, handleCalculatorKeyboard } from './calculator-mode.js';
+import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.81';
+import { isCalculatorModeActive, handleCalculatorKeyboard } from './calculator-mode.js?v=3.0.81';
 
 export function setupKeyboardShortcuts({
     getAllProducts,
@@ -28,14 +28,12 @@ export function setupKeyboardShortcuts({
         caller: callerTag,
     });
 
-    // Remove previous handlers if any (avoid duplicates and stale closures)
-    const prevHandlers = window.__flangoKeyboardShortcutsHandlers;
-    if (prevHandlers) {
-        document.removeEventListener('keydown', prevHandlers.main);
-        document.removeEventListener('keydown', prevHandlers.escape);
-        document.removeEventListener('keydown', prevHandlers.general);
-        document.removeEventListener('keydown', prevHandlers.admin);
+    // Abort previous listeners (avoid duplicates and stale closures)
+    if (window.__flangoKeyboardShortcutsAbort) {
+        window.__flangoKeyboardShortcutsAbort.abort();
     }
+    const keyboardAbort = new AbortController();
+    window.__flangoKeyboardShortcutsAbort = keyboardAbort;
 
     const mainKeydownHandler = (event) => {
         if (event.defaultPrevented) return;
@@ -149,13 +147,14 @@ export function setupKeyboardShortcuts({
 
         // H: Åbn/luk historik
         if (key === 'h') {
-            const historyModal = document.getElementById('sales-history-modal');
-            const isHistoryOpen = historyModal && historyModal.style.display === 'flex';
+            const historyModal = document.getElementById('hv3-backdrop');
+            const isHistoryOpen = !!historyModal;
 
             // Hvis historik er åben, luk den (selv hvis man skriver i et felt)
             if (isHistoryOpen) {
                 event.preventDefault();
-                historyModal.style.display = 'none';
+                historyModal.remove();
+                document.body.style.overflow = '';
                 return;
             }
 
@@ -208,31 +207,6 @@ export function setupKeyboardShortcuts({
                 }
             }
         }
-        // M: Åbn/luk Min Flango
-        else if (key === 'm') {
-            const myFlangoModal = document.getElementById('avatar-picker-modal');
-            const isMinFlangoOpen = myFlangoModal && myFlangoModal.style.display === 'flex';
-
-            // Hvis Min Flango er åben, luk den (selv hvis man skriver i et felt)
-            if (isMinFlangoOpen) {
-                event.preventDefault();
-                myFlangoModal.style.display = 'none';
-                return;
-            }
-
-            // Hvis man prøver at åbne, check om vi skriver i et felt
-            if (isTyping) return;
-
-            // Åbn Min Flango (kun hvis ingen anden modal er åben)
-            event.preventDefault();
-            const anyModalOpen = document.querySelector('.modal[style*="display: flex"], .settings-modal-backdrop[style*="display: flex"]');
-            if (!anyModalOpen) {
-                const myFlangoBtn = document.getElementById('logged-in-user-avatar-container');
-                if (myFlangoBtn) {
-                    myFlangoBtn.click();
-                }
-            }
-        }
     };
 
     // Admin-only keyboard shortcuts
@@ -255,30 +229,16 @@ export function setupKeyboardShortcuts({
 
         const key = event.key.toLowerCase();
 
-        // R eller I: Åbn "Rediger Brugere" / Indbetaling (kun admin)
-        if (key === 'r' || key === 'i') {
-            event.preventDefault();
-            if (typeof window.__flangoOpenAdminUserManager === 'function') {
-                window.__flangoOpenAdminUserManager('customers');
-            }
-        }
-
         // B: Åbn Brugerpanel (kun admin)
         if (key === 'b') {
             event.preventDefault();
-            import('./user-admin-panel.js').then(m => m.openUserAdminPanel());
+            import('./user-admin-panel.js?v=3.0.81').then(m => m.openUserAdminPanel());
         }
     };
 
-    document.addEventListener('keydown', mainKeydownHandler);
-    document.addEventListener('keydown', escapeKeydownHandler);
-    document.addEventListener('keydown', generalKeydownHandler);
-    document.addEventListener('keydown', adminKeydownHandler);
-
-    window.__flangoKeyboardShortcutsHandlers = {
-        main: mainKeydownHandler,
-        escape: escapeKeydownHandler,
-        general: generalKeydownHandler,
-        admin: adminKeydownHandler,
-    };
+    const opts = { signal: keyboardAbort.signal };
+    document.addEventListener('keydown', mainKeydownHandler, opts);
+    document.addEventListener('keydown', escapeKeydownHandler, opts);
+    document.addEventListener('keydown', generalKeydownHandler, opts);
+    document.addEventListener('keydown', adminKeydownHandler, opts);
 }

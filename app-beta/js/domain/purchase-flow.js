@@ -1,29 +1,451 @@
-import { showAlert, showCustomAlert, playSound } from '../ui/sound-and-alerts.js';
-import { logDebugEvent } from '../core/debug-flight-recorder.js';
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { runWithAuthRetry } from '../core/auth-retry.js';
-import { OVERDRAFT_LIMIT } from '../core/constants.js';
-import { setOrder, getOrder, clearOrder, getOrderTotal } from './order-store.js';
-import { evaluatePurchase } from './cafe-session.js';
+import { showAlert, showCustomAlert, playSound } from '../ui/sound-and-alerts.js?v=3.0.81';
+import { logDebugEvent } from '../core/debug-flight-recorder.js?v=3.0.81';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.81';
+import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.81';
+import { OVERDRAFT_LIMIT } from '../core/constants.js?v=3.0.81';
+import { setOrder, getOrder, clearOrder, getOrderTotal } from './order-store.js?v=3.0.81';
+import { evaluatePurchase } from './cafe-session.js?v=3.0.81';
 import {
     applyEvaluation,
     getFinancialState,
     clearCurrentCustomer,
-} from './cafe-session-store.js';
-import { renderOrder } from './order-ui.js';
-import { getProductIconInfo, getBulkDiscountedUnitPrice, getBulkDiscountSummary } from './products-and-cart.js';
-import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild, getChildSugarPolicySnapshot } from './purchase-limits.js';
-import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js';
-import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js';
-import { escapeHtml } from '../core/escape-html.js';
-import { formatKr } from '../ui/confirm-modals.js';
-import { getProfilePictureUrl, getCachedProfilePictureUrl, getDefaultProfilePicture, getDefaultProfilePictureAsync } from '../core/profile-picture-cache.js';
-import { processEventItemsInCheckout } from '../ui/cafe-event-strip.js';
+} from './cafe-session-store.js?v=3.0.81';
+import { renderOrder } from './order-ui.js?v=3.0.81';
+import { getProductIconInfo, getBulkDiscountedUnitPrice, getBulkDiscountSummary } from './products-and-cart.js?v=3.0.81';
+import { canChildPurchase, invalidateAllLimitCaches, getTodaysTotalSpendForChild, getChildSugarPolicySnapshot } from './purchase-limits.js?v=3.0.81';
+import { getCurrentSessionAdmin, getCurrentClerk } from './session-store.js?v=3.0.81';
+import { updateCustomerBalanceGlobally, refreshCustomerBalanceFromDB } from '../core/balance-manager.js?v=3.0.81';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.81';
+import { formatKr } from '../ui/confirm-modals.js?v=3.0.81';
+import { getProfilePictureUrl, resolveAvatarSource } from '../core/profile-picture-cache.js?v=3.0.81';
+import { processEventItemsInCheckout } from '../ui/cafe-event-strip.js?v=3.0.81';
 
 
 // ============================================================================
 // HELPER FUNKTIONER FOR handleCompletePurchase (OPT-6)
 // ============================================================================
+
+// ---- Phase helpers (split fra handleCompletePurchase) ----
+
+/**
+ * Synkronisér currentOrder med order-store ved mismatch.
+ * Returnerer det effektive orderSnapshot.
+ */
+function syncOrderSnapshot(currentOrder, setCurrentOrder) {
+    const orderFromStore = typeof getOrder === 'function' ? getOrder() : [];
+    const effectiveOrder = (Array.isArray(currentOrder) && currentOrder.length > 0) ? currentOrder : orderFromStore;
+    const orderSnapshot = Array.isArray(effectiveOrder) ? [...effectiveOrder] : [];
+
+    if (typeof setCurrentOrder === 'function' && (!Array.isArray(currentOrder) || currentOrder.length === 0) && orderFromStore.length > 0) {
+        setCurrentOrder([...orderFromStore]);
+    }
+    return orderSnapshot;
+}
+
+/**
+ * Allergi-check: hent policy, evaluer kurv, vis blokering/advarsel.
+ * Returnerer false hvis købet skal afbrydes.
+ */
+async function enforceAllergyChecks(customer, orderSnapshot, allProducts) {
+    let allergyPolicy = customer?.allergyPolicy;
+    const isEmptyPolicy =
+        !allergyPolicy ||
+        (typeof allergyPolicy === 'object' && Object.keys(allergyPolicy).length === 0);
+
+    const productIdsInOrder = orderSnapshot.map(item => item.product_id || item.productId || item.id).filter(Boolean);
+
+    const [fetchedAllergyPolicy, productAllergenMap] = await Promise.all([
+        isEmptyPolicy ? fetchAllergyPolicyForChild(customer.id, customer.institution_id) : Promise.resolve(allergyPolicy),
+        fetchProductAllergensMap(productIdsInOrder)
+    ]);
+
+    if (isEmptyPolicy) {
+        allergyPolicy = fetchedAllergyPolicy;
+        customer.allergyPolicy = allergyPolicy;
+    }
+
+    const orderWithAllergens = enrichOrderWithAllergens(orderSnapshot, allProducts, productAllergenMap);
+    const allergyResult = evaluateCartAllergy(orderWithAllergens, allergyPolicy);
+
+    if (allergyResult.level === 'block') {
+        const details = groupAllergyReasons(allergyResult.reasons);
+        await showCustomAlert(
+            'Køb Blokeret (Allergi)',
+            `Hov, ${escapeHtml(customer.name)} må ikke købe disse varer pga. registrerede allergier:<br><br>${details}<br><br>Ret venligst kurven eller vælg andre varer.`
+        );
+        return false;
+    }
+
+    if (allergyResult.level === 'warn') {
+        const details = groupAllergyReasons(allergyResult.reasons);
+        const confirmedAllergy = await showCustomAlert(
+            'Allergi-advarsel',
+            `OBS: Der er registreret allergier/advarsler for ${escapeHtml(customer.name)}:<br><br>${details}<br><br>Vil du gennemføre købet alligevel?`,
+            'confirm'
+        );
+        if (!confirmedAllergy) return false;
+    }
+    return true;
+}
+
+/**
+ * Parallel validering af produktgrænser (canChildPurchase) med retry.
+ * Returnerer false hvis købet skal afbrydes.
+ */
+async function validateProductLimits(customer, orderSnapshot, allProducts) {
+    const childId = customer.id;
+
+    const checkPromises = orderSnapshot.map(async (line) => {
+        if (line.is_calculator_item) return { allowed: true };
+        const productId = line.product_id || line.productId || line.id;
+        const product = allProducts.find(p => p.id === productId);
+        if (!productId) return { allowed: true };
+
+        let lastError = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                return await canChildPurchase(
+                    productId, childId, orderSnapshot,
+                    customer.institution_id, product?.name, true
+                );
+            } catch (err) {
+                lastError = err;
+                const isTransientError = err?.message?.includes('network') ||
+                                         err?.message?.includes('timeout') ||
+                                         err?.message?.includes('fetch');
+                if (attempt === 0 && isTransientError) {
+                    console.warn('[canChildPurchase] Transient fejl, prøver igen:', productId, err);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    continue;
+                }
+                throw err;
+            }
+        }
+        throw lastError;
+    });
+
+    const results = await Promise.all(checkPromises);
+    const failedCheck = results.find(result => result && result.allowed === false);
+    if (failedCheck) {
+        await showCustomAlert('Køb ikke tilladt',
+            failedCheck.message || 'Det her køb er ikke tilladt lige nu. Tal med en voksen i caféen.');
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Beregn finalTotal ud fra evaluation og legacy total. Håndterer admin gratis-køb.
+ * Returnerer { finalTotal, shouldBeFreePurchase }.
+ */
+function calculateFinalTotal(evaluation, customer) {
+    const legacyTotal = getOrderTotal();
+    let finalTotal = legacyTotal;
+
+    if (evaluation && typeof evaluation.total === 'number') {
+        const diff = Math.abs(legacyTotal - evaluation.total);
+        if (diff > 0.01) {
+            console.log('[cafe-session] TOTAL MISMATCH:', { legacyTotal, evaluatePurchaseTotal: evaluation.total });
+        }
+    }
+
+    try {
+        const evalTotal = evaluation?.total;
+        const evalIsValid = typeof evalTotal === 'number' && Number.isFinite(evalTotal);
+        const evalIsNonNegative = evalIsValid && evalTotal >= 0;
+        const evalCloseToLegacy = evalIsValid && Math.abs(evalTotal - legacyTotal) <= 0.01;
+        if (evalIsValid && evalIsNonNegative && evalCloseToLegacy) {
+            finalTotal = evalTotal;
+        } else {
+            console.log('[cafe-session] Using legacy total (fallback). Reason:', {
+                evalIsValid, evalIsNonNegative, evalCloseToLegacy, legacyTotal, evaluatePurchaseTotal: evalTotal,
+            });
+        }
+    } catch (err) {
+        console.warn('[cafe-session] finalTotal selection failed, using legacy total:', err);
+    }
+
+    const isAdminCustomer = customer?.role === 'admin';
+    const shouldBeFreePurchase = isAdminCustomer && customer?.purchase_free === true;
+    if (shouldBeFreePurchase) {
+        finalTotal = 0;
+        console.log('[purchase-flow] Admin gratis-køb aktiveret - finalTotal sat til 0');
+    }
+
+    return { finalTotal, shouldBeFreePurchase };
+}
+
+/**
+ * Hent institutionsindstillinger og håndhæv forbrugs- og saldogrænser.
+ * Returnerer false hvis købet skal afbrydes.
+ */
+async function enforceInstitutionLimits(customer, finalTotal, newBalance) {
+    let institutionSettings = typeof window !== 'undefined' && typeof window.__flangoGetInstitutionById === 'function'
+        ? window.__flangoGetInstitutionById(customer.institution_id)
+        : null;
+
+    if (!institutionSettings) {
+        const { data } = await supabaseClient
+            .from('institutions')
+            .select(`
+                balance_limit_enabled, balance_limit_amount,
+                balance_limit_exempt_admins, balance_limit_exempt_test_users,
+                spending_limit_enabled, spending_limit_amount,
+                spending_limit_applies_to_regular_users,
+                spending_limit_applies_to_admins,
+                spending_limit_applies_to_test_users
+            `)
+            .eq('id', customer.institution_id)
+            .single();
+        institutionSettings = data;
+    }
+
+    // Spending limit check
+    if (institutionSettings?.spending_limit_enabled) {
+        const isAdmin = customer.role === 'admin' || customer.is_admin === true;
+        const isTestUser = customer.is_test_user === true;
+        const isRegularUser = !isAdmin && !isTestUser;
+
+        const appliesToUser = (isRegularUser && institutionSettings.spending_limit_applies_to_regular_users) ||
+                              (isAdmin && institutionSettings.spending_limit_applies_to_admins) ||
+                              (isTestUser && institutionSettings.spending_limit_applies_to_test_users);
+
+        if (appliesToUser) {
+            const spentToday = await getTodaysTotalSpendForChild(customer.id, customer.institution_id);
+            const spendingLimit = institutionSettings.spending_limit_amount || 40;
+            if (spentToday + finalTotal > spendingLimit) {
+                const remaining = Math.max(0, spendingLimit - spentToday);
+                await showCustomAlert('Køb Afvist',
+                    `Du har nået din daglige forbrugsgrænse!<br>Grænse: <strong>${spendingLimit.toFixed(2)} kr.</strong><br>Brugt i dag: <strong>${spentToday.toFixed(2)} kr.</strong><br>Tilbage: <strong>${remaining.toFixed(2)} kr.</strong><br><br>Prøv igen i morgen!`);
+                return false;
+            }
+        }
+    }
+
+    // Balance limit check
+    if (institutionSettings?.balance_limit_enabled !== false) {
+        const isAdmin = customer.role === 'admin' || customer.is_admin === true;
+        const isTestUser = customer.is_test_user === true;
+        const isExempt = (isAdmin && institutionSettings?.balance_limit_exempt_admins) ||
+                         (isTestUser && institutionSettings?.balance_limit_exempt_test_users);
+
+        if (!isExempt) {
+            const balanceLimit = institutionSettings?.balance_limit_amount ?? OVERDRAFT_LIMIT;
+            if (newBalance < balanceLimit) {
+                const available = customer.balance - balanceLimit;
+                await showCustomAlert('Køb Afvist',
+                    `Der er ikke penge nok på kontoen til dette køb!<br>Du har <strong>${available.toFixed(2)} kr.</strong> tilbage, før du rammer ${balanceLimit} kr. grænsen.<br><br>Husk at bede dine forældre pænt om at overføre.`);
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Vis bekræftelsesmodal, vedhæft event listeners, vent på brugerens svar.
+ * Returnerer null hvis annulleret, ellers { selectedTableNumber, kitchenNoteText, itemExtras }.
+ */
+async function showConfirmationAndCollectInput(customer, orderSnapshot, finalTotal, newBalance, shouldBeFreePurchase, restaurantMode, clerkProfile) {
+    logDebugEvent('confirmation_modal_building', {
+        cartLength: orderSnapshot?.length,
+        cartItemNames: orderSnapshot?.slice(0, 5).map(i => i.name),
+        orderStoreLength: typeof getOrder === 'function' ? getOrder()?.length : 'N/A',
+        finalTotal, newBalance,
+    });
+
+    const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance, shouldBeFreePurchase, restaurantMode, clerkProfile);
+    logDebugEvent('confirmation_modal_showing', { bodyLength: confirmationBody?.length });
+
+    const alertPromise = showCustomAlert('Bekræft Køb', confirmationBody, {
+        type: 'confirm', okText: 'Bekræft Køb', cancelText: 'Annullér',
+    });
+
+    // Async profile picture load
+    const imgStyle2 = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+    const avatarNode = document.getElementById('confirm-customer-avatar');
+    if (avatarNode?.dataset.needsAsync === 'true') {
+        getProfilePictureUrl(customer).then(url => {
+            if (url && avatarNode.isConnected) {
+                avatarNode.textContent = '';
+                avatarNode.innerHTML = `<img src="${url}" alt="" style="${imgStyle2}">`;
+            }
+        });
+    }
+    const clerkAvatarNode = document.getElementById('confirm-clerk-avatar');
+    if (clerkAvatarNode?.dataset.needsAsync === 'true' && clerkProfile) {
+        getProfilePictureUrl(clerkProfile).then(url => {
+            if (url && clerkAvatarNode.isConnected) {
+                clerkAvatarNode.textContent = '';
+                clerkAvatarNode.innerHTML = `<img src="${url}" alt="" style="${imgStyle2}">`;
+            }
+        });
+    }
+
+    // Re-attach bordknap click-handlers
+    if (restaurantMode?.enabled && restaurantMode.tableNumbersEnabled) {
+        document.querySelectorAll('#confirm-restaurant-section .confirm-table-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const wasSelected = btn.classList.contains('selected');
+                const grid = btn.closest('.confirm-table-grid');
+                if (grid) grid.querySelectorAll('.confirm-table-btn').forEach(b => b.classList.remove('selected'));
+                if (!wasSelected) btn.classList.add('selected');
+            });
+        });
+    }
+
+    // Re-attach variant-badge + genbrug click-handlers
+    if (restaurantMode?.enabled) {
+        document.querySelectorAll('.confirm-item-extras').forEach(section => {
+            section.querySelectorAll('.confirm-variant-badge').forEach(badge => {
+                badge.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const wasSelected = badge.classList.contains('selected');
+                    section.querySelectorAll('.confirm-variant-badge').forEach(b => b.classList.remove('selected'));
+                    if (!wasSelected) badge.classList.add('selected');
+                });
+            });
+        });
+        document.getElementById('confirm-reuse-badge')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.target.classList.toggle('selected');
+        });
+    }
+
+    const confirmed = await alertPromise;
+    logDebugEvent('confirmation_modal_closed', { confirmed, cartLengthAfter: orderSnapshot?.length });
+    if (!confirmed) return null;
+
+    // Læs restaurant-info fra modal DOM
+    let selectedTableNumber = null;
+    let kitchenNoteText = null;
+    let itemExtras = {};
+    if (restaurantMode?.enabled) {
+        const selectedBtn = document.querySelector('#confirm-restaurant-section .confirm-table-btn.selected');
+        selectedTableNumber = selectedBtn?.dataset?.table || null;
+        kitchenNoteText = document.querySelector('#confirm-kitchen-note')?.value?.trim() || null;
+
+        document.querySelectorAll('.confirm-item-extras').forEach(section => {
+            const prodId = section.dataset.productId;
+            const selectedBadge = section.querySelector('.confirm-variant-badge.selected');
+            const noteInput = section.querySelector('.confirm-item-note');
+            itemExtras[prodId] = {
+                variant: selectedBadge?.dataset?.variant || null,
+                note: noteInput?.value?.trim() || null,
+            };
+        });
+
+        const reuseSelected = document.getElementById('confirm-reuse-badge')?.classList.contains('selected');
+        if (reuseSelected) {
+            kitchenNoteText = kitchenNoteText ? `♻️ Genbrug · ${kitchenNoteText}` : '♻️ Genbrug';
+        }
+    }
+
+    return { selectedTableNumber, kitchenNoteText, itemExtras };
+}
+
+/**
+ * Byg cartItemsForDB array til process_sale RPC.
+ */
+function buildCartItemsForDB(orderSnapshot, shouldBeFreePurchase, itemExtras) {
+    const itemCounts = groupOrderItems(orderSnapshot);
+    return Object.values(itemCounts).map(item => {
+        const effectiveUnitPrice = shouldBeFreePurchase
+            ? 0
+            : getBulkDiscountedUnitPrice(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
+        if (item.is_calculator_item) {
+            return {
+                product_id: item.quick_product_id || null,
+                quantity: item.count,
+                price: shouldBeFreePurchase ? 0 : item.price,
+                is_refill: false,
+                product_name: item.name,
+                custom_price: item.price,
+                custom_name: item.name,
+                is_calculator_item: true,
+            };
+        }
+        return {
+            product_id: item.id,
+            quantity: item.count,
+            price: effectiveUnitPrice,
+            is_refill: item._isRefill || false,
+            product_name: item._effectiveName || item.name,
+            item_variant: itemExtras[item.id]?.variant || null,
+            item_note: itemExtras[item.id]?.note || null,
+        };
+    });
+}
+
+/**
+ * Håndtér succesfuldt salg: saldoopdatering, cache-invalidering, UI-reset.
+ */
+async function handleSaleSuccess({
+    customer, rpcData, finalTotal, newBalance, balanceUpdateNonce,
+    eventItems, incrementSessionSalesCount, setCurrentOrder,
+    orderList, totalPriceEl, updateSelectedUserInfo,
+    refreshProductLocks, renderProductsFromCache, completePurchaseBtn,
+}) {
+    invalidateAllLimitCaches(customer.id);
+    if (typeof incrementSessionSalesCount === 'function') incrementSessionSalesCount();
+    window.dispatchEvent(new CustomEvent('flango:saleCompleted'));
+    logDebugEvent('purchase_success', { customerId: customer?.id, finalTotal });
+    playSound('purchase');
+
+    const appliedBalance = Number.isFinite(newBalance) ? newBalance : customer.balance - finalTotal;
+
+    // 1) Provisional optimistic update
+    updateCustomerBalanceGlobally(customer.id, appliedBalance, -finalTotal, 'purchase-provisional', {
+        status: 'provisional', nonce: balanceUpdateNonce,
+    });
+
+    // 2) Confirm against server state
+    const rpcBalance = extractBalanceFromRpcData(rpcData);
+    if (rpcBalance !== null) {
+        updateCustomerBalanceGlobally(customer.id, rpcBalance, -finalTotal, 'purchase-confirmed-rpc', {
+            status: 'confirmed', nonce: balanceUpdateNonce,
+        });
+        if (Math.abs(rpcBalance - appliedBalance) > 0.009) {
+            console.warn('[purchase-flow] Balance mismatch (rpc vs provisional)', {
+                provisional: appliedBalance, rpcBalance, nonce: balanceUpdateNonce,
+            });
+        }
+    } else {
+        const confirmedBalance = await refreshCustomerBalanceFromDB(customer.id, {
+            status: 'confirmed', nonce: balanceUpdateNonce, retry: 1,
+        });
+        if (confirmedBalance !== null && Math.abs(confirmedBalance - appliedBalance) > 0.009) {
+            console.warn('[purchase-flow] Balance mismatch after confirm', {
+                provisional: appliedBalance, confirmed: confirmedBalance, nonce: balanceUpdateNonce,
+            });
+        } else if (confirmedBalance === null) {
+            console.warn('[purchase-flow] Balance confirmation failed; UI remains on provisional', { nonce: balanceUpdateNonce });
+        }
+    }
+
+    // Processér event-items EFTER normalvare-køb
+    if (eventItems.length > 0) {
+        logDebugEvent('purchase_event_items_after_normal', { eventCount: eventItems.length });
+        await processEventItemsInCheckout(eventItems, customer);
+    }
+
+    // Ryd kurv og opdater UI
+    let nextOrder = clearOrder();
+    try { setOrder([...nextOrder]); } catch (err) { console.warn('[order-store] sync failed after purchase:', err); }
+    if (typeof setCurrentOrder === 'function') setCurrentOrder(nextOrder);
+    clearCurrentCustomer();
+    renderOrder(orderList, nextOrder, totalPriceEl, updateSelectedUserInfo);
+    if (typeof refreshProductLocks === 'function') await refreshProductLocks({ force: true });
+    if (typeof renderProductsFromCache === 'function') renderProductsFromCache();
+    setButtonLoadingState(completePurchaseBtn, 'normal');
+}
+
+// ---- End phase helpers ----
 
 function extractBalanceFromRpcData(data) {
     if (data == null) return null;
@@ -104,77 +526,36 @@ function groupOrderItems(order) {
     }, {});
 }
 
-/**
- * Bygger bekræftelsesdialog UI
- * @param {Object} customer - Kunde
- * @param {Array} currentOrder - Ordre
- * @param {number} finalTotal - Totalt beløb
- * @param {number} newBalance - Ny balance
- * @param {boolean} isFreeAdminPurchase - Om dette er et gratis admin-køb
- * @param {Object|null} restaurantMode - { enabled, tableNumbersEnabled, tableCount } eller null
- * @returns {string} HTML string til bekræftelsesdialog
- */
-function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isFreeAdminPurchase = false, restaurantMode = null, clerk = null) {
-    // Grupper items efter produkt ID
-    const itemCounts = groupOrderItems(currentOrder);
+// ============================================================================
+// CONFIRMATION UI BUILDERS (split fra buildConfirmationUI)
+// ============================================================================
 
-    // Byg DOM
-    const root = document.createElement('div');
-    const inst = window.__flangoGetInstitutionById?.(customer?.institution_id);
-    const imgStyle = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+const IMG_STYLE = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
 
-    // === Helper: build avatar element ===
-    function buildAvatar(user, size) {
-        const el = document.createElement('div');
-        el.style.cssText = `width:${size}px;height:${size}px;min-width:${size}px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size * 0.28)}px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.18);background:rgba(99,102,241,0.15);color:var(--text-primary,#fff);`;
+function buildAvatar(user, size, inst) {
+    const el = document.createElement('div');
+    el.style.cssText = `width:${size}px;height:${size}px;min-width:${size}px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size * 0.28)}px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.18);background:rgba(99,102,241,0.15);color:var(--text-primary,#fff);`;
 
-        const hasPic = inst?.profile_pictures_enabled && user?.profile_picture_url && !user?.profile_picture_opt_out;
-        if (hasPic) {
-            const cachedUrl = getCachedProfilePictureUrl(user);
-            if (cachedUrl) {
-                el.innerHTML = `<img src="${cachedUrl}" alt="" style="${imgStyle}">`;
-            } else {
-                el.textContent = (user?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-                el.dataset.needsAsync = 'true';
-                el.dataset.userId = user.id;
-            }
-        } else {
-            const avatarKey = `flango-avatar-${user?.id}`;
-            const savedAvatar = localStorage.getItem(avatarKey);
-            if (savedAvatar) {
-                el.innerHTML = `<img src="${savedAvatar}" alt="" style="${imgStyle}">`;
-            } else {
-                const def = getDefaultProfilePicture(user?.name, inst);
-                if (def.type === 'anonymous') {
-                    el.textContent = '👤';
-                    el.style.fontSize = `${Math.round(size * 0.45)}px`;
-                } else if (def.type === 'image' && def.value) {
-                    el.innerHTML = `<img src="${def.value}" alt="" style="${imgStyle}">`;
-                } else if (def.type === 'image') {
-                    el.textContent = '...';
-                    getDefaultProfilePictureAsync(user?.name, inst).then(res => {
-                        if (res.type === 'image' && res.value && el.isConnected) {
-                            el.innerHTML = `<img src="${res.value}" alt="" style="${imgStyle}">`;
-                        } else if (el.isConnected) {
-                            el.textContent = res.value || '?';
-                        }
-                    });
-                } else {
-                    el.textContent = def.value; // initials
-                }
-            }
-        }
-        return el;
+    const src = resolveAvatarSource(user, inst);
+    if (src.type === 'img') {
+        el.innerHTML = `<img src="${src.value}" alt="" style="${IMG_STYLE}">`;
+    } else if (src.type === 'async') {
+        el.textContent = src.value;
+        el.dataset.needsAsync = 'true';
+        el.dataset.userId = user?.id;
+    } else {
+        el.textContent = src.value;
+        if (src.value === '👤') el.style.fontSize = `${Math.round(size * 0.45)}px`;
     }
+    return el;
+}
 
-    // === Header: Ekspedient + Kunde side om side ===
+function buildConfirmationHeader(customer, clerk, inst) {
     const header = document.createElement('div');
     header.className = 'confirm-modal-header';
-
     const peopleRow = document.createElement('div');
     peopleRow.style.cssText = 'display:flex;align-items:flex-start;justify-content:center;gap:24px;margin-bottom:8px;';
 
-    // Clerk/Ekspedient column
     if (clerk) {
         const clerkCol = document.createElement('div');
         clerkCol.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;flex:0 0 auto;';
@@ -182,7 +563,7 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
         clerkLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--text-secondary,#64748b);text-transform:uppercase;letter-spacing:0.5px;';
         clerkLabel.textContent = 'Ekspedient';
         clerkCol.appendChild(clerkLabel);
-        const clerkAvatar = buildAvatar(clerk, 180);
+        const clerkAvatar = buildAvatar(clerk, 180, inst);
         clerkAvatar.id = 'confirm-clerk-avatar';
         clerkCol.appendChild(clerkAvatar);
         const clerkName = document.createElement('div');
@@ -192,7 +573,6 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
         peopleRow.appendChild(clerkCol);
     }
 
-    // Customer column
     const custCol = document.createElement('div');
     custCol.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;flex:0 0 auto;';
     const custLabel = document.createElement('div');
@@ -200,7 +580,7 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
     custLabel.textContent = 'Kunde';
     custCol.appendChild(custLabel);
 
-    const custAvatar = buildAvatar(customer, 180);
+    const custAvatar = buildAvatar(customer, 180, inst);
     custAvatar.id = 'confirm-customer-avatar';
     const custAvatarWrap = document.createElement('div');
     custAvatarWrap.style.cssText = 'position:relative;display:inline-block;';
@@ -217,22 +597,22 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
 
     const custName = document.createElement('div');
     custName.style.cssText = 'font-size:15px;font-weight:600;color:var(--text-primary,#334155);text-align:center;max-width:220px;word-break:break-word;';
-    custName.textContent = `${customer?.name || 'Ukendt'} køber:`;
+    custName.textContent = `${customer?.name || 'Ukendt'} k\u00f8ber:`;
     custCol.appendChild(custName);
 
     peopleRow.appendChild(custCol);
     header.appendChild(peopleRow);
-    root.appendChild(header);
+    return header;
+}
 
-    // === Produktrækker ===
-    const productsContainer = document.createElement('div');
-    productsContainer.className = 'confirm-modal-products';
+function buildConfirmationProducts(itemCounts, restaurantMode) {
+    const container = document.createElement('div');
+    container.className = 'confirm-modal-products';
 
     Object.values(itemCounts).forEach((item) => {
         const row = document.createElement('div');
         row.className = 'confirm-product-row';
 
-        // Ikon (billede eller emoji)
         const iconWrap = document.createElement('span');
         iconWrap.className = 'cp-icon';
         const iconInfo = getProductIconInfo(item);
@@ -242,11 +622,10 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
             img.alt = item?.name || 'Produkt';
             iconWrap.appendChild(img);
         } else {
-            iconWrap.textContent = item?.emoji || '🛒';
+            iconWrap.textContent = item?.emoji || '\uD83D\uDED2';
         }
         row.appendChild(iconWrap);
 
-        // Info (navn + antal)
         const info = document.createElement('div');
         info.className = 'cp-info';
         const name = document.createElement('div');
@@ -259,7 +638,6 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
         info.appendChild(qty);
         row.appendChild(info);
 
-        // Pris (pr. linje, efter evt. rabat)
         const unitPrice = getBulkDiscountedUnitPrice(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
         const lineTotal = unitPrice * item.count;
         const price = document.createElement('div');
@@ -267,9 +645,8 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
         price.textContent = formatKr(lineTotal);
         row.appendChild(price);
 
-        productsContainer.appendChild(row);
+        container.appendChild(row);
 
-        // Bulk-rabat info under produktrækken
         const summary = getBulkDiscountSummary(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
         if (summary.discountAmount > 0) {
             const discountRow = document.createElement('div');
@@ -278,20 +655,18 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
                 ? formatKr(summary.bundlePrice).replace(' kr', '')
                 : '';
             const label = bundleLabel
-                ? `🏷️ Rabat (${summary.qtyRule} for ${bundleLabel})`
-                : '🏷️ Rabat';
+                ? `\uD83C\uDFF7\uFE0F Rabat (${summary.qtyRule} for ${bundleLabel})`
+                : '\uD83C\uDFF7\uFE0F Rabat';
             discountRow.textContent = `${label}: -${formatKr(summary.discountAmount)}`;
-            productsContainer.appendChild(discountRow);
+            container.appendChild(discountRow);
         }
 
-        // Per-produkt varianter + kommentar (kun restaurant mode)
         if (restaurantMode?.enabled) {
             const variants = item.restaurant_variants || [];
             const perItemSection = document.createElement('div');
             perItemSection.className = 'confirm-item-extras';
             perItemSection.dataset.productId = item.id;
 
-            // Variant-badges (valgbare, maks 1 pr. produkt)
             if (variants.length > 0) {
                 const badgesWrap = document.createElement('div');
                 badgesWrap.className = 'confirm-variant-badges';
@@ -306,7 +681,6 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
                 perItemSection.appendChild(badgesWrap);
             }
 
-            // Per-produkt kommentar
             const noteInput = document.createElement('input');
             noteInput.type = 'text';
             noteInput.className = 'confirm-item-note';
@@ -319,14 +693,14 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
         }
     });
 
-    root.appendChild(productsContainer);
+    return container;
+}
 
-    // === Summary sektion ===
+function buildConfirmationSummary(customer, itemCounts, finalTotal, newBalance, isFreeAdminPurchase) {
     const summaryDiv = document.createElement('div');
     summaryDiv.className = 'confirm-modal-summary';
 
     if (isFreeAdminPurchase) {
-        // Gratis admin-køb
         const normalTotal = Object.values(itemCounts).reduce((sum, item) => {
             const unitPrice = getBulkDiscountedUnitPrice(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
             return sum + (unitPrice * item.count);
@@ -347,7 +721,6 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
         balanceRow.innerHTML = `<span class="label">Saldo (u\u00e6ndret)</span><span class="value">${escapeHtml(formatKr(customer.balance))}</span>`;
         summaryDiv.appendChild(balanceRow);
     } else {
-        // Normal køb — Total, Nuværende saldo, Ny saldo
         const totalRow = document.createElement('div');
         totalRow.className = 'confirm-summary-row total';
         totalRow.innerHTML = `<span class="label">Total</span><span class="value">${escapeHtml(formatKr(finalTotal))}</span>`;
@@ -364,78 +737,86 @@ function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isF
         newBalRow.innerHTML = `<span class="label">Ny saldo</span><span class="value ${newBalClass}">${escapeHtml(formatKr(newBalance))}</span>`;
         summaryDiv.appendChild(newBalRow);
 
-        // Negativ balance advarsel
         if (newBalance < 0) {
             const warning = document.createElement('div');
             warning.className = 'confirm-negative-warning';
-            if (customer.balance < 0) {
-                warning.innerHTML = '<strong>Advarsel:</strong> Er du helt sikker p\u00e5, at du vil g\u00e5 endnu mere i minus?';
-            } else {
-                warning.innerHTML = '<strong>Advarsel:</strong> Er du helt sikker p\u00e5, du vil g\u00e5 i minus?';
-            }
+            warning.innerHTML = customer.balance < 0
+                ? '<strong>Advarsel:</strong> Er du helt sikker p\u00e5, at du vil g\u00e5 endnu mere i minus?'
+                : '<strong>Advarsel:</strong> Er du helt sikker p\u00e5, du vil g\u00e5 i minus?';
             summaryDiv.appendChild(warning);
         }
     }
 
-    root.appendChild(summaryDiv);
+    return summaryDiv;
+}
 
-    // === Restaurant Mode: bordnummer-grid + kommentar ===
-    if (restaurantMode?.enabled) {
-        const section = document.createElement('div');
-        section.className = 'confirm-restaurant-section';
-        section.id = 'confirm-restaurant-section';
+function buildConfirmationRestaurantSection(restaurantMode) {
+    const section = document.createElement('div');
+    section.className = 'confirm-restaurant-section';
+    section.id = 'confirm-restaurant-section';
 
-        // Bordnummer-grid
-        if (restaurantMode.tableNumbersEnabled) {
-            const tableCount = Math.min(Math.max(restaurantMode.tableCount || 9, 1), 16);
-            const label = document.createElement('div');
-            label.className = 'confirm-restaurant-label';
-            label.innerHTML = '🍽️ Vælg bord';
-            section.appendChild(label);
+    if (restaurantMode.tableNumbersEnabled) {
+        const tableCount = Math.min(Math.max(restaurantMode.tableCount || 9, 1), 16);
+        const label = document.createElement('div');
+        label.className = 'confirm-restaurant-label';
+        label.innerHTML = '\uD83C\uDF7D\uFE0F V\u00e6lg bord';
+        section.appendChild(label);
 
-            const grid = document.createElement('div');
-            grid.className = 'confirm-table-grid';
-            // Adaptivt grid: ≤9 borde → 3 kolonner, 10-16 → 2 rækker med ceil(n/2) kolonner
-            if (tableCount > 9) {
-                const cols = Math.ceil(tableCount / 2);
-                grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-                grid.classList.add('confirm-table-grid-compact');
-            }
-            for (let i = 1; i <= tableCount; i++) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'confirm-table-btn' + (tableCount > 9 ? ' compact' : '');
-                btn.textContent = i;
-                btn.dataset.table = i;
-                grid.appendChild(btn);
-            }
-            section.appendChild(grid);
+        const grid = document.createElement('div');
+        grid.className = 'confirm-table-grid';
+        if (tableCount > 9) {
+            const cols = Math.ceil(tableCount / 2);
+            grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            grid.classList.add('confirm-table-grid-compact');
         }
+        for (let i = 1; i <= tableCount; i++) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'confirm-table-btn' + (tableCount > 9 ? ' compact' : '');
+            btn.textContent = i;
+            btn.dataset.table = i;
+            grid.appendChild(btn);
+        }
+        section.appendChild(grid);
+    }
 
-        // Genbrug-badge
-        const reuseBadge = document.createElement('button');
-        reuseBadge.type = 'button';
-        reuseBadge.className = 'confirm-reuse-badge';
-        reuseBadge.id = 'confirm-reuse-badge';
-        reuseBadge.textContent = '♻️ Genbrug';
-        reuseBadge.title = 'Markér at der bruges genbrugstallerkner/service';
-        section.appendChild(reuseBadge);
+    const reuseBadge = document.createElement('button');
+    reuseBadge.type = 'button';
+    reuseBadge.className = 'confirm-reuse-badge';
+    reuseBadge.id = 'confirm-reuse-badge';
+    reuseBadge.textContent = '\u267B\uFE0F Genbrug';
+    reuseBadge.title = 'Mark\u00e9r at der bruges genbrugstallerkner/service';
+    section.appendChild(reuseBadge);
 
-        // Kommentar-felt (altid synligt i restaurant mode)
-        const noteLabel = document.createElement('div');
-        noteLabel.className = 'confirm-restaurant-label';
-        noteLabel.innerHTML = '📝 Kommentar til køkken';
-        section.appendChild(noteLabel);
+    const noteLabel = document.createElement('div');
+    noteLabel.className = 'confirm-restaurant-label';
+    noteLabel.innerHTML = '\uD83D\uDCDD Kommentar til k\u00f8kken';
+    section.appendChild(noteLabel);
 
-        const note = document.createElement('textarea');
-        note.className = 'confirm-kitchen-note';
-        note.id = 'confirm-kitchen-note';
-        note.maxLength = 200;
-        note.rows = 2;
-        note.placeholder = 'Valgfrit — fx "uden løg", "allergiker" ...';
-        section.appendChild(note);
+    const note = document.createElement('textarea');
+    note.className = 'confirm-kitchen-note';
+    note.id = 'confirm-kitchen-note';
+    note.maxLength = 200;
+    note.rows = 2;
+    note.placeholder = 'Valgfrit \u2014 fx "uden l\u00f8g", "allergiker" ...';
+    section.appendChild(note);
 
-        root.appendChild(section);
+    return section;
+}
+
+/**
+ * Bygger bekræftelsesdialog UI — orchestrerer de 5 sektionsbyggere.
+ */
+function buildConfirmationUI(customer, currentOrder, finalTotal, newBalance, isFreeAdminPurchase = false, restaurantMode = null, clerk = null) {
+    const itemCounts = groupOrderItems(currentOrder);
+    const root = document.createElement('div');
+    const inst = window.__flangoGetInstitutionById?.(customer?.institution_id);
+
+    root.appendChild(buildConfirmationHeader(customer, clerk, inst));
+    root.appendChild(buildConfirmationProducts(itemCounts, restaurantMode));
+    root.appendChild(buildConfirmationSummary(customer, itemCounts, finalTotal, newBalance, isFreeAdminPurchase));
+    if (restaurantMode?.enabled) {
+        root.appendChild(buildConfirmationRestaurantSection(restaurantMode));
     }
 
     return root.innerHTML;
@@ -797,50 +1178,30 @@ export async function handleCompletePurchase({
     refreshProductLocks,
     renderProductsFromCache,
 }) {
-    // KRITISK FIX: Hvis currentOrder er tom men order-store har varer, brug order-store
-    // Dette løser synkroniseringsfejl hvor lokal variabel ikke er opdateret
-    // KRITISK FIX: Hvis currentOrder er tom men order-store har varer, brug order-store
-    // Dette løser synkroniseringsfejl hvor lokal variabel ikke er opdateret
-    const orderFromStore = typeof getOrder === 'function' ? getOrder() : [];
-    const effectiveOrder = (Array.isArray(currentOrder) && currentOrder.length > 0) ? currentOrder : orderFromStore;
-    let orderSnapshot = Array.isArray(effectiveOrder) ? [...effectiveOrder] : [];
-    
-    // Opdater lokal variabel hvis den var tom men order-store har varer
-    if (typeof setCurrentOrder === 'function' && (!Array.isArray(currentOrder) || currentOrder.length === 0) && orderFromStore.length > 0) {
-        setCurrentOrder([...orderFromStore]);
-        currentOrder = [...orderFromStore];
-    }
-    
-    // Flight recorder: log purchase flow start
+    // 1. Synkronisér og validér ordre
+    let orderSnapshot = syncOrderSnapshot(currentOrder, setCurrentOrder);
     logDebugEvent('purchase_flow_started', {
-        customerId: customer?.id,
-        customerName: customer?.name,
+        customerId: customer?.id, customerName: customer?.name,
         cartLength: orderSnapshot?.length,
         cartItems: orderSnapshot?.slice(0, 5).map(i => ({ name: i.name, id: i.id, price: i.price })),
         orderStoreLength: typeof getOrder === 'function' ? getOrder()?.length : 'N/A',
     });
     if (!customer) return showAlert("Fejl: Vælg venligst en kunde!");
-    if (orderSnapshot.length === 0) {
-        return showAlert("Fejl: Indkøbskurven er tom!");
-    }
+    if (orderSnapshot.length === 0) return showAlert("Fejl: Indkøbskurven er tom!");
     if (purchaseInFlight) {
         logDebugEvent('purchase_inflight_blocked', { customerId: customer?.id });
         return;
     }
     purchaseInFlight = true;
     try {
-    // === EVENT ITEMS SPLIT ===
-    // Separér event-items fra normalvarer. Events håndteres IKKE via process_sale.
+
+    // 2. Event/normal split — event-only ordrer processeres direkte
     const eventItems = orderSnapshot.filter(item => item.type === 'event');
     const normalItems = orderSnapshot.filter(item => item.type !== 'event');
-
-    // Hvis KUN event-items: skip al normalvare-validering og processér direkte
     if (normalItems.length === 0 && eventItems.length > 0) {
         logDebugEvent('purchase_event_only', { eventCount: eventItems.length, customerId: customer?.id });
         await processEventItemsInCheckout(eventItems, customer);
-        // Opdater saldo-visning uden log ud (balance-manager har allerede opdateret, sikr synk UI)
         if (typeof updateSelectedUserInfo === 'function') updateSelectedUserInfo();
-        // Ryd kurv
         let nextOrder = clearOrder();
         setOrder([...nextOrder]);
         if (typeof setCurrentOrder === 'function') setCurrentOrder(nextOrder);
@@ -850,289 +1211,53 @@ export async function handleCompletePurchase({
         setButtonLoadingState(completePurchaseBtn, 'normal');
         return;
     }
-
-    // Brug normalItems til al validering herunder (event-items springer over)
-    // Erstat orderSnapshot med normalItems i resten af flowet
     if (eventItems.length > 0) {
         orderSnapshot = normalItems;
-        setOrder([...normalItems]); // Sync order-store
-    }
-    // === SLUT EVENT ITEMS SPLIT ===
-
-    // === ALLERGI-CHECK ===
-    let allergyPolicy = customer?.allergyPolicy;
-
-    // Hvis der ikke er nogen politik endnu, eller det bare er et tomt objekt, henter vi fra Supabase
-    const isEmptyPolicy =
-        !allergyPolicy ||
-        (typeof allergyPolicy === 'object' && Object.keys(allergyPolicy).length === 0);
-
-    // OPTIMERING: Parallelize allergi-checks for 100-200ms speedup
-    const productIdsInOrder = orderSnapshot.map(item => item.product_id || item.productId || item.id).filter(Boolean);
-
-    const [fetchedAllergyPolicy, productAllergenMap] = await Promise.all([
-        isEmptyPolicy ? fetchAllergyPolicyForChild(customer.id, customer.institution_id) : Promise.resolve(allergyPolicy),
-        fetchProductAllergensMap(productIdsInOrder)
-    ]);
-
-    if (isEmptyPolicy) {
-        allergyPolicy = fetchedAllergyPolicy;
-        customer.allergyPolicy = allergyPolicy;
+        setOrder([...normalItems]);
     }
 
-    console.log('[allergies] effective allergyPolicy for', customer.name, allergyPolicy);
+    // 3. Allergi-check
+    const allergyOk = await enforceAllergyChecks(customer, orderSnapshot, allProducts);
+    if (!allergyOk) return;
 
-    // OPTIMERING: Brug helper funktion til at berige ordrelinjer med allergener
-    const orderWithAllergens = enrichOrderWithAllergens(orderSnapshot, allProducts, productAllergenMap);
-
-    console.log('[allergies] policy for', customer.name, allergyPolicy);
-    console.log('[allergies] orderWithAllergens', orderWithAllergens);
-
-    const allergyResult = evaluateCartAllergy(orderWithAllergens, allergyPolicy);
-    console.log('[allergies] evaluation result', allergyResult);
-
-    if (allergyResult.level === 'block') {
-        const details = groupAllergyReasons(allergyResult.reasons);
-        await showCustomAlert(
-            'Køb Blokeret (Allergi)',
-            `Hov, ${escapeHtml(customer.name)} må ikke købe disse varer pga. registrerede allergier:<br><br>${details}<br><br>Ret venligst kurven eller vælg andre varer.`
-        );
-        return;
-    }
-
-    if (allergyResult.level === 'warn') {
-        const details = groupAllergyReasons(allergyResult.reasons);
-        const confirmedAllergy = await showCustomAlert(
-            'Allergi-advarsel',
-            `OBS: Der er registreret allergier/advarsler for ${escapeHtml(customer.name)}:<br><br>${details}<br><br>Vil du gennemføre købet alligevel?`,
-            'confirm'
-        );
-        if (!confirmedAllergy) {
-            return;
-        }
-    }
-    // === SLUT ALLERGI-CHECK ===
-    let evaluation = null;
+    // 4. Evaluér pris + sukker/kost-politik
     try {
-        // Deterministic sync: avoid sharing mutable array reference
         setOrder(Array.isArray(orderSnapshot) ? [...orderSnapshot] : []);
-        const shadowOrder = getOrder();
-        console.log('[order-store] shadow sync:', {
-            currentOrderLength: orderSnapshot.length,
-            shadowOrderLength: Array.isArray(shadowOrder) ? shadowOrder.length : 'n/a',
-        });
     } catch (err) {
         console.warn('[order-store] shadow sync failed:', err);
     }
-    {
-        const purchaseInput = {
-            customer,
-            currentBalance: customer?.balance ?? null,
-            orderItems: orderSnapshot,
-            products: allProducts,
-            maxOverdraft: OVERDRAFT_LIMIT,
-        };
-        evaluation = evaluatePurchase(purchaseInput);
-        console.log('[cafe-session] evaluatePurchase result:', evaluation);
-    }
+    const evaluation = evaluatePurchase({
+        customer, currentBalance: customer?.balance ?? null,
+        orderItems: orderSnapshot, products: allProducts, maxOverdraft: OVERDRAFT_LIMIT,
+    });
 
     const sugarOk = await enforceSugarPolicy({ customer, currentOrder: orderSnapshot, allProducts });
     if (!sugarOk) return;
-
     const dietaryOk = await enforceDietaryRestrictions({ customer, currentOrder: orderSnapshot, allProducts });
     if (!dietaryOk) return;
 
+    // 5. Produktgrænser
     try {
-        const childId = customer.id;
-
-        // Parallel validation checks for all items (much faster than sequential)
-        // FIX: Wrap each canChildPurchase call with retry logic for transient errors
-        const missingProductIdCount = orderSnapshot.reduce((count, line) => {
-            const productId = line?.product_id || line?.productId || line?.id;
-            return productId == null ? count + 1 : count;
-        }, 0);
-        const checkPromises = orderSnapshot.map(async (line) => {
-            // Calculator-items har ingen rigtig product_id — skip DB-validering
-            if (line.is_calculator_item) return { allowed: true };
-            const productId = line.product_id || line.productId || line.id;
-            const product = allProducts.find(p => p.id === productId);
-            if (!productId) return { allowed: true };
-
-            // FIX: Retry logic for transient errors (fx network timeouts)
-            let lastError = null;
-            for (let attempt = 0; attempt < 2; attempt++) {
-                try {
-                    const result = await canChildPurchase(
-                        productId,
-                        childId,
-                        orderSnapshot,
-                        customer.institution_id,
-                        product?.name,
-                        true // final checkout: undgå dobbelt-tælling af kurven
-                    );
-                    return result;
-                } catch (err) {
-                    lastError = err;
-                    // FIX: Hvis det er første forsøg og fejlen ser ud til at være transient
-                    // (fx network error, timeout), prøv igen. Ellers throw videre.
-                    const isTransientError = err?.message?.includes('network') || 
-                                           err?.message?.includes('timeout') ||
-                                           err?.message?.includes('fetch');
-                    if (attempt === 0 && isTransientError) {
-                        console.warn('[canChildPurchase] Transient fejl, prøver igen:', productId, err);
-                        await new Promise(resolve => setTimeout(resolve, 100)); // Kort delay før retry
-                        continue;
-                    }
-                    // Hvis det ikke er transient eller andet forsøg fejlede, throw videre
-                    throw err;
-                }
-            }
-            // Dette skulle ikke nås, men hvis det gør, throw den sidste fejl
-            throw lastError;
-        });
-
-        const results = await Promise.all(checkPromises);
-
-        // Check if any validation failed
-        const failedCheck = results.find(result => result && result.allowed === false);
-        if (failedCheck) {
-            const message = failedCheck.message || 'Det her køb er ikke tilladt lige nu. Tal med en voksen i caféen.';
-            // showCustomAlert viser fejlbeskeden uden at spille lyd
-            await showCustomAlert('Køb ikke tilladt', message);
-            return;
-        }
+        const limitsOk = await validateProductLimits(customer, orderSnapshot, allProducts);
+        if (!limitsOk) return;
     } catch (err) {
-        // Strukturel fejl ved validering – afviser køb
         console.error('[canChildPurchase] Strukturel fejl ved validering – afviser køb:', err);
-
-        // showCustomAlert viser fejlbeskeden uden at spille lyd
-        await showCustomAlert(
-            'Kan ikke bekræfte regler', 
-            'Vi kan ikke bekræfte grænserne lige nu. Prøv igen om 5 sekunder eller tjek din forbindelse.'
-        );
+        await showCustomAlert('Kan ikke bekræfte regler',
+            'Vi kan ikke bekræfte grænserne lige nu. Prøv igen om 5 sekunder eller tjek din forbindelse.');
         return;
     }
 
-    const legacyTotal = getOrderTotal();
-    if (evaluation && typeof evaluation.total === 'number') {
-        try {
-            const diff = Math.abs(legacyTotal - evaluation.total);
-            if (diff > 0.01) {
-                console.log('[cafe-session] TOTAL MISMATCH:', {
-                    legacyTotal,
-                    evaluatePurchaseTotal: evaluation.total,
-                });
-            }
-        } catch (err) {
-            console.warn('[cafe-session] total comparison failed:', err);
-        }
-    }
-    let finalTotal = legacyTotal;
-    try {
-        const evalTotal = evaluation?.total;
-        const evalIsValid = typeof evalTotal === 'number' && Number.isFinite(evalTotal);
-        const evalIsNonNegative = evalIsValid && evalTotal >= 0;
-        const evalCloseToLegacy = evalIsValid && Math.abs(evalTotal - legacyTotal) <= 0.01;
-        if (evalIsValid && evalIsNonNegative && evalCloseToLegacy) {
-            finalTotal = evalTotal;
-        } else {
-            console.log('[cafe-session] Using legacy total (fallback). Reason:', {
-                evalIsValid,
-                evalIsNonNegative,
-                evalCloseToLegacy,
-                legacyTotal,
-                evaluatePurchaseTotal: evalTotal,
-            });
-        }
-    } catch (err) {
-        console.warn('[cafe-session] finalTotal selection failed, using legacy total:', err);
-    }
-
-    // Tjek om dette er et gratis admin-køb (per-admin purchase_free felt)
-    const isAdminCustomer = customer?.role === 'admin';
-    const shouldBeFreePurchase = isAdminCustomer && customer?.purchase_free === true;
-
-    // Hvis admin skal købe gratis, sæt finalTotal til 0
-    if (shouldBeFreePurchase) {
-        finalTotal = 0;
-        console.log('[purchase-flow] Admin gratis-køb aktiveret - finalTotal sat til 0');
-    }
-
+    // 6. Beregn total + saldo
+    const { finalTotal, shouldBeFreePurchase } = calculateFinalTotal(evaluation, customer);
     applyEvaluation(evaluation);
     const finance = getFinancialState(finalTotal);
     const newBalance = Number.isFinite(finance.newBalance) ? finance.newBalance : customer.balance - finalTotal;
 
-    // OPTIMERING: Brug memory cache først (0 DB kald)
-    let institutionSettings = typeof window !== 'undefined' && typeof window.__flangoGetInstitutionById === 'function'
-        ? window.__flangoGetInstitutionById(customer.institution_id)
-        : null;
+    // 7. Institutions-grænser (forbrug + saldo)
+    const limitsOk = await enforceInstitutionLimits(customer, finalTotal, newBalance);
+    if (!limitsOk) return;
 
-    // Fallback: hent fra DB kun hvis ikke i cache
-    if (!institutionSettings) {
-        const { data } = await supabaseClient
-            .from('institutions')
-            .select(`
-                balance_limit_enabled,
-                balance_limit_amount,
-                balance_limit_exempt_admins,
-                balance_limit_exempt_test_users,
-                spending_limit_enabled,
-                spending_limit_amount,
-                spending_limit_applies_to_regular_users,
-                spending_limit_applies_to_admins,
-                spending_limit_applies_to_test_users
-            `)
-            .eq('id', customer.institution_id)
-            .single();
-        institutionSettings = data;
-    }
-
-    // === SPENDING LIMIT CHECK ===
-    if (institutionSettings?.spending_limit_enabled) {
-        const isAdmin = customer.role === 'admin' || customer.is_admin === true;
-        const isTestUser = customer.is_test_user === true;
-        const isRegularUser = !isAdmin && !isTestUser;
-
-        const appliesToUser = (isRegularUser && institutionSettings.spending_limit_applies_to_regular_users) ||
-                              (isAdmin && institutionSettings.spending_limit_applies_to_admins) ||
-                              (isTestUser && institutionSettings.spending_limit_applies_to_test_users);
-
-        if (appliesToUser) {
-            // OPTIMERING: genbrug sales-cache (undgår per-køb query i checkout).
-            // getTodaysTotalSpendForChild bruger getTodaysSalesForChild med in-flight dedup
-            // og er allerede preloadet ved selectUser i normale flows.
-            const spentToday = await getTodaysTotalSpendForChild(customer.id, customer.institution_id);
-            const spendingLimit = institutionSettings.spending_limit_amount || 40;
-            const wouldSpend = spentToday + finalTotal;
-
-            if (wouldSpend > spendingLimit) {
-                const remaining = Math.max(0, spendingLimit - spentToday);
-                const errorMessage = `Du har nået din daglige forbrugsgrænse!<br>Grænse: <strong>${spendingLimit.toFixed(2)} kr.</strong><br>Brugt i dag: <strong>${spentToday.toFixed(2)} kr.</strong><br>Tilbage: <strong>${remaining.toFixed(2)} kr.</strong><br><br>Prøv igen i morgen!`;
-                await showCustomAlert('Køb Afvist', errorMessage);
-                return;
-            }
-        }
-    }
-
-    // === BALANCE LIMIT CHECK ===
-    if (institutionSettings?.balance_limit_enabled !== false) {
-        const isAdmin = customer.role === 'admin' || customer.is_admin === true;
-        const isTestUser = customer.is_test_user === true;
-        const isExempt = (isAdmin && institutionSettings?.balance_limit_exempt_admins) ||
-                         (isTestUser && institutionSettings?.balance_limit_exempt_test_users);
-
-        if (!isExempt) {
-            const balanceLimit = institutionSettings?.balance_limit_amount ?? OVERDRAFT_LIMIT;
-            if (newBalance < balanceLimit) {
-                const available = customer.balance - balanceLimit;
-                const errorMessage = `Der er ikke penge nok på kontoen til dette køb!<br>Du har <strong>${available.toFixed(2)} kr.</strong> tilbage, før du rammer ${balanceLimit} kr. grænsen.<br><br>Husk at bede dine forældre pænt om at overføre.`;
-                await showCustomAlert('Køb Afvist', errorMessage);
-                return;
-            }
-        }
-    }
-
-    // Hent restaurant mode settings fra institution cache + per-enhed override
+    // 8. Restaurant mode
     const instData = window.__flangoGetInstitutionById?.(customer.institution_id);
     const deviceRestaurantMode = localStorage.getItem('flango_device_restaurant_mode') === 'true';
     const restaurantMode = (instData?.restaurant_mode_enabled && deviceRestaurantMode) ? {
@@ -1141,270 +1266,50 @@ export async function handleCompletePurchase({
         tableCount: instData.restaurant_table_count || 9,
     } : null;
 
-    // OPTIMERING: Brug helper funktion til at bygge bekræftelsesdialog
-    // Flight recorder: log modal build
-    logDebugEvent('confirmation_modal_building', {
-        cartLength: orderSnapshot?.length,
-        cartItemNames: orderSnapshot?.slice(0, 5).map(i => i.name),
-        orderStoreLength: typeof getOrder === 'function' ? getOrder()?.length : 'N/A',
-        finalTotal,
-        newBalance,
-    });
-    const confirmationBody = buildConfirmationUI(customer, orderSnapshot, finalTotal, newBalance, shouldBeFreePurchase, restaurantMode, clerkProfile);
-    logDebugEvent('confirmation_modal_showing', { bodyLength: confirmationBody?.length });
-    // showCustomAlert indsætter HTML synkront via innerHTML — await ikke endnu
-    // så vi kan vedhæfte event listeners til DOM-elementer der blev oprettet
-    const alertPromise = showCustomAlert('Bekræft Køb', confirmationBody, {
-        type: 'confirm',
-        okText: 'Bekræft Køb',
-        cancelText: 'Annullér',
-    });
+    // 9. Bekræftelsesmodal
+    const modalResult = await showConfirmationAndCollectInput(
+        customer, orderSnapshot, finalTotal, newBalance, shouldBeFreePurchase, restaurantMode, clerkProfile
+    );
+    if (!modalResult) return;
+    const { selectedTableNumber, kitchenNoteText, itemExtras } = modalResult;
 
-    // Async profile picture load (if cached URL wasn't available during build)
-    const imgStyle2 = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
-    const avatarNode = document.getElementById('confirm-customer-avatar');
-    if (avatarNode?.dataset.needsAsync === 'true') {
-        getProfilePictureUrl(customer).then(url => {
-            if (url && avatarNode.isConnected) {
-                avatarNode.textContent = '';
-                avatarNode.innerHTML = `<img src="${url}" alt="" style="${imgStyle2}">`;
-            }
-        });
-    }
-    const clerkAvatarNode = document.getElementById('confirm-clerk-avatar');
-    if (clerkAvatarNode?.dataset.needsAsync === 'true' && clerk) {
-        getProfilePictureUrl(clerk).then(url => {
-            if (url && clerkAvatarNode.isConnected) {
-                clerkAvatarNode.textContent = '';
-                clerkAvatarNode.innerHTML = `<img src="${url}" alt="" style="${imgStyle2}">`;
-            }
-        });
-    }
-
-    // Re-attach bordknap click-handlers (tabt under innerHTML serialisering i buildConfirmationUI)
-    if (restaurantMode?.enabled && restaurantMode.tableNumbersEnabled) {
-        document.querySelectorAll('#confirm-restaurant-section .confirm-table-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const wasSelected = btn.classList.contains('selected');
-                const grid = btn.closest('.confirm-table-grid');
-                if (grid) grid.querySelectorAll('.confirm-table-btn').forEach(b => b.classList.remove('selected'));
-                if (!wasSelected) btn.classList.add('selected');
-            });
-        });
-    }
-
-    // Re-attach variant-badge + genbrug click-handlers (restaurant mode)
-    if (restaurantMode?.enabled) {
-        // Per-produkt variant badges: toggle selected (1 pr. produkt)
-        document.querySelectorAll('.confirm-item-extras').forEach(section => {
-            section.querySelectorAll('.confirm-variant-badge').forEach(badge => {
-                badge.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const wasSelected = badge.classList.contains('selected');
-                    section.querySelectorAll('.confirm-variant-badge').forEach(b => b.classList.remove('selected'));
-                    if (!wasSelected) badge.classList.add('selected');
-                });
-            });
-        });
-        // Genbrug-badge toggle
-        document.getElementById('confirm-reuse-badge')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            e.target.classList.toggle('selected');
-        });
-    }
-
-    const confirmed = await alertPromise;
-    logDebugEvent('confirmation_modal_closed', { confirmed, cartLengthAfter: orderSnapshot?.length });
-    if (!confirmed) return;
-
-    // Læs restaurant-info fra modal DOM (inden den genbruges)
-    let selectedTableNumber = null;
-    let kitchenNoteText = null;
-    let itemExtras = {}; // Per-produkt variant + note
-    if (restaurantMode?.enabled) {
-        const selectedBtn = document.querySelector('#confirm-restaurant-section .confirm-table-btn.selected');
-        selectedTableNumber = selectedBtn?.dataset?.table || null;
-        kitchenNoteText = document.querySelector('#confirm-kitchen-note')?.value?.trim() || null;
-
-        // Per-produkt varianter og noter
-        document.querySelectorAll('.confirm-item-extras').forEach(section => {
-            const prodId = section.dataset.productId;
-            const selectedBadge = section.querySelector('.confirm-variant-badge.selected');
-            const noteInput = section.querySelector('.confirm-item-note');
-            itemExtras[prodId] = {
-                variant: selectedBadge?.dataset?.variant || null,
-                note: noteInput?.value?.trim() || null,
-            };
-        });
-
-        // Genbrug-badge → prepend til kitchen note
-        const reuseSelected = document.getElementById('confirm-reuse-badge')?.classList.contains('selected');
-        if (reuseSelected) {
-            kitchenNoteText = kitchenNoteText
-                ? `♻️ Genbrug · ${kitchenNoteText}`
-                : '♻️ Genbrug';
-        }
-    }
-
-    // OPTIMERING: Brug helper funktion til at sætte knap state
+    // 10. Byg payload og kald process_sale
     setButtonLoadingState(completePurchaseBtn, 'loading');
-
-    // Grupper items til database payload (bruger shouldBeFreePurchase fra tidligere)
-    const itemCounts = groupOrderItems(orderSnapshot);
-    const cartItemsForDB = Object.values(itemCounts).map(item => {
-        const effectiveUnitPrice = shouldBeFreePurchase
-            ? 0
-            : getBulkDiscountedUnitPrice(item, item.count, { disableDiscount: item.bulkDiscountDisabled === true });
-        // Calculator items: gem med custom_price/custom_name, product_id kan være null
-        if (item.is_calculator_item) {
-            return {
-                product_id: item.quick_product_id || null,
-                quantity: item.count,
-                price: shouldBeFreePurchase ? 0 : item.price,
-                is_refill: false,
-                product_name: item.name,
-                custom_price: item.price,
-                custom_name: item.name,
-                is_calculator_item: true,
-            };
-        }
-        return {
-            product_id: item.id,
-            quantity: item.count,
-            // Hvis admin skal købe gratis, sæt pris til 0. Ellers brug mængderabat (hvis aktiv).
-            price: effectiveUnitPrice,
-            is_refill: item._isRefill || false, // Marker hvis det er et refill-køb
-            product_name: item._effectiveName || item.name, // Gem effektivt navn (fx "Saft Refill")
-            // Restaurant mode: per-item variant og note
-            item_variant: itemExtras[item.id]?.variant || null,
-            item_note: itemExtras[item.id]?.note || null,
-        };
-    });
-
-    // OPTIMERING: Brug helper funktion til at resolve admin og clerk IDs
+    const cartItemsForDB = buildCartItemsForDB(orderSnapshot, shouldBeFreePurchase, itemExtras);
     const sessionAdmin = getCurrentSessionAdmin?.() || null;
-    const { adminProfileId, clerkId } = resolveAdminAndClerkIds({
-        sessionAdmin,
-        adminProfile,
-        clerkProfile
-    });
+    const { adminProfileId, clerkId } = resolveAdminAndClerkIds({ sessionAdmin, adminProfile, clerkProfile });
+
     const salePayload = {
         p_customer_id: customer.id,
         p_cart_items: cartItemsForDB,
         p_session_admin_id: sessionAdmin?.id || null,
         p_session_admin_name: sessionAdmin?.name || null,
     };
-    if (adminProfileId) {
-        salePayload.p_admin_profile_id = adminProfileId;
-    }
-    if (clerkId) {
-        salePayload.p_clerk_id = clerkId;
-    }
-    // Restaurant Mode: inkludér bordnummer + note direkte i salget (atomisk)
-    if (restaurantMode?.enabled) {
-        salePayload.p_is_restaurant_order = true;
-    }
-    if (selectedTableNumber) {
-        salePayload.p_table_number = selectedTableNumber;
-    }
-    if (kitchenNoteText) {
-        salePayload.p_kitchen_note = kitchenNoteText;
-    }
-    const balanceUpdateNonce = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    if (adminProfileId) salePayload.p_admin_profile_id = adminProfileId;
+    if (clerkId) salePayload.p_clerk_id = clerkId;
+    if (restaurantMode?.enabled) salePayload.p_is_restaurant_order = true;
+    if (selectedTableNumber) salePayload.p_table_number = selectedTableNumber;
+    if (kitchenNoteText) salePayload.p_kitchen_note = kitchenNoteText;
 
+    const balanceUpdateNonce = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const { data: rpcData, error } = await runWithAuthRetry(
         'process_sale',
         () => supabaseClient.rpc('process_sale', salePayload)
     );
+
+    // 11. Håndtér resultat
     if (error) {
         showAlert('Database Fejl: ' + error.message);
         setButtonLoadingState(completePurchaseBtn, 'normal');
     } else {
-        // Purchase successful - invalidate ALL caches to ensure fresh data
-        invalidateAllLimitCaches(customer.id);
-
-        if (typeof incrementSessionSalesCount === 'function') {
-            incrementSessionSalesCount();
-        }
-        // Dispatch event for shift-timer (bytte-timer) salgstælling
-        window.dispatchEvent(new CustomEvent('flango:saleCompleted'));
-        // Flight recorder: log purchase success
-        logDebugEvent('purchase_success', { customerId: customer?.id, finalTotal });
-        playSound('purchase');
-        const appliedBalance = Number.isFinite(newBalance) ? newBalance : customer.balance - finalTotal;
-        // 1) Provisional optimistic update for snappy POS feel
-        updateCustomerBalanceGlobally(customer.id, appliedBalance, -finalTotal, 'purchase-provisional', {
-            status: 'provisional',
-            nonce: balanceUpdateNonce,
+        await handleSaleSuccess({
+            customer, rpcData, finalTotal, newBalance, balanceUpdateNonce,
+            eventItems, incrementSessionSalesCount, setCurrentOrder,
+            orderList, totalPriceEl, updateSelectedUserInfo,
+            refreshProductLocks, renderProductsFromCache, completePurchaseBtn,
         });
-        // 2) Confirm against server state with MIN DB calls:
-        // - Prefer balance returned from RPC (0 ekstra DB queries)
-        // - Fallback: refetch balance from DB
-        const rpcBalance = extractBalanceFromRpcData(rpcData);
-        if (rpcBalance !== null) {
-            updateCustomerBalanceGlobally(customer.id, rpcBalance, -finalTotal, 'purchase-confirmed-rpc', {
-                status: 'confirmed',
-                nonce: balanceUpdateNonce,
-            });
-            if (Math.abs(rpcBalance - appliedBalance) > 0.009) {
-                console.warn('[purchase-flow] Balance mismatch (rpc vs provisional)', {
-                    provisional: appliedBalance,
-                    rpcBalance,
-                    nonce: balanceUpdateNonce,
-                });
-            }
-        } else {
-            const confirmedBalance = await refreshCustomerBalanceFromDB(customer.id, {
-                status: 'confirmed',
-                nonce: balanceUpdateNonce,
-                retry: 1,
-            });
-            if (confirmedBalance !== null && Math.abs(confirmedBalance - appliedBalance) > 0.009) {
-                console.warn('[purchase-flow] Balance mismatch after confirm', {
-                    provisional: appliedBalance,
-                    confirmed: confirmedBalance,
-                    nonce: balanceUpdateNonce,
-                });
-            } else if (confirmedBalance === null) {
-                console.warn('[purchase-flow] Balance confirmation failed; UI remains on provisional', { nonce: balanceUpdateNonce });
-            }
-        }
-        // Processér event-items EFTER normalvare-køb er gennemført
-        if (eventItems.length > 0) {
-            logDebugEvent('purchase_event_items_after_normal', { eventCount: eventItems.length });
-            await processEventItemsInCheckout(eventItems, customer);
-        }
-
-        // Restaurant Mode: bordnummer + note gemmes nu atomisk via process_sale
-        // (p_table_number og p_kitchen_note inkluderet i salePayload)
-
-        let nextOrder = clearOrder();
-        try {
-            // State-consistency: always use spread to avoid sharing mutable array reference
-            setOrder([...nextOrder]);
-        } catch (err) {
-            console.warn('[order-store] sync failed after currentOrder mutation:', err);
-        }
-        if (typeof setCurrentOrder === 'function') {
-            setCurrentOrder(nextOrder);
-        }
-        clearCurrentCustomer();
-        renderOrder(orderList, nextOrder, totalPriceEl, updateSelectedUserInfo);
-        if (typeof refreshProductLocks === 'function') {
-            // MUST-RUN: ensure locks refresh is not dropped by debounce/cancellation
-            await refreshProductLocks({ force: true });
-        }
-        // KRITISK: Genrender produkter for at fjerne refill-styling (navn, pris, grøn farve)
-        if (typeof renderProductsFromCache === 'function') {
-            renderProductsFromCache();
-        }
-        // NOTE: Don't hide selected-user-info here - updateSelectedUserInfo() handles display state
-        setButtonLoadingState(completePurchaseBtn, 'normal');
     }
+
     } finally {
         purchaseInFlight = false;
     }

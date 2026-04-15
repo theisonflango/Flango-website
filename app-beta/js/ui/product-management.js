@@ -1,9 +1,9 @@
 // js/ui/product-management.js
-import { getProductIconInfo, PRODUCT_ICON_CLASS_MAP } from '../domain/products-and-cart.js';
-import { isCurrentUserAdmin } from '../domain/session-store.js';
-import { getOrder } from '../domain/order-store.js';
-import { refetchAllProducts } from '../core/data-refetch.js';
-import { runWithAuthRetry } from '../core/auth-retry.js';
+import { getProductIconInfo, PRODUCT_ICON_CLASS_MAP } from '../domain/products-and-cart.js?v=3.0.81';
+import { isCurrentUserAdmin } from '../domain/session-store.js?v=3.0.81';
+import { getOrder } from '../domain/order-store.js?v=3.0.81';
+import { refetchAllProducts } from '../core/data-refetch.js?v=3.0.81';
+import { runWithAuthRetry } from '../core/auth-retry.js?v=3.0.81';
 import {
     formatIconUpdateTime,
     fetchInstitutionIconLibrary,
@@ -11,7 +11,7 @@ import {
     deleteInstitutionIcon,
     renameInstitutionIcon,
     fetchIconSharingSettings,
-} from '../core/product-icon-utils.js';
+} from '../core/product-icon-utils.js?v=3.0.81';
 
 // Sæt til true ved fejlsøgning; hold false i prod for mindre console-støj
 const PRODUCT_MANAGEMENT_DEBUG = false;
@@ -63,7 +63,7 @@ export async function renderProductsGrid(allProducts, productsContainer, onProdu
     const effectiveProducts = new Map();
     if (currentCustomer?.id) {
         if (PRODUCT_MANAGEMENT_DEBUG) console.log('[renderProductsGrid] Beregner refill for kunde:', currentCustomer.name, currentCustomer.id);
-        const { getEffectiveProductForChild } = await import('../domain/products-and-cart.js');
+        const { getEffectiveProductForChild } = await import('../domain/products-and-cart.js?v=3.0.81');
         const childContext = {
             childId: currentCustomer.id,
             institutionId: currentCustomer.institution_id
@@ -1089,7 +1089,7 @@ export function createProductManagementUI(options = {}) {
         // ===== "Vælg ikon" button → opens product-icon-picker modal =====
         const openIconPickerBtn = document.getElementById('open-icon-picker-btn');
         openIconPickerBtn?.addEventListener('click', async () => {
-            const { openProductIconPicker } = await import('./product-icon-picker.js');
+            const { openProductIconPicker } = await import('./product-icon-picker.js?v=3.0.81');
             openProductIconPicker({
                 mode: 'product',
                 institutionId,
@@ -1124,7 +1124,7 @@ export function createProductManagementUI(options = {}) {
         // "Opret ikon" button → opens picker directly on AI tab
         const openIconCreateBtn = document.getElementById('open-icon-create-btn');
         openIconCreateBtn?.addEventListener('click', async () => {
-            const { openProductIconPicker } = await import('./product-icon-picker.js');
+            const { openProductIconPicker } = await import('./product-icon-picker.js?v=3.0.81');
             openProductIconPicker({
                 mode: 'product',
                 institutionId,
@@ -1719,7 +1719,7 @@ export function createProductManagementUI(options = {}) {
         let listViewActive = false;
         // Open icon create modal via product-icon-picker
         const openIconCreateModal = async (existingIcon) => {
-            const { openProductIconPicker } = await import('./product-icon-picker.js');
+            const { openProductIconPicker } = await import('./product-icon-picker.js?v=3.0.81');
             openProductIconPicker({
                 mode: existingIcon ? 'library' : 'product',
                 defaultSource: existingIcon ? undefined : 'ai',
@@ -2183,7 +2183,7 @@ export function createProductManagementUI(options = {}) {
             icons.forEach(ic => allIcons.push({ ...ic, _category: 'institution', _categoryLabel: instName }));
 
             // Standard Flango icons
-            const { STANDARD_ICONS } = await import('../core/product-icon-utils.js');
+            const { STANDARD_ICONS } = await import('../core/product-icon-utils.js?v=3.0.81');
             STANDARD_ICONS.forEach(ic => allIcons.push({
                 id: 'std_' + ic.label,
                 name: ic.label,

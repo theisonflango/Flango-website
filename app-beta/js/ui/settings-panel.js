@@ -157,7 +157,7 @@
   const TRIGGERS = {
     'Historik': () => {
       if (window.__flangoOpenHistorikV3ForUser) { window.__flangoOpenHistorikV3ForUser(''); }
-      else { import('./historik-v3.js').then(m => m.openHistorikV3()).catch(() => {}); }
+      else { import('./historik-v3.js?v=3.0.81').then(m => m.openHistorikV3()).catch(() => {}); }
     },
     'Min Flango': () => window.__flangoOpenAvatarPicker?.(),
     'Dagens Sortiment': () => window.__flangoOpenAssortmentModal?.(),
@@ -400,8 +400,9 @@
         close();
       }
     };
-    document.addEventListener('keydown', onKey);
-    overlay._onKey = onKey;
+    if (window.__flangoSettingsAbort) window.__flangoSettingsAbort.abort();
+    window.__flangoSettingsAbort = new AbortController();
+    document.addEventListener('keydown', onKey, { signal: window.__flangoSettingsAbort.signal });
 
     document.body.appendChild(overlay);
     render();
@@ -410,7 +411,7 @@
   // ── Close ──
   function close() {
     if (!overlay) return;
-    if (overlay._onKey) document.removeEventListener('keydown', overlay._onKey);
+    if (window.__flangoSettingsAbort) { window.__flangoSettingsAbort.abort(); window.__flangoSettingsAbort = null; }
     overlay.remove();
     overlay = null;
   }

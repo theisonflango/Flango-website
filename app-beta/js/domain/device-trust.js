@@ -8,8 +8,8 @@
  * Server stores SHA-256 hash; client stores raw token.
  */
 
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { getOrCreateDeviceId } from './mfa-utils.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.81';
+import { getOrCreateDeviceId } from './mfa-utils.js?v=3.0.81';
 
 const DEVICE_USERS_KEY = 'flango_device_users';
 const DEVICE_USERS_COOKIE = 'flango_device_users_bk';

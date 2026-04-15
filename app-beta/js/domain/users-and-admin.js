@@ -2,9 +2,9 @@
 // TODO: Users/Admin modul er udskudt.
 // Al user/admin-logik lever lige nu i app.js af hensyn til stabilitet.
 
-import { supabaseClient } from '../core/config-and-supabase.js';
-import { escapeHtml } from '../core/escape-html.js';
-import { getCachedProfilePictureUrl, renderDefaultProfilePictureHtml } from '../core/profile-picture-cache.js';
+import { supabaseClient } from '../core/config-and-supabase.js?v=3.0.81';
+import { escapeHtml } from '../core/escape-html.js?v=3.0.81';
+import { resolveAvatarSource, renderDefaultProfilePictureHtml } from '../core/profile-picture-cache.js?v=3.0.81';
 
 const adminCacheByInstitutionUsers = {};
 
@@ -17,10 +17,8 @@ const adminCacheByInstitutionUsers = {};
 function inlineProfilePic(user) {
     const inst = window.__flangoGetInstitutionById?.(user.institution_id);
     if (!inst?.profile_pictures_enabled) return '';
-    if (user.profile_picture_url && !user.profile_picture_opt_out) {
-        const url = getCachedProfilePictureUrl(user);
-        if (url) return `<img src="${url}" alt="" class="pp-inline-thumb">`;
-    }
+    const src = resolveAvatarSource(user, inst);
+    if (src.type === 'img') return `<img src="${src.value}" alt="" class="pp-inline-thumb">`;
     return renderDefaultProfilePictureHtml(user.name, inst, 26, 'pp-inline-thumb');
 }
 

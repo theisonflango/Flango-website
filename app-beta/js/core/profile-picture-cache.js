@@ -4,8 +4,8 @@
  * Library-type pictures use local paths and bypass the cache.
  */
 
-import { supabaseClient } from './config-and-supabase.js';
-import { escapeHtml } from './escape-html.js';
+import { supabaseClient } from './config-and-supabase.js?v=3.0.81';
+import { escapeHtml } from './escape-html.js?v=3.0.81';
 
 const BUCKET = 'profile-pictures';
 const SIGNED_URL_TTL_MS = 55 * 60 * 1000; // 55 min (URLs valid 60 min)
@@ -221,6 +221,52 @@ export function renderDefaultProfilePictureHtml(userName, inst, size = 26, imgCl
     const fontSize = Math.round(size * 0.28);
     const initials = (userName || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:50%;background:rgba(99,102,241,0.15);font-weight:700;font-size:${fontSize}px;color:#6366f1;flex-shrink:0;">${initials}</span>`;
+}
+
+/**
+ * Resolves the avatar source for a user (sync). Centralises the 4-step
+ * fallback chain used by every avatar renderer in the app:
+ *   1. Profile picture (cached signed URL or local path)
+ *   2. Gamification avatar (localStorage)
+ *   3. Institution default picture
+ *   4. Initials / anonymous emoji
+ *
+ * @param {object} user - User object (needs id, profile_picture_url, profile_picture_opt_out, name)
+ * @param {object} inst - Institution object (from __flangoGetInstitutionById)
+ * @returns {{ type: 'img'|'text'|'async', value: string, load?: () => Promise<string|null> }}
+ *   - img:   value is a URL ready for <img src>
+ *   - text:  value is initials or emoji (render as textContent)
+ *   - async: value is placeholder text; call load() to get the URL
+ */
+export function resolveAvatarSource(user, inst) {
+    const name = user?.name || '?';
+
+    // 1. Profile picture (institution-enabled, user has one, not opted out)
+    const hasProfilePic = inst?.profile_pictures_enabled
+        && user?.profile_picture_url
+        && !user?.profile_picture_opt_out;
+
+    if (hasProfilePic) {
+        const cachedUrl = getCachedProfilePictureUrl(user);
+        if (cachedUrl) return { type: 'img', value: cachedUrl };
+        // Needs async signed-URL resolution
+        const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        return { type: 'async', value: initials, load: () => getProfilePictureUrl(user) };
+    }
+
+    // 2. Gamification avatar (saved in localStorage)
+    const savedAvatar = localStorage.getItem(`flango-avatar-${user?.id}`);
+    if (savedAvatar) return { type: 'img', value: savedAvatar };
+
+    // 3. Institution default picture / 4. Initials or anonymous
+    const def = getDefaultProfilePicture(name, inst);
+    if (def.type === 'anonymous') return { type: 'text', value: '👤' };
+    if (def.type === 'image' && def.value) return { type: 'img', value: def.value };
+    if (def.type === 'image') {
+        // Default image needs async signed-URL resolution
+        return { type: 'async', value: '...', load: () => getDefaultProfilePictureAsync(name, inst).then(r => r.type === 'image' ? r.value : null) };
+    }
+    return { type: 'text', value: def.value };
 }
 
 // --- Internal ---
