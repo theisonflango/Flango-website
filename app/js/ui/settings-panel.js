@@ -400,8 +400,9 @@
         close();
       }
     };
-    document.addEventListener('keydown', onKey);
-    overlay._onKey = onKey;
+    if (window.__flangoSettingsAbort) window.__flangoSettingsAbort.abort();
+    window.__flangoSettingsAbort = new AbortController();
+    document.addEventListener('keydown', onKey, { signal: window.__flangoSettingsAbort.signal });
 
     document.body.appendChild(overlay);
     render();
@@ -410,7 +411,7 @@
   // ── Close ──
   function close() {
     if (!overlay) return;
-    if (overlay._onKey) document.removeEventListener('keydown', overlay._onKey);
+    if (window.__flangoSettingsAbort) { window.__flangoSettingsAbort.abort(); window.__flangoSettingsAbort = null; }
     overlay.remove();
     overlay = null;
   }

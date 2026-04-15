@@ -6,17 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <!-- Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="
-        default-src 'self';
-        script-src 'self' 'unsafe-inline' cdn.jsdelivr.net https://challenges.cloudflare.com;
-        style-src 'self' 'unsafe-inline' fonts.googleapis.com;
-        font-src 'self' fonts.gstatic.com;
-        img-src 'self' data: blob: https://jbknjgbpghrbrstqwoxj.supabase.co https://api.qrserver.com;
-        connect-src 'self' https://jbknjgbpghrbrstqwoxj.supabase.co https://jbknjgbpghrbrstqwoxj.functions.supabase.co wss://jbknjgbpghrbrstqwoxj.supabase.co https://challenges.cloudflare.com cdn.jsdelivr.net;
-        frame-src https://challenges.cloudflare.com;
-        object-src 'none';
-        base-uri 'self';
-    ">
+    
     <!-- PWA / Fullscreen support -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -35,25 +25,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/products.css">
-    <link rel="stylesheet" href="css/users.css">
-    <link rel="stylesheet" href="css/features.css">
-    <link rel="stylesheet" href="css/calculator.css">
-    <link rel="stylesheet" href="css/mobile.css">
-    <link rel="stylesheet" href="css/events.css">
-    <link rel="stylesheet" href="css/historik.css">
-    <link rel="stylesheet" href="css/historik-v3.css">
-    <link rel="stylesheet" href="css/admin-portal-v2.css">
-    <link rel="stylesheet" href="css/icon-library.css">
-    <link rel="stylesheet" href="css/product-icon-picker.css">
-    <link rel="stylesheet" href="css/profile-pictures.css">
-    <link rel="stylesheet" href="css/edit-user-accordion.css">
-    <link rel="stylesheet" href="css/user-admin-panel.css">
-    <link rel="stylesheet" href="css/settings-panel.css">
-    <link rel="stylesheet" href="css/restaurant.css">
     <style>
         .settings-modal-backdrop {
             position: fixed;
@@ -401,7 +372,9 @@
             color: #856404;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.101.0" integrity="sha384-HS/sUFZexXk91zcjy7zGIBg3tNDxgxF8YbcifixByxxtxQoF2o8GBBT9p6DdGlAR" crossorigin="anonymous"></script>
+  <script type="module" crossorigin src="/app/assets/main-C-tDXdqy.js"></script>
+  <link rel="modulepreload" crossorigin href="/app/assets/kitchen-sound-Cik9k9Mq.js">
+  <link rel="stylesheet" crossorigin href="/app/assets/main-C7NUfeeJ.css">
 </head>
 <body data-theme="klart">
 
@@ -542,7 +515,7 @@
     </div>
 
     <!-- Tilstand 3: Café-UI (eksisterende app) -->
-    <div id="main-app" style="display: none;">
+    <div id="main-app" class="screen-hidden">
         <div class="sidebar-main-header">
             <button id="restaurant-mode-badge" style="display:none; border:none; cursor:pointer; background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-size:12px; font-weight:700; padding:6px 14px; border-radius:20px; white-space:nowrap;" title="Restaurant Mode indstillinger">🍽️ Restaurant Mode er aktiv!</button>
             <div class="header-actions">
@@ -750,54 +723,6 @@
     <div id="product-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h2>Rediger Menu</h2><span class="close-btn">&times;</span></div><div id="modal-product-list" class="modal-product-list"></div><button id="add-btn-modal" class="add-product-btn">➕ Tilføj Nyt Produkt</button></div>
-    </div>
-    <div id="sales-history-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header"><h2>Transaktionshistorik</h2><span class="close-btn">&times;</span></div>
-            <div class="report-buttons">
-                <button id="toolbar-summary-btn" class="action-button" style="background-color: var(--primary-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">📊 Opsummering</button>
-                <button id="history-filter-btn" class="action-button btn-filter" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Filter</button>
-                <button id="filter-deposits-btn" class="action-button" style="background-color: var(--secondary-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Vis Kun Indbetalinger</button>
-                <button id="print-negative-balance-btn" class="action-button" style="background-color: var(--warning-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem Negativ Saldo</button>
-                <button id="print-report-btn" class="action-button" style="background-color: var(--success-color); padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem Rapport</button>
-                <button id="print-all-balances-btn" class="action-button btn-all-balances" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Gem liste med alle saldoer</button>
-                <button id="history-undo-last-sale-btn" class="action-button btn-undo-last-sale" style="padding: 8px 12px; font-size: 14px; margin-bottom: 0;">Fortryd Sidste Salg</button>
-            </div>
-            <div id="history-filter-panel" class="history-filter-panel" style="display: none;">
-                <div class="filter-actions">
-                    <button id="history-filter-deselect-all" class="action-button secondary-action">Fravælg alle</button>
-                    <button id="history-filter-select-all" class="action-button secondary-action">Vælg alle</button>
-                </div>
-                <div class="filter-options">
-                    <div class="filter-column">
-                        <label><input type="checkbox" class="history-filter-checkbox" value="SALE" checked> Salg</label>
-                        <label><input type="checkbox" class="history-filter-checkbox" value="DEPOSIT" checked> Indbetalinger</label>
-                        <label><input type="checkbox" class="history-filter-checkbox" value="BALANCE_ADJUSTMENT" checked> Saldo Rettelser</label>
-                        <label><input type="checkbox" class="history-filter-checkbox" value="SALE_EDIT" checked> Redigerede Salg</label>
-                        <label><input type="checkbox" class="history-filter-checkbox" value="SALE_UNDO" checked> Fortrudte Salg</label>
-                        <label><input type="checkbox" class="history-filter-checkbox" value="EVENT_PAYMENT" checked> 🎫 Arrangementer</label>
-                    </div>
-                </div>
-                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color, #e0e0e0);">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
-                        <input type="checkbox" id="exclude-admin-deposits-checkbox" checked style="cursor: pointer;">
-                        <span>Ekskluder indbetalinger til admins fra statistik</span>
-                    </label>
-                </div>
-            </div>
-            <div class="date-filter">
-                <input type="date" id="history-start-date" autocomplete="off" spellcheck="false" autocapitalize="off">
-                <span>til</span>
-                <input type="date" id="history-end-date" autocomplete="off" spellcheck="false" autocapitalize="off">
-            </div>
-            <div class="modal-controls" style="padding-top: 15px;">
-                <input type="text" id="search-history-input" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off">
-            </div>
-            <div class="history-scroll-container">
-                <div id="sales-summary"></div>
-                <div id="sales-history-list" class="modal-user-list"></div>
-            </div>
-        </div>
     </div>
 
     <div id="assortment-modal" class="modal" style="display: none;">
@@ -2019,17 +1944,11 @@
     <audio id="audio-logout" src="sounds/Accept/accepter-7.mp3" preload="auto"></audio>
     <audio id="audio-preview" preload="auto"></audio>
 
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.min.js" integrity="sha384-DgmC6Xe2bSN2WjTDXzWYbUbxyhNP+NNkGDR/g78pCXV7E7rcVTGxVg0uIVCUUcBc" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" integrity="sha384-D/t0ZMqQW31H3az8ktEiNb39wyKnS82iFY52QPACM+IjKW3jDUhyIgh2PApRqJZs" crossorigin="anonymous"></script>
     <script src="js/core/feature-modules.js"></script>
-    <script type="module" src="js/domain/portal-data.js?v=2"></script>
     <script src="js/ui/settings-panel.js?v=4"></script>
     <script src="js/ui/settings-sections.js?v=11"></script>
     <script src="js/ui/admin-portal-settings.js?v=2"></script>
     <script src="js/ui/admin-portal-v2.js"></script>
-    <script type="module" src="js/admin/auto-import-users.js"></script>
-    <script type="module" src="js/app.js?v=2"></script>
-    <script type="module" src="js/restaurant/kitchen-inline-panel.js"></script>
     <script src="js/ui/cookie-banner.js"></script>
 
 </body>

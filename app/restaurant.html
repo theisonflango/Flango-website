@@ -6,17 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <!-- Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="
-        default-src 'self';
-        script-src 'self' 'unsafe-inline' cdn.jsdelivr.net;
-        style-src 'self' 'unsafe-inline' fonts.googleapis.com;
-        font-src 'self' fonts.gstatic.com;
-        img-src 'self' data: blob: https://jbknjgbpghrbrstqwoxj.supabase.co https://api.qrserver.com;
-        connect-src 'self' https://jbknjgbpghrbrstqwoxj.supabase.co https://jbknjgbpghrbrstqwoxj.functions.supabase.co wss://jbknjgbpghrbrstqwoxj.supabase.co;
-        frame-src 'none';
-        object-src 'none';
-        base-uri 'self';
-    ">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <title>Flango Køkkenskærm</title>
     <link rel="icon" type="image/png" href="Icons/webp/Assets/FlangoFruitLogo.webp">
@@ -25,9 +15,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="css/restaurant.css?v=3.0.80">
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" crossorigin src="/app/assets/restaurant-DnQCuTf1.js"></script>
+  <link rel="modulepreload" crossorigin href="/app/assets/kitchen-sound-Cik9k9Mq.js">
+  <link rel="stylesheet" crossorigin href="/app/assets/restaurant-sUDVE1AZ.css">
 </head>
 <body>
     <!-- Login screen -->
@@ -91,12 +82,6 @@
     </div>
 
     <!-- DB instrumentation stub (required by config-and-supabase.js) -->
-    <script type="module">
-        if (!window.__dbInstrumentStub) {
-            window.__dbInstrumentStub = true;
-        }
-    </script>
-    <script type="module" src="js/restaurant/kitchen-view.js?v=3.0.80"></script>
-    <script src="js/ui/cookie-banner.js?v=3.0.80"></script>
+    <script src="js/ui/cookie-banner.js"></script>
 </body>
 </html>
