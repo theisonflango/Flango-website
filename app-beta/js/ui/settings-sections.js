@@ -2507,13 +2507,17 @@
           <div style="font-size:13px;color:var(--fsp-txt3);margin-bottom:16px;line-height:1.5">
             Download Flango som desktop-app. Undg\u00e5r browser-problemer med kodeord, cache og fuldsk\u00e6rm.
           </div>
-          <div style="display:flex;gap:10px">
-            <a href="https://flango.dk/desktop/Flango-Cafe-Setup.exe" class="fsp-btn fsp-btn-ghost" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
-              \uD83E\uDE9F Windows (.exe)
-            </a>
-            <a href="https://flango.dk/desktop/Flango-Cafe.dmg" class="fsp-btn fsp-btn-ghost" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
-              \uD83C\uDF4E macOS (.dmg)
-            </a>
+
+          <div style="margin-bottom:12px">
+            <div style="font-size:12px;font-weight:600;color:var(--fsp-txt2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Nyeste version \u2014 v0.2.0</div>
+            <div style="display:flex;gap:10px">
+              <a href="https://flango.dk/desktop/Flango-Cafe-v0.2.0-Setup.exe" class="fsp-btn fsp-btn-primary" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                \uD83E\uDE9F Windows (.exe)
+              </a>
+              <a href="https://flango.dk/desktop/Flango-Cafe-v0.2.0.dmg" class="fsp-btn fsp-btn-primary" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                \uD83C\uDF4E macOS (.dmg)
+              </a>
+            </div>
           </div>
         </div>
       </div>`;
