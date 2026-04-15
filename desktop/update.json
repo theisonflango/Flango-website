@@ -1,0 +1,11 @@
+{
+  "version": "0.2.0",
+  "notes": "Auto-update, fullscreen, Flango-logo, CSP fix",
+  "pub_date": "2026-04-15T14:30:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTlmV1VFSU9CTWliLzYxenk0OXhmUXRadjVEMDBTRjY3NlpiK0M3U1NnNEhCcWgrMkJSZmlHNGlOdkNqY1lSVklvdWRqUkdSYXJmekpFd2ZpNnlvbkFNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2MjYzNDgwCWZpbGU6RmxhbmdvIENhZsOpXzAuMi4wX3g2NC1zZXR1cC5leGUKSnhLYS9lSHdWeVE4MXp1Ym9NcUZvQUd4VTRpU3Y4Y0Y3ajF4WDRaeFdUOS80bnk5MHBWK1hheERjT3I0NkhjQWQ0TS9XZVZCSHhITlU3S0NnWjZhQmc9PQo=",
+      "url": "https://flango.dk/desktop/Flango-Cafe-v0.2.0-Setup.exe"
+    }
+  }
+}
