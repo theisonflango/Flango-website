@@ -1,15 +1,15 @@
 {
-  "version": "3.0.82",
-  "notes": "Flango Café Desktop v3.0.82",
-  "pub_date": "2026-04-15T23:56:09Z",
+  "version": "3.0.83",
+  "notes": "Flango Café Desktop v3.0.83",
+  "pub_date": "2026-04-16T00:06:44Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTRmWDBzdVdDeVVVV1dReGRnNEdETVhqS3pVWElmVTdtM3dzUE5wWHNjOXkwbVNIblp6TDhXcFdkSXppVUZndUdUY2djZVlFRGN0clZRdU52YkgrV0E4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2Mjk3MjY2CWZpbGU6RmxhbmdvIENhZsOpXzMuMC44Ml94NjQtc2V0dXAuZXhlCjBGd0tlY3BaSjlJVjlUeUNQQS95MXpMaU43aDRCSTBZdXF4bjhCQnhzRHVmaHg1OHVUT01yQytyV0dkaFIwQVoxSTZpbjgrZ0doM1NMN2VyZEN3YUFBPT0K",
-      "url": "https://flango.dk/desktop/Flango-Cafe-v3.0.82-Setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTVQT2hqSXhDdVRpOEowL1dDWWF5ZSt5aWFxbllTZW9QRkJsMS95UkJUVUExSldOMTJCY2w5ODc4d1doeXNlU0F0c3RNbmdJclg2eTl5SGQ2ajRoS1FnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2Mjk3OTA0CWZpbGU6RmxhbmdvIENhZsOpXzMuMC44M194NjQtc2V0dXAuZXhlClFrS2lhMkE4UDdmY1FaOWx0cVFGSVJSaVFVM2cxM2ZzWHA5ekdySDJjTS9MTjRNRzhqY0pvbGJCS0VVU0RpV0xkSS96ZVhac3BTRjlqWnVsV0ZFcEJnPT0K",
+      "url": "https://flango.dk/desktop/Flango-Cafe-v3.0.83-Setup.exe"
     },
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWXlac09kandtZmE1NStkVDFCYnA1YVlhUnFnOU56Rm9UN3BlSzljek41cEJHTVR2UWlINnNhUVJiYWJpL0RVTWZPNlZ6WExjVjVDTTRNekhHTkdVSmdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2Mjk3MDQwCWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKVlVuVGZEQXBrT3owSlpDSUkzTi9Nc0NrSGdDbTFpajdmSC9JMlBqNHZiT2JTV3lXY3JYc050TG5NbVgwVSszVXdFeS9ENFNqVXU1OEpGU0NRZ0FQQmc9PQo=",
-      "url": "https://flango.dk/desktop/Flango-Cafe-v3.0.82.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTRZYTdwckNBUWt6NUM5SVRqcGxCYzJlK3dTR29QMXBiTjhSNktRR3BTTkkwc1FPS1lmMEtHRDFkZDIrV28vSFk1eVg0VnI1WXBwbDU2SzZvalUrR3drPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2Mjk3NzUwCWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKazd3QTk3QW5UTWhsOGJRQ1RFQW9QTVl5THdlVDRnbkdNN3ViSytWUG4rcHBIcU9PUExuSW9sbG9RM2tWQUYrQXRFWWJVeVF2TlM4akJDUGZjc0V2RGc9PQo=",
+      "url": "https://flango.dk/desktop/Flango-Cafe-v3.0.83.app.tar.gz"
     }
   }
 }
