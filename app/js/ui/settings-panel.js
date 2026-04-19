@@ -45,8 +45,15 @@
     'Opdateringer': '<path d="M2 8a6 6 0 0110.5-4M14 8a6 6 0 01-10.5 4"/><path d="M12 1.5V4.5h-3"/><path d="M4 14.5V11.5h3"/>',
     'Feedback': '<circle cx="8" cy="9.5" r="4.5"/><path d="M8 5V2M3.5 7.5L1 6.5M12.5 7.5L15 6.5"/><path d="M8 8v2.5"/>',
     'Lydindstillinger': '<path d="M2 6.5h2l3.5-3.5v10L4 9.5H2z"/><path d="M11 5.5a4 4 0 010 5M13 3.5a7 7 0 010 9"/>',
-    'Log ud': '<path d="M9.5 14H4.5a1.5 1.5 0 01-1.5-1.5v-9A1.5 1.5 0 014.5 2h5"/><path d="M7 8h7M12 5.5L14.5 8 12 10.5"/>'
+    'Log ud': '<path d="M9.5 14H4.5a1.5 1.5 0 01-1.5-1.5v-9A1.5 1.5 0 014.5 2h5"/><path d="M7 8h7M12 5.5L14.5 8 12 10.5"/>',
+    'Afslut Flango': '<path d="M3 3v10a1 1 0 001 1h8M7 8h7M12 5.5L14.5 8 12 10.5"/>'
   };
+
+  // Desktop-only: tilføj "Afslut Flango" til Diverse-tab
+  if (window.__TAURI_INTERNALS__) {
+    const diverseTab = T.find(t => t.name === 'Diverse');
+    if (diverseTab) diverseTab.items.push({ l: 'Afslut Flango', c: '#e85a6f' });
+  }
 
   const tabIcons = [
     '<rect x="3" y="3" width="4" height="4" rx="1"/><rect x="9" y="3" width="4" height="4" rx="1"/><rect x="3" y="9" width="4" height="4" rx="1"/><rect x="9" y="9" width="4" height="4" rx="1"/>',
@@ -165,6 +172,10 @@
       close();
       const btn = document.getElementById('logout-btn');
       if (btn) btn.click();
+    },
+    'Afslut Flango': () => {
+      close();
+      if (window.__flangoTauriWindow) window.__flangoTauriWindow.close();
     }
   };
 

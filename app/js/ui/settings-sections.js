@@ -1231,10 +1231,10 @@
         </div>
         <div class="fsp-body${enabled ? ' open' : ''}" data-expand-target="rm-body">
           <div class="fsp-section" style="margin-bottom:20px">
-            <a href="restaurant.html" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 24px;border-radius:12px;background:var(--fsp-accent-g);color:#fff;font-size:15px;font-weight:600;text-decoration:none;transition:opacity .15s;letter-spacing:-0.2px">
+            <button type="button" data-action="open-kitchen-fullscreen" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 24px;border:none;border-radius:12px;background:var(--fsp-accent-g);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s;letter-spacing:-0.2px;font-family:inherit">
               <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v10"/><path d="M2.5 3v3c0 1 .7 1.7 1.5 1.7S5.5 7 5.5 6V3"/><path d="M11 3v5.5c0 .5.2.8.5 1h1c.3-.2.5-.5.5-1V4.5C13 3.5 12.2 3 11 3z"/><path d="M11.5 9.5V13"/></svg>
               Vis K\u00f8kkensk\u00e6rm
-            </a>
+            </button>
           </div>
           <div class="fsp-section"><div class="fsp-device-row">
             <div class="fsp-device-emoji">\uD83C\uDF7D\uFE0F</div>
@@ -1267,6 +1267,16 @@
       wireToggles(container, ctx);
       wireNumberInputs(container, ctx);
       wireStepButtons(container);
+      // "Vis Køkkenskærm" button → toggle fullscreen kitchen overlay (lazy-load module if needed)
+      container.querySelector('[data-action="open-kitchen-fullscreen"]')?.addEventListener('click', () => {
+        if (typeof window.__flangoToggleKitchenFullscreen === 'function') {
+          window.__flangoToggleKitchenFullscreen();
+        } else {
+          import('../restaurant/kitchen-fullscreen.js')
+            .then(() => window.__flangoToggleKitchenFullscreen?.())
+            .catch(err => console.error('[restaurant] Failed to load kitchen-fullscreen module', err));
+        }
+      });
       // Sound chip radio-style selection (local dirty + mini Gem-knap)
       container.querySelectorAll('.fsp-rm-sound').forEach(group => {
         const field = group.dataset.soundGroup === 'new_order' ? 'restaurant_sound' : 'restaurant_serve_sound';
@@ -1441,7 +1451,8 @@
         { key: 'toolbar_history', e: '\uD83D\uDCCB', n: 'Historik', d: 'Vis historik genvej', on: !!inst.toolbar_history },
         { key: 'toolbar_help', e: '\u2753', n: 'Hj\u00e6lp', d: 'Vis hj\u00e6lp genvej', on: !!inst.toolbar_help },
         { key: 'toolbar_min_flango', e: '\uD83D\uDC64', n: 'Min Flango', d: 'Vis avatar/profil genvej', on: inst.toolbar_min_flango !== false },
-        { key: 'toolbar_logout', e: '\uD83D\uDEAA', n: 'Log ud', d: 'Vis log ud genvej', on: inst.toolbar_logout !== false }
+        { key: 'toolbar_logout', e: '\uD83D\uDEAA', n: 'Log ud', d: 'Vis log ud genvej', on: inst.toolbar_logout !== false },
+        ...(window.__TAURI_INTERNALS__ ? [{ key: 'toolbar_fullscreen', e: '\u26F6', n: 'Fuldsk\u00e6rm', d: 'Skift mellem fuldsk\u00e6rm og vindue', on: !!inst.toolbar_fullscreen }] : [])
       ];
       // Apply stored order
       if (inst.toolbar_order) {
@@ -1494,6 +1505,7 @@
         toolbar_min_flango: 'logged-in-user-avatar-container',
         toolbar_logout: 'logout-btn',
         toolbar_user_panel: 'toolbar-user-panel-btn',
+        toolbar_fullscreen: 'toolbar-fullscreen-btn',
       };
 
       // Toggle visibility
@@ -1965,6 +1977,7 @@
                 <div class="fsp-pm-detail">Aktiverer AI-genererede avatarer baseret p\u00e5 barnets foto. Fotoet sendes til den valgte udbyder og slettes straks efter. Flango sender faktura til institutionen p\u00e5 100,- kr. hvorefter I kan generere 300\u2013400 avatars.</div>
                 <div class="fsp-role" style="margin-bottom:6px"><div class="fsp-role-left"><div><div class="fsp-role-name">OpenAI</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">USA</div></div></div><div class="fsp-toggle${inst.ai_provider_openai !== false ? ' on' : ''}" data-ai-provider="openai"></div></div>
                 <div class="fsp-role"><div class="fsp-role-left"><div><div class="fsp-role-name">Black Forest Labs, FLUX 2</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">Tyskland</div></div></div><div class="fsp-toggle${inst.ai_provider_flux ? ' on' : ''}" data-ai-provider="flux"></div></div>
+                <div id="pp-ai-no-provider-warn" style="margin-top:10px;padding:8px 10px;border-radius:6px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);font-size:12px;color:#f59e0b;display:${aiOn && inst.ai_provider_openai === false && !inst.ai_provider_flux ? 'block' : 'none'}">\u26A0 Ingen udbyder valgt \u2014 aktiv\u00e9r OpenAI eller FLUX, ellers kan caf\u00e9-admins ikke generere avatars.</div>
               </div>
             </div>
           </div>
@@ -2013,12 +2026,22 @@
         }
       });
       // AI provider toggles (OpenAI / FLUX)
+      const refreshNoProviderWarn = () => {
+        const warn = container.querySelector('#pp-ai-no-provider-warn');
+        if (!warn) return;
+        const masterOn = container.querySelector('[data-field="profile_pictures_ai_enabled"]')?.classList.contains('on');
+        const openAIOn = container.querySelector('[data-ai-provider="openai"]')?.classList.contains('on');
+        const fluxOn = container.querySelector('[data-ai-provider="flux"]')?.classList.contains('on');
+        warn.style.display = (masterOn && !openAIOn && !fluxOn) ? 'block' : 'none';
+      };
       container.querySelectorAll('[data-ai-provider]').forEach(toggle => {
         toggle.addEventListener('click', () => {
           toggle.classList.toggle('on');
           ctx.markDirty('ai_provider_' + toggle.dataset.aiProvider, toggle.classList.contains('on'));
+          refreshNoProviderWarn();
         });
       });
+      container.querySelector('[data-field="profile_pictures_ai_enabled"]')?.addEventListener('click', refreshNoProviderWarn);
       // Default picture toggle grey-out
       container.querySelector('[data-action="toggle-dp"]')?.addEventListener('click', function () {
         this.classList.toggle('on');
@@ -2385,6 +2408,7 @@
   // ── Udseende (Klart is only active theme; Aurora/Unstoppable disabled) ──
   sections['Udseende'] = {
     render(ctx) {
+      const isTauri = typeof window !== 'undefined' && window.__TAURI_INTERNALS__;
       const themes = [
         { id: 'klart', name: 'Klart', desc: 'Rent og roligt design med bløde pastelfarver', bg: 'linear-gradient(135deg, #f8f6f0, #ebe7df)', accent: '#e8734a', accent2: '#f4a261', card: '#ffffff', sidebar: '#f0ede7', txt: '#2d2a25', active: true },
         { id: 'flango-unstoppable', name: 'Flango Unstoppable', desc: 'Fedt og energisk med lilla accenter og gul kurv', bg: 'linear-gradient(135deg, #1a1d27, #252830)', accent: '#e8734a', accent2: '#f4a261', card: '#2a2d36', sidebar: '#1e2028', txt: '#e4e6eb', disabled: true },
@@ -2393,6 +2417,12 @@
       return `<div class="fsp-page">
         <div class="fsp-page-title">Udseende</div>
         <div class="fsp-page-desc">Vælg tema for caféen.</div>
+        ${isTauri ? `<div class="fsp-block" style="margin-bottom:24px">
+          <button class="fsp-btn fsp-btn-ghost" data-action="toggle-fullscreen" style="width:100%;display:flex;justify-content:center;align-items:center;gap:10px;padding:16px;font-size:15px;font-weight:600">
+            <span data-fs-icon>⛶</span>
+            <span data-fs-label>Skift til fuldskærm</span>
+          </button>
+        </div>` : ''}
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
           ${themes.map(t => `<div class="fsp-theme-card${t.active ? ' active' : ''}${t.disabled ? ' fsp-theme-disabled' : ''}" data-theme="${t.id}"${t.disabled ? ' style="opacity:0.5;pointer-events:none;position:relative"' : ''}>
             <div class="fsp-theme-preview" style="background:${t.bg};display:flex;gap:6px;overflow:hidden">
@@ -2423,6 +2453,30 @@
     },
     wire(container, ctx) {
       pageAlign(container);
+
+      // Fuldskærm-toggle (kun desktop)
+      const fsBtn = container.querySelector('[data-action="toggle-fullscreen"]');
+      const tauriWin = window.__flangoTauriWindow;
+      if (fsBtn && tauriWin) {
+        const updateLabel = async () => {
+          try {
+            const isFs = await tauriWin.isFullscreen();
+            const labelEl = container.querySelector('[data-fs-label]');
+            const iconEl = container.querySelector('[data-fs-icon]');
+            if (labelEl) labelEl.textContent = isFs ? 'Afslut fuldskærm' : 'Skift til fuldskærm';
+            if (iconEl) iconEl.textContent = isFs ? '⊡' : '⛶';
+          } catch {}
+        };
+        updateLabel();
+        fsBtn.addEventListener('click', async () => {
+          try {
+            if (window.__flangoToggleFullscreen) {
+              await window.__flangoToggleFullscreen();
+            }
+            updateLabel();
+          } catch {}
+        });
+      }
     }
   };
 
@@ -2480,62 +2534,73 @@
     }
   };
 
-  // ── Opdateringer (action section) ──
+  // ── Opdateringer (platform-bevidst) ──
   sections['Opdateringer'] = {
     render(ctx) {
+      const isTauri = typeof window !== 'undefined' && window.__TAURI_INTERNALS__;
       const versionInfo = window.__flangoVersionCheck?.getVersionInfo?.();
       const version = versionInfo?.localVersion || window.FLANGO_VERSION || '?';
+      const platformLabel = isTauri ? 'Desktop-app' : 'Webapp';
+
+      let buttonsHtml;
+      if (isTauri) {
+        // Desktop: kun "Tjek for opdateringer" — ingen "Genindlæs app"
+        buttonsHtml = `<button class="fsp-btn fsp-btn-primary" data-action="check-update-tauri" style="width:100%;display:flex;justify-content:center;padding:14px">Tjek for opdateringer</button>`;
+      } else {
+        // Webapp: begge knapper
+        buttonsHtml = `<div style="display:flex;gap:10px">
+          <button class="fsp-btn fsp-btn-ghost" data-action="reload" style="flex:1;display:flex;justify-content:center;padding:14px;align-items:center;gap:8px">\uD83D\uDD04 Genindl\u00e6s app</button>
+          <button class="fsp-btn fsp-btn-primary" data-action="check-update" style="flex:1;display:flex;justify-content:center;padding:14px">Tjek for opdateringer</button>
+        </div>`;
+      }
+
+      let downloadSection = '';
+      if (!isTauri) {
+        downloadSection = `<div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.06)">
+          <div style="font-size:15px;font-weight:600;color:var(--fsp-txt);margin-bottom:6px">\uD83D\uDCBB Desktop-app</div>
+          <div style="font-size:13px;color:var(--fsp-txt3);margin-bottom:16px;line-height:1.5">
+            Download Flango som desktop-app. Undg\u00e5r browser-problemer med kodeord, cache og fuldsk\u00e6rm.
+          </div>
+          <div data-desktop-downloads>
+            <div style="text-align:center;color:var(--fsp-txt3);font-size:13px;padding:16px">Henter versioner...</div>
+          </div>
+        </div>`;
+      }
+
       return `<div class="fsp-page" style="max-width:720px">
         <div class="fsp-page-title">Opdateringer</div>
         <div class="fsp-block" style="margin-bottom:24px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div style="font-size:13px;color:var(--fsp-txt3)">Installeret version</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-size:13px;color:var(--fsp-txt3)">Version</div>
             <div style="font-size:15px;font-weight:600;color:var(--fsp-txt);font-family:monospace">v${version}</div>
           </div>
+          <div style="font-size:12px;color:var(--fsp-txt3);margin-bottom:14px">${platformLabel}</div>
           <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(93,202,122,0.08);border:1px solid rgba(93,202,122,0.15);border-radius:10px">
             <span style="color:#5dca7a;font-size:14px">\u2713</span>
             <span style="font-size:13px;color:#5dca7a;font-weight:500" data-status="version-status">Du k\u00f8rer den nyeste version</span>
           </div>
         </div>
-        <div style="display:flex;gap:10px">
-          <button class="fsp-btn fsp-btn-ghost" data-action="reload" style="flex:1;display:flex;justify-content:center;padding:14px;align-items:center;gap:8px">\uD83D\uDD04 Genindl\u00e6s app</button>
-          <button class="fsp-btn fsp-btn-primary" data-action="check-update" style="flex:1;display:flex;justify-content:center;padding:14px">Tjek for opdateringer</button>
-        </div>
-
-        <div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.06)">
-          <div style="font-size:15px;font-weight:600;color:var(--fsp-txt);margin-bottom:6px">\uD83D\uDCBB Desktop-app</div>
-          <div style="font-size:13px;color:var(--fsp-txt3);margin-bottom:16px;line-height:1.5">
-            Download Flango som desktop-app. Undg\u00e5r browser-problemer med kodeord, cache og fuldsk\u00e6rm.
-          </div>
-
-          <div style="margin-bottom:12px">
-            <div style="font-size:12px;font-weight:600;color:var(--fsp-txt2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Nyeste version \u2014 v0.2.0</div>
-            <div style="display:flex;gap:10px">
-              <a href="https://flango.dk/desktop/Flango-Cafe-v0.2.0-Setup.exe" class="fsp-btn fsp-btn-primary" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
-                \uD83E\uDE9F Windows (.exe)
-              </a>
-              <a href="https://flango.dk/desktop/Flango-Cafe-v0.2.0.dmg" class="fsp-btn fsp-btn-primary" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
-                \uD83C\uDF4E macOS (.dmg)
-              </a>
-            </div>
-          </div>
-        </div>
+        ${buttonsHtml}
+        ${isTauri ? '<div style="font-size:12px;color:var(--fsp-txt3);margin-top:10px;text-align:center">Opdateringer vises automatisk ved programstart</div>' : ''}
+        ${downloadSection}
       </div>`;
     },
     wire(container, ctx) {
       pageAlign(container);
+      const isTauri = typeof window !== 'undefined' && window.__TAURI_INTERNALS__;
+
+      // Webapp: Genindlæs app
       container.querySelector('[data-action="reload"]')?.addEventListener('click', () => {
-        // Clear all caches and force fresh load
         if ('caches' in window) {
           caches.keys().then(names => names.forEach(name => caches.delete(name)));
         }
-        // Clear institution/feature flag caches
         window.__flangoInstitutionCache = null;
         window.__flangoAiFeatureFlags = null;
         if (window.PortalData?.invalidateFeatureFlagsCache) window.PortalData.invalidateFeatureFlagsCache();
-        // Hard reload (bypass browser cache)
         location.href = location.href.split('#')[0] + '?_=' + Date.now();
       });
+
+      // Webapp: Tjek for opdateringer (web version-check)
       container.querySelector('[data-action="check-update"]')?.addEventListener('click', async () => {
         const btn = container.querySelector('[data-action="check-update"]');
         const statusEl = container.querySelector('[data-status="version-status"]');
@@ -2550,6 +2615,76 @@
         }
         if (btn) { btn.textContent = 'Tjek for opdateringer'; btn.disabled = false; }
       });
+
+      // Desktop: Tjek for opdateringer (Tauri updater)
+      container.querySelector('[data-action="check-update-tauri"]')?.addEventListener('click', async () => {
+        const btn = container.querySelector('[data-action="check-update-tauri"]');
+        const statusEl = container.querySelector('[data-status="version-status"]');
+        if (btn) { btn.textContent = 'Tjekker...'; btn.disabled = true; }
+        try {
+          const update = window.__flangoTauriCheckUpdate ? await window.__flangoTauriCheckUpdate() : null;
+          if (update) {
+            if (statusEl) {
+              statusEl.textContent = `Ny version tilg\u00e6ngelig: v${update.version}`;
+              statusEl.style.color = '#f59e0b';
+            }
+          } else {
+            if (statusEl) statusEl.textContent = 'Du k\u00f8rer den nyeste version';
+          }
+        } catch (e) {
+          if (statusEl) { statusEl.textContent = 'Kunne ikke tjekke for opdateringer'; statusEl.style.color = '#e85a6f'; }
+        }
+        if (btn) { btn.textContent = 'Tjek for opdateringer'; btn.disabled = false; }
+      });
+
+      // Webapp: Desktop downloads
+      const dlContainer = container.querySelector('[data-desktop-downloads]');
+      if (dlContainer) {
+        fetch('https://flango.dk/desktop/versions.json?_=' + Date.now())
+          .then(r => r.ok ? r.json() : Promise.reject())
+          .then(data => {
+            const latest = data.latest;
+            const previous = data.previous;
+            let html = '';
+
+            if (latest) {
+              html += `<div style="margin-bottom:16px">
+                <div style="font-size:12px;font-weight:600;color:var(--fsp-txt2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">
+                  Nyeste version \u2014 v${latest.version}
+                </div>
+                <div style="display:flex;gap:10px">
+                  <a href="${latest.windows}" class="fsp-btn fsp-btn-primary" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                    \uD83E\uDE9F Windows (.exe)
+                  </a>
+                  <a href="${latest.macos}" class="fsp-btn fsp-btn-primary" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                    \uD83C\uDF4E macOS (.dmg)
+                  </a>
+                </div>
+              </div>`;
+            }
+
+            if (previous) {
+              html += `<div>
+                <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">
+                  Forrige version \u2014 v${previous.version}
+                </div>
+                <div style="display:flex;gap:10px">
+                  <a href="${previous.windows}" class="fsp-btn fsp-btn-ghost" style="flex:1;display:flex;justify-content:center;align-items:center;padding:12px;gap:8px;text-decoration:none;font-size:13px" download>
+                    \uD83E\uDE9F Windows
+                  </a>
+                  <a href="${previous.macos}" class="fsp-btn fsp-btn-ghost" style="flex:1;display:flex;justify-content:center;align-items:center;padding:12px;gap:8px;text-decoration:none;font-size:13px" download>
+                    \uD83C\uDF4E macOS
+                  </a>
+                </div>
+              </div>`;
+            }
+
+            dlContainer.innerHTML = html;
+          })
+          .catch(() => {
+            dlContainer.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Kunne ikke hente versioner. Download manuelt fra flango.dk/desktop/</div>';
+          });
+      }
     }
   };
 

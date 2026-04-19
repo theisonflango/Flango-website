@@ -242,7 +242,7 @@
 
     // Admin: Contact phone config
     const adminContact = buildAdminField('\uD83D\uDCDE Kontakttelefon', `
-      <input type="tel" class="input-field" id="contact-phone" value="45 76 28 30" placeholder="Telefonnummer til institutionen">
+      <input type="tel" class="input-field input" id="contact-phone" value="45 76 28 30" placeholder="Telefonnummer til institutionen">
       ${buildSettingRow('Aktiver kontaktknap', 'Vis "Kontakt"-knap i saldo-kortet, s\u00e5 for\u00e6ldre kan ringe direkte. Hvis sl\u00e5et fra, viser knappen "Feedback" i stedet.', buildToggle('contact-toggle', true))}
     `);
 
@@ -421,7 +421,7 @@
     // Spending limit
     const spendingAdminField = buildAdminField('Institutionens daglige gr\u00e6nse', `
       <div style="display:flex;align-items:center;gap:var(--s3)">
-        <input type="number" class="input-field" value="50" style="width:100px" data-admin-setting="institution_spending_limit">
+        <input type="number" class="input-field input" value="50" style="width:100px" data-admin-setting="institution_spending_limit">
         <span style="font-size:14px;font-weight:600;color:var(--ink-soft)">kr pr. dag</span>
       </div>
     `);
@@ -443,7 +443,7 @@
       </div>
       <div class="setting-row">
         <div class="setting-info"><div class="setting-label">Prisindikation</div></div>
-        <input type="text" class="input-field" value="5-7 kr." style="width:100px" data-admin-setting="daily_special_price_hint">
+        <input type="text" class="input-field input" value="5-7 kr." style="width:100px" data-admin-setting="daily_special_price_hint">
       </div>
     `, 'margin-bottom:var(--s3)');
 
@@ -466,7 +466,7 @@
 
     // Sugar policy
     const sugarAdminField = buildAdminField('Rediger sukkerpolitik-tekst', `
-      <textarea placeholder="Skriv jeres sukkerpolitik her\u2026" data-admin-setting="sugar_policy_text">Vi begr\u00e6nser usunde varer til maks 2 pr. dag for alle b\u00f8rn.</textarea>
+      <textarea class="input" placeholder="Skriv jeres sukkerpolitik her\u2026" data-admin-setting="sugar_policy_text">Vi begr\u00e6nser usunde varer til maks 2 pr. dag for alle b\u00f8rn.</textarea>
       ${buildSettingRow('Vis info-boks i portalen', 'For\u00e6ldre ser denne tekst under sukkerpolitik', buildToggle(null, true))}
     `);
 
@@ -528,11 +528,11 @@
     const screenAdminField = buildAdminField('Institutionens sk\u00e6rmtidsregler', `
       <div class="setting-row" style="padding-top:0">
         <div class="setting-info"><div class="setting-label">Daglig gr\u00e6nse</div></div>
-        <div style="display:flex;align-items:center;gap:var(--s2)"><input type="number" class="input-field" value="60" style="width:70px" data-admin-setting="st_daily_limit"><span style="font-size:13px;color:var(--ink-muted)">min</span></div>
+        <div style="display:flex;align-items:center;gap:var(--s2)"><input type="number" class="input-field input" value="60" style="width:70px" data-admin-setting="st_daily_limit"><span style="font-size:13px;color:var(--ink-muted)">min</span></div>
       </div>
       <div class="setting-row">
         <div class="setting-info"><div class="setting-label">Maks pr. session</div></div>
-        <div style="display:flex;align-items:center;gap:var(--s2)"><input type="number" class="input-field" value="30" style="width:70px" data-admin-setting="st_max_session"><span style="font-size:13px;color:var(--ink-muted)">min</span></div>
+        <div style="display:flex;align-items:center;gap:var(--s2)"><input type="number" class="input-field input" value="30" style="width:70px" data-admin-setting="st_max_session"><span style="font-size:13px;color:var(--ink-muted)">min</span></div>
       </div>
     `);
 
@@ -630,7 +630,7 @@
           <button class="chip">\u2753 Sp\u00f8rgsm\u00e5l</button>
           <button class="chip">\uD83D\uDCA1 Forslag</button>
         </div>
-        <textarea class="feedback-textarea" placeholder="Skriv din besked her\u2026" rows="4"></textarea>
+        <textarea class="feedback-textarea input" placeholder="Skriv din besked her\u2026" rows="4"></textarea>
         <button class="save-btn full">Send til klubben</button>
       </div>
       <div class="feedback-panel" id="fb-flango" style="display:none">
@@ -640,7 +640,7 @@
           <button class="chip">\uD83D\uDCA1 Foresl\u00e5 forbedring</button>
           <button class="chip">\uD83D\uDCAC Andet</button>
         </div>
-        <textarea class="feedback-textarea" placeholder="Beskriv problemet eller din id\u00e9\u2026" rows="4"></textarea>
+        <textarea class="feedback-textarea input" placeholder="Beskriv problemet eller din id\u00e9\u2026" rows="4"></textarea>
         <div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">\uD83D\uDD12</span><span>Din besked sendes anonymt medmindre du v\u00e6lger at inkludere din e-mail.</span></div>
         ${buildSettingRow('Inkluder min e-mail', 'S\u00e5 vi kan svare dig', buildToggle(null, false))}
         <button class="save-btn full">Send til Flango</button>
@@ -650,8 +650,8 @@
     // Change PIN
     const pinContent = `
       <div style="display:flex;flex-direction:column;gap:var(--s2);margin-top:var(--s2)">
-        <input type="password" class="input-field" placeholder="Ny adgangskode (mindst 4 tegn)">
-        <input type="password" class="input-field" placeholder="Gentag ny adgangskode">
+        <input type="password" class="input-field input" placeholder="Ny adgangskode (mindst 4 tegn)">
+        <input type="password" class="input-field input" placeholder="Gentag ny adgangskode">
         <button class="save-btn full" style="margin-top:var(--s1)">Gem ny adgangskode</button>
       </div>`;
     const pinSection = buildSection('section-pin', '\uD83D\uDD11', 'var(--surface-sunken)', 'Skift adgangskode', 'Minimum 6 tegn', pinContent);
