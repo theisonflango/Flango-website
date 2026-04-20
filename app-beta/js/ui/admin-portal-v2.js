@@ -7,7 +7,7 @@
  *   - Parent List overlay (fullscreen table with search, filters, sort, detail modal)
  *
  * Exposed:
- *   window.openAdminPortalV2()   — main entry called from shell-and-theme.js
+ *   window.openAdminPortalV2()   — main entry called from shell.js
  *   window.isV2Enabled()         — check localStorage version flag
  */
 (function () {
@@ -700,7 +700,7 @@
         Typer: ' + typeBreakdown + '\
       </div>\
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">\
-        <input type="text" placeholder="S\u00f8g navn eller nummer\u2026" id="pv2-pp-search" class="pl-search" style="flex:1;min-width:160px;">\
+        <input type="text" placeholder="S\u00f8g navn eller nummer\u2026" id="pv2-pp-search" class="pl-search input" style="flex:1;min-width:160px;">\
         <button class="pv2-pp-filter-btn pl-filter-btn' + (ppFilterMode === '' ? ' active' : '') + '" data-filter="">Alle</button>\
         <button class="pv2-pp-filter-btn pl-filter-btn' + (ppFilterMode === 'has-pic' ? ' active' : '') + '" data-filter="has-pic">📷 Med billede</button>\
         <button class="pv2-pp-filter-btn pl-filter-btn' + (ppFilterMode === 'no-pic' ? ' active' : '') + '" data-filter="no-pic">❌ Mangler</button>\
