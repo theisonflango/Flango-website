@@ -23,7 +23,21 @@
       body: body || {},
     });
     if (error) {
-      console.error(`[PortalAPI] ${name} error:`, error);
+      let details = null;
+      try {
+        if (error.context && typeof error.context.json === 'function') {
+          details = await error.context.clone().json();
+        } else if (error.context && typeof error.context.text === 'function') {
+          details = await error.context.clone().text();
+        }
+      } catch (_) { /* ignore */ }
+      console.error(`[PortalAPI] ${name} error:`, error, 'details:', details);
+      if (details && typeof details === 'object' && details.error) {
+        const err = new Error(details.error);
+        err.status = error.context?.status;
+        err.details = details;
+        throw err;
+      }
       throw error;
     }
     return data;
@@ -473,6 +487,33 @@
       return rpcCall('accept_parent_terms', {
         p_child_id: childId,
         p_terms_version: termsVersion || 1,
+      });
+    },
+
+    // ─── GDPR Consents (parent_consents) ───
+
+    /** Register a new consent for a child (GDPR art. 7) */
+    async giveConsent(childId, consentType, consentVersion, givenMethod) {
+      return rpcCall('give_consent', {
+        p_child_user_id: childId,
+        p_consent_type: consentType,
+        p_consent_version: consentVersion,
+        p_given_method: givenMethod || 'forældreportal_checkbox',
+      });
+    },
+
+    /** Withdraw an active consent for a child */
+    async withdrawConsent(childId, consentType) {
+      return rpcCall('withdraw_consent', {
+        p_child_user_id: childId,
+        p_consent_type: consentType,
+      });
+    },
+
+    /** Get full consent history for a child */
+    async getConsentHistory(childId) {
+      return rpcCall('get_consent_history', {
+        p_child_user_id: childId,
       });
     },
   };

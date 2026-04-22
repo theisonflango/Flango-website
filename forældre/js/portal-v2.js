@@ -24,7 +24,12 @@
   let eventsData = null;
   let featureFlags = {};      // from institution
   let customerAvgSpend = null; // { avg_today, avg_week, avg_month }
+  let consentHistory = [];     // from get_consent_history (all rows for selected child)
   let _sidebarObserver = null; // IntersectionObserver for sidebar scroll tracking
+
+  // Version af privatlivspolitikken der gemmes i parent_consents.consent_version
+  // ved nye samtykker. Bumpes naar privatlivspolitikken opdateres.
+  const CURRENT_CONSENT_VERSION = 'v1.0';
 
   // ─── Tab-to-sections mapping ───
   const TAB_SECTIONS = {
@@ -33,7 +38,7 @@
     'tab-limits':  ['section-spending-limit','section-product-limits','section-sugar','section-diet','section-allergens'],
     'tab-screen':  ['section-screentime','section-games','section-st-chart'],
     'tab-profile': ['section-notifications','section-invite-parent','section-feedback','section-pin'],
-    'tab-privacy': ['section-privacy-policy','section-child-name','section-profile-picture','section-data-insight','section-linked-parents','section-delete-child','section-delete-account','section-contact'],
+    'tab-privacy': ['section-privacy-policy','section-child-name','section-profile-picture','section-consents','section-data-insight','section-linked-parents','section-delete-child','section-delete-account','section-contact'],
   };
 
   const SECTION_LABELS = {
@@ -58,6 +63,7 @@
     'section-privacy-policy': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', label: 'Privatlivspolitik' },
     'section-child-name':     { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', label: 'Barnets navn' },
     'section-profile-picture':{ icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>', label: 'Profilbilleder' },
+    'section-consents':       { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>', label: 'Samtykker' },
     'section-data-insight':   { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', label: 'Dataindsigt' },
     'section-linked-parents': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label: 'Forældrekonti' },
     'section-delete-child':   { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>', label: 'Slet data' },
@@ -191,13 +197,15 @@
     const childId = selectedChild.child_id;
     const instId = selectedChild.institution_id;
     try {
-      const [view, prods, events, clubAvg] = await Promise.all([
+      const [view, prods, events, clubAvg, consents] = await Promise.all([
         API.getParentView(childId).catch(e => { console.error('[Portal] getParentView:', e); return null; }),
         API.getProducts(instId, childId).catch(e => { console.error('[Portal] getProducts:', e); return []; }),
         API.getParentEvents(childId).catch(e => { console.error('[Portal] getEvents:', e); return null; }),
         API.getCustomerAvgSpend(instId).catch(e => { console.error('[Portal] getCustomerAvg:', e); return null; }),
+        API.getConsentHistory(childId).catch(e => { console.error('[Portal] getConsentHistory:', e); return []; }),
       ]);
       childData = view;
+      consentHistory = Array.isArray(consents) ? consents : [];
       // Map child_limits and institution_limits onto products
       const rawProducts = prods?.products || prods || [];
       const childLimits = prods?.child_limits || [];
@@ -1231,6 +1239,7 @@
             ${renderPrivacyPolicySection()}
             ${renderChildNameSection()}
             ${renderProfilePictureSection()}
+            ${renderConsentsSection()}
             ${renderDataInsightSection()}
             ${renderLinkedParentsSection()}
             ${renderDeleteChildDataSection()}
@@ -1969,6 +1978,124 @@
             </div>
           </div>
 
+        </div></div></div>
+      </div>`;
+  }
+
+  // ============================================================
+  // Samtykker (GDPR art. 7 — parent_consents source of truth)
+  // ============================================================
+  // Denne sektion kalder give_consent / withdraw_consent RPC'er og
+  // viser historik fra get_consent_history. users.profile_picture_opt_out_*
+  // opdateres automatisk af _sync_consent_cache_for_child, saa eksisterende
+  // guards fortsat virker.
+
+  const CONSENT_TYPES = [
+    {
+      key: 'profile_picture_aula',
+      label: 'Aula-profilbillede',
+      desc: 'Institutionen ma bruge dit barns eksisterende Aula-foto som profilbillede i caféen.',
+      withdrawConsequence: 'Profilbilledet fjernes fra caféens skærme, og Aula-billedet slettes fra biblioteket.',
+    },
+    {
+      key: 'profile_picture_camera',
+      label: 'Kamera-foto',
+      desc: 'Personalet ma tage et foto af dit barn med caféens enhed og bruge det som profilbillede.',
+      withdrawConsequence: 'Alle kamera-fotos og uploads af dit barn slettes permanent fra biblioteket.',
+    },
+    {
+      key: 'profile_picture_ai_openai',
+      label: 'AI-avatar (OpenAI)',
+      desc: 'Et foto af dit barn sendes til OpenAI for at generere en tegnet avatar. Fotoet opbevares ikke hos OpenAI — kun avataren gemmes.',
+      withdrawConsequence: 'Hvis begge AI-providers er trukket tilbage, slettes AI-avataren.',
+    },
+    {
+      key: 'profile_picture_ai_flux',
+      label: 'AI-avatar (FLUX / Black Forest Labs)',
+      desc: 'Et foto af dit barn sendes til Black Forest Labs (EU) for at generere en tegnet avatar. Fotoet opbevares ikke — kun avataren gemmes.',
+      withdrawConsequence: 'Hvis begge AI-providers er trukket tilbage, slettes AI-avataren.',
+    },
+  ];
+
+  function activeConsentFor(typeKey) {
+    if (!Array.isArray(consentHistory)) return null;
+    return consentHistory.find(c => c.consent_type === typeKey && c.is_active) || null;
+  }
+
+  function historyForType(typeKey) {
+    if (!Array.isArray(consentHistory)) return [];
+    return consentHistory.filter(c => c.consent_type === typeKey);
+  }
+
+  function formatConsentDate(iso) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+      return iso;
+    }
+  }
+
+  function methodLabel(method) {
+    switch (method) {
+      case 'forældreportal_checkbox': return 'forældreportal';
+      case 'forældreportal_button':   return 'forældreportal';
+      case 'legacy_default_consent':  return 'arvet fra tidligere indstilling';
+      case 'admin_override':          return 'registreret af admin';
+      default: return method || '';
+    }
+  }
+
+  function renderConsentsSection() {
+    const rows = CONSENT_TYPES.map(t => {
+      const active = activeConsentFor(t.key);
+      const isOn = !!active;
+      const history = historyForType(t.key);
+      const lastEvent = active
+        ? `Givet ${formatConsentDate(active.given_at)} (version ${esc(active.consent_version)}, ${esc(methodLabel(active.given_method))}).`
+        : (history.length > 0
+            ? `Trukket tilbage ${formatConsentDate(history[0].withdrawn_at)}.`
+            : 'Aldrig givet.');
+      const historyId = `consent-history-${t.key}`;
+      const historyItems = history.map(h => {
+        const givenTxt = `Givet ${formatConsentDate(h.given_at)} — version ${esc(h.consent_version)} (${esc(methodLabel(h.given_method))})`;
+        const withdrawnTxt = h.withdrawn_at
+          ? ` — trukket tilbage ${formatConsentDate(h.withdrawn_at)}`
+          : '';
+        const statusDot = h.is_active
+          ? '<span style="color:#16a34a;font-weight:700">● aktiv</span>'
+          : '<span style="color:var(--ink-muted)">○ ikke aktiv</span>';
+        return `<li style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-soft);line-height:1.5;list-style:none">${givenTxt}${withdrawnTxt} ${statusDot}</li>`;
+      }).join('') || '<li style="padding:4px 0;font-size:12px;color:var(--ink-muted);list-style:none">Ingen historik endnu.</li>';
+
+      return `
+        <div class="setting-row consent-row" data-consent-type="${esc(t.key)}" style="flex-direction:column;align-items:stretch;gap:var(--s2);padding-bottom:var(--s3);border-bottom:1px solid var(--border);margin-bottom:var(--s2)">
+          <div style="display:flex;align-items:flex-start;gap:var(--s3);justify-content:space-between">
+            <div class="setting-info" style="flex:1;min-width:0">
+              <div class="setting-label" style="font-weight:700">${esc(t.label)}</div>
+              <div class="setting-desc">${esc(t.desc)}</div>
+            </div>
+            <label class="toggle" style="flex-shrink:0"><input type="checkbox" class="consent-toggle" data-consent-type="${esc(t.key)}" ${isOn ? 'checked' : ''}><span class="toggle-track"></span></label>
+          </div>
+          <div style="font-size:12px;color:var(--ink-muted);padding-left:2px">${esc(lastEvent)}</div>
+          <div>
+            <button class="consent-history-btn" data-target="${historyId}" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600">Vis fuld historik (${history.length})</button>
+            <ul id="${historyId}" style="display:none;margin:var(--s2) 0 0;padding:0">${historyItems}</ul>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="section" id="section-consents">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:#fef3c7">✅</div><div><div class="section-title">Samtykker</div><div class="section-subtitle">Forældresamtykke efter GDPR art. 7</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Her administrerer du de samtykker der kræves for at vi ma behandle persondata om dit barn. Hvert samtykke gemmes med tidspunkt og version — og kan trækkes tilbage nar som helst.</span></div>
+          ${rows}
+          <div style="font-size:11px;color:var(--ink-muted);margin-top:var(--s3);line-height:1.5">Version af privatlivspolitik der pt. er gældende: <strong>${esc(CURRENT_CONSENT_VERSION)}</strong>. Nye samtykker registreres mod denne version.</div>
         </div></div></div>
       </div>`;
   }
@@ -3392,6 +3519,125 @@
       });
       obs.observe(deleteSection, { attributes: true, attributeFilter: ['class'] });
     }
+
+    // Consent toggles (GDPR art. 7)
+    document.querySelectorAll('.consent-toggle').forEach(toggle => {
+      toggle.addEventListener('change', (e) => handleConsentToggle(e));
+    });
+
+    // History reveal buttons
+    document.querySelectorAll('.consent-history-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.dataset.target);
+        if (!target) return;
+        const open = target.style.display !== 'none';
+        target.style.display = open ? 'none' : '';
+        btn.textContent = btn.textContent.replace(open ? 'Skjul' : 'Vis', open ? 'Vis' : 'Skjul');
+      });
+    });
+  }
+
+  async function handleConsentToggle(e) {
+    if (!selectedChild) return;
+    const toggle = e.target;
+    const typeKey = toggle.dataset.consentType;
+    const typeMeta = CONSENT_TYPES.find(t => t.key === typeKey);
+    if (!typeMeta) return;
+
+    const nowChecked = toggle.checked;
+    const actionLabel = nowChecked ? 'aktivere' : 'trække tilbage';
+
+    const confirmMsg = nowChecked
+      ? `Vil du aktivere samtykke for: "${typeMeta.label}"?\n\n${typeMeta.desc}\n\nSamtykket registreres nu med tidspunkt og version ${CURRENT_CONSENT_VERSION}.`
+      : `Vil du trække samtykke for "${typeMeta.label}" tilbage?\n\n${typeMeta.withdrawConsequence}\n\nDu kan altid give samtykke igen senere.`;
+
+    if (!confirm(confirmMsg)) {
+      // Brugeren fortrød — rul toggle tilbage
+      toggle.checked = !nowChecked;
+      return;
+    }
+
+    toggle.disabled = true;
+    try {
+      const result = nowChecked
+        ? await API.giveConsent(selectedChild.child_id, typeKey, CURRENT_CONSENT_VERSION, 'forældreportal_checkbox')
+        : await API.withdrawConsent(selectedChild.child_id, typeKey);
+
+      if (result && result.success === false) {
+        toggle.checked = !nowChecked;
+        showToast(result.error || `Kunne ikke ${actionLabel} samtykke`, 'error');
+        return;
+      }
+
+      // Opdater childData cache ud fra den nye tilstand (samme logik som
+      // _sync_consent_cache_for_child paa DB-siden)
+      await refreshConsentHistory();
+      syncOptOutCacheFromConsents();
+      showToast(nowChecked ? 'Samtykke registreret' : 'Samtykke trukket tilbage', 'success');
+
+      // Re-render Samtykker-sektionen in-place saa historik opdateres.
+      // Samme pattern som reloadEvents().
+      const section = document.getElementById('section-consents');
+      if (section) {
+        const wasOpen = section.classList.contains('open');
+        const temp = document.createElement('div');
+        temp.innerHTML = renderConsentsSection();
+        const newSection = temp.firstElementChild;
+        if (wasOpen) newSection.classList.add('open');
+        section.replaceWith(newSection);
+        // Gen-bind handlers paa nye toggles (section-header er event-delegated globalt)
+        newSection.querySelectorAll('.consent-toggle').forEach(t => {
+          t.addEventListener('change', (ev) => handleConsentToggle(ev));
+        });
+        newSection.querySelectorAll('.consent-history-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const target = document.getElementById(btn.dataset.target);
+            if (!target) return;
+            const open = target.style.display !== 'none';
+            target.style.display = open ? 'none' : '';
+            btn.textContent = btn.textContent.replace(open ? 'Skjul' : 'Vis', open ? 'Vis' : 'Skjul');
+          });
+        });
+      }
+
+      // Sync profil-billede-sektionens toggles visuelt (de deler cache-flag)
+      const ppAula = document.getElementById('pp-consent-aula');
+      const ppCamera = document.getElementById('pp-consent-camera');
+      const ppAi = document.getElementById('pp-consent-ai');
+      const ppMaster = document.getElementById('pp-consent-master');
+      if (ppAula) ppAula.checked = !childData.profile_picture_opt_out_aula;
+      if (ppCamera) ppCamera.checked = !childData.profile_picture_opt_out_camera;
+      if (ppAi) ppAi.checked = !childData.profile_picture_opt_out_ai;
+      if (ppMaster) ppMaster.checked = !childData.profile_picture_opt_out;
+    } catch (err) {
+      console.error('[Portal] handleConsentToggle error:', err);
+      toggle.checked = !nowChecked;
+      showToast(`Kunne ikke ${actionLabel} samtykke`, 'error');
+    } finally {
+      toggle.disabled = false;
+    }
+  }
+
+  async function refreshConsentHistory() {
+    if (!selectedChild) return;
+    try {
+      const rows = await API.getConsentHistory(selectedChild.child_id);
+      consentHistory = Array.isArray(rows) ? rows : [];
+    } catch (err) {
+      console.error('[Portal] refreshConsentHistory error:', err);
+    }
+  }
+
+  function syncOptOutCacheFromConsents() {
+    if (!childData || !Array.isArray(consentHistory)) return;
+    const has = (t) => consentHistory.some(c => c.consent_type === t && c.is_active);
+    const hasAula = has('profile_picture_aula');
+    const hasCamera = has('profile_picture_camera');
+    const hasAi = has('profile_picture_ai_openai') || has('profile_picture_ai_flux');
+    childData.profile_picture_opt_out_aula = !hasAula;
+    childData.profile_picture_opt_out_camera = !hasCamera;
+    childData.profile_picture_opt_out_ai = !hasAi;
+    childData.profile_picture_opt_out = !hasAula && !hasCamera && !hasAi;
   }
 
   async function handleSaveChildName() {
