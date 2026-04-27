@@ -186,6 +186,7 @@
       selectedChild = children[0];
       await loadChildData();
       renderApp();
+      maybeShowWelcomeModal();
     } catch (err) {
       console.error('[Portal] Load children error:', err);
       renderError('Kunne ikke hente dine børn. Prøv at genindlæse siden.');
@@ -268,6 +269,164 @@
     showLoading();
     await loadChildData();
     renderApp();
+    maybeShowWelcomeModal();
+  }
+
+  // ═══════════════════════════════════════
+  //  Velkomst-modal — Trin 2 (2026-04-27)
+  // ═══════════════════════════════════════
+  // Vises når forælder logger ind på et barn der INGEN aktive samtykker har
+  // og forælderen ikke tidligere har dismissed modalen for det barn.
+  // Un-checked checkboxes (GDPR-krav: aktivt + eksplicit + informeret).
+  // localStorage-flag forhindrer modalen i at dukke op igen efter dismiss.
+
+  function welcomeDismissKey(childId) {
+    return `flango_welcome_dismissed_${childId}`;
+  }
+
+  function shouldShowWelcomeModal() {
+    if (!selectedChild) return false;
+    if (!Array.isArray(consentHistory)) return false;
+    // Vis hvis forælder har taget en eksplicit handling tidligere (givet eller trukket)
+    const hasRealAction = consentHistory.some(c => c.given_method !== 'legacy_default_consent');
+    if (hasRealAction) return false;
+    // Skip hvis dismissed for dette barn
+    try {
+      if (localStorage.getItem(welcomeDismissKey(selectedChild.child_id))) return false;
+    } catch (_) { /* ignore quota errors */ }
+    return true;
+  }
+
+  function maybeShowWelcomeModal() {
+    if (!shouldShowWelcomeModal()) return;
+    // Vent et tick så renderApp er færdig med DOM-arbejde først
+    setTimeout(() => renderWelcomeModal(), 100);
+  }
+
+  function renderWelcomeModal() {
+    if (document.getElementById('flango-welcome-modal')) return; // ingen dobbelt-render
+    const childName = getChildName();
+    // Vis kun typer institutionen har aktiveret
+    const ppInstTypes = Array.isArray(featureFlags?.profile_picture_types) ? featureFlags.profile_picture_types : ['upload', 'camera'];
+    const showAula = ppInstTypes.indexOf('upload') !== -1;
+    const showCamera = ppInstTypes.indexOf('camera') !== -1;
+    const aiMasterOn = featureFlags?.profile_pictures_ai_enabled !== false;
+    const showOpenai = aiMasterOn && featureFlags?.ai_provider_openai !== false;
+    const showFlux = aiMasterOn && featureFlags?.ai_provider_flux === true;
+    const ct = window.PortalConsentTexts || {};
+    const fluxIsDraft = ct.isFluxConsentTextProductionReady?.() === false;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'flango-welcome-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99998;display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = `
+      <div style="background:#fff;color:#111;border-radius:14px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="padding:22px 26px;border-bottom:1px solid #e5e7eb;">
+          <div style="font-size:24px;margin-bottom:6px;">👋</div>
+          <strong style="font-size:18px;display:block;margin-bottom:6px;">Velkommen til Flango forældreportal</strong>
+          <div style="font-size:13px;color:#6b7280;line-height:1.5;">Du er nu tilknyttet <strong>${esc(childName)}</strong>. Før personalet kan vise dit barns profilbillede i caféen, skal du aktivt give samtykke til de billed-typer du tillader.</div>
+        </div>
+        <div style="padding:20px 26px;">
+          <div style="font-size:12px;color:#6b7280;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">Vælg hvilke typer du vil tillade</div>
+          ${showAula ? `<label style="display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;cursor:pointer;">
+            <input type="checkbox" id="welcome-aula" style="margin-top:3px;width:18px;height:18px;cursor:pointer;">
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:14px;color:#111;">Aula-profilbillede</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div>
+            </div>
+          </label>` : ''}
+          ${showCamera ? `<label style="display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;cursor:pointer;">
+            <input type="checkbox" id="welcome-camera" style="margin-top:3px;width:18px;height:18px;cursor:pointer;">
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:14px;color:#111;">Kamera-foto</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">Personalet kan tage et nyt foto af dit barn med caféens enhed.</div>
+            </div>
+          </label>` : ''}
+          ${showOpenai ? `<label style="display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;cursor:pointer;">
+            <input type="checkbox" id="welcome-ai-openai" style="margin-top:3px;width:18px;height:18px;cursor:pointer;">
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:14px;color:#111;">AI-genereret avatar (OpenAI)</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">Et foto af dit barn sendes til OpenAI for at generere en stiliseret tegneserie. Fotoet slettes straks efter — kun avataren gemmes.</div>
+              <button type="button" id="welcome-ai-openai-readmore" style="background:none;border:none;padding:4px 0 0;color:var(--info,#2563eb);font-size:12px;cursor:pointer;font-weight:600;text-align:left;">📖 Læs mere om databehandlingen</button>
+            </div>
+          </label>` : ''}
+          ${showFlux ? `<label style="display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid ${fluxIsDraft ? 'rgba(217,119,6,0.4)' : '#e5e7eb'};border-radius:10px;margin-bottom:10px;cursor:${fluxIsDraft ? 'not-allowed' : 'pointer'};${fluxIsDraft ? 'background:rgba(245,158,11,0.05);' : ''}">
+            <input type="checkbox" id="welcome-ai-flux" style="margin-top:3px;width:18px;height:18px;cursor:${fluxIsDraft ? 'not-allowed' : 'pointer'};" ${fluxIsDraft ? 'disabled' : ''}>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:14px;color:#111;">AI-genereret avatar (FLUX / EU-backup)${fluxIsDraft ? ' <span style="color:#d97706;font-weight:700;font-size:11px;">⚠ DRAFT</span>' : ''}</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">${fluxIsDraft ? '<strong style="color:#d97706">Samtykketeksten er ikke endeligt godkendt — kan ikke aktiveres endnu.</strong>' : 'Et foto sendes til Black Forest Labs (Tyskland) for at generere en stiliseret tegneserie.'}</div>
+              <button type="button" id="welcome-ai-flux-readmore" style="background:none;border:none;padding:4px 0 0;color:var(--info,#2563eb);font-size:12px;cursor:pointer;font-weight:600;text-align:left;">📖 Læs mere om databehandlingen${fluxIsDraft ? ' (DRAFT)' : ''}</button>
+            </div>
+          </label>` : ''}
+          <div style="font-size:11px;color:#9ca3af;margin-top:14px;line-height:1.5;">Du kan altid ændre eller fjerne dine samtykker senere under <strong>Privatliv → Profilbilleder</strong>. Samtykker der trækkes tilbage sletter med det samme det tilhørende billede fra Flango.</div>
+        </div>
+        <div style="padding:16px 26px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+          <button type="button" id="welcome-skip" style="background:none;border:none;padding:8px 4px;color:#6b7280;font-size:13px;cursor:pointer;text-decoration:underline;">Fortsæt uden samtykke</button>
+          <button type="button" id="welcome-confirm" style="padding:10px 20px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;">Aktivér valgte</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+
+    // "Læs mere"-knapper
+    overlay.querySelector('#welcome-ai-openai-readmore')?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      openAiLayer2Modal('openai', false);
+    });
+    overlay.querySelector('#welcome-ai-flux-readmore')?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      openAiLayer2Modal('flux', false);
+    });
+
+    // Skip-knap (markerer dismiss så modal ikke vises igen)
+    overlay.querySelector('#welcome-skip').onclick = () => {
+      try { localStorage.setItem(welcomeDismissKey(selectedChild.child_id), String(Date.now())); } catch (_) {}
+      close();
+    };
+
+    // Aktivér-knap: kald give_consent for hver checked
+    overlay.querySelector('#welcome-confirm').onclick = async () => {
+      const selected = [];
+      if (overlay.querySelector('#welcome-aula')?.checked) selected.push({ type: 'profile_picture_aula', version: CURRENT_CONSENT_VERSION });
+      if (overlay.querySelector('#welcome-camera')?.checked) selected.push({ type: 'profile_picture_camera', version: CURRENT_CONSENT_VERSION });
+      if (overlay.querySelector('#welcome-ai-openai')?.checked) selected.push({ type: 'profile_picture_ai_openai', version: ct.PARENT_AI_AVATAR_VERSION || CURRENT_CONSENT_VERSION });
+      if (overlay.querySelector('#welcome-ai-flux')?.checked && !fluxIsDraft) selected.push({ type: 'profile_picture_ai_flux', version: ct.PARENT_AI_AVATAR_FLUX_VERSION });
+
+      if (selected.length === 0) {
+        // Ingen valgte = behandl som skip
+        try { localStorage.setItem(welcomeDismissKey(selectedChild.child_id), String(Date.now())); } catch (_) {}
+        close();
+        return;
+      }
+
+      const btn = overlay.querySelector('#welcome-confirm');
+      btn.disabled = true;
+      btn.textContent = 'Gemmer …';
+      try {
+        const results = await Promise.allSettled(
+          selected.map(s => API.giveConsent(selectedChild.child_id, s.type, s.version, 'forældreportal_invite_flow'))
+        );
+        const failed = results.filter(r => r.status === 'rejected' || (r.value && r.value.success === false));
+        if (failed.length > 0) {
+          console.warn('[welcome] nogle samtykker fejlede:', failed);
+          showToast(`${selected.length - failed.length}/${selected.length} samtykker gemt. Prøv igen for resten.`, 'error');
+        } else {
+          showToast(`${selected.length} ${selected.length === 1 ? 'samtykke' : 'samtykker'} aktiveret`, 'success');
+        }
+        try { localStorage.setItem(welcomeDismissKey(selectedChild.child_id), String(Date.now())); } catch (_) {}
+        await refreshConsentHistory();
+        syncOptOutCacheFromConsents();
+        try { await loadChildData(); } catch (_) {}
+        rerenderProfileAndConsentSections();
+        close();
+      } catch (err) {
+        console.error('[welcome] giveConsent fejl:', err);
+        showToast('Kunne ikke gemme samtykker', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Aktivér valgte';
+      }
+    };
   }
 
   // ═══════════════════════════════════════
