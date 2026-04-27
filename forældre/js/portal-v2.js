@@ -72,17 +72,26 @@
   };
 
   // ─── Turnstile verification helper ───
-  async function verifyTurnstileToken(widgetId) {
+  // Cloudflare's getResponse() forventer enten:
+  //   a) widget-handle returneret af turnstile.render()
+  //   b) DOM-element-reference til container
+  // Den accepterer IKKE bare et string-ID (som vi gav <div>'en).
+  // Vi gemmer widget-handle i element.dataset.tsWidget for senere kald.
+  async function verifyTurnstileToken(elementId) {
     // Skip Turnstile on localhost (not available outside production)
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return { ok: true };
-    // try/catch: turnstile.getResponse() kaster TurnstileError hvis widget
-    // ikke er rendered (sker når DOM re-rendres efter auto-render har kørt).
-    // Uden denne fangst propagerer fejlen op gennem handleLogin og hænger
-    // login-knap i "Logger ind...".
+
+    const el = document.getElementById(elementId);
+    if (!el || typeof turnstile === 'undefined') {
+      return { ok: false, error: 'Sikkerhedscheck kunne ikke indlæses. Genindlæs siden og prøv igen.' };
+    }
+
+    // Brug widget-handle hvis vi har gemt en, ellers element-reference (fallback)
+    const widgetHandle = el.dataset.tsWidget || el;
     let token = null;
     try {
-      token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
+      token = turnstile.getResponse(widgetHandle);
     } catch (e) {
       console.warn('[verifyTurnstile] getResponse kastede:', e?.message || e);
       return { ok: false, error: 'Sikkerhedscheck kunne ikke indlæses. Genindlæs siden og prøv igen.' };
@@ -91,7 +100,7 @@
     try {
       const res = await window.portalSupabase.functions.invoke('verify-turnstile', { body: { token } });
       if (res.error || !res.data?.success) {
-        try { if (typeof turnstile !== 'undefined') turnstile.reset(widgetId); } catch {}
+        try { turnstile.reset(widgetHandle); } catch {}
         return { ok: false, error: 'Sikkerhedsverifikation fejlede. Prøv igen.' };
       }
       return { ok: true };
@@ -101,28 +110,33 @@
   }
 
   // ─── Eksplicit Turnstile widget-render efter DOM-injection ───
-  // Cloudflare's auto-render kører kun ved page-load. Når login/signup-views
-  // re-renderes via renderLogin(), bliver de nye <div class="cf-turnstile">-
-  // elementer ikke konverteret til widgets. Vi kalder turnstile.render()
-  // eksplicit efter DOM-mounting. Idempotent via data-ts-rendered-flag.
+  // Vi fjerner cf-turnstile-class for at undgå Cloudflare's auto-render
+  // (den kan ikke håndtere re-rendrede DOM-elementer pålideligt). I stedet
+  // kalder vi turnstile.render() eksplicit og gemmer widget-handle.
   function ensureTurnstileWidget(elementId, sitekey) {
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return;
     const tryRender = (attempt = 0) => {
       const el = document.getElementById(elementId);
       if (!el) return;
-      if (el.dataset.tsRendered === '1') return;
+      if (el.dataset.tsWidget) return; // allerede rendered — handle er gemt
       if (typeof turnstile === 'undefined') {
         // Script ikke loadet endnu — vent og prøv igen op til ~5 sek
         if (attempt < 25) setTimeout(() => tryRender(attempt + 1), 200);
         return;
       }
+      // Fjern auto-render-class hvis tilstede (tomgang at undgå konflikt)
+      el.classList.remove('cf-turnstile');
+      // Tøm container i tilfælde af auto-render allerede har gjort noget
+      el.innerHTML = '';
       try {
-        turnstile.render('#' + elementId, {
+        const widgetHandle = turnstile.render(el, {
           sitekey: sitekey || '0x4AAAAAACyNOCuIOJjI0pUa',
           theme: 'light',
         });
-        el.dataset.tsRendered = '1';
+        if (widgetHandle != null) {
+          el.dataset.tsWidget = widgetHandle;
+        }
       } catch (e) {
         console.warn('[turnstile] render fejlede for', elementId, ':', e?.message || e);
       }
