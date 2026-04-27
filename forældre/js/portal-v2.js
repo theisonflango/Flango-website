@@ -757,7 +757,12 @@
               Husk mig på denne enhed
             </label>
             <div style="font-size:11px;color:var(--ink-muted);margin-top:2px;margin-left:26px">Du kan altid logge ud via Profil-menuen</div>
-            <div id="turnstile-portal-login" class="cf-turnstile" data-sitekey="0x4AAAAAACyNOCuIOJjI0pUa" data-theme="light" style="margin-top:var(--s3)"></div>
+            <!-- Turnstile fjernet fra login (2026-04-27): Supabase auth's
+                 indbyggede rate-limiting (5 fejlede forsøg/email/min) +
+                 audit-log af logins giver tilstrækkelig brute-force-
+                 beskyttelse. Turnstile beholdes på signup + password-reset
+                 hvor risikoen er højere (bot-kontooprettelse,
+                 email-flooding). -->
             <button class="save-btn full" id="login-btn" style="margin-top:var(--s3)">Log ind</button>
             <div class="login-links">
               <a href="#" id="forgot-link">Glemt adgangskode?</a>
@@ -771,7 +776,7 @@
       document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
       document.getElementById('forgot-link').addEventListener('click', e => { e.preventDefault(); showLoginView('forgot'); });
       document.getElementById('goto-signup-link').addEventListener('click', e => { e.preventDefault(); showLoginView('signup-code'); });
-      ensureTurnstileWidget('turnstile-portal-login');
+      // (Turnstile fjernet fra login — se kommentar i HTML-templaten)
     }
   }
 
@@ -793,15 +798,9 @@
     errorEl.classList.remove('visible');
 
     // Wrap hele flowet i try/finally så knap-state ALTID ruller tilbage
-    // ved fejl — selv hvis verifyTurnstileToken eller signIn kaster uventet.
+    // ved fejl. Turnstile er fjernet fra login (2026-04-27) — Supabase
+    // auth's rate-limiting dækker brute-force-risikoen.
     try {
-      const turnstileCheck = await verifyTurnstileToken('turnstile-portal-login');
-      if (!turnstileCheck.ok) {
-        errorEl.textContent = turnstileCheck.error;
-        errorEl.classList.add('visible');
-        return;
-      }
-
       try {
         await API.signIn(email, password);
         const rememberMe = document.getElementById('login-remember-me');
