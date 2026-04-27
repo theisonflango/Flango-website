@@ -71,36 +71,36 @@
     'section-contact':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Kontakt' },
   };
 
-  // ─── Turnstile verification helper ───
-  // Cloudflare's getResponse() forventer enten:
-  //   a) widget-handle returneret af turnstile.render()
-  //   b) DOM-element-reference til container
-  // Den accepterer IKKE bare et string-ID (som vi gav <div>'en).
-  // Vi gemmer widget-handle i element.dataset.tsWidget for senere kald.
+  // ─── Turnstile verification helper (callback-baseret) ───
+  // Cloudflare's getResponse() var upålidelig på re-rendrede DOM-elementer
+  // — den krævede internal widget-handle og fejlede med "Could not find
+  // widget" selv om widget'en visuelt var rendered. Vi bypasser det helt
+  // ved at lade Turnstile-widget'en gemme tokenet direkte via callback når
+  // brugeren har klaret challenge'en. Tokenet ligger så klar når login
+  // klikkes — ingen afhængighed af getResponse.
+  window.__flangoTurnstileTokens = window.__flangoTurnstileTokens || {};
+
   async function verifyTurnstileToken(elementId) {
     // Skip Turnstile on localhost (not available outside production)
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return { ok: true };
 
     const el = document.getElementById(elementId);
-    if (!el || typeof turnstile === 'undefined') {
+    if (!el) {
       return { ok: false, error: 'Sikkerhedscheck kunne ikke indlæses. Genindlæs siden og prøv igen.' };
     }
 
-    // Brug widget-handle hvis vi har gemt en, ellers element-reference (fallback)
-    const widgetHandle = el.dataset.tsWidget || el;
-    let token = null;
-    try {
-      token = turnstile.getResponse(widgetHandle);
-    } catch (e) {
-      console.warn('[verifyTurnstile] getResponse kastede:', e?.message || e);
-      return { ok: false, error: 'Sikkerhedscheck kunne ikke indlæses. Genindlæs siden og prøv igen.' };
+    // Token blev gemt af callback når widget verifikerede brugeren
+    const token = window.__flangoTurnstileTokens[elementId];
+    if (!token) {
+      return { ok: false, error: 'Bekræft venligst at du ikke er en robot. Vent et øjeblik på at sikkerhedschecket loader.' };
     }
-    if (!token) return { ok: false, error: 'Bekræft venligst at du ikke er en robot.' };
     try {
       const res = await window.portalSupabase.functions.invoke('verify-turnstile', { body: { token } });
       if (res.error || !res.data?.success) {
-        try { turnstile.reset(widgetHandle); } catch {}
+        // Reset token så bruger får frisk challenge ved næste forsøg
+        delete window.__flangoTurnstileTokens[elementId];
+        try { if (typeof turnstile !== 'undefined' && el.dataset.tsWidget) turnstile.reset(el.dataset.tsWidget); } catch {}
         return { ok: false, error: 'Sikkerhedsverifikation fejlede. Prøv igen.' };
       }
       return { ok: true };
@@ -109,30 +109,40 @@
     }
   }
 
-  // ─── Eksplicit Turnstile widget-render efter DOM-injection ───
-  // Vi fjerner cf-turnstile-class for at undgå Cloudflare's auto-render
-  // (den kan ikke håndtere re-rendrede DOM-elementer pålideligt). I stedet
-  // kalder vi turnstile.render() eksplicit og gemmer widget-handle.
+  // ─── Eksplicit Turnstile widget-render med callback ───
+  // Vi opretter widget eksplicit og lader Turnstile gemme tokenet i
+  // window.__flangoTurnstileTokens[elementId] når challenge er klaret.
+  // Det gør getResponse irrelevant — vi læser bare det gemte token direkte.
   function ensureTurnstileWidget(elementId, sitekey) {
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return;
     const tryRender = (attempt = 0) => {
       const el = document.getElementById(elementId);
       if (!el) return;
-      if (el.dataset.tsWidget) return; // allerede rendered — handle er gemt
+      if (el.dataset.tsWidget) return; // allerede rendered
       if (typeof turnstile === 'undefined') {
-        // Script ikke loadet endnu — vent og prøv igen op til ~5 sek
         if (attempt < 25) setTimeout(() => tryRender(attempt + 1), 200);
         return;
       }
-      // Fjern auto-render-class hvis tilstede (tomgang at undgå konflikt)
+      // Fjern auto-render-class og tøm container for at undgå konflikt med
+      // Cloudflare's auto-render der måske allerede har lavet noget
       el.classList.remove('cf-turnstile');
-      // Tøm container i tilfælde af auto-render allerede har gjort noget
       el.innerHTML = '';
+      // Slet evt. gammelt token så ny widget får frisk challenge
+      delete window.__flangoTurnstileTokens[elementId];
       try {
         const widgetHandle = turnstile.render(el, {
           sitekey: sitekey || '0x4AAAAAACyNOCuIOJjI0pUa',
           theme: 'light',
+          callback: (token) => {
+            window.__flangoTurnstileTokens[elementId] = token;
+          },
+          'expired-callback': () => {
+            delete window.__flangoTurnstileTokens[elementId];
+          },
+          'error-callback': () => {
+            delete window.__flangoTurnstileTokens[elementId];
+          },
         });
         if (widgetHandle != null) {
           el.dataset.tsWidget = widgetHandle;
