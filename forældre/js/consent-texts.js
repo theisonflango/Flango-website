@@ -21,6 +21,14 @@
 
   const VERSION_PARENT_AI_AVATAR = 'v1.0-ai-avatar-parent-2026-04-27';
 
+  // FLUX (Black Forest Labs) — IKKE klar til produktion endnu.
+  // Versionsstrengen indeholder "DRAFT" så Edge Function og UI kan detektere
+  // at teksten ikke må bruges til reelt samtykke. Bumpes til "v1.0-..." når
+  // BFL-enterprise-aftale + endelig samtykketekst er på plads.
+  // Hvis FLUX skal erstattes med anden EU-cloud-AI (fx Stability), genbruges
+  // dette mønster med ny VERSION_PARENT_AI_AVATAR_FLUX-string.
+  const VERSION_PARENT_AI_AVATAR_FLUX = 'DRAFT-v0.1-ai-avatar-parent-flux-2026-04-27';
+
   // ─────────────────────────────────────────────────────────────────────────
   // Forælder — AI-avatar (OpenAI)
   // ─────────────────────────────────────────────────────────────────────────
@@ -75,26 +83,85 @@ Du kan trække dit samtykke tilbage når som helst — så slettes avataren stra
   // Public API
   // ─────────────────────────────────────────────────────────────────────────
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Forælder — AI-avatar (FLUX / Black Forest Labs) — DRAFT
+  // ─────────────────────────────────────────────────────────────────────────
+  // Disse tekster er PLACEHOLDERS. De må ikke bruges til reelt forælder-
+  // samtykke før BFL-enterprise-aftale er underskrevet og endelig tekst er
+  // godkendt. Versionsstrengen indeholder "DRAFT" så Edge Function og UI
+  // kan detektere ikke-godkendt status og blokere generering.
+
+  const PARENT_AI_AVATAR_FLUX_LAYER1 = `⚠ PLACEHOLDER — denne tekst er ikke endeligt godkendt.
+
+Hvis du aktiverer dette samtykke, må institutionen oprette en stiliseret tegneserie-avatar af dit barn via Black Forest Labs (FLUX). Avataren bruges som profilbillede i café-systemet.
+
+For at lave avataren sender vi et reference-foto af dit barn til BFL's billed-AI. AI'en returnerer en stiliseret version, som vi gemmer som dit barns profilbillede. BFL's databehandling vil blive specificeret i den endelige aftale.
+
+[Endelige vilkår tilføjes når BFL-aftalen er underskrevet.]
+
+Du kan trække dit samtykke tilbage når som helst — så slettes avataren straks fra Flango (forudsat OpenAI-samtykket også er trukket tilbage).`;
+
+  const PARENT_AI_AVATAR_FLUX_LAYER2_HTML = `
+    <div style="padding:12px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:8px;margin-bottom:14px;color:#92400e;font-weight:600;">
+      ⚠ PLACEHOLDER-tekst — ikke endeligt godkendt
+    </div>
+    <h3>Sådan fungerer AI-avatar via FLUX (Black Forest Labs)</h3>
+    <p><em>Denne tekst er en arbejdsversion. Endelig databehandlings-beskrivelse afventer BFL-enterprise-aftalens underskrift. Indtil da bør forældre IKKE afgive samtykke til FLUX-genererede avatarer på baggrund af denne tekst.</em></p>
+    <h4>Forventet databehandling (under afklaring)</h4>
+    <p>Når institutionen opretter en FLUX-genereret AI-avatar af dit barn, sendes et reference-foto + en stiliseret prompt til Black Forest Labs' billed-API. Den endelige aftale vil specificere:</p>
+    <ul>
+      <li>Server-placering (forventet: Tyskland / EU)</li>
+      <li>Opbevaringstid hos BFL</li>
+      <li>Træning af AI-modeller (forventet: ikke tilladt)</li>
+      <li>Sikkerhedsforanstaltninger og audit-procedurer</li>
+    </ul>
+    <p>Når aftalen er underskrevet, vil denne side blive opdateret med endelige vilkår, og samtykke-versionen vil blive bumpet til v1.0.</p>
+  `;
+
   window.PortalConsentTexts = {
-    /** Aktuel version-streng for forælder-AI-avatar-samtykket. */
+    /** Aktuel version-streng for forælder-AI-avatar-samtykket (OpenAI). */
     PARENT_AI_AVATAR_VERSION: VERSION_PARENT_AI_AVATAR,
 
-    /** Lag 1 — kort tekst (plain text). */
+    /** Lag 1 — kort tekst for OpenAI (plain text). */
     parentAiAvatarLayer1: PARENT_AI_AVATAR_LAYER1,
 
-    /** Lag 2 — fuld informeret samtykke (HTML). */
+    /** Lag 2 — fuld informeret samtykke for OpenAI (HTML). */
     parentAiAvatarLayer2Html: PARENT_AI_AVATAR_LAYER2_HTML,
 
-    /** Korte tekster for de øvrige billede-typer der bruges i confirmation-popups. */
+    /** FLUX-version (DRAFT — bruges ikke til reelt samtykke endnu). */
+    PARENT_AI_AVATAR_FLUX_VERSION: VERSION_PARENT_AI_AVATAR_FLUX,
+
+    /** FLUX Lag 1 — DRAFT placeholder. */
+    parentAiAvatarFluxLayer1: PARENT_AI_AVATAR_FLUX_LAYER1,
+
+    /** FLUX Lag 2 — DRAFT placeholder. */
+    parentAiAvatarFluxLayer2Html: PARENT_AI_AVATAR_FLUX_LAYER2_HTML,
+
+    /** Hjælper: er FLUX-samtykketeksten klar til produktion? */
+    isFluxConsentTextProductionReady() {
+      return !VERSION_PARENT_AI_AVATAR_FLUX.startsWith('DRAFT');
+    },
+
+    /** Korte tekster for confirmation-popups ved deaktivering. */
     confirmTexts: {
       ai_off: {
-        title: 'Trække AI-avatar-samtykke tilbage?',
-        body: `Hvis du fortryder dit samtykke:
-- Dit barns AI-avatar slettes med det samme fra Flango
+        title: 'Trække AI-avatar-samtykke (OpenAI) tilbage?',
+        body: `Hvis du fortryder dit samtykke til OpenAI-AI-avataren:
+- Dit barns AI-avatar slettes med det samme fra Flango (forudsat også FLUX-samtykket er trukket tilbage)
 - Hvis avataren er det aktuelle profilbillede, fjernes det
-- Personalet kan ikke længere oprette nye AI-avatarer af dit barn
+- Personalet kan ikke længere oprette nye OpenAI-avatarer af dit barn
 
 Hos OpenAI slettes data automatisk inden for 30 dage som beskrevet i privatlivspolitikken.`,
+        confirm: 'Trække samtykke tilbage',
+        cancel: 'Annullér',
+      },
+      ai_flux_off: {
+        title: 'Trække AI-avatar-samtykke (FLUX) tilbage?',
+        body: `Hvis du fortryder dit samtykke til FLUX-AI-avataren:
+- Dit barns AI-avatar slettes med det samme fra Flango (forudsat også OpenAI-samtykket er trukket tilbage)
+- Personalet kan ikke længere oprette nye FLUX-avatarer af dit barn
+
+Data hos Black Forest Labs slettes ifølge deres databehandleraftale.`,
         confirm: 'Trække samtykke tilbage',
         cancel: 'Annullér',
       },
