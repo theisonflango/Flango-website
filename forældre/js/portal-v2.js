@@ -186,7 +186,6 @@
       selectedChild = children[0];
       await loadChildData();
       renderApp();
-      ensureAdminSimulatorBanner();
       maybeShowWelcomeModal();
     } catch (err) {
       console.error('[Portal] Load children error:', err);
@@ -514,19 +513,10 @@
     }, 2500);
   }
 
-  // Vis et fast banner øverst når admin er i simulator-session, så det er
-  // tydeligt at de IKKE må afgive samtykke på vegne af forælder.
-  function ensureAdminSimulatorBanner() {
-    if (!isAdminSimulatorSession()) return;
-    if (document.getElementById('flango-admin-sim-banner')) return; // allerede vist
-    const banner = document.createElement('div');
-    banner.id = 'flango-admin-sim-banner';
-    banner.style.cssText = 'position:sticky;top:0;z-index:9000;background:#fff7ed;border-bottom:2px solid #f59e0b;padding:10px 16px;font-size:13px;color:#92400e;text-align:center;font-weight:600;line-height:1.4;';
-    banner.innerHTML = '👁 <strong>Admin-visning (read-only for samtykker)</strong> — du kan hjælpe forælder med præferencer (grænser, kost, allergi, PIN) men <strong>ikke afgive samtykke til profilbilleder eller slette data</strong> på vegne af forælder. Bed dem logge ind selv.';
-    document.body.insertBefore(banner, document.body.firstChild);
-  }
-
   // Vis advarsel når admin forsøger en blokeret handling i simulator.
+  // (Banner-løsningen blev erstattet af visuelt-disablede toggles + tooltip
+  //  i render-tid — admin ser at handlingen er låst FØR de klikker. Alert
+  //  er stadig her som defense-in-depth hvis et toggle slipper igennem.)
   function showAdminSimulatorBlockedAlert(handlingNavn) {
     alert(`Denne handling (${handlingNavn}) kan ikke udføres i admin-visning.\n\nForælder skal selv logge ind på portalen for at afgive samtykke. Det er et krav fra GDPR art. 7 — samtykke skal kunne dokumenteres som givet af forælderen selv.`);
   }
@@ -2023,7 +2013,7 @@
               </span>
             </div>
             <p style="color:var(--ink-soft);margin:0 0 var(--s3)">Tip: Download en kopi af dine data først (se sektionen ovenfor).</p>
-            <button class="save-btn" id="privacy-request-deletion-btn" style="background:var(--negative,#dc2626);color:#fff">Anmod om sletning af data for ${esc(name)}</button>
+            <button class="save-btn" id="privacy-request-deletion-btn" ${isAdminSimulatorSession() ? 'disabled title="Kun forælder kan anmode om sletning (admin-visning)"' : ''} style="background:var(--negative,#dc2626);color:#fff${isAdminSimulatorSession() ? ';opacity:0.5;cursor:not-allowed' : ''}">${isAdminSimulatorSession() ? '🔒 ' : ''}Anmod om sletning af data for ${esc(name)}</button>
           </div>
           <div id="privacy-deletion-confirm" style="display:none">
             <p style="margin:0 0 var(--s2);font-weight:600">Er du sikker? Skriv barnets navn for at bekræfte:</p>
@@ -2059,7 +2049,7 @@
             </span>
           </div>
           <div id="privacy-delete-account-form">
-            <button class="save-btn" id="privacy-delete-account-btn" style="background:var(--negative,#dc2626);color:#fff">Slet min konto permanent</button>
+            <button class="save-btn" id="privacy-delete-account-btn" ${isAdminSimulatorSession() ? 'disabled title="Kun forælder kan slette egen konto (admin-visning)"' : ''} style="background:var(--negative,#dc2626);color:#fff${isAdminSimulatorSession() ? ';opacity:0.5;cursor:not-allowed' : ''}">${isAdminSimulatorSession() ? '🔒 ' : ''}Slet min konto permanent</button>
           </div>
           <div id="privacy-delete-account-confirm" style="display:none">
             <p style="margin:0 0 var(--s2);font-weight:600">Er du sikker? Skriv din e-mailadresse for at bekraefte:</p>
@@ -2175,31 +2165,31 @@
           ${galleryHtml}
           <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Profilbilleder bruges i caféen for at bekræfte dit barns identitet ved køb. Billederne er kun synlige for børn og personale i denne institution.</span></div>
 
-          <div class="setting-row" style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:var(--s3);margin-bottom:var(--s2)">
-            <div class="setting-info"><div class="setting-label" style="font-weight:700">Tillad profilbilleder</div><div class="setting-desc">Slå fra for at fravælge alle billedtyper på én gang</div></div>
-            <label class="toggle"><input type="checkbox" id="pp-consent-master" ${!allOptedOut ? 'checked' : ''}><span class="toggle-track"></span></label>
+          <div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:var(--s3);margin-bottom:var(--s2)" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+            <div class="setting-info"><div class="setting-label" style="font-weight:700">Tillad profilbilleder${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Slå fra for at fravælge alle billedtyper på én gang</div></div>
+            <label class="toggle"><input type="checkbox" id="pp-consent-master" ${!allOptedOut ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
           </div>
 
           <div id="pp-type-toggles" style="${allOptedOut ? 'opacity:0.4;pointer-events:none' : ''}">
-            ${showAula ? `<div class="setting-row">
-              <div class="setting-info"><div class="setting-label">Aula-profilbillede</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div></div>
-              <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''}><span class="toggle-track"></span></label>
+            ${showAula ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+              <div class="setting-info"><div class="setting-label">Aula-profilbillede${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div></div>
+              <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
             </div>` : ''}
-            ${showCamera ? `<div class="setting-row">
-              <div class="setting-info"><div class="setting-label">Kamera-foto</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
-              <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''}><span class="toggle-track"></span></label>
+            ${showCamera ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+              <div class="setting-info"><div class="setting-label">Kamera-foto${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
+              <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
             </div>` : ''}
-            ${showOpenai ? `<div class="setting-row" style="flex-direction:column;align-items:stretch;gap:4px">
+            ${showOpenai ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch;gap:4px" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);">
-                <div class="setting-info"><div class="setting-label">AI-genereret avatar (OpenAI)</div><div class="setting-desc">Et foto sendes til OpenAI's billed-AI for at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.</div></div>
-                <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai" ${!optOutOpenai ? 'checked' : ''}><span class="toggle-track"></span></label>
+                <div class="setting-info"><div class="setting-label">AI-genereret avatar (OpenAI)${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Et foto sendes til OpenAI's billed-AI for at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.</div></div>
+                <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai" ${!optOutOpenai ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               <button type="button" id="pp-ai-readmore-btn" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600;text-align:left;align-self:flex-start;">📖 Læs mere om databehandlingen</button>
             </div>` : ''}
-            ${showFlux ? `<div class="setting-row" style="flex-direction:column;align-items:stretch;gap:4px">
+            ${showFlux ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch;gap:4px" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);">
-                <div class="setting-info"><div class="setting-label">AI-genereret avatar (FLUX / EU-backup)${!fluxConsentTextReady ? ' <span style="color:#d97706;font-weight:700;font-size:11px;">⚠ DRAFT</span>' : ''}</div><div class="setting-desc">Et foto sendes til Black Forest Labs (Tyskland) for at generere en tegnet avatar. ${!fluxConsentTextReady ? '<strong style="color:#d97706">Samtykketeksten er endnu ikke endeligt godkendt — aktivér ikke før Flango-support har bekræftet at databehandlingsaftalen er underskrevet.</strong>' : 'Fotoet slettes straks — kun avataren gemmes.'}</div></div>
-                <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai-flux" ${!optOutFlux ? 'checked' : ''} ${!fluxConsentTextReady ? 'disabled' : ''}><span class="toggle-track"></span></label>
+                <div class="setting-info"><div class="setting-label">AI-genereret avatar (FLUX / EU-backup)${isAdminSimulatorSession() ? ' 🔒' : ''}${!fluxConsentTextReady ? ' <span style="color:#d97706;font-weight:700;font-size:11px;">⚠ DRAFT</span>' : ''}</div><div class="setting-desc">Et foto sendes til Black Forest Labs (Tyskland) for at generere en tegnet avatar. ${!fluxConsentTextReady ? '<strong style="color:#d97706">Samtykketeksten er endnu ikke endeligt godkendt — aktivér ikke før Flango-support har bekræftet at databehandlingsaftalen er underskrevet.</strong>' : 'Fotoet slettes straks — kun avataren gemmes.'}</div></div>
+                <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai-flux" ${!optOutFlux ? 'checked' : ''} ${(!fluxConsentTextReady || isAdminSimulatorSession()) ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               <button type="button" id="pp-ai-flux-readmore-btn" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600;text-align:left;align-self:flex-start;">📖 Læs mere om databehandlingen${!fluxConsentTextReady ? ' (DRAFT)' : ''}</button>
             </div>` : ''}
