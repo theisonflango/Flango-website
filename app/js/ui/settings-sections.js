@@ -2122,6 +2122,7 @@
       const enabled = !!inst.profile_pictures_enabled;
       const types = inst.profile_picture_types || [];
       const aiOn = !!inst.profile_pictures_ai_enabled;
+      const adminAiOn = !!inst.admin_ai_avatar_enabled;
       const defMode = inst.default_profile_picture_mode || 'initials';
       const hasUpload = types.includes('upload');
       const hasCamera = types.includes('camera');
@@ -2159,6 +2160,12 @@
                 <div class="fsp-role"><div class="fsp-role-left"><div><div class="fsp-role-name">Black Forest Labs, FLUX 2</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">Tyskland</div></div></div><div class="fsp-toggle${inst.ai_provider_flux ? ' on' : ''}" data-ai-provider="flux"></div></div>
                 <div id="pp-ai-no-provider-warn" style="margin-top:10px;padding:8px 10px;border-radius:6px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);font-size:12px;color:#f59e0b;display:${aiOn && inst.ai_provider_openai === false && !inst.ai_provider_flux ? 'block' : 'none'}">\u26A0 Ingen udbyder valgt \u2014 aktiv\u00e9r OpenAI eller FLUX, ellers kan caf\u00e9-admins ikke generere avatars.</div>
               </div>
+            </div>
+          </div>
+          <div class="fsp-block" style="margin-bottom:10px">
+            <div class="fsp-row">
+              <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDC68\u200D\uD83D\uDCBC</span><div><div class="fsp-row-title">Admin AI-Avatar</div><div class="fsp-row-desc">Till\u00e5d admins at oprette AI-avatar af sig selv. Hver admin skal aktivere det individuelt med samtykke i \"Rediger admin\"-modalen.</div></div></div>
+              <div class="fsp-toggle${adminAiOn ? ' on' : ''}" data-field="admin_ai_avatar_enabled"></div>
             </div>
           </div>
           <div style="margin:28px 0 28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05)">

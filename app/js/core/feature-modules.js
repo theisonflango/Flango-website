@@ -71,6 +71,9 @@
     profile_pic_ai_openai: ['ai_provider_openai'],
     profile_pic_ai_flux: ['ai_provider_flux'],
     profile_pic_library: [],
+    // Admin-AI-avatar (runde 2, 2026-04-27): institution-admin kan toggle
+    // hvis super-admin har låst op. Ellers vises 🔒 + lock_reason.
+    admin_ai_avatar: ['admin_ai_avatar_enabled'],
     // Profilbilleder master + ikon-deling
     profile_pictures: ['profile_pictures_enabled'],
     icon_sharing: ['icon_sharing_enabled'],
