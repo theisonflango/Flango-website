@@ -1823,19 +1823,86 @@
   };
 
   // ── Betalingsmetoder (info cards with toggle + expandable details) ──
+  // Status → fsp-pm-badge-* color class
+  function _stripeStatusBadgeClass(status) {
+    if (status === 'enabled') return 'fsp-pm-badge-green';
+    if (status === 'onboarding' || status === 'pending' || status === 'in_progress') return 'fsp-pm-badge-orange';
+    return 'fsp-pm-badge-gray';
+  }
+
+  function _parsePaymentSettings(raw) {
+    if (!raw) return {};
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+    } catch { return {}; }
+  }
+
+  // Non-stripe methods (stripe_connect is rendered separately with live status)
+  const _pmMethods = [
+    { id: 'mobilepay_api', hasFeePolicy: true, t: 'MobilePay API', badges: [['Automatisk saldo-opdatering','green'],['Kr\u00e6ver ops\u00e6tning','orange']], d: 'For\u00e6ldre indbetaler via MobilePay. Saldo opdateres automatisk.', detail: 'Denne l\u00f8sning foruds\u00e6tter, at institutionen (eller kommunen) har en MobilePay API-aftale. N\u00e5r en for\u00e6lder indbetaler via MobilePay, registreres betalingen automatisk i Flango, og barnets saldo opdateres uden manuelt arbejde.', configLabel: 'Konfigurer MobilePay API' },
+    { id: 'mobilepay_csv', hasFeePolicy: false, t: 'MobilePay CSV', badges: [['Semi-automatisk','orange']], d: 'Sekret\u00e6r/leder uploader en MobilePay-oversigt. Nye betalinger registreres automatisk i Flango.', detail: 'Typisk logger skolens sekret\u00e6r eller SFO-leder ind i MobilePay-portalen, downloader en oversigt over indbetalinger (CSV) og uploader den i Flango. Flango registrerer automatisk alle nye betalinger p\u00e5 de relevante b\u00f8rn.<br><br>Det anbefales at g\u00f8re dette i et fast interval, som meldes ud til for\u00e6ldrene, fx: <em>\u2018Indbetalinger opdateres hver dag inden kl. 13:00\u2019</em> eller <em>\u2018hver mandag inden kl. 13:00\u2019</em>.', configLabel: '\u00c5bn CSV-import' },
+    { id: 'mobilepay_qr', hasFeePolicy: false, t: 'MobilePay QR', badges: [['Manuel','gray']], d: 'For\u00e6ldre scanner en QR-kode. Personalet registrerer indbetalingen manuelt i Flango.', detail: 'Denne metode foruds\u00e6tter, at institutionen har en MobilePay-aftale, og at klubben er logget ind p\u00e5 den mobil, som modtager indbetalinger. Institutionens QR-kode vises i for\u00e6ldreportalen og evt. i Aula. N\u00e5r for\u00e6ldre sender penge, skal personalet manuelt registrere indbetalingen p\u00e5 det enkelte barn i Flango (fx via \u2018Opdater saldo\u2019 i brugerpanelet).' },
+    { id: 'mobilepay_qr_screenshot', hasFeePolicy: false, t: 'MobilePay QR + Screenshot', badges: [['N\u00f8dl\u00f8sning','red']], d: 'For\u00e6ldre sender et sk\u00e6rmbillede som betalingsbevis. Personalet registrerer manuelt i Flango.', detail: 'Denne metode er til institutioner, hvor MobilePay-aftalen administreres eksternt (fx hos skolens sekret\u00e6r). Personalet kan derfor ikke se, n\u00e5r en for\u00e6lder har indbetalt. For\u00e6ldre skal sende et sk\u00e6rmbillede af betalingen som dokumentation til klubbens mobil, hvorefter personalet registrerer indbetalingen manuelt.<br><br><strong style="color:var(--fsp-accent)">Anbefales kun, hvis ingen andre l\u00f8sninger er mulige.</strong>' },
+    { id: 'cash', hasFeePolicy: false, t: 'Kontant', badges: [['Offline','gray'],['N\u00f8dl\u00f8sning','red']], d: 'Personalet tager imod kontanter og registrerer indbetalingen manuelt i Flango.', detail: 'Kontant indbetaling kr\u00e6ver ingen teknisk ops\u00e6tning og medf\u00f8rer ingen transaktionsomkostninger. De fleste for\u00e6ldre foretr\u00e6kker digitale indbetalinger, men kontant kan bruges som en alternativ eller n\u00f8dl\u00f8sning for familier, der ikke \u00f8nsker digitale betalinger.' }
+  ];
+
+  // Save payment settings JSONB atomically (preserves other keys)
+  async function _savePaymentSettings(ctx, mutator) {
+    const inst = ctx.institutionData || {};
+    const current = _parsePaymentSettings(inst.parent_portal_payment);
+    const next = mutator({ ...current });
+    // Also preserve per-method fee_policy in sync with admin_fee_payer for backward-compat
+    const fee = next.admin_fee_payer === 'parent' ? 'parent' : 'institution';
+    _pmMethods.forEach(m => {
+      if (!m.hasFeePolicy) return;
+      next[m.id] = { ...(next[m.id] || {}), fee_policy: fee };
+    });
+    if (next.stripe_connect) next.stripe_connect = { ...next.stripe_connect, fee_policy: fee };
+    await ctx.saveField('parent_portal_payment', next);
+  }
+
+  function _updatePaymentWarnings(container) {
+    const box = container.querySelector('[data-pm-warnings]');
+    if (!box) return;
+    const on = (id) => !!container.querySelector(`[data-pm-toggle="${id}"]`)?.classList.contains('on');
+    const stripe = on('stripe_connect');
+    const mpApi = on('mobilepay_api');
+    const csv = on('mobilepay_csv');
+    const qr = on('mobilepay_qr');
+    const qrs = on('mobilepay_qr_screenshot');
+    const warnings = [];
+    if (stripe && mpApi) warnings.push('V\u00e6lg \u00e9n automatisk metode som prim\u00e6r for at undg\u00e5 forvirring for for\u00e6ldre.');
+    if (csv && (qr || qrs)) warnings.push('Risiko for dobbeltregistrering. Brug CSV som prim\u00e6r og behold QR kun som n\u00f8dl\u00f8sning.');
+    if (qrs) warnings.push('N\u00f8dl\u00f8sning: kan give ekstra administration.');
+    box.innerHTML = warnings.map(w => `<div class="fsp-pm-warning">${w}</div>`).join('');
+    box.style.display = warnings.length ? '' : 'none';
+  }
+
   sections['Betalingsmetoder'] = {
     render(ctx) {
       const inst = ctx.institutionData || {};
-      const methods = [
-        { t: 'MobilePay API', badges: [['Automatisk saldo-opdatering','green'],['Kr\u00e6ver ops\u00e6tning','orange']], d: 'For\u00e6ldre indbetaler via MobilePay. Saldo opdateres automatisk.', on: false, detail: 'Denne l\u00f8sning foruds\u00e6tter, at institutionen (eller kommunen) har en MobilePay API-aftale. N\u00e5r en for\u00e6lder indbetaler via MobilePay, registreres betalingen automatisk i Flango, og barnets saldo opdateres uden manuelt arbejde.' },
-        { t: 'MobilePay CSV', badges: [['Semi-automatisk','orange']], d: 'Sekret\u00e6r/leder uploader en MobilePay-oversigt. Nye betalinger registreres automatisk i Flango.', on: false, detail: 'Typisk logger skolens sekret\u00e6r eller SFO-leder ind i MobilePay-portalen, downloader en oversigt over indbetalinger (CSV) og uploader den i Flango. Flango registrerer automatisk alle nye betalinger p\u00e5 de relevante b\u00f8rn.<br><br>Det anbefales at g\u00f8re dette i et fast interval, som meldes ud til for\u00e6ldrene, fx: <em>\u2018Indbetalinger opdateres hver dag inden kl. 13:00\u2019</em> eller <em>\u2018hver mandag inden kl. 13:00\u2019</em>.' },
-        { t: 'MobilePay QR', badges: [['Manuel','gray']], d: 'For\u00e6ldre scanner en QR-kode. Personalet registrerer indbetalingen manuelt i Flango.', on: false, detail: 'Denne metode foruds\u00e6tter, at institutionen har en MobilePay-aftale, og at klubben er logget ind p\u00e5 den mobil, som modtager indbetalinger. Institutionens QR-kode vises i for\u00e6ldreportalen og evt. i Aula. N\u00e5r for\u00e6ldre sender penge, skal personalet manuelt registrere indbetalingen p\u00e5 det enkelte barn i Flango (fx via \u2018Opdater saldo\u2019 i brugerpanelet).' },
-        { t: 'MobilePay QR + Screenshot', badges: [['N\u00f8dl\u00f8sning','red']], d: 'For\u00e6ldre sender et sk\u00e6rmbillede som betalingsbevis. Personalet registrerer manuelt i Flango.', on: false, detail: 'Denne metode er til institutioner, hvor MobilePay-aftalen administreres eksternt (fx hos skolens sekret\u00e6r). Personalet kan derfor ikke se, n\u00e5r en for\u00e6lder har indbetalt. For\u00e6ldre skal sende et sk\u00e6rmbillede af betalingen som dokumentation til klubbens mobil, hvorefter personalet registrerer indbetalingen manuelt.<br><br><strong style="color:var(--fsp-accent)">Anbefales kun, hvis ingen andre l\u00f8sninger er mulige.</strong>' },
-        { t: 'Kontant', badges: [['Offline','gray'],['N\u00f8dl\u00f8sning','red']], d: 'Personalet tager imod kontanter og registrerer indbetalingen manuelt i Flango.', on: false, detail: 'Kontant indbetaling kr\u00e6ver ingen teknisk ops\u00e6tning og medf\u00f8rer ingen transaktionsomkostninger. De fleste for\u00e6ldre foretr\u00e6kker digitale indbetalinger, men kontant kan bruges som en alternativ eller n\u00f8dl\u00f8sning for familier, der ikke \u00f8nsker digitale betalinger.' }
-      ];
+      const settings = _parsePaymentSettings(inst.parent_portal_payment);
+      const adminFeePayer = settings.admin_fee_payer === 'parent' ? 'parent' : 'institution';
+
+      // Stripe live state
+      const stripeEnabled = inst.stripe_enabled === true || settings.stripe_connect?.enabled === true;
+      const stripeStatus = inst.stripe_account_status || settings.stripe_connect?.status || 'not_configured';
+      const stripeMode = inst.stripe_mode || settings.stripe_connect?.mode || null;
+      const stripeError = inst.stripe_last_error || null;
+      const stripeUpdatedAt = inst.stripe_updated_at || null;
+
+      const S = window.__flangoStripe || {};
+      const statusText = S.statusText ? S.statusText(stripeStatus) : 'Ikke konfigureret';
+      const statusBadgeClass = _stripeStatusBadgeClass(stripeStatus);
+      const onboardingBtnText = S.onboardingButtonText ? S.onboardingButtonText(stripeStatus) : 'Start ops\u00e6tning';
+      const onboardingDone = stripeStatus === 'enabled';
+      const guideUrl = S.supabaseUrl ? `${S.supabaseUrl}/storage/v1/object/public/docs/stripe-onboarding-guide.pdf` : '';
+
       return `<div class="fsp-page" style="max-width:780px">
         <div class="fsp-page-title">Betalingsmetoder</div>
         <div class="fsp-page-desc">Kommuner og institutioner har forskellige aftaler med betalingsudbydere. Her kan I v\u00e6lge de metoder, der passer bedst til jeres institution. Kontakt skolens sekret\u00e6r eller kommunens \u00f8konomiafdeling, hvis I er i tvivl om, hvilke aftaler I har adgang til.</div>
+        <div data-pm-warnings style="display:none;margin-bottom:16px"></div>
         <div style="margin-bottom:24px">
           <div class="fsp-collapse-btn" data-action="toggle-admin-cost">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
@@ -1844,8 +1911,8 @@
           <div class="fsp-collapse-body" data-collapse="admin-cost">
             <div class="fsp-collapse-body-inner">
               <div style="font-size:12px;color:var(--fsp-txt3);margin-bottom:14px;line-height:1.5">I v\u00e6lger selv, hvem der betaler administrationsomkostningen.</div>
-              <div class="fsp-role" style="margin-bottom:6px"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83C\uDFEB</div><div><div class="fsp-role-name">Institutionen betaler administrationsomkostningen</div></div></div><div class="fsp-toggle on" data-cost="inst"></div></div>
-              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC6A</div><div><div class="fsp-role-name">For\u00e6ldre betaler administrationsomkostningen</div></div></div><div class="fsp-toggle" data-cost="parent"></div></div>
+              <div class="fsp-role" style="margin-bottom:6px"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83C\uDFEB</div><div><div class="fsp-role-name">Institutionen betaler administrationsomkostningen</div></div></div><div class="fsp-toggle${adminFeePayer === 'institution' ? ' on' : ''}" data-cost="inst"></div></div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC6A</div><div><div class="fsp-role-name">For\u00e6ldre betaler administrationsomkostningen</div></div></div><div class="fsp-toggle${adminFeePayer === 'parent' ? ' on' : ''}" data-cost="parent"></div></div>
             </div>
           </div>
         </div>
@@ -1855,7 +1922,7 @@
               <div class="fsp-pm-card-title-row"><span class="fsp-pm-card-title">Stripe Connect</span><span class="fsp-pm-badge fsp-pm-badge-green">Anbefalet</span><span class="fsp-pm-badge fsp-pm-badge-green">Automatisk saldo-opdatering</span><span class="fsp-pm-badge fsp-pm-badge-blue">Hurtig ops\u00e6tning</span></div>
               <div class="fsp-pm-card-desc">Med Stripe Connect kan I hurtigt komme i gang med automatisk indbetaling. Betalingen sendes direkte til institutionens bankkonto, og barnets Flango-saldo opdateres automatisk.</div>
             </div>
-            <div class="fsp-toggle on" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <div class="fsp-toggle${stripeEnabled ? ' on' : ''}" data-pm-toggle="stripe_connect"></div>
           </div>
           <div class="fsp-pm-card-expand"><div class="fsp-pm-card-body"><div class="fsp-pm-card-body-inner">
             <div class="fsp-pm-detail">For\u00e6ldre indbetaler via Flango for\u00e6ldreportalen eller via personlig QR-kode. Barnets saldo opdateres automatisk. Mindre administration \u2013 mere tid til n\u00e6rv\u00e6r.</div>
@@ -1871,26 +1938,33 @@
                 <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin:16px 0 8px">Oprettelse</div>
                 <div class="fsp-pm-detail">Oprettelse af jeres Stripe Connect-konto sker via en enkel, selvbetjent onboarding. I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetalingskonto.</div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-                  <button class="fsp-btn fsp-btn-ghost" style="padding:10px 20px;font-size:13px">\uD83D\uDCE5 Download onboarding-guide</button>
-                  <button class="fsp-btn fsp-btn-primary" style="padding:10px 20px;font-size:13px">Opret Stripe Connect-konto</button>
+                  <button class="fsp-btn fsp-btn-ghost" data-action="stripe-download-guide" data-href="${guideUrl}" style="padding:10px 20px;font-size:13px">\uD83D\uDCE5 Download onboarding-guide</button>
                 </div>
                 <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin:16px 0 8px">Stripe onboarding-link</div>
                 <div style="font-size:12px;color:var(--fsp-txt3);margin-bottom:10px">Linket kan udl\u00f8be \u2013 gener\u00e9r et nyt hvis n\u00f8dvendigt.</div>
-                <button class="fsp-btn fsp-btn-ghost" style="padding:10px 20px;font-size:13px">\uD83D\uDD17 Gener\u00e9r onboarding-link</button>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+                  <button class="fsp-btn fsp-btn-ghost" id="generate-onboarding-link-btn" data-action="stripe-generate-link" style="padding:10px 20px;font-size:13px">\uD83D\uDD17 Gener\u00e9r onboarding-link</button>
+                  <button class="fsp-btn fsp-btn-ghost" id="copy-onboarding-link-btn" data-action="stripe-copy-link" style="padding:10px 20px;font-size:13px;display:none">\uD83D\uDCCB Kopi\u00e9r link</button>
+                </div>
+                <input type="text" id="onboarding-link-input" readonly placeholder="Klik 'Gener\u00e9r onboarding-link' for at oprette et link" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:12px;background:rgba(255,255,255,0.02);color:var(--fsp-txt);display:none">
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;margin-top:14px;font-size:12px;color:var(--fsp-txt3)">
-              <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#5dca7a"></span><strong style="color:var(--fsp-txt)">Stripe status:</strong></span>
-              <span class="fsp-pm-badge fsp-pm-badge-green">Klar</span>
-              <span>Mode: <strong style="color:var(--fsp-txt)">Aktiv</strong></span>
+              <span style="display:flex;align-items:center;gap:6px"><strong style="color:var(--fsp-txt)">Stripe status:</strong></span>
+              <span class="fsp-pm-badge ${statusBadgeClass}">${statusText}</span>
+              ${stripeMode ? `<span>Mode: <strong style="color:var(--fsp-txt)">${stripeMode === 'live' ? 'Live' : 'Test'}</strong></span>` : ''}
+              ${stripeUpdatedAt ? `<span style="font-size:11px;opacity:0.7">Opdateret ${new Date(stripeUpdatedAt).toLocaleString('da-DK')}</span>` : ''}
             </div>
-            <div style="display:flex;gap:8px;margin-top:12px">
-              <button class="fsp-btn fsp-btn-primary" style="opacity:0.6;cursor:default;padding:10px 20px;font-size:13px">\u2713 Ops\u00e6tning fuldf\u00f8rt</button>
-              <button class="fsp-btn fsp-btn-ghost" style="padding:10px 20px;font-size:13px">\uD83D\uDD04 Opdater status</button>
+            ${stripeError ? `<div style="margin-top:8px;padding:10px 14px;background:rgba(232,90,111,0.08);border:1px solid rgba(232,90,111,0.2);border-radius:10px;font-size:12px;color:#e85a6f"><strong>Fejl:</strong> ${stripeError}</div>` : ''}
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+              <button class="fsp-btn ${onboardingDone ? 'fsp-btn-ghost' : 'fsp-btn-primary'}" id="stripe-onboarding-btn" data-action="stripe-onboard" ${onboardingDone ? 'disabled style="opacity:0.6;cursor:default;padding:10px 20px;font-size:13px"' : 'style="padding:10px 20px;font-size:13px"'}>${onboardingDone ? '\u2713 Ops\u00e6tning fuldf\u00f8rt' : onboardingBtnText}</button>
+              <button class="fsp-btn fsp-btn-ghost" id="stripe-status-sync-btn" data-action="stripe-sync" style="padding:10px 20px;font-size:13px">\uD83D\uDD04 Opdater status</button>
             </div>
           </div></div></div>
         </div>
-        ${methods.map(m => `<div class="fsp-pm-card">
+        ${_pmMethods.map(m => {
+          const on = settings[m.id]?.enabled === true;
+          return `<div class="fsp-pm-card">
           <div class="fsp-pm-card-hdr" data-action="toggle-pm-expand">
             <div class="fsp-pm-card-left">
               <div class="fsp-pm-card-title-row">
@@ -1899,39 +1973,145 @@
               </div>
               <div class="fsp-pm-card-desc">${m.d}</div>
             </div>
-            <div class="fsp-toggle${m.on ? ' on' : ''}" onclick="event.stopPropagation();this.classList.toggle('on')"></div>
+            <div class="fsp-toggle${on ? ' on' : ''}" data-pm-toggle="${m.id}"></div>
           </div>
           <div class="fsp-pm-card-expand"><div class="fsp-pm-card-body"><div class="fsp-pm-card-body-inner">
             <div class="fsp-pm-detail">${m.detail}</div>
+            ${m.configLabel ? `<button class="fsp-btn fsp-btn-ghost" data-pm-config="${m.id}" style="margin-top:12px;padding:10px 20px;font-size:13px;${on ? '' : 'display:none'}">${m.configLabel}</button>` : ''}
           </div></div></div>
-        </div>`).join('')}
+        </div>`;
+        }).join('')}
       </div>`;
     },
     wire(container, ctx) {
       pageAlign(container);
+
+      // Register reloader so shell.js Stripe helpers re-render this section
+      window.__flangoReloadPaymentMethodsView = () => window.FlangoSettings?.reloadCurrent?.();
+
+      // Initial warnings pass
+      _updatePaymentWarnings(container);
+
       // Toggle admin cost collapse
       const costBtn = container.querySelector('[data-action="toggle-admin-cost"]');
       const costBody = container.querySelector('[data-collapse="admin-cost"]');
       costBtn?.addEventListener('click', () => { costBtn.classList.toggle('open'); costBody?.classList.toggle('open'); });
-      // Cost toggles (mutually exclusive)
+
+      // Admin-fee-payer toggles (mutually exclusive) → persist to JSONB
       container.querySelectorAll('[data-cost]').forEach(t => {
-        t.addEventListener('click', () => {
-          t.classList.toggle('on');
-          const other = t.dataset.cost === 'inst' ? 'parent' : 'inst';
-          container.querySelector(`[data-cost="${other}"]`)?.classList.toggle('on');
+        t.addEventListener('click', async () => {
+          const val = t.dataset.cost === 'parent' ? 'parent' : 'institution';
+          const instT = container.querySelector('[data-cost="inst"]');
+          const parT = container.querySelector('[data-cost="parent"]');
+          if (val === 'institution') { instT?.classList.add('on'); parT?.classList.remove('on'); }
+          else { parT?.classList.add('on'); instT?.classList.remove('on'); }
+          await _savePaymentSettings(ctx, s => { s.admin_fee_payer = val; return s; });
         });
       });
-      // Expand/collapse cards on header click
+
+      // Expand/collapse cards on header click (ignore clicks on toggles)
       container.querySelectorAll('[data-action="toggle-pm-expand"]').forEach(hdr => {
-        hdr.addEventListener('click', () => {
+        hdr.addEventListener('click', (e) => {
+          if (e.target.closest('[data-pm-toggle], [data-cost]')) return;
           const expand = hdr.parentElement.querySelector('.fsp-pm-card-expand');
           expand?.classList.toggle('open');
         });
       });
+
+      // Payment method enable-toggles → persist to JSONB (+ stripe_enabled column for Stripe)
+      container.querySelectorAll('[data-pm-toggle]').forEach(t => {
+        t.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          t.classList.toggle('on');
+          const enabled = t.classList.contains('on');
+          const id = t.dataset.pmToggle;
+
+          // Show/hide per-method config button
+          const card = t.closest('.fsp-pm-card');
+          const cfg = card?.querySelector(`[data-pm-config="${id}"]`);
+          if (cfg) cfg.style.display = enabled ? '' : 'none';
+
+          // Sidebar visibility sync for MobilePay CSV
+          if (id === 'mobilepay_csv') ctx.setMpCsvOn?.(enabled);
+
+          _updatePaymentWarnings(container);
+
+          // Persist JSONB
+          await _savePaymentSettings(ctx, s => {
+            s[id] = { ...(s[id] || {}), enabled };
+            return s;
+          });
+
+          // Mirror to top-level stripe_enabled column
+          if (id === 'stripe_connect') {
+            await ctx.saveField('stripe_enabled', enabled);
+          }
+        });
+      });
+
       // Stripe details sub-collapse
       const stripeBtn = container.querySelector('[data-action="toggle-stripe-details"]');
       const stripeBody = container.querySelector('[data-collapse="stripe-details"]');
       stripeBtn?.addEventListener('click', () => { stripeBtn.classList.toggle('open'); stripeBody?.classList.toggle('open'); });
+
+      const S = window.__flangoStripe || {};
+      const instId = window.getInstitutionId?.();
+
+      // Download onboarding guide
+      container.querySelector('[data-action="stripe-download-guide"]')?.addEventListener('click', (e) => {
+        const url = e.currentTarget.dataset.href;
+        if (url) window.open(url, '_blank');
+      });
+
+      // Opret / Fortsæt onboarding
+      container.querySelector('[data-action="stripe-onboard"]')?.addEventListener('click', async () => {
+        if (!S.startOnboarding || !instId) return;
+        const status = ctx.institutionData?.stripe_account_status || 'not_configured';
+        const hasMode = !!ctx.institutionData?.stripe_mode;
+        if ((status === 'not_configured' || !hasMode) && S.openModeModal) {
+          await S.openModeModal({ mode: ctx.institutionData?.stripe_mode }, instId, async () => {
+            await S.startOnboarding(instId);
+          });
+        } else {
+          await S.startOnboarding(instId);
+        }
+      });
+
+      // Opdater status
+      container.querySelector('[data-action="stripe-sync"]')?.addEventListener('click', async () => {
+        if (S.syncStatus && instId) await S.syncStatus(instId);
+      });
+
+      // Generér onboarding-link (helper looks up IDs: generate-onboarding-link-btn, copy-onboarding-link-btn, onboarding-link-input)
+      container.querySelector('[data-action="stripe-generate-link"]')?.addEventListener('click', async () => {
+        if (S.generateLink && instId) await S.generateLink(instId);
+      });
+
+      // Kopiér link
+      container.querySelector('[data-action="stripe-copy-link"]')?.addEventListener('click', async () => {
+        const input = container.querySelector('#onboarding-link-input');
+        if (input?.value && S.copyToClipboard) {
+          await S.copyToClipboard(input.value);
+          S.showToast?.('Link kopieret', 'success');
+        }
+      });
+
+      // Per-method config buttons (CSV import, MobilePay API placeholder)
+      container.querySelectorAll('[data-pm-config]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.pmConfig;
+          if (id === 'mobilepay_csv') {
+            window.FlangoSettings?.close?.();
+            window.openMobilePayImportModal?.();
+          } else if (id === 'mobilepay_api') {
+            if (typeof window.showCustomAlert === 'function') {
+              window.showCustomAlert('Info', 'MobilePay API konfiguration kommer snart.');
+            } else {
+              alert('MobilePay API konfiguration kommer snart.');
+            }
+          }
+        });
+      });
     }
   };
 

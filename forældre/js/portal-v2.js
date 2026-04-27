@@ -63,7 +63,7 @@
     'section-privacy-policy': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', label: 'Privatlivspolitik' },
     'section-child-name':     { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', label: 'Barnets navn' },
     'section-profile-picture':{ icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>', label: 'Profilbilleder' },
-    'section-consents':       { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>', label: 'Samtykker' },
+    'section-consents':       { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>', label: 'Samtykke-historik' },
     'section-data-insight':   { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', label: 'Dataindsigt' },
     'section-linked-parents': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label: 'Forældrekonti' },
     'section-delete-child':   { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>', label: 'Slet data' },
@@ -1908,7 +1908,13 @@
     const optOutAula = childData?.profile_picture_opt_out_aula || false;
     const optOutCamera = childData?.profile_picture_opt_out_camera || false;
     const optOutAi = childData?.profile_picture_opt_out_ai || false;
-    const allOptedOut = optOutAula && optOutCamera && optOutAi;
+    // Filter toggles efter hvad institutionen har slået til (jf. café settings / super-admin)
+    const ppInstTypes = Array.isArray(featureFlags?.profile_picture_types) ? featureFlags.profile_picture_types : ['upload', 'camera', 'library'];
+    const showAula = ppInstTypes.indexOf('upload') !== -1;
+    const showCamera = ppInstTypes.indexOf('camera') !== -1;
+    const showAi = featureFlags?.profile_pictures_ai_enabled !== false
+      && (featureFlags?.ai_provider_openai !== false || featureFlags?.ai_provider_flux === true);
+    const allOptedOut = (showAula ? optOutAula : true) && (showCamera ? optOutCamera : true) && (showAi ? optOutAi : true);
     const library = childData?.profile_picture_library || [];
     const childName = getChildName();
     const initials = childName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -1964,18 +1970,21 @@
           </div>
 
           <div id="pp-type-toggles" style="${allOptedOut ? 'opacity:0.4;pointer-events:none' : ''}">
-            <div class="setting-row">
+            ${showAula ? `<div class="setting-row">
               <div class="setting-info"><div class="setting-label">Aula-profilbillede</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div></div>
               <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''}><span class="toggle-track"></span></label>
-            </div>
-            <div class="setting-row">
+            </div>` : ''}
+            ${showCamera ? `<div class="setting-row">
               <div class="setting-info"><div class="setting-label">Kamera-foto</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
               <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''}><span class="toggle-track"></span></label>
-            </div>
-            <div class="setting-row">
-              <div class="setting-info"><div class="setting-label">AI-genereret avatar</div><div class="setting-desc">Et foto bruges til at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.</div></div>
-              <label class="toggle"><input type="checkbox" id="pp-consent-ai" ${!optOutAi ? 'checked' : ''}><span class="toggle-track"></span></label>
-            </div>
+            </div>` : ''}
+            ${showAi ? `<div class="setting-row" style="flex-direction:column;align-items:stretch;gap:4px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);">
+                <div class="setting-info"><div class="setting-label">AI-genereret avatar</div><div class="setting-desc">Et foto bruges til at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.</div></div>
+                <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai" ${!optOutAi ? 'checked' : ''}><span class="toggle-track"></span></label>
+              </div>
+              <button type="button" id="pp-ai-readmore-btn" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600;text-align:left;align-self:flex-start;">📖 Læs mere om databehandlingen</button>
+            </div>` : ''}
           </div>
 
         </div></div></div>
@@ -1983,39 +1992,46 @@
   }
 
   // ============================================================
-  // Samtykker (GDPR art. 7 — parent_consents source of truth)
+  // Samtykke-historik (read-only)
   // ============================================================
-  // Denne sektion kalder give_consent / withdraw_consent RPC'er og
-  // viser historik fra get_consent_history. users.profile_picture_opt_out_*
-  // opdateres automatisk af _sync_consent_cache_for_child, saa eksisterende
-  // guards fortsat virker.
+  // Sektion 5.1 (runde 2, 2026-04-27): Denne sektion er IKKE længere
+  // styringsstedet for samtykker. Den viser kun historik (GDPR art. 15
+  // ret til indsigt). Styring sker udelukkende på "Profilbilleder"-siden.
+  //
+  // Vi viser samme tabel-data som get_consent_history returnerer, men:
+  //   - Ingen toggles, kun read-only visning
+  //   - FLUX-row vises kun hvis institutions-flag er aktivt (5.5)
+  //   - Hver consent-type har en lille expander der viser fuld historik
+  //   - Link nederst til "Profilbilleder" for styring
 
-  const CONSENT_TYPES = [
-    {
-      key: 'profile_picture_aula',
-      label: 'Aula-profilbillede',
-      desc: 'Institutionen ma bruge dit barns eksisterende Aula-foto som profilbillede i caféen.',
-      withdrawConsequence: 'Profilbilledet fjernes fra caféens skærme, og Aula-billedet slettes fra biblioteket.',
-    },
-    {
-      key: 'profile_picture_camera',
-      label: 'Kamera-foto',
-      desc: 'Personalet ma tage et foto af dit barn med caféens enhed og bruge det som profilbillede.',
-      withdrawConsequence: 'Alle kamera-fotos og uploads af dit barn slettes permanent fra biblioteket.',
-    },
-    {
-      key: 'profile_picture_ai_openai',
-      label: 'AI-avatar (OpenAI)',
-      desc: 'Et foto af dit barn sendes til OpenAI for at generere en tegnet avatar. Fotoet opbevares ikke hos OpenAI — kun avataren gemmes.',
-      withdrawConsequence: 'Hvis begge AI-providers er trukket tilbage, slettes AI-avataren.',
-    },
-    {
-      key: 'profile_picture_ai_flux',
-      label: 'AI-avatar (FLUX / Black Forest Labs)',
-      desc: 'Et foto af dit barn sendes til Black Forest Labs (EU) for at generere en tegnet avatar. Fotoet opbevares ikke — kun avataren gemmes.',
-      withdrawConsequence: 'Hvis begge AI-providers er trukket tilbage, slettes AI-avataren.',
-    },
-  ];
+  function getConsentTypesForChild() {
+    const showFlux = !!featureFlags?.ai_provider_flux;
+    const types = [
+      {
+        key: 'profile_picture_aula',
+        label: 'Aula-profilbillede',
+        desc: 'Institutionen må bruge dit barns eksisterende Aula-foto som profilbillede i caféen.',
+      },
+      {
+        key: 'profile_picture_camera',
+        label: 'Kamera-foto',
+        desc: 'Personalet må tage et foto af dit barn med caféens enhed og bruge det som profilbillede.',
+      },
+      {
+        key: 'profile_picture_ai_openai',
+        label: 'AI-genereret avatar (OpenAI)',
+        desc: 'Et foto af dit barn sendes til OpenAI for at generere en tegnet avatar. Fotoet opbevares ikke hos OpenAI — kun avataren gemmes.',
+      },
+    ];
+    if (showFlux) {
+      types.push({
+        key: 'profile_picture_ai_flux',
+        label: 'AI-genereret avatar (FLUX / Black Forest Labs)',
+        desc: 'Et foto af dit barn sendes til Black Forest Labs (EU) for at generere en tegnet avatar. Fotoet opbevares ikke — kun avataren gemmes.',
+      });
+    }
+    return types;
+  }
 
   function activeConsentFor(typeKey) {
     if (!Array.isArray(consentHistory)) return null;
@@ -2048,17 +2064,16 @@
   }
 
   function renderConsentsSection() {
-    const rows = CONSENT_TYPES.map(t => {
-      const active = activeConsentFor(t.key);
-      const isOn = !!active;
+    // Sektion 5.1 (runde 2): read-only indsigt-side. Ingen toggles.
+    const types = getConsentTypesForChild();
+    const activeTypes = types.filter(t => activeConsentFor(t.key));
+    const withdrawnTypes = types.filter(t => !activeConsentFor(t.key) && historyForType(t.key).length > 0);
+
+    function renderHistoryExpander(t) {
       const history = historyForType(t.key);
-      const lastEvent = active
-        ? `Givet ${formatConsentDate(active.given_at)} (version ${esc(active.consent_version)}, ${esc(methodLabel(active.given_method))}).`
-        : (history.length > 0
-            ? `Trukket tilbage ${formatConsentDate(history[0].withdrawn_at)}.`
-            : 'Aldrig givet.');
+      if (history.length === 0) return '';
       const historyId = `consent-history-${t.key}`;
-      const historyItems = history.map(h => {
+      const items = history.map(h => {
         const givenTxt = `Givet ${formatConsentDate(h.given_at)} — version ${esc(h.consent_version)} (${esc(methodLabel(h.given_method))})`;
         const withdrawnTxt = h.withdrawn_at
           ? ` — trukket tilbage ${formatConsentDate(h.withdrawn_at)}`
@@ -2067,35 +2082,64 @@
           ? '<span style="color:#16a34a;font-weight:700">● aktiv</span>'
           : '<span style="color:var(--ink-muted)">○ ikke aktiv</span>';
         return `<li style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-soft);line-height:1.5;list-style:none">${givenTxt}${withdrawnTxt} ${statusDot}</li>`;
-      }).join('') || '<li style="padding:4px 0;font-size:12px;color:var(--ink-muted);list-style:none">Ingen historik endnu.</li>';
-
+      }).join('');
       return `
-        <div class="setting-row consent-row" data-consent-type="${esc(t.key)}" style="flex-direction:column;align-items:stretch;gap:var(--s2);padding-bottom:var(--s3);border-bottom:1px solid var(--border);margin-bottom:var(--s2)">
-          <div style="display:flex;align-items:flex-start;gap:var(--s3);justify-content:space-between">
-            <div class="setting-info" style="flex:1;min-width:0">
-              <div class="setting-label" style="font-weight:700">${esc(t.label)}</div>
-              <div class="setting-desc">${esc(t.desc)}</div>
-            </div>
-            <label class="toggle" style="flex-shrink:0"><input type="checkbox" class="consent-toggle" data-consent-type="${esc(t.key)}" ${isOn ? 'checked' : ''}><span class="toggle-track"></span></label>
+        <button class="consent-history-btn" data-target="${historyId}" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600;margin-top:var(--s1)">Vis fuld historik (${history.length}) ▾</button>
+        <ul id="${historyId}" style="display:none;margin:var(--s2) 0 0;padding:0">${items}</ul>
+      `;
+    }
+
+    function renderRow(t, statusLine, statusColor) {
+      return `
+        <div class="setting-row consent-row" data-consent-type="${esc(t.key)}" style="flex-direction:column;align-items:stretch;gap:var(--s1);padding-bottom:var(--s3);border-bottom:1px solid var(--border);margin-bottom:var(--s2)">
+          <div class="setting-info">
+            <div class="setting-label" style="font-weight:700">${esc(t.label)}</div>
+            <div class="setting-desc">${esc(t.desc)}</div>
           </div>
-          <div style="font-size:12px;color:var(--ink-muted);padding-left:2px">${esc(lastEvent)}</div>
-          <div>
-            <button class="consent-history-btn" data-target="${historyId}" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600">Vis fuld historik (${history.length})</button>
-            <ul id="${historyId}" style="display:none;margin:var(--s2) 0 0;padding:0">${historyItems}</ul>
-          </div>
+          <div style="font-size:12px;color:${statusColor};padding-left:2px">${statusLine}</div>
+          ${renderHistoryExpander(t)}
         </div>`;
-    }).join('');
+    }
+
+    const activeRowsHtml = activeTypes.length === 0
+      ? '<div style="font-size:13px;color:var(--ink-muted);padding:var(--s2) 0">Ingen aktive samtykker.</div>'
+      : activeTypes.map(t => {
+          const a = activeConsentFor(t.key);
+          const status = a
+            ? `✓ Givet ${formatConsentDate(a.given_at)} — version <strong>${esc(a.consent_version)}</strong>`
+            : '';
+          return renderRow(t, status, '#16a34a');
+        }).join('');
+
+    const withdrawnRowsHtml = withdrawnTypes.length === 0
+      ? ''
+      : `
+        <h4 style="margin:var(--s4) 0 var(--s2);font-size:13px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em">Tilbagekaldte samtykker (${withdrawnTypes.length})</h4>
+        ${withdrawnTypes.map(t => {
+          const history = historyForType(t.key);
+          const last = history[0]; // sorteret DESC af given_at
+          const status = last && last.withdrawn_at
+            ? `✗ Givet ${formatConsentDate(last.given_at)}, trukket tilbage ${formatConsentDate(last.withdrawn_at)}`
+            : '✗ Ingen aktiv';
+          return renderRow(t, status, 'var(--ink-muted)');
+        }).join('')}
+      `;
 
     return `
       <div class="section" id="section-consents">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:#fef3c7">✅</div><div><div class="section-title">Samtykker</div><div class="section-subtitle">Forældresamtykke efter GDPR art. 7</div></div></div>
+          <div class="section-title-row"><div class="section-icon" style="background:#fef3c7">📜</div><div><div class="section-title">Samtykke-historik</div><div class="section-subtitle">Read-only oversigt (GDPR art. 15 ret til indsigt)</div></div></div>
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Her administrerer du de samtykker der kræves for at vi ma behandle persondata om dit barn. Hvert samtykke gemmes med tidspunkt og version — og kan trækkes tilbage nar som helst.</span></div>
-          ${rows}
-          <div style="font-size:11px;color:var(--ink-muted);margin-top:var(--s3);line-height:1.5">Version af privatlivspolitik der pt. er gældende: <strong>${esc(CURRENT_CONSENT_VERSION)}</strong>. Nye samtykker registreres mod denne version.</div>
+          <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Her ser du historikken over de samtykker du har afgivet (GDPR art. 7). <strong>Du administrerer dine samtykker på siden "Profilbilleder"</strong> — denne side er kun til indsigt.</span></div>
+
+          <h4 style="margin:0 0 var(--s2);font-size:13px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em">Aktive samtykker (${activeTypes.length})</h4>
+          ${activeRowsHtml}
+
+          ${withdrawnRowsHtml}
+
+          <div style="font-size:11px;color:var(--ink-muted);margin-top:var(--s4);line-height:1.5;padding-top:var(--s2);border-top:1px solid var(--border)">Aktuel version af privatlivspolitik: <strong>${esc(CURRENT_CONSENT_VERSION)}</strong>. Nye samtykker registreres mod denne version.</div>
         </div></div></div>
       </div>`;
   }
@@ -2750,30 +2794,21 @@
     if (dietVeg) dietVeg.addEventListener('change', () => saveSugarPolicy());
     if (dietPork) dietPork.addEventListener('change', () => saveSugarPolicy());
 
-    // Profile picture consent toggles
+    // Profile picture consent toggles — Sektion 5b/c (runde 2):
+    // Disse toggles er nu det ENESTE styrings-sted. De skriver via
+    // give_consent / withdraw_consent (parent_consents source of truth)
+    // i stedet for legacy save_profile_picture_consent.
     const ppMaster = document.getElementById('pp-consent-master');
     const ppAula = document.getElementById('pp-consent-aula');
     const ppCamera = document.getElementById('pp-consent-camera');
-    if (ppMaster) ppMaster.addEventListener('change', () => {
-      const on = ppMaster.checked;
-      const typeToggles = document.getElementById('pp-type-toggles');
-      if (typeToggles) {
-        typeToggles.style.opacity = on ? '' : '0.4';
-        typeToggles.style.pointerEvents = on ? '' : 'none';
-      }
-      if (!on) {
-        // Slå alle fra
-        if (ppAula) ppAula.checked = false;
-        if (ppCamera) ppCamera.checked = false;
-      } else {
-        // Slå alle til igen
-        if (ppAula) ppAula.checked = true;
-        if (ppCamera) ppCamera.checked = true;
-      }
-      saveProfilePictureConsent();
-    });
-    if (ppAula) ppAula.addEventListener('change', () => saveProfilePictureConsent());
-    if (ppCamera) ppCamera.addEventListener('change', () => saveProfilePictureConsent());
+    const ppAi = document.getElementById('pp-consent-ai');
+    const ppAiReadmore = document.getElementById('pp-ai-readmore-btn');
+
+    if (ppMaster) ppMaster.addEventListener('change', (e) => handleMasterToggle(e));
+    if (ppAula) ppAula.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_aula', 'aula'));
+    if (ppCamera) ppCamera.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_camera', 'camera'));
+    if (ppAi) ppAi.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_ai_openai', 'ai'));
+    if (ppAiReadmore) ppAiReadmore.addEventListener('click', () => openAiLayer2Modal());
 
     // Profile picture gallery: "Brug" button to set active
     document.querySelectorAll('.pp-activate-btn').forEach(btn => {
@@ -3418,34 +3453,9 @@
     }
   }
 
-  async function saveProfilePictureConsent() {
-    if (!selectedChild) return;
-    const aulaToggle = document.getElementById('pp-consent-aula');
-    const cameraToggle = document.getElementById('pp-consent-camera');
-    const aiToggle = document.getElementById('pp-consent-ai');
-    // Toggles are "allow" (checked = allowed), opt-out is the inverse
-    const optOutAula = aulaToggle ? !aulaToggle.checked : false;
-    const optOutCamera = cameraToggle ? !cameraToggle.checked : false;
-    const optOutAi = aiToggle ? !aiToggle.checked : false;
-    try {
-      const result = await API.saveProfilePictureConsent(selectedChild.child_id, optOutAula, optOutCamera, optOutAi);
-      if (result && result.success === false) {
-        showToast(result.error || 'Kunne ikke gemme', 'error');
-        return;
-      }
-      // Update local data
-      if (childData) {
-        childData.profile_picture_opt_out_aula = optOutAula;
-        childData.profile_picture_opt_out_camera = optOutCamera;
-        childData.profile_picture_opt_out_ai = optOutAi;
-        childData.profile_picture_opt_out = optOutAula && optOutCamera && optOutAi;
-      }
-      showToast('Profilbillede-indstillinger gemt', 'success');
-    } catch (err) {
-      console.error('[Portal] Save profile picture consent error:', err);
-      showToast('Kunne ikke gemme', 'error');
-    }
-  }
+  // saveProfilePictureConsent (legacy save_profile_picture_consent RPC) er
+  // fjernet i runde 2 — Profilbilleder-toggles skriver nu via give_consent /
+  // withdraw_consent (parent_consents source of truth) i stedet.
 
   // ═══════════════════════════════════════
   //  PRIVACY & RIGHTS — HANDLERS
@@ -3520,102 +3530,227 @@
       obs.observe(deleteSection, { attributes: true, attributeFilter: ['class'] });
     }
 
-    // Consent toggles (GDPR art. 7)
-    document.querySelectorAll('.consent-toggle').forEach(toggle => {
-      toggle.addEventListener('change', (e) => handleConsentToggle(e));
-    });
-
-    // History reveal buttons
+    // Samtykke-historik er read-only — kun expand/collapse-knapper
     document.querySelectorAll('.consent-history-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const target = document.getElementById(btn.dataset.target);
         if (!target) return;
         const open = target.style.display !== 'none';
         target.style.display = open ? 'none' : '';
-        btn.textContent = btn.textContent.replace(open ? 'Skjul' : 'Vis', open ? 'Vis' : 'Skjul');
+        btn.textContent = btn.textContent.replace(open ? 'Skjul fuld historik' : 'Vis fuld historik', open ? 'Vis fuld historik' : 'Skjul fuld historik');
       });
     });
   }
 
-  async function handleConsentToggle(e) {
+  // ════════════════════════════════════════════════════════════════════
+  // Profilbillede-samtykke-toggles — Sektion 5b/c (runde 2, 2026-04-27)
+  // ════════════════════════════════════════════════════════════════════
+  // Toggles på Profilbilleder-siden er nu source of truth for samtykker
+  // (parent_consents). Asymmetri: aktivering viser informeret samtykke-
+  // modal (Lag 2 for AI), deaktivering viser advarsels-popup. Bevidst —
+  // aktivering er konstruktiv, deaktivering er destruktiv.
+
+  function showConfirmModal(opts) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+      const bodyHtml = (opts.body || '').split('\n').map(line => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('- ')) {
+          return `<li style="margin:2px 0">${esc(trimmed.substring(2))}</li>`;
+        }
+        if (trimmed === '') return '<br>';
+        return `<p style="margin:0 0 8px;line-height:1.5">${esc(line)}</p>`;
+      }).join('');
+      const wrapped = bodyHtml.includes('<li')
+        ? bodyHtml.replace(/(<li[^>]*>.*?<\/li>)+/gs, m => `<ul style="margin:0 0 8px;padding-left:20px">${m}</ul>`)
+        : bodyHtml;
+      const danger = opts.danger !== false;
+      const confirmBg = danger
+        ? 'background:#dc2626;color:#fff;border:none;'
+        : 'background:#16a34a;color:#fff;border:none;';
+      overlay.innerHTML = `
+        <div style="background:#fff;color:#111;border-radius:14px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+          <div style="padding:18px 22px;border-bottom:1px solid #e5e7eb;">
+            <strong style="font-size:15px;">${esc(opts.title || 'Bekræft')}</strong>
+          </div>
+          <div style="padding:18px 22px;font-size:14px;line-height:1.5;color:#374151;">${wrapped}</div>
+          <div style="padding:14px 22px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px;">
+            <button type="button" id="confirm-modal-cancel" style="padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;background:#fff;cursor:pointer;font-weight:600;">${esc(opts.cancel || 'Annullér')}</button>
+            <button type="button" id="confirm-modal-confirm" style="padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;${confirmBg}">${esc(opts.confirm || 'OK')}</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const close = (result) => { overlay.remove(); resolve(result); };
+      overlay.querySelector('#confirm-modal-cancel').onclick = () => close(false);
+      overlay.querySelector('#confirm-modal-confirm').onclick = () => close(true);
+    });
+  }
+
+  function openAiLayer2Modal(showActivateButton = false) {
+    return new Promise((resolve) => {
+      const ct = window.PortalConsentTexts || {};
+      const layer2 = ct.parentAiAvatarLayer2Html || '<p>Privatlivspolitik ikke tilgængelig.</p>';
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+      overlay.innerHTML = `
+        <div style="background:#fff;color:#111;border-radius:14px;max-width:680px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+          <div style="padding:18px 22px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-size:15px;">Databehandling — AI-avatar</strong>
+            <button type="button" id="ai-layer2-close" style="background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;line-height:1;">×</button>
+          </div>
+          <div style="padding:18px 22px;overflow-y:auto;font-size:13px;line-height:1.6;color:#374151;">${layer2}</div>
+          <div style="padding:14px 22px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px;">
+            ${showActivateButton ? `<button type="button" id="ai-layer2-activate" style="padding:8px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Bekræft og aktivér</button>` : ''}
+            <button type="button" id="ai-layer2-cancel" style="padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;background:#fff;cursor:pointer;font-weight:600;">${showActivateButton ? 'Annullér' : 'Luk'}</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const close = (result) => { overlay.remove(); resolve(result); };
+      overlay.querySelector('#ai-layer2-close').onclick = () => close(false);
+      overlay.querySelector('#ai-layer2-cancel').onclick = () => close(false);
+      if (showActivateButton) {
+        overlay.querySelector('#ai-layer2-activate').onclick = () => close(true);
+      }
+    });
+  }
+
+  async function handleProfilePictureConsentToggle(e, consentType, kind) {
     if (!selectedChild) return;
     const toggle = e.target;
-    const typeKey = toggle.dataset.consentType;
-    const typeMeta = CONSENT_TYPES.find(t => t.key === typeKey);
-    if (!typeMeta) return;
-
     const nowChecked = toggle.checked;
-    const actionLabel = nowChecked ? 'aktivere' : 'trække tilbage';
+    const ct = window.PortalConsentTexts || {};
 
-    const confirmMsg = nowChecked
-      ? `Vil du aktivere samtykke for: "${typeMeta.label}"?\n\n${typeMeta.desc}\n\nSamtykket registreres nu med tidspunkt og version ${CURRENT_CONSENT_VERSION}.`
-      : `Vil du trække samtykke for "${typeMeta.label}" tilbage?\n\n${typeMeta.withdrawConsequence}\n\nDu kan altid give samtykke igen senere.`;
+    let proceed = false;
+    if (nowChecked) {
+      // Aktivering: konstruktiv, vis informeret samtykke (Lag 2 for AI)
+      if (kind === 'ai') {
+        proceed = await openAiLayer2Modal(true);
+      } else {
+        const label = kind === 'aula' ? 'Aula-profilbillede' : 'Kamera-foto';
+        proceed = await showConfirmModal({
+          title: `Aktivér samtykke: ${label}?`,
+          body: kind === 'aula'
+            ? 'Institutionen må bruge dit barns eksisterende Aula-foto som profilbillede i caféen.\n\nSamtykket registreres nu med tidspunkt og version.'
+            : 'Personalet må tage et foto af dit barn med caféens enhed og bruge det som profilbillede.\n\nSamtykket registreres nu med tidspunkt og version.',
+          confirm: 'Aktivér samtykke',
+          cancel: 'Annullér',
+          danger: false,
+        });
+      }
+    } else {
+      // Deaktivering: destruktiv, vis advarsels-popup
+      const popupKey = kind === 'ai' ? 'ai_off' : kind === 'aula' ? 'aula_off' : 'camera_off';
+      const cfg = ct.confirmTexts?.[popupKey];
+      if (cfg) {
+        proceed = await showConfirmModal(cfg);
+      } else {
+        proceed = confirm('Trække samtykke tilbage?');
+      }
+    }
 
-    if (!confirm(confirmMsg)) {
-      // Brugeren fortrød — rul toggle tilbage
+    if (!proceed) {
       toggle.checked = !nowChecked;
       return;
     }
 
     toggle.disabled = true;
     try {
+      const version = window.PortalConsentTexts?.PARENT_AI_AVATAR_VERSION || CURRENT_CONSENT_VERSION;
       const result = nowChecked
-        ? await API.giveConsent(selectedChild.child_id, typeKey, CURRENT_CONSENT_VERSION, 'forældreportal_checkbox')
-        : await API.withdrawConsent(selectedChild.child_id, typeKey);
+        ? await API.giveConsent(selectedChild.child_id, consentType, version, 'forældreportal_checkbox')
+        : await API.withdrawConsent(selectedChild.child_id, consentType);
 
       if (result && result.success === false) {
         toggle.checked = !nowChecked;
-        showToast(result.error || `Kunne ikke ${actionLabel} samtykke`, 'error');
+        showToast(result.error || 'Kunne ikke gemme', 'error');
         return;
       }
 
-      // Opdater childData cache ud fra den nye tilstand (samme logik som
-      // _sync_consent_cache_for_child paa DB-siden)
       await refreshConsentHistory();
       syncOptOutCacheFromConsents();
+      // Genlæs barn-data så library/profilbillede er friske
+      try { await loadChildData(); } catch (_) { /* ignore */ }
       showToast(nowChecked ? 'Samtykke registreret' : 'Samtykke trukket tilbage', 'success');
-
-      // Re-render Samtykker-sektionen in-place saa historik opdateres.
-      // Samme pattern som reloadEvents().
-      const section = document.getElementById('section-consents');
-      if (section) {
-        const wasOpen = section.classList.contains('open');
-        const temp = document.createElement('div');
-        temp.innerHTML = renderConsentsSection();
-        const newSection = temp.firstElementChild;
-        if (wasOpen) newSection.classList.add('open');
-        section.replaceWith(newSection);
-        // Gen-bind handlers paa nye toggles (section-header er event-delegated globalt)
-        newSection.querySelectorAll('.consent-toggle').forEach(t => {
-          t.addEventListener('change', (ev) => handleConsentToggle(ev));
-        });
-        newSection.querySelectorAll('.consent-history-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const target = document.getElementById(btn.dataset.target);
-            if (!target) return;
-            const open = target.style.display !== 'none';
-            target.style.display = open ? 'none' : '';
-            btn.textContent = btn.textContent.replace(open ? 'Skjul' : 'Vis', open ? 'Vis' : 'Skjul');
-          });
-        });
-      }
-
-      // Sync profil-billede-sektionens toggles visuelt (de deler cache-flag)
-      const ppAula = document.getElementById('pp-consent-aula');
-      const ppCamera = document.getElementById('pp-consent-camera');
-      const ppAi = document.getElementById('pp-consent-ai');
-      const ppMaster = document.getElementById('pp-consent-master');
-      if (ppAula) ppAula.checked = !childData.profile_picture_opt_out_aula;
-      if (ppCamera) ppCamera.checked = !childData.profile_picture_opt_out_camera;
-      if (ppAi) ppAi.checked = !childData.profile_picture_opt_out_ai;
-      if (ppMaster) ppMaster.checked = !childData.profile_picture_opt_out;
+      rerenderProfileAndConsentSections();
     } catch (err) {
-      console.error('[Portal] handleConsentToggle error:', err);
+      console.error('[Portal] consent toggle fejl:', err);
       toggle.checked = !nowChecked;
-      showToast(`Kunne ikke ${actionLabel} samtykke`, 'error');
+      showToast('Kunne ikke gemme', 'error');
     } finally {
       toggle.disabled = false;
     }
+  }
+
+  async function handleMasterToggle(e) {
+    if (!selectedChild) return;
+    const toggle = e.target;
+    const nowChecked = toggle.checked;
+    const ct = window.PortalConsentTexts || {};
+
+    if (!nowChecked) {
+      // Master OFF — vis stærk advarsel (sletter alt)
+      const cfg = ct.confirmTexts?.master_off;
+      const proceed = await (cfg ? showConfirmModal(cfg) : Promise.resolve(confirm('Slå alle profilbilleder fra?')));
+      if (!proceed) {
+        toggle.checked = true;
+        return;
+      }
+      toggle.disabled = true;
+      try {
+        // Træk alle aktive samtykker tilbage parallelt. Hver
+        // withdraw_consent håndterer sin egen sletning + storage-cleanup.
+        const types = getConsentTypesForChild()
+          .map(t => t.key)
+          .filter(k => activeConsentFor(k));
+        const results = await Promise.allSettled(
+          types.map(t => API.withdrawConsent(selectedChild.child_id, t))
+        );
+        const failed = results.filter(r => r.status === 'rejected' || (r.value && r.value.success === false));
+        if (failed.length > 0) {
+          console.warn('[Portal] master OFF: nogle withdrawals fejlede', failed);
+          showToast(`Slog ${types.length - failed.length}/${types.length} samtykker fra. Prøv igen.`, 'error');
+        } else {
+          showToast('Alle profilbilleder fjernet', 'success');
+        }
+        await refreshConsentHistory();
+        syncOptOutCacheFromConsents();
+        try { await loadChildData(); } catch (_) { /* ignore */ }
+        rerenderProfileAndConsentSections();
+      } catch (err) {
+        console.error('[Portal] master OFF fejl:', err);
+        showToast('Kunne ikke slå alle fra', 'error');
+        toggle.checked = true;
+      } finally {
+        toggle.disabled = false;
+      }
+    } else {
+      // Master ON — aktiverer kun UI'en, ingen automatisk re-grant.
+      // GDPR-pragmatisk: forælder skal selv vælge hvilke at aktivere.
+      const typeToggles = document.getElementById('pp-type-toggles');
+      if (typeToggles) {
+        typeToggles.style.opacity = '';
+        typeToggles.style.pointerEvents = '';
+      }
+      showToast('Vælg hvilke billed-typer du vil aktivere', 'success');
+    }
+  }
+
+  function rerenderProfileAndConsentSections() {
+    // Re-render begge sektioner in-place så de viser opdateret tilstand.
+    ['section-profile-picture', 'section-consents'].forEach(id => {
+      const oldSection = document.getElementById(id);
+      if (!oldSection) return;
+      const wasOpen = oldSection.classList.contains('open');
+      const temp = document.createElement('div');
+      temp.innerHTML = id === 'section-profile-picture' ? renderProfilePictureSection() : renderConsentsSection();
+      const newSection = temp.firstElementChild;
+      if (!newSection) return;
+      if (wasOpen) newSection.classList.add('open');
+      oldSection.replaceWith(newSection);
+    });
+    // Re-bind handlers på nye toggles (de gamle node-references er væk)
+    bindEvents();
   }
 
   async function refreshConsentHistory() {

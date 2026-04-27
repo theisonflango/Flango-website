@@ -502,12 +502,31 @@
       });
     },
 
-    /** Withdraw an active consent for a child */
+    /** Withdraw an active consent for a child. Efter SQL-RPC'en succes
+     *  kaldes cleanup-user-avatar-storage Edge Function for at slette de
+     *  fysiske filer i 'profile-pictures'-bucket — DB-rækkerne er allerede
+     *  slettet af _delete_images_on_withdraw, men storage-objekter kræver
+     *  service-role for at fjerne. */
     async withdrawConsent(childId, consentType) {
-      return rpcCall('withdraw_consent', {
+      const result = await rpcCall('withdraw_consent', {
         p_child_user_id: childId,
         p_consent_type: consentType,
       });
+
+      // Hvis der er paths at rydde op fra storage, kald Edge Function (best-effort)
+      const paths = Array.isArray(result?.deleted_storage_paths) ? result.deleted_storage_paths : [];
+      if (result?.success && paths.length > 0) {
+        try {
+          await fetchFunction('cleanup-user-avatar-storage', {
+            child_user_id: childId,
+            paths,
+          });
+        } catch (e) {
+          console.warn('[withdrawConsent] storage cleanup fejlede (DB-rækker er fjernet, storage-objekter forbliver indtil næste cleanup):', e?.message || e);
+        }
+      }
+
+      return result;
     },
 
     /** Get full consent history for a child */
