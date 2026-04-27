@@ -186,6 +186,7 @@
       selectedChild = children[0];
       await loadChildData();
       renderApp();
+      ensureAdminSimulatorBanner();
       maybeShowWelcomeModal();
     } catch (err) {
       console.error('[Portal] Load children error:', err);
@@ -284,9 +285,31 @@
     return `flango_welcome_dismissed_${childId}`;
   }
 
+  // ─── Simulator-session detection ───
+  // Café-app's "Åbn portalen som admin"-feature logger ind på en intern konto
+  // (admin-parent-{instId}@flango.internal) der er linket til alle børn på
+  // institutionen. Når vi detecter den email-suffix, skifter portalen til
+  // read-only mode for juridisk-følsomme handlinger (samtykker, sletning) —
+  // admin kan stadig se alt og hjælpe med præferencer (grænser, kost, allergi
+  // osv.) baseret på mundtlig dialog med forælder, men må IKKE afgive
+  // samtykke på vegne af forælderen (GDPR art. 7 — kan ikke dokumenteres).
+  let __isAdminSim = null; // memoized
+  function isAdminSimulatorSession() {
+    if (__isAdminSim !== null) return __isAdminSim;
+    try {
+      const email = currentSession?.user?.email || '';
+      __isAdminSim = email.endsWith('@flango.internal');
+    } catch (_) {
+      __isAdminSim = false;
+    }
+    return __isAdminSim;
+  }
+
   function shouldShowWelcomeModal() {
     if (!selectedChild) return false;
     if (!Array.isArray(consentHistory)) return false;
+    // Skip i simulator-session — admin må ikke afgive samtykke på vegne af forælder
+    if (isAdminSimulatorSession()) return false;
     // Vis hvis forælder har taget en eksplicit handling tidligere (givet eller trukket)
     const hasRealAction = consentHistory.some(c => c.given_method !== 'legacy_default_consent');
     if (hasRealAction) return false;
@@ -489,6 +512,23 @@
       toast.classList.remove('visible');
       setTimeout(() => toast.remove(), 300);
     }, 2500);
+  }
+
+  // Vis et fast banner øverst når admin er i simulator-session, så det er
+  // tydeligt at de IKKE må afgive samtykke på vegne af forælder.
+  function ensureAdminSimulatorBanner() {
+    if (!isAdminSimulatorSession()) return;
+    if (document.getElementById('flango-admin-sim-banner')) return; // allerede vist
+    const banner = document.createElement('div');
+    banner.id = 'flango-admin-sim-banner';
+    banner.style.cssText = 'position:sticky;top:0;z-index:9000;background:#fff7ed;border-bottom:2px solid #f59e0b;padding:10px 16px;font-size:13px;color:#92400e;text-align:center;font-weight:600;line-height:1.4;';
+    banner.innerHTML = '👁 <strong>Admin-visning (read-only for samtykker)</strong> — du kan hjælpe forælder med præferencer (grænser, kost, allergi, PIN) men <strong>ikke afgive samtykke til profilbilleder eller slette data</strong> på vegne af forælder. Bed dem logge ind selv.';
+    document.body.insertBefore(banner, document.body.firstChild);
+  }
+
+  // Vis advarsel når admin forsøger en blokeret handling i simulator.
+  function showAdminSimulatorBlockedAlert(handlingNavn) {
+    alert(`Denne handling (${handlingNavn}) kan ikke udføres i admin-visning.\n\nForælder skal selv logge ind på portalen for at afgive samtykke. Det er et krav fra GDPR art. 7 — samtykke skal kunne dokumenteres som givet af forælderen selv.`);
   }
 
   function getBalanceStatus(balance) {
@@ -3823,6 +3863,12 @@
   async function handleProfilePictureConsentToggle(e, consentType, kind) {
     if (!selectedChild) return;
     const toggle = e.target;
+    // Block i simulator-session — admin må ikke afgive samtykke på vegne af forælder
+    if (isAdminSimulatorSession()) {
+      toggle.checked = !toggle.checked; // rul tilbage
+      showAdminSimulatorBlockedAlert('samtykker');
+      return;
+    }
     const nowChecked = toggle.checked;
     const ct = window.PortalConsentTexts || {};
 
@@ -3907,6 +3953,11 @@
   async function handleMasterToggle(e) {
     if (!selectedChild) return;
     const toggle = e.target;
+    if (isAdminSimulatorSession()) {
+      toggle.checked = !toggle.checked;
+      showAdminSimulatorBlockedAlert('samtykker');
+      return;
+    }
     const nowChecked = toggle.checked;
     const ct = window.PortalConsentTexts || {};
 
@@ -4223,6 +4274,10 @@
 
   async function handleConfirmDeletion() {
     if (!selectedChild) return;
+    if (isAdminSimulatorSession()) {
+      showAdminSimulatorBlockedAlert('sletning af barnets data');
+      return;
+    }
     const input = document.getElementById('privacy-deletion-name-input');
     const errorEl = document.getElementById('privacy-deletion-error');
     const typedName = (input.value || '').trim().toLowerCase();
@@ -4250,6 +4305,10 @@
   }
 
   async function handleDeleteParentAccount() {
+    if (isAdminSimulatorSession()) {
+      showAdminSimulatorBlockedAlert('sletning af forælderkonto');
+      return;
+    }
     const input = document.getElementById('privacy-delete-account-email-input');
     const errorEl = document.getElementById('privacy-delete-account-error');
     const typedEmail = (input.value || '').trim().toLowerCase();
