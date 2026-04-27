@@ -76,18 +76,58 @@
     // Skip Turnstile on localhost (not available outside production)
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return { ok: true };
-    const token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
+    // try/catch: turnstile.getResponse() kaster TurnstileError hvis widget
+    // ikke er rendered (sker når DOM re-rendres efter auto-render har kørt).
+    // Uden denne fangst propagerer fejlen op gennem handleLogin og hænger
+    // login-knap i "Logger ind...".
+    let token = null;
+    try {
+      token = typeof turnstile !== 'undefined' ? turnstile.getResponse(widgetId) : null;
+    } catch (e) {
+      console.warn('[verifyTurnstile] getResponse kastede:', e?.message || e);
+      return { ok: false, error: 'Sikkerhedscheck kunne ikke indlæses. Genindlæs siden og prøv igen.' };
+    }
     if (!token) return { ok: false, error: 'Bekræft venligst at du ikke er en robot.' };
     try {
       const res = await window.portalSupabase.functions.invoke('verify-turnstile', { body: { token } });
       if (res.error || !res.data?.success) {
-        if (typeof turnstile !== 'undefined') turnstile.reset(widgetId);
+        try { if (typeof turnstile !== 'undefined') turnstile.reset(widgetId); } catch {}
         return { ok: false, error: 'Sikkerhedsverifikation fejlede. Prøv igen.' };
       }
       return { ok: true };
     } catch {
-      return { ok: true }; // Fail-open
+      return { ok: true }; // Fail-open ved netværk/Edge fejl
     }
+  }
+
+  // ─── Eksplicit Turnstile widget-render efter DOM-injection ───
+  // Cloudflare's auto-render kører kun ved page-load. Når login/signup-views
+  // re-renderes via renderLogin(), bliver de nye <div class="cf-turnstile">-
+  // elementer ikke konverteret til widgets. Vi kalder turnstile.render()
+  // eksplicit efter DOM-mounting. Idempotent via data-ts-rendered-flag.
+  function ensureTurnstileWidget(elementId, sitekey) {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return;
+    const tryRender = (attempt = 0) => {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      if (el.dataset.tsRendered === '1') return;
+      if (typeof turnstile === 'undefined') {
+        // Script ikke loadet endnu — vent og prøv igen op til ~5 sek
+        if (attempt < 25) setTimeout(() => tryRender(attempt + 1), 200);
+        return;
+      }
+      try {
+        turnstile.render('#' + elementId, {
+          sitekey: sitekey || '0x4AAAAAACyNOCuIOJjI0pUa',
+          theme: 'light',
+        });
+        el.dataset.tsRendered = '1';
+      } catch (e) {
+        console.warn('[turnstile] render fejlede for', elementId, ':', e?.message || e);
+      }
+    };
+    tryRender();
   }
 
   // ─── Inactivity timeout (30 min) ───
@@ -640,6 +680,7 @@
       document.getElementById('signup-password-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') handleSignupWithEmail(); });
       document.getElementById('back-to-code-step').addEventListener('click', e => { e.preventDefault(); showLoginView('signup-code'); });
       document.getElementById('goto-login-from-signup').addEventListener('click', e => { e.preventDefault(); showLoginView('login'); });
+      ensureTurnstileWidget('turnstile-portal-signup');
 
     } else if (loginView === 'forgot') {
       root.innerHTML = `
@@ -706,6 +747,7 @@
       document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
       document.getElementById('forgot-link').addEventListener('click', e => { e.preventDefault(); showLoginView('forgot'); });
       document.getElementById('goto-signup-link').addEventListener('click', e => { e.preventDefault(); showLoginView('signup-code'); });
+      ensureTurnstileWidget('turnstile-portal-login');
     }
   }
 
@@ -726,31 +768,40 @@
     btn.textContent = 'Logger ind...';
     errorEl.classList.remove('visible');
 
-    // Turnstile verifikation
-    const turnstileCheck = await verifyTurnstileToken('turnstile-portal-login');
-    if (!turnstileCheck.ok) {
-      errorEl.textContent = turnstileCheck.error;
-      errorEl.classList.add('visible');
-      btn.disabled = false;
-      btn.textContent = 'Log ind';
-      return;
-    }
-
+    // Wrap hele flowet i try/finally så knap-state ALTID ruller tilbage
+    // ved fejl — selv hvis verifyTurnstileToken eller signIn kaster uventet.
     try {
-      await API.signIn(email, password);
-      // "Husk mig": Hvis ikke valgt, marker at sessionen skal ryddes ved lukning
-      const rememberMe = document.getElementById('login-remember-me');
-      if (rememberMe && !rememberMe.checked) {
-        window.__flangoForgetOnClose = true;
+      const turnstileCheck = await verifyTurnstileToken('turnstile-portal-login');
+      if (!turnstileCheck.ok) {
+        errorEl.textContent = turnstileCheck.error;
+        errorEl.classList.add('visible');
+        return;
       }
-      currentSession = await API.getSession();
-      startInactivityTimeout();
-      await loadChildren();
-    } catch (err) {
-      errorEl.textContent = 'Forkert e-mail eller adgangskode';
+
+      try {
+        await API.signIn(email, password);
+        const rememberMe = document.getElementById('login-remember-me');
+        if (rememberMe && !rememberMe.checked) {
+          window.__flangoForgetOnClose = true;
+        }
+        currentSession = await API.getSession();
+        startInactivityTimeout();
+        await loadChildren();
+        return; // success — undgå at btn-state ruller tilbage (loading state ok mens loadChildren kører)
+      } catch (signInErr) {
+        errorEl.textContent = 'Forkert e-mail eller adgangskode';
+        errorEl.classList.add('visible');
+      }
+    } catch (unexpected) {
+      console.error('[Portal] handleLogin uventet fejl:', unexpected);
+      errorEl.textContent = 'Der opstod en fejl. Prøv at genindlæse siden.';
       errorEl.classList.add('visible');
-      btn.disabled = false;
-      btn.textContent = 'Log ind';
+    } finally {
+      // Hvis vi nåede her uden at vende tilbage success, reset knap
+      if (btn.textContent === 'Logger ind...') {
+        btn.disabled = false;
+        btn.textContent = 'Log ind';
+      }
     }
   }
 
