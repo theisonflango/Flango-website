@@ -521,6 +521,14 @@
     alert(`Denne handling (${handlingNavn}) kan ikke udføres i admin-visning.\n\nForælder skal selv logge ind på portalen for at afgive samtykke. Det er et krav fra GDPR art. 7 — samtykke skal kunne dokumenteres som givet af forælderen selv.`);
   }
 
+  // Inline hint-tekst under låste handlinger i simulator. Synlig på mobil
+  // (hvor title-tooltips ikke virker pga. touch). Returnerer tom streng hvis
+  // ikke i simulator-session.
+  function adminSimLockedHint(extraStyle) {
+    if (!isAdminSimulatorSession()) return '';
+    return `<div style="font-size:11px;color:#92400e;margin-top:4px;font-style:italic;${extraStyle || ''}">🔒 Kun forælder kan ændre dette — bed forælder logge ind selv</div>`;
+  }
+
   function getBalanceStatus(balance) {
     const b = parseFloat(balance || 0);
     if (b > 30) return { cls: 'status-ok', text: 'God saldo' };
@@ -2014,6 +2022,7 @@
             </div>
             <p style="color:var(--ink-soft);margin:0 0 var(--s3)">Tip: Download en kopi af dine data først (se sektionen ovenfor).</p>
             <button class="save-btn" id="privacy-request-deletion-btn" ${isAdminSimulatorSession() ? 'disabled title="Kun forælder kan anmode om sletning (admin-visning)"' : ''} style="background:var(--negative,#dc2626);color:#fff${isAdminSimulatorSession() ? ';opacity:0.5;cursor:not-allowed' : ''}">${isAdminSimulatorSession() ? '🔒 ' : ''}Anmod om sletning af data for ${esc(name)}</button>
+            ${adminSimLockedHint()}
           </div>
           <div id="privacy-deletion-confirm" style="display:none">
             <p style="margin:0 0 var(--s2);font-weight:600">Er du sikker? Skriv barnets navn for at bekræfte:</p>
@@ -2050,6 +2059,7 @@
           </div>
           <div id="privacy-delete-account-form">
             <button class="save-btn" id="privacy-delete-account-btn" ${isAdminSimulatorSession() ? 'disabled title="Kun forælder kan slette egen konto (admin-visning)"' : ''} style="background:var(--negative,#dc2626);color:#fff${isAdminSimulatorSession() ? ';opacity:0.5;cursor:not-allowed' : ''}">${isAdminSimulatorSession() ? '🔒 ' : ''}Slet min konto permanent</button>
+            ${adminSimLockedHint()}
           </div>
           <div id="privacy-delete-account-confirm" style="display:none">
             <p style="margin:0 0 var(--s2);font-weight:600">Er du sikker? Skriv din e-mailadresse for at bekraefte:</p>
@@ -2165,19 +2175,28 @@
           ${galleryHtml}
           <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Profilbilleder bruges i caféen for at bekræfte dit barns identitet ved køb. Billederne er kun synlige for børn og personale i denne institution.</span></div>
 
-          <div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:var(--s3);margin-bottom:var(--s2)" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
-            <div class="setting-info"><div class="setting-label" style="font-weight:700">Tillad profilbilleder${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Slå fra for at fravælge alle billedtyper på én gang</div></div>
-            <label class="toggle"><input type="checkbox" id="pp-consent-master" ${!allOptedOut ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+          <div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:var(--s3);margin-bottom:var(--s2);flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
+              <div class="setting-info"><div class="setting-label" style="font-weight:700">Tillad profilbilleder${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Slå fra for at fravælge alle billedtyper på én gang</div></div>
+              <label class="toggle"><input type="checkbox" id="pp-consent-master" ${!allOptedOut ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+            </div>
+            ${adminSimLockedHint()}
           </div>
 
           <div id="pp-type-toggles" style="${allOptedOut ? 'opacity:0.4;pointer-events:none' : ''}">
-            ${showAula ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
-              <div class="setting-info"><div class="setting-label">Aula-profilbillede${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div></div>
-              <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+            ${showAula ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
+                <div class="setting-info"><div class="setting-label">Aula-profilbillede${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div></div>
+                <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+              </div>
+              ${adminSimLockedHint()}
             </div>` : ''}
-            ${showCamera ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
-              <div class="setting-info"><div class="setting-label">Kamera-foto${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
-              <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+            ${showCamera ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
+                <div class="setting-info"><div class="setting-label">Kamera-foto${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
+                <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+              </div>
+              ${adminSimLockedHint()}
             </div>` : ''}
             ${showOpenai ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch;gap:4px" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);">
@@ -2185,6 +2204,7 @@
                 <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai" ${!optOutOpenai ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               <button type="button" id="pp-ai-readmore-btn" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600;text-align:left;align-self:flex-start;">📖 Læs mere om databehandlingen</button>
+              ${adminSimLockedHint()}
             </div>` : ''}
             ${showFlux ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch;gap:4px" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);">
@@ -2192,6 +2212,7 @@
                 <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai-flux" ${!optOutFlux ? 'checked' : ''} ${(!fluxConsentTextReady || isAdminSimulatorSession()) ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               <button type="button" id="pp-ai-flux-readmore-btn" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600;text-align:left;align-self:flex-start;">📖 Læs mere om databehandlingen${!fluxConsentTextReady ? ' (DRAFT)' : ''}</button>
+              ${adminSimLockedHint()}
             </div>` : ''}
           </div>
 
