@@ -855,7 +855,7 @@
       <p style="margin:0 0 10px"><strong>Hvilke data har vi?</strong><br>Barnets navn og kontonummer i caféen, saldo og købshistorik, eventuelle kostindstillinger du har sat (allergener, sukkerpolitik) og forbrugsgrænser du har valgt.</p>
       <p style="margin:0 0 10px"><strong>Hvem har adgang?</strong><br>Du som forælder (via denne portal), institutionens personale (via caféappen) og Flango som databehandler (teknisk drift). Kommunen er dataansvarlig.</p>
       <p style="margin:0 0 10px"><strong>Hvor opbevares data?</strong><br>Alle data opbevares i EU (Irland) hos Supabase. Al kommunikation er krypteret. Ingen data deles med tredjeparter.</p>
-      <p style="margin:0 0 10px"><strong>Hvor længe opbevares data?</strong><br>Købshistorik og brugerdata slettes automatisk efter 6 måneders inaktivitet. Systemlogs opbevares i 24 måneder og anonymiseres derefter.</p>
+      <p style="margin:0 0 10px"><strong>Hvor længe opbevares data?</strong><br>Brugerdata slettes automatisk efter 24 måneders inaktivitet. Salgsbilag bevares i 5 år som anonymiserede rækker (lovkrav fra bogføringsloven) — beløb og datoer bevares uden barnets navn. Systemlogs opbevares i 24 måneder og anonymiseres derefter.</p>
       <p style="margin:0"><strong>Dine rettigheder</strong><br>Som forælder har du ret til indsigt, berigtigelse, sletning, dataportabilitet og indsigelse — alt tilgængeligt via "Privatliv & Rettigheder" i portalen.</p>`;
   }
 
@@ -2089,7 +2089,9 @@
                 <strong>Hvad der sker ved sletning:</strong><br>
                 &bull; Institutionens personale modtager din anmodning<br>
                 &bull; Personalet behandler anmodningen inden for 30 dage (jf. GDPR)<br>
-                &bull; Alle data slettes permanent: saldo, købshistorik, indstillinger<br>
+                &bull; Barnets profil og personoplysninger fjernes (navn, saldo, indstillinger)<br>
+                &bull; Salgsbilag og hændelser bevares anonymt — beløb og datoer beholdes af bogføringshensyn (lovkrav), men barnets navn fjernes<br>
+                &bull; Audit-log bevares i 24 måneder af compliance-hensyn<br>
                 &bull; Sletningen kan ikke fortrydes<br>
                 &bull; Eventuel restsaldo kan desværre ikke refunderes
               </span>
@@ -4343,7 +4345,21 @@
         } else if (result.status === 'completed') {
           const date = result.processed_at ? new Date(result.processed_at).toLocaleDateString('da-DK') : '—';
           const receipt = result.deletion_receipt;
-          statusHtml = `<div class="hint-box green" style="border-color:var(--positive)"><span class="hint-icon">&#10003;</span><span><strong>Sletning gennemført</strong><br>Dato: ${date}${receipt ? '<br>Slettet: ' + JSON.stringify(receipt) : ''}</span></div>`;
+          let receiptHtml = '';
+          if (receipt) {
+            const del = receipt.deleted || {};
+            const anon = receipt.anonymized || {};
+            const sumAnon = (anon.sales || 0) + (anon.events || 0) + (anon.event_registrations || 0)
+                          + (anon.parent_consents || 0) + (anon.feedback || 0)
+                          + (anon.topup_imports || 0) + (anon.gaming_session_history || 0);
+            receiptHtml = `<br><br><strong>Hvad blev der gjort?</strong>` +
+              `<br>• Barnets profil og personoplysninger er fjernet` +
+              (sumAnon > 0
+                ? `<br>• ${sumAnon} historiske rækker er anonymiseret (beløb og datoer bevares af bogføringshensyn — barnets navn er fjernet)`
+                : '') +
+              `<br>• Audit-loggen bevares i 24 mdr af compliance-hensyn`;
+          }
+          statusHtml = `<div class="hint-box green" style="border-color:var(--positive)"><span class="hint-icon">&#10003;</span><span><strong>Sletning gennemført</strong><br>Dato: ${date}${receiptHtml}</span></div>`;
         } else if (result.status === 'rejected') {
           const reason = result.rejection_reason || 'Ingen begrundelse angivet';
           statusHtml = `<div class="hint-box orange"><span class="hint-icon">❌</span><span><strong>Anmodning afvist</strong><br>Begrundelse: ${esc(reason)}<br><br>Kontakt institutionen for yderligere information.</span></div>`;
