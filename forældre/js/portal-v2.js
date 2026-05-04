@@ -1345,10 +1345,6 @@
               <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">🍊</div>
               <div><div class="brand-name">Flango</div></div>
             </div>
-            <button id="no-children-logout" class="nav-btn" title="Log ud" style="background:none;border:none;cursor:pointer;color:var(--ink-muted);display:flex;align-items:center;gap:6px;font-size:14px;padding:8px 12px;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              <span>Log ud</span>
-            </button>
           </div>
         </header>
         <main class="main">
@@ -1356,7 +1352,11 @@
             <div class="empty-state-icon">👶</div>
             <div class="empty-state-text">Du har endnu ikke tilknyttet nogen børn.<br>Brug koden fra institutionen for at komme i gang.</div>
             <button class="save-btn" style="margin-top:var(--s5)" onclick="document.getElementById('add-child-modal').classList.add('visible')">Tilknyt barn</button>
-            ${userEmail ? `<div style="margin-top:var(--s6);font-size:12px;color:var(--ink-muted)">Logget ind som <strong>${esc(userEmail)}</strong></div>` : ''}
+            ${userEmail ? `<div style="margin-top:var(--s6);font-size:12px;color:var(--ink-muted);text-align:center;">Logget ind som <strong>${esc(userEmail)}</strong></div>` : ''}
+            <button id="no-children-logout" type="button" style="margin-top:var(--s3);padding:10px 20px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg);color:var(--ink-soft);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Log ud
+            </button>
           </div>
         </main>
       </div>
