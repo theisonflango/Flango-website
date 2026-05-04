@@ -4,7 +4,7 @@
  * Builds the full portal UI dynamically.
  * Handles auth, child switching, section rendering, saves, etc.
  *
- * Requires: window.portalSupabase (from portal-v2.html), PortalAPI (portal-v2-api.js)
+ * Requires: window.portalSupabase (from index.html), PortalAPI (portal-v2-api.js)
  */
 (function () {
   'use strict';
@@ -985,7 +985,7 @@
   // ─── "Husk mig" — ryd session ved lukning hvis ikke valgt ───
   window.addEventListener('beforeunload', () => {
     if (window.__flangoForgetOnClose) {
-      localStorage.removeItem('sb-jbknjgbpghrbrstqwoxj-auth-token');
+      localStorage.removeItem('flango-parent-auth');
     }
   });
 
@@ -2665,7 +2665,7 @@
     try { parentEmail = window.portalSupabase?.auth?.session?.()?.data?.session?.user?.email || ''; } catch (_e) { /* ignore */ }
     if (!parentEmail) {
       try {
-        var _sd = JSON.parse(localStorage.getItem('sb-jbknjgbpghrbrstqwoxj-auth-token') || '{}');
+        var _sd = JSON.parse(localStorage.getItem('flango-parent-auth') || '{}');
         parentEmail = _sd?.user?.email || _sd?.currentSession?.user?.email || '';
       } catch (_e2) { /* ignore */ }
     }

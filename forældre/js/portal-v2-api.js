@@ -4,7 +4,7 @@
  * Wraps all Supabase Edge Function calls and RPC calls.
  * Exposed as window.PortalAPI for use by portal-v2.js.
  *
- * Requires: `window.portalSupabase` (from portal-v2.html)
+ * Requires: `window.portalSupabase` (from index.html)
  */
 (function () {
   'use strict';
