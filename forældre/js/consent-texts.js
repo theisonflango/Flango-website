@@ -181,6 +181,14 @@ Andre billed-typer du har samtykket til, påvirkes ikke.`,
         confirm: 'Trække samtykke tilbage',
         cancel: 'Annullér',
       },
+      parent_upload_off: {
+        title: 'Trække samtykke tilbage?',
+        body: `Alle billeder du selv har uploadet af dit barn (godkendte, afventende og afviste) slettes fra Flango. Du kan ikke længere uploade nye billeder via portalen.
+
+Andre billed-typer du har samtykket til, påvirkes ikke.`,
+        confirm: 'Trække samtykke tilbage',
+        cancel: 'Annullér',
+      },
       master_off: {
         title: 'Slå alle profilbilleder fra?',
         body: `Hvis du slår dette fra:

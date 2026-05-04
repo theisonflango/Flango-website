@@ -332,6 +332,44 @@
       });
     },
 
+    /**
+     * Upload et profilbillede som forælder. Filen skal være færdig-komprimeret
+     * (typisk 400x400 WebP, max 50KB — samme preset som café-appen).
+     *
+     * Flow: 1) klient-side upload til Storage på path
+     *       {institution_id}/parent-uploads/{child_id}/{timestamp}.webp
+     *       (RLS-policy profile_pics_insert_parent verificerer parent-child relation)
+     *       2) Edge Function verificerer fil-eksistens og opretter pending-row
+     *
+     * Resultat: { success, status: 'pending', library_id }
+     * Pending uploads vises i forældreportalen som "afventer godkendelse"
+     * og aktiveres først når institutions-admin har godkendt billedet.
+     */
+    async uploadProfilePictureFile(institutionId, childId, blob) {
+      const path = `${institutionId}/parent-uploads/${childId}/${Date.now()}.webp`;
+      const { error: uploadError } = await window.portalSupabase.storage
+        .from('profile-pictures')
+        .upload(path, blob, {
+          contentType: 'image/webp',
+          cacheControl: '31536000',
+        });
+      if (uploadError) {
+        throw new Error('Storage-upload fejlede: ' + uploadError.message);
+      }
+      try {
+        return await fetchFunction('parent-upload-profile-picture', {
+          child_id: childId,
+          storage_path: path,
+        });
+      } catch (err) {
+        // Edge Function fejlede — slet uploadet fil for at undgå forældreløse paths
+        try {
+          await window.portalSupabase.storage.from('profile-pictures').remove([path]);
+        } catch (_) { /* best-effort */ }
+        throw err;
+      }
+    },
+
     // ─── Notifications ───
 
     /** Save notification preferences for a child */

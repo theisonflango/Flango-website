@@ -1336,6 +1336,7 @@
   // ═══════════════════════════════════════
 
   function renderNoChildren() {
+    const userEmail = currentSession?.user?.email || '';
     root.innerHTML = `
       <div class="app">
         <header class="topnav">
@@ -1344,6 +1345,10 @@
               <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">🍊</div>
               <div><div class="brand-name">Flango</div></div>
             </div>
+            <button id="no-children-logout" class="nav-btn" title="Log ud" style="background:none;border:none;cursor:pointer;color:var(--ink-muted);display:flex;align-items:center;gap:6px;font-size:14px;padding:8px 12px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span>Log ud</span>
+            </button>
           </div>
         </header>
         <main class="main">
@@ -1351,11 +1356,14 @@
             <div class="empty-state-icon">👶</div>
             <div class="empty-state-text">Du har endnu ikke tilknyttet nogen børn.<br>Brug koden fra institutionen for at komme i gang.</div>
             <button class="save-btn" style="margin-top:var(--s5)" onclick="document.getElementById('add-child-modal').classList.add('visible')">Tilknyt barn</button>
+            ${userEmail ? `<div style="margin-top:var(--s6);font-size:12px;color:var(--ink-muted)">Logget ind som <strong>${esc(userEmail)}</strong></div>` : ''}
           </div>
         </main>
       </div>
       ${renderAddChildModal()}`;
     bindAddChildModal();
+    const logoutBtn = document.getElementById('no-children-logout');
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
   }
 
   function renderError(msg) {
@@ -2182,6 +2190,7 @@
 
     const optOutAula = childData?.profile_picture_opt_out_aula || false;
     const optOutCamera = childData?.profile_picture_opt_out_camera || false;
+    const optOutParentUpload = childData?.profile_picture_opt_out_parent_upload || false;
     // Per-provider AI-state læses fra consentHistory (cache flag dækker begge providers samlet)
     const hasOpenaiConsent = (consentHistory || []).some(c => c.consent_type === 'profile_picture_ai_openai' && c.is_active);
     const hasFluxConsent = (consentHistory || []).some(c => c.consent_type === 'profile_picture_ai_flux' && c.is_active);
@@ -2195,23 +2204,42 @@
     const showAi = showOpenai || showFlux;
     const optOutOpenai = !hasOpenaiConsent;
     const optOutFlux = !hasFluxConsent;
+    // Forælder-upload: institutions-flag fra featureFlags (parent_can_upload_pictures default true)
+    const showParentUpload = featureFlags?.parent_can_upload_pictures !== false;
     // FLUX-tekst er DRAFT indtil BFL-aftale er på plads — UI advarer
     const fluxConsentTextReady = window.PortalConsentTexts?.isFluxConsentTextProductionReady?.() === true;
-    // "All opted out" for master-toggle: aula + camera + (AI hvis nogen provider aktiv)
+    // "All opted out" for master-toggle: aula + camera + parent-upload + (AI hvis nogen provider aktiv)
     const allOptedOut = (showAula ? optOutAula : true)
       && (showCamera ? optOutCamera : true)
+      && (showParentUpload ? optOutParentUpload : true)
       && (showOpenai ? optOutOpenai : true)
       && (showFlux ? optOutFlux : true);
     const library = childData?.profile_picture_library || [];
     const childName = getChildName();
     const initials = childName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const canUploadNow = showParentUpload && !optOutParentUpload && !isAdminSimulatorSession();
 
     // Build gallery HTML
     let galleryHtml = '';
     if (library.length > 0) {
       const thumbs = library.map(pic => {
-        const border = pic.is_active ? '3px solid #22c55e' : '3px solid transparent';
-        const typeLabel = pic.picture_type === 'ai_avatar' ? 'AI' : (pic.picture_type === 'aula' ? 'Aula' : (pic.picture_type === 'camera' ? 'Foto' : (pic.picture_type === 'upload' ? 'Upload' : (pic.picture_type === 'library' ? 'Bibliotek' : (pic.picture_type === 'icon' ? 'Ikon' : pic.picture_type || '')))));
+        const status = pic.approval_status || 'approved';
+        const isPending = status === 'pending';
+        const isRejected = status === 'rejected';
+        // Border-farve: grøn=aktiv, gul=pending, rød=rejected, transparent=approved-inaktiv
+        let border = '3px solid transparent';
+        if (pic.is_active) border = '3px solid #22c55e';
+        else if (isPending) border = '3px solid #f59e0b';
+        else if (isRejected) border = '3px solid #ef4444';
+        const opacity = isRejected ? '0.6' : '1';
+        const typeLabel = pic.picture_type === 'ai_avatar' ? 'AI'
+          : pic.picture_type === 'aula' ? 'Aula'
+          : pic.picture_type === 'camera' ? 'Foto'
+          : pic.picture_type === 'upload' ? 'Upload'
+          : pic.picture_type === 'parent_upload' ? 'Forælder'
+          : pic.picture_type === 'library' ? 'Bibliotek'
+          : pic.picture_type === 'icon' ? 'Ikon'
+          : (pic.picture_type || '');
         // Library/icon paths are relative to cafe app — prefix with appropriate base URL
         let imgUrl = pic.signed_url || '';
         if ((pic.picture_type === 'library' || pic.picture_type === 'icon') && imgUrl && !imgUrl.startsWith('http')) {
@@ -2219,11 +2247,36 @@
           const cafeBase = isLocal ? 'http://127.0.0.1:3000/' : 'https://flango.dk/app/';
           imgUrl = cafeBase + imgUrl;
         }
-        return `<div class="pp-gallery-item" data-pic-id="${esc(pic.id)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;position:relative;">
-          <img src="${esc(imgUrl)}" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:${border};transition:border-color 0.2s;" onerror="this.style.opacity='0.2'">
+        // Status-overlay-badge på thumbnail
+        let statusBadge = '';
+        if (isPending) statusBadge = `<div style="position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg, #fff);" title="Afventer godkendelse">⏳</div>`;
+        else if (isRejected) statusBadge = `<div style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg, #fff);" title="Afvist">✕</div>`;
+        // Status-tekst under thumbnail
+        let statusText = '';
+        if (isPending) statusText = '<span style="display:block;font-size:10px;color:#92400e;margin-top:2px;">Afventer godkendelse</span>';
+        else if (isRejected) {
+          const reasonMap = {
+            inappropriate: 'Ikke egnet',
+            wrong_person: 'Forkert person',
+            low_quality: 'Lav kvalitet',
+            other: 'Andet',
+          };
+          const reasonLabel = reasonMap[pic.rejected_reason_code] || 'Afvist';
+          statusText = `<span style="display:block;font-size:10px;color:#dc2626;margin-top:2px;" title="${esc(pic.rejected_reason_text || '')}">Afvist: ${esc(reasonLabel)}</span>`;
+        }
+        // Aktivér-knap kun for approved-rows (ikke pending/rejected)
+        const activateBtn = (!pic.is_active && !isPending && !isRejected)
+          ? `<button class="pp-activate-btn" data-pic-id="${esc(pic.id)}" style="font-size:10px;padding:2px 6px;border:1px solid #22c55e;border-radius:4px;background:var(--bg);color:#22c55e;cursor:pointer;">Brug</button>`
+          : '';
+        return `<div class="pp-gallery-item" data-pic-id="${esc(pic.id)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;position:relative;opacity:${opacity};">
+          <div style="position:relative;">
+            <img src="${esc(imgUrl)}" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:${border};transition:border-color 0.2s;" onerror="this.style.opacity='0.2'">
+            ${statusBadge}
+          </div>
           <span style="font-size:10px;color:var(--ink-muted)">${esc(typeLabel)}${pic.is_active ? ' ●' : ''}</span>
+          ${statusText}
           <div style="display:flex;gap:4px;">
-            ${!pic.is_active ? `<button class="pp-activate-btn" data-pic-id="${esc(pic.id)}" style="font-size:10px;padding:2px 6px;border:1px solid #22c55e;border-radius:4px;background:var(--bg);color:#22c55e;cursor:pointer;">Brug</button>` : ''}
+            ${activateBtn}
             <button class="pp-download-btn" data-pic-url="${esc(imgUrl)}" data-pic-type="${esc(pic.picture_type || '')}" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--ink-muted);cursor:pointer;">⬇</button>
             <button class="pp-delete-btn" data-pic-id="${esc(pic.id)}" style="font-size:10px;padding:2px 6px;border:1px solid #ef4444;border-radius:4px;background:var(--bg);color:#ef4444;cursor:pointer;">✕</button>
           </div>
@@ -2241,6 +2294,15 @@
       </div>`;
     }
 
+    // Upload-knap + approval-hint (kun hvis institutionen tillader OG samtykke er aktivt)
+    const uploadHtml = showParentUpload ? `
+      <div style="margin-bottom:var(--s3);padding:var(--s3);border:1px dashed var(--border, #d1d5db);border-radius:var(--r-md, 12px);background:var(--surface-sunken, #fafaf9);">
+        <button id="pp-upload-btn" ${canUploadNow ? '' : 'disabled'} style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:none;border-radius:8px;background:${canUploadNow ? 'var(--flango, #F5960A)' : 'var(--border-color, #e5e7eb)'};color:${canUploadNow ? '#fff' : 'var(--ink-muted, #78716c)'};font-weight:600;font-size:14px;cursor:${canUploadNow ? 'pointer' : 'not-allowed'};">
+          📷 Upload nyt billede
+        </button>
+        ${!optOutParentUpload ? `<div style="font-size:12px;color:var(--ink-muted, #78716c);margin-top:8px;text-align:center;line-height:1.5;">Alle uploads gennemgås af institutionen før de aktiveres. Institutionen kan til enhver tid erstatte billedet hvis det ikke egner sig som identifikation.</div>` : `<div style="font-size:12px;color:var(--ink-muted, #78716c);margin-top:8px;text-align:center;">Aktivér samtykket "Forælder-upload" nedenfor for at uploade.</div>`}
+      </div>` : '';
+
     return `
       <div class="section" id="section-profile-picture">
         <div class="section-header">
@@ -2249,6 +2311,7 @@
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${galleryHtml}
+          ${uploadHtml}
           <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Profilbilleder bruges i caféen for at bekræfte dit barns identitet ved køb. Billederne er kun synlige for børn og personale i denne institution.</span></div>
 
           <div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:var(--s3);margin-bottom:var(--s2);flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
@@ -2271,6 +2334,13 @@
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
                 <div class="setting-info"><div class="setting-label">Kamera-foto${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
                 <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+              </div>
+              ${adminSimLockedHint()}
+            </div>` : ''}
+            ${showParentUpload ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
+                <div class="setting-info"><div class="setting-label">Forælder-upload${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Du kan selv uploade et billede af dit barn fra denne portal. Alle uploads gennemgås af institutionen før aktivering.</div></div>
+                <label class="toggle"><input type="checkbox" id="pp-consent-parent-upload" ${!optOutParentUpload ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               ${adminSimLockedHint()}
             </div>` : ''}
@@ -2311,6 +2381,7 @@
 
   function getConsentTypesForChild() {
     const showFlux = !!featureFlags?.ai_provider_flux;
+    const showParentUpload = featureFlags?.parent_can_upload_pictures !== false;
     const types = [
       {
         key: 'profile_picture_aula',
@@ -2328,6 +2399,13 @@
         desc: 'Et foto af dit barn sendes til OpenAI for at generere en tegnet avatar. Fotoet opbevares ikke hos OpenAI — kun avataren gemmes.',
       },
     ];
+    if (showParentUpload) {
+      types.push({
+        key: 'profile_picture_parent_upload',
+        label: 'Forælder-upload',
+        desc: 'Du kan selv uploade et profilbillede af dit barn fra denne portal. Alle uploads gennemgås af institutionen før aktivering.',
+      });
+    }
     if (showFlux) {
       types.push({
         key: 'profile_picture_ai_flux',
@@ -3119,6 +3197,36 @@
     if (ppAiFlux) ppAiFlux.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_ai_flux', 'ai_flux'));
     if (ppAiReadmore) ppAiReadmore.addEventListener('click', () => openAiLayer2Modal('openai', false));
     if (ppAiFluxReadmore) ppAiFluxReadmore.addEventListener('click', () => openAiLayer2Modal('flux', false));
+
+    // Forælder-upload consent toggle
+    const ppParentUpload = document.getElementById('pp-consent-parent-upload');
+    if (ppParentUpload) ppParentUpload.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_parent_upload', 'parent_upload'));
+
+    // Forælder-upload knap → åbn modal
+    const ppUploadBtn = document.getElementById('pp-upload-btn');
+    if (ppUploadBtn) {
+      ppUploadBtn.addEventListener('click', () => {
+        if (!selectedChild) return;
+        if (!window.PortalParentPictureUpload) {
+          showToast('Upload-modul ikke indlæst', 'error');
+          return;
+        }
+        window.PortalParentPictureUpload.open({
+          institutionId: selectedChild.institution_id,
+          childId: selectedChild.child_id,
+          childName: getChildName(),
+          onUploaded: async (result) => {
+            if (result?.success) {
+              showToast('Billedet er sendt til godkendelse', 'success');
+              await loadChildData();
+              renderApp();
+            } else {
+              showToast(result?.error || 'Upload fejlede', 'error');
+            }
+          },
+        });
+      });
+    }
 
     // Profile picture gallery: "Brug" button to set active
     document.querySelectorAll('.pp-activate-btn').forEach(btn => {
@@ -3974,12 +4082,17 @@
         }
         proceed = await openAiLayer2Modal('flux', true);
       } else {
-        const label = kind === 'aula' ? 'Aula-profilbillede' : 'Kamera-foto';
+        const label = kind === 'aula' ? 'Aula-profilbillede'
+          : kind === 'camera' ? 'Kamera-foto'
+          : 'Forælder-upload';
+        const body = kind === 'aula'
+          ? 'Institutionen må bruge dit barns eksisterende Aula-foto som profilbillede i caféen.\n\nSamtykket registreres nu med tidspunkt og version.'
+          : kind === 'camera'
+            ? 'Personalet må tage et foto af dit barn med caféens enhed og bruge det som profilbillede.\n\nSamtykket registreres nu med tidspunkt og version.'
+            : 'Du kan selv uploade et profilbillede af dit barn fra denne portal. Alle uploads gennemgås af institutionen før aktivering.\n\nSamtykket registreres nu med tidspunkt og version.';
         proceed = await showConfirmModal({
           title: `Aktivér samtykke: ${label}?`,
-          body: kind === 'aula'
-            ? 'Institutionen må bruge dit barns eksisterende Aula-foto som profilbillede i caféen.\n\nSamtykket registreres nu med tidspunkt og version.'
-            : 'Personalet må tage et foto af dit barn med caféens enhed og bruge det som profilbillede.\n\nSamtykket registreres nu med tidspunkt og version.',
+          body,
           confirm: 'Aktivér samtykke',
           cancel: 'Annullér',
           danger: false,
@@ -3990,6 +4103,7 @@
       const popupKey = kind === 'ai' ? 'ai_off'
         : kind === 'ai_flux' ? 'ai_flux_off'
         : kind === 'aula' ? 'aula_off'
+        : kind === 'parent_upload' ? 'parent_upload_off'
         : 'camera_off';
       const cfg = ct.confirmTexts?.[popupKey];
       if (cfg) {
@@ -4129,10 +4243,12 @@
     const hasAula = has('profile_picture_aula');
     const hasCamera = has('profile_picture_camera');
     const hasAi = has('profile_picture_ai_openai') || has('profile_picture_ai_flux');
+    const hasParentUpload = has('profile_picture_parent_upload');
     childData.profile_picture_opt_out_aula = !hasAula;
     childData.profile_picture_opt_out_camera = !hasCamera;
     childData.profile_picture_opt_out_ai = !hasAi;
-    childData.profile_picture_opt_out = !hasAula && !hasCamera && !hasAi;
+    childData.profile_picture_opt_out_parent_upload = !hasParentUpload;
+    childData.profile_picture_opt_out = !hasAula && !hasCamera && !hasAi && !hasParentUpload;
   }
 
   async function handleSaveChildName() {
