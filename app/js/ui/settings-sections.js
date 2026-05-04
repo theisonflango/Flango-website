@@ -2123,6 +2123,7 @@
       const types = inst.profile_picture_types || [];
       const aiOn = !!inst.profile_pictures_ai_enabled;
       const adminAiOn = !!inst.admin_ai_avatar_enabled;
+      const parentUploadOn = inst.parent_can_upload_pictures !== false;
       const defMode = inst.default_profile_picture_mode || 'initials';
       const hasUpload = types.includes('upload');
       const hasCamera = types.includes('camera');
@@ -2148,6 +2149,10 @@
             <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83C\uDFA8</span><div><div class="fsp-row-title">Bibliotek</div><div class="fsp-row-desc">V\u00e6lg avatar-figur fra eksisterende bibliotek</div></div></div>
             <div class="fsp-toggle${hasLibrary ? ' on' : ''}" data-pp-type="library"></div>
           </div></div>
+          <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
+            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDC6A</span><div><div class="fsp-row-title">For\u00e6lder-upload</div><div class="fsp-row-desc">For\u00e6ldre uploader selv via portalen \u2014 hvert billede skal godkendes af admin</div></div></div>
+            <div class="fsp-toggle${parentUploadOn ? ' on' : ''}" data-field="parent_can_upload_pictures"></div>
+          </div></div>
           <div class="fsp-block" style="margin-bottom:10px">
             <div class="fsp-row" style="margin-bottom:14px">
               <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83E\uDD16</span><div><div class="fsp-row-title">AI-Avatar</div><div class="fsp-row-desc">Generer Pixar-stil avatar fra foto</div></div></div>
@@ -2168,7 +2173,13 @@
               <div class="fsp-toggle${adminAiOn ? ' on' : ''}" data-field="admin_ai_avatar_enabled"></div>
             </div>
           </div>
-          <div style="margin:28px 0 28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05)">
+          ${parentUploadOn ? `
+          <div style="margin:28px 0 16px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05)">
+            <button class="fsp-btn fsp-btn-ghost" data-action="parent-review" style="width:100%;display:flex;justify-content:center;align-items:center;padding:14px 24px;font-size:14px;gap:10px">\uD83D\uDCF7 For\u00E6lder-uploads til godkendelse<span data-parent-review-count style="display:none;background:rgba(245,158,11,0.18);color:#f59e0b;font-weight:700;font-size:12px;min-width:22px;height:22px;border-radius:11px;padding:0 6px;align-items:center;justify-content:center;display:none"></span></button>
+            <div style="font-size:11px;color:var(--fsp-txt3);margin-top:6px;text-align:center">Gennemg\u00e5 og godkend/afvis profilbilleder uploadet af for\u00E6ldre</div>
+          </div>
+          ` : ''}
+          <div style="margin:${parentUploadOn ? '16px' : '28px'} 0 28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05)">
             <button class="fsp-btn fsp-btn-ghost" data-action="aula-import" style="width:100%;display:flex;justify-content:center;padding:14px 24px;font-size:14px;gap:10px">\uD83D\uDCE5 Auto-import fra Aula</button>
             <div style="font-size:11px;color:var(--fsp-txt3);margin-top:6px;text-align:center">Upload billeder hentet fra Aula \u2014 matcher automatisk p\u00e5 navn og klassetrin</div>
           </div>
@@ -2258,6 +2269,27 @@
         window.FlangoSettings.close();
         window.__flangoOpenAulaImport?.();
       });
+
+      // Forælder-uploads til godkendelse — luk settings og åbn review-modal
+      const reviewBtn = container.querySelector('[data-action="parent-review"]');
+      if (reviewBtn) {
+        // Sync count fra header-badge
+        const headerBtn = document.getElementById('parent-upload-review-btn');
+        const headerBadge = document.getElementById('parent-upload-badge');
+        const countEl = reviewBtn.querySelector('[data-parent-review-count]');
+        if (headerBtn && headerBadge && countEl) {
+          const visible = headerBtn.style.display !== 'none';
+          const count = visible ? (headerBadge.textContent || '0') : '0';
+          if (visible && Number(count) > 0) {
+            countEl.textContent = count;
+            countEl.style.display = 'inline-flex';
+          }
+        }
+        reviewBtn.addEventListener('click', () => {
+          window.FlangoSettings.close();
+          document.getElementById('parent-upload-review-btn')?.click();
+        });
+      }
     }
   };
 
