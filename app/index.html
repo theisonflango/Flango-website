@@ -372,7 +372,7 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-CTo3EXIw.js"></script>
+  <script type="module" crossorigin src="/app/assets/main-DQiPYhoM.js"></script>
   <link rel="stylesheet" crossorigin href="/app/assets/main-BQKypENc.css">
 </head>
 <body>
@@ -544,6 +544,7 @@
                 <button id="toolbar-db-history-btn" class="header-action-btn" title="DB-Historik" style="display: none;"><img src="Icons/webp/Function/Gear2.webp" alt="DB-Historik"></button>
                 <span id="inactive-users-badge" style="display:none;cursor:pointer;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;min-width:22px;height:22px;border-radius:11px;align-items:center;justify-content:center;padding:0 5px;line-height:22px;margin-right:2px;" title="Inaktive brugere">0</span>
                 <button id="deletion-requests-btn" class="header-action-btn" title="Sletningsanmodninger" style="display:none;position:relative;">🗑️<span id="deletion-badge" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
+                <button id="parent-upload-review-btn" class="header-action-btn" title="Forælder-uploads til godkendelse" style="display:none;position:relative;">📷<span id="parent-upload-badge" style="position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
                 <button id="toolbar-products-btn" class="header-action-btn" title="Produktoversigt" style="display:none;"><img src="Icons/webp/Function/Kurv.webp" alt="Produktoversigt"></button>
                 <button id="toolbar-deposit-btn" class="header-action-btn" title="Indbetaling" style="display:none;"><img src="Icons/webp/Function/Coin.webp" alt="Indbetaling"></button>
                 <button id="toolbar-user-panel-btn" class="header-action-btn" title="Brugerpanel" style="display:none;"><img src="Icons/webp/Function/Bruger.webp" alt="Brugerpanel"></button>
@@ -1281,6 +1282,25 @@
             </div>
             <div class="settings-modal-actions">
                 <button id="deletion-requests-close" class="settings-button">Luk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Forælder-uploads til godkendelse -->
+    <div id="parent-upload-review-modal" class="settings-modal-backdrop" style="display: none;">
+        <div class="settings-modal" style="max-width: 720px; max-height: 90vh; overflow-y: auto;">
+            <h2>📷 Forælder-uploads til godkendelse</h2>
+            <div class="settings-modal-content" style="padding: 0 16px 16px;">
+                <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
+                    <div style="font-weight:700;margin-bottom:4px;">ℹ️ Sådan fungerer det</div>
+                    <div style="font-size:13px;line-height:1.5;color:#1e3a5f;">Forældre kan selv uploade et profilbillede af deres barn. Alle uploads gennemgås af institutionen før de aktiveres. Vurdér om billedet egner sig som identifikation — afvis hvis det er upassende, viser den forkerte person, eller har for lav kvalitet.</div>
+                </div>
+                <div id="parent-upload-review-list" style="display:flex;flex-direction:column;gap:14px;">
+                    <div style="text-align:center;padding:24px;color:#78716c;">Indlæser...</div>
+                </div>
+            </div>
+            <div class="settings-modal-actions">
+                <button id="parent-upload-review-close" class="settings-button">Luk</button>
             </div>
         </div>
     </div>
