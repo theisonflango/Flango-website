@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flango — Kontantløst cafésystem til SFO'er og fritidsklubber</title>
-<meta name="description" content="Flango er et kontantløst cafésystem til danske SFO'er og fritidsklubber. Mindre administration, mere nærvær. Børn lærer om økonomi, forældre har fuld indsigt.">
-<meta property="og:title" content="Flango — Kontantløst cafésystem til SFO'er">
+<title>Flango — Cafésystem til SFO'er og fritidsklubber</title>
+<meta name="description" content="Flango er et cafésystem til danske SFO'er og fritidsklubber. Mindre administration, mere nærvær. Børn lærer om økonomi, forældre har fuld indsigt.">
+<meta property="og:title" content="Flango — Cafésystem til SFO'er">
 <meta property="og:description" content="Mindre administration, mere nærvær. Et cafésystem bygget i SFO'en — til SFO'en.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://flango.dk">
@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/nav.css">
 <style>
 /* ========================================
    DESIGN TOKENS
@@ -1623,7 +1624,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
 }
 </style>
 </head>
-<body>
+<body class="has-flango-nav">
 
 <!-- Skip link -->
 <a class="skip-link" href="#main">Gå til hovedindhold</a>
@@ -1631,37 +1632,34 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
 <!-- ============================
      NAVIGATION
      ============================ -->
-<nav class="nav" role="navigation" aria-label="Hovednavigation">
-  <div class="container nav-inner">
-    <a href="#" class="nav-logo" aria-label="Flango forside">flango<span>.</span></a>
-    <ul class="nav-links">
-      <li><a href="#saadan-virker-det">Sådan virker det</a></li>
-      <li><a href="#fordele">Fordele</a></li>
-      <li><a href="#priser">Priser</a></li>
-      <li><a href="#tryghed">Tryghed</a></li>
+<nav class="flango-nav" role="navigation" aria-label="Hovednavigation">
+  <div class="flango-nav-inner">
+    <a href="/" class="flango-nav-logo" aria-label="Flango forside">flango<span>.</span></a>
+    <ul class="flango-nav-links">
+      <li><a href="/pris/">Priser</a></li>
+      <li><a href="/gaming/">Gaming</a></li>
+      <li><a href="/om-flango/">Om Flango</a></li>
     </ul>
-    <div style="display:flex;align-items:center;gap:10px" class="nav-right-group">
-      <a href="/forældre/" style="font-size:0.82rem;font-weight:600;color:var(--slate-500);padding:8px 14px;border:1.5px solid var(--slate-200);border-radius:100px;transition:all 0.2s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--peach-300)';this.style.color='var(--peach-700)'" onmouseout="this.style.borderColor='var(--slate-200)';this.style.color='var(--slate-500)'" aria-label="Log ind på forældreportalen">
+    <div class="flango-nav-right">
+      <a href="/forældre/" class="flango-nav-portal">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
         Forældreportal
       </a>
-      <a href="#kontakt" class="btn btn-primary btn-sm nav-cta">Book en snak</a>
+      <a href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango" class="flango-nav-cta">Book en snak</a>
     </div>
-    <button class="burger" aria-label="Åbn menu" aria-expanded="false" onclick="toggleMobile()">
+    <button class="flango-burger" aria-label="Åbn menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
   </div>
-  <div class="mobile-menu" id="mobileMenu" role="dialog" aria-label="Mobilmenu">
-    <a href="#saadan-virker-det" onclick="closeMobile()">Sådan virker det</a>
-    <a href="#demo" onclick="closeMobile()">Prøv demo</a>
-    <a href="#fordele" onclick="closeMobile()">Fordele</a>
-    <a href="#priser" onclick="closeMobile()">Priser</a>
-    <a href="#tryghed" onclick="closeMobile()">Tryghed</a>
-    <hr style="border:none;border-top:2px solid var(--peach-200);margin:12px 0">
-    <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--slate-400);padding:8px 0 0;border:none">Log ind</span>
-    <a href="/forældre/" onclick="closeMobile()">Forældreportal</a>
-    <a href="/app" onclick="closeMobile()">Café-app (personale)</a>
-    <a href="#kontakt" class="btn btn-primary" onclick="closeMobile()">Book en snak</a>
+  <div class="flango-mobile-menu" id="flangoMobileMenu" role="dialog" aria-label="Mobilmenu">
+    <a href="/">Forside</a>
+    <a href="/pris/">Priser</a>
+    <a href="/gaming/">Gaming</a>
+    <a href="/om-flango/">Om Flango</a>
+    <span class="flango-mobile-section">Log ind</span>
+    <a href="/forældre/">Forældreportal</a>
+    <a href="/app">Café-app (personale)</a>
+    <a href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango" class="flango-nav-cta">Book en snak</a>
   </div>
 </nav>
 
@@ -1674,21 +1672,16 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
   <div class="container">
     <div class="hero-grid">
       <div class="hero-content">
-        <div class="hero-badge">
-          <span class="dot"></span>
-          Live på Stampen SFO siden dec. 2025
-        </div>
         <h1 id="hero-heading">SFO-caféen, <em>uden bøvlet</em></h1>
         <p class="hero-sub">
-          Flango er et kontantløst cafésystem bygget til danske SFO'er. Børnene handler selv, forældre har fuld indsigt, og I slipper for regneark og papirstrimler.
+          Flango er et cafésystem bygget til danske SFO'er. Børnene handler selv, forældre har fuld indsigt, og I slipper for regneark og papirstrimler.
         </p>
         <div class="hero-buttons">
-          <a href="#demo" class="btn btn-primary">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Prøv demoen
-          </a>
-          <a href="#kontakt" class="btn btn-secondary">
+          <a href="#kontakt" class="btn btn-primary">
             Book en snak
+          </a>
+          <a href="#tryghed" class="btn btn-secondary">
+            Sikkerhed og GDPR
           </a>
         </div>
       </div>
@@ -1729,49 +1722,27 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
   <div class="container">
     <div class="stats-banner reveal">
       <div class="stat-card">
-        <div class="stat-number">130+</div>
-        <div class="stat-label">Børn bruger Flango dagligt</div>
+        <div class="stat-number">EU</div>
+        <div class="stat-label">Hostet i EU · GDPR-konformt</div>
       </div>
       <div class="stat-card">
-        <div class="stat-number">4.200+</div>
-        <div class="stat-label">Salg gennemført</div>
+        <div class="stat-number">DPA</div>
+        <div class="stat-label">Databehandleraftale klar</div>
       </div>
       <div class="stat-card">
-        <div class="stat-number">0 kr</div>
-        <div class="stat-label">Kontanter i caféen</div>
+        <div class="stat-number">SFO</div>
+        <div class="stat-label">Designet af pædagoger</div>
       </div>
     </div>
     <div class="testimonials">
       <div class="testimonial-card reveal reveal-delay-1">
         <span class="testimonial-quote">"</span>
-        <p class="testimonial-text">Vi brugte bogstaveligt talt et regneark og papirstrimler. Med Flango klarer børnene selv caféen, og vi har fået tid til at være til stede i stedet for at sidde og regne.</p>
+        <p class="testimonial-text">Flango er blevet uundværligt for os. Børnene og personalet elsker det. Alle SFO'er burde bruge Flango.</p>
         <div class="testimonial-author">
-          <div class="testimonial-avatar" style="background:var(--peach-400);">ML</div>
+          <div class="testimonial-avatar" style="background:var(--peach-400);">AS</div>
           <div>
-            <div class="testimonial-name">Mette Lindgren</div>
-            <div class="testimonial-title">Pædagog, Bakkegården SFO</div>
-          </div>
-        </div>
-      </div>
-      <div class="testimonial-card reveal reveal-delay-2">
-        <span class="testimonial-quote">"</span>
-        <p class="testimonial-text">Forældrene elsker det. De kan sætte grænser for sukker og allergener, se hvad børnene køber, og indbetale direkte fra telefonen. Vi får næsten ingen henvendelser mere.</p>
-        <div class="testimonial-author">
-          <div class="testimonial-avatar" style="background:var(--sky-400);">JH</div>
-          <div>
-            <div class="testimonial-name">Jonas Holm</div>
-            <div class="testimonial-title">SFO-leder, Egelundskolen</div>
-          </div>
-        </div>
-      </div>
-      <div class="testimonial-card reveal reveal-delay-3">
-        <span class="testimonial-quote">"</span>
-        <p class="testimonial-text">Det bedste er at børnene tager det seriøst. De vil gerne stå bag disken, og de lærer at tælle penge og tage ansvar. Det er pædagogik forklædt som en café.</p>
-        <div class="testimonial-author">
-          <div class="testimonial-avatar" style="background:var(--sage-400);">SA</div>
-          <div>
-            <div class="testimonial-name">Sofie Andersen</div>
-            <div class="testimonial-title">Pædagogmedhjælper, Hybenhuset</div>
+            <div class="testimonial-name">Anne Skeel</div>
+            <div class="testimonial-title">Usserød SFO2</div>
           </div>
         </div>
       </div>
@@ -1809,7 +1780,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         </div>
         <div class="step-num">Trin 3</div>
         <div class="step-title">Saldoen trækkes</div>
-        <p class="step-desc">Beløbet trækkes automatisk fra barnets saldo. Ingen kontanter, ingen rod.</p>
+        <p class="step-desc">Beløbet trækkes automatisk fra barnets saldo. Ingen håndtering af kvitteringer eller indbetalinger.</p>
       </div>
       <div class="step-card reveal reveal-delay-4">
         <div class="step-icon">
@@ -1832,64 +1803,6 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
 </section>
 
 <!-- ============================
-     INTERACTIVE DEMO
-     ============================ -->
-<section class="demo-section section-pad" id="demo" aria-labelledby="demo-heading">
-  <div class="container">
-    <div style="text-align:center;" class="reveal">
-      <div class="section-label" style="justify-content:center;">Prøv selv</div>
-      <h2 id="demo-heading">Se hvordan Flango føles</h2>
-      <p style="color:var(--slate-500);margin-top:12px;max-width:500px;margin-left:auto;margin-right:auto;font-size:0.95rem;">Vælg et barn, tilføj varer til kurven, og gennemfør et salg. Præcis som i en rigtig SFO-café.</p>
-    </div>
-    <div class="demo-wrapper reveal" style="position:relative;">
-      <div class="demo-header">
-        <div class="demo-header-left">
-          <span class="demo-dot red"></span>
-          <span class="demo-dot yellow"></span>
-          <span class="demo-dot green"></span>
-          <span class="demo-header-title">Flango Café — Demo</span>
-        </div>
-        <button class="demo-reset-btn" onclick="resetDemo()">Nulstil demo</button>
-      </div>
-      <div class="demo-body" id="demoBody">
-        <div class="demo-sidebar">
-          <div class="demo-sidebar-title">Vælg kunde</div>
-          <div id="childList"></div>
-        </div>
-        <div class="demo-main">
-          <div class="demo-view-label" id="productsLabel">Vælg en kunde først</div>
-          <div class="products-grid" id="productsGrid"></div>
-          <div class="demo-cart" id="cartSection">
-            <div class="cart-title">Indkøbskurv</div>
-            <div class="cart-items" id="cartItems">
-              <div class="cart-empty">Kurven er tom</div>
-            </div>
-            <div class="cart-divider"></div>
-            <div class="cart-total">
-              <span>Total</span>
-              <span id="cartTotal">0 kr</span>
-            </div>
-            <button class="cart-sell-btn" id="sellBtn" disabled onclick="processSale()">Gennemfør salg</button>
-          </div>
-        </div>
-      </div>
-      <!-- Receipt overlay -->
-      <div class="demo-receipt-overlay" id="receiptOverlay">
-        <div class="demo-receipt">
-          <div class="receipt-check">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
-          <div class="receipt-title">Salg gennemført</div>
-          <div class="receipt-sub" id="receiptSub"></div>
-          <div class="receipt-details" id="receiptDetails"></div>
-          <button class="receipt-close-btn" onclick="closeReceipt()">Fortsæt</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================
      BENEFITS
      ============================ -->
 <section class="benefits section-pad" id="fordele" aria-labelledby="benefits-heading">
@@ -1907,7 +1820,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         <ul class="benefit-list">
           <li>
             <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Slut med regneark, kontanter og papirstrimler. Alt køres digitalt fra én skærm.
+            Slut med regneark og papirstrimler. Alt køres digitalt fra én skærm.
           </li>
           <li>
             <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
@@ -1983,7 +1896,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
       <span style="font-size:0.75rem;font-weight:700;color:var(--sage-600);background:var(--sage-50);padding:3px 10px;border-radius:100px;border:1px solid var(--sage-200)">Spar op til 17%</span>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px" class="pricing-grid reveal">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px" class="pricing-grid reveal">
       <div style="background:var(--white);border-radius:var(--radius-lg);padding:32px 24px;border:1.5px solid var(--slate-200);display:flex;flex-direction:column;transition:all 0.3s;position:relative" class="p-card" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 10px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
         <div style="font-family:var(--font-display);font-size:1.25rem;margin-bottom:4px">Basic</div>
         <div style="font-size:0.82rem;color:var(--slate-400);margin-bottom:20px;min-height:2.4em">Simpel café — op til 100 børn</div>
@@ -1992,22 +1905,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         <div style="font-size:0.78rem;color:var(--slate-400);margin-bottom:20px">Oprettelse: 2.500 kr</div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;flex:1">
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Cafésystem med saldo</div>
-          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Forældreportal</div>
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Max 100 brugere</div>
-        </div>
-        <a href="#kontakt" style="display:block;text-align:center;padding:12px;border-radius:100px;font-weight:700;font-size:0.88rem;background:var(--slate-50);color:var(--slate-700);border:1.5px solid var(--slate-200);transition:all 0.2s;margin-top:auto" onmouseover="this.style.borderColor='var(--peach-300)';this.style.color='var(--peach-700)'" onmouseout="this.style.borderColor='var(--slate-200)';this.style.color='var(--slate-700)'">Kontakt os</a>
-      </div>
-
-      <div style="background:var(--white);border-radius:var(--radius-lg);padding:32px 24px;border:1.5px solid var(--slate-200);display:flex;flex-direction:column;transition:all 0.3s;position:relative" class="p-card" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 10px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-        <div style="font-family:var(--font-display);font-size:1.25rem;margin-bottom:4px">Plus</div>
-        <div style="font-size:0.82rem;color:var(--slate-400);margin-bottom:20px;min-height:2.4em">Med Event Mode til arrangementer</div>
-        <div class="price-display" data-m="399 kr/md" data-y="3.788 kr/år" style="font-family:var(--font-display);font-size:2rem;color:var(--slate-900);margin-bottom:2px">399 kr/md</div>
-        <div class="price-sub-display" data-m="" data-y="316 kr/md" style="font-size:0.8rem;color:var(--slate-400);margin-bottom:4px;min-height:1.4em"></div>
-        <div style="font-size:0.78rem;color:var(--slate-400);margin-bottom:20px">Oprettelse: 2.500 kr</div>
-        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;flex:1">
-          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Alt i Basic</div>
-          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Event Mode</div>
-          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Max 200 brugere</div>
         </div>
         <a href="#kontakt" style="display:block;text-align:center;padding:12px;border-radius:100px;font-weight:700;font-size:0.88rem;background:var(--slate-50);color:var(--slate-700);border:1.5px solid var(--slate-200);transition:all 0.2s;margin-top:auto" onmouseover="this.style.borderColor='var(--peach-300)';this.style.color='var(--peach-700)'" onmouseout="this.style.borderColor='var(--slate-200)';this.style.color='var(--slate-700)'">Kontakt os</a>
       </div>
@@ -2020,7 +1918,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         <div class="price-sub-display" data-m="" data-y="458 kr/md" style="font-size:0.8rem;color:var(--slate-400);margin-bottom:4px;min-height:1.4em"></div>
         <div style="font-size:0.78rem;color:var(--slate-400);margin-bottom:20px">Gratis oprettelse</div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;flex:1">
-          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Alt i Plus</div>
+          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Forældreportal</div>
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Skærmtidsstyring</div>
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Ubegrænset brugere</div>
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Fri support</div>
@@ -2048,14 +1946,14 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
       <h3 style="font-family:var(--font-display);font-size:1.3rem;margin-bottom:20px;text-align:center">Sammenligning af planer</h3>
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
         <table style="width:100%;min-width:520px;border-collapse:collapse;background:var(--white);border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--slate-200);box-shadow:var(--shadow-sm);font-size:0.88rem">
-          <thead><tr style="background:var(--slate-50)"><th style="padding:14px 16px;text-align:left;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600);text-transform:uppercase;letter-spacing:0.04em;width:36%">Funktion</th><th style="padding:14px 16px;text-align:center;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600)">Basic</th><th style="padding:14px 16px;text-align:center;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600)">Plus</th><th style="padding:14px 16px;text-align:center;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600)">Pro</th><th style="padding:14px 16px;text-align:center;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600)">Kommune</th></tr></thead>
+          <thead><tr style="background:var(--slate-50)"><th style="padding:14px 16px;text-align:left;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600);text-transform:uppercase;letter-spacing:0.04em;width:40%">Funktion</th><th style="padding:14px 16px;text-align:center;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600)">Basic</th><th style="padding:14px 16px;text-align:center;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600)">Pro</th><th style="padding:14px 16px;text-align:center;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600)">Kommune</th></tr></thead>
           <tbody>
-            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Max brugere</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">100</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">200</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">Ubegrænset</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">Ubegrænset</td></tr>
-            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Institutioner</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">1</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">1</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">1</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">Op til 5</td></tr>
-            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Event Mode</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--slate-300)">—</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td></tr>
-            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Skærmtidsstyring</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--slate-300)">—</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--slate-300)">—</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td></tr>
-            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Fri support</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--slate-300)">—</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--slate-300)">—</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td></tr>
-            <tr><td style="padding:12px 16px">Oprettelse</td><td style="padding:12px 16px;text-align:center">2.500 kr</td><td style="padding:12px 16px;text-align:center">2.500 kr</td><td style="padding:12px 16px;text-align:center">Gratis</td><td style="padding:12px 16px;text-align:center">Gratis</td></tr>
+            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Max brugere</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">100</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">Ubegrænset</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">Ubegrænset</td></tr>
+            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Institutioner</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">1</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">1</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">Op til 5</td></tr>
+            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Forældreportal</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--slate-300)">—</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td></tr>
+            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Skærmtidsstyring</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--slate-300)">—</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td></tr>
+            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Fri support</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--slate-300)">—</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td></tr>
+            <tr><td style="padding:12px 16px">Oprettelse</td><td style="padding:12px 16px;text-align:center">2.500 kr</td><td style="padding:12px 16px;text-align:center">Gratis</td><td style="padding:12px 16px;text-align:center">Gratis</td></tr>
           </tbody>
         </table>
       </div>
@@ -2067,7 +1965,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
       <div id="faqList" style="display:flex;flex-direction:column;gap:12px">
         <div class="faq-i" style="background:var(--white);border-radius:var(--radius-md);border:1px solid var(--slate-200);overflow:hidden">
           <button onclick="toggleFaq(this)" style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;font-weight:700;font-size:0.92rem;color:var(--slate-800);cursor:pointer;width:100%;text-align:left;background:none;border:none;font-family:var(--font-body)">Hvad indebærer oprettelsen?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.3s"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7">Oprettelsen dækker opsætning af Flango til jeres institution, introduktion til personalet og hjælp til at komme i gang. Ved Basic og Plus betales 2.500 kr engangs. Pro og Kommune har gratis oprettelse.</div></div>
+          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7">Oprettelsen dækker opsætning af Flango til jeres institution, introduktion til personalet og hjælp til at komme i gang. Ved Basic betales 2.500 kr engangs. Pro og Kommune har gratis oprettelse.</div></div>
         </div>
         <div class="faq-i" style="background:var(--white);border-radius:var(--radius-md);border:1px solid var(--slate-200);overflow:hidden">
           <button onclick="toggleFaq(this)" style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;font-weight:700;font-size:0.92rem;color:var(--slate-800);cursor:pointer;width:100%;text-align:left;background:none;border:none;font-family:var(--font-body)">Kræver Flango internet?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.3s"><polyline points="6 9 12 15 18 9"/></svg></button>
@@ -2112,7 +2010,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         </div>
         <div>
           <div class="trust-card-title">Institutionsisolering</div>
-          <p class="trust-card-desc">Row Level Security sikrer at institutioner aldrig kan se hinandens data. Hver institution er en vandtæt silo.</p>
+          <p class="trust-card-desc">Streng dataisolation håndhævet på databaseniveau sikrer at institutioner aldrig kan se hinandens data. Hver institution er en vandtæt silo.</p>
         </div>
       </div>
       <div class="trust-card reveal reveal-delay-3">
@@ -2121,7 +2019,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         </div>
         <div>
           <div class="trust-card-title">Dansk hosting</div>
-          <p class="trust-card-desc">Data opbevares hos Supabase med EU-baserede servere. Ingen data forlader Europa.</p>
+          <p class="trust-card-desc">Data hostes på en managed cloud-platform i EU. Ingen data forlader Europa.</p>
         </div>
       </div>
       <div class="trust-card reveal reveal-delay-4">
@@ -2247,7 +2145,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
     <div class="footer-grid" style="grid-template-columns:2fr 1fr 1fr 1fr">
       <div>
         <div class="footer-brand">flango.</div>
-        <p class="footer-tagline">Kontantløst cafésystem til danske SFO'er og fritidsklubber. Mindre administration, mere nærvær.</p>
+        <p class="footer-tagline">Cafésystem til danske SFO'er og fritidsklubber. Mindre administration, mere nærvær.</p>
       </div>
       <div>
         <div class="footer-heading">Sektioner</div>
@@ -2264,7 +2162,6 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
           <li><a href="/forældre/">Forældreportal</a></li>
           <li><a href="/app">Café-app</a></li>
           <li><a href="/skaermtid">Skærmtid</a></li>
-          <li><a href="#demo">Demo</a></li>
         </ul>
       </div>
       <div>
@@ -2385,169 +2282,6 @@ function toggleFaq(btn) {
 }
 
 /* ========================================
-   INTERACTIVE DEMO
-   ======================================== */
-const CHILDREN = [
-  { id: 1, name: 'Alma', level: 'Expert', levelStars: '⭐⭐', avatar: '🦊', balance: 45, color: '#FFD9AD' },
-  { id: 2, name: 'Oscar', level: 'Øvet', levelStars: '⭐', avatar: '🐻', balance: 28, color: '#DBEEFE' },
-  { id: 3, name: 'Frida', level: 'Nybegynder', levelStars: '', avatar: '🐰', balance: 15, color: '#E0EBE0' },
-  { id: 4, name: 'Noah', level: 'Pro', levelStars: '⭐⭐⭐', avatar: '🦁', balance: 62, color: '#FFEED9' }
-];
-
-const PRODUCTS = [
-  { id: 1, name: 'Toast', price: 5, icon: '🍞' },
-  { id: 2, name: 'Juice', price: 3, icon: '🧃' },
-  { id: 3, name: 'Frugt', price: 2, icon: '🍎' },
-  { id: 4, name: 'Sushi', price: 8, icon: '🍣' },
-  { id: 5, name: 'Suppe', price: 6, icon: '🍲' },
-  { id: 6, name: 'Nøddemix', price: 4, icon: '🥜' },
-  { id: 7, name: 'Yoghurt', price: 4, icon: '🥛' },
-  { id: 8, name: 'Bolle', price: 3, icon: '🥐' }
-];
-
-let selectedChild = null;
-let cart = [];
-let balances = {};
-
-function initDemo() {
-  CHILDREN.forEach(c => { balances[c.id] = c.balance; });
-  renderChildren();
-  renderProducts();
-  updateCart();
-}
-
-function renderChildren() {
-  const list = document.getElementById('childList');
-  list.innerHTML = CHILDREN.map(c => `
-    <div class="child-card ${selectedChild === c.id ? 'selected' : ''}" onclick="selectChild(${c.id})">
-      <div class="child-top">
-        <div class="child-avatar" style="background:${c.color}">${c.avatar}</div>
-        <div>
-          <div class="child-name">${c.name}</div>
-          <div class="child-level">${c.level} ${c.levelStars}</div>
-        </div>
-      </div>
-      <div class="child-balance">Saldo: ${balances[c.id]} kr</div>
-    </div>
-  `).join('');
-}
-
-function selectChild(id) {
-  selectedChild = id;
-  cart = [];
-  renderChildren();
-  renderProducts();
-  updateCart();
-  const child = CHILDREN.find(c => c.id === id);
-  document.getElementById('productsLabel').textContent = `Varer — handler for ${child.name}`;
-}
-
-function renderProducts() {
-  const grid = document.getElementById('productsGrid');
-  const balance = selectedChild ? balances[selectedChild] : 0;
-  grid.innerHTML = PRODUCTS.map(p => `
-    <div class="product-card ${!selectedChild ? 'disabled' : ''}" onclick="addToCart(${p.id})">
-      <div class="product-icon"><span style="font-size:1.4rem">${p.icon}</span></div>
-      <div class="product-name">${p.name}</div>
-      <div class="product-price">${p.price} kr</div>
-    </div>
-  `).join('');
-}
-
-function addToCart(productId) {
-  if (!selectedChild) return;
-  const product = PRODUCTS.find(p => p.id === productId);
-  const total = cartTotal() + product.price;
-  if (total > balances[selectedChild]) return; // Can't overspend
-  const existing = cart.find(i => i.id === productId);
-  if (existing) {
-    existing.qty++;
-  } else {
-    cart.push({ id: productId, name: product.name, price: product.price, icon: product.icon, qty: 1 });
-  }
-  updateCart();
-}
-
-function removeFromCart(productId) {
-  const idx = cart.findIndex(i => i.id === productId);
-  if (idx > -1) {
-    if (cart[idx].qty > 1) cart[idx].qty--;
-    else cart.splice(idx, 1);
-  }
-  updateCart();
-}
-
-function cartTotal() {
-  return cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-}
-
-function updateCart() {
-  const items = document.getElementById('cartItems');
-  const total = document.getElementById('cartTotal');
-  const btn = document.getElementById('sellBtn');
-
-  if (cart.length === 0) {
-    items.innerHTML = '<div class="cart-empty">Kurven er tom</div>';
-  } else {
-    items.innerHTML = cart.map(i => `
-      <div class="cart-item">
-        <div class="cart-item-left">
-          <span class="cart-item-qty">${i.qty}</span>
-          <span class="cart-item-name">${i.name}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span class="cart-item-price">${i.price * i.qty} kr</span>
-          <span class="cart-item-remove" onclick="removeFromCart(${i.id})">&times;</span>
-        </div>
-      </div>
-    `).join('');
-  }
-  total.textContent = cartTotal() + ' kr';
-  btn.disabled = cart.length === 0 || !selectedChild;
-}
-
-function processSale() {
-  if (!selectedChild || cart.length === 0) return;
-  const child = CHILDREN.find(c => c.id === selectedChild);
-  const total = cartTotal();
-  const oldBalance = balances[selectedChild];
-  balances[selectedChild] -= total;
-
-  // Build receipt
-  const sub = document.getElementById('receiptSub');
-  const details = document.getElementById('receiptDetails');
-  sub.textContent = `${child.name} har handlet for ${total} kr`;
-
-  let html = cart.map(i =>
-    `<div class="receipt-line"><span>${i.qty}× ${i.name}</span><span>${i.price * i.qty} kr</span></div>`
-  ).join('');
-  html += `<div class="receipt-line total"><span>Total</span><span>${total} kr</span></div>`;
-  html += `<div class="receipt-line balance"><span>Ny saldo</span><span>${balances[selectedChild]} kr</span></div>`;
-  details.innerHTML = html;
-
-  document.getElementById('receiptOverlay').classList.add('show');
-  cart = [];
-  renderChildren();
-  updateCart();
-}
-
-function closeReceipt() {
-  document.getElementById('receiptOverlay').classList.remove('show');
-}
-
-function resetDemo() {
-  selectedChild = null;
-  cart = [];
-  CHILDREN.forEach(c => { balances[c.id] = c.balance; });
-  renderChildren();
-  renderProducts();
-  updateCart();
-  document.getElementById('productsLabel').textContent = 'Vælg en kunde først';
-}
-
-initDemo();
-
-/* ========================================
    CONTACT FORM
    ======================================== */
 function submitForm() {
@@ -2582,5 +2316,6 @@ function submitForm() {
   }
 }
 </script>
+<script src="/shared/nav.js"></script>
 </body>
 </html>

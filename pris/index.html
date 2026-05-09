@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Priser – Flango</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Flango-priser: Basic, Plus, Pro og Kommune. Find den plan der passer til jeres SFO eller fritidsklub." />
+  <meta name="description" content="Flango-priser: Basic, Pro og Kommune. Find den plan der passer til jeres SFO eller fritidsklub." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -172,7 +172,7 @@
     .faq-list strong { display: block; margin-bottom: 6px; font-size: 15px; }
     .faq-list p { margin: 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
 
-    /* Moduler + Event Mode */
+    /* Moduler */
     .block-intro {
       margin: 0 0 20px;
       font-size: 14px;
@@ -185,45 +185,12 @@
       gap: 16px;
       max-width: 400px;
     }
-    .event-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-      margin-bottom: 4px;
-    }
-    @media (max-width: 640px) {
-      .event-grid { grid-template-columns: minmax(0, 1fr); }
-    }
-    .pricing-badge.addon {
-      background: var(--accent-soft);
-      color: #b45309;
-      border: 1px solid rgba(255, 122, 60, 0.35);
-      box-shadow: 0 2px 10px rgba(255, 122, 60, 0.15);
-    }
-    .pricing-card.has-badge { padding-top: 36px; }
     .card-note {
       font-size: 12px;
       color: var(--text-muted);
       margin: 12px 0 0;
       line-height: 1.4;
     }
-    .event-callout {
-      margin-top: 20px;
-      padding: 14px 18px;
-      border-radius: var(--radius-lg);
-      background: var(--accent-soft);
-      border: 1px solid rgba(255, 122, 60, 0.2);
-      font-size: 14px;
-      color: var(--text-main);
-      line-height: 1.45;
-    }
-    .event-callout a {
-      font-weight: 600;
-      color: var(--accent-dark);
-      text-decoration: underline;
-      text-underline-offset: 3px;
-    }
-    .event-callout a:hover { color: var(--accent); }
 
     footer {
       margin-top: 24px;
@@ -246,8 +213,6 @@
       <ul class="flango-nav-links">
         <li><a href="/pris/" class="here">Priser</a></li>
         <li><a href="/gaming/">Gaming</a></li>
-        <li><a href="/event/">Event</a></li>
-        <li><a href="/prov-flango/">Demo</a></li>
         <li><a href="/om-flango/">Om Flango</a></li>
       </ul>
       <div class="flango-nav-right">
@@ -265,8 +230,6 @@
       <a href="/">Forside</a>
       <a href="/pris/" class="here">Priser</a>
       <a href="/gaming/">Gaming</a>
-      <a href="/event/">Event</a>
-      <a href="/prov-flango/">Demo</a>
       <a href="/om-flango/">Om Flango</a>
       <span class="flango-mobile-section">Log ind</span>
       <a href="/forældre/">Forældreportal</a>
@@ -294,18 +257,6 @@
           </ul>
           <a class="pricing-cta secondary" href="mailto:kontakt@flango.dk?subject=Flango%20Basic">Kontakt os</a>
         </article>
-        <article class="pricing-card" data-monthly="399" data-yearly="3788">
-          <h3>Flango Plus</h3>
-          <p class="plan-desc">Event Mode til fester og arrangementer</p>
-          <div class="price-main"></div>
-          <div class="price-alt"></div>
-          <div class="price-setup">Oprettelse 2.500 kr.</div>
-          <ul class="pricing-features">
-            <li><span class="check">✓</span> Event Mode</li>
-            <li><span class="check">✓</span> Max 200 brugere</li>
-          </ul>
-          <a class="pricing-cta secondary" href="mailto:kontakt@flango.dk?subject=Flango%20Plus">Kontakt os</a>
-        </article>
         <article class="pricing-card popular" data-monthly="599" data-yearly="5500">
           <span class="pricing-badge">Mest populær</span>
           <h3>Flango Pro</h3>
@@ -314,7 +265,7 @@
           <div class="price-alt"></div>
           <div class="price-setup">Oprettelse gratis</div>
           <ul class="pricing-features">
-            <li><span class="check">✓</span> Event Mode</li>
+            <li><span class="check">✓</span> Forældreportal</li>
             <li><span class="check">✓</span> Skærmtid</li>
             <li><span class="check">✓</span> Ubegrænset brugere</li>
             <li><span class="check">✓</span> Fri support</li>
@@ -328,7 +279,8 @@
           <div class="price-alt">&nbsp;</div>
           <div class="price-setup">Gratis oprettelse</div>
           <ul class="pricing-features">
-            <li><span class="check">✓</span> Event Mode + Skærmtid</li>
+            <li><span class="check">✓</span> Forældreportal</li>
+            <li><span class="check">✓</span> Skærmtid</li>
             <li><span class="check">✓</span> Ubegrænset brugere</li>
             <li><span class="check">✓</span> Fri support</li>
           </ul>
@@ -345,7 +297,6 @@
             <tr>
               <th scope="col">Funktion</th>
               <th scope="col">Basic</th>
-              <th scope="col">Plus</th>
               <th scope="col">Pro</th>
               <th scope="col">Kommune</th>
             </tr>
@@ -354,7 +305,6 @@
             <tr>
               <td>Max. brugere</td>
               <td>100</td>
-              <td>200</td>
               <td>Ubegrænset</td>
               <td>Ubegrænset</td>
             </tr>
@@ -362,19 +312,16 @@
               <td>Institutioner</td>
               <td>1</td>
               <td>1</td>
-              <td>1</td>
               <td>Op til 5</td>
             </tr>
             <tr>
-              <td>Event Mode</td>
+              <td>Forældreportal</td>
               <td class="nope">—</td>
-              <td class="tick">✓</td>
               <td class="tick">✓</td>
               <td class="tick">✓</td>
             </tr>
             <tr>
               <td>Skærmtid</td>
-              <td class="nope">—</td>
               <td class="nope">—</td>
               <td class="tick">✓</td>
               <td class="tick">✓</td>
@@ -382,13 +329,11 @@
             <tr>
               <td>Fri support</td>
               <td class="nope">—</td>
-              <td class="nope">—</td>
               <td class="tick">✓</td>
               <td class="tick">✓</td>
             </tr>
             <tr>
               <td>Oprettelse</td>
-              <td>2.500 kr.</td>
               <td>2.500 kr.</td>
               <td>Gratis</td>
               <td>Gratis</td>
@@ -413,42 +358,7 @@
           </ul>
           <a class="pricing-cta secondary" href="mailto:kontakt@flango.dk?subject=Flango%20Sk%C3%A6rmtid%20standalone">Kontakt os</a>
         </article>
-        <p class="card-note">Har du allerede Flango Basic/Plus? Tilføj Skærmtid: +149 kr / måned.</p>
-      </div>
-    </section>
-
-    <section id="event-mode" aria-labelledby="event-mode-heading">
-      <h2 id="event-mode-heading" class="section-heading">Event Mode</h2>
-      <p class="block-intro">Til fester, koncerter, temadage og særlige arrangementer, perfekt til f.eks &#8216;Børn Hjælper Børn&#8217;.</p>
-      <div class="event-grid">
-        <article class="pricing-card has-badge">
-          <span class="pricing-badge addon">Kun for eksisterende Flango-kunder</span>
-          <h3>Event Mode (Add-on)</h3>
-          <p class="plan-desc">14 dages adgang til event-opsætning</p>
-          <div class="price-main">14 dages adgang fra 349 kr</div>
-          <div class="price-alt">&nbsp;</div>
-          <ul class="pricing-features">
-            <li><span class="check">✓</span> Hurtig event-opsætning</li>
-            <li><span class="check">✓</span> Event-produkter og priser</li>
-            <li><span class="check">✓</span> Event-statistik / opsummering</li>
-          </ul>
-          <a class="pricing-cta secondary" href="mailto:kontakt@flango.dk?subject=Event%20Mode%20Add-on">Aktivér / Kontakt os</a>
-        </article>
-        <article class="pricing-card">
-          <h3>Event Kickstart</h3>
-          <p class="plan-desc">Til nye kunder – inkl. opsætning og onboarding</p>
-          <div class="price-main">Fra 4.999 kr</div>
-          <div class="price-alt">&nbsp;</div>
-          <ul class="pricing-features">
-            <li><span class="check">✓</span> Oprettelse + opsætning</li>
-            <li><span class="check">✓</span> Onboarding af personale</li>
-            <li><span class="check">✓</span> 14 dages Event Mode</li>
-          </ul>
-          <a class="pricing-cta secondary" href="mailto:kontakt@flango.dk?subject=Event%20Kickstart">Kontakt os</a>
-        </article>
-      </div>
-      <div class="event-callout">
-        Vil du have Event Mode + Skærmtid samlet med gratis oprettelse og fri support? <a href="/#pricing">Se Flango Pro</a>.
+        <p class="card-note">Har du allerede Flango Basic? Tilføj Skærmtid: +149 kr / måned.</p>
       </div>
     </section>
 
@@ -457,7 +367,7 @@
       <ul class="faq-list">
         <li>
           <strong>Hvad indebærer oprettelsen?</strong>
-          <p>Oprettelsen dækker opsætning af Flango til jeres institution, introduktion til personalet og hjælp til at komme i gang. Ved Basic og Plus betales 2.500 kr. engangs; Pro og Kommune har gratis oprettelse.</p>
+          <p>Oprettelsen dækker opsætning af Flango til jeres institution, introduktion til personalet og hjælp til at komme i gang. Ved Basic betales 2.500 kr. engangs; Pro og Kommune har gratis oprettelse.</p>
         </li>
         <li>
           <strong>Hvad betyder fri support (Pro og Kommune)?</strong>

@@ -161,8 +161,6 @@
       <ul class="flango-nav-links">
         <li><a href="/pris/">Priser</a></li>
         <li><a href="/gaming/">Gaming</a></li>
-        <li><a href="/event/">Event</a></li>
-        <li><a href="/prov-flango/">Demo</a></li>
         <li><a href="/om-flango/">Om Flango</a></li>
       </ul>
       <div class="flango-nav-right">
@@ -180,8 +178,6 @@
       <a href="/">Forside</a>
       <a href="/pris/">Priser</a>
       <a href="/gaming/">Gaming</a>
-      <a href="/event/">Event</a>
-      <a href="/prov-flango/">Demo</a>
       <a href="/om-flango/">Om Flango</a>
       <span class="flango-mobile-section">Log ind</span>
       <a href="/forældre/">Forældreportal</a>
@@ -318,10 +314,12 @@
     <section class="about-section">
       <h2 class="section-heading">Opbevaring og sletning</h2>
       <ul>
-        <li>Alle persondata opbevares i <strong>EU</strong> (AWS eu-west-1, Irland) via Supabase.</li>
-        <li>Data opbevares så længe barnet er tilknyttet institutionen, eller indtil den dataansvarlige anmoder om sletning.</li>
+        <li>Alle persondata opbevares i <strong>EU</strong> på en managed cloud-platform.</li>
+        <li>Inaktive brugerprofiler slettes automatisk efter 6 eller 24 måneder uden aktivitet — institutionen vælger periode.</li>
+        <li>Forældrekonti uden tilknyttede børn slettes automatisk efter 60 dages inaktivitet med 30 dages varsel.</li>
+        <li>Forælder-anmodninger om sletning behandles inden for 30 dage af den dataansvarlige.</li>
+        <li>Historiske transaktionsdata bevares typisk 5 år af bogføringsmæssige hensyn — herefter anonymiseres koblingen til personen.</li>
         <li>Ved ophør af samarbejde eksporteres alle data til den dataansvarlige, og data slettes derefter fra Flango.</li>
-        <li>Flango understøtter komplet datasletning med datadump inden sletning (teknisk verificerbar).</li>
       </ul>
     </section>
 
@@ -332,43 +330,28 @@
     <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">Underbehandlere</h2>
-      <table class="tech-table">
-        <thead>
-          <tr>
-            <th>Underbehandler</th>
-            <th>Formål</th>
-            <th>Persondata</th>
-            <th>Placering</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Supabase (AWS)</td>
-            <td>Database, auth, backend</td>
-            <td>Alle persondata</td>
-            <td>EU (Irland)</td>
-          </tr>
-          <tr>
-            <td>Stripe</td>
-            <td>Betaling</td>
-            <td>E-mail, beløb</td>
-            <td>EU / global</td>
-          </tr>
-          <tr>
-            <td>GitHub / Microsoft</td>
-            <td>Frontend-hosting</td>
-            <td>Ingen</td>
-            <td>CDN</td>
-          </tr>
-          <tr>
-            <td>Google (OAuth)</td>
-            <td>Valgfrit login</td>
-            <td>E-mail, navn</td>
-            <td>EU / global</td>
-          </tr>
-        </tbody>
-      </table>
-      <p>Der er indgået databehandleraftale (DPA) med Supabase. Stripe er PCI DSS Level 1 certificeret og håndterer al kortdata — Flango ser aldrig kortnumre.</p>
+      <p>Et begrænset antal underbehandlere indgår i driften — for hosting, betaling, e-mail-levering, valgfrit Google-login og bot-beskyttelse. Alle har:</p>
+      <ul>
+        <li>Underskrevet databehandleraftale (DPA) i overensstemmelse med GDPR art. 28</li>
+        <li>Primær drift i EU eller EU-godkendte overførselsmekanismer (SCC + DPF)</li>
+        <li>Kontraktlig pligt til at underrette ved sikkerhedshændelser</li>
+      </ul>
+      <p>Kortdata håndteres udelukkende af en PCI DSS Level 1-certificeret betalingspartner. Flango ser aldrig kortnumre eller bankoplysninger.</p>
+      <p>Den fulde liste over underbehandlere udleveres til den dataansvarlige institution eller kommune som del af databehandleraftalen.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section">
+      <h2 class="section-heading">Konsekvensanalyse (DPIA) og overførselsanalyse (TIA)</h2>
+      <p>Flango har udarbejdet:</p>
+      <ul>
+        <li><strong>DPIA</strong> (Konsekvensanalyse vedr. databeskyttelse) efter Datatilsynets skabelon</li>
+        <li><strong>TIA</strong> (Transfer Impact Assessment) for tredjelandsoverførsler</li>
+        <li><strong>Beredskabsplan</strong> med 24-timers underretning ved sikkerhedshændelser</li>
+        <li><strong>Brud-logbog</strong> med 5 års retention</li>
+      </ul>
+      <p>Disse dokumenter udleveres til den dataansvarlige institution eller kommune på anmodning som del af IT-screeningsprocessen.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />

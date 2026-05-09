@@ -140,8 +140,6 @@
       <ul class="flango-nav-links">
         <li><a href="/pris/">Priser</a></li>
         <li><a href="/gaming/">Gaming</a></li>
-        <li><a href="/event/">Event</a></li>
-        <li><a href="/prov-flango/">Demo</a></li>
         <li><a href="/om-flango/">Om Flango</a></li>
       </ul>
       <div class="flango-nav-right">
@@ -159,8 +157,6 @@
       <a href="/">Forside</a>
       <a href="/pris/">Priser</a>
       <a href="/gaming/">Gaming</a>
-      <a href="/event/">Event</a>
-      <a href="/prov-flango/">Demo</a>
       <a href="/om-flango/">Om Flango</a>
       <span class="flango-mobile-section">Log ind</span>
       <a href="/forældre/">Forældreportal</a>
@@ -183,8 +179,8 @@
     <div class="status-grid">
       <div class="status-card">
         <div class="label">Data opbevares i</div>
-        <div class="value">EU (Irland)</div>
-        <div class="detail">AWS eu-west-1 via Supabase</div>
+        <div class="value">EU</div>
+        <div class="detail">Managed cloud-platform i EU</div>
       </div>
       <div class="status-card">
         <div class="label">Kryptering i transit</div>
@@ -194,22 +190,22 @@
       <div class="status-card">
         <div class="label">Kryptering at rest</div>
         <div class="value">AES-256</div>
-        <div class="detail">AWS-managed disk encryption</div>
+        <div class="detail">Disk-encryption på alle data</div>
       </div>
       <div class="status-card">
         <div class="label">Kortdata hos Flango</div>
         <div class="value">Aldrig</div>
-        <div class="detail">Stripe håndterer al betaling (PCI DSS Level 1)</div>
+        <div class="detail">PCI DSS Level 1-certificeret partner håndterer al betaling</div>
       </div>
       <div class="status-card">
-        <div class="label">DPA med Supabase</div>
-        <div class="value">Underskrevet</div>
-        <div class="detail">Marts 2026</div>
+        <div class="label">Multifaktor</div>
+        <div class="value">2FA på admin</div>
+        <div class="detail">Nye enheder verificeres ved første login</div>
       </div>
       <div class="status-card">
         <div class="label">Institutionsisolation</div>
-        <div class="value">Row Level Security</div>
-        <div class="detail">Alle hovedtabeller i databasen</div>
+        <div class="value">Streng adskillelse</div>
+        <div class="detail">Håndhævet på databaseniveau</div>
       </div>
     </div>
 
@@ -220,53 +216,14 @@
     <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">Infrastruktur</h2>
-      <p>Flango kører på Supabase — en managed platform bygget på PostgreSQL og hostet på Amazon Web Services (AWS) i EU.</p>
-
-      <table class="tech-table">
-        <thead>
-          <tr>
-            <th>Komponent</th>
-            <th>Teknologi</th>
-            <th>Placering</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Database</td>
-            <td>PostgreSQL via Supabase</td>
-            <td>AWS eu-west-1 (Irland)</td>
-          </tr>
-          <tr>
-            <td>Backend-logik</td>
-            <td>Edge Functions (Deno) + PostgreSQL RPC</td>
-            <td>AWS eu-west-1 (Irland)</td>
-          </tr>
-          <tr>
-            <td>Autentifikation</td>
-            <td>Supabase Auth (JWT-baseret)</td>
-            <td>AWS eu-west-1 (Irland)</td>
-          </tr>
-          <tr>
-            <td>Realtidskommunikation</td>
-            <td>Supabase Realtime (WebSocket)</td>
-            <td>AWS eu-west-1 (Irland)</td>
-          </tr>
-          <tr>
-            <td>Betalingsgateway</td>
-            <td>Stripe Connect</td>
-            <td>EU / globalt (PCI DSS Level 1)</td>
-          </tr>
-          <tr>
-            <td>Frontend-hosting</td>
-            <td>GitHub Pages (kun statiske filer)</td>
-            <td>CDN (ingen persondata)</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="callout-blue callout">
-        <strong>Om GitHub Pages:</strong> Frontenden (HTML, CSS, JavaScript) serveres som statiske filer og indeholder ingen persondata, ingen serverlogik og ingen hemmelige nøgler. De API-nøgler der bruges i frontenden er offentlige "anon keys" — de giver kun adgang via databasens sikkerhedspolicies, ikke direkte til data.
-      </div>
+      <p>Flango kører på en managed cloud-platform i EU. Al databehandling, autentifikation og lagring foregår på servere i EU.</p>
+      <ul>
+        <li><strong>Database og backend:</strong> Managed cloud-platform i EU med daglige automatiske backups</li>
+        <li><strong>Autentifikation:</strong> Token-baseret med multifaktor for personale og support</li>
+        <li><strong>Frontend:</strong> Statiske filer uden persondata. API-nøgler i frontenden er offentlige adgangstokens — de giver kun adgang via serverens sikkerhedspolicies, ikke direkte til data.</li>
+        <li><strong>Betaling:</strong> Håndteres af PCI DSS Level 1-certificeret betalingspartner. Flango ser aldrig kortdata.</li>
+      </ul>
+      <p>Den specifikke leverandørstruktur og databehandleraftaler udleveres til den dataansvarlige institution eller kommune som del af IT-screeningen.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
@@ -276,7 +233,7 @@
     <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">Adgangskontrol</h2>
-      <p>Flango bruger rollebaseret adgangsstyring med seks brugerroller. Hver rolle har kun adgang til præcis de funktioner og data den behøver.</p>
+      <p>Flango bruger rollebaseret adgangsstyring. Hver rolle har kun adgang til præcis de funktioner og data den behøver.</p>
 
       <table class="tech-table">
         <thead>
@@ -289,38 +246,34 @@
         <tbody>
           <tr>
             <td>Admin (personale)</td>
-            <td>E-mail + kodeord</td>
+            <td>E-mail + adgangskode + 2FA på nye enheder</td>
             <td>Fuld adgang til egen institution</td>
           </tr>
           <tr>
             <td>Barn</td>
             <td>Kontonummer + PIN</td>
-            <td>Cafésalg, gamification</td>
-          </tr>
-          <tr>
-            <td>Operator (vikar)</td>
-            <td>Operatør-kode</td>
-            <td>Begrænset adgang, rate-limited</td>
+            <td>Cafésalg under voksens ansvar, gamification</td>
           </tr>
           <tr>
             <td>Forælder</td>
-            <td>E-mail + kodeord eller Google</td>
+            <td>E-mail + adgangskode eller valgfrit Google-login</td>
             <td>Kun egne børn</td>
           </tr>
           <tr>
-            <td>Superadmin</td>
-            <td>JWT-baseret rolle</td>
-            <td>Tværgående platformadministration</td>
+            <td>Kommune (valgfri)</td>
+            <td>Konto med obligatorisk multifaktor</td>
+            <td>Read-only tilsynsindsigt — ingen børnedata</td>
           </tr>
           <tr>
-            <td>Support</td>
-            <td>JWT-baseret rolle</td>
-            <td>Læseadgang på tværs, ingen destruktive handlinger</td>
+            <td>Support og leverandør</td>
+            <td>Konto med obligatorisk multifaktor</td>
+            <td>Drifts- og fejlsøgningsadgang. Alle handlinger logges.</td>
           </tr>
         </tbody>
       </table>
 
       <p>Børn logger ikke ind med e-mail — de identificeres ved fornavn eller kontonummer i café-appen. PIN-koder bruges til bekræftelse og er krypteret med bcrypt (envejskryptering).</p>
+      <p>Sessioner udløber ved 10 minutters inaktivitet på admin-konti.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
@@ -332,8 +285,7 @@
       <h2 class="section-heading">Institutionsisolation</h2>
       <p>Flango er et multi-tenant system hvor flere institutioner deler den samme database — men med streng isolation på databaseniveau.</p>
       <ul>
-        <li><strong>Row Level Security (RLS)</strong> er aktiveret på alle hovedtabeller. Det betyder at hver databaseforespørgsel automatisk filtreres, så brugere kun ser data fra deres egen institution.</li>
-        <li>Alle tabeller har en <code>institution_id</code>-kolonne, og alle queries filtreres automatisk via en hjælpefunktion der læser brugerens institutions-tilknytning fra deres JWT-token.</li>
+        <li><strong>Streng dataisolation</strong> er håndhævet på databaseniveau på alle tabeller med personoplysninger. Hver forespørgsel filtreres automatisk, så brugere kun ser data fra deres egen institution.</li>
         <li>Det er teknisk umuligt for en admin fra institution A at tilgå data fra institution B — selv ved direkte API-kald.</li>
         <li>Forældre kan kun se data for børn der eksplicit er tilknyttet deres konto.</li>
       </ul>
@@ -358,12 +310,12 @@
           <tr>
             <td>I transit</td>
             <td>TLS 1.2+</td>
-            <td>Al kommunikation mellem browser og Supabase — API, WebSocket og filupload</td>
+            <td>Al kommunikation mellem klient og server — API, realtid og filupload</td>
           </tr>
           <tr>
             <td>At rest</td>
             <td>AES-256</td>
-            <td>AWS-managed disk encryption. Nøgler beskyttes via FIPS 140-2 HSM'er.</td>
+            <td>Disk-encryption på alle data, med managed key-håndtering hos cloud-leverandøren</td>
           </tr>
           <tr>
             <td>Kodeord</td>
@@ -373,7 +325,7 @@
           <tr>
             <td>Betalingsdata</td>
             <td>PCI DSS Level 1</td>
-            <td>Stripe håndterer al kortdata. Flango ser aldrig kortnumre, CVV eller bankoplysninger.</td>
+            <td>Betalingspartneren håndterer al kortdata. Flango ser aldrig kortnumre, CVV eller bankoplysninger.</td>
           </tr>
         </tbody>
       </table>
@@ -386,20 +338,20 @@
     <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">Forretningslogik og audit</h2>
-      <p>Al forretningslogik (salg, saldotræk, tilmeldinger) udføres via PostgreSQL RPC-funktioner med <code>SECURITY DEFINER</code>. Det betyder:</p>
+      <p>Al forretningslogik (salg, saldotræk, tilmeldinger) udføres via server-side funktioner med kontrollerede rettigheder — ikke direkte fra brugerens browser. Det betyder:</p>
       <ul>
-        <li>Funktionerne kører med kontrollerede rettigheder — ikke med brugerens direkte adgang.</li>
-        <li>Input valideres internt før data ændres.</li>
+        <li>Funktionerne kører med begrænsede rettigheder — ikke med brugerens direkte adgang.</li>
+        <li>Input valideres på serveren før data ændres.</li>
         <li>Atomiske transaktioner sikrer at et salg enten gennemføres komplet eller rulles helt tilbage.</li>
       </ul>
 
-      <p style="margin-top: 20px;">Alle transaktioner og administrative handlinger logges i en append-only event-log:</p>
+      <p style="margin-top: 20px;">Loggen er opdelt i tre lag:</p>
       <ul>
-        <li>Hvem udførte handlingen (admin, ekspedient)</li>
-        <li>Handlingstype (SALE, DEPOSIT, BALANCE_EDIT, SALE_UNDO, SALE_ADJUSTMENT)</li>
-        <li>Detaljer, beløb og præcist tidspunkt</li>
+        <li><strong>Operationel historik</strong> — synlig for institutionens admins; salg, indbetalinger, justeringer (anonymiseres efter 2 år)</li>
+        <li><strong>Compliance-log</strong> — sikkerheds- og persondatabegivenheder, append-only (anonymiseres efter 5 år)</li>
+        <li><strong>Brud-logbog</strong> — dokumentation af eventuelle databrud (5 års retention jf. Datatilsynets vejledning)</li>
       </ul>
-      <p>Event-loggen kan ikke redigeres eller slettes. Det sikrer fuld sporbarhed.</p>
+      <p>Posterne kan ikke redigeres eller slettes af normale brugere efter de er skrevet. Det sikrer fuld sporbarhed.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
@@ -409,10 +361,10 @@
     <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">Betalingssikkerhed</h2>
-      <p>Flango bruger Stripe Connect til betalingshåndtering. Hver institution har sin egen Stripe-konto, så betalinger rutes direkte til institutionens konto.</p>
+      <p>Betaling håndteres af en PCI DSS Level 1-certificeret betalingspartner. Hver institution har sin egen betalingskonto, så betalinger rutes direkte til institutionens konto.</p>
 
       <div class="callout">
-        <strong>Flango håndterer aldrig kortdata.</strong> Når en forælder betaler, omdirigeres de til Stripes hosted betalingsside. Kortdata indtastes kun på Stripes domæne. Flango modtager kun en bekræftelse (beløb + tidspunkt). Denne arkitektur eliminerer PCI DSS-scope for Flango.
+        <strong>Flango håndterer aldrig kortdata.</strong> Når en forælder betaler, omdirigeres de til betalingspartnerens egen betalingsside. Kortdata indtastes kun dér. Flango modtager kun en bekræftelse (beløb + tidspunkt). Denne arkitektur eliminerer PCI DSS-scope for Flango.
       </div>
     </section>
 
@@ -424,10 +376,10 @@
     <section class="about-section">
       <h2 class="section-heading">Backup og gendannelse</h2>
       <ul>
-        <li><strong>Daglige automatiske backups</strong> af hele databasen via Supabase.</li>
-        <li><strong>Point-in-time recovery</strong> — databasen kan gendannes til ethvert tidspunkt.</li>
+        <li><strong>Daglige automatiske backups</strong> af hele databasen.</li>
+        <li><strong>Point-in-time recovery</strong> — databasen kan gendannes til ethvert tidspunkt inden for retention-vinduet.</li>
         <li>Alle backups er krypteret både i transit og at rest (AES-256).</li>
-        <li>Backups opbevares på et uafhængigt storage-system adskilt fra projektets primære ressourcer.</li>
+        <li>Backups opbevares på et uafhængigt storage-system adskilt fra de primære ressourcer.</li>
       </ul>
     </section>
 
@@ -438,43 +390,26 @@
     <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">Underbehandlere</h2>
-      <table class="tech-table">
-        <thead>
-          <tr>
-            <th>Underbehandler</th>
-            <th>Formål</th>
-            <th>Persondata</th>
-            <th>Placering</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Supabase (AWS)</td>
-            <td>Database, auth, backend</td>
-            <td>Alle persondata</td>
-            <td>EU (Irland)</td>
-          </tr>
-          <tr>
-            <td>Stripe</td>
-            <td>Betaling</td>
-            <td>E-mail, beløb (aldrig kortdata)</td>
-            <td>EU / global</td>
-          </tr>
-          <tr>
-            <td>GitHub / Microsoft</td>
-            <td>Frontend-hosting</td>
-            <td>Ingen</td>
-            <td>CDN</td>
-          </tr>
-          <tr>
-            <td>Google (OAuth)</td>
-            <td>Valgfrit login</td>
-            <td>E-mail, navn (kun ved Google-login)</td>
-            <td>EU / global</td>
-          </tr>
-        </tbody>
-      </table>
-      <p>Der er indgået databehandleraftale (DPA) med Supabase (marts 2026). Stripe er PCI DSS Level 1 certificeret.</p>
+      <p>Et begrænset antal underbehandlere indgår i driften — for hosting, betaling, e-mail-levering, valgfrit Google-login og bot-beskyttelse. Alle har:</p>
+      <ul>
+        <li>Underskrevet databehandleraftale (DPA) i overensstemmelse med GDPR art. 28</li>
+        <li>Primær drift i EU eller EU-godkendte overførselsmekanismer (SCC + DPF)</li>
+        <li>Kontraktlig pligt til at underrette ved sikkerhedshændelser</li>
+      </ul>
+      <p>Den fulde liste over underbehandlere med roller, datalokation og DPA-status udleveres til den dataansvarlige institution eller kommune som del af databehandleraftalen.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section">
+      <h2 class="section-heading">Brud-håndtering</h2>
+      <p>Flango underretter den dataansvarlige institution eller kommune <strong>uden unødig forsinkelse og senest 24 timer</strong> efter konstatering af et bekræftet eller mistænkt databrud — strammere end GDPR's 72-timers minimum.</p>
+      <ul>
+        <li>Femfaset livscyklus: Opdag → Inddæm → Vurdér → Underret → Læring</li>
+        <li>Alle hændelser dokumenteres i intern brud-logbog (5 års retention)</li>
+        <li>Underbehandlere er kontraktligt forpligtet til at underrette Flango ved brud</li>
+      </ul>
+      <p>Beredskabsplan og brud-logbog-dokumentation udleveres til den dataansvarlige på anmodning.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />

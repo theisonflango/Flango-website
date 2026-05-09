@@ -136,8 +136,6 @@
       <ul class="flango-nav-links">
         <li><a href="/pris/">Priser</a></li>
         <li><a href="/gaming/">Gaming</a></li>
-        <li><a href="/event/">Event</a></li>
-        <li><a href="/prov-flango/">Demo</a></li>
         <li><a href="/om-flango/">Om Flango</a></li>
       </ul>
       <div class="flango-nav-right">
@@ -155,8 +153,6 @@
       <a href="/">Forside</a>
       <a href="/pris/">Priser</a>
       <a href="/gaming/">Gaming</a>
-      <a href="/event/">Event</a>
-      <a href="/prov-flango/">Demo</a>
       <a href="/om-flango/">Om Flango</a>
       <span class="flango-mobile-section">Log ind</span>
       <a href="/forældre/">Forældreportal</a>
@@ -171,7 +167,7 @@
     <section>
       <h1 class="page-title">Privatlivspolitik</h1>
       <p class="page-intro">Denne privatlivspolitik beskriver hvordan Flango behandler personoplysninger i forbindelse med cafédrift, skærmtidsstyring og forældreportal i danske institutioner.</p>
-      <p class="page-meta">Gældende fra 17. marts 2026 · Version 1.0</p>
+      <p class="page-meta">Gældende fra 9. maj 2026 · Version 2.0</p>
     </section>
 
     <div class="callout">
@@ -269,7 +265,7 @@
           <tr><td>Skærmtidsstyring</td><td>Art. 6(1)(e) institutionens drift / art. 6(1)(f) legitim interesse</td></tr>
           <tr><td>Fødevaresikkerhed (allergener)</td><td>Art. 6(1)(f) legitim interesse + art. 6(1)(d) vital interesse</td></tr>
           <tr><td>Gamification (pædagogisk)</td><td>Art. 6(1)(f) legitim interesse</td></tr>
-          <tr><td>Betaling via Stripe</td><td>Art. 6(1)(b) kontrakt</td></tr>
+          <tr><td>Betaling via betalingspartner</td><td>Art. 6(1)(b) kontrakt</td></tr>
           <tr><td>Administration og audit</td><td>Art. 6(1)(f) legitim interesse (compliance)</td></tr>
         </tbody>
       </table>
@@ -283,13 +279,9 @@
     <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">4. Hvor opbevares data</h2>
-      <p>Alle personoplysninger opbevares i <strong>EU</strong>:</p>
-      <ul>
-        <li><strong>Database, autentifikation og backend:</strong> Supabase (PostgreSQL) på AWS eu-west-1 (Irland)</li>
-        <li><strong>Betalingsdata:</strong> Stripe (PCI DSS Level 1 certificeret). Flango håndterer aldrig kortdata – det sker udelukkende hos Stripe.</li>
-        <li><strong>Frontend:</strong> GitHub Pages (statiske filer, ingen persondata)</li>
-      </ul>
-      <p>Data overføres ikke til lande uden for EU, medmindre det er dækket af EU-godkendte overførselsmekanismer (Standard Contractual Clauses).</p>
+      <p>Alle personoplysninger opbevares i <strong>EU</strong>. Database, autentifikation og backend kører på en managed cloud-platform i EU.</p>
+      <p>Kortdata håndteres udelukkende af en PCI DSS Level 1-certificeret betalingspartner — Flango ser aldrig kortnumre eller bankoplysninger.</p>
+      <p>Data overføres ikke til lande uden for EU, medmindre det er dækket af EU-godkendte overførselsmekanismer (Standard Contractual Clauses + EU-US Data Privacy Framework hvor relevant).</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
@@ -299,36 +291,13 @@
     <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">5. Underbehandlere</h2>
-      <table class="tech-table">
-        <thead><tr><th>Underbehandler</th><th>Formål</th><th>Data</th><th>Placering</th></tr></thead>
-        <tbody>
-          <tr>
-            <td>Supabase, Inc. (AWS)</td>
-            <td>Database, auth, backend, realtime, fillagring</td>
-            <td>Alle persondata</td>
-            <td>EU (Irland)</td>
-          </tr>
-          <tr>
-            <td>Stripe, Inc.</td>
-            <td>Betalingshåndtering</td>
-            <td>E-mail, beløb, Stripe-tokens (aldrig kortdata)</td>
-            <td>EU / global</td>
-          </tr>
-          <tr>
-            <td>GitHub / Microsoft</td>
-            <td>Hosting af statiske filer</td>
-            <td>Ingen persondata</td>
-            <td>CDN (globalt)</td>
-          </tr>
-          <tr>
-            <td>Google (OAuth)</td>
-            <td>Valgfrit login for forældre</td>
-            <td>E-mail, navn (kun ved Google-login)</td>
-            <td>EU / global</td>
-          </tr>
-        </tbody>
-      </table>
-      <p>Der er indgået databehandleraftale (DPA) med Supabase (marts 2026). Stripe er PCI DSS Level 1 certificeret.</p>
+      <p>Et begrænset antal underbehandlere indgår i driften — for hosting/database, betaling, e-mail-levering, valgfrit Google-login og bot-beskyttelse. Alle underbehandlere har:</p>
+      <ul>
+        <li>Underskrevet databehandleraftale (DPA) i overensstemmelse med GDPR art. 28</li>
+        <li>Primær drift i EU eller EU-godkendte overførselsmekanismer (SCC + DPF)</li>
+        <li>Kontraktlig pligt til at underrette ved sikkerhedshændelser</li>
+      </ul>
+      <p>Den fulde liste over underbehandlere med roller, datalokation og DPA-status udleveres til den dataansvarlige institution eller kommune som del af databehandleraftalen.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
@@ -340,12 +309,12 @@
       <h2 class="section-heading">6. Sikkerhedsforanstaltninger</h2>
       <ul>
         <li><strong>Kryptering i transit:</strong> Al kommunikation krypteres via TLS 1.2+ (HTTPS).</li>
-        <li><strong>Kryptering at rest:</strong> Alle data krypteres på disk med AES-256. Nøgler beskyttes via FIPS 140-2 HSM'er.</li>
-        <li><strong>Adgangskontrol:</strong> Row Level Security (RLS) på alle hovedtabeller sikrer at brugere kun ser data de har adgang til.</li>
-        <li><strong>Institutionsisolation:</strong> Data er strengt adskilt pr. institution — det er teknisk umuligt at tilgå andre institutioners data.</li>
+        <li><strong>Kryptering at rest:</strong> Alle data krypteres på disk med AES-256.</li>
+        <li><strong>Multifaktor-autentifikation:</strong> Personalet logger ind med email og stærk adgangskode. Nye enheder verificeres med to-faktor-autentifikation.</li>
+        <li><strong>Institutionsisolation:</strong> Data er strengt adskilt pr. institution på databaseniveau — det er teknisk umuligt at tilgå andre institutioners data.</li>
         <li><strong>Kodeord og PIN:</strong> Alle kodeord og PIN-koder krypteres med bcrypt (envejskryptering). De kan aldrig genskabes.</li>
         <li><strong>Audit-log:</strong> Alle transaktioner og administrative handlinger logges med tidspunkt og udfører i en append-only log.</li>
-        <li><strong>Backup:</strong> Daglige automatiske backups med punkt-i-tid gendannelse. Backups er krypteret.</li>
+        <li><strong>Backup og gendannelse:</strong> Daglige automatiske backups med punkt-i-tid gendannelse. Backups er krypteret.</li>
       </ul>
       <p>Læs mere på <a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;">Sikkerhed og databeskyttelse</a>.</p>
     </section>
@@ -383,10 +352,12 @@
     <section class="about-section">
       <h2 class="section-heading">8. Opbevaringsperiode og sletning</h2>
       <ul>
-        <li>Personoplysninger opbevares så længe barnet er tilknyttet institutionen, eller indtil den dataansvarlige anmoder om sletning.</li>
+        <li><strong>Aktive brugerprofiler</strong> opbevares så længe barnet er tilknyttet institutionen.</li>
+        <li><strong>Inaktive brugerprofiler</strong> slettes automatisk efter 6 eller 24 måneder uden aktivitet — institutionen vælger selv perioden inden for denne ramme. Forældre får varsel inden sletning og kan altid anmode om sletning før tid.</li>
+        <li><strong>Forældrekonti uden tilknyttede børn</strong> slettes automatisk efter 60 dages inaktivitet, med 30 dages varsel pr. e-mail før sletning. Forældre kan til enhver tid selv anmode om sletning af deres konto.</li>
+        <li><strong>Forælderens sletteanmodning</strong> for et barn behandles inden for 30 dage af den dataansvarlige institution.</li>
+        <li><strong>Historiske transaktionsdata</strong> bevares typisk 5 år af regnskabsmæssige hensyn (bogføringsloven § 10) — herefter anonymiseres koblingen til personen, men beløb og dato bevares som anonyme regnskabsdata.</li>
         <li>Ved ophør af samarbejde eksporteres alle data til den dataansvarlige, og data slettes derefter fra Flango.</li>
-        <li>Flango understøtter komplet datasletning med obligatorisk datadump inden sletning.</li>
-        <li>Historiske transaktionsdata kan opbevares i anonymiseret form til statistiske formål.</li>
       </ul>
     </section>
 
@@ -481,7 +452,7 @@
         <li><a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>Sikkerhed</strong></a> — teknisk arkitektur, kryptering, adgangskontrol og infrastruktur</li>
         <li><a href="/gdpr/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>GDPR og databeskyttelse</strong></a> — overblik over roller, ansvar og rettigheder</li>
       </ul>
-      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 17. marts 2026 · Version 1.0</p>
+      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 9. maj 2026 · Version 2.0</p>
     </section>
 
     <footer>

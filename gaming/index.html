@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
   <meta charset="UTF-8" />
-  <title>Gaming – Flango</title>
+  <title>Flango Skærmtid – Flango</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -26,7 +26,20 @@
     a { color: inherit; text-decoration: none; }
     .page { min-height: 100vh; max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 40px; }
     .page-title { margin: 0; font-size: clamp(24px,4vw,30px); font-family: 'Baloo 2', cursive; }
-    .page-intro { font-size: 15px; color: var(--text-muted); max-width: 60ch; }
+    .page-intro { font-size: 15px; color: var(--text-muted); max-width: 60ch; line-height: 1.5; }
+    .section-heading { margin: 0 0 16px; font-size: 20px; font-family: 'Baloo 2', cursive; }
+    .divider { margin: 32px 0; border: none; height: 0; border-top: 1px solid var(--border-soft); }
+    .about-section { max-width: 65ch; }
+    .about-section p { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+    .about-section p:last-child { margin-bottom: 0; }
+    .about-section ul { margin: 12px 0 0; padding-left: 1.25em; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+    .about-section li { margin-bottom: 6px; }
+    .about-section a { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
+    .about-section a:hover { color: var(--accent); }
+    .module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 12px; }
+    .module-card { background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: 12px; padding: 16px; }
+    .module-card strong { font-size: 15px; color: var(--text-main); }
+    .module-card p { margin: 8px 0 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
     footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-soft); font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
     footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
   </style>
@@ -38,8 +51,6 @@
       <ul class="flango-nav-links">
         <li><a href="/pris/">Priser</a></li>
         <li><a href="/gaming/" class="here">Gaming</a></li>
-        <li><a href="/event/">Event</a></li>
-        <li><a href="/prov-flango/">Demo</a></li>
         <li><a href="/om-flango/">Om Flango</a></li>
       </ul>
       <div class="flango-nav-right">
@@ -57,8 +68,6 @@
       <a href="/">Forside</a>
       <a href="/pris/">Priser</a>
       <a href="/gaming/" class="here">Gaming</a>
-      <a href="/event/">Event</a>
-      <a href="/prov-flango/">Demo</a>
       <a href="/om-flango/">Om Flango</a>
       <span class="flango-mobile-section">Log ind</span>
       <a href="/forældre/">Forældreportal</a>
@@ -68,9 +77,102 @@
   </nav>
   <main class="page">
     <section>
-      <h1 class="page-title">Gaming</h1>
-      <p class="page-intro">Flango Skærmtid hjælper institutioner med at skabe balance mellem gaming og fællesskab. Mere indhold kommer snart.</p>
+      <h1 class="page-title">Flango Skærmtid</h1>
+      <p class="page-intro">Et modul til at administrere børns adgang til gaming-stationer i institutionens spillerum — med tydelige rammer, forældreindflydelse og en pædagogisk balance mellem skærmtid og fællesskab.</p>
     </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="hvad-heading">
+      <h2 id="hvad-heading" class="section-heading">Hvad er Flango Skærmtid?</h2>
+      <p>Flango Skærmtid er en del af Flango-platformen, der retter sig mod institutioner med spillerum eller gaming-stationer. Modulet samler tidsstyring, kø-administration og spilkatalog i én løsning og kombinerer en webbaseret app til personalet med en kiosk-klient der installeres på hver gaming-pc.</p>
+      <p>Modulet er valgfrit og kan aktiveres eller deaktiveres pr. institution.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="paedagogisk-heading">
+      <h2 id="paedagogisk-heading" class="section-heading">Pædagogisk udgangspunkt</h2>
+      <p>Modulet er udformet med fokus på balance og fællesskab — gaming som en valgfri aktivitet i en hverdag med mange muligheder.</p>
+      <ul>
+        <li>Tydelige rammer: barnet ved præcist hvor lang tid de har, og hvad der sker når tiden er brugt</li>
+        <li>Balance: tidsstyring forhindrer monopolisering af stationer og giver plads til andre aktiviteter</li>
+        <li>Fællesskab: kø-systemet og batch-start understøtter at børn spiller sammen og deler ressourcer</li>
+        <li>Ansvar: børnene lærer at administrere egen tid og respektere fælles regler</li>
+      </ul>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="personale-heading">
+      <h2 id="personale-heading" class="section-heading">For personalet</h2>
+      <p>Personalet får et samlet overblik via et dashboard, som kan tilgås fra enhver enhed på institutionens netværk.</p>
+      <div class="module-grid">
+        <div class="module-card">
+          <strong>Sessioner og kø</strong>
+          <p>Start, pause og afslut sessioner med få klik. Kø-systemet understøtter både FIFO, gruppe-kø og fremmøde-baseret kø.</p>
+        </div>
+        <div class="module-card">
+          <strong>Batch-start</strong>
+          <p>Start flere sessioner samtidigt når en gruppe børn skal i gang sammen.</p>
+        </div>
+        <div class="module-card">
+          <strong>Spilkatalog</strong>
+          <p>Administrer hvilke spil der er tilgængelige, med pædagogiske noter og samtykke-status pr. barn.</p>
+        </div>
+        <div class="module-card">
+          <strong>Realtidsoverblik</strong>
+          <p>Stationsstatus, aktive sessioner og resterende tid opdateres løbende — også på en TV-skærm i spillerummet.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="foraeldre-heading">
+      <h2 id="foraeldre-heading" class="section-heading">For forældrene</h2>
+      <p>Hvis institutionen vælger at åbne for det, kan forældre via forældreportalen tilpasse rammerne for deres eget barn:</p>
+      <ul>
+        <li>Sæt yderligere skærmtidsbegrænsninger ud over institutionens regler — fx ingen skærmtid på bestemte ugedage</li>
+        <li>Godkend eller afvis specifikke spil for barnet</li>
+        <li>Tilbyd barnet en ugentlig kvote, som barnet selv kan disponere over</li>
+        <li>Giv samtykke til forlænget spilletid ved særlige arrangementer i institutionen</li>
+      </ul>
+      <p>Den strengeste indstilling gælder altid — institution og forældre kan ikke utilsigtet ophæve hinandens regler.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="kiosk-heading">
+      <h2 id="kiosk-heading" class="section-heading">Kiosk-klient og automatisk håndhævelse</h2>
+      <p>Kiosk-klienten installeres på hver gaming-pc og fungerer som fuldskærms-skal i stedet for det normale Windows-skrivebord. Reglerne håndhæves automatisk uden at personalet skal holde øje med tiden.</p>
+      <ul>
+        <li>Spillet lukker automatisk når sessionen er slut</li>
+        <li>Adgang til skrivebordet, opgavehåndtering og browser er afskærmet</li>
+        <li>Barnet logges automatisk ud ved sessionens slutning</li>
+        <li>Midlertidige filer ryddes mellem sessioner, så hvert fremmøde starter rent</li>
+      </ul>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="sikkerhed-heading">
+      <h2 id="sikkerhed-heading" class="section-heading">Sikkerhed og databeskyttelse</h2>
+      <ul>
+        <li>Data hostes i EU</li>
+        <li>Krypteret kommunikation (TLS) og kryptering i hvile (AES-256)</li>
+        <li>Rollebaseret adgang og institutions-adskillelse i databasen</li>
+        <li>Mulighed for databehandleraftale (DPA) med kommunen</li>
+      </ul>
+      <p>Yderligere dokumentation om databehandling, DPIA og sikkerhedsmodel kan udleveres til den dataansvarlige ved henvendelse.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section">
+      <p>Vil du høre mere? <a href="/kontakt/">Kontakt os</a>.</p>
+    </section>
+
     <footer>
       <div>© <span id="year"></span> Flango – SFO'ernes cafésystem</div>
       <div>
