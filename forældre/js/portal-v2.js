@@ -1390,7 +1390,8 @@
     const instName = getInstitutionName();
 
     // Determine which sections are visible based on feature flags
-    const showEvents = !!featureFlags.cafe_events_enabled || (eventsData && eventsData.length > 0);
+    // parent_portal_events = portal-flag (cafe_events_enabled er for POS-viewet i café-appen)
+    const showEvents = featureFlags.parent_portal_events !== false || (eventsData?.events?.length > 0);
     const showScreentime = featureFlags.skaermtid_enabled === true;
 
     root.innerHTML = `
