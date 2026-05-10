@@ -4926,48 +4926,56 @@
     if (!accepted) return;
 
     try {
-      // Prøv først som aktiverings-/portalkode (via link-sibling-by-code)
-      await API.linkSiblingByCode(code, institutionId);
-      // Acceptér vilkår for det nyligt tilknyttede barn
-      try {
-        const refreshed = await API.getChildren();
-        const newChild = refreshed.find(c => !c.terms_accepted_at);
-        if (newChild) await API.acceptTerms(newChild.child_id, CURRENT_TERMS_VERSION);
-      } catch (_e) { /* non-critical */ }
-      showToast('Barn tilknyttet!', 'success');
-      document.getElementById('add-child-modal').classList.remove('visible');
-      await loadChildren();
-    } catch (err) {
-      console.warn('[Portal] linkSiblingByCode failed, trying invite code...', err);
-      // Prøv som invitationskode
-      try {
-        const inviteResult = await API.redeemParentInvite(code);
-        if (inviteResult?.valid) {
-          // Acceptér vilkår for alle nyligt tilknyttede børn
-          try {
-            const refreshed = await API.getChildren();
-            for (const c of refreshed.filter(ch => !ch.terms_accepted_at)) {
-              await API.acceptTerms(c.child_id, CURRENT_TERMS_VERSION);
-            }
-          } catch (_e) { /* non-critical */ }
-          const count = inviteResult.count || 0;
-          showToast(count + ' børn tilknyttet!', 'success');
-          document.getElementById('add-child-modal').classList.remove('visible');
-          await loadChildren();
-          return;
-        }
-        // Specifik fejl fra invite
-        if (inviteResult?.error === 'INVITE_EXPIRED') {
-          errorEl.textContent = 'Denne kode er udløbet. Bed den anden forælder om en ny.';
-        } else {
-          errorEl.textContent = inviteResult?.error || 'Koden er ugyldig eller allerede brugt';
-        }
-        errorEl.classList.add('visible');
-      } catch (inviteErr) {
-        console.error('[Portal] Both link methods failed:', inviteErr);
-        errorEl.textContent = 'Koden er ugyldig eller allerede brugt';
-        errorEl.classList.add('visible');
+      // Prøv først som portalkode (8-tegns alfanumerisk aktiveringskode fra admin)
+      const portalResult = await API.linkChildByPortalCode(code);
+      if (portalResult?.success) {
+        // Acceptér vilkår for det nyligt tilknyttede barn
+        try {
+          const refreshed = await API.getChildren();
+          const newChild = refreshed.find(c => !c.terms_accepted_at);
+          if (newChild) await API.acceptTerms(newChild.child_id, CURRENT_TERMS_VERSION);
+        } catch (_e) { /* non-critical */ }
+        showToast('Barn tilknyttet!', 'success');
+        document.getElementById('add-child-modal').classList.remove('visible');
+        await loadChildren();
+        return;
       }
+
+      // Specifik fejl fra portalkode
+      if (portalResult?.error === 'CODE_EXPIRED') {
+        errorEl.textContent = 'Denne kode er udløbet. Kontakt personalet for en ny kode.';
+        errorEl.classList.add('visible');
+        return;
+      }
+
+      // Hvis portalkoden ikke matcher, prøv som invitationskode (fra anden forælder)
+      const inviteResult = await API.redeemParentInvite(code);
+      if (inviteResult?.valid) {
+        // Acceptér vilkår for alle nyligt tilknyttede børn
+        try {
+          const refreshed = await API.getChildren();
+          for (const c of refreshed.filter(ch => !ch.terms_accepted_at)) {
+            await API.acceptTerms(c.child_id, CURRENT_TERMS_VERSION);
+          }
+        } catch (_e) { /* non-critical */ }
+        const count = inviteResult.count || 0;
+        showToast(count + ' børn tilknyttet!', 'success');
+        document.getElementById('add-child-modal').classList.remove('visible');
+        await loadChildren();
+        return;
+      }
+
+      // Specifik fejl fra invite
+      if (inviteResult?.error === 'INVITE_EXPIRED') {
+        errorEl.textContent = 'Denne kode er udløbet. Bed den anden forælder om en ny.';
+      } else {
+        errorEl.textContent = 'Koden er ugyldig eller allerede brugt';
+      }
+      errorEl.classList.add('visible');
+    } catch (err) {
+      console.error('[Portal] Link child failed:', err);
+      errorEl.textContent = 'Koden er ugyldig eller allerede brugt';
+      errorEl.classList.add('visible');
     }
   }
 
