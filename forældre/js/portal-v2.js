@@ -1433,8 +1433,8 @@
         <header class="topnav">
           <div class="topnav-inner">
             <div class="brand">
-              <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">🍊</div>
-              <div><div class="brand-name">Flango</div></div>
+              <img src="assets/flango-logo.webp" alt="Flango" class="brand-logo">
+              <div class="brand-name">Flango Forældreportal</div>
             </div>
             <div class="nav-actions">
               <button class="nav-btn" id="nav-logout-btn" title="Log ud"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
