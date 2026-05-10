@@ -2766,19 +2766,22 @@
   }
 
   function renderAddChildModal() {
-    // Build institution options from existing children (unique institutions)
+    // Institution-feltet vises kun som info når forælderen allerede har børn
+    // (dropdown'en bruges ikke til opslag — koden er globalt unik).
     const instMap = new Map();
     children.forEach(c => {
       if (c.institution_id && !instMap.has(c.institution_id)) {
         instMap.set(c.institution_id, c.institution_name || getInstitutionName() || 'Institution');
       }
     });
-    let instOptions = '';
-    if (instMap.size > 0) {
-      instOptions = [...instMap.entries()].map(([id, name]) =>
-        `<option value="${id}">${esc(name)}</option>`
-      ).join('');
-    }
+    const instFieldHTML = instMap.size > 0
+      ? `<div class="modal-field">
+            <label>Institution</label>
+            <select id="link-institution" class="input-field">
+              ${[...instMap.entries()].map(([id, name]) => `<option value="${id}">${esc(name)}</option>`).join('')}
+            </select>
+          </div>`
+      : '';
 
     return `
       <div class="modal-overlay" id="add-child-modal">
@@ -2786,12 +2789,7 @@
           <button class="modal-close" id="modal-close-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           <div class="modal-title">Tilknyt barn</div>
           <div class="modal-subtitle">Indtast den 8-cifrede kode fra institutionen</div>
-          <div class="modal-field">
-            <label>Institution</label>
-            <select id="link-institution" class="input-field">
-              ${instOptions || '<option value="">Vælg institution...</option>'}
-            </select>
-          </div>
+          ${instFieldHTML}
           <div class="modal-field">
             <label>Portalkode</label>
             <input type="text" id="link-code" class="input-field" placeholder="fx ABC12345" maxlength="8" style="text-transform:uppercase">
@@ -4905,16 +4903,11 @@
 
   async function handleLinkChild() {
     const codeEl = document.getElementById('link-code');
-    const instEl = document.getElementById('link-institution');
     const errorEl = document.getElementById('link-error');
     const code = (codeEl.value || '').trim().toUpperCase();
-    const institutionId = instEl ? instEl.value : selectedChild?.institution_id;
 
-    if (!institutionId) {
-      errorEl.textContent = 'Vælg en institution';
-      errorEl.classList.add('visible');
-      return;
-    }
+    // institution_id er ikke nødvendig — link_child_by_portal_code og redeem_parent_invite
+    // slår op via koden selv (globalt unik), institution udledes automatisk.
     if (!code || code.length < 8) {
       errorEl.textContent = 'Indtast den 8-cifrede kode';
       errorEl.classList.add('visible');
