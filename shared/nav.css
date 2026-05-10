@@ -36,6 +36,15 @@
   color: #D97316;
   letter-spacing: -0.02em;
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.flango-nav-logo-icon {
+  width: 32px;
+  height: 32px;
+  display: block;
+  flex-shrink: 0;
 }
 .flango-nav-logo span {
   color: #8C4510;

@@ -40,6 +40,17 @@
     .module-card { background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: 12px; padding: 16px; }
     .module-card strong { font-size: 15px; color: var(--text-main); }
     .module-card p { margin: 8px 0 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+    .pricing-block { background: var(--bg-soft); border-radius: var(--radius-lg); border: 1px solid var(--border-soft); padding: 28px; max-width: 460px; box-shadow: 0 18px 36px rgba(15,23,42,0.06); }
+    .pricing-block h3 { margin: 0 0 4px; font-size: 18px; font-weight: 700; }
+    .pricing-block .plan-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+    .pricing-block .price-main { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
+    .pricing-block .price-alt { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+    .pricing-block ul { list-style: none; padding: 0; margin: 0 0 20px; font-size: 14px; }
+    .pricing-block ul li { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; color: var(--text-muted); }
+    .pricing-block .check { width: 16px; height: 16px; border-radius: 999px; background: #22c55e; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; margin-top: 2px; }
+    .pricing-block .pricing-cta { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border-radius: 999px; font-size: 14px; font-weight: 600; background: #f3f4f6; color: var(--text-main); border: 1px solid var(--border-soft); transition: background 0.2s; }
+    .pricing-block .pricing-cta:hover { background: #e5e7eb; }
+    .card-note { font-size: 13px; color: var(--text-muted); margin: 14px 0 0; }
     footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-soft); font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
     footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
   </style>
@@ -47,18 +58,17 @@
 <body class="has-flango-nav">
   <nav class="flango-nav" role="navigation" aria-label="Hovednavigation">
     <div class="flango-nav-inner">
-      <a href="/" class="flango-nav-logo" aria-label="Flango forside">flango<span>.</span></a>
+      <a href="/" class="flango-nav-logo" aria-label="Flango forside"><img src="/shared/logos/flango-fruit.webp" alt="" class="flango-nav-logo-icon">flango<span>.</span></a>
       <ul class="flango-nav-links">
-        <li><a href="/pris/">Priser</a></li>
-        <li><a href="/gaming/" class="here">Gaming</a></li>
+        <li><a href="/#priser">Priser</a></li>
         <li><a href="/om-flango/">Om Flango</a></li>
+        <li><a href="/#kontakt">Kontakt</a></li>
       </ul>
       <div class="flango-nav-right">
         <a href="/forældre/" class="flango-nav-portal">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
           Forældreportal
         </a>
-        <a href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango" class="flango-nav-cta">Book en snak</a>
       </div>
       <button class="flango-burger" aria-label="Åbn menu" aria-expanded="false">
         <span></span><span></span><span></span>
@@ -66,13 +76,12 @@
     </div>
     <div class="flango-mobile-menu" id="flangoMobileMenu" role="dialog" aria-label="Mobilmenu">
       <a href="/">Forside</a>
-      <a href="/pris/">Priser</a>
-      <a href="/gaming/" class="here">Gaming</a>
+      <a href="/#priser">Priser</a>
       <a href="/om-flango/">Om Flango</a>
+      <a href="/#kontakt">Kontakt</a>
       <span class="flango-mobile-section">Log ind</span>
       <a href="/forældre/">Forældreportal</a>
       <a href="/app">Café-app (personale)</a>
-      <a href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango" class="flango-nav-cta">Book en snak</a>
     </div>
   </nav>
   <main class="page">
@@ -156,6 +165,26 @@
 
     <hr class="divider" aria-hidden="true" />
 
+    <section class="about-section" aria-labelledby="pris-heading">
+      <h2 id="pris-heading" class="section-heading">Pris</h2>
+      <p>Flango Skærmtid er inkluderet i <strong>Pro</strong> og <strong>Kommune</strong>. Modulet kan også anvendes selvstændigt — uden cafésystemet.</p>
+      <div class="pricing-block">
+        <h3>Flango Skærmtid (standalone)</h3>
+        <p class="plan-desc">Køsystem og storskærm til gaming og aktiviteter</p>
+        <div class="price-main">249 kr / måned</div>
+        <div class="price-alt">eller 2.700 kr / år</div>
+        <ul>
+          <li><span class="check">✓</span> Køsystem til PC/PlayStation m.m.</li>
+          <li><span class="check">✓</span> Storskærmsvisning (live)</li>
+          <li><span class="check">✓</span> Adminstyring og oversigt</li>
+        </ul>
+        <a class="pricing-cta" href="mailto:kontakt@flango.dk?subject=Flango%20Sk%C3%A6rmtid%20standalone">Kontakt os</a>
+      </div>
+      <p class="card-note">Har du allerede Flango Basic? Tilføj Skærmtid: +149 kr / måned.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
     <section class="about-section" aria-labelledby="sikkerhed-heading">
       <h2 id="sikkerhed-heading" class="section-heading">Sikkerhed og databeskyttelse</h2>
       <ul>
@@ -170,19 +199,19 @@
     <hr class="divider" aria-hidden="true" />
 
     <section class="about-section">
-      <p>Vil du høre mere? <a href="/kontakt/">Kontakt os</a>.</p>
+      <p>Vil du høre mere? <a href="/#kontakt">Kontakt os</a>.</p>
     </section>
 
     <footer>
       <div>© <span id="year"></span> Flango – SFO'ernes cafésystem</div>
       <div>
         <a href="/forældre/">Forældre Portal</a> ·
-        <a href="/pris/">Priser</a> ·
+        <a href="/#priser">Priser</a> ·
         <a href="/om-flango/">Om Flango</a> ·
         <a href="/sikkerhed/">Sikkerhed</a> ·
         <a href="/privatlivspolitik/">Privatlivspolitik</a> ·
         <a href="/gdpr/">GDPR</a> ·
-        <a href="/kontakt/">Kontakt</a>
+        <a href="/#kontakt">Kontakt</a>
       </div>
     </footer>
   </main>

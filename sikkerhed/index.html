@@ -4,11 +4,10 @@
   <meta charset="UTF-8" />
   <title>Sikkerhed og databeskyttelse – Flango</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Sikkerhed i Flango – teknisk arkitektur, kryptering, adgangskontrol, institutionsisolation og compliance for SFO'er og fritidsinstitutioner." />
+  <meta name="description" content="Sikkerhed i Flango – principper, kryptering, adgangskontrol og institutionsisolation for SFO'er og fritidsinstitutioner." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/shared/nav.css" />
   <style>
     :root {
@@ -27,13 +26,12 @@
     html { scroll-behavior: smooth; }
     body { margin: 0; font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: radial-gradient(circle at top, #ffe8d6 0, #f5f5fb 38%, #f9fafb 100%); color: var(--text-main); }
     a { color: inherit; text-decoration: none; }
-    .page { min-height: 100vh; max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 40px; }
+    .page { min-height: 100vh; max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 36px; }
 
-    /* ── Page content ── */
     .page-title { margin: 0; font-size: clamp(24px,4vw,30px); font-family: 'Baloo 2', cursive; }
     .page-intro { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); max-width: 65ch; line-height: 1.55; }
     .section-heading { margin: 0 0 16px; font-size: 20px; font-family: 'Baloo 2', cursive; }
-    .divider { margin: 32px 0; border: none; height: 0; border-top: 1px solid var(--border-soft); }
+    .divider { margin: 24px 0; border: none; height: 0; border-top: 1px solid var(--border-soft); }
     .about-section { max-width: 65ch; }
     .about-section p { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
     .about-section p:last-child { margin-bottom: 0; }
@@ -41,12 +39,11 @@
     .about-section li { margin-bottom: 8px; position: relative; padding-left: 4px; }
     .about-section li::before { content: ''; position: absolute; left: -16px; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
-    /* ── Status cards ── */
     .status-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 12px;
-      margin: 20px 0;
+      margin: 8px 0;
     }
     .status-card {
       background: var(--bg-soft);
@@ -65,7 +62,7 @@
       color: var(--text-muted);
     }
     .status-card .value {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 700;
       color: var(--green);
     }
@@ -75,59 +72,53 @@
       line-height: 1.4;
     }
 
-    /* ── Tech table ── */
-    .tech-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 16px 0;
-      font-size: 14px;
-    }
-    .tech-table th {
-      text-align: left;
-      padding: 10px 14px;
-      background: #111827;
-      color: #fff;
-      font-weight: 600;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .tech-table th:first-child { border-radius: 8px 0 0 0; }
-    .tech-table th:last-child { border-radius: 0 8px 0 0; }
-    .tech-table td {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border-soft);
-      vertical-align: top;
-      color: var(--text-muted);
-    }
-    .tech-table tr:nth-child(even) td { background: #fafafa; }
-    .tech-table code {
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      font-size: 12px;
-      background: #f3f4f6;
-      padding: 2px 6px;
-      border-radius: 4px;
-      color: var(--text-main);
-    }
-
-    /* ── Callout ── */
     .callout {
       background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
       border-left: 4px solid var(--green);
       border-radius: 0 10px 10px 0;
       padding: 16px 20px;
-      margin: 20px 0;
+      margin: 8px 0;
       font-size: 14px;
       color: var(--text-muted);
       line-height: 1.55;
     }
     .callout strong { color: var(--text-main); }
     .callout a { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
-
     .callout-blue {
       background: linear-gradient(135deg, #eff6ff 0%, #f0f7ff 100%);
       border-left-color: var(--blue);
     }
+
+    .find-full {
+      background: var(--bg-soft);
+      border: 1px solid var(--border-soft);
+      border-radius: 14px;
+      padding: 20px 24px;
+      margin: 8px 0;
+      box-shadow: 0 4px 12px rgba(15,23,42,0.04);
+    }
+    .find-full h3 {
+      margin: 0 0 10px;
+      font-family: 'Baloo 2', cursive;
+      font-size: 17px;
+      color: var(--text-main);
+    }
+    .find-full ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .find-full li {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.55;
+      padding: 6px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .find-full li:last-child { border-bottom: none; }
+    .find-full li strong { color: var(--text-main); display: inline-block; min-width: 180px; }
+    .find-full a { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
+    @media (max-width: 600px) { .find-full li strong { display: block; min-width: 0; } }
 
     footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-soft); font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
     footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
@@ -136,18 +127,17 @@
 <body class="has-flango-nav">
   <nav class="flango-nav" role="navigation" aria-label="Hovednavigation">
     <div class="flango-nav-inner">
-      <a href="/" class="flango-nav-logo" aria-label="Flango forside">flango<span>.</span></a>
+      <a href="/" class="flango-nav-logo" aria-label="Flango forside"><img src="/shared/logos/flango-fruit.webp" alt="" class="flango-nav-logo-icon">flango<span>.</span></a>
       <ul class="flango-nav-links">
-        <li><a href="/pris/">Priser</a></li>
-        <li><a href="/gaming/">Gaming</a></li>
+        <li><a href="/#priser">Priser</a></li>
         <li><a href="/om-flango/">Om Flango</a></li>
+        <li><a href="/#kontakt">Kontakt</a></li>
       </ul>
       <div class="flango-nav-right">
         <a href="/forældre/" class="flango-nav-portal">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
           Forældreportal
         </a>
-        <a href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango" class="flango-nav-cta">Book en snak</a>
       </div>
       <button class="flango-burger" aria-label="Åbn menu" aria-expanded="false">
         <span></span><span></span><span></span>
@@ -155,295 +145,157 @@
     </div>
     <div class="flango-mobile-menu" id="flangoMobileMenu" role="dialog" aria-label="Mobilmenu">
       <a href="/">Forside</a>
-      <a href="/pris/">Priser</a>
-      <a href="/gaming/">Gaming</a>
+      <a href="/#priser">Priser</a>
       <a href="/om-flango/">Om Flango</a>
+      <a href="/#kontakt">Kontakt</a>
       <span class="flango-mobile-section">Log ind</span>
       <a href="/forældre/">Forældreportal</a>
       <a href="/app">Café-app (personale)</a>
-      <a href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango" class="flango-nav-cta">Book en snak</a>
     </div>
   </nav>
   <main class="page">
-    <!-- ══════════════════════════════════ -->
-    <!--  HERO                              -->
-    <!-- ══════════════════════════════════ -->
+
     <section>
       <h1 class="page-title">Sikkerhed og databeskyttelse</h1>
-      <p class="page-intro">Flango er bygget til at håndtere børns data i en institutionel kontekst. Sikkerhed og databeskyttelse er ikke et ekstra lag — det er fundamentet i arkitekturen.</p>
+      <p class="page-intro">Flango er bygget til at håndtere børns data i en institutionel kontekst. Sikkerhed og databeskyttelse er en del af fundamentet — ikke en eftertanke.</p>
     </section>
 
-    <!-- ══════════════════════════════════ -->
-    <!--  STATUS OVERBLIK                   -->
-    <!-- ══════════════════════════════════ -->
     <div class="status-grid">
       <div class="status-card">
-        <div class="label">Data opbevares i</div>
+        <div class="label">Hosting</div>
         <div class="value">EU</div>
-        <div class="detail">Managed cloud-platform i EU</div>
+        <div class="detail">Al databehandling og lagring i EU</div>
       </div>
       <div class="status-card">
-        <div class="label">Kryptering i transit</div>
-        <div class="value">TLS 1.2+</div>
-        <div class="detail">Al kommunikation via HTTPS</div>
-      </div>
-      <div class="status-card">
-        <div class="label">Kryptering at rest</div>
-        <div class="value">AES-256</div>
-        <div class="detail">Disk-encryption på alle data</div>
+        <div class="label">Kryptering</div>
+        <div class="value">Industri-standard</div>
+        <div class="detail">Krypteret både i transit og i hvile</div>
       </div>
       <div class="status-card">
         <div class="label">Kortdata hos Flango</div>
         <div class="value">Aldrig</div>
-        <div class="detail">PCI DSS Level 1-certificeret partner håndterer al betaling</div>
+        <div class="detail">Certificeret betalingspartner håndterer al kortdata</div>
       </div>
       <div class="status-card">
         <div class="label">Multifaktor</div>
         <div class="value">2FA på admin</div>
-        <div class="detail">Nye enheder verificeres ved første login</div>
+        <div class="detail">Personalets enheder verificeres ved første login</div>
       </div>
       <div class="status-card">
         <div class="label">Institutionsisolation</div>
-        <div class="value">Streng adskillelse</div>
+        <div class="value">Streng</div>
         <div class="detail">Håndhævet på databaseniveau</div>
+      </div>
+      <div class="status-card">
+        <div class="label">Audit-log</div>
+        <div class="value">Append-only</div>
+        <div class="detail">Alle handlinger logges med tidspunkt og ansvarlig</div>
       </div>
     </div>
 
     <hr class="divider" aria-hidden="true" />
 
-    <!-- ══════════════════════════════════ -->
-    <!--  INFRASTRUKTUR                     -->
-    <!-- ══════════════════════════════════ -->
     <section class="about-section">
-      <h2 class="section-heading">Infrastruktur</h2>
-      <p>Flango kører på en managed cloud-platform i EU. Al databehandling, autentifikation og lagring foregår på servere i EU.</p>
+      <h2 class="section-heading">Principper</h2>
       <ul>
-        <li><strong>Database og backend:</strong> Managed cloud-platform i EU med daglige automatiske backups</li>
-        <li><strong>Autentifikation:</strong> Token-baseret med multifaktor for personale og support</li>
-        <li><strong>Frontend:</strong> Statiske filer uden persondata. API-nøgler i frontenden er offentlige adgangstokens — de giver kun adgang via serverens sikkerhedspolicies, ikke direkte til data.</li>
-        <li><strong>Betaling:</strong> Håndteres af PCI DSS Level 1-certificeret betalingspartner. Flango ser aldrig kortdata.</li>
+        <li><strong>Dataminimering:</strong> Vi indsamler kun de oplysninger der er nødvendige for cafédrift og skærmtidsstyring.</li>
+        <li><strong>EU-hosting:</strong> Al databehandling og lagring foregår i EU på en managed cloud-platform.</li>
+        <li><strong>Kryptering:</strong> Data krypteres både ved overførsel og i hvile med industri-standard kryptering. Kodeord og PIN-koder lagres aldrig i klartekst.</li>
+        <li><strong>Adgang efter behov:</strong> Rollebaseret adgangsstyring — hver bruger har kun adgang til de funktioner og data deres rolle kræver.</li>
+        <li><strong>Sporbarhed:</strong> Alle væsentlige handlinger logges, så det altid kan dokumenteres hvilken admin der havde ansvaret for en given transaktion.</li>
+        <li><strong>Ingen kortdata hos Flango:</strong> Forældrebetalinger håndteres af en certificeret betalingspartner — Flango ser aldrig kortnumre eller bankoplysninger.</li>
       </ul>
-      <p>Den specifikke leverandørstruktur og databehandleraftaler udleveres til den dataansvarlige institution eller kommune som del af IT-screeningen.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
 
-    <!-- ══════════════════════════════════ -->
-    <!--  ADGANGSKONTROL                    -->
-    <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">Adgangskontrol</h2>
-      <p>Flango bruger rollebaseret adgangsstyring. Hver rolle har kun adgang til præcis de funktioner og data den behøver.</p>
-
-      <table class="tech-table">
-        <thead>
-          <tr>
-            <th>Rolle</th>
-            <th>Autentifikation</th>
-            <th>Adgang</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Admin (personale)</td>
-            <td>E-mail + adgangskode + 2FA på nye enheder</td>
-            <td>Fuld adgang til egen institution</td>
-          </tr>
-          <tr>
-            <td>Barn</td>
-            <td>Kontonummer + PIN</td>
-            <td>Cafésalg under voksens ansvar, gamification</td>
-          </tr>
-          <tr>
-            <td>Forælder</td>
-            <td>E-mail + adgangskode eller valgfrit Google-login</td>
-            <td>Kun egne børn</td>
-          </tr>
-          <tr>
-            <td>Kommune (valgfri)</td>
-            <td>Konto med obligatorisk multifaktor</td>
-            <td>Read-only tilsynsindsigt — ingen børnedata</td>
-          </tr>
-          <tr>
-            <td>Support og leverandør</td>
-            <td>Konto med obligatorisk multifaktor</td>
-            <td>Drifts- og fejlsøgningsadgang. Alle handlinger logges.</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <p>Børn logger ikke ind med e-mail — de identificeres ved fornavn eller kontonummer i café-appen. PIN-koder bruges til bekræftelse og er krypteret med bcrypt (envejskryptering).</p>
-      <p>Sessioner udløber ved 10 minutters inaktivitet på admin-konti.</p>
+      <p>Flango bruger rollebaseret adgangsstyring. De forskellige typer brugere har hver især præcis den adgang de behøver — og ikke mere.</p>
+      <ul>
+        <li><strong>Personale (admin)</strong> logger ind med e-mail, stærk adgangskode og to-faktor på nye enheder. Fuld adgang til egen institution.</li>
+        <li><strong>Børn</strong> identificeres ved fornavn eller kontonummer i café-appen. PIN-koder bruges til bekræftelse og lagres aldrig i klartekst.</li>
+        <li><strong>Forældre</strong> logger ind via forældreportalen og ser kun data for egne børn.</li>
+        <li><strong>Kommunalt tilsyn</strong> kan efter aftale tildeles read-only-konto til konfiguration og driftsstatus — uden adgang til børnedata.</li>
+        <li><strong>Support og leverandør</strong> har drifts- og fejlsøgningsadgang under multifaktor. Alle handlinger logges.</li>
+      </ul>
+      <p>Inaktive sessioner udløber automatisk.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
 
-    <!-- ══════════════════════════════════ -->
-    <!--  INSTITUTIONSISOLATION             -->
-    <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">Institutionsisolation</h2>
-      <p>Flango er et multi-tenant system hvor flere institutioner deler den samme database — men med streng isolation på databaseniveau.</p>
-      <ul>
-        <li><strong>Streng dataisolation</strong> er håndhævet på databaseniveau på alle tabeller med personoplysninger. Hver forespørgsel filtreres automatisk, så brugere kun ser data fra deres egen institution.</li>
-        <li>Det er teknisk umuligt for en admin fra institution A at tilgå data fra institution B — selv ved direkte API-kald.</li>
-        <li>Forældre kan kun se data for børn der eksplicit er tilknyttet deres konto.</li>
-      </ul>
+      <p>Flere institutioner kan bruge Flango på samme platform — men dataene er strengt adskilt på databaseniveau. Det er teknisk umuligt for én institution at tilgå data fra en anden, og forældre ser kun data for børn der eksplicit er tilknyttet deres konto.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
 
-    <!-- ══════════════════════════════════ -->
-    <!--  KRYPTERING                        -->
-    <!-- ══════════════════════════════════ -->
-    <section class="about-section">
-      <h2 class="section-heading">Kryptering</h2>
-      <table class="tech-table">
-        <thead>
-          <tr>
-            <th>Lag</th>
-            <th>Standard</th>
-            <th>Detaljer</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>I transit</td>
-            <td>TLS 1.2+</td>
-            <td>Al kommunikation mellem klient og server — API, realtid og filupload</td>
-          </tr>
-          <tr>
-            <td>At rest</td>
-            <td>AES-256</td>
-            <td>Disk-encryption på alle data, med managed key-håndtering hos cloud-leverandøren</td>
-          </tr>
-          <tr>
-            <td>Kodeord</td>
-            <td>bcrypt</td>
-            <td>Alle kodeord og PIN-koder hashes med bcrypt. De kan verificeres men aldrig genskabes.</td>
-          </tr>
-          <tr>
-            <td>Betalingsdata</td>
-            <td>PCI DSS Level 1</td>
-            <td>Betalingspartneren håndterer al kortdata. Flango ser aldrig kortnumre, CVV eller bankoplysninger.</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-
-    <hr class="divider" aria-hidden="true" />
-
-    <!-- ══════════════════════════════════ -->
-    <!--  FORRETNINGSLOGIK OG AUDIT         -->
-    <!-- ══════════════════════════════════ -->
-    <section class="about-section">
-      <h2 class="section-heading">Forretningslogik og audit</h2>
-      <p>Al forretningslogik (salg, saldotræk, tilmeldinger) udføres via server-side funktioner med kontrollerede rettigheder — ikke direkte fra brugerens browser. Det betyder:</p>
-      <ul>
-        <li>Funktionerne kører med begrænsede rettigheder — ikke med brugerens direkte adgang.</li>
-        <li>Input valideres på serveren før data ændres.</li>
-        <li>Atomiske transaktioner sikrer at et salg enten gennemføres komplet eller rulles helt tilbage.</li>
-      </ul>
-
-      <p style="margin-top: 20px;">Loggen er opdelt i tre lag:</p>
-      <ul>
-        <li><strong>Operationel historik</strong> — synlig for institutionens admins; salg, indbetalinger, justeringer (anonymiseres efter 2 år)</li>
-        <li><strong>Compliance-log</strong> — sikkerheds- og persondatabegivenheder, append-only (anonymiseres efter 5 år)</li>
-        <li><strong>Brud-logbog</strong> — dokumentation af eventuelle databrud (5 års retention jf. Datatilsynets vejledning)</li>
-      </ul>
-      <p>Posterne kan ikke redigeres eller slettes af normale brugere efter de er skrevet. Det sikrer fuld sporbarhed.</p>
-    </section>
-
-    <hr class="divider" aria-hidden="true" />
-
-    <!-- ══════════════════════════════════ -->
-    <!--  BETALING                          -->
-    <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">Betalingssikkerhed</h2>
-      <p>Betaling håndteres af en PCI DSS Level 1-certificeret betalingspartner. Hver institution har sin egen betalingskonto, så betalinger rutes direkte til institutionens konto.</p>
-
+      <p>Forældrebetalinger håndteres af en certificeret betalingspartner. Hver institution har sin egen betalingskonto, så indbetalinger rutes direkte til institutionens konto.</p>
       <div class="callout">
-        <strong>Flango håndterer aldrig kortdata.</strong> Når en forælder betaler, omdirigeres de til betalingspartnerens egen betalingsside. Kortdata indtastes kun dér. Flango modtager kun en bekræftelse (beløb + tidspunkt). Denne arkitektur eliminerer PCI DSS-scope for Flango.
+        <strong>Flango håndterer aldrig kortdata.</strong> Når en forælder betaler, omdirigeres de til betalingspartnerens egen betalingsside. Kortdata indtastes kun dér. Flango modtager kun en bekræftelse på at betalingen er gennemført.
       </div>
     </section>
 
     <hr class="divider" aria-hidden="true" />
 
-    <!-- ══════════════════════════════════ -->
-    <!--  BACKUP                            -->
-    <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">Backup og gendannelse</h2>
-      <ul>
-        <li><strong>Daglige automatiske backups</strong> af hele databasen.</li>
-        <li><strong>Point-in-time recovery</strong> — databasen kan gendannes til ethvert tidspunkt inden for retention-vinduet.</li>
-        <li>Alle backups er krypteret både i transit og at rest (AES-256).</li>
-        <li>Backups opbevares på et uafhængigt storage-system adskilt fra de primære ressourcer.</li>
-      </ul>
+      <p>Databasen sikkerhedskopieres automatisk hver dag, og backups er krypteret og adskilt fra de primære systemer. Ved behov kan databasen gendannes til et tidligere tidspunkt inden for retention-vinduet.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
 
-    <!-- ══════════════════════════════════ -->
-    <!--  UNDERBEHANDLERE                   -->
-    <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">Underbehandlere</h2>
       <p>Et begrænset antal underbehandlere indgår i driften — for hosting, betaling, e-mail-levering, valgfrit Google-login og bot-beskyttelse. Alle har:</p>
       <ul>
-        <li>Underskrevet databehandleraftale (DPA) i overensstemmelse med GDPR art. 28</li>
-        <li>Primær drift i EU eller EU-godkendte overførselsmekanismer (SCC + DPF)</li>
+        <li>Underskrevet databehandleraftale i overensstemmelse med GDPR art. 28</li>
+        <li>Primær drift i EU eller EU-godkendte overførselsmekanismer</li>
         <li>Kontraktlig pligt til at underrette ved sikkerhedshændelser</li>
       </ul>
-      <p>Den fulde liste over underbehandlere med roller, datalokation og DPA-status udleveres til den dataansvarlige institution eller kommune som del af databehandleraftalen.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
 
     <section class="about-section">
       <h2 class="section-heading">Brud-håndtering</h2>
-      <p>Flango underretter den dataansvarlige institution eller kommune <strong>uden unødig forsinkelse og senest 24 timer</strong> efter konstatering af et bekræftet eller mistænkt databrud — strammere end GDPR's 72-timers minimum.</p>
-      <ul>
-        <li>Femfaset livscyklus: Opdag → Inddæm → Vurdér → Underret → Læring</li>
-        <li>Alle hændelser dokumenteres i intern brud-logbog (5 års retention)</li>
-        <li>Underbehandlere er kontraktligt forpligtet til at underrette Flango ved brud</li>
-      </ul>
-      <p>Beredskabsplan og brud-logbog-dokumentation udleveres til den dataansvarlige på anmodning.</p>
+      <p>Flango har en etableret beredskabsproces ved sikkerhedshændelser. Den dataansvarlige institution underrettes <strong>uden unødig forsinkelse og senest 24 timer</strong> efter konstatering af et bekræftet eller mistænkt databrud — strammere end GDPR's 72-timers minimum.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
 
-    <!-- ══════════════════════════════════ -->
-    <!--  COOKIES                           -->
-    <!-- ══════════════════════════════════ -->
     <section class="about-section">
       <h2 class="section-heading">Cookies</h2>
-      <p>Flango bruger kun teknisk nødvendige cookies til autentifikation (login-session). Der bruges ingen tracking-cookies, markedsføringscookies eller tredjepartscookies til analyseformål.</p>
+      <p>Flango bruger kun teknisk nødvendige cookies til autentifikation. Der bruges ingen tracking-, markedsførings- eller analyse-cookies fra tredjepart.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
 
-    <!-- ══════════════════════════════════ -->
-    <!--  LEVERANDØR                        -->
-    <!-- ══════════════════════════════════ -->
     <section class="about-section">
-      <h2 class="section-heading">Leverandør og aftaler</h2>
-      <p>Flango udvikles og drives af:</p>
-      <p><strong>Theison</strong><br/>CVR: 34360642<br/>E-mail: <a href="mailto:kontakt@flango.dk" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;">kontakt@flango.dk</a></p>
-      <p>Der indgås databehandleraftale (DPA) mellem institutionen/kommunen og Theison. Kontakt os for at igangsætte processen.</p>
+      <h2 class="section-heading">Leverandør</h2>
+      <p>Flango udvikles og drives af <strong>Theison</strong>, CVR 34360642. Der indgås databehandleraftale (DPA) mellem institutionen/kommunen og Theison som del af onboarding-processen.</p>
+      <p>Kontakt: <a href="mailto:kontakt@flango.dk" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;">kontakt@flango.dk</a></p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
 
-    <!-- ══════════════════════════════════ -->
-    <!--  LINKS                             -->
-    <!-- ══════════════════════════════════ -->
+    <div class="find-full">
+      <h3>Søger du den fulde version?</h3>
+      <ul>
+        <li><strong>Forældre:</strong> Den fulde privatlivspolitik og sikkerhedsbeskrivelse er tilgængelig i forældreportalen.</li>
+        <li><strong>Institutioner og kommuner:</strong> Den fulde dokumentationspakke (privatlivspolitik, systembeskrivelse, DPIA, TIA, beredskabsplan, databehandleraftale og underbehandlerliste) udleveres som del af IT-screeningsprocessen.</li>
+        <li><strong>Spørgsmål:</strong> Skriv til <a href="mailto:kontakt@flango.dk">kontakt@flango.dk</a></li>
+      </ul>
+    </div>
+
     <section class="about-section">
       <h2 class="section-heading">Relaterede sider</h2>
       <ul>
-        <li><a href="/privatlivspolitik/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>Privatlivspolitik</strong></a> — fuld oversigt over persondata, formål, retsgrundlag og rettigheder</li>
-        <li><a href="/gdpr/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>GDPR og databeskyttelse</strong></a> — roller, ansvar og registreredes rettigheder</li>
+        <li><a href="/privatlivspolitik/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>Privatlivspolitik</strong></a></li>
+        <li><a href="/gdpr/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>GDPR og databeskyttelse</strong></a></li>
       </ul>
     </section>
 
@@ -451,12 +303,12 @@
       <div>© <span id="year"></span> Flango – SFO'ernes cafésystem</div>
       <div>
         <a href="/forældre/">Forældre Portal</a> ·
-        <a href="/pris/">Priser</a> ·
+        <a href="/#priser">Priser</a> ·
         <a href="/om-flango/">Om Flango</a> ·
         <a href="/sikkerhed/">Sikkerhed</a> ·
         <a href="/privatlivspolitik/">Privatlivspolitik</a> ·
         <a href="/gdpr/">GDPR</a> ·
-        <a href="/kontakt/">Kontakt</a>
+        <a href="/#kontakt">Kontakt</a>
       </div>
     </footer>
   </main>

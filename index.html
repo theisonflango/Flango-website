@@ -170,145 +170,10 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
 }
 
 /* ========================================
-   NAVIGATION
-   ======================================== */
-.nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  background: rgba(255, 248, 243, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(0,0,0,0.05);
-  transition: all 0.3s var(--ease-out);
-}
-.nav.scrolled {
-  box-shadow: var(--shadow-sm);
-}
-.nav-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 72px;
-}
-.nav-logo {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  color: var(--peach-600);
-  letter-spacing: -0.02em;
-}
-.nav-logo span {
-  color: var(--peach-800);
-}
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 32px;
-  list-style: none;
-}
-.nav-links a {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--slate-600);
-  transition: color 0.2s;
-  position: relative;
-}
-.nav-links a:hover {
-  color: var(--peach-700);
-}
-.nav-links a::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--peach-500);
-  border-radius: 2px;
-  transition: width 0.3s var(--ease-out);
-}
-.nav-links a:hover::after {
-  width: 100%;
-}
-.nav-cta {
-  margin-left: 8px;
-}
-
-/* Burger menu */
-.burger {
-  display: none;
-  flex-direction: column;
-  gap: 5px;
-  width: 28px;
-  padding: 4px 0;
-  z-index: 1001;
-}
-.burger span {
-  display: block;
-  height: 2.5px;
-  background: var(--slate-700);
-  border-radius: 2px;
-  transition: all 0.3s var(--ease-out);
-  transform-origin: center;
-}
-.burger.active span:nth-child(1) {
-  transform: rotate(45deg) translate(5px, 5px);
-}
-.burger.active span:nth-child(2) {
-  opacity: 0;
-  transform: scaleX(0);
-}
-.burger.active span:nth-child(3) {
-  transform: rotate(-45deg) translate(5px, -5px);
-}
-
-.mobile-menu {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: var(--peach-50);
-  z-index: 999;
-  padding: 100px 32px 40px;
-  flex-direction: column;
-  gap: 8px;
-  opacity: 0;
-  transform: translateY(-10px);
-  transition: all 0.3s var(--ease-out);
-}
-.mobile-menu.open {
-  opacity: 1;
-  transform: translateY(0);
-}
-.mobile-menu a {
-  display: block;
-  font-size: 1.3rem;
-  font-weight: 500;
-  padding: 16px 0;
-  color: var(--slate-700);
-  border-bottom: 1px solid var(--slate-200);
-  transition: color 0.2s;
-}
-.mobile-menu a:hover { color: var(--peach-600); }
-.mobile-menu .btn {
-  margin-top: 24px;
-  justify-content: center;
-}
-
-@media (max-width: 768px) {
-  .burger { display: flex; }
-  .nav-links { display: none; }
-  .nav-cta { display: none; }
-  .nav-right-group { display: none; }
-  .mobile-menu { display: flex; }
-}
-
-/* ========================================
    HERO
    ======================================== */
 .hero {
-  padding: 140px 0 80px;
+  padding: 8px 0 12px;
   position: relative;
   overflow: hidden;
 }
@@ -336,166 +201,66 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
 }
 .hero-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 60px;
-  align-items: center;
+  grid-template-columns: 1fr;
+  gap: 6px;
   position: relative;
   z-index: 1;
 }
 .hero-content {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: center;
+}
+.hero-logo-h1 {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+}
+.hero-logo {
+  width: clamp(280px, 38vw, 460px);
+  aspect-ratio: 512 / 320;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+.hero-tagline {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 2.6vw, 1.8rem);
+  color: var(--peach-700);
+  margin: 0 auto 8px;
   max-width: 540px;
-}
-.hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--sage-50);
-  border: 1px solid var(--sage-200);
-  border-radius: 100px;
-  padding: 6px 16px 6px 8px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--sage-600);
-  margin-bottom: 24px;
-}
-.hero-badge .dot {
-  width: 8px;
-  height: 8px;
-  background: var(--sage-400);
-  border-radius: 50%;
-  animation: pulse 2s ease infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.3); }
-}
-.hero h1 {
-  margin-bottom: 20px;
-  color: var(--slate-900);
-}
-.hero h1 em {
-  font-style: italic;
-  color: var(--peach-600);
+  line-height: 1.3;
+  font-weight: 400;
 }
 .hero-sub {
   font-size: 1.15rem;
   color: var(--slate-500);
   line-height: 1.7;
-  margin-bottom: 36px;
-  max-width: 480px;
+  margin: 0 auto 16px;
+  max-width: 540px;
+}
+.hero-cycle {
+  display: block;
+  width: clamp(220px, 28vw, 340px);
+  height: auto;
+  margin: 8px auto 0;
 }
 .hero-buttons {
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
-}
-
-/* Video placeholder */
-.hero-visual {
-  position: relative;
-}
-.video-placeholder {
-  background: linear-gradient(145deg, var(--slate-800) 0%, var(--slate-900) 100%);
-  border-radius: var(--radius-xl);
-  aspect-ratio: 16/10;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: var(--shadow-xl);
-}
-.video-placeholder::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: 
-    radial-gradient(circle at 20% 30%, rgba(240,140,40,0.15) 0%, transparent 50%),
-    radial-gradient(circle at 80% 70%, rgba(91,171,240,0.1) 0%, transparent 50%);
-}
-.video-play-btn {
-  width: 72px;
-  height: 72px;
-  background: rgba(255,255,255,0.12);
-  border: 2px solid rgba(255,255,255,0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1;
-  transition: all 0.3s var(--ease-out);
-}
-.video-play-btn:hover {
-  background: rgba(255,255,255,0.2);
-  transform: scale(1.08);
-}
-.video-play-btn svg {
-  margin-left: 3px;
-}
-.video-label {
-  color: rgba(255,255,255,0.5);
-  font-size: 0.85rem;
-  font-weight: 500;
-  z-index: 1;
-  letter-spacing: 0.03em;
-}
-/* Floating UI elements on video */
-.video-float {
-  position: absolute;
-  background: var(--white);
-  border-radius: var(--radius-md);
-  padding: 12px 16px;
-  box-shadow: var(--shadow-lg);
-  z-index: 2;
-  font-size: 0.8rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.video-float-1 {
-  bottom: 20px;
-  left: -20px;
-  animation: float1 4s ease-in-out infinite;
-}
-.video-float-2 {
-  top: 20px;
-  right: -16px;
-  animation: float2 5s ease-in-out infinite;
-}
-@keyframes float1 {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-@keyframes float2 {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-.float-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
   justify-content: center;
 }
-.float-icon.green { background: var(--sage-50); color: var(--sage-600); }
-.float-icon.orange { background: var(--peach-100); color: var(--peach-600); }
 
 @media (max-width: 768px) {
-  .hero { padding: 110px 0 60px; }
+  .hero { padding: 16px 0 16px; }
   .hero-grid {
-    grid-template-columns: 1fr;
-    gap: 48px;
+    gap: 12px;
     text-align: center;
   }
   .hero-content { max-width: 100%; }
   .hero-sub { margin-left: auto; margin-right: auto; }
   .hero-buttons { justify-content: center; }
-  .video-float-1 { left: 8px; }
-  .video-float-2 { right: 8px; }
 }
 
 /* ========================================
@@ -505,38 +270,6 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
   padding: 60px 0 80px;
   position: relative;
 }
-.stats-banner {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  margin-bottom: 60px;
-}
-.stat-card {
-  text-align: center;
-  padding: 32px 20px;
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--slate-200);
-  transition: all 0.3s var(--ease-out);
-}
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--peach-200);
-}
-.stat-number {
-  font-family: var(--font-display);
-  font-size: clamp(2rem, 4vw, 2.8rem);
-  color: var(--peach-600);
-  line-height: 1;
-  margin-bottom: 6px;
-}
-.stat-label {
-  font-size: 0.88rem;
-  color: var(--slate-500);
-  font-weight: 500;
-}
-
 .testimonials {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -599,539 +332,9 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
 }
 
 @media (max-width: 900px) {
-  .stats-banner { grid-template-columns: 1fr; gap: 12px; }
-  .stats-banner .stat-card { padding: 20px; }
-  .stats-banner { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; }
-  .stats-banner .stat-card { min-width: 200px; scroll-snap-align: center; flex-shrink: 0; }
   .testimonials { grid-template-columns: 1fr; }
 }
 
-/* ========================================
-   HOW IT WORKS
-   ======================================== */
-.how-it-works {
-  background: var(--white);
-  position: relative;
-}
-.how-it-works::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--peach-200), transparent);
-}
-.steps-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 32px;
-  margin-top: 56px;
-  position: relative;
-}
-.steps-grid::before {
-  content: '';
-  position: absolute;
-  top: 44px;
-  left: 14%;
-  right: 14%;
-  height: 2px;
-  background: linear-gradient(90deg, var(--peach-200), var(--peach-300), var(--peach-200));
-  border-radius: 2px;
-}
-.step-card {
-  text-align: center;
-  position: relative;
-  z-index: 1;
-}
-.step-icon {
-  width: 88px;
-  height: 88px;
-  margin: 0 auto 20px;
-  border-radius: 50%;
-  background: var(--peach-50);
-  border: 2px solid var(--peach-200);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s var(--ease-out);
-}
-.step-card:hover .step-icon {
-  background: var(--peach-100);
-  transform: scale(1.06);
-  border-color: var(--peach-400);
-}
-.step-icon svg {
-  width: 36px;
-  height: 36px;
-  color: var(--peach-600);
-}
-.step-num {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--peach-500);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-.step-title {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  margin-bottom: 8px;
-  color: var(--slate-800);
-}
-.step-desc {
-  font-size: 0.88rem;
-  color: var(--slate-500);
-  line-height: 1.6;
-}
-.how-highlight {
-  margin-top: 48px;
-  background: linear-gradient(135deg, var(--peach-50) 0%, var(--sage-50) 100%);
-  border-radius: var(--radius-lg);
-  padding: 28px 36px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border: 1px solid var(--peach-200);
-}
-.how-highlight-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--peach-100);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.how-highlight-text {
-  font-size: 0.95rem;
-  color: var(--slate-700);
-  line-height: 1.6;
-}
-.how-highlight-text strong {
-  color: var(--peach-700);
-}
-
-@media (max-width: 768px) {
-  .steps-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 36px 20px;
-  }
-  .steps-grid::before { display: none; }
-  .how-highlight {
-    flex-direction: column;
-    text-align: center;
-    padding: 24px;
-  }
-}
-@media (max-width: 480px) {
-  .steps-grid { grid-template-columns: 1fr; gap: 32px; }
-}
-
-/* ========================================
-   DEMO SECTION
-   ======================================== */
-.demo-section {
-  background: linear-gradient(180deg, var(--peach-50) 0%, var(--white) 100%);
-}
-.demo-wrapper {
-  background: var(--white);
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--slate-200);
-  box-shadow: var(--shadow-lg);
-  overflow: hidden;
-  max-width: 900px;
-  margin: 48px auto 0;
-}
-.demo-header {
-  background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-900) 100%);
-  padding: 20px 28px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.demo-header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.demo-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-.demo-dot.red { background: #FF5F57; }
-.demo-dot.yellow { background: #FEBC2E; }
-.demo-dot.green { background: #28C840; }
-.demo-header-title {
-  color: rgba(255,255,255,0.6);
-  font-size: 0.85rem;
-  font-weight: 500;
-  margin-left: 8px;
-}
-.demo-reset-btn {
-  color: rgba(255,255,255,0.5);
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 100px;
-  border: 1px solid rgba(255,255,255,0.15);
-  transition: all 0.2s;
-  cursor: pointer;
-  background: none;
-}
-.demo-reset-btn:hover {
-  background: rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.8);
-}
-
-.demo-body {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  min-height: 480px;
-}
-
-/* Sidebar: children */
-.demo-sidebar {
-  background: var(--slate-50);
-  border-right: 1px solid var(--slate-200);
-  padding: 20px;
-}
-.demo-sidebar-title {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--slate-400);
-  margin-bottom: 14px;
-}
-.child-card {
-  padding: 14px;
-  border-radius: var(--radius-md);
-  margin-bottom: 8px;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s var(--ease-out);
-  background: var(--white);
-}
-.child-card:hover {
-  border-color: var(--peach-300);
-}
-.child-card.selected {
-  border-color: var(--peach-500);
-  background: var(--peach-50);
-}
-.child-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-.child-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  flex-shrink: 0;
-  background: var(--peach-100);
-}
-.child-name {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--slate-800);
-}
-.child-level {
-  font-size: 0.72rem;
-  color: var(--slate-400);
-  font-weight: 500;
-}
-.child-balance {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--sage-600);
-  background: var(--sage-50);
-  padding: 4px 10px;
-  border-radius: 100px;
-  display: inline-block;
-}
-
-/* Main: products + cart */
-.demo-main {
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-}
-.demo-view-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--slate-400);
-  margin-bottom: 14px;
-}
-.products-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 10px;
-  margin-bottom: 20px;
-  flex: 1;
-}
-.product-card {
-  background: var(--slate-50);
-  border: 1.5px solid var(--slate-200);
-  border-radius: var(--radius-md);
-  padding: 14px 10px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s var(--ease-out);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-.product-card:hover {
-  border-color: var(--peach-400);
-  background: var(--peach-50);
-  transform: translateY(-2px);
-}
-.product-card.disabled {
-  opacity: 0.4;
-  pointer-events: none;
-}
-.product-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-sm);
-  background: var(--white);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-sm);
-}
-.product-icon img {
-  width: 28px;
-  height: 28px;
-}
-.product-name {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--slate-700);
-}
-.product-price {
-  font-size: 0.78rem;
-  color: var(--slate-400);
-  font-weight: 500;
-}
-
-/* Cart */
-.demo-cart {
-  background: var(--slate-50);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  border: 1px solid var(--slate-200);
-}
-.cart-title {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--slate-400);
-  margin-bottom: 10px;
-}
-.cart-items {
-  min-height: 36px;
-}
-.cart-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 0;
-  font-size: 0.85rem;
-}
-.cart-item-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.cart-item-qty {
-  background: var(--peach-100);
-  color: var(--peach-700);
-  font-weight: 700;
-  font-size: 0.75rem;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.cart-item-name { font-weight: 500; color: var(--slate-700); }
-.cart-item-price { font-weight: 600; color: var(--slate-500); }
-.cart-item-remove {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--slate-400);
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 1rem;
-  line-height: 1;
-}
-.cart-item-remove:hover {
-  background: #fee2e2;
-  color: #dc2626;
-}
-.cart-divider {
-  height: 1px;
-  background: var(--slate-200);
-  margin: 10px 0;
-}
-.cart-total {
-  display: flex;
-  justify-content: space-between;
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--slate-800);
-}
-.cart-sell-btn {
-  width: 100%;
-  margin-top: 12px;
-  padding: 12px;
-  background: var(--peach-600);
-  color: var(--white);
-  border-radius: var(--radius-sm);
-  font-weight: 700;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-  border: none;
-  cursor: pointer;
-}
-.cart-sell-btn:hover { background: var(--peach-700); }
-.cart-sell-btn:disabled {
-  background: var(--slate-200);
-  color: var(--slate-400);
-  cursor: not-allowed;
-}
-.cart-empty {
-  font-size: 0.82rem;
-  color: var(--slate-400);
-  text-align: center;
-  padding: 12px 0;
-}
-
-/* Receipt modal */
-.demo-receipt-overlay {
-  display: none;
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
-  z-index: 10;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-}
-.demo-receipt-overlay.show {
-  display: flex;
-}
-.demo-receipt {
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  padding: 40px 36px;
-  max-width: 340px;
-  width: 100%;
-  text-align: center;
-  box-shadow: var(--shadow-xl);
-  animation: receiptIn 0.4s var(--ease-spring);
-}
-@keyframes receiptIn {
-  from { opacity: 0; transform: scale(0.9) translateY(20px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-.receipt-check {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--sage-50);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 16px;
-}
-.receipt-check svg { color: var(--sage-600); }
-.receipt-title {
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  margin-bottom: 6px;
-  color: var(--slate-800);
-}
-.receipt-sub {
-  font-size: 0.88rem;
-  color: var(--slate-500);
-  margin-bottom: 20px;
-}
-.receipt-details {
-  background: var(--slate-50);
-  border-radius: var(--radius-sm);
-  padding: 16px;
-  text-align: left;
-  margin-bottom: 20px;
-}
-.receipt-line {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  padding: 3px 0;
-  color: var(--slate-600);
-}
-.receipt-line.total {
-  border-top: 1px solid var(--slate-200);
-  margin-top: 8px;
-  padding-top: 8px;
-  font-weight: 700;
-  color: var(--slate-800);
-}
-.receipt-line.balance {
-  color: var(--sage-600);
-}
-.receipt-close-btn {
-  padding: 10px 28px;
-  background: var(--peach-600);
-  color: var(--white);
-  border-radius: 100px;
-  font-weight: 600;
-  font-size: 0.88rem;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.receipt-close-btn:hover { background: var(--peach-700); }
-
-@media (max-width: 640px) {
-  .demo-body {
-    grid-template-columns: 1fr;
-  }
-  .demo-sidebar {
-    border-right: none;
-    border-bottom: 1px solid var(--slate-200);
-    padding: 16px;
-  }
-  .demo-sidebar-title { margin-bottom: 8px; }
-  .child-card { display: inline-flex; align-items: center; gap: 8px; margin-right: 8px; margin-bottom: 0; padding: 10px 14px; }
-  .child-top { margin-bottom: 0; }
-  .child-balance { display: none; }
-  .demo-main { padding: 16px; }
-  .products-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .product-card { padding: 10px 6px; }
-}
 
 /* ========================================
    BENEFITS
@@ -1417,6 +620,60 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
   font-size: 0.92rem;
   color: var(--slate-700);
 }
+.contact-method-value a {
+  color: var(--slate-700);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--slate-300);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.contact-method-value a:hover {
+  color: var(--peach-700, #c2410c);
+  border-bottom-color: var(--peach-500, #f97316);
+}
+.contact-method-hours {
+  font-size: 0.82rem;
+  color: var(--slate-500);
+  margin-top: 4px;
+}
+.hours-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-left: 8px;
+  vertical-align: middle;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.hours-badge::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.hours-badge.open {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+.hours-badge.open::before {
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+}
+.hours-badge.closed {
+  background: var(--slate-100);
+  color: var(--slate-500);
+}
+.hours-badge.closed::before {
+  background: var(--slate-400);
+}
+.hours-next {
+  font-size: 0.78rem;
+  color: var(--slate-500);
+  margin: 4px 0 0;
+}
 
 /* Form */
 .contact-form-card {
@@ -1426,6 +683,21 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
   border: 1px solid var(--slate-200);
   box-shadow: var(--shadow-md);
 }
+.request-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  margin: 0 0 22px;
+  background: linear-gradient(135deg, #fff8f3 0%, #ffeed9 100%);
+  border: 1px solid #ffd0a8;
+  border-radius: 12px;
+  color: #b45b10;
+}
+.request-banner[hidden] { display: none; }
+.request-banner svg { color: #d97316; flex-shrink: 0; margin-top: 2px; }
+.request-banner strong { display: block; font-size: 0.92rem; font-weight: 700; margin-bottom: 2px; color: #b45b10; }
+.request-banner span { display: block; font-size: 0.85rem; color: #92400e; line-height: 1.4; }
 .form-group {
   margin-bottom: 18px;
 }
@@ -1634,18 +906,17 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
      ============================ -->
 <nav class="flango-nav" role="navigation" aria-label="Hovednavigation">
   <div class="flango-nav-inner">
-    <a href="/" class="flango-nav-logo" aria-label="Flango forside">flango<span>.</span></a>
+    <a href="/" class="flango-nav-logo" aria-label="Flango forside"><img src="/shared/logos/flango-fruit.webp" alt="" class="flango-nav-logo-icon">flango<span>.</span></a>
     <ul class="flango-nav-links">
-      <li><a href="/pris/">Priser</a></li>
-      <li><a href="/gaming/">Gaming</a></li>
+      <li><a href="/#priser">Priser</a></li>
       <li><a href="/om-flango/">Om Flango</a></li>
+      <li><a href="/#kontakt">Kontakt</a></li>
     </ul>
     <div class="flango-nav-right">
       <a href="/forældre/" class="flango-nav-portal">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
         Forældreportal
       </a>
-      <a href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango" class="flango-nav-cta">Book en snak</a>
     </div>
     <button class="flango-burger" aria-label="Åbn menu" aria-expanded="false">
       <span></span><span></span><span></span>
@@ -1653,13 +924,12 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
   </div>
   <div class="flango-mobile-menu" id="flangoMobileMenu" role="dialog" aria-label="Mobilmenu">
     <a href="/">Forside</a>
-    <a href="/pris/">Priser</a>
-    <a href="/gaming/">Gaming</a>
+    <a href="/#priser">Priser</a>
     <a href="/om-flango/">Om Flango</a>
+    <a href="/#kontakt">Kontakt</a>
     <span class="flango-mobile-section">Log ind</span>
     <a href="/forældre/">Forældreportal</a>
     <a href="/app">Café-app (personale)</a>
-    <a href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango" class="flango-nav-cta">Book en snak</a>
   </div>
 </nav>
 
@@ -1672,143 +942,25 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
   <div class="container">
     <div class="hero-grid">
       <div class="hero-content">
-        <h1 id="hero-heading">SFO-caféen, <em>uden bøvlet</em></h1>
+        <h1 id="hero-heading" class="hero-logo-h1">
+          <img src="/shared/logos/flango-logo.webp" alt="Flango — SFO'ernes cafésystem" class="hero-logo">
+        </h1>
+        <p class="hero-tagline">Flango er mere end et cafésystem.</p>
         <p class="hero-sub">
-          Flango er et cafésystem bygget til danske SFO'er. Børnene handler selv, forældre har fuld indsigt, og I slipper for regneark og papirstrimler.
+          Flango er en samling værktøjer som erstatter administration med pædagogisk værdi og understøtter samspillet mellem børn, forældre og personale.
         </p>
-        <div class="hero-buttons">
-          <a href="#kontakt" class="btn btn-primary">
-            Book en snak
-          </a>
-          <a href="#tryghed" class="btn btn-secondary">
-            Sikkerhed og GDPR
-          </a>
-        </div>
-      </div>
-      <div class="hero-visual">
-        <div class="video-placeholder">
-          <button class="video-play-btn" aria-label="Afspil produktvideo (kommer snart)">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="8 5 19 12 8 19 8 5"/></svg>
-          </button>
-          <span class="video-label">Produktvideo på vej</span>
-        </div>
-        <div class="video-float video-float-1">
-          <span class="float-icon green">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          </span>
-          <div>
-            <div style="font-size:0.78rem;color:var(--slate-400);">Salg gennemført</div>
-            <div style="color:var(--sage-600);">Toast — 5 kr</div>
-          </div>
-        </div>
-        <div class="video-float video-float-2">
-          <span class="float-icon orange">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </span>
-          <div>
-            <div style="font-size:0.78rem;color:var(--slate-400);">Ekspedient</div>
-            <div style="color:var(--peach-700);">Alma · Level 3</div>
-          </div>
-        </div>
+        <img src="/shared/images/born-foraeldre-personale.png" alt="Cyklus mellem børn, forældre og personale" class="hero-cycle">
       </div>
     </div>
   </div>
 </section>
 
 <!-- ============================
-     SOCIAL PROOF
-     ============================ -->
-<section class="social-proof section-pad" aria-labelledby="proof-heading">
-  <div class="container">
-    <div class="stats-banner reveal">
-      <div class="stat-card">
-        <div class="stat-number">EU</div>
-        <div class="stat-label">Hostet i EU · GDPR-konformt</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">DPA</div>
-        <div class="stat-label">Databehandleraftale klar</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">SFO</div>
-        <div class="stat-label">Designet af pædagoger</div>
-      </div>
-    </div>
-    <div class="testimonials">
-      <div class="testimonial-card reveal reveal-delay-1">
-        <span class="testimonial-quote">"</span>
-        <p class="testimonial-text">Flango er blevet uundværligt for os. Børnene og personalet elsker det. Alle SFO'er burde bruge Flango.</p>
-        <div class="testimonial-author">
-          <div class="testimonial-avatar" style="background:var(--peach-400);">AS</div>
-          <div>
-            <div class="testimonial-name">Anne Skeel</div>
-            <div class="testimonial-title">Usserød SFO2</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================
-     HOW IT WORKS
-     ============================ -->
-<section class="how-it-works section-pad" id="saadan-virker-det" aria-labelledby="how-heading">
-  <div class="container">
-    <div class="section-label reveal">Sådan virker det</div>
-    <h2 id="how-heading" class="reveal">Fire trin — fra disk til forældreportal</h2>
-    <div class="steps-grid">
-      <div class="step-card reveal reveal-delay-1">
-        <div class="step-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </div>
-        <div class="step-num">Trin 1</div>
-        <div class="step-title">Barnet melder sig</div>
-        <p class="step-desc">Barnet siger sit navn eller nummer ved disken. Ingen app, ingen kode — bare et hej.</p>
-      </div>
-      <div class="step-card reveal reveal-delay-2">
-        <div class="step-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
-        </div>
-        <div class="step-num">Trin 2</div>
-        <div class="step-title">Ekspedienten vælger varer</div>
-        <p class="step-desc">Et barn eller en voksen bag disken klikker varerne ind. Overskueligt og hurtigt.</p>
-      </div>
-      <div class="step-card reveal reveal-delay-3">
-        <div class="step-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8l-4 4-4-4"/><path d="M12 12v4"/></svg>
-        </div>
-        <div class="step-num">Trin 3</div>
-        <div class="step-title">Saldoen trækkes</div>
-        <p class="step-desc">Beløbet trækkes automatisk fra barnets saldo. Ingen håndtering af kvitteringer eller indbetalinger.</p>
-      </div>
-      <div class="step-card reveal reveal-delay-4">
-        <div class="step-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><polyline points="9 12 11 14 15 10"/></svg>
-        </div>
-        <div class="step-num">Trin 4</div>
-        <div class="step-title">Forældre følger med</div>
-        <p class="step-desc">Forbrug, saldo og allergener — alt sammen tilgængeligt i forældreportalen i realtid.</p>
-      </div>
-    </div>
-    <div class="how-highlight reveal">
-      <div class="how-highlight-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--peach-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5C5 16.33 4.33 17 3.5 17S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 10.33 9.33 11 8.5 11h-5C2.67 11 2 10.33 2 9.5S2.67 8 3.5 8h5c.83 0 1.5.67 1.5 1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
-      </div>
-      <p class="how-highlight-text">
-        <strong>Børn kan selv stå bag disken.</strong> Flangos ekspedient-system gør det muligt for børn at betjene caféen under en voksens ansvar. De får levels, avatarer og badges — og lærer om økonomi og ansvar i praksis.
-      </p>
-    </div>
-  </div>
-</section>
-
-<!-- ============================
-     BENEFITS
+     BENEFITS (flyttet op fra under social-proof)
      ============================ -->
 <section class="benefits section-pad" id="fordele" aria-labelledby="benefits-heading">
   <div class="container">
     <div style="text-align:center;" class="reveal">
-      <div class="section-label" style="justify-content:center;">Fordele</div>
       <h2 id="benefits-heading">Alle vinder med Flango</h2>
     </div>
     <div class="benefits-grid">
@@ -1820,15 +972,23 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         <ul class="benefit-list">
           <li>
             <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Slut med regneark og papirstrimler. Alt køres digitalt fra én skærm.
+            Erstatter administration med pædagogisk værdi.
           </li>
           <li>
             <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Børn kan selv ekspedere — det frigiver hænder og skaber læring.
+            Færre forældrehenvendelser.
           </li>
           <li>
             <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Fuld historik og overblik. Se salg, saldo og forbrugsmønstre med ét klik.
+            Opret arrangementer med automatisk tilmelding fra forældreportalen.
+          </li>
+          <li>
+            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            Automatisk håndhævelse af spilletidsgrænser og spiltilladelser.
+          </li>
+          <li>
+            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            Fuld historik over salg, saldo og forbrugsmønstre.
           </li>
         </ul>
       </div>
@@ -1840,15 +1000,23 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         <ul class="benefit-list">
           <li>
             <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Se præcis hvad dit barn køber — i realtid fra telefonen.
+            Indsigt og medbestemmelse.
           </li>
           <li>
             <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Sæt grænser for dagligt forbrug, sukkervarer, allergener og kostpolitik.
+            Individuel tilpasning af fx købsgrænser &amp; kostpolitik.
           </li>
           <li>
             <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
             Indbetal nemt via MobilePay eller kort — direkte i portalen.
+          </li>
+          <li>
+            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            Tilmeld barnet til kommende arrangementer i institutionen.
+          </li>
+          <li>
+            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            Tilpas digital adfærd: Fx bloker Roblox eller skærmtid om onsdagen.
           </li>
         </ul>
       </div>
@@ -1860,17 +1028,54 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         <ul class="benefit-list">
           <li>
             <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Lærer om økonomi, valg og ansvar — uden at mærke det.
+            Medansvar i cafédriften.
           </li>
           <li>
             <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Kan stå bag disken som ekspedient og tjene levels og badges.
+            Styrker selvværd og oplevelsen af at bidrage til fællesskabet.
           </li>
           <li>
             <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Gamification med avatarer, niveauer og anerkendelse fra personalet.
+            Samspil og samarbejde på tværs af relationer og årgange.
+          </li>
+          <li>
+            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            Undgår frustrationer med forsinkede indbetalinger.
+          </li>
+          <li>
+            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            Undgår potentielle kollektive begrænsninger.
           </li>
         </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================
+     GET STARTED
+     ============================ -->
+<section class="get-started section-pad" aria-labelledby="gs-heading">
+  <div class="container">
+    <div style="text-align:center;" class="reveal">
+      <div class="section-label" style="justify-content:center;">Kom i gang</div>
+      <h2 id="gs-heading">Tre trin til en bedre hverdag</h2>
+    </div>
+    <div class="get-started-steps">
+      <div class="gs-step reveal reveal-delay-1">
+        <div class="gs-num">1</div>
+        <div class="gs-title">Vi hjælper jer med hele opsætningen</div>
+        <p class="gs-desc">Fra implementering til kommunal godkendelse.</p>
+      </div>
+      <div class="gs-step reveal reveal-delay-2">
+        <div class="gs-num">2</div>
+        <div class="gs-title">I prøver Flango i 4 uger, gratis</div>
+        <p class="gs-desc">Mærk forskellen i hverdagen, uden binding.</p>
+      </div>
+      <div class="gs-step reveal reveal-delay-3">
+        <div class="gs-num">3</div>
+        <div class="gs-title">I beslutter om I vil fortsætte</div>
+        <p class="gs-desc">Ingen forpligtelse — kun hvis det giver værdi for jer.</p>
       </div>
     </div>
   </div>
@@ -1964,8 +1169,12 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
       <h3 style="font-family:var(--font-display);font-size:1.3rem;margin-bottom:16px;text-align:center">Ofte stillede spørgsmål</h3>
       <div id="faqList" style="display:flex;flex-direction:column;gap:12px">
         <div class="faq-i" style="background:var(--white);border-radius:var(--radius-md);border:1px solid var(--slate-200);overflow:hidden">
+          <button onclick="toggleFaq(this)" style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;font-weight:700;font-size:0.92rem;color:var(--slate-800);cursor:pointer;width:100%;text-align:left;background:none;border:none;font-family:var(--font-body)">Hvad siger andre brugere?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.3s"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7"><p style="font-style:italic;margin-bottom:8px">"Flango er blevet uundværligt for os. Børnene og personalet elsker det. Alle SFO'er burde bruge Flango."</p><p style="font-weight:600;color:var(--slate-700);margin:0">— Anne Skeel, Usserød SFO2</p></div></div>
+        </div>
+        <div class="faq-i" style="background:var(--white);border-radius:var(--radius-md);border:1px solid var(--slate-200);overflow:hidden">
           <button onclick="toggleFaq(this)" style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;font-weight:700;font-size:0.92rem;color:var(--slate-800);cursor:pointer;width:100%;text-align:left;background:none;border:none;font-family:var(--font-body)">Hvad indebærer oprettelsen?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.3s"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7">Oprettelsen dækker opsætning af Flango til jeres institution, introduktion til personalet og hjælp til at komme i gang. Ved Basic betales 2.500 kr engangs. Pro og Kommune har gratis oprettelse.</div></div>
+          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7">I starter altid med 4 ugers gratis prøveperiode — ingen betaling og ingen binding. Hvis I efter prøveperioden vælger at fortsætte, dækker oprettelsen opsætning af Flango til jeres institution, introduktion til personalet og hjælp til at komme i gang. Ved Basic betales 2.500 kr engangs som oprettelsesgebyr; Pro og Kommune har gratis oprettelse.</div></div>
         </div>
         <div class="faq-i" style="background:var(--white);border-radius:var(--radius-md);border:1px solid var(--slate-200);overflow:hidden">
           <button onclick="toggleFaq(this)" style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;font-weight:700;font-size:0.92rem;color:var(--slate-800);cursor:pointer;width:100%;text-align:left;background:none;border:none;font-family:var(--font-body)">Kræver Flango internet?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.3s"><polyline points="6 9 12 15 18 9"/></svg></button>
@@ -1973,7 +1182,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         </div>
         <div class="faq-i" style="background:var(--white);border-radius:var(--radius-md);border:1px solid var(--slate-200);overflow:hidden">
           <button onclick="toggleFaq(this)" style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;font-weight:700;font-size:0.92rem;color:var(--slate-800);cursor:pointer;width:100%;text-align:left;background:none;border:none;font-family:var(--font-body)">Hvad er skærmtidsstyring?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.3s"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7">Et ekstra modul (inkluderet i Pro og Kommune) til styring af spillerum. Børn kan booke stationer, forældre kan sætte tidsgrænser, og I får TV-visning af kø og sessioner.</div></div>
+          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7">Flango Skærmtid er et selvstændigt modul til at administrere børns adgang til gaming-stationer i institutionens spillerum. Inkluderet i Pro og Kommune; kan også anvendes som standalone. Læs mere på <a href="/gaming/" style="color:var(--peach-700);text-decoration:underline;text-underline-offset:3px;">Flango Skærmtid-siden</a>.</div></div>
         </div>
         <div class="faq-i" style="background:var(--white);border-radius:var(--radius-md);border:1px solid var(--slate-200);overflow:hidden">
           <button onclick="toggleFaq(this)" style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;font-weight:700;font-size:0.92rem;color:var(--slate-800);cursor:pointer;width:100%;text-align:left;background:none;border:none;font-family:var(--font-body)">Hvordan fungerer opsigelse?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.3s"><polyline points="6 9 12 15 18 9"/></svg></button>
@@ -1994,73 +1203,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
       <h2 id="trust-heading">Jeres data er i sikre hænder</h2>
       <p class="trust-subtitle">Vi tager datasikkerhed alvorligt — uden at gøre det kompliceret for jer.</p>
     </div>
-    <div class="trust-grid">
-      <div class="trust-card reveal reveal-delay-1">
-        <div class="trust-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
-        </div>
-        <div>
-          <div class="trust-card-title">GDPR-compliant</div>
-          <p class="trust-card-desc">Flango er bygget med GDPR fra dag ét. Databehandleraftale, formålsbegrænsning og sletterettigheder er standard.</p>
-        </div>
-      </div>
-      <div class="trust-card reveal reveal-delay-2">
-        <div class="trust-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        </div>
-        <div>
-          <div class="trust-card-title">Institutionsisolering</div>
-          <p class="trust-card-desc">Streng dataisolation håndhævet på databaseniveau sikrer at institutioner aldrig kan se hinandens data. Hver institution er en vandtæt silo.</p>
-        </div>
-      </div>
-      <div class="trust-card reveal reveal-delay-3">
-        <div class="trust-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        </div>
-        <div>
-          <div class="trust-card-title">Dansk hosting</div>
-          <p class="trust-card-desc">Data hostes på en managed cloud-platform i EU. Ingen data forlader Europa.</p>
-        </div>
-      </div>
-      <div class="trust-card reveal reveal-delay-4">
-        <div class="trust-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="11" x2="23" y2="11"/></svg>
-        </div>
-        <div>
-          <div class="trust-card-title">Ingen tredjepart</div>
-          <p class="trust-card-desc">Persondata deles aldrig med tredjeparter. Ingen tracking, ingen annoncer, ingen salg af data.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================
-     GET STARTED
-     ============================ -->
-<section class="get-started section-pad" aria-labelledby="gs-heading">
-  <div class="container">
-    <div style="text-align:center;" class="reveal">
-      <div class="section-label" style="justify-content:center;">Kom i gang</div>
-      <h2 id="gs-heading">Tre trin til en nemmere café</h2>
-    </div>
-    <div class="get-started-steps">
-      <div class="gs-step reveal reveal-delay-1">
-        <div class="gs-num">1</div>
-        <div class="gs-title">Book en snak</div>
-        <p class="gs-desc">Vi tager en uforpligtende snak om jeres behov og viser jer Flango i aktion.</p>
-      </div>
-      <div class="gs-step reveal reveal-delay-2">
-        <div class="gs-num">2</div>
-        <div class="gs-title">Vi opsætter for jer</div>
-        <p class="gs-desc">Vi konfigurerer Flango til jeres institution — varer, børn, forældre og politikker.</p>
-      </div>
-      <div class="gs-step reveal reveal-delay-3">
-        <div class="gs-num">3</div>
-        <div class="gs-title">I er kørende</div>
-        <p class="gs-desc">Caféen kører fra dag ét. Vi hjælper undervejs og er altid et opkald væk.</p>
-      </div>
-    </div>
+    <p class="trust-subtitle reveal" style="margin-top:24px;">Læs mere på <a href="/sikkerhed/" style="color:var(--peach-700);text-decoration:underline;text-underline-offset:3px;">sikkerhed</a> og <a href="/privatlivspolitik/" style="color:var(--peach-700);text-decoration:underline;text-underline-offset:3px;">privatlivspolitik</a>.</p>
   </div>
 </section>
 
@@ -2077,7 +1220,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
       <div class="contact-info reveal">
         <h3>Vi er klar til at hjælpe</h3>
         <p class="contact-info-text">
-          Flango er bygget af en pædagog med over 12 års SFO-erfaring. Vi forstår jeres hverdag, fordi vi selv har stået i den. Skriv eller ring — vi vender tilbage hurtigt.
+          Flango er bygget på baggrund af 15 års erfaring med SFO cafédrift. Vi forstår jeres hverdag, fordi vi selv har stået i den. Skriv eller ring — vi vender tilbage hurtigt.
         </p>
         <div class="contact-methods">
           <div class="contact-method">
@@ -2086,7 +1229,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
             </div>
             <div>
               <div class="contact-method-label">Email</div>
-              <div class="contact-method-value">hej@flango.dk</div>
+              <div class="contact-method-value"><a href="mailto:kontakt@flango.dk">kontakt@flango.dk</a></div>
             </div>
           </div>
           <div class="contact-method">
@@ -2094,35 +1237,46 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
             </div>
             <div>
-              <div class="contact-method-label">Telefon</div>
-              <div class="contact-method-value">+45 XX XX XX XX</div>
+              <div class="contact-method-label">Telefon <span id="hours-badge" class="hours-badge" aria-live="polite"></span></div>
+              <div class="contact-method-value"><a href="tel:+4541610913">41 61 09 13</a></div>
+              <div class="contact-method-hours">Mandag til fredag 12:00–21:00</div>
+              <p id="hours-next" class="hours-next" style="display:none;"></p>
             </div>
           </div>
         </div>
       </div>
       <div class="contact-form-card reveal reveal-delay-1">
-        <div id="contactForm">
+        <div id="requestBanner" class="request-banner" hidden>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <div>
+            <strong>Anmodning om fuld produktbeskrivelse</strong>
+            <span>Udfyld dine kontaktoplysninger nedenfor — vi sender beskrivelsen til den oplyste e-mail.</span>
+          </div>
+        </div>
+        <form id="contactForm" action="https://formspree.io/f/xeegjbaq" method="post" onsubmit="return validateForm(event)">
+          <input type="hidden" name="_subject" id="formSubject" value="Kontakt fra flango.dk" />
+          <input type="hidden" name="request_type" id="formRequestType" value="" />
           <div class="form-group">
             <label class="form-label" for="formName">Navn *</label>
-            <input class="form-input" type="text" id="formName" placeholder="Dit fulde navn" required>
+            <input class="form-input" type="text" id="formName" name="name" placeholder="Dit fulde navn" required autocomplete="name">
             <div class="form-error" id="nameError">Indtast venligst dit navn</div>
           </div>
           <div class="form-group">
             <label class="form-label" for="formInstitution">Institution *</label>
-            <input class="form-input" type="text" id="formInstitution" placeholder="Navn på SFO / fritidsklub">
+            <input class="form-input" type="text" id="formInstitution" name="institution" placeholder="Navn på SFO / fritidsklub">
             <div class="form-error" id="institutionError">Indtast venligst institutionens navn</div>
           </div>
           <div class="form-group">
             <label class="form-label" for="formEmail">Email *</label>
-            <input class="form-input" type="email" id="formEmail" placeholder="din@email.dk">
+            <input class="form-input" type="email" id="formEmail" name="_replyto" placeholder="din@email.dk" autocomplete="email">
             <div class="form-error" id="emailError">Indtast venligst en gyldig email</div>
           </div>
           <div class="form-group">
             <label class="form-label" for="formMessage">Besked (valgfri)</label>
-            <textarea class="form-textarea" id="formMessage" placeholder="Fortæl os lidt om jeres behov..."></textarea>
+            <textarea class="form-textarea" id="formMessage" name="message" placeholder="Fortæl os lidt om jeres behov..."></textarea>
           </div>
-          <button class="form-submit" onclick="submitForm()">Send besked</button>
-        </div>
+          <button class="form-submit" type="submit">Send besked</button>
+        </form>
         <div class="form-success" id="formSuccess">
           <div class="form-success-icon">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -2150,7 +1304,6 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
       <div>
         <div class="footer-heading">Sektioner</div>
         <ul class="footer-links">
-          <li><a href="#saadan-virker-det">Sådan virker det</a></li>
           <li><a href="#fordele">Fordele</a></li>
           <li><a href="#priser">Priser</a></li>
           <li><a href="#tryghed">Tryghed & data</a></li>
@@ -2171,45 +1324,18 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
           <li><a href="/sikkerhed/">Sikkerhed</a></li>
           <li><a href="/privatlivspolitik/">Privatlivspolitik</a></li>
           <li><a href="/gdpr/">GDPR</a></li>
-          <li><a href="mailto:hej@flango.dk">Kontakt</a></li>
+          <li><a href="mailto:kontakt@flango.dk">Kontakt</a></li>
         </ul>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2025–2026 Flango · CVR: XX XX XX XX</span>
+      <span>© 2025–2026 Flango · CVR: 34360642</span>
       <span>Lavet med <span class="footer-heart">&#10084;</span> i en dansk SFO</span>
     </div>
   </div>
 </footer>
 
 <script>
-/* ========================================
-   NAVIGATION
-   ======================================== */
-const nav = document.querySelector('.nav');
-const burger = document.querySelector('.burger');
-const mobileMenu = document.getElementById('mobileMenu');
-let mobileOpen = false;
-
-window.addEventListener('scroll', () => {
-  nav.classList.toggle('scrolled', window.scrollY > 20);
-});
-
-function toggleMobile() {
-  mobileOpen = !mobileOpen;
-  burger.classList.toggle('active', mobileOpen);
-  burger.setAttribute('aria-expanded', mobileOpen);
-  mobileMenu.classList.toggle('open', mobileOpen);
-  document.body.style.overflow = mobileOpen ? 'hidden' : '';
-}
-function closeMobile() {
-  mobileOpen = false;
-  burger.classList.remove('active');
-  burger.setAttribute('aria-expanded', 'false');
-  mobileMenu.classList.remove('open');
-  document.body.style.overflow = '';
-}
-
 /* ========================================
    SCROLL REVEAL
    ======================================== */
@@ -2270,7 +1396,7 @@ function toggleFaq(btn) {
   const isOpen = item.classList.contains('faq-open');
   document.querySelectorAll('.faq-i').forEach(i => {
     i.classList.remove('faq-open');
-    i.querySelector('.faq-a').style.maxHeight = null;
+    i.querySelector('.faq-a').style.maxHeight = '0px';
     const s = i.querySelector('button svg');
     if (s) s.style.transform = '';
   });
@@ -2284,7 +1410,7 @@ function toggleFaq(btn) {
 /* ========================================
    CONTACT FORM
    ======================================== */
-function submitForm() {
+function validateForm(event) {
   const name = document.getElementById('formName');
   const institution = document.getElementById('formInstitution');
   const email = document.getElementById('formEmail');
@@ -2310,11 +1436,76 @@ function submitForm() {
     valid = false;
   }
 
-  if (valid) {
-    document.getElementById('contactForm').style.display = 'none';
-    document.getElementById('formSuccess').classList.add('show');
+  if (!valid) {
+    event.preventDefault();
+    return false;
   }
+  return true;
 }
+
+/* ========================================
+   PHONE HOURS BADGE
+   ======================================== */
+(function() {
+  var badge = document.getElementById('hours-badge');
+  var nextEl = document.getElementById('hours-next');
+  if (!badge) return;
+  var now = new Date();
+  var s = now.toLocaleString('en-CA', { timeZone: 'Europe/Copenhagen' });
+  var bits = s.split(', ');
+  var datePart = bits[0] || '';
+  var timePart = bits[1] || '0:0:0';
+  var dm = datePart.split('-').map(Number);
+  var tm = timePart.split(':').map(Number);
+  var y = dm[0], m = dm[1] - 1, d = dm[2];
+  var hour = tm[0] || 0, min = tm[1] || 0;
+  var day = new Date(y, m, d).getDay();
+  var weekdayOk = day >= 1 && day <= 5;
+  var mins = hour * 60 + min;
+  var open = weekdayOk && mins >= 12 * 60 && mins < 21 * 60;
+  badge.textContent = open ? 'Åbent' : 'Lukket';
+  badge.className = 'hours-badge ' + (open ? 'open' : 'closed');
+  if (nextEl) {
+    if (open) {
+      nextEl.style.display = 'none';
+      nextEl.textContent = '';
+    } else {
+      var msg = '';
+      if (day === 0) msg = 'Åbner igen mandag kl. 12:00';
+      else if (day === 6) msg = 'Åbner igen mandag kl. 12:00';
+      else if (mins < 12 * 60) msg = 'Åbner igen i dag kl. 12:00';
+      else {
+        if (day === 5) msg = 'Åbner igen mandag kl. 12:00';
+        else msg = 'Åbner igen i morgen kl. 12:00';
+      }
+      nextEl.textContent = msg;
+      nextEl.style.display = 'block';
+    }
+  }
+})();
+
+/* ========================================
+   PRE-FILL FROM ?request=... QUERY PARAM
+   ======================================== */
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var request = params.get('request');
+  if (!request) return;
+
+  var banner = document.getElementById('requestBanner');
+  var subjectField = document.getElementById('formSubject');
+  var requestTypeField = document.getElementById('formRequestType');
+  var messageField = document.getElementById('formMessage');
+
+  if (request === 'produktbeskrivelse') {
+    if (banner) banner.hidden = false;
+    if (subjectField) subjectField.value = 'Anmodning om fuld produktbeskrivelse';
+    if (requestTypeField) requestTypeField.value = 'produktbeskrivelse';
+    if (messageField && !messageField.value.trim()) {
+      messageField.value = 'Hej, jeg er interesseret i at få tilsendt den fulde produktbeskrivelse af Flango med en gennemgang af alle funktioner og anvendelsesmuligheder.\n\nVenlig hilsen';
+    }
+  }
+})();
 </script>
 <script src="/shared/nav.js"></script>
 </body>
