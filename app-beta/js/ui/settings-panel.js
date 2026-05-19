@@ -427,7 +427,14 @@
     overlay = null;
   }
 
+  // ── Reload current section (re-fetches institution data + re-renders) ──
+  async function reloadCurrent() {
+    if (!overlay) return;
+    await loadInstitutionState();
+    renderContent();
+  }
+
   // ── Public API ──
-  window.FlangoSettings = { open, close, T, icons, ic, bigIc, tabIcons, extLinkSvg, markDirty, saveField, saveFields };
+  window.FlangoSettings = { open, close, reloadCurrent, T, icons, ic, bigIc, tabIcons, extLinkSvg, markDirty, saveField, saveFields };
 
 })();
