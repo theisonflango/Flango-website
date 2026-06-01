@@ -1959,8 +1959,6 @@
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
               <button class="fsp-btn ${onboardingDone ? 'fsp-btn-ghost' : 'fsp-btn-primary'}" id="stripe-onboarding-btn" data-action="stripe-onboard" ${onboardingDone ? 'disabled style="opacity:0.6;cursor:default;padding:10px 20px;font-size:13px"' : 'style="padding:10px 20px;font-size:13px"'}>${onboardingDone ? '\u2713 Ops\u00e6tning fuldf\u00f8rt' : onboardingBtnText}</button>
               <button class="fsp-btn fsp-btn-ghost" id="stripe-status-sync-btn" data-action="stripe-sync" style="padding:10px 20px;font-size:13px">\uD83D\uDD04 Opdater status</button>
-              ${stripeMode ? `<button class="fsp-btn fsp-btn-ghost" id="stripe-change-mode-btn" data-action="stripe-change-mode" style="padding:10px 20px;font-size:13px" title="Skift mellem Test og Live mode">\u2699 Skift mode (${stripeMode === 'live' ? 'Live' : 'Test'})</button>` : ''}
-              ${inst.stripe_account_id ? `<button class="fsp-btn fsp-btn-ghost" id="stripe-reset-btn" data-action="stripe-reset" style="padding:10px 20px;font-size:13px;color:#e85a6f;border-color:rgba(232,90,111,0.3)" title="Nulstil Stripe-ops\u00e6tningen og start forfra">\u21BA Nulstil ops\u00e6tning</button>` : ''}
             </div>
           </div></div></div>
         </div>
@@ -2084,71 +2082,6 @@
         if (S.syncStatus && instId) await S.syncStatus(instId);
       });
 
-      // Skift mode — gen-åbner mode-modal selv efter første konfiguration.
-      // Mode-skift (test ↔ live) rydder eksisterende account_id i shell.js' save-handler,
-      // så en frisk Stripe-konto oprettes på den valgte platform.
-      container.querySelector('[data-action="stripe-change-mode"]')?.addEventListener('click', async () => {
-        if (!S.openModeModal || !instId) return;
-        const ok = await window.customConfirm?.(
-          'Vil du skifte Stripe-mode?',
-          `Hvis du skifter mellem Test og Live, oprettes en ny Stripe-konto på den valgte platform. Din nuværende konto (${ctx.institutionData?.stripe_mode === 'live' ? 'Live' : 'Test'}) efterlades i Stripe og kan slettes manuelt via dashboard.stripe.com.`
-        ) ?? confirm('Skift Stripe-mode? En ny konto oprettes på den valgte platform.');
-        if (!ok) return;
-        await S.openModeModal({ mode: ctx.institutionData?.stripe_mode }, instId, async () => {
-          if (S.startOnboarding) await S.startOnboarding(instId);
-        });
-      });
-
-      // Nulstil opsætning — rydder lokal kobling til Stripe (account_id, status, fejl),
-      // beholder mode. Den eksisterende konto efterlades hos Stripe og kan slettes manuelt
-      // via dashboard.stripe.com hvis institutionen ønsker det. Stærkere advarsel hvis
-      // onboarding allerede er fuldført (mulige modtagne betalinger på den gamle konto).
-      container.querySelector('[data-action="stripe-reset"]')?.addEventListener('click', async () => {
-        if (!instId) return;
-        const wasEnabled = ctx.institutionData?.stripe_account_status === 'enabled';
-        const accountIdShort = (ctx.institutionData?.stripe_account_id || '').slice(0, 15);
-        const baseMsg = `Dette rydder Flangos kobling til din nuværende Stripe-konto (${accountIdShort}…). Næste gang du klikker "Fortsæt opsætning" oprettes en ny konto fra bunden.\n\nDen gamle konto efterlades hos Stripe (harmløst — koster intet og påvirker ikke ny onboarding). Hvis I ønsker den fysisk slettet, kan I kontakte Flango-support.`;
-        const dangerMsg = wasEnabled
-          ? `\n\n⚠ ADVARSEL: Din nuværende opsætning er fuldført (enabled). Hvis kontoen har modtaget betalinger, vil de blive utilgængelige via Flango efter nulstilling — du skal håndtere dem direkte hos Stripe.`
-          : '';
-        const ok = confirm(`Nulstil Stripe-opsætning?\n\n${baseMsg}${dangerMsg}\n\nFortsæt?`);
-        if (!ok) return;
-
-        try {
-          const sb = window.__flangoSupabaseClient;
-          if (!sb) throw new Error('Supabase client ikke tilgængelig');
-          const { error: resetError } = await sb
-            .from('institutions')
-            .update({
-              stripe_account_id: null,
-              stripe_account_status: 'not_configured',
-              stripe_last_error: null,
-              stripe_updated_at: new Date().toISOString(),
-            })
-            .eq('id', instId);
-          if (resetError) throw resetError;
-
-          // Refresh local context og re-render section
-          if (ctx.institutionData) {
-            ctx.institutionData.stripe_account_id = null;
-            ctx.institutionData.stripe_account_status = 'not_configured';
-            ctx.institutionData.stripe_last_error = null;
-          }
-          (window.__flangoReloadPaymentMethodsView || window.openPaymentMethodsModal)?.();
-          if (typeof window.showCustomAlert === 'function') {
-            window.showCustomAlert('Nulstillet', 'Stripe-opsætningen er nulstillet. Klik "Fortsæt opsætning" for at starte forfra.');
-          }
-        } catch (err) {
-          console.error('[stripe-reset] Error:', err);
-          const msg = err?.message || 'Ukendt fejl';
-          if (typeof window.showCustomAlert === 'function') {
-            window.showCustomAlert('Fejl', 'Kunne ikke nulstille opsætningen: ' + msg);
-          } else {
-            alert('Fejl ved nulstilling: ' + msg);
-          }
-        }
-      });
-
       // Generér onboarding-link (helper looks up IDs: generate-onboarding-link-btn, copy-onboarding-link-btn, onboarding-link-input)
       container.querySelector('[data-action="stripe-generate-link"]')?.addEventListener('click', async () => {
         if (S.generateLink && instId) await S.generateLink(instId);
@@ -2205,7 +2138,7 @@
         <div data-expand-target="pp-body" class="${enabled ? '' : 'fsp-off'}">
           <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">Tilg\u00e6ngelige typer</div>
           <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
-            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDCC1</span><div><div class="fsp-row-title">Upload</div><div class="fsp-row-desc">Admin uploader billeder via caf\u00E9-appen (filer kan stamme fra Aula eller anden kilde)</div></div></div>
+            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDCC1</span><div><div class="fsp-row-title">Upload</div><div class="fsp-row-desc">Admin uploader billede (fx kopieret fra Aula)</div></div></div>
             <div class="fsp-toggle${hasUpload ? ' on' : ''}" data-pp-type="upload"></div>
           </div></div>
           <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
@@ -2247,8 +2180,8 @@
           </div>
           ` : ''}
           <div style="margin:${parentUploadOn ? '16px' : '28px'} 0 28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05)">
-            <button class="fsp-btn fsp-btn-ghost" data-action="aula-import" style="width:100%;display:flex;justify-content:center;padding:14px 24px;font-size:14px;gap:10px">\uD83D\uDCE5 Bulk-upload af profilbilleder</button>
-            <div style="font-size:11px;color:var(--fsp-txt3);margin-top:6px;text-align:center">Upload flere billeder samlet \u2014 filnavn-matching mod fornavn+initial+klassetrin (kompatibelt med Aulas eksport-konvention)</div>
+            <button class="fsp-btn fsp-btn-ghost" data-action="aula-import" style="width:100%;display:flex;justify-content:center;padding:14px 24px;font-size:14px;gap:10px">\uD83D\uDCE5 Auto-import fra Aula</button>
+            <div style="font-size:11px;color:var(--fsp-txt3);margin-top:6px;text-align:center">Upload billeder hentet fra Aula \u2014 matcher automatisk p\u00e5 navn og klassetrin</div>
           </div>
         </div>
         <div style="margin-top:8px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05)">

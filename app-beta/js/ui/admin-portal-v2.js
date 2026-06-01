@@ -204,7 +204,7 @@
 
     if (anyOptOut) {
       var parts = [];
-      if (d.ppOptOutAula) parts.push('Bulk-upload');
+      if (d.ppOptOutAula) parts.push('Aula');
       if (d.ppOptOutCamera) parts.push('Kamera');
       if (d.ppOptOutAi) parts.push('AI');
       var daysInfo = '';
@@ -619,7 +619,7 @@
   var ppSortCol = 0;
   var ppSortAsc = true;
 
-  var PP_TYPE_LABELS = { upload: 'Upload', camera: 'Kamera', library: 'Bibliotek', ai_avatar: 'AI-Avatar', icon: 'Ikon', aula: 'Bulk-upload' };
+  var PP_TYPE_LABELS = { upload: 'Upload', camera: 'Kamera', library: 'Bibliotek', ai_avatar: 'AI-Avatar', icon: 'Ikon', aula: 'Aula' };
 
   function getProfilePicUsers() {
     var users = window.__flangoAllUsers || [];
@@ -659,7 +659,7 @@
 
   function ppOptOutSummary(u) {
     var parts = [];
-    if (u.profile_picture_opt_out_aula) parts.push('Bulk-upload');
+    if (u.profile_picture_opt_out_aula) parts.push('Aula');
     if (u.profile_picture_opt_out_camera) parts.push('Kamera');
     if (u.profile_picture_opt_out_ai) parts.push('AI');
     return parts;
@@ -1095,7 +1095,7 @@
     html += '</div>';
 
     html += '<div class="pl-modal-sec"><div class="pl-modal-sec-title">\ud83d\udcf7 Profilbilleder</div>';
-    html += row('Bulk-upload', d.ppOptOutAula ? '<span class="pl-tag red">Fravalgt</span>' : '<span class="pl-tag green">Tilladt</span>');
+    html += row('Aula-foto', d.ppOptOutAula ? '<span class="pl-tag red">Fravalgt</span>' : '<span class="pl-tag green">Tilladt</span>');
     html += row('Kamera-foto', d.ppOptOutCamera ? '<span class="pl-tag red">Fravalgt</span>' : '<span class="pl-tag green">Tilladt</span>');
     if (d.ppOptOutCamera && d.ppType === 'camera' && d.ppUrl) {
       var camDays = daysUntilDeletion(d.ppOptOutCameraAt);
@@ -1107,7 +1107,7 @@
       html += row('AI-billede sletning', aiDays !== null ? '<span class="pl-tag orange">' + aiDays + ' dage tilbage</span>' : '<span style="color:var(--ink-muted)">\u2014</span>');
     }
     if (d.ppType) {
-      html += row('Nuv\u00e6rende type', '<span class="pl-tag blue">' + esc(d.ppType === 'camera' ? 'Kamera' : d.ppType === 'ai_avatar' ? 'AI-avatar' : d.ppType === 'aula' ? 'Bulk-upload' : d.ppType) + '</span>');
+      html += row('Nuv\u00e6rende type', '<span class="pl-tag blue">' + esc(d.ppType === 'camera' ? 'Kamera' : d.ppType === 'ai_avatar' ? 'AI-avatar' : d.ppType === 'aula' ? 'Aula' : d.ppType) + '</span>');
     }
     html += '</div>';
 
@@ -1131,7 +1131,7 @@
         d.child, d.parent, d.saldo, d.login, d.limit,
         d.spent, d.purchases, d.notif ? 'Ja' : 'Nej',
         d.ppOptOutAula || d.ppOptOutCamera || d.ppOptOutAi
-          ? [d.ppOptOutAula ? 'Bulk-upload fra' : '', d.ppOptOutCamera ? 'Kamera fra' : '', d.ppOptOutAi ? 'AI fra' : ''].filter(Boolean).join(' + ')
+          ? [d.ppOptOutAula ? 'Aula fra' : '', d.ppOptOutCamera ? 'Kamera fra' : '', d.ppOptOutAi ? 'AI fra' : ''].filter(Boolean).join(' + ')
           : 'Tilladt',
       ].join(';'));
     });
