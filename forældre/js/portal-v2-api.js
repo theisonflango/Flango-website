@@ -454,6 +454,22 @@
       });
     },
 
+    /** Create a Vipps MobilePay topup (WEB_REDIRECT) -> { redirectUrl, reference } */
+    async createMobilePayTopup(childId, amountDkk) {
+      return invokeFunction('vipps-create-payment', {
+        child_id: childId,
+        amount_dkk: amountDkk,
+      });
+    },
+
+    /** Poll Vipps topup status for retur-siden -> { state, credited, amount_dkk } */
+    async getVippsStatus(childId, reference) {
+      return invokeFunction('vipps-status', {
+        child_id: childId,
+        reference: reference,
+      });
+    },
+
     // ─── PIN ───
 
     /** Update parent portal PIN / password */

@@ -251,6 +251,11 @@
       await loadChildData();
       renderApp();
       maybeShowWelcomeModal();
+      // MobilePay-retur (best-effort; webhook+poll er sandheden bag krediteringen)
+      try {
+        const vref = new URLSearchParams(window.location.search).get('vipps_ref');
+        if (vref) { window.history.replaceState({}, '', window.location.pathname); handleVippsReturn(vref); }
+      } catch (_) {}
     } catch (err) {
       console.error('[Portal] Load children error:', err);
       renderError('Kunne ikke hente dine børn. Prøv at genindlæse siden.');
@@ -1840,7 +1845,7 @@
           <div class="topup-method-section">
             <div class="topup-method-title">Betal med</div>
             <button class="topup-method-btn stripe" id="pay-stripe"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Kort (Stripe)</button>
-            <button class="topup-method-btn mobilepay" id="pay-mobilepay"><span style="font-size:18px">📱</span>MobilePay</button>
+            ${featureFlags.vipps_enabled === true ? `<button class="topup-method-btn mobilepay" id="pay-mobilepay" aria-label="Betal med MobilePay"><img src="assets/mobilepay-button.svg" alt="Betal med MobilePay" class="mobilepay-btn-img"></button>` : ''}
           </div>
         </div></div></div>
       </div>`;
@@ -3158,6 +3163,10 @@
     // Stripe payment
     const stripeBtn = document.getElementById('pay-stripe');
     if (stripeBtn) stripeBtn.addEventListener('click', handleStripeTopup);
+
+    // MobilePay (Vipps) payment
+    const mobilepayBtn = document.getElementById('pay-mobilepay');
+    if (mobilepayBtn) mobilepayBtn.addEventListener('click', handleMobilePayTopup);
 
     // Allergen cycling
     const allergenGrid = document.getElementById('allergen-grid');
@@ -4847,6 +4856,71 @@
       console.error('[Portal] Stripe topup error:', err);
       showToast('Betaling fejlede: ' + (err.message || 'Ukendt fejl'), 'error');
     }
+  }
+
+  async function handleMobilePayTopup() {
+    if (!selectedChild) return;
+    const selected = document.querySelector('.topup-option.selected');
+    if (!selected) { showToast('Vælg et beløb', 'error'); return; }
+    const amount = selected.dataset.amount;
+    if (!amount || amount === 'custom') { showToast('Vælg et beløb', 'error'); return; }
+    const amountDkk = Number(amount);
+
+    try {
+      showToast('Åbner MobilePay...', '');
+      const result = await API.createMobilePayTopup(selectedChild.child_id, amountDkk);
+      if (!result || !result.redirectUrl) {
+        showToast('MobilePay kunne ikke startes', 'error');
+        return;
+      }
+      // Gem pending-betaling så retur-siden kan polle status (webhook+poll krediterer server-side).
+      try {
+        sessionStorage.setItem('vipps_pending', JSON.stringify({
+          reference: result.reference, child_id: selectedChild.child_id, amount: amountDkk,
+        }));
+      } catch (_) {}
+      window.location.href = result.redirectUrl;
+    } catch (err) {
+      console.error('[Portal] MobilePay topup error:', err);
+      showToast(err.message || 'MobilePay fejlede', 'error');
+    }
+  }
+
+  // Retur fra MobilePay: poll status og vis resultat. Kreditering sker server-side
+  // (webhook + poll); denne funktion krediterer ALDRIG selv — den slår blot status op.
+  async function handleVippsReturn(reference) {
+    let stored = null;
+    try { stored = JSON.parse(sessionStorage.getItem('vipps_pending') || 'null'); } catch (_) {}
+    const childId = (stored && stored.reference === reference)
+      ? stored.child_id
+      : (selectedChild && selectedChild.child_id);
+    if (!childId) return;
+
+    showToast('Bekræfter MobilePay-betaling...', '');
+    for (let i = 0; i < 20; i++) {
+      let st = null;
+      try { st = await API.getVippsStatus(childId, reference); } catch (_) {}
+      if (st && st.credited) {
+        try { sessionStorage.removeItem('vipps_pending'); } catch (_) {}
+        showToast('Betaling gennemført!', 'success');
+        try {
+          const viewData = await API.getParentView(childId);
+          if (viewData) {
+            childData = viewData;
+            const balEl = document.querySelector('.balance-amount');
+            if (balEl && childData.balance != null) balEl.textContent = formatKr(childData.balance) + ' kr';
+          }
+        } catch (_) {}
+        return;
+      }
+      if (st && (st.state === 'ABORTED' || st.state === 'EXPIRED' || st.state === 'TERMINATED')) {
+        try { sessionStorage.removeItem('vipps_pending'); } catch (_) {}
+        showToast('Betaling blev ikke gennemført', 'error');
+        return;
+      }
+      await new Promise(r => setTimeout(r, 3000));
+    }
+    showToast('Betalingen behandles — saldoen opdateres om lidt', '');
   }
 
   async function handlePinChange() {
