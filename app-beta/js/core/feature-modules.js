@@ -51,6 +51,10 @@
     payment_cash: [
       'topup_cash_enabled',
     ],
+    // Vipps MobilePay (API-vej) — adskilt fra payment_mobilepay (manuel QR/CSV).
+    payment_vipps: [
+      'vipps_enabled', 'vipps_mode', 'vipps_msn', 'vipps_status',
+    ],
     sugar_policy: [
       'sugar_policy_enabled', 'sugar_policy_max_per_product_enabled',
       'sugar_policy_max_per_product_per_day', 'sugar_policy_max_unhealthy_enabled',
