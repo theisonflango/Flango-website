@@ -521,11 +521,13 @@
       return rpcCall('get_linked_parents_for_child', { p_child_id: childId });
     },
 
-    /** Update child's display name */
-    async updateChildName(childId, newName) {
+    /** Update child's display name (and optionally last name when institution enabled it) */
+    async updateChildName(childId, newName, lastName = null, setLastName = false) {
       return rpcCall('update_child_name_by_parent', {
         p_child_id: childId,
         p_new_name: newName,
+        p_last_name: lastName,
+        p_set_last_name: setLastName,
       });
     },
 

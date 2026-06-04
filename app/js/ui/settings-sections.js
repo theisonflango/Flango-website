@@ -169,7 +169,8 @@
           const label = card.dataset.card;
           window.FlangoSettings.close();
           if (label === 'Produktoversigt') {
-            window.openSugarPolicyModal?.();
+            // Tilbage fra produktoversigt fører tilbage til den nye Indstillinger (hvor man kom fra).
+            window.openSugarPolicyModal?.(() => window.FlangoSettings?.open?.());
           } else if (label === 'Brugerpanel') {
             window.openUserAdminPanel?.();
           }
@@ -811,7 +812,7 @@
       if (!client || !instId) return;
       const { data } = await client
         .from('users')
-        .select('id, name, number, grade_level, balance, role, is_test_user')
+        .select('id, name, last_name, number, grade_level, balance, role, is_test_user')
         .eq('institution_id', instId)
         .neq('role', 'admin')
         .order('name', { ascending: true });
@@ -2488,6 +2489,26 @@
   };
 
   // ── Auto-sletning af inaktive (settings section) ──
+  sections['Brugernavne'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      const enabled = !!inst.last_name_enabled;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Brugernavne</div>
+        <div class="fsp-page-desc">Vælg om børnenes <strong>efternavn</strong> skal gemmes og vises sammen med fornavnet. Slået fra vises og gemmes kun fornavn — standard for nye institutioner, da efternavn er en ekstra personoplysning.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Vis efternavn</div><div class="fsp-main-desc">Fornavn + efternavn i café, forældreportal og ved oprettelse/import. Fra = kun fornavn.</div></div>
+          <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="last_name_enabled"></div>
+        </div>
+        <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Ændringen slår igennem med det samme. Eksisterende navne påvirkes ikke — efternavne kan tilføjes pr. barn under rediger bruger, ved oprettelse eller via auto-import.</div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+    }
+  };
+
   sections['Auto-sletning af inaktive'] = {
     render(ctx) {
       const inst = ctx.institutionData || {};

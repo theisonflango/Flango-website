@@ -102,6 +102,8 @@
     events: [
       'cafe_events_enabled', 'cafe_events_as_products',
     ],
+    // Brugernavne — efternavn (fornavn + efternavn) i café og portal
+    last_name: ['last_name_enabled'],
     security_mfa: [
       'admin_mfa_policy',
     ],

@@ -605,7 +605,35 @@
     return { cls: 'status-empty', text: 'Ingen saldo' };
   }
 
-  function getChildName() { return selectedChild?.child_name || selectedChild?.name || 'Barn'; }
+  // Efternavn: vises kun når institutionen (eller superadmin) har slået det til.
+  // last_name_enabled følger med pr. barn fra get_children_for_parent og på childData.institution.
+  function isLastNameEnabledForChild(c) {
+    const entry = c || selectedChild;
+    if (entry && typeof entry.last_name_enabled === 'boolean') return entry.last_name_enabled;
+    if (childData?.institution && typeof childData.institution.last_name_enabled === 'boolean') return childData.institution.last_name_enabled;
+    return false;
+  }
+  function getChildFirstName(c) {
+    const entry = c || selectedChild;
+    return String((entry?.child_name ?? entry?.name) || '').trim();
+  }
+  function getChildLastName(c) {
+    const entry = c || selectedChild;
+    return String((entry?.last_name ?? (entry === selectedChild ? childData?.last_name : undefined)) || '').trim();
+  }
+  // Sammensæt visningsnavn for et barn (liste-entry eller det valgte barn).
+  function formatChildName(c) {
+    const first = String((c?.child_name ?? c?.name) || '').trim();
+    const last = String(c?.last_name || '').trim();
+    if (isLastNameEnabledForChild(c) && last) return `${first} ${last}`.trim();
+    return first || 'Barn';
+  }
+  function getChildName() {
+    if (!selectedChild) return 'Barn';
+    const first = getChildFirstName(selectedChild) || 'Barn';
+    const last = getChildLastName(selectedChild);
+    return (isLastNameEnabledForChild(selectedChild) && last) ? `${first} ${last}`.trim() : first;
+  }
   function getChildEmoji() { return selectedChild?.avatar_emoji || selectedChild?.emoji || '🧒'; }
   function getChildBalance() { return childData?.balance ?? selectedChild?.balance ?? 0; }
   function getInstitutionName() { return childData?.institution_name || childData?.institution?.name || ''; }
@@ -1569,7 +1597,7 @@
       const isActive = c.child_id === selectedChild?.child_id;
       const emoji = c.avatar_emoji || c.emoji || '🧒';
       const bal = c.balance != null ? `<span class="saldo-mini">${formatKr(c.balance)} kr</span>` : '';
-      return `<button class="child-chip${isActive ? ' active' : ''}" data-child-id="${c.child_id}"><span class="child-avatar">${emoji}</span> ${esc(c.child_name || c.name)} ${bal}</button>`;
+      return `<button class="child-chip${isActive ? ' active' : ''}" data-child-id="${c.child_id}"><span class="child-avatar">${emoji}</span> ${esc(formatChildName(c))} ${bal}</button>`;
     }).join('');
     return `<div class="child-selector">${chips}<button class="child-chip add-child-chip" id="add-child-btn-mobile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tilknyt</button></div>`;
   }
@@ -2029,7 +2057,35 @@
   }
 
   function renderChildNameSection() {
-    const name = getChildName();
+    const lnOn = isLastNameEnabledForChild(selectedChild);
+    const displayName = getChildName();
+    const firstVal = getChildFirstName(selectedChild);
+    const lastVal = getChildLastName(selectedChild);
+    const inputStyle = 'width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:14px;outline:none;box-sizing:border-box';
+    const labelStyle = 'display:block;font-size:12px;font-weight:600;color:var(--ink-muted);margin-bottom:4px';
+    const helpText = lnOn
+      ? 'Barnets navn bruges i caféen så ekspedienten kan sikre at det rigtige barn får sit køb. Du kan rette fornavn og efternavn. Navnet skal stadig være genkendeligt for personalet.'
+      : 'Barnets navn bruges i caféen så ekspedienten kan sikre at det rigtige barn får sit køb. Du kan forkorte eller ændre navnet, fx til kun fornavn eller kaldenavn. Navnet skal stadig være genkendeligt for personalet.';
+    const editFields = lnOn
+      ? `<div style="display:flex;flex-direction:column;gap:var(--s2)">
+              <div>
+                <label style="${labelStyle}" for="privacy-name-input">Fornavn</label>
+                <input type="text" id="privacy-name-input" value="${esc(firstVal)}" maxlength="50" style="${inputStyle}" />
+              </div>
+              <div>
+                <label style="${labelStyle}" for="privacy-lastname-input">Efternavn</label>
+                <input type="text" id="privacy-lastname-input" value="${esc(lastVal)}" maxlength="50" style="${inputStyle}" />
+              </div>
+            </div>
+            <div style="display:flex;gap:var(--s2);margin-top:var(--s2)">
+              <button class="save-btn" id="privacy-save-name-btn" style="padding:8px 16px;font-size:13px">Gem</button>
+              <button class="save-btn" id="privacy-cancel-name-btn" style="padding:8px 16px;font-size:13px;background:var(--surface-sunken);color:var(--ink)">Annuller</button>
+            </div>`
+      : `<div style="display:flex;gap:var(--s2);align-items:center">
+              <input type="text" id="privacy-name-input" value="${esc(firstVal)}" maxlength="50" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:14px;outline:none" />
+              <button class="save-btn" id="privacy-save-name-btn" style="padding:8px 16px;font-size:13px">Gem</button>
+              <button class="save-btn" id="privacy-cancel-name-btn" style="padding:8px 16px;font-size:13px;background:var(--surface-sunken);color:var(--ink)">Annuller</button>
+            </div>`;
     return `
       <div class="section" id="section-child-name">
         <div class="section-header">
@@ -2037,17 +2093,13 @@
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          <p style="margin:0 0 var(--s3);color:var(--ink-soft);line-height:1.6">Barnets navn bruges i caféen så ekspedienten kan sikre at det rigtige barn får sit køb. Du kan forkorte eller ændre navnet, fx til kun fornavn eller kaldenavn. Navnet skal stadig være genkendeligt for personalet.</p>
+          <p style="margin:0 0 var(--s3);color:var(--ink-soft);line-height:1.6">${helpText}</p>
           <div style="display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap">
-            <div style="font-weight:600;font-size:16px" id="privacy-child-name-display">${esc(name)}</div>
+            <div style="font-weight:600;font-size:16px" id="privacy-child-name-display">${esc(displayName)}</div>
             <button class="save-btn" id="privacy-edit-name-btn" style="padding:6px 14px;font-size:13px">Rediger</button>
           </div>
           <div id="privacy-name-edit-form" style="display:none;margin-top:var(--s3)">
-            <div style="display:flex;gap:var(--s2);align-items:center">
-              <input type="text" id="privacy-name-input" value="${esc(name)}" maxlength="50" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:14px;outline:none" />
-              <button class="save-btn" id="privacy-save-name-btn" style="padding:8px 16px;font-size:13px">Gem</button>
-              <button class="save-btn" id="privacy-cancel-name-btn" style="padding:8px 16px;font-size:13px;background:var(--surface-sunken);color:var(--ink)">Annuller</button>
-            </div>
+            ${editFields}
             <div id="privacy-name-error" style="display:none;color:var(--negative,#dc2626);font-size:12px;margin-top:var(--s1)"></div>
           </div>
         </div></div></div>
@@ -2822,21 +2874,21 @@
 
     if (useDropdown) {
       // Compact dropdown mode for many children (admin-parent)
-      const selectedName = esc(selectedChild?.child_name || selectedChild?.name || 'Vælg barn');
+      const selectedName = esc(selectedChild ? getChildName() : 'Vælg barn');
       const selectedBal = selectedChild?.balance != null ? `${formatKr(selectedChild.balance)} kr` : '';
       const selectedEmoji = selectedChild?.avatar_emoji || selectedChild?.emoji || '🧒';
 
       let filtered = children;
       if (sidebarSearchQuery) {
         const q = sidebarSearchQuery.toLowerCase();
-        filtered = children.filter(c => (c.child_name || c.name || '').toLowerCase().includes(q));
+        filtered = children.filter(c => ((c.child_name || c.name || '') + ' ' + (c.last_name || '')).toLowerCase().includes(q));
       }
 
       const optionsHtml = filtered.map(c => {
         const isActive = c.child_id === selectedChild?.child_id;
         const emoji = c.avatar_emoji || c.emoji || '🧒';
         const bal = c.balance != null ? `${formatKr(c.balance)} kr` : '';
-        const name = esc(c.child_name || c.name);
+        const name = esc(formatChildName(c));
         return `<div class="sidebar-dropdown-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-radius:6px;${isActive ? 'background:var(--flango-light,#fff3e0);font-weight:600;' : ''}">${emoji} <span style="flex:1;">${name}</span> <span style="font-size:11px;opacity:0.6;">${bal}</span></div>`;
       }).join('');
 
@@ -2910,7 +2962,7 @@
       const isActive = c.child_id === selectedChild?.child_id;
       const emoji = c.avatar_emoji || c.emoji || '🧒';
       const bal = c.balance != null ? `${formatKr(c.balance)} kr` : '';
-      return `<div class="sidebar-child-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}"><div class="sidebar-child-avatar">${emoji}</div><div><div class="sidebar-child-name">${esc(c.child_name || c.name)}</div><div class="sidebar-child-saldo">${bal}</div></div></div>`;
+      return `<div class="sidebar-child-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}"><div class="sidebar-child-avatar">${emoji}</div><div><div class="sidebar-child-name">${esc(formatChildName(c))}</div><div class="sidebar-child-saldo">${bal}</div></div></div>`;
     }).join('');
     container.innerHTML = items + `<div class="sidebar-add-child" id="add-child-btn-sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tilknyt barn</div>`;
   }
@@ -4265,26 +4317,40 @@
   async function handleSaveChildName() {
     if (!selectedChild) return;
     const input = document.getElementById('privacy-name-input');
+    const lastInput = document.getElementById('privacy-lastname-input');
     const errorEl = document.getElementById('privacy-name-error');
+    const lnOn = isLastNameEnabledForChild(selectedChild);
     const newName = (input.value || '').trim();
+    const newLast = lastInput ? (lastInput.value || '').trim() : '';
     if (newName.length < 2 || newName.length > 50) {
-      errorEl.textContent = 'Navnet skal være mellem 2 og 50 tegn.';
+      errorEl.textContent = lnOn ? 'Fornavnet skal være mellem 2 og 50 tegn.' : 'Navnet skal være mellem 2 og 50 tegn.';
+      errorEl.style.display = '';
+      return;
+    }
+    if (lnOn && newLast.length > 50) {
+      errorEl.textContent = 'Efternavnet må højst være 50 tegn.';
       errorEl.style.display = '';
       return;
     }
     errorEl.style.display = 'none';
     try {
-      const result = await API.updateChildName(selectedChild.child_id, newName);
+      const result = await API.updateChildName(selectedChild.child_id, newName, lnOn ? newLast : null, lnOn);
       if (result && result.success === false) {
         errorEl.textContent = result.error || 'Kunne ikke gemme';
         errorEl.style.display = '';
         return;
       }
-      // Update local state
-      selectedChild.child_name = result.new_name || newName;
-      selectedChild.name = result.new_name || newName;
-      if (childData) childData.name = result.new_name || newName;
-      document.getElementById('privacy-child-name-display').textContent = result.new_name || newName;
+      // Opdater lokal state
+      const savedFirst = (result && result.new_name) || newName;
+      selectedChild.child_name = savedFirst;
+      selectedChild.name = savedFirst;
+      if (childData) childData.name = savedFirst;
+      if (lnOn) {
+        const savedLast = (result && ('last_name' in result)) ? (result.last_name || '') : newLast;
+        selectedChild.last_name = savedLast || null;
+        if (childData) childData.last_name = savedLast || null;
+      }
+      document.getElementById('privacy-child-name-display').textContent = getChildName();
       document.getElementById('privacy-name-edit-form').style.display = 'none';
       document.getElementById('privacy-edit-name-btn').style.display = '';
       showToast('Navnet er ændret', 'success');
@@ -4342,7 +4408,9 @@
     // Stamdata
     html += '<div><div style="font-weight:700;margin-bottom:var(--s2)">Stamdata</div><table style="width:100%;font-size:13px;border-collapse:collapse">';
     const fields = [
-      ['Navn', child.name], ['Kontonummer', child.number], ['Klassetrin', child.grade_level ?? 'Ikke sat'],
+      ['Navn', child.name],
+      ...(child.last_name ? [['Efternavn', child.last_name]] : []),
+      ['Kontonummer', child.number], ['Klassetrin', child.grade_level ?? 'Ikke sat'],
       ['Saldo', (child.balance != null ? child.balance + ' kr' : '—')],
       ['Daglig forbrugsgrænse', child.daily_spend_limit ? child.daily_spend_limit + ' kr' : 'Ikke sat'],
       ['Oprettet', child.created_at ? new Date(child.created_at).toLocaleDateString('da-DK') : '—'],
