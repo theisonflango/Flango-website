@@ -256,6 +256,16 @@
         const vref = new URLSearchParams(window.location.search).get('vipps_ref');
         if (vref) { window.history.replaceState({}, '', window.location.pathname); handleVippsReturn(vref); }
       } catch (_) {}
+      // Stripe-retur (redirect-metoder fx MobilePay; Stripe-webhook er autoritativ bag krediteringen)
+      try {
+        const sp = new URLSearchParams(window.location.search);
+        const piParam = sp.get('payment_intent');
+        if (piParam) {
+          const rs = sp.get('redirect_status');
+          window.history.replaceState({}, '', window.location.pathname);
+          handleStripeReturn(piParam, rs);
+        }
+      } catch (_) {}
     } catch (err) {
       console.error('[Portal] Load children error:', err);
       renderError('Kunne ikke hente dine børn. Prøv at genindlæse siden.');
@@ -4842,7 +4852,7 @@
         return;
       }
 
-      const stripe = window.Stripe(stripeKey);
+      const stripe = window.Stripe(stripeKey, result.stripe_account_id ? { stripeAccount: result.stripe_account_id } : undefined);
       const elements = stripe.elements({ clientSecret: result.clientSecret, appearance: { theme: 'stripe' } });
       const paymentElement = elements.create('payment');
 
@@ -4872,9 +4882,10 @@
         errorEl.style.display = 'none';
 
         try {
+          try { sessionStorage.setItem('stripe_topup_pending', JSON.stringify({ child_id: selectedChild.child_id })); } catch (_) {}
           const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
             elements: elements,
-            confirmParams: {},
+            confirmParams: { return_url: window.location.origin + window.location.pathname },
             redirect: 'if_required',
           });
 
@@ -4923,6 +4934,29 @@
     } catch (err) {
       console.error('[Portal] Stripe topup error:', err);
       showToast('Betaling fejlede: ' + (err.message || 'Ukendt fejl'), 'error');
+    }
+  }
+
+  // Retur fra Stripe redirect-metoder (fx MobilePay). Kreditering er server-autoritativ
+  // (Stripe-webhook); denne finaliserer best-effort via confirm-topup (idempotent).
+  async function handleStripeReturn(paymentIntentId, redirectStatus) {
+    let pending = null;
+    try { pending = JSON.parse(sessionStorage.getItem('stripe_topup_pending') || 'null'); } catch (_) {}
+    try { sessionStorage.removeItem('stripe_topup_pending'); } catch (_) {}
+    const childId = (pending && pending.child_id) || (selectedChild && selectedChild.child_id) || null;
+    if (!childId) return;
+    if (redirectStatus === 'failed') { showToast('Betaling blev ikke gennemført.', 'error'); return; }
+    try {
+      const res = await API.confirmTopup(childId, paymentIntentId);
+      if (res && res.new_balance != null) {
+        if (childData) childData.balance = res.new_balance;
+        const balEl = document.querySelector('.balance-amount');
+        if (balEl) balEl.textContent = formatKr(res.new_balance) + ' kr';
+      }
+      showToast('Betaling gennemført!', 'success');
+    } catch (_) {
+      // Kan stadig være 'processing' — webhook krediterer når betalingen lander.
+      showToast('Betaling behandles...', '');
     }
   }
 
