@@ -4946,6 +4946,14 @@
     const childId = (pending && pending.child_id) || (selectedChild && selectedChild.child_id) || null;
     if (!childId) return;
     if (redirectStatus === 'failed') { showToast('Betaling blev ikke gennemført.', 'error'); return; }
+    // Vis det barn der faktisk blev optanket (ikke default-valgte children[0]),
+    // så krediteringen ikke fejlagtigt ser ud til at ramme et andet barn ved retur.
+    try {
+      if (Array.isArray(children) && (!selectedChild || selectedChild.child_id !== childId)) {
+        const target = children.find(c => c.child_id === childId);
+        if (target) { selectedChild = target; await loadChildData(); renderApp(); }
+      }
+    } catch (_) {}
     try {
       const res = await API.confirmTopup(childId, paymentIntentId);
       if (res && res.new_balance != null) {
