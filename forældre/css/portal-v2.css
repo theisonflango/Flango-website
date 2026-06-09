@@ -623,6 +623,18 @@ a { color: inherit; text-decoration: none; }
 .topup-pay-divider::before { margin-right: var(--s2); }
 .topup-pay-divider::after { margin-left: var(--s2); }
 
+/* Inline-betaling (metoder under beløbet) */
+.topup-pay-loading { font-size: 13px; color: var(--ink-muted); text-align: center; padding: var(--s3) 0; }
+#topup-wallets { margin-bottom: var(--s2); }
+.topup-card-link {
+  display: block; width: 100%; text-align: center;
+  background: transparent; border: none;
+  color: var(--ink-soft); font-size: 14px; font-weight: 600;
+  padding: var(--s3) 0; margin-top: var(--s1); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.topup-card-link:hover { color: var(--ink); }
+
 /* MobilePay QR section */
 .qr-section { margin-top: var(--s4); padding: var(--s4); background: var(--surface-sunken); border-radius: var(--r-md); text-align: center; }
 .qr-image { width: 180px; height: 180px; margin: 0 auto var(--s3); border-radius: var(--r-md); background: #fff; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 64px; }
@@ -863,8 +875,8 @@ a { color: inherit; text-decoration: none; }
 .event-pay-btn:hover { background:var(--flango-mid); }
 
 /* ─── Event payment overlay ─── */
-.event-payment-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:1000; display:flex; align-items:center; justify-content:center; }
-.event-payment-modal { background:white; border-radius:20px; padding:24px; max-width:360px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+.event-payment-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:1000; display:flex; align-items:center; justify-content:center; overscroll-behavior:contain; }
+.event-payment-modal { background:white; border-radius:20px; padding:24px; max-width:360px; width:90%; max-height:88vh; overflow-y:auto; overscroll-behavior:contain; box-shadow:0 20px 60px rgba(0,0,0,.2); }
 .event-payment-modal h3 { margin:0 0 12px; font-size:16px; text-align:center; }
 .event-payment-modal .pay-option { display:flex; align-items:center; gap:10px; width:100%; border:1px solid var(--border); background:white; padding:14px; border-radius:12px; cursor:pointer; font-size:14px; font-weight:600; margin-bottom:8px; transition:all .2s; }
 .event-payment-modal .pay-option:hover { border-color:var(--flango); background:var(--flango-light); }

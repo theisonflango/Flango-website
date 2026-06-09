@@ -455,12 +455,16 @@
 
     // ─── Topup / Payment ───
 
-    /** Create a Stripe topup PaymentIntent */
-    async createTopup(childId, amountDkk) {
-      return invokeFunction('create-topup', {
-        child_id: childId,
-        amount_dkk: amountDkk,
-      });
+    /** Create a Stripe topup PaymentIntent.
+     *  opts: { configOnly?: bool (hent institutionens Stripe-config uden betaling),
+     *          method?: 'mobilepay' (server-bekræft → redirect_url),
+     *          returnUrl?: string (til MobilePay-redirect) } */
+    async createTopup(childId, amountDkk, opts = {}) {
+      const body = { child_id: childId, amount_dkk: amountDkk };
+      if (opts.configOnly) body.config_only = true;
+      if (opts.method) body.method = opts.method;
+      if (opts.returnUrl) body.return_url = opts.returnUrl;
+      return invokeFunction('create-topup', body);
     },
 
     /** Confirm a Stripe topup (after PaymentIntent succeeds) */
