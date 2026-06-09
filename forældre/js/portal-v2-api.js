@@ -11,14 +11,31 @@
 
   const SUPABASE_URL = "https://jbknjgbpghrbrstqwoxj.supabase.co";
 
+  // ─── Helper: forny session proaktivt hvis tokenet er ved at udløbe ───
+  // Mobil-Safari throttler auto-refresh-timeren når fanen er i baggrunden, så
+  // tokenet kan udløbe midt i en session (→ "Ugyldig session" ved fx optankning).
+  async function ensureFreshSession() {
+    try {
+      const { data } = await window.portalSupabase.auth.getSession();
+      const session = data?.session;
+      if (!session) return;
+      const now = Math.floor(Date.now() / 1000);
+      if (session.expires_at && (session.expires_at - now) < 120) {
+        await window.portalSupabase.auth.refreshSession();
+      }
+    } catch (_) { /* lad kaldet fortsætte; evt. auth-fejl håndteres dér */ }
+  }
+
   // ─── Helper: get auth token ───
   async function getAccessToken() {
+    await ensureFreshSession();
     const { data } = await window.portalSupabase.auth.getSession();
     return data?.session?.access_token || null;
   }
 
   // ─── Helper: invoke Edge Function ───
   async function invokeFunction(name, body) {
+    await ensureFreshSession();
     const { data, error } = await window.portalSupabase.functions.invoke(name, {
       body: body || {},
     });
