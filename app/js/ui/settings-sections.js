@@ -2516,9 +2516,9 @@
       const months = inst.auto_delete_inactive_months || 12;
       return `<div class="fsp-page">
         <div class="fsp-page-title">Auto-sletning af inaktive brugere</div>
-        <div class="fsp-page-desc">N\u00e5r auto-sletning er aktiveret, slettes brugere der ikke har v\u00e6ret aktive i den valgte periode automatisk. For\u00e6ldre modtager en advarsel via e-mail 30 dage inden sletning.</div>
+        <div class="fsp-page-desc">N\u00e5r auto-sletning er aktiveret, <strong>arkiveres</strong> b\u00f8rn der ikke har v\u00e6ret aktive i den valgte periode. Arkivering er en bl\u00f8d sletning: barnet skjules fra caf\u00e9en, men <strong>kan gendannes med saldo i 6 m\u00e5neder</strong>. F\u00f8rst derefter slettes data permanent. Aktivitet som ekspedient t\u00e6ller med \u2014 s\u00e5 medhj\u00e6lpere arkiveres aldrig ved en fejl.</div>
         <div class="fsp-main-toggle">
-          <div style="flex:1"><div class="fsp-main-title">Aktiv\u00e9r auto-sletning</div><div class="fsp-main-desc">Brugere der ikke har handlet eller logget ind slettes automatisk.</div></div>
+          <div style="flex:1"><div class="fsp-main-title">Aktiv\u00e9r auto-arkivering</div><div class="fsp-main-desc">Inaktive b\u00f8rn arkiveres automatisk (kan gendannes i 6 mdr.).</div></div>
           <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="auto_delete_inactive_enabled" data-expand="ad-body"></div>
         </div>
         <div class="fsp-expand${enabled ? ' open' : ''}" data-expand-target="ad-body">
@@ -2531,7 +2531,23 @@
             <div><div class="fsp-sub-title">${opt.m} m\u00e5neder</div><div class="fsp-sub-hint">${opt.h}</div></div>
             <div class="fsp-radio${months === opt.m ? ' on' : ''}" data-field="auto_delete_inactive_months" data-value="${opt.m}"></div>
           </div>`).join('')}
-          <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">For\u00e6ldre advares automatisk 30 dage inden sletning via e-mail.</div>
+          <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Personalet varsles i appen <strong>1 uge inden</strong> arkivering, s\u00e5 I kan frav\u00e6lge enkelte b\u00f8rn nedenfor. Intet barn arkiveres uden at have v\u00e6ret varslet.</div>
+        </div>
+
+        <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:22px;padding-top:18px">
+          <div class="fsp-main-title" style="display:flex;align-items:center;gap:8px">Varslet til arkivering <span data-pending-count style="display:none;background:#e85a6f;color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px"></span></div>
+          <div class="fsp-main-desc" style="margin-bottom:12px">B\u00f8rn der snart arkiveres. <strong>Behold</strong> frav\u00e6lger arkivering for barnet permanent. Du skal tage stilling til hver enkelt.</div>
+          <div data-pending-list style="min-height:40px">
+            <div style="text-align:center;padding:18px;color:var(--fsp-txt3);font-size:13px">Indl\u00e6ser\u2026</div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:22px;padding-top:18px">
+          <div class="fsp-main-title" style="display:flex;align-items:center;gap:8px">Arkiveret \u2014 kan gendannes <span data-archived-count style="display:none;background:#5ba0d8;color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px"></span></div>
+          <div class="fsp-main-desc" style="margin-bottom:12px">Arkiverede b\u00f8rn med saldo og historik bevaret. <strong>Gendan</strong> bringer barnet tilbage i caf\u00e9en. Slettes permanent 6 m\u00e5neder efter arkivering.</div>
+          <div data-archived-list style="min-height:40px">
+            <div style="text-align:center;padding:18px;color:var(--fsp-txt3);font-size:13px">Indl\u00e6ser\u2026</div>
+          </div>
         </div>
       </div>`;
     },
@@ -2552,6 +2568,135 @@
           ctx.markDirty(field, parseInt(radio.dataset.value));
         });
       });
+
+      // \u2500\u2500 Varslet + Arkiveret lister (async) \u2500\u2500
+      const client = window.__flangoSupabaseClient;
+      const pendingEl = container.querySelector('[data-pending-list]');
+      const archivedEl = container.querySelector('[data-archived-list]');
+      const pendingCountEl = container.querySelector('[data-pending-count]');
+      const archivedCountEl = container.querySelector('[data-archived-count]');
+
+      const displayName = (u) => {
+        try { return (window.__flangoUserName ? window.__flangoUserName(u) : null) || u.name || 'Ukendt'; }
+        catch { return u.name || 'Ukendt'; }
+      };
+      const krFmt = (n) => `${Math.round(Number(n) || 0)} kr`;
+      const dkDate = (iso) => { try { return new Date(iso).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return ''; } };
+      const daysUntil = (iso) => { try { return Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / 86400000)); } catch { return null; } };
+      const monthsInactive = (iso) => { try { return Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 2629746000)); } catch { return null; } };
+      const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+      function emptyBox(text) {
+        return `<div style="text-align:center;padding:18px;color:var(--fsp-txt3);font-size:13px">${text}</div>`;
+      }
+      function rowShell(inner) {
+        return `<div class="fsp-device-row" style="align-items:flex-start">${inner}</div>`;
+      }
+
+      async function loadPending() {
+        if (!client) { pendingEl.innerHTML = emptyBox('Ikke tilg\u00e6ngelig.'); return; }
+        try {
+          const { data, error } = await client.rpc('get_pending_deletion_users');
+          if (error) throw error;
+          const rows = Array.isArray(data) ? data : [];
+          const unreviewed = rows.filter(r => !r.opt_out && !r.reviewed_at).length;
+          if (pendingCountEl) {
+            if (unreviewed > 0) { pendingCountEl.textContent = `${unreviewed} afventer`; pendingCountEl.style.display = ''; }
+            else { pendingCountEl.style.display = 'none'; }
+          }
+          if (!rows.length) { pendingEl.innerHTML = emptyBox('Ingen b\u00f8rn er varslet til arkivering. \ud83d\udc4d'); return; }
+          pendingEl.innerHTML = rows.map(u => {
+            const neg = Number(u.balance) < 0;
+            const inactM = monthsInactive(u.last_activity);
+            const days = daysUntil(u.scheduled_archive_at);
+            const state = u.opt_out
+              ? { txt: 'Beholdt \u2014 arkiveres ikke', col: '#5dca7a' }
+              : (u.reviewed_at ? { txt: 'Tillader arkivering', col: '#f4a261' } : { txt: 'Afventer din beslutning', col: '#e85a6f' });
+            const when = u.opt_out ? '' : (days != null ? `<span style="color:${days <= 0 ? '#e85a6f' : 'var(--fsp-txt3)'}">${days <= 0 ? 'Arkiveres ved n\u00e6ste k\u00f8rsel' : 'Arkiveres om ~' + days + ' dage'}</span>` : '');
+            return rowShell(`
+              <div class="fsp-device-left" style="flex:1;min-width:0">
+                <div class="fsp-device-title">${esc(displayName(u))} <span style="color:var(--fsp-txt3);font-weight:500">#${esc(u.number || '')}</span></div>
+                <div class="fsp-device-meta">Saldo: <strong style="color:${neg ? '#e85a6f' : 'inherit'}">${krFmt(u.balance)}</strong>${inactM != null ? ' \u00b7 ' + inactM + ' mdr. inaktiv' : ''}</div>
+                <div class="fsp-device-meta" style="margin-top:3px"><span style="color:${state.col};font-weight:600">${state.txt}</span>${when ? ' \u00b7 ' + when : ''}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+                <button class="fsp-btn" data-ad-keep="${esc(u.id)}" style="padding:7px 14px;font-size:12px;background:${u.opt_out ? 'rgba(93,202,122,0.15)' : 'rgba(255,255,255,0.04)'};color:${u.opt_out ? '#5dca7a' : 'var(--fsp-txt2,#ccc)'};border:1px solid ${u.opt_out ? 'rgba(93,202,122,0.4)' : 'rgba(255,255,255,0.1)'}">Behold</button>
+                <button class="fsp-btn" data-ad-allow="${esc(u.id)}" style="padding:7px 14px;font-size:12px;background:${(!u.opt_out && u.reviewed_at) ? 'rgba(244,162,97,0.15)' : 'rgba(255,255,255,0.04)'};color:${(!u.opt_out && u.reviewed_at) ? '#f4a261' : 'var(--fsp-txt2,#ccc)'};border:1px solid ${(!u.opt_out && u.reviewed_at) ? 'rgba(244,162,97,0.4)' : 'rgba(255,255,255,0.1)'}">Tillad arkivering</button>
+              </div>`);
+          }).join('');
+        } catch (e) {
+          console.warn('[auto-delete] kunne ikke hente varslede:', e);
+          pendingEl.innerHTML = emptyBox('Kunne ikke hente listen.');
+        }
+      }
+
+      async function loadArchived() {
+        if (!client) { archivedEl.innerHTML = emptyBox('Ikke tilg\u00e6ngelig.'); return; }
+        try {
+          const { data, error } = await client.rpc('get_archived_users');
+          if (error) throw error;
+          const rows = Array.isArray(data) ? data : [];
+          if (archivedCountEl) {
+            if (rows.length > 0) { archivedCountEl.textContent = String(rows.length); archivedCountEl.style.display = ''; }
+            else { archivedCountEl.style.display = 'none'; }
+          }
+          if (!rows.length) { archivedEl.innerHTML = emptyBox('Ingen arkiverede b\u00f8rn.'); return; }
+          archivedEl.innerHTML = rows.map(u => {
+            const neg = Number(u.balance) < 0;
+            const days = daysUntil(u.purge_at);
+            return rowShell(`
+              <div class="fsp-device-left" style="flex:1;min-width:0">
+                <div class="fsp-device-title">${esc(displayName(u))} <span style="color:var(--fsp-txt3);font-weight:500">#${esc(u.number || '')}</span></div>
+                <div class="fsp-device-meta">Saldo: <strong style="color:${neg ? '#e85a6f' : 'inherit'}">${krFmt(u.balance)}</strong> \u00b7 Arkiveret ${dkDate(u.archived_at)}</div>
+                <div class="fsp-device-meta" style="margin-top:3px;color:${days != null && days <= 30 ? '#e85a6f' : 'var(--fsp-txt3)'}">Slettes permanent ${dkDate(u.purge_at)}${days != null ? ' (om ' + days + ' dage)' : ''}</div>
+              </div>
+              <div style="flex-shrink:0">
+                <button class="fsp-btn" data-ad-restore="${esc(u.id)}" style="padding:8px 16px;font-size:12px;background:rgba(91,160,216,0.12);color:#5ba0d8;border:1px solid rgba(91,160,216,0.3)">Gendan</button>
+              </div>`);
+          }).join('');
+        } catch (e) {
+          console.warn('[auto-delete] kunne ikke hente arkiverede:', e);
+          archivedEl.innerHTML = emptyBox('Kunne ikke hente listen.');
+        }
+      }
+
+      // Event-delegation for handlinger
+      pendingEl.addEventListener('click', async (ev) => {
+        const keep = ev.target.closest('[data-ad-keep]');
+        const allow = ev.target.closest('[data-ad-allow]');
+        const btn = keep || allow;
+        if (!btn || !client) return;
+        const id = (keep ? keep.dataset.adKeep : allow.dataset.adAllow);
+        btn.disabled = true; const orig = btn.textContent; btn.textContent = '\u2026';
+        try {
+          await client.rpc('set_auto_delete_opt_out', { p_user_id: id, p_opt_out: !!keep });
+          await loadPending();
+          window.__flangoRefreshAutoDeleteWarning?.();
+        } catch (e) {
+          console.warn('[auto-delete] set_auto_delete_opt_out fejl:', e);
+          btn.disabled = false; btn.textContent = orig;
+          window.showCustomAlert?.('Fejl', 'Kunne ikke gemme valget. Pr\u00f8v igen.');
+        }
+      });
+      archivedEl.addEventListener('click', async (ev) => {
+        const btn = ev.target.closest('[data-ad-restore]');
+        if (!btn || !client) return;
+        btn.disabled = true; btn.textContent = 'Gendanner\u2026';
+        try {
+          const { data, error } = await client.rpc('restore_archived_user', { p_user_id: btn.dataset.adRestore });
+          if (error) throw error;
+          await loadArchived();
+          window.__flangoRefreshUsers?.();
+          window.showCustomAlert?.('Bruger gendannet', `<strong>${esc(data?.name || 'Barnet')}</strong> er gendannet med saldo og historik og vises igen i caf\u00e9en.`);
+        } catch (e) {
+          console.warn('[auto-delete] restore fejl:', e);
+          btn.disabled = false; btn.textContent = 'Gendan';
+          window.showCustomAlert?.('Fejl', 'Kunne ikke gendanne brugeren. Pr\u00f8v igen.');
+        }
+      });
+
+      loadPending();
+      loadArchived();
     }
   };
 

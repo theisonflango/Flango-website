@@ -435,7 +435,19 @@
     renderContent();
   }
 
+  // ── Deep-link til en bestemt fane + sektion (fx header-advarsel → Auto-sletning) ──
+  async function openTo(tabName, itemLabel) {
+    const ti = T.findIndex(t => t.name === tabName);
+    if (ti < 0) { await open(); return; }
+    const ii = Math.max(0, T[ti].items.findIndex(it => it.l === itemLabel));
+    if (!overlay) {
+      await open();
+    }
+    at = ti; ai = ii;
+    render();
+  }
+
   // ── Public API ──
-  window.FlangoSettings = { open, close, reloadCurrent, T, icons, ic, bigIc, tabIcons, extLinkSvg, markDirty, saveField, saveFields };
+  window.FlangoSettings = { open, close, openTo, reloadCurrent, T, icons, ic, bigIc, tabIcons, extLinkSvg, markDirty, saveField, saveFields };
 
 })();
