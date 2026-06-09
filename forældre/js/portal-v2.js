@@ -1881,8 +1881,8 @@
             <button class="topup-option custom" data-amount="custom"><div class="topup-option-amount">Andet</div><div class="topup-option-label">Vælg selv</div></button>
           </div>
           <div class="topup-method-section">
-            <div class="topup-method-title">Betal med</div>
-            <button class="topup-method-btn stripe" id="pay-stripe"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Kort (Stripe)</button>
+            <div class="topup-method-title">Betaling</div>
+            <button class="topup-method-btn stripe" id="pay-stripe"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Betal</button>
             ${featureFlags.vipps_enabled === true ? `<button class="topup-method-btn mobilepay" id="pay-mobilepay" aria-label="Betal med MobilePay"><img src="assets/mobilepay-button.svg" alt="Betal med MobilePay" class="mobilepay-btn-img"></button>` : ''}
           </div>
         </div></div></div>
@@ -4853,15 +4853,30 @@
       }
 
       const stripe = window.Stripe(stripeKey, result.stripe_account_id ? { stripeAccount: result.stripe_account_id } : undefined);
-      const elements = stripe.elements({ clientSecret: result.clientSecret, appearance: { theme: 'stripe' } });
+      const appearance = {
+        theme: 'stripe',
+        variables: {
+          colorPrimary: '#F5960A',
+          borderRadius: '12px',
+          fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+          fontSizeBase: '15px',
+        },
+      };
+      const elements = stripe.elements({ clientSecret: result.clientSecret, appearance });
+      const expressCheckoutElement = elements.create('expressCheckout', {
+        buttonHeight: 48,
+        buttonTheme: { applePay: 'black', googlePay: 'black' },
+      });
       const paymentElement = elements.create('payment');
 
       // Show payment overlay
       const overlay = document.createElement('div');
       overlay.className = 'event-payment-overlay';
       overlay.innerHTML = `
-        <div class="event-payment-modal" style="max-width:420px">
+        <div class="event-payment-modal" style="max-width:440px">
           <h3>Betal ${formatKr(amountDkk)} kr</h3>
+          <div id="topup-express" style="margin-bottom:var(--s2)"></div>
+          <div id="topup-divider" class="topup-pay-divider" style="display:none">eller betal med kort</div>
           <div id="topup-payment-element" style="min-height:200px;margin-bottom:var(--s3)"></div>
           <div id="topup-error" style="color:var(--negative);font-size:13px;margin-bottom:var(--s2);display:none"></div>
           <button class="save-btn full" id="topup-confirm-btn" style="margin-bottom:var(--s2)">Betal ${formatKr(amountDkk)} kr</button>
@@ -4869,65 +4884,85 @@
         </div>`;
 
       document.body.appendChild(overlay);
+
+      const errorEl = overlay.querySelector('#topup-error');
+      const confirmBtn = overlay.querySelector('#topup-confirm-btn');
+      const resetConfirmBtn = function () {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Betal ' + formatKr(amountDkk) + ' kr';
+      };
+
+      // Krediter barnet + opdater UI når en PaymentIntent er gennemført.
+      async function finalizeTopup(paymentIntent) {
+        try {
+          const confirmResult = await API.confirmTopup(selectedChild.child_id, paymentIntent.id);
+          if (confirmResult && confirmResult.new_balance != null) {
+            if (childData) childData.balance = confirmResult.new_balance;
+            const balEl = document.querySelector('.balance-amount');
+            if (balEl) balEl.textContent = formatKr(confirmResult.new_balance) + ' kr';
+          }
+        } catch (_) {}
+        overlay.remove();
+        showToast('Betaling gennemført!', 'success');
+        try {
+          const viewData = await API.getParentView(selectedChild.child_id);
+          if (viewData) {
+            childData = viewData;
+            const balEl = document.querySelector('.balance-amount');
+            if (balEl && childData.balance != null) balEl.textContent = formatKr(childData.balance) + ' kr';
+          }
+        } catch (_) {}
+      }
+
+      // Fælles bekræftelse for både wallet (Apple/Google Pay) og kort/MobilePay.
+      async function doConfirm() {
+        errorEl.style.display = 'none';
+        try { sessionStorage.setItem('stripe_topup_pending', JSON.stringify({ child_id: selectedChild.child_id })); } catch (_) {}
+        const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+          elements: elements,
+          confirmParams: { return_url: window.location.origin + window.location.pathname },
+          redirect: 'if_required',
+        });
+        if (stripeError) {
+          errorEl.textContent = stripeError.message || 'Betaling fejlede';
+          errorEl.style.display = 'block';
+          return false;
+        }
+        if (paymentIntent && paymentIntent.status === 'succeeded') {
+          await finalizeTopup(paymentIntent);
+          return true;
+        }
+        // Redirect-metoder (fx MobilePay) finaliseres ved retur via handleStripeReturn.
+        return true;
+      }
+
+      // Express Checkout (Apple Pay / Google Pay) øverst — vis kun når wallets er tilgængelige.
+      expressCheckoutElement.on('ready', function (event) {
+        if (event && event.availablePaymentMethods) {
+          const div = overlay.querySelector('#topup-divider');
+          if (div) div.style.display = 'flex';
+        } else {
+          const ec = overlay.querySelector('#topup-express');
+          if (ec) ec.style.display = 'none';
+        }
+      });
+      expressCheckoutElement.on('confirm', function () { doConfirm(); });
+      expressCheckoutElement.mount('#topup-express');
       paymentElement.mount('#topup-payment-element');
 
       overlay.querySelector('#topup-cancel-btn').addEventListener('click', function () { overlay.remove(); });
       overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
 
-      overlay.querySelector('#topup-confirm-btn').addEventListener('click', async function () {
-        const confirmBtn = overlay.querySelector('#topup-confirm-btn');
-        const errorEl = overlay.querySelector('#topup-error');
+      confirmBtn.addEventListener('click', async function () {
         confirmBtn.disabled = true;
         confirmBtn.textContent = 'Behandler...';
-        errorEl.style.display = 'none';
-
         try {
-          try { sessionStorage.setItem('stripe_topup_pending', JSON.stringify({ child_id: selectedChild.child_id })); } catch (_) {}
-          const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
-            elements: elements,
-            confirmParams: { return_url: window.location.origin + window.location.pathname },
-            redirect: 'if_required',
-          });
-
-          if (stripeError) {
-            errorEl.textContent = stripeError.message || 'Betaling fejlede';
-            errorEl.style.display = 'block';
-            confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Betal ' + formatKr(amountDkk) + ' kr';
-            return;
-          }
-
-          if (paymentIntent && paymentIntent.status === 'succeeded') {
-            try {
-              const confirmResult = await API.confirmTopup(selectedChild.child_id, paymentIntent.id);
-              if (confirmResult && confirmResult.new_balance != null) {
-                const balEl = document.querySelector('.balance-amount');
-                if (balEl) balEl.textContent = formatKr(confirmResult.new_balance) + ' kr';
-                if (childData) childData.balance = confirmResult.new_balance;
-              }
-            } catch (_) {}
-            overlay.remove();
-            showToast('Betaling gennemført!', 'success');
-            // Reload balance
-            try {
-              const viewData = await API.getParentView(selectedChild.child_id);
-              if (viewData) {
-                childData = viewData;
-                const balEl = document.querySelector('.balance-amount');
-                if (balEl && childData.balance != null) balEl.textContent = formatKr(childData.balance) + ' kr';
-              }
-            } catch (_) {}
-          } else {
-            errorEl.textContent = 'Betaling blev ikke gennemført.';
-            errorEl.style.display = 'block';
-            confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Betal ' + formatKr(amountDkk) + ' kr';
-          }
+          const ok = await doConfirm();
+          if (!ok) resetConfirmBtn();
         } catch (err) {
           errorEl.textContent = 'Betaling fejlede: ' + (err.message || 'Ukendt fejl');
           errorEl.style.display = 'block';
-          confirmBtn.disabled = false;
-          confirmBtn.textContent = 'Betal ' + formatKr(amountDkk) + ' kr';
+          resetConfirmBtn();
         }
       });
 

@@ -611,6 +611,18 @@ a { color: inherit; text-decoration: none; }
 .topup-method-btn.cash { background: var(--surface-sunken); color: var(--ink-soft); border: 1px solid var(--border); margin-top: var(--s2); }
 .topup-method-btn.cash:hover { background: var(--surface-hover); }
 
+/* "eller betal med kort"-divider mellem wallet-knapper (Express Checkout) og Payment Element */
+.topup-pay-divider {
+  display: flex; align-items: center;
+  font-size: 13px; color: var(--ink-muted);
+  margin: var(--s3) 0;
+}
+.topup-pay-divider::before, .topup-pay-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.topup-pay-divider::before { margin-right: var(--s2); }
+.topup-pay-divider::after { margin-left: var(--s2); }
+
 /* MobilePay QR section */
 .qr-section { margin-top: var(--s4); padding: var(--s4); background: var(--surface-sunken); border-radius: var(--r-md); text-align: center; }
 .qr-image { width: 180px; height: 180px; margin: 0 auto var(--s3); border-radius: var(--r-md); background: #fff; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 64px; }
