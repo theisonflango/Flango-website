@@ -270,6 +270,19 @@
           handleStripeReturn(piParam, rs);
         }
       } catch (_) {}
+      // Stripe Checkout-retur (?stripe_checkout=done&session_id=...)
+      try {
+        const spc = new URLSearchParams(window.location.search);
+        const co = spc.get('stripe_checkout');
+        if (co === 'done') {
+          const sid = spc.get('session_id');
+          window.history.replaceState({}, '', window.location.pathname);
+          if (sid) handleCheckoutReturn(sid);
+        } else if (co === 'cancel') {
+          window.history.replaceState({}, '', window.location.pathname);
+          showToast('Betaling annulleret', '');
+        }
+      } catch (_) {}
     } catch (err) {
       console.error('[Portal] Load children error:', err);
       renderError('Kunne ikke hente dine børn. Prøv at genindlæse siden.');
@@ -1888,13 +1901,11 @@
             <input type="number" inputmode="numeric" min="1" max="2000" id="topup-custom-input" class="topup-custom-input" placeholder="Indtast beløb i kr (maks 2000)">
           </div>
           <div class="topup-method-section" id="topup-pay-area">
-            <div class="topup-method-title">Betal med</div>
-            <div id="topup-pay-loading" class="topup-pay-loading">Indlæser betalingsmuligheder…</div>
             ${featureFlags.vipps_enabled === true
               ? `<button class="topup-method-btn mobilepay" id="pay-mobilepay" aria-label="Betal med MobilePay"><img src="assets/mobilepay-button.svg" alt="Betal med MobilePay" class="mobilepay-btn-img"></button>`
-              : `<button class="topup-method-btn mobilepay" id="pay-mobilepay-stripe" aria-label="Betal med MobilePay" style="display:none"><img src="assets/mobilepay-button.svg" alt="Betal med MobilePay" class="mobilepay-btn-img"></button>`}
-            <div id="topup-wallets" style="display:none"></div>
-            <button class="topup-method-btn card-row" id="pay-card-link" style="display:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Betal med kort</button>
+              : ''}
+            <button class="topup-method-btn checkout-btn" id="pay-checkout">${featureFlags.vipps_enabled === true ? 'Andre betalingsmuligheder' : 'Fortsæt til betaling'}</button>
+            <div class="topup-pay-hint">${featureFlags.vipps_enabled === true ? 'Kort · Apple Pay · Google Pay' : 'MobilePay · Apple Pay · Google Pay · kort'}</div>
           </div>
         </div></div></div>
       </div>`;
@@ -3074,10 +3085,6 @@
       if (section.id === 'section-profile' && !purchaseProfile) {
         loadPurchaseProfile();
       }
-      // Inline-betaling: mount wallet-element når topup-sektionen åbnes (har først højde nu)
-      if (section.id === 'section-topup' && section.classList.contains('open')) {
-        setTimeout(initInlinePayment, 50);
-      }
     }, true); // use capture phase to fire first
 
     // Sidebar child selector — delegated, only bind once
@@ -3254,9 +3261,9 @@
       });
     }
 
-    // Inline-betaling: init hvis topup-sektionen allerede er åben (ellers ved tab-pay/section-åbning)
-    const topupSec = document.getElementById('section-topup');
-    if (topupSec && topupSec.classList.contains('open')) initInlinePayment();
+    // Stripe Checkout-knap (→ Stripes hostede betalingsside)
+    const checkoutBtn = document.getElementById('pay-checkout');
+    if (checkoutBtn) checkoutBtn.addEventListener('click', handleCheckout);
 
     // MobilePay (Vipps) payment — kun vipps-institutioner
     const mobilepayBtn = document.getElementById('pay-mobilepay');
@@ -3497,7 +3504,6 @@
       setTimeout(() => {
         const s = document.getElementById('section-topup');
         if (s && !s.classList.contains('open')) toggleSection(s);
-        initInlinePayment();
       }, 100);
     }
     const navBtn = document.querySelector(`.bnav-item[data-tab="${tabId}"]`);
@@ -4891,114 +4897,54 @@
     } catch (_) {}
   }
 
-  // (Gen)mount Apple/Google Pay-knapperne for et beløb. clientSecret pr. beløb, så
-  // wallet-arket viser det rigtige beløb. Tomt element = 0 højde hvis ingen wallets.
-  async function mountWalletsForAmount(amt) {
-    if (!topupStripe || !amt || !selectedChild) return;
-    const reqChild = selectedChild.child_id;
-    if (topupExpressEl) { try { topupExpressEl.destroy(); } catch (_) {} topupExpressEl = null; }
-    const w = document.getElementById('topup-wallets');
-    if (w) w.innerHTML = '';
-    let res;
-    try { res = await API.createTopup(reqChild, amt); } catch (_) { return; }
-    if (!res || !res.clientSecret) return;
-    if (!selectedChild || selectedChild.child_id !== reqChild) return; // barn skiftede
-    topupElements = topupStripe.elements({
-      clientSecret: res.clientSecret,
-      appearance: { theme: 'stripe', variables: { colorPrimary: '#F5960A', borderRadius: '12px', fontSizeBase: '15px' } },
-    });
-    topupExpressEl = topupElements.create('expressCheckout', {
-      paymentMethods: { link: 'never' },
-      buttonHeight: 50,
-      buttonTheme: { applePay: 'black', googlePay: 'black' },
-      layout: { maxColumns: 1, maxRows: 2, overflow: 'never' },
-    });
-    topupExpressEl.on('confirm', handleStripeWalletConfirm);
-    topupExpressEl.mount('#topup-wallets');
-    if (w) w.style.display = 'block';
-  }
+  function updateTopupAmount() { /* no-op: beløbet sendes til Checkout ved klik */ }
 
-  function updateTopupAmount() {
+  // Stripe Checkout: opret session for det valgte beløb → redirect til Stripes
+  // hostede betalingsside (alle metoder renderes af Stripe — nul rendering-risiko).
+  async function handleCheckout() {
     const amt = getSelectedTopupAmount();
-    if (topupStripe && amt) mountWalletsForAmount(amt);
-  }
-
-  async function handleStripeWalletConfirm() {
-    if (!topupStripe || !topupElements) return;
+    if (!amt) { showToast('Vælg et beløb', 'error'); return; }
+    const btn = document.getElementById('pay-checkout');
+    const orig = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Åbner betaling...'; }
     try {
       try { sessionStorage.setItem('stripe_topup_pending', JSON.stringify({ child_id: selectedChild.child_id })); } catch (_) {}
-      const { error, paymentIntent } = await topupStripe.confirmPayment({
-        elements: topupElements,
-        confirmParams: { return_url: window.location.origin + window.location.pathname },
-        redirect: 'if_required',
+      const res = await API.createTopup(selectedChild.child_id, amt, {
+        checkout: true,
+        returnUrl: window.location.origin + window.location.pathname,
       });
-      if (error) { showToast(error.message || 'Betaling fejlede', 'error'); return; }
-      if (paymentIntent && paymentIntent.status === 'succeeded') {
-        await finalizeStripeTopup(selectedChild.child_id, paymentIntent.id);
-      }
+      if (res && res.checkout_url) { window.location.href = res.checkout_url; return; }
+      showToast('Betaling kunne ikke startes', 'error');
     } catch (err) {
       showToast(err.message || 'Betaling fejlede', 'error');
     }
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
   }
 
-  async function handleStripeMobilePay() {
-    const amt = getSelectedTopupAmount();
-    if (!amt) { showToast('Vælg et beløb', 'error'); return; }
+  // Retur fra Stripe Checkout: krediter via session_id (idempotent; webhook er backup).
+  // Vælger det optankede barn igen så krediteringen vises på rette saldokort.
+  async function handleCheckoutReturn(sessionId) {
+    let pending = null;
+    try { pending = JSON.parse(sessionStorage.getItem('stripe_topup_pending') || 'null'); } catch (_) {}
+    try { sessionStorage.removeItem('stripe_topup_pending'); } catch (_) {}
+    const childId = (pending && pending.child_id) || (selectedChild && selectedChild.child_id) || null;
+    if (!childId) return;
     try {
-      showToast('Åbner MobilePay...', '');
-      try { sessionStorage.setItem('stripe_topup_pending', JSON.stringify({ child_id: selectedChild.child_id })); } catch (_) {}
-      const res = await API.createTopup(selectedChild.child_id, amt, {
-        method: 'mobilepay',
-        returnUrl: window.location.origin + window.location.pathname,
-      });
-      if (res && res.redirect_url) { window.location.href = res.redirect_url; }
-      else { showToast('MobilePay kunne ikke startes', 'error'); }
-    } catch (err) {
-      showToast(err.message || 'MobilePay fejlede', 'error');
-    }
-  }
-
-  // Initialiserer metode-listen når topup-sektionen er åben. MobilePay + kort vises
-  // straks (pålidelige); Apple/Google Pay mountes via clientSecret (best-effort).
-  // Idempotent pr. barn (genstartes når barn skifter, da DOM + institution er nye).
-  async function initInlinePayment() {
-    if (!selectedChild) return;
-    const area = document.getElementById('topup-pay-area');
-    if (!area) return;
-    if (topupInitStarted && topupInitChildId === selectedChild.child_id) return;
-    topupInitStarted = true;
-    topupInitChildId = selectedChild.child_id;
-    topupStripe = null; topupElements = null; topupExpressEl = null; topupConfig = null;
-    const loadingEl = document.getElementById('topup-pay-loading');
+      if (Array.isArray(children) && (!selectedChild || selectedChild.child_id !== childId)) {
+        const target = children.find(c => c.child_id === childId);
+        if (target) { selectedChild = target; await loadChildData(); renderApp(); }
+      }
+    } catch (_) {}
     try {
-      const cfg = await API.createTopup(selectedChild.child_id, 0, { configOnly: true });
-      topupConfig = cfg;
-      if (!cfg || !cfg.enabled) {
-        if (loadingEl) loadingEl.style.display = 'none';
-        topupInitStarted = false; // tillad retry ved næste åbning
-        return;
+      const res = await API.confirmTopup(childId, null, sessionId);
+      if (res && res.new_balance != null) {
+        if (childData) childData.balance = res.new_balance;
+        const balEl = document.querySelector('.balance-amount');
+        if (balEl) balEl.textContent = formatKr(res.new_balance) + ' kr';
       }
-      if (!window.Stripe) {
-        await new Promise(function (resolve, reject) {
-          const s = document.createElement('script');
-          s.src = 'https://js.stripe.com/v3/'; s.onload = resolve; s.onerror = reject;
-          document.head.appendChild(s);
-        });
-      }
-      if (!selectedChild || selectedChild.child_id !== topupInitChildId) return; // barn skiftede
-      topupStripe = window.Stripe(cfg.stripe_publishable_key, cfg.stripe_account_id ? { stripeAccount: cfg.stripe_account_id } : undefined);
-      // Vis MobilePay + kort straks (pålidelige metoder).
-      const mpStripe = document.getElementById('pay-mobilepay-stripe');
-      if (mpStripe) { mpStripe.style.display = ''; mpStripe.onclick = handleStripeMobilePay; }
-      const cardLink = document.getElementById('pay-card-link');
-      if (cardLink) { cardLink.style.display = ''; cardLink.onclick = handleStripeTopup; }
-      if (loadingEl) loadingEl.style.display = 'none';
-      // Mount wallets (Apple/Google Pay) for det valgte beløb.
-      await mountWalletsForAmount(getSelectedTopupAmount() || 100);
-    } catch (err) {
-      console.error('[Portal] initInlinePayment error:', err);
-      if (loadingEl) loadingEl.style.display = 'none';
-      topupInitStarted = false;
+      showToast('Betaling gennemført!', 'success');
+    } catch (_) {
+      showToast('Betaling behandles...', '');
     }
   }
 

@@ -465,15 +465,16 @@
       if (opts.method) body.method = opts.method;
       if (opts.returnUrl) body.return_url = opts.returnUrl;
       if (opts.excludeMobilepay) body.exclude_mobilepay = true;
+      if (opts.checkout) body.checkout = true;
       return invokeFunction('create-topup', body);
     },
 
-    /** Confirm a Stripe topup (after PaymentIntent succeeds) */
-    async confirmTopup(childId, paymentIntentId) {
-      return invokeFunction('confirm-topup', {
-        child_id: childId,
-        payment_intent_id: paymentIntentId,
-      });
+    /** Confirm a Stripe topup (after PaymentIntent succeeds, or via Checkout session_id) */
+    async confirmTopup(childId, paymentIntentId, sessionId) {
+      const body = { child_id: childId };
+      if (paymentIntentId) body.payment_intent_id = paymentIntentId;
+      if (sessionId) body.session_id = sessionId;
+      return invokeFunction('confirm-topup', body);
     },
 
     /** Create a Vipps MobilePay topup (WEB_REDIRECT) -> { redirectUrl, reference } */
