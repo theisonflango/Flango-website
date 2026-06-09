@@ -464,6 +464,7 @@
       if (opts.configOnly) body.config_only = true;
       if (opts.method) body.method = opts.method;
       if (opts.returnUrl) body.return_url = opts.returnUrl;
+      if (opts.excludeMobilepay) body.exclude_mobilepay = true;
       return invokeFunction('create-topup', body);
     },
 

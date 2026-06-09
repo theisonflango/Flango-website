@@ -29,6 +29,7 @@
   // Inline-betaling (Stripe deferred Express Checkout + MobilePay-knap). Pr. valgt barn.
   let topupStripe = null, topupElements = null, topupExpressEl = null;
   let topupConfig = null, topupInitStarted = false, topupInitChildId = null;
+  let topupCustomAmount = null; // valgt beløb når "Andet" er aktivt
 
   // Version af privatlivspolitikken der gemmes i parent_consents.consent_version
   // ved nye samtykker. Bumpes naar privatlivspolitikken opdateres.
@@ -1883,14 +1884,17 @@
             <button class="topup-option" data-amount="200"><div class="topup-option-amount">200 kr</div><div class="topup-option-label">Ekstra stor</div></button>
             <button class="topup-option custom" data-amount="custom"><div class="topup-option-amount">Andet</div><div class="topup-option-label">Vælg selv</div></button>
           </div>
+          <div class="topup-custom-wrap" id="topup-custom-wrap" style="display:none">
+            <input type="number" inputmode="numeric" min="1" max="2000" id="topup-custom-input" class="topup-custom-input" placeholder="Indtast beløb i kr (maks 2000)">
+          </div>
           <div class="topup-method-section" id="topup-pay-area">
-            <div class="topup-method-title">Betal</div>
+            <div class="topup-method-title">Betal med</div>
             <div id="topup-pay-loading" class="topup-pay-loading">Indlæser betalingsmuligheder…</div>
-            <div id="topup-wallets" style="display:none"></div>
             ${featureFlags.vipps_enabled === true
               ? `<button class="topup-method-btn mobilepay" id="pay-mobilepay" aria-label="Betal med MobilePay"><img src="assets/mobilepay-button.svg" alt="Betal med MobilePay" class="mobilepay-btn-img"></button>`
               : `<button class="topup-method-btn mobilepay" id="pay-mobilepay-stripe" aria-label="Betal med MobilePay" style="display:none"><img src="assets/mobilepay-button.svg" alt="Betal med MobilePay" class="mobilepay-btn-img"></button>`}
-            <button class="topup-card-link" id="pay-card-link" style="display:none">Betal med kort</button>
+            <div id="topup-wallets" style="display:none"></div>
+            <button class="topup-method-btn card-row" id="pay-card-link" style="display:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Betal med kort</button>
           </div>
         </div></div></div>
       </div>`;
@@ -3230,9 +3234,25 @@
       opt.addEventListener('click', () => {
         opt.closest('.topup-grid').querySelectorAll('.topup-option').forEach(o => o.classList.remove('selected'));
         opt.classList.add('selected');
-        updateTopupAmount();
+        const wrap = document.getElementById('topup-custom-wrap');
+        if (opt.dataset.amount === 'custom') {
+          if (wrap) { wrap.style.display = 'block'; const inp = document.getElementById('topup-custom-input'); if (inp) setTimeout(() => inp.focus(), 50); }
+        } else {
+          if (wrap) wrap.style.display = 'none';
+          updateTopupAmount();
+        }
       });
     });
+    // "Andet": custom beløb (debounced så vi ikke laver en PI pr. tastetryk)
+    const customInput = document.getElementById('topup-custom-input');
+    if (customInput) {
+      let customDebounce = null;
+      customInput.addEventListener('input', () => {
+        topupCustomAmount = customInput.value ? Number(customInput.value) : null;
+        if (customDebounce) clearTimeout(customDebounce);
+        customDebounce = setTimeout(updateTopupAmount, 600);
+      });
+    }
 
     // Inline-betaling: init hvis topup-sektionen allerede er åben (ellers ved tab-pay/section-åbning)
     const topupSec = document.getElementById('section-topup');
@@ -4834,22 +4854,20 @@
     }
   }
 
-  // ── Inline-betaling: Stripe deferred Express Checkout (Apple/Google Pay) + MobilePay-knap ──
+  // ── Inline-betaling: ren metode-liste under beløbet (MobilePay + Apple/Google Pay + kort) ──
+  // Wallets renderes via clientSecret (pålideligt — ikke deferred) som rigtige knapper.
 
   function getSelectedTopupAmount() {
     const sel = document.querySelector('.topup-option.selected');
     if (!sel) return null;
     const a = sel.dataset.amount;
-    if (!a || a === 'custom') return null;
+    if (a === 'custom') {
+      const n = Number(topupCustomAmount);
+      return (isFinite(n) && n > 0 && n <= 2000) ? n : null;
+    }
+    if (!a) return null;
     const n = Number(a);
     return (isFinite(n) && n > 0) ? n : null;
-  }
-
-  function updateTopupAmount() {
-    const amt = getSelectedTopupAmount();
-    if (topupElements && amt) {
-      try { topupElements.update({ amount: Math.round(amt * 100) }); } catch (_) {}
-    }
   }
 
   // Krediter barnet + opdater saldo-UI (delt af wallet, MobilePay-retur og kort-modal).
@@ -4873,18 +4891,44 @@
     } catch (_) {}
   }
 
-  async function handleStripeWalletConfirm() {
+  // (Gen)mount Apple/Google Pay-knapperne for et beløb. clientSecret pr. beløb, så
+  // wallet-arket viser det rigtige beløb. Tomt element = 0 højde hvis ingen wallets.
+  async function mountWalletsForAmount(amt) {
+    if (!topupStripe || !amt || !selectedChild) return;
+    const reqChild = selectedChild.child_id;
+    if (topupExpressEl) { try { topupExpressEl.destroy(); } catch (_) {} topupExpressEl = null; }
+    const w = document.getElementById('topup-wallets');
+    if (w) w.innerHTML = '';
+    let res;
+    try { res = await API.createTopup(reqChild, amt); } catch (_) { return; }
+    if (!res || !res.clientSecret) return;
+    if (!selectedChild || selectedChild.child_id !== reqChild) return; // barn skiftede
+    topupElements = topupStripe.elements({
+      clientSecret: res.clientSecret,
+      appearance: { theme: 'stripe', variables: { colorPrimary: '#F5960A', borderRadius: '12px', fontSizeBase: '15px' } },
+    });
+    topupExpressEl = topupElements.create('expressCheckout', {
+      paymentMethods: { link: 'never' },
+      buttonHeight: 50,
+      buttonTheme: { applePay: 'black', googlePay: 'black' },
+      layout: { maxColumns: 1, maxRows: 2, overflow: 'never' },
+    });
+    topupExpressEl.on('confirm', handleStripeWalletConfirm);
+    topupExpressEl.mount('#topup-wallets');
+    if (w) w.style.display = 'block';
+  }
+
+  function updateTopupAmount() {
     const amt = getSelectedTopupAmount();
-    if (!amt) { showToast('Vælg et beløb', 'error'); return; }
+    if (topupStripe && amt) mountWalletsForAmount(amt);
+  }
+
+  async function handleStripeWalletConfirm() {
+    if (!topupStripe || !topupElements) return;
     try {
-      const { error: submitError } = await topupElements.submit();
-      if (submitError) { showToast(submitError.message || 'Betaling fejlede', 'error'); return; }
       try { sessionStorage.setItem('stripe_topup_pending', JSON.stringify({ child_id: selectedChild.child_id })); } catch (_) {}
-      const res = await API.createTopup(selectedChild.child_id, amt);
-      if (!res || !res.clientSecret) { showToast('Kunne ikke oprette betaling', 'error'); return; }
       const { error, paymentIntent } = await topupStripe.confirmPayment({
         elements: topupElements,
-        clientSecret: res.clientSecret,
         confirmParams: { return_url: window.location.origin + window.location.pathname },
         redirect: 'if_required',
       });
@@ -4914,7 +4958,8 @@
     }
   }
 
-  // Mounter wallet-elementet + viser MobilePay/kort, når topup-sektionen er åben.
+  // Initialiserer metode-listen når topup-sektionen er åben. MobilePay + kort vises
+  // straks (pålidelige); Apple/Google Pay mountes via clientSecret (best-effort).
   // Idempotent pr. barn (genstartes når barn skifter, da DOM + institution er nye).
   async function initInlinePayment() {
     if (!selectedChild) return;
@@ -4941,31 +4986,15 @@
         });
       }
       if (!selectedChild || selectedChild.child_id !== topupInitChildId) return; // barn skiftede
-      const amt = getSelectedTopupAmount() || 100;
       topupStripe = window.Stripe(cfg.stripe_publishable_key, cfg.stripe_account_id ? { stripeAccount: cfg.stripe_account_id } : undefined);
-      topupElements = topupStripe.elements({
-        mode: 'payment', amount: Math.round(amt * 100), currency: 'dkk',
-        appearance: { theme: 'stripe', variables: { colorPrimary: '#F5960A', borderRadius: '12px', fontSizeBase: '15px' } },
-      });
-      topupExpressEl = topupElements.create('expressCheckout', {
-        paymentMethods: { link: 'never' },
-        buttonHeight: 48,
-        buttonTheme: { applePay: 'black', googlePay: 'black' },
-        layout: { maxColumns: 1, maxRows: 2, overflow: 'never' },
-      });
-      topupExpressEl.on('ready', function (e) {
-        if (loadingEl) loadingEl.style.display = 'none';
-        const w = document.getElementById('topup-wallets');
-        if (w && e && e.availablePaymentMethods) w.style.display = 'block';
-      });
-      topupExpressEl.on('confirm', handleStripeWalletConfirm);
-      topupExpressEl.mount('#topup-wallets');
-      // Stripe-MobilePay-knap (kun ikke-Vipps-institutioner) + kort-link.
+      // Vis MobilePay + kort straks (pålidelige metoder).
       const mpStripe = document.getElementById('pay-mobilepay-stripe');
       if (mpStripe) { mpStripe.style.display = ''; mpStripe.onclick = handleStripeMobilePay; }
       const cardLink = document.getElementById('pay-card-link');
       if (cardLink) { cardLink.style.display = ''; cardLink.onclick = handleStripeTopup; }
       if (loadingEl) loadingEl.style.display = 'none';
+      // Mount wallets (Apple/Google Pay) for det valgte beløb.
+      await mountWalletsForAmount(getSelectedTopupAmount() || 100);
     } catch (err) {
       console.error('[Portal] initInlinePayment error:', err);
       if (loadingEl) loadingEl.style.display = 'none';
@@ -4983,7 +5012,7 @@
 
     try {
       showToast('Opretter betaling...', '');
-      const result = await API.createTopup(selectedChild.child_id, amountDkk);
+      const result = await API.createTopup(selectedChild.child_id, amountDkk, { excludeMobilepay: true });
 
       if (!result?.clientSecret) {
         showToast('Betaling kunne ikke oprettes', 'error');
@@ -5018,7 +5047,7 @@
         },
       };
       const elements = stripe.elements({ clientSecret: result.clientSecret, appearance });
-      const paymentElement = elements.create('payment');
+      const paymentElement = elements.create('payment', { wallets: { applePay: 'never', googlePay: 'never' } });
 
       // Show payment overlay
       const overlay = document.createElement('div');
