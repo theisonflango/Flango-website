@@ -2500,7 +2500,53 @@
           <div style="flex:1"><div class="fsp-main-title">Vis efternavn</div><div class="fsp-main-desc">Fornavn + efternavn i café, forældreportal og ved oprettelse/import. Fra = kun fornavn.</div></div>
           <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="last_name_enabled"></div>
         </div>
+        <div class="fsp-main-toggle" style="margin-top:10px">
+          <div style="flex:1"><div class="fsp-main-title">Kun forbogstav</div><div class="fsp-main-desc">Vis efternavnet som forbogstav i caféen — fx "Emma B." — en let måde at skelne børn med ens fornavn. Gælder kun, når efternavn er slået til ovenfor.</div></div>
+          <div class="fsp-toggle${inst.last_name_initial_only ? ' on' : ''}" data-field="last_name_initial_only"></div>
+        </div>
         <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Ændringen slår igennem med det samme. Eksisterende navne påvirkes ikke — efternavne kan tilføjes pr. barn under rediger bruger, ved oprettelse eller via auto-import.</div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+    }
+  };
+
+  sections['Brugernummer'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      // Default true: nummer vises medmindre eksplicit slået fra.
+      const shown = inst.account_number_enabled !== false;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Brugernummer</div>
+        <div class="fsp-page-desc">Vælg om børnenes <strong>brugernummer</strong> skal vises i caféens kundevælger. Slået fra identificeres børn på navn — kombinér evt. med "Kun forbogstav" under Brugernavne, hvis flere børn deler fornavn. Nummeret tildeles og gemmes fortsat internt, så import og data er upåvirket.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Vis brugernummer</div><div class="fsp-main-desc">Til = nummer-kolonne i kundevælgeren. Fra = kun navn (og evt. profilbillede).</div></div>
+          <div class="fsp-toggle${shown ? ' on' : ''}" data-field="account_number_enabled"></div>
+        </div>
+        <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Ændringen slår igennem ved næste åbning af kundevælgeren. Selve numrene slettes ikke — de skjules blot og kan vises igen.</div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+    }
+  };
+
+  sections['Ekspedient-login'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      // Default true: PIN kræves medmindre eksplicit slået fra.
+      const required = inst.clerk_pin_required !== false;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Ekspedient-login</div>
+        <div class="fsp-page-desc">Vælg om børn skal indtaste deres personlige <strong>PIN</strong> for at logge på som ekspedient. PIN'en er en symbolsk markering af, at barnet tager rollen på sig — den er <strong>ikke</strong> en sikkerhedskode: køb kræver den ikke, og ansvaret ligger altid hos den voksne, der har låst caféen op.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Kræv PIN ved ekspedient-login</div><div class="fsp-main-desc">Til = barnet indtaster sin PIN. Fra = barnet vælger blot sig selv og går i gang.</div></div>
+          <div class="fsp-toggle${required ? ' on' : ''}" data-field="clerk_pin_required"></div>
+        </div>
+        <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Ændringen slår igennem med det samme. Slår du PIN fra, fjernes blot login-trinnet — børnenes koder bevares og kan slås til igen.</div>
       </div>`;
     },
     wire(container, ctx) {
@@ -3199,14 +3245,18 @@
         this.disabled = true;
         try {
           const client = window.__flangoSupabaseClient;
-          if (client) {
-            await client.from('feedback').insert({
-              institution_id: window.getInstitutionId?.(),
-              message: message,
-              type: type,
-              source: 'settings-panel'
-            });
-          }
+          if (!client) throw new Error('Ingen forbindelse');
+          const clerk = window.__flangoCurrentClerkProfile || null;
+          const { error } = await client.from('feedback').insert({
+            content: message,
+            type: type || null,
+            source: 'settings-panel',
+            institution_id: window.getInstitutionId?.() || null,
+            user_id: clerk?.id || null,
+            user_name: clerk?.name || null,
+            user_role: clerk?.role || null
+          });
+          if (error) throw error;
           container.querySelector('[data-fb-message]').value = '';
           this.textContent = '\u2713 Sendt!';
           setTimeout(() => { this.textContent = '\uD83D\uDCE8 Send feedback'; this.disabled = false; }, 2000);
