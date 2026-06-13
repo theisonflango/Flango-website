@@ -2818,18 +2818,24 @@
             const neg = Number(u.balance) < 0;
             const days = daysUntil(u.purge_at);
             const soon = days != null && days <= 30;
+            const ack = !!u.purge_acknowledged_at;
+            const needsStance = soon && !ack;
             const purgeTxt = days == null ? `Slettes permanent (${dkDate(u.purge_at)})`
               : (days <= 0 ? 'Slettes permanent ved n\u00e6ste k\u00f8rsel'
               : `Forsvinder permanent om ${days} dage (${dkDate(u.purge_at)})`);
+            const purgeLine = ack
+              ? `<span style="color:#5dca7a;font-weight:600">\u2713 Set \u2014 slettes ${dkDate(u.purge_at)}</span>`
+              : `<span style="color:${soon ? '#e85a6f' : 'var(--fsp-txt3)'}${needsStance ? ';font-weight:600' : ''}">${needsStance ? '\u23f3 ' : ''}${purgeTxt}</span>`;
             return rowShell(
               checkboxCell('data-ar-check', u.id)
               + `<div class="fsp-device-left" style="flex:1;min-width:0">
                 <div class="fsp-device-title">${esc(displayName(u))} <span style="color:var(--fsp-txt3);font-weight:500">#${esc(u.number || '')}</span></div>
                 <div class="fsp-device-meta">Saldo: <strong style="color:${neg ? '#e85a6f' : 'inherit'}">${krFmt(u.balance)}</strong> \u00b7 Lagt i papirkurv ${dkDate(u.archived_at)}</div>
-                <div class="fsp-device-meta" style="margin-top:3px;color:${soon ? '#e85a6f' : 'var(--fsp-txt3)'}">${purgeTxt}</div>
+                <div class="fsp-device-meta" style="margin-top:3px">${purgeLine}</div>
               </div>
-              <div style="flex-shrink:0">
+              <div style="flex-shrink:0;display:flex;flex-direction:column;gap:6px">
                 <button class="fsp-btn" data-ar-row="restore" data-id="${esc(u.id)}" style="padding:8px 16px;font-size:12px;background:rgba(91,160,216,0.12);color:#5ba0d8;border:1px solid rgba(91,160,216,0.3)">Gendan</button>
+                ${needsStance ? `<button class="fsp-btn" data-ar-row="ack" data-id="${esc(u.id)}" title="Bekr\u00e6ft: barnet m\u00e5 slettes permanent p\u00e5 den planlagte dato" style="padding:8px 16px;font-size:12px;background:rgba(255,255,255,0.04);color:var(--fsp-txt2,#ccc);border:1px solid rgba(255,255,255,0.12)">Lad g\u00e5</button>` : ''}
               </div>`);
           }).join('');
           const split = balanceSplit(rows);
@@ -2866,6 +2872,7 @@
           if (error) throw error;
           await loadArchived();
           window.__flangoRefreshUsers?.();
+          window.__flangoRefreshAutoDeleteWarning?.();
           const n = (data && typeof data.restored === 'number') ? data.restored : ids.length;
           window.showCustomAlert?.('Gendannet', n === 1
             ? 'Barnet er gendannet med saldo og historik og vises igen i caf\u00e9en.'
@@ -2874,6 +2881,21 @@
           console.warn('[papirkurv] restore fejl:', e);
           btns.forEach(b => { if (b) b.disabled = false; });
           window.showCustomAlert?.('Fejl', 'Kunne ikke gendanne. Pr\u00f8v igen.');
+        }
+      }
+      // "Lad g\u00e5": kvitt\u00e9r at b\u00f8rn m\u00e5 slettes permanent p\u00e5 planlagt dato (rydder header-advarsel).
+      async function runAck(ids, btns) {
+        if (!client || !ids.length) return;
+        btns.forEach(b => { if (b) b.disabled = true; });
+        try {
+          const { error } = await client.rpc('set_purge_acknowledged', { p_user_ids: ids });
+          if (error) throw error;
+          await loadArchived();
+          window.__flangoRefreshAutoDeleteWarning?.();
+        } catch (e) {
+          console.warn('[papirkurv] ack fejl:', e);
+          btns.forEach(b => { if (b) b.disabled = false; });
+          window.showCustomAlert?.('Fejl', 'Kunne ikke gemme. Pr\u00f8v igen.');
         }
       }
 
@@ -2908,7 +2930,9 @@
       });
       archivedEl.addEventListener('click', (ev) => {
         const rowBtn = ev.target.closest('[data-ar-row]');
-        if (rowBtn) { runRestore([rowBtn.dataset.id], [rowBtn]); }
+        if (!rowBtn) return;
+        if (rowBtn.dataset.arRow === 'ack') runAck([rowBtn.dataset.id], [rowBtn]);
+        else runRestore([rowBtn.dataset.id], [rowBtn]);
       });
       archivedBulkEl.addEventListener('click', (ev) => {
         const bulkBtn = ev.target.closest('[data-ar-bulk]');
