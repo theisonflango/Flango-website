@@ -2567,8 +2567,8 @@
         <div style="margin-top:16px;padding:16px 18px;background:rgba(91,160,216,0.07);border:1px solid rgba(91,160,216,0.22);border-radius:14px;line-height:1.55;font-size:13px;color:var(--fsp-txt2,#ccc)">
           <div style="font-weight:700;color:var(--fsp-txt,#eee);margin-bottom:10px;font-size:13.5px">S\u00e5dan virker det</div>
           <div style="margin-bottom:10px">B\u00f8rn der ikke har brugt caf\u00e9en i <strong>${months} m\u00e5neder</strong> foresl\u00e5s til papirkurven. Aktivitet som ekspedient t\u00e6ller ogs\u00e5 med \u2014 s\u00e5 b\u00f8rn der hj\u00e6lper til, ryger aldrig ud ved en fejl.</div>
-          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">1</span><div>Systemet <strong>varsler 7 dage f\u00f8r</strong>. Barnet st\u00e5r i listen nedenfor, der vises et \u26a0 i toppen af appen, og I f\u00e5r besked ved login.</div></div>
-          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">2</span><div>I de 7 dage v\u00e6lger I: <strong>Behold</strong> (barnet bliver), <strong>Udskyd</strong> (giv 7 dage mere) eller <strong>Flyt til papirkurv</strong> nu.</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">1</span><div>Systemet <strong>varsler 14 dage f\u00f8r</strong>. Barnet st\u00e5r i listen nedenfor, der vises et \u26a0 i toppen af appen, og I f\u00e5r besked ved login.</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">2</span><div>I de 14 dage v\u00e6lger I: <strong>Behold</strong> (barnet bliver), <strong>Udskyd</strong> (giv mere tid) eller <strong>Flyt til papirkurv</strong> nu.</div></div>
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">3</span><div>I papirkurven kan barnet <strong>gendannes med saldo i 6 m\u00e5neder</strong>. F\u00f8rst derefter slettes det permanent.</div></div>
         </div>
 
@@ -2586,7 +2586,7 @@
             <div><div class="fsp-sub-title">${opt.m} m\u00e5neder</div><div class="fsp-sub-hint">${opt.h}</div></div>
             <div class="fsp-radio${months === opt.m ? ' on' : ''}" data-field="auto_delete_inactive_months" data-value="${opt.m}"></div>
           </div>`).join('')}
-          <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Personalet varsles i appen <strong>1 uge inden</strong>, s\u00e5 I kan tage stilling til hvert barn nedenfor. Intet barn flyttes til papirkurven uden at have v\u00e6ret varslet.</div>
+          <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Personalet varsles i appen <strong>14 dage inden</strong>, s\u00e5 I kan tage stilling til hvert barn nedenfor. Intet barn flyttes til papirkurven uden at have v\u00e6ret varslet.</div>
         </div>
 
         <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:22px;padding-top:18px">
@@ -2764,7 +2764,9 @@
             const awaiting = !u.opt_out && !u.reviewed_at;
             let countdown;
             if (u.opt_out) {
-              countdown = `<span style="color:#5dca7a;font-weight:600">\u2713 Beholdt \u2014 ryger ikke i papirkurven</span>`;
+              countdown = u.re_review_at
+                ? `<span style="color:#5dca7a;font-weight:600">\u2713 Beholdt \u2014 gen-vurderes ${dkDate(u.re_review_at)}</span>`
+                : `<span style="color:#5dca7a;font-weight:600">\u2713 Beholdt \u2014 ryger ikke i papirkurven</span>`;
             } else if (days != null && days <= 0) {
               countdown = `<span style="color:#e85a6f;font-weight:600">\u23f3 Ryger i papirkurv ved n\u00e6ste k\u00f8rsel</span>`;
             } else {
@@ -2830,7 +2832,9 @@
                 <button class="fsp-btn" data-ar-row="restore" data-id="${esc(u.id)}" style="padding:8px 16px;font-size:12px;background:rgba(91,160,216,0.12);color:#5ba0d8;border:1px solid rgba(91,160,216,0.3)">Gendan</button>
               </div>`);
           }).join('');
-          archivedEl.innerHTML = selectAllRow('data-ar-check-all', 'Mark\u00e9r alle') + listHtml;
+          const split = balanceSplit(rows);
+          const econHtml = `<div style="font-size:12px;color:var(--fsp-txt2,#ccc);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 14px;margin-bottom:12px;line-height:1.5">Hvis disse slettes permanent: <span style="color:#e85a6f;font-weight:600">afskrives ${esc(krFmt(split.owed))} g\u00e6ld</span> \u00b7 <span style="color:#5dca7a;font-weight:600">${esc(krFmt(split.credit))} doneres</span></div>`;
+          archivedEl.innerHTML = econHtml + selectAllRow('data-ar-check-all', 'Mark\u00e9r alle') + listHtml;
           updateArchivedSelectionUI();
         } catch (e) {
           console.warn('[papirkurv] kunne ikke hente papirkurv:', e);
