@@ -2561,10 +2561,19 @@
       const enabled = !!inst.auto_delete_inactive_enabled;
       const months = inst.auto_delete_inactive_months || 12;
       return `<div class="fsp-page">
-        <div class="fsp-page-title">Auto-sletning af inaktive brugere</div>
-        <div class="fsp-page-desc">N\u00e5r auto-sletning er aktiveret, <strong>arkiveres</strong> b\u00f8rn der ikke har v\u00e6ret aktive i den valgte periode. Arkivering er en bl\u00f8d sletning: barnet skjules fra caf\u00e9en, men <strong>kan gendannes med saldo i 6 m\u00e5neder</strong>. F\u00f8rst derefter slettes data permanent. Aktivitet som ekspedient t\u00e6ller med \u2014 s\u00e5 medhj\u00e6lpere arkiveres aldrig ved en fejl.</div>
-        <div class="fsp-main-toggle">
-          <div style="flex:1"><div class="fsp-main-title">Aktiv\u00e9r auto-arkivering</div><div class="fsp-main-desc">Inaktive b\u00f8rn arkiveres automatisk (kan gendannes i 6 mdr.).</div></div>
+        <div class="fsp-page-title">Papirkurv & auto-arkivering</div>
+        <div class="fsp-page-desc">B\u00f8rn der ikke har brugt caf\u00e9en l\u00e6nge foresl\u00e5s til papirkurven \u2014 men aldrig uden varsel, og altid med fortrydelsesret.</div>
+
+        <div style="margin-top:16px;padding:16px 18px;background:rgba(91,160,216,0.07);border:1px solid rgba(91,160,216,0.22);border-radius:14px;line-height:1.55;font-size:13px;color:var(--fsp-txt2,#ccc)">
+          <div style="font-weight:700;color:var(--fsp-txt,#eee);margin-bottom:10px;font-size:13.5px">S\u00e5dan virker det</div>
+          <div style="margin-bottom:10px">B\u00f8rn der ikke har brugt caf\u00e9en i <strong>${months} m\u00e5neder</strong> foresl\u00e5s til papirkurven. Aktivitet som ekspedient t\u00e6ller ogs\u00e5 med \u2014 s\u00e5 b\u00f8rn der hj\u00e6lper til, ryger aldrig ud ved en fejl.</div>
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">1</span><div>Systemet <strong>varsler 7 dage f\u00f8r</strong>. Barnet st\u00e5r i listen nedenfor, der vises et \u26a0 i toppen af appen, og I f\u00e5r besked ved login.</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">2</span><div>I de 7 dage v\u00e6lger I: <strong>Behold</strong> (barnet bliver), <strong>Udskyd</strong> (giv 7 dage mere) eller <strong>Flyt til papirkurv</strong> nu.</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">3</span><div>I papirkurven kan barnet <strong>gendannes med saldo i 6 m\u00e5neder</strong>. F\u00f8rst derefter slettes det permanent.</div></div>
+        </div>
+
+        <div class="fsp-main-toggle" style="margin-top:18px">
+          <div style="flex:1"><div class="fsp-main-title">Aktiv\u00e9r auto-arkivering</div><div class="fsp-main-desc">Inaktive b\u00f8rn foresl\u00e5s automatisk til papirkurven (kan gendannes i 6 mdr.).</div></div>
           <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="auto_delete_inactive_enabled" data-expand="ad-body"></div>
         </div>
         <div class="fsp-expand${enabled ? ' open' : ''}" data-expand-target="ad-body">
@@ -2577,20 +2586,23 @@
             <div><div class="fsp-sub-title">${opt.m} m\u00e5neder</div><div class="fsp-sub-hint">${opt.h}</div></div>
             <div class="fsp-radio${months === opt.m ? ' on' : ''}" data-field="auto_delete_inactive_months" data-value="${opt.m}"></div>
           </div>`).join('')}
-          <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Personalet varsles i appen <strong>1 uge inden</strong> arkivering, s\u00e5 I kan frav\u00e6lge enkelte b\u00f8rn nedenfor. Intet barn arkiveres uden at have v\u00e6ret varslet.</div>
+          <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Personalet varsles i appen <strong>1 uge inden</strong>, s\u00e5 I kan tage stilling til hvert barn nedenfor. Intet barn flyttes til papirkurven uden at have v\u00e6ret varslet.</div>
         </div>
 
         <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:22px;padding-top:18px">
-          <div class="fsp-main-title" style="display:flex;align-items:center;gap:8px">Varslet til arkivering <span data-pending-count style="display:none;background:#e85a6f;color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px"></span></div>
-          <div class="fsp-main-desc" style="margin-bottom:12px">B\u00f8rn der snart arkiveres. <strong>Behold</strong> frav\u00e6lger arkivering for barnet permanent. Du skal tage stilling til hver enkelt.</div>
+          <div class="fsp-main-title" style="display:flex;align-items:center;gap:8px">Varslet \u2014 tag stilling <span data-pending-count style="display:none;background:#e85a6f;color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px"></span></div>
+          <div class="fsp-main-desc" style="margin-bottom:12px">B\u00f8rn der snart flyttes til papirkurven. V\u00e6lg <strong>Behold</strong>, <strong>Udskyd</strong> eller <strong>Flyt til papirkurv</strong> for hvert barn \u2014 eller marker flere og brug bj\u00e6lken foroven.</div>
+          <div data-pending-summary style="display:none;margin-bottom:12px"></div>
+          <div data-pending-bulk style="display:none;margin-bottom:12px"></div>
           <div data-pending-list style="min-height:40px">
             <div style="text-align:center;padding:18px;color:var(--fsp-txt3);font-size:13px">Indl\u00e6ser\u2026</div>
           </div>
         </div>
 
         <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:22px;padding-top:18px">
-          <div class="fsp-main-title" style="display:flex;align-items:center;gap:8px">Arkiveret \u2014 kan gendannes <span data-archived-count style="display:none;background:#5ba0d8;color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px"></span></div>
-          <div class="fsp-main-desc" style="margin-bottom:12px">Arkiverede b\u00f8rn med saldo og historik bevaret. <strong>Gendan</strong> bringer barnet tilbage i caf\u00e9en. Slettes permanent 6 m\u00e5neder efter arkivering.</div>
+          <div class="fsp-main-title" style="display:flex;align-items:center;gap:8px">\ud83d\uddd1\ufe0f Papirkurv <span data-archived-count style="display:none;background:#5ba0d8;color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px"></span></div>
+          <div class="fsp-main-desc" style="margin-bottom:12px">B\u00f8rn i papirkurven med saldo og historik bevaret. <strong>Gendan</strong> bringer barnet tilbage i caf\u00e9en. Slettes permanent 6 m\u00e5neder efter de blev lagt i papirkurven.</div>
+          <div data-archived-bulk style="display:none;margin-bottom:12px"></div>
           <div data-archived-list style="min-height:40px">
             <div style="text-align:center;padding:18px;color:var(--fsp-txt3);font-size:13px">Indl\u00e6ser\u2026</div>
           </div>
@@ -2615,20 +2627,26 @@
         });
       });
 
-      // \u2500\u2500 Varslet + Arkiveret lister (async) \u2500\u2500
+      // \u2500\u2500 Papirkurv-hub: varslet + papirkurv (async) \u2500\u2500
       const client = window.__flangoSupabaseClient;
       const pendingEl = container.querySelector('[data-pending-list]');
+      const pendingSummaryEl = container.querySelector('[data-pending-summary]');
+      const pendingBulkEl = container.querySelector('[data-pending-bulk]');
       const archivedEl = container.querySelector('[data-archived-list]');
+      const archivedBulkEl = container.querySelector('[data-archived-bulk]');
       const pendingCountEl = container.querySelector('[data-pending-count]');
       const archivedCountEl = container.querySelector('[data-archived-count]');
+
+      // Aktuelle r\u00e6kker (til delsum-beregning)
+      let pendingRows = [];
 
       const displayName = (u) => {
         try { return (window.__flangoUserName ? window.__flangoUserName(u) : null) || u.name || 'Ukendt'; }
         catch { return u.name || 'Ukendt'; }
       };
       const krFmt = (n) => `${Math.round(Number(n) || 0)} kr`;
-      const dkDate = (iso) => { try { return new Date(iso).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return ''; } };
-      const daysUntil = (iso) => { try { return Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / 86400000)); } catch { return null; } };
+      const dkDate = (iso) => { if (!iso) return 'aldrig'; try { return new Date(iso).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return 'aldrig'; } };
+      const daysUntil = (iso) => { try { return Math.round((new Date(iso).getTime() - Date.now()) / 86400000); } catch { return null; } };
       const monthsInactive = (iso) => { try { return Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 2629746000)); } catch { return null; } };
       const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -2636,7 +2654,90 @@
         return `<div style="text-align:center;padding:18px;color:var(--fsp-txt3);font-size:13px">${text}</div>`;
       }
       function rowShell(inner) {
-        return `<div class="fsp-device-row" style="align-items:flex-start">${inner}</div>`;
+        return `<div class="fsp-device-row" style="align-items:flex-start;gap:10px">${inner}</div>`;
+      }
+      // Sum-opdeling: skylder (abs af negative saldi) + tilgodehavende (positive)
+      function balanceSplit(rows) {
+        let owed = 0, credit = 0;
+        for (const r of rows) { const b = Number(r.balance) || 0; if (b < 0) owed += -b; else credit += b; }
+        return { owed, credit };
+      }
+
+      // \u2500\u2500 Markering / delsum / bulk-bj\u00e6lke (varslet) \u2500\u2500
+      function selectedPendingIds() {
+        return Array.from(pendingEl.querySelectorAll('input[data-ad-check]:checked')).map(c => c.dataset.adCheck);
+      }
+      function updatePendingSelectionUI() {
+        const ids = selectedPendingIds();
+        const sel = pendingRows.filter(r => ids.includes(String(r.id)));
+        // Delsum (markeret)
+        const all = balanceSplit(pendingRows);
+        const mk = balanceSplit(sel);
+        if (pendingSummaryEl) {
+          if (pendingRows.length) {
+            pendingSummaryEl.style.display = '';
+            pendingSummaryEl.innerHTML = `<div style="font-size:12px;color:var(--fsp-txt2,#ccc);padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;line-height:1.6">`
+              + `<div><strong>I alt:</strong> skylder ${krFmt(all.owed)} \u00b7 tilgodehavende ${krFmt(all.credit)}</div>`
+              + `<div style="color:${sel.length ? '#5ba0d8' : 'var(--fsp-txt3)'}"><strong>Markeret:</strong> ${sel.length} b\u00f8rn \u00b7 skylder ${krFmt(mk.owed)} \u00b7 tilgodehavende ${krFmt(mk.credit)}</div>`
+              + `</div>`;
+          } else {
+            pendingSummaryEl.style.display = 'none';
+          }
+        }
+        // Bulk-bj\u00e6lke
+        if (pendingBulkEl) {
+          if (sel.length) {
+            pendingBulkEl.style.display = '';
+            pendingBulkEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:rgba(91,160,216,0.07);border:1px solid rgba(91,160,216,0.2);border-radius:10px">`
+              + `<span style="font-size:12px;font-weight:600;color:var(--fsp-txt2,#ccc);margin-right:4px">${sel.length} markeret:</span>`
+              + `<button class="fsp-btn" data-ad-bulk="keep" style="padding:6px 12px;font-size:12px;background:rgba(93,202,122,0.15);color:#5dca7a;border:1px solid rgba(93,202,122,0.4)">Behold valgte</button>`
+              + `<button class="fsp-btn" data-ad-bulk="postpone" style="padding:6px 12px;font-size:12px;background:rgba(244,162,97,0.15);color:#f4a261;border:1px solid rgba(244,162,97,0.4)">Udskyd valgte</button>`
+              + `<button class="fsp-btn" data-ad-bulk="archive_now" style="padding:6px 12px;font-size:12px;background:rgba(232,90,111,0.12);color:#e85a6f;border:1px solid rgba(232,90,111,0.35)">Flyt valgte til papirkurv</button>`
+              + `</div>`;
+          } else {
+            pendingBulkEl.style.display = 'none';
+            pendingBulkEl.innerHTML = '';
+          }
+        }
+        // Mark\u00e9r alle-tilstand
+        const master = pendingEl.querySelector('input[data-ad-check-all]');
+        if (master) {
+          const boxes = pendingEl.querySelectorAll('input[data-ad-check]');
+          master.checked = boxes.length > 0 && ids.length === boxes.length;
+          master.indeterminate = ids.length > 0 && ids.length < boxes.length;
+        }
+      }
+
+      function selectedArchivedIds() {
+        return Array.from(archivedEl.querySelectorAll('input[data-ar-check]:checked')).map(c => c.dataset.arCheck);
+      }
+      function updateArchivedSelectionUI() {
+        const ids = selectedArchivedIds();
+        if (archivedBulkEl) {
+          if (ids.length) {
+            archivedBulkEl.style.display = '';
+            archivedBulkEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:rgba(91,160,216,0.07);border:1px solid rgba(91,160,216,0.2);border-radius:10px">`
+              + `<span style="font-size:12px;font-weight:600;color:var(--fsp-txt2,#ccc);margin-right:4px">${ids.length} markeret:</span>`
+              + `<button class="fsp-btn" data-ar-bulk="restore" style="padding:6px 12px;font-size:12px;background:rgba(91,160,216,0.12);color:#5ba0d8;border:1px solid rgba(91,160,216,0.3)">Gendan valgte</button>`
+              + `</div>`;
+          } else {
+            archivedBulkEl.style.display = 'none';
+            archivedBulkEl.innerHTML = '';
+          }
+        }
+        const master = archivedEl.querySelector('input[data-ar-check-all]');
+        if (master) {
+          const boxes = archivedEl.querySelectorAll('input[data-ar-check]');
+          master.checked = boxes.length > 0 && ids.length === boxes.length;
+          master.indeterminate = ids.length > 0 && ids.length < boxes.length;
+        }
+      }
+
+      function checkboxCell(attr, id) {
+        return `<label style="flex-shrink:0;padding-top:2px;cursor:pointer"><input type="checkbox" ${attr}="${esc(id)}" style="width:17px;height:17px;cursor:pointer;accent-color:#5ba0d8"></label>`;
+      }
+      function selectAllRow(attr, label) {
+        return `<label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;font-size:12px;color:var(--fsp-txt3)"><input type="checkbox" ${attr} style="width:16px;height:16px;cursor:pointer;accent-color:#5ba0d8">${label}</label>`;
       }
 
       async function loadPending() {
@@ -2645,34 +2746,54 @@
           const { data, error } = await client.rpc('get_pending_deletion_users');
           if (error) throw error;
           const rows = Array.isArray(data) ? data : [];
+          pendingRows = rows;
           const unreviewed = rows.filter(r => !r.opt_out && !r.reviewed_at).length;
           if (pendingCountEl) {
             if (unreviewed > 0) { pendingCountEl.textContent = `${unreviewed} afventer`; pendingCountEl.style.display = ''; }
             else { pendingCountEl.style.display = 'none'; }
           }
-          if (!rows.length) { pendingEl.innerHTML = emptyBox('Ingen b\u00f8rn er varslet til arkivering. \ud83d\udc4d'); return; }
-          pendingEl.innerHTML = rows.map(u => {
+          if (!rows.length) {
+            pendingEl.innerHTML = emptyBox('Ingen b\u00f8rn er varslet til papirkurven. \ud83d\udc4d');
+            updatePendingSelectionUI();
+            return;
+          }
+          const listHtml = rows.map(u => {
             const neg = Number(u.balance) < 0;
             const inactM = monthsInactive(u.last_activity);
-            const days = daysUntil(u.scheduled_archive_at);
-            const state = u.opt_out
-              ? { txt: 'Beholdt \u2014 arkiveres ikke', col: '#5dca7a' }
-              : (u.reviewed_at ? { txt: 'Tillader arkivering', col: '#f4a261' } : { txt: 'Afventer din beslutning', col: '#e85a6f' });
-            const when = u.opt_out ? '' : (days != null ? `<span style="color:${days <= 0 ? '#e85a6f' : 'var(--fsp-txt3)'}">${days <= 0 ? 'Arkiveres ved n\u00e6ste k\u00f8rsel' : 'Arkiveres om ~' + days + ' dage'}</span>` : '');
-            return rowShell(`
-              <div class="fsp-device-left" style="flex:1;min-width:0">
-                <div class="fsp-device-title">${esc(displayName(u))} <span style="color:var(--fsp-txt3);font-weight:500">#${esc(u.number || '')}</span></div>
+            const days = daysUntil(u.decision_deadline);
+            const awaiting = !u.opt_out && !u.reviewed_at;
+            let countdown;
+            if (u.opt_out) {
+              countdown = `<span style="color:#5dca7a;font-weight:600">\u2713 Beholdt \u2014 ryger ikke i papirkurven</span>`;
+            } else if (days != null && days <= 0) {
+              countdown = `<span style="color:#e85a6f;font-weight:600">\u23f3 Ryger i papirkurv ved n\u00e6ste k\u00f8rsel</span>`;
+            } else {
+              countdown = `<span style="color:${awaiting ? '#e85a6f' : 'var(--fsp-txt3)'};font-weight:${awaiting ? '600' : '500'}">\u23f3 ${days != null ? days : '?'} dage tilbage til at tage stilling</span>`;
+            }
+            const seen = (u.reviewed_at && !u.opt_out) ? ` <span style="color:var(--fsp-txt3);font-weight:500">(set)</span>` : '';
+            const grade = u.grade_level ? ` <span style="color:var(--fsp-txt3);font-weight:500">\u00b7 ${esc(u.grade_level)}</span>` : '';
+            return rowShell(
+              checkboxCell('data-ad-check', u.id)
+              + `<div class="fsp-device-left" style="flex:1;min-width:0">
+                <div class="fsp-device-title">${esc(displayName(u))} <span style="color:var(--fsp-txt3);font-weight:500">#${esc(u.number || '')}</span>${grade}</div>
                 <div class="fsp-device-meta">Saldo: <strong style="color:${neg ? '#e85a6f' : 'inherit'}">${krFmt(u.balance)}</strong>${inactM != null ? ' \u00b7 ' + inactM + ' mdr. inaktiv' : ''}</div>
-                <div class="fsp-device-meta" style="margin-top:3px"><span style="color:${state.col};font-weight:600">${state.txt}</span>${when ? ' \u00b7 ' + when : ''}</div>
+                <div class="fsp-device-meta" style="margin-top:3px;color:var(--fsp-txt3)">Sidste k\u00f8b: ${dkDate(u.last_purchase)} \u00b7 Sidste indbetaling: ${dkDate(u.last_deposit)} \u00b7 Sidste ekspedient-vagt: ${dkDate(u.last_ekspedient)}</div>
+                <div class="fsp-device-meta" style="margin-top:3px;color:var(--fsp-txt3)">K\u00f8bt for ${krFmt(u.total_purchased)} \u00b7 ${Number(u.ekspedient_count) || 0} ekspedient-vagter</div>
+                <div class="fsp-device-meta" style="margin-top:5px">${countdown}${seen}</div>
               </div>
               <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-                <button class="fsp-btn" data-ad-keep="${esc(u.id)}" style="padding:7px 14px;font-size:12px;background:${u.opt_out ? 'rgba(93,202,122,0.15)' : 'rgba(255,255,255,0.04)'};color:${u.opt_out ? '#5dca7a' : 'var(--fsp-txt2,#ccc)'};border:1px solid ${u.opt_out ? 'rgba(93,202,122,0.4)' : 'rgba(255,255,255,0.1)'}">Behold</button>
-                <button class="fsp-btn" data-ad-allow="${esc(u.id)}" style="padding:7px 14px;font-size:12px;background:${(!u.opt_out && u.reviewed_at) ? 'rgba(244,162,97,0.15)' : 'rgba(255,255,255,0.04)'};color:${(!u.opt_out && u.reviewed_at) ? '#f4a261' : 'var(--fsp-txt2,#ccc)'};border:1px solid ${(!u.opt_out && u.reviewed_at) ? 'rgba(244,162,97,0.4)' : 'rgba(255,255,255,0.1)'}">Tillad arkivering</button>
+                <button class="fsp-btn" data-ad-row="keep" data-id="${esc(u.id)}" style="padding:6px 12px;font-size:12px;background:${u.opt_out ? 'rgba(93,202,122,0.18)' : 'rgba(255,255,255,0.04)'};color:${u.opt_out ? '#5dca7a' : 'var(--fsp-txt2,#ccc)'};border:1px solid ${u.opt_out ? 'rgba(93,202,122,0.45)' : 'rgba(255,255,255,0.1)'}">Behold</button>
+                <button class="fsp-btn" data-ad-row="postpone" data-id="${esc(u.id)}" style="padding:6px 12px;font-size:12px;background:rgba(255,255,255,0.04);color:var(--fsp-txt2,#ccc);border:1px solid rgba(255,255,255,0.1)">Udskyd</button>
+                <button class="fsp-btn" data-ad-row="archive_now" data-id="${esc(u.id)}" style="padding:6px 12px;font-size:12px;background:rgba(232,90,111,0.1);color:#e85a6f;border:1px solid rgba(232,90,111,0.3)">Flyt til papirkurv</button>
               </div>`);
           }).join('');
+          pendingEl.innerHTML = selectAllRow('data-ad-check-all', 'Mark\u00e9r alle') + listHtml;
+          updatePendingSelectionUI();
         } catch (e) {
-          console.warn('[auto-delete] kunne ikke hente varslede:', e);
+          console.warn('[papirkurv] kunne ikke hente varslede:', e);
+          pendingRows = [];
           pendingEl.innerHTML = emptyBox('Kunne ikke hente listen.');
+          updatePendingSelectionUI();
         }
       }
 
@@ -2686,59 +2807,111 @@
             if (rows.length > 0) { archivedCountEl.textContent = String(rows.length); archivedCountEl.style.display = ''; }
             else { archivedCountEl.style.display = 'none'; }
           }
-          if (!rows.length) { archivedEl.innerHTML = emptyBox('Ingen arkiverede b\u00f8rn.'); return; }
-          archivedEl.innerHTML = rows.map(u => {
+          if (!rows.length) {
+            archivedEl.innerHTML = emptyBox('Papirkurven er tom.');
+            updateArchivedSelectionUI();
+            return;
+          }
+          const listHtml = rows.map(u => {
             const neg = Number(u.balance) < 0;
             const days = daysUntil(u.purge_at);
-            return rowShell(`
-              <div class="fsp-device-left" style="flex:1;min-width:0">
+            const soon = days != null && days <= 30;
+            const purgeTxt = days == null ? `Slettes permanent (${dkDate(u.purge_at)})`
+              : (days <= 0 ? 'Slettes permanent ved n\u00e6ste k\u00f8rsel'
+              : `Forsvinder permanent om ${days} dage (${dkDate(u.purge_at)})`);
+            return rowShell(
+              checkboxCell('data-ar-check', u.id)
+              + `<div class="fsp-device-left" style="flex:1;min-width:0">
                 <div class="fsp-device-title">${esc(displayName(u))} <span style="color:var(--fsp-txt3);font-weight:500">#${esc(u.number || '')}</span></div>
-                <div class="fsp-device-meta">Saldo: <strong style="color:${neg ? '#e85a6f' : 'inherit'}">${krFmt(u.balance)}</strong> \u00b7 Arkiveret ${dkDate(u.archived_at)}</div>
-                <div class="fsp-device-meta" style="margin-top:3px;color:${days != null && days <= 30 ? '#e85a6f' : 'var(--fsp-txt3)'}">Slettes permanent ${dkDate(u.purge_at)}${days != null ? ' (om ' + days + ' dage)' : ''}</div>
+                <div class="fsp-device-meta">Saldo: <strong style="color:${neg ? '#e85a6f' : 'inherit'}">${krFmt(u.balance)}</strong> \u00b7 Lagt i papirkurv ${dkDate(u.archived_at)}</div>
+                <div class="fsp-device-meta" style="margin-top:3px;color:${soon ? '#e85a6f' : 'var(--fsp-txt3)'}">${purgeTxt}</div>
               </div>
               <div style="flex-shrink:0">
-                <button class="fsp-btn" data-ad-restore="${esc(u.id)}" style="padding:8px 16px;font-size:12px;background:rgba(91,160,216,0.12);color:#5ba0d8;border:1px solid rgba(91,160,216,0.3)">Gendan</button>
+                <button class="fsp-btn" data-ar-row="restore" data-id="${esc(u.id)}" style="padding:8px 16px;font-size:12px;background:rgba(91,160,216,0.12);color:#5ba0d8;border:1px solid rgba(91,160,216,0.3)">Gendan</button>
               </div>`);
           }).join('');
+          archivedEl.innerHTML = selectAllRow('data-ar-check-all', 'Mark\u00e9r alle') + listHtml;
+          updateArchivedSelectionUI();
         } catch (e) {
-          console.warn('[auto-delete] kunne ikke hente arkiverede:', e);
+          console.warn('[papirkurv] kunne ikke hente papirkurv:', e);
           archivedEl.innerHTML = emptyBox('Kunne ikke hente listen.');
         }
       }
 
-      // Event-delegation for handlinger
-      pendingEl.addEventListener('click', async (ev) => {
-        const keep = ev.target.closest('[data-ad-keep]');
-        const allow = ev.target.closest('[data-ad-allow]');
-        const btn = keep || allow;
-        if (!btn || !client) return;
-        const id = (keep ? keep.dataset.adKeep : allow.dataset.adAllow);
-        btn.disabled = true; const orig = btn.textContent; btn.textContent = '\u2026';
+      // \u2500\u2500 Handlinger \u2500\u2500
+      async function runPendingAction(ids, action, btns) {
+        if (!client || !ids.length) return;
+        btns.forEach(b => { if (b) b.disabled = true; });
         try {
-          await client.rpc('set_auto_delete_opt_out', { p_user_id: id, p_opt_out: !!keep });
+          const { error } = await client.rpc('pending_deletion_action', { p_user_ids: ids, p_action: action });
+          if (error) throw error;
           await loadPending();
           window.__flangoRefreshAutoDeleteWarning?.();
+          if (action === 'archive_now') await loadArchived();
         } catch (e) {
-          console.warn('[auto-delete] set_auto_delete_opt_out fejl:', e);
-          btn.disabled = false; btn.textContent = orig;
-          window.showCustomAlert?.('Fejl', 'Kunne ikke gemme valget. Pr\u00f8v igen.');
+          console.warn('[papirkurv] pending_deletion_action fejl:', e);
+          btns.forEach(b => { if (b) b.disabled = false; });
+          window.showCustomAlert?.('Fejl', 'Handlingen kunne ikke gennemf\u00f8res. Pr\u00f8v igen.');
         }
-      });
-      archivedEl.addEventListener('click', async (ev) => {
-        const btn = ev.target.closest('[data-ad-restore]');
-        if (!btn || !client) return;
-        btn.disabled = true; btn.textContent = 'Gendanner\u2026';
+      }
+      async function runRestore(ids, btns) {
+        if (!client || !ids.length) return;
+        btns.forEach(b => { if (b) b.disabled = true; });
         try {
-          const { data, error } = await client.rpc('restore_archived_user', { p_user_id: btn.dataset.adRestore });
+          const { data, error } = await client.rpc('restore_archived_users', { p_user_ids: ids });
           if (error) throw error;
           await loadArchived();
           window.__flangoRefreshUsers?.();
-          window.showCustomAlert?.('Bruger gendannet', `<strong>${esc(data?.name || 'Barnet')}</strong> er gendannet med saldo og historik og vises igen i caf\u00e9en.`);
+          const n = (data && typeof data.restored === 'number') ? data.restored : ids.length;
+          window.showCustomAlert?.('Gendannet', n === 1
+            ? 'Barnet er gendannet med saldo og historik og vises igen i caf\u00e9en.'
+            : `<strong>${n}</strong> b\u00f8rn er gendannet med saldo og historik og vises igen i caf\u00e9en.`);
         } catch (e) {
-          console.warn('[auto-delete] restore fejl:', e);
-          btn.disabled = false; btn.textContent = 'Gendan';
-          window.showCustomAlert?.('Fejl', 'Kunne ikke gendanne brugeren. Pr\u00f8v igen.');
+          console.warn('[papirkurv] restore fejl:', e);
+          btns.forEach(b => { if (b) b.disabled = false; });
+          window.showCustomAlert?.('Fejl', 'Kunne ikke gendanne. Pr\u00f8v igen.');
         }
+      }
+
+      // \u2500\u2500 Event-delegation: varslet \u2500\u2500
+      pendingEl.addEventListener('change', (ev) => {
+        const all = ev.target.closest('input[data-ad-check-all]');
+        if (all) {
+          pendingEl.querySelectorAll('input[data-ad-check]').forEach(c => { c.checked = all.checked; });
+        }
+        if (all || ev.target.closest('input[data-ad-check]')) updatePendingSelectionUI();
+      });
+      pendingEl.addEventListener('click', (ev) => {
+        const rowBtn = ev.target.closest('[data-ad-row]');
+        if (rowBtn) { runPendingAction([rowBtn.dataset.id], rowBtn.dataset.adRow, [rowBtn]); }
+      });
+      pendingBulkEl.addEventListener('click', (ev) => {
+        const bulkBtn = ev.target.closest('[data-ad-bulk]');
+        if (!bulkBtn) return;
+        const ids = selectedPendingIds();
+        if (!ids.length) return;
+        const allBtns = Array.from(pendingBulkEl.querySelectorAll('[data-ad-bulk]'));
+        runPendingAction(ids, bulkBtn.dataset.adBulk, allBtns);
+      });
+
+      // \u2500\u2500 Event-delegation: papirkurv \u2500\u2500
+      archivedEl.addEventListener('change', (ev) => {
+        const all = ev.target.closest('input[data-ar-check-all]');
+        if (all) {
+          archivedEl.querySelectorAll('input[data-ar-check]').forEach(c => { c.checked = all.checked; });
+        }
+        if (all || ev.target.closest('input[data-ar-check]')) updateArchivedSelectionUI();
+      });
+      archivedEl.addEventListener('click', (ev) => {
+        const rowBtn = ev.target.closest('[data-ar-row]');
+        if (rowBtn) { runRestore([rowBtn.dataset.id], [rowBtn]); }
+      });
+      archivedBulkEl.addEventListener('click', (ev) => {
+        const bulkBtn = ev.target.closest('[data-ar-bulk]');
+        if (!bulkBtn) return;
+        const ids = selectedArchivedIds();
+        if (!ids.length) return;
+        runRestore(ids, [bulkBtn]);
       });
 
       loadPending();
