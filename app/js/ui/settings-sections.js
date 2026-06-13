@@ -2836,6 +2836,7 @@
               <div style="flex-shrink:0;display:flex;flex-direction:column;gap:6px">
                 <button class="fsp-btn" data-ar-row="restore" data-id="${esc(u.id)}" style="padding:8px 16px;font-size:12px;background:rgba(91,160,216,0.12);color:#5ba0d8;border:1px solid rgba(91,160,216,0.3)">Gendan</button>
                 ${needsStance ? `<button class="fsp-btn" data-ar-row="ack" data-id="${esc(u.id)}" title="Bekr\u00e6ft: barnet m\u00e5 slettes permanent p\u00e5 den planlagte dato" style="padding:8px 16px;font-size:12px;background:rgba(255,255,255,0.04);color:var(--fsp-txt2,#ccc);border:1px solid rgba(255,255,255,0.12)">Lad g\u00e5</button>` : ''}
+                <button class="fsp-btn" data-ar-row="purge" data-id="${esc(u.id)}" data-name="${esc(displayName(u))}" title="Slet permanent nu \u2014 kan IKKE fortrydes" style="padding:8px 16px;font-size:12px;background:rgba(232,90,111,0.08);color:#e85a6f;border:1px solid rgba(232,90,111,0.25)">Slet permanent</button>
               </div>`);
           }).join('');
           const split = balanceSplit(rows);
@@ -2898,6 +2899,33 @@
           window.showCustomAlert?.('Fejl', 'Kunne ikke gemme. Pr\u00f8v igen.');
         }
       }
+      // Permanent sletning NU fra papirkurven \u2014 kraftig bekr\u00e6ftelse, kan ikke fortrydes.
+      async function runPurgeNow(ids, name, btns) {
+        if (!client || !ids.length) return;
+        const who = ids.length === 1
+          ? `<strong>${esc(name || 'dette barn')}</strong>`
+          : `<strong>${ids.length} b\u00f8rn</strong>`;
+        const ok = await (window.showCustomAlert?.(
+          'Slet permanent?',
+          `<p>${who} slettes <strong>permanent og med det samme</strong>.</p>
+           <p style="margin-top:8px;color:#e85a6f;font-weight:600">Dette kan IKKE fortrydes \u2014 saldo og historik forsvinder for altid.</p>
+           <p style="margin-top:8px;font-size:0.9em;color:#888">Vil du i stedet bare lade det ligge i papirkurven, s\u00e5 slettes det automatisk efter 6 m\u00e5neder og kan gendannes indtil da.</p>`,
+          'confirm'));
+        if (!ok) return;
+        btns.forEach(b => { if (b) b.disabled = true; });
+        try {
+          const { data, error } = await client.rpc('purge_users_now', { p_user_ids: ids });
+          if (error) throw error;
+          await loadArchived();
+          window.__flangoRefreshAutoDeleteWarning?.();
+          const n = (data && typeof data.purged === 'number') ? data.purged : ids.length;
+          window.showCustomAlert?.('Slettet permanent', `${n === 1 ? 'Barnet er' : `<strong>${n}</strong> b\u00f8rn er`} slettet permanent.`);
+        } catch (e) {
+          console.warn('[papirkurv] purge_now fejl:', e);
+          btns.forEach(b => { if (b) b.disabled = false; });
+          window.showCustomAlert?.('Fejl', 'Kunne ikke slette. Pr\u00f8v igen.');
+        }
+      }
 
       // \u2500\u2500 Event-delegation: varslet \u2500\u2500
       pendingEl.addEventListener('change', (ev) => {
@@ -2932,6 +2960,7 @@
         const rowBtn = ev.target.closest('[data-ar-row]');
         if (!rowBtn) return;
         if (rowBtn.dataset.arRow === 'ack') runAck([rowBtn.dataset.id], [rowBtn]);
+        else if (rowBtn.dataset.arRow === 'purge') runPurgeNow([rowBtn.dataset.id], rowBtn.dataset.name, [rowBtn]);
         else runRestore([rowBtn.dataset.id], [rowBtn]);
       });
       archivedBulkEl.addEventListener('click', (ev) => {
