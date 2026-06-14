@@ -13,7 +13,7 @@
     { name: 'Institutionens Præferencer', items: [{ l: 'Toolbar', c: '#5ba0d8' }, { l: 'Beløbsgrænse', c: '#e8734a' }, { l: 'Sukkerpolitik', c: '#e85a6f' }, { l: 'Ekspedient-login', c: '#f4a261' }] },
     { name: 'Administration', items: [{ l: 'Forældreportal', c: '#c77ddb' }, { l: 'Betalingsmetoder', c: '#5dca7a' }, { l: 'Profilbilleder', c: '#c77ddb' }, { l: 'Produktikoner – Deling', c: '#5ba0d8' }, { l: 'MobilePay CSV Import', c: '#f4a261' }, { l: 'Brugernavne', c: '#5dca7a' }, { l: 'Brugernummer', c: '#5ba0d8' }, { l: 'Opret/Opdater brugere auto.', c: '#e8734a' }] },
     { name: 'Datasikkerhed', items: [{ l: 'Totrinsgodkendelse (MFA)', c: '#e85a6f' }, { l: 'Auto-sletning af inaktive', c: '#f4a261' }, { l: 'Mine enheder', c: '#5ba0d8' }, { l: 'Saldoliste ved låsning', c: '#5dca7a' }, { l: 'Anmod om nulstilling', c: '#c77ddb' }] },
-    { name: 'Diverse', items: [{ l: 'Udseende', c: '#c77ddb' }, { l: 'Dagens Sortiment', c: '#f4a261' }, { l: 'Min Flango', c: '#e8734a' }, { l: 'Hjælp', c: '#5ba0d8' }, { l: 'Opdateringer', c: '#5dca7a' }, { l: 'Feedback', c: '#f4a261' }, { l: 'Lydindstillinger', c: '#5ba0d8' }, { l: 'Log ud', c: '#e85a6f' }] }
+    { name: 'Diverse', items: [{ l: 'Udseende', c: '#c77ddb' }, { l: 'Dagens Sortiment', c: '#f4a261' }, { l: 'Min Flango', c: '#e8734a' }, { l: 'Hjælp', c: '#5ba0d8' }, { l: 'Opdateringer', c: '#5dca7a' }, { l: 'Feedback', c: '#f4a261' }, { l: 'Lydindstillinger', c: '#5ba0d8' }] }
   ];
 
   // ── SVG icon paths (from mockup icons object) ──
@@ -49,14 +49,9 @@
     'Feedback': '<circle cx="8" cy="9.5" r="4.5"/><path d="M8 5V2M3.5 7.5L1 6.5M12.5 7.5L15 6.5"/><path d="M8 8v2.5"/>',
     'Lydindstillinger': '<path d="M2 6.5h2l3.5-3.5v10L4 9.5H2z"/><path d="M11 5.5a4 4 0 010 5M13 3.5a7 7 0 010 9"/>',
     'Log ud': '<path d="M9.5 14H4.5a1.5 1.5 0 01-1.5-1.5v-9A1.5 1.5 0 014.5 2h5"/><path d="M7 8h7M12 5.5L14.5 8 12 10.5"/>',
-    'Afslut Flango': '<path d="M3 3v10a1 1 0 001 1h8M7 8h7M12 5.5L14.5 8 12 10.5"/>'
+    'Luk Programmet': '<path d="M3 3v10a1 1 0 001 1h8M7 8h7M12 5.5L14.5 8 12 10.5"/>'
   };
-
-  // Desktop-only: tilføj "Afslut Flango" til Diverse-tab
-  if (window.__TAURI_INTERNALS__) {
-    const diverseTab = T.find(t => t.name === 'Diverse');
-    if (diverseTab) diverseTab.items.push({ l: 'Afslut Flango', c: '#e85a6f' });
-  }
+  // 'Log ud' + 'Luk Programmet' bor nu i en fast sidebar-footer (buildOverlay), ikke i Diverse-tabben.
 
   const tabIcons = [
     '<rect x="3" y="3" width="4" height="4" rx="1"/><rect x="9" y="3" width="4" height="4" rx="1"/><rect x="3" y="9" width="4" height="4" rx="1"/><rect x="9" y="9" width="4" height="4" rx="1"/>',
@@ -176,7 +171,7 @@
       const btn = document.getElementById('logout-btn');
       if (btn) btn.click();
     },
-    'Afslut Flango': () => {
+    'Luk Programmet': () => {
       close();
       if (window.__flangoTauriWindow) window.__flangoTauriWindow.close();
     }
@@ -255,6 +250,8 @@
           </div>
           <div class="fsp-side-items" id="fsp-sidebar"></div>
           <div class="fsp-side-back">
+            <button class="fsp-side-exit" data-action="logout">${ic('Log ud', '#e85a6f')}Log ud</button>
+            ${window.__TAURI_INTERNALS__ ? `<button class="fsp-side-exit" data-action="quit">${ic('Luk Programmet', '#e85a6f')}Luk Programmet</button>` : ''}
             <button data-action="close">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>
               Tilbage
@@ -377,6 +374,32 @@
   }
 
   // ── Open ──
+  // ── Pile-taste-navigation: op/ned = sidebar-items, venstre/højre = faner ──
+  // Springer trigger-items (klik-handlinger som Log ud/Historik) og skjulte items over.
+  function moveItem(delta) {
+    if (!overlay) return;
+    const sb = overlay.querySelector('#fsp-sidebar');
+    const items = T[at].items;
+    const navigable = (j) => {
+      if (TRIGGERS[items[j].l]) return false; // trigger = klik-handling, ikke en sektion
+      const el = sb && sb.children[j];
+      return !!(el && el.style.display !== 'none');
+    };
+    let j = ai;
+    for (let step = 0; step < items.length; step++) {
+      j = (j + delta + items.length) % items.length;
+      if (navigable(j)) { ai = j; render(); return; }
+    }
+  }
+  function moveTab(delta) {
+    if (!overlay) return;
+    at = (at + delta + T.length) % T.length;
+    ai = 0;
+    render();
+    // Hvis fanens første item er en trigger, hop videre til første reelle sektion.
+    if (TRIGGERS[T[at].items[0].l]) moveItem(1);
+  }
+
   async function open() {
     if (overlay) return; // already open
 
@@ -387,6 +410,8 @@
 
     // Event delegation
     overlay.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action="logout"]')) { TRIGGERS['Log ud'] && TRIGGERS['Log ud'](); return; }
+      if (e.target.closest('[data-action="quit"]')) { TRIGGERS['Luk Programmet'] && TRIGGERS['Luk Programmet'](); return; }
       const btn = e.target.closest('[data-action="close"]');
       if (btn) { close(); return; }
     });
@@ -412,6 +437,20 @@
         }
         // 5. Close settings
         close();
+        return;
+      }
+      // Pile-taste-navigation: kun når man IKKE skriver i et felt og ingen under-overlay er åben.
+      if (e.key.startsWith('Arrow')) {
+        const ae = document.activeElement;
+        const tag = ((ae && ae.tagName) || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || (ae && ae.isContentEditable)) return;
+        const subOpen = overlay && overlay.querySelector('.fsp-up-overlay.open, .fsp-pay-overlay.open, .fsp-reg-overlay.open, .fsp-rm-overlay.open');
+        const slideEl = overlay && overlay.querySelector('#fsp-slide-overlay');
+        if (subOpen || (slideEl && slideEl.classList.contains('open'))) return;
+        if (e.key === 'ArrowDown') { e.preventDefault(); moveItem(1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); moveItem(-1); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); moveTab(1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); moveTab(-1); }
       }
     };
     if (window.__flangoSettingsAbort) window.__flangoSettingsAbort.abort();
