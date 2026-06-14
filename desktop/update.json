@@ -5,15 +5,15 @@
   "platforms": {
     "darwin-aarch64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTFka3BzTHVjbEY3QUNsWkx3T3VnZFlaZk9iRUlvU0pqMjdQN0FncHNDUEgreDNHTkhna3JGQmhRUStrR2lYM1J0NFA3TUdocGRCTFBma1drU0d1MlFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxNDQ3NzM1CWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKWnRTYXI0VlVETnFMZElZR1o4R091YmxYZkxpVkxyRTkvb1RRaTVQZk9KN1JKT21kVFJmTlJIMEVQOHNudEJ0WU55b09JS3daY1BzQWpnWnU2OG5GQkE9PQo=",
-      "url": "https://flango.dk/desktop/Flango-Cafe-v3.0.137-aarch64.app.tar.gz"
+      "url": "https://github.com/theisonflango/Flango-website/releases/download/desktop-v3.0.137/Flango-Cafe-v3.0.137-aarch64.app.tar.gz"
     },
     "darwin-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWXpZeXNRMVpvRnNNQVdDbVRTdEVhNi9lYXZyMU42NDBCVlVlalRTUVBqdEt2R0d5K2JBSUk1YXozcnBYVUdVMzRoYU1yWXJSektUVkZDNGRQWnpRWmdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxNDQ3ODYwCWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKZ0FTNHdmckl3L3kxYytNaTFnT25OL041dlFnK2M5UkMxc1dSeFQrYkRQK1JYbjFUVWJ4MzlmY21rbzd0dkMrRGNBOTR0ZjVBZjhIVDFHbGhqY0xPQmc9PQo=",
-      "url": "https://flango.dk/desktop/Flango-Cafe-v3.0.137-x86_64.app.tar.gz"
+      "url": "https://github.com/theisonflango/Flango-website/releases/download/desktop-v3.0.137/Flango-Cafe-v3.0.137-x86_64.app.tar.gz"
     },
     "windows-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWXp1bG8vQVlGdTdFeVhHNThQb1lFQmNialVHRlN3YmVKSDdNOURkR1NWUzJXOG45emRRYXB0WVZLUkppaENMVk5INWlRMGgvRWFZNEEyeml1d0hPamc4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxNDQ3OTYwCWZpbGU6RmxhbmdvIENhZsOpXzMuMC4xMzdfeDY0LXNldHVwLmV4ZQp1QlRmckVqWndYa2tPaThZc3lZM0pNb0FhNUVBUVlrQkNRc01nZC9MMVJ1WXhWb0hFVStBZDdteGRvMEFYT2ZDbjQ4bFRkcGxtSmpyaG5VUXN0U3BCQT09Cg==",
-      "url": "https://flango.dk/desktop/Flango-Cafe-v3.0.137-Setup.exe"
+      "url": "https://github.com/theisonflango/Flango-website/releases/download/desktop-v3.0.137/Flango-Cafe-v3.0.137-Setup.exe"
     }
   }
 }
