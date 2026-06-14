@@ -1,19 +1,19 @@
 {
-  "version": "3.0.146",
-  "notes": "Flango Café Desktop v3.0.146",
-  "pub_date": "2026-06-14T22:43:43Z",
+  "version": "3.0.147",
+  "notes": "Flango Café Desktop v3.0.147",
+  "pub_date": "2026-06-14T23:02:00Z",
   "platforms": {
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTMxVERaK2dnbGpabDBjUmlaa2xLNzI5UHkzWVIvSTd4QnF1U2hXQ2xRb0FlM3F4azVzYkxxRVBuOHp5Uk5WWHNmZS83K1ZUdFBqN0lqeXJUWTZpTmdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxNDc2NjQ1CWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKN2RrWkJ1d0ZlWFZXbXZlVlZnR3dST1NGU1B4VVNNNnhjY3VmckEyWkVjZnpkSjRIZWtuSTd1WFFlZUhOd3V0RkNZNno2Q3FGeHJteHJEWG1LaWk1Q2c9PQo=",
-      "url": "https://github.com/theisonflango/Flango-website/releases/download/desktop-v3.0.146/Flango-Cafe-v3.0.146-aarch64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWS9lcTF2Ky92aTFqaFV4WFlEdmg4eEM4d2Q5L1kwYUgzU2U2bmJwZVFQVTdXWCsyUlJNUTg3VGErNGx3V1RvS2lWalpIcngvTHlScDM1VEtrTHh6UlFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxNDc3NzU0CWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKdU9JYTlMU0xBaUZyTWNvQkMvN1UyVlFFWUFTVEY1MHdGdjRaQlRlY3B6NmJuTDcxYkpqc2ZsT1EzUVBkai9hYmUrbDVzeTlXcjcrNmVpSndzZ3hpRGc9PQo=",
+      "url": "https://github.com/theisonflango/Flango-website/releases/download/desktop-v3.0.147/Flango-Cafe-v3.0.147-aarch64.app.tar.gz"
     },
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTVhb202d09QTXZsTUxGY0JUSkZQVW1zcmxyOHFKVElFbGVFVTRqVjA2eFJOL2lBaDZmZHZlU2VkbzdHdFA3d3RqVWNKamJkQ3pEOHE4UjRQZG9lbHdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxNDc2NzA3CWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKTGJzUkZrUmg4d1BkNGJhakRwLzlMdnl5a2ROUGRiWGZiU0FuY1dHLy84eFFzVnp1dzhkMnZlb0VtQ0tlSEQ3ZVY2MVdhUlk4TmxoLzZ1SC90T1paQXc9PQo=",
-      "url": "https://github.com/theisonflango/Flango-website/releases/download/desktop-v3.0.146/Flango-Cafe-v3.0.146-x86_64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWXp5R1Vlcy9jRXF4MDFmZ29tT3ljUDMwR0Ria1ZXY3pwL0s3Nk8vODZDSWtwTkluVzNkMGwzTzZZMDRpVFlZNEErZWxpQTg3UHcyd1Q4YUFLZmNaWHdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxNDc3ODAyCWZpbGU6RmxhbmdvIENhZsOpLmFwcC50YXIuZ3oKWUorRkFvK04rZFo0UTFveXVXYTJFb0JzVFVEdER6Z3ZtekdXVEM2aGVKTFNxZVBKRTBXakticHV6bzFUSVRNOHBXSkQrbnRCeTh4SUh1UDNnZGJBQWc9PQo=",
+      "url": "https://github.com/theisonflango/Flango-website/releases/download/desktop-v3.0.147/Flango-Cafe-v3.0.147-x86_64.app.tar.gz"
     },
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWTlXYWVobis4NHVudzlKUU1xNkFSejU5UlNCN2h5YUxRNWRhOUhSVHFkeDVTK3JaMDhwWmw5Sm9yYW9NUVJnajhNNmdKTjVUTzRMZStlMElIU2xmcXd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxNDc2ODE1CWZpbGU6RmxhbmdvIENhZsOpXzMuMC4xNDZfeDY0LXNldHVwLmV4ZQp2ZFBaQWpHT0FFRjB3WmxpbFpxR1piMDZSQ3JoS2ZnNnNETkFPb2w5YmdaWGxBSkNhRkxEWlptU3psK0YzVHhEcTZVTmVWYVd3ZmVpZE4wRDVNenRBUT09Cg==",
-      "url": "https://github.com/theisonflango/Flango-website/releases/download/desktop-v3.0.146/Flango-Cafe-v3.0.146-Setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbEIvaUF1NDlxWS84d1g4Zjh5cDRVOVZMWWpwVWxUMEVHMzRsSm9oa00wSUNTcVZ4Z2Q5RnBjRFJzdHpYSThVQ1EzY0NUdzgxUVFRc3Y4UG12Z2tLKzhhUFZJZTRicFFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxNDc4MDAyCWZpbGU6RmxhbmdvIENhZsOpXzMuMC4xNDdfeDY0LXNldHVwLmV4ZQp3OTl4WlRhT1U3citGUitUWThVZlZSTEdzY0c3aHJuWFhVeThRUzJHSFZJdjczZGpLeEdPd0IrWEVkeWUvTWVVdU5HZDFtSmhSU2MwaU9lQzNQc2xBZz09Cg==",
+      "url": "https://github.com/theisonflango/Flango-website/releases/download/desktop-v3.0.147/Flango-Cafe-v3.0.147-Setup.exe"
     }
   }
 }
