@@ -1475,6 +1475,7 @@
             note: m.requiresCol === 'restaurant_mode_enabled' ? 'Kr\u00e6ver Restaurant Mode' : null,
             on,
             requiresMet,
+            alwaysOn: !!m.alwaysOn,
             shown: on && requiresMet, // \u00e6gte header-synlighed \u2192 preview matcher headeren
             iconHtml: this._iconHtml(m.btnId, m.icon),
           };
@@ -1512,10 +1513,14 @@
     },
     _listHtml(items) {
       return items.map(it => {
-        const locked = it.requiresCol && !it.requiresMet; // fx Køkkenskærm når Restaurant Mode er slået fra
-        const noteHtml = locked
-          ? `<div class="fsp-tb-item-note"><a href="#" data-action="open-rm" class="fsp-tb-note-link">${it.note || 'Kræver Restaurant Mode'} →</a></div>`
-          : '';
+        const reqLocked = it.requiresCol && !it.requiresMet; // fx Køkkenskærm når Restaurant Mode er slået fra
+        let noteHtml = '';
+        if (reqLocked) noteHtml = `<div class="fsp-tb-item-note"><a href="#" data-action="open-rm" class="fsp-tb-note-link">${it.note || 'Kræver Restaurant Mode'} →</a></div>`;
+        else if (it.alwaysOn) noteHtml = `<div class="fsp-tb-item-note">Altid synlig — kan flyttes, ikke skjules</div>`;
+        // alwaysOn (⚙️/➕): låst-tændt toggle uden data-tb-toggle (ikke en funktionel toggle), men stadig flytbar.
+        const toggleOn = it.alwaysOn || it.on;
+        const toggleLocked = it.alwaysOn || reqLocked;
+        const toggleAttr = it.alwaysOn ? '' : ` data-tb-toggle="${it.dbCol}"`;
         return `<div class="fsp-tb-item" data-tb-key="${it.key}">
         <div class="fsp-tb-item-drag" data-tb-handle><span></span><span></span><span></span></div>
         <div class="fsp-tb-item-emoji">${it.iconHtml}</div>
@@ -1524,7 +1529,7 @@
           <div class="fsp-tb-item-desc">${it.d}</div>
           ${noteHtml}
         </div>
-        <div class="fsp-toggle${it.on ? ' on' : ''}${locked ? ' locked' : ''}" data-tb-toggle="${it.dbCol}"></div>
+        <div class="fsp-toggle${toggleOn ? ' on' : ''}${toggleLocked ? ' locked' : ''}"${toggleAttr}></div>
       </div>`;
       }).join('');
     },
@@ -1536,9 +1541,7 @@
         <div class="fsp-page-desc">V\u00e6lg hvilke genvejsknapper der vises som ikoner i toolbaren over indk\u00f8bskurven. Tr\u00e6k i forh\u00e5ndsvisningen eller listen for at \u00e6ndre r\u00e6kkef\u00f8lgen.</div>
         <div class="fsp-tb-preview" data-tb-preview>
           <div class="fsp-tb-preview-label">Forh\u00e5ndsvisning</div>
-          <div class="fsp-tb-preview-icon vis fsp-tb-fixed" title="Opret produkt - altid synlig">${this._iconHtml('toolbar-new-product-btn', '➕')}</div>
           <div class="fsp-tb-preview-icons" data-tb-preview-icons>${this._previewIconsHtml(items)}</div>
-          <div class="fsp-tb-preview-icon vis fsp-tb-fixed" title="Indstillinger - altid synlig">${this._iconHtml('toolbar-gear-btn', '⚙️')}</div>
         </div>
         <div data-tb-items>
           ${this._listHtml(items)}
@@ -1555,11 +1558,11 @@
       function applyLiveOrder() {
         const headerActions = document.querySelector('.header-actions');
         if (!headerActions) return;
-        const gearBtn = document.getElementById('toolbar-gear-btn');
+        // appendChild i items-rækkefølge (⚙️/➕ er nu flytbare, ikke et fast anker — samme som applyToolbarOrder).
         self._getItems(ctx).forEach(it => {
           if (!it.btnId) return;
           const btn = document.getElementById(it.btnId);
-          if (btn) headerActions.insertBefore(btn, gearBtn);
+          if (btn) headerActions.appendChild(btn);
         });
       }
       function persistOrder() {
@@ -1572,7 +1575,7 @@
       function setToggle(dbCol, isOn) {
         const inst = ctx.institutionData || {};
         const it = self._getItems(ctx).find(x => x.dbCol === dbCol);
-        if (!it) return;
+        if (!it || it.alwaysOn) return; // alwaysOn (⚙️/➕) kan ikke skjules
         const requiresMet = !it.requiresCol || inst[it.requiresCol] === true;
         if (it.requiresCol && !requiresMet) return; // låst: kan ikke slås til uden kravet (fx Køkkenskærm uden Restaurant Mode)
         it.on = isOn;
