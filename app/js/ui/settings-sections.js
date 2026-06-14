@@ -3164,25 +3164,38 @@
         if (btn) { btn.textContent = 'Tjek for opdateringer'; btn.disabled = false; }
       });
 
-      // Desktop: Tjek for opdateringer (Tauri updater)
-      container.querySelector('[data-action="check-update-tauri"]')?.addEventListener('click', async () => {
-        const btn = container.querySelector('[data-action="check-update-tauri"]');
+      // Desktop: state-drevet knap \u2014 f\u00f8rst "Tjek", hvis ny version fundet bliver
+      // den "Opdater nu" \u2192 installerer (download + genstart). Giver en bevidst
+      // opdater-vej fra settings i stedet for kun fuldsk\u00e6rms-prompten ved opstart.
+      let _pendingTauriUpdate = null;
+      const tauriUpdBtn = container.querySelector('[data-action="check-update-tauri"]');
+      tauriUpdBtn?.addEventListener('click', async () => {
         const statusEl = container.querySelector('[data-status="version-status"]');
-        if (btn) { btn.textContent = 'Tjekker...'; btn.disabled = true; }
+        if (_pendingTauriUpdate) {
+          tauriUpdBtn.disabled = true; tauriUpdBtn.textContent = 'Opdaterer...';
+          try {
+            if (window.__flangoTauriInstall) await window.__flangoTauriInstall(_pendingTauriUpdate);
+          } catch (e) {
+            if (statusEl) { statusEl.textContent = 'Opdatering fejlede'; statusEl.style.color = '#e85a6f'; }
+            tauriUpdBtn.disabled = false; tauriUpdBtn.textContent = 'Pr\u00f8v igen';
+          }
+          return;
+        }
+        tauriUpdBtn.textContent = 'Tjekker...'; tauriUpdBtn.disabled = true;
         try {
           const update = window.__flangoTauriCheckUpdate ? await window.__flangoTauriCheckUpdate() : null;
           if (update) {
-            if (statusEl) {
-              statusEl.textContent = `Ny version tilg\u00e6ngelig: v${update.version}`;
-              statusEl.style.color = '#f59e0b';
-            }
+            _pendingTauriUpdate = update;
+            if (statusEl) { statusEl.textContent = `Ny version tilg\u00e6ngelig: v${update.version}`; statusEl.style.color = '#f59e0b'; }
+            tauriUpdBtn.textContent = `\u2b07 Opdater nu \u2014 v${update.version}`; tauriUpdBtn.disabled = false;
           } else {
             if (statusEl) statusEl.textContent = 'Du k\u00f8rer den nyeste version';
+            tauriUpdBtn.textContent = 'Tjek for opdateringer'; tauriUpdBtn.disabled = false;
           }
         } catch (e) {
           if (statusEl) { statusEl.textContent = 'Kunne ikke tjekke for opdateringer'; statusEl.style.color = '#e85a6f'; }
+          tauriUpdBtn.textContent = 'Tjek for opdateringer'; tauriUpdBtn.disabled = false;
         }
-        if (btn) { btn.textContent = 'Tjek for opdateringer'; btn.disabled = false; }
       });
 
       // Webapp: Desktop downloads
