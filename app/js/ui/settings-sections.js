@@ -1451,17 +1451,23 @@
       const MAP = window.__flangoToolbarItems || [];
       const items = MAP
         .filter(m => !m.tauriOnly || isTauri)
-        .map(m => ({
-          key: m.orderKey,
-          dbCol: m.dbCol,
-          btnId: m.btnId,
-          e: m.icon,
-          n: m.label,
-          d: m.desc,
-          requiresCol: m.requiresCol || null,
-          note: m.requiresCol === 'restaurant_mode_enabled' ? 'Kr\u00e6ver Restaurant Mode' : null,
-          on: inst[m.dbCol] !== false,
-        }));
+        .map(m => {
+          const on = inst[m.dbCol] !== false;
+          const requiresMet = !m.requiresCol || inst[m.requiresCol] === true;
+          return {
+            key: m.orderKey,
+            dbCol: m.dbCol,
+            btnId: m.btnId,
+            e: m.icon,
+            n: m.label,
+            d: m.desc,
+            requiresCol: m.requiresCol || null,
+            note: m.requiresCol === 'restaurant_mode_enabled' ? 'Kr\u00e6ver Restaurant Mode' : null,
+            on,
+            shown: on && requiresMet, // \u00e6gte header-synlighed \u2192 preview matcher headeren
+            iconHtml: this._iconHtml(m.btnId, m.icon),
+          };
+        });
       // Anvend gemt r\u00e6kkef\u00f8lge (toolbar_order)
       const ord = inst.toolbar_order;
       if (ord) {
@@ -1480,15 +1486,23 @@
     },
     // FORH\u00C5NDSVISNING: kun aktiverede ikoner vises (.vis) \u2014 en tro kopi af header-
     // r\u00e6kkef\u00f8lgen. Draggable, s\u00e5 man kan omplacere direkte i forh\u00e5ndsvisningen.
-    _previewHtml(items) {
-      return items.map(it =>
-        `<div class="fsp-tb-preview-icon${it.on ? ' vis' : ''}" draggable="true" data-tb-key="${it.key}" title="${it.n}">${it.e}</div>`
+    // Clone the real header button icon (SVG/img) so the list + preview match the cafe
+    // header EXACTLY; fallback to emoji if the button is missing or is emoji/text
+    // (e.g. the dynamic shift-timer pill).
+    _iconHtml(btnId, emoji) {
+      const el = btnId && document.getElementById(btnId);
+      const html = el && el.innerHTML && el.innerHTML.trim();
+      return (html && /<svg|<img/i.test(html)) ? html : (emoji || '');
+    },
+    _previewIconsHtml(items) {
+      return items.filter(it => it.shown).map(it =>
+        `<div class="fsp-tb-preview-icon vis" data-tb-key="${it.key}" title="${it.n}">${it.iconHtml}</div>`
       ).join('');
     },
     _listHtml(items) {
-      return items.map(it => `<div class="fsp-tb-item" draggable="true" data-tb-key="${it.key}">
-        <div class="fsp-tb-item-drag"><span></span><span></span><span></span></div>
-        <div class="fsp-tb-item-emoji">${it.e}</div>
+      return items.map(it => `<div class="fsp-tb-item" data-tb-key="${it.key}">
+        <div class="fsp-tb-item-drag" data-tb-handle><span></span><span></span><span></span></div>
+        <div class="fsp-tb-item-emoji">${it.iconHtml}</div>
         <div class="fsp-tb-item-info">
           <div class="fsp-tb-item-name">${it.n}</div>
           <div class="fsp-tb-item-desc">${it.d}</div>
@@ -1505,7 +1519,7 @@
         <div class="fsp-page-desc">V\u00e6lg hvilke genvejsknapper der vises som ikoner i toolbaren over indk\u00f8bskurven. Tr\u00e6k i forh\u00e5ndsvisningen eller listen for at \u00e6ndre r\u00e6kkef\u00f8lgen.</div>
         <div class="fsp-tb-preview" data-tb-preview>
           <div class="fsp-tb-preview-label">Forh\u00e5ndsvisning</div>
-          ${this._previewHtml(items)}
+          <div class="fsp-tb-preview-icons" data-tb-preview-icons>${this._previewIconsHtml(items)}</div>
         </div>
         <div data-tb-items>
           ${this._listHtml(items)}
@@ -1515,21 +1529,10 @@
     wire(container, ctx) {
       pageAlign(container);
       const self = this;
-      const previewEl = () => container.querySelector('[data-tb-preview]');
       const listEl = () => container.querySelector('[data-tb-items]');
+      const previewIconsEl = () => container.querySelector('[data-tb-preview-icons]');
 
-      // Gen-render liste + forhåndsvisning fra det aktuelle items-array. Delegation
-      // (lyttere på container) betyder at re-render IKKE kræver re-wiring → ingen
-      // divergens mellem en toggles opførsel "før" og "efter" en omplacering.
-      function repaint() {
-        const items = self._getItems(ctx);
-        const l = listEl();
-        if (l) l.innerHTML = self._listHtml(items);
-        const p = previewEl();
-        if (p) p.innerHTML = '<div class="fsp-tb-preview-label">Forhåndsvisning</div>' + self._previewHtml(items);
-      }
-
-      // Live: omplacér de faktiske header-knapper (samme insertBefore-gear-logik som applyToolbarOrder).
+      // Live: move the actual header buttons (same insertBefore-gear logic as applyToolbarOrder).
       function applyLiveOrder() {
         const headerActions = document.querySelector('.header-actions');
         if (!headerActions) return;
@@ -1540,85 +1543,85 @@
           if (btn) headerActions.insertBefore(btn, gearBtn);
         });
       }
+      function persistOrder() {
+        ctx.markDirty('toolbar_order', self._getItems(ctx).map(x => x.key));
+        applyLiveOrder();
+      }
+      function renderListDom() { const l = listEl(); if (l) { l.innerHTML = self._listHtml(self._getItems(ctx)); mountList(); } }
+      function renderPreviewDom() { const p = previewIconsEl(); if (p) { p.innerHTML = self._previewIconsHtml(self._getItems(ctx)); mountPreview(); } }
 
       function setToggle(dbCol, isOn) {
         const inst = ctx.institutionData || {};
         const it = self._getItems(ctx).find(x => x.dbCol === dbCol);
         if (!it) return;
+        const requiresMet = !it.requiresCol || inst[it.requiresCol] === true;
         it.on = isOn;
-        ctx.markDirty(dbCol, isOn); // auto-gem til SAMME kolonne som header læser
-        // shift_timer styres af en runtime-global (clerk-login + pill-oprettelse læser den) —
-        // hold den i sync, præcis som den dedikerede shift-timer-indstilling gør.
+        it.shown = isOn && requiresMet;
+        ctx.markDirty(dbCol, isOn); // auto-save to the SAME column the header reads
+        // shift_timer is gated by a runtime global (clerk-login + pill creation read it).
         if (dbCol === 'shift_timer_enabled' && window.__flangoInstitutionSettings) {
           window.__flangoInstitutionSettings.shiftTimerEnabled = isOn;
         }
-        // Live header-synlighed — gated af SAMME requiresCol som applyToolbarSettings,
-        // så live-tilstanden matcher hvad der vises efter reload (fx kitchen kræver Restaurant Mode).
+        // Live header visibility gated by the SAME requiresCol as applyToolbarSettings (live == reload).
         if (it.btnId) {
-          const requiresMet = !it.requiresCol || inst[it.requiresCol] === true;
           const btn = document.getElementById(it.btnId);
-          if (btn) btn.style.display = (isOn && requiresMet) ? '' : 'none';
+          if (btn) btn.style.display = it.shown ? '' : 'none';
         }
-        repaint();
+        renderListDom();
+        renderPreviewDom();
       }
 
-      function reorder(fromKey, toKey) {
-        if (!fromKey || !toKey || fromKey === toKey) return;
+      // List drag: new full order = the DOM order.
+      function reorderFromList(newKeys) {
         const items = self._getItems(ctx);
-        const from = items.findIndex(x => x.key === fromKey);
-        const to = items.findIndex(x => x.key === toKey);
-        if (from < 0 || to < 0 || from === to) return;
-        const [moved] = items.splice(from, 1);
-        items.splice(to, 0, moved);
-        ctx.markDirty('toolbar_order', items.map(x => x.key));
-        applyLiveOrder();
-        repaint();
+        const byKey = {}; items.forEach(it => { byKey[it.key] = it; });
+        const next = newKeys.map(k => byKey[k]).filter(Boolean);
+        items.forEach(it => { if (!newKeys.includes(it.key)) next.push(it); });
+        self._items = next;
+        persistOrder();
+        renderPreviewDom(); // list already moved by Sortable; refresh the preview
+      }
+      // Preview drag: only the shown icons move; hidden items keep their slots.
+      function reorderFromPreview(newShownKeys) {
+        const items = self._getItems(ctx);
+        const byKey = {}; items.forEach(it => { byKey[it.key] = it; });
+        let ei = 0;
+        const next = items.map(it => it.shown ? byKey[newShownKeys[ei++]] : it).filter(Boolean);
+        self._items = next;
+        persistOrder();
+        renderListDom(); // preview already moved by Sortable; refresh the list
       }
 
-      // ── Toggles (delegeret — overlever re-render) ──
+      // SortableJS with forceFallback = pointer-based drag → robust in WKWebView/Tauri
+      // (native HTML5 drag-and-drop is unreliable there).
+      function mountList() {
+        if (self._sortList) { try { self._sortList.destroy(); } catch (e) {} self._sortList = null; }
+        const l = listEl();
+        if (!l || !window.Sortable) return;
+        self._sortList = window.Sortable.create(l, {
+          animation: 150, forceFallback: true, handle: '[data-tb-handle]', draggable: '.fsp-tb-item',
+          onEnd: () => reorderFromList(Array.from(l.querySelectorAll('.fsp-tb-item')).map(el => el.dataset.tbKey)),
+        });
+      }
+      function mountPreview() {
+        if (self._sortPreview) { try { self._sortPreview.destroy(); } catch (e) {} self._sortPreview = null; }
+        const p = previewIconsEl();
+        if (!p || !window.Sortable) return;
+        self._sortPreview = window.Sortable.create(p, {
+          animation: 150, forceFallback: true, draggable: '.fsp-tb-preview-icon',
+          onEnd: () => reorderFromPreview(Array.from(p.querySelectorAll('.fsp-tb-preview-icon')).map(el => el.dataset.tbKey)),
+        });
+      }
+
+      // Toggles (delegated — survive re-render).
       container.addEventListener('click', (e) => {
         const t = e.target.closest('[data-tb-toggle]');
         if (!t || !container.contains(t)) return;
         setToggle(t.dataset.tbToggle, !t.classList.contains('on'));
       });
 
-      // ── Drag-n-drop (delegeret) — virker for BÅDE forhåndsvisning og liste ──
-      let dragKey = null;
-      container.addEventListener('dragstart', (e) => {
-        const el = e.target.closest('[data-tb-key]');
-        if (!el || !container.contains(el)) return;
-        dragKey = el.dataset.tbKey;
-        // WebKit/WKWebView (Tauri)+Safari affyrer ikke 'drop' uden en payload.
-        if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', dragKey);
-        }
-        el.classList.add('dragging');
-      });
-      container.addEventListener('dragend', () => {
-        container.querySelectorAll('.dragging, .drag-over').forEach(x => x.classList.remove('dragging', 'drag-over'));
-        dragKey = null;
-      });
-      container.addEventListener('dragover', (e) => {
-        const el = e.target.closest('[data-tb-key]');
-        if (!el || !container.contains(el)) return;
-        e.preventDefault();
-        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-        if (!el.classList.contains('drag-over')) {
-          container.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
-          el.classList.add('drag-over');
-        }
-      });
-      container.addEventListener('dragleave', (e) => {
-        e.target.closest?.('[data-tb-key]')?.classList.remove('drag-over');
-      });
-      container.addEventListener('drop', (e) => {
-        const el = e.target.closest('[data-tb-key]');
-        if (!el || dragKey === null) return;
-        e.preventDefault();
-        reorder(dragKey, el.dataset.tbKey);
-        dragKey = null;
-      });
+      mountList();
+      mountPreview();
     }
   };
 
