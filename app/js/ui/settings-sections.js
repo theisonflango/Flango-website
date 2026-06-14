@@ -1206,6 +1206,7 @@
     render(ctx) {
       const inst = ctx.institutionData || {};
       const enabled = !!inst.restaurant_mode_enabled;
+      const kitchenOn = inst.toolbar_kitchen !== false;
       const tableOn = !!inst.restaurant_table_numbers_enabled;
       const tableCount = inst.restaurant_table_count ?? 8;
       const deviceOn = !!localStorage.getItem('flango_device_restaurant_mode');
@@ -1231,6 +1232,9 @@
           <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="restaurant_mode_enabled" data-expand="rm-body"></div>
         </div>
         <div class="fsp-body${enabled ? ' open' : ''}" data-expand-target="rm-body">
+          <div class="fsp-section"><div class="fsp-block">
+            <div class="fsp-row"><div style="flex:1"><div class="fsp-row-title">Vis køkkenskærm-genvej i toolbar</div><div class="fsp-row-desc">Tip: hold knappen inde for at åbne køkkenskærmen.</div></div><div class="fsp-toggle${kitchenOn ? ' on' : ''}" data-field="toolbar_kitchen" data-rm-kitchen></div></div>
+          </div></div>
           <div class="fsp-section" style="margin-bottom:20px">
             <button type="button" data-action="open-kitchen-fullscreen" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 24px;border:none;border-radius:12px;background:var(--fsp-accent-g);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s;letter-spacing:-0.2px;font-family:inherit">
               <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v10"/><path d="M2.5 3v3c0 1 .7 1.7 1.5 1.7S5.5 7 5.5 6V3"/><path d="M11 3v5.5c0 .5.2.8.5 1h1c.3-.2.5-.5.5-1V4.5C13 3.5 12.2 3 11 3z"/><path d="M11.5 9.5V13"/></svg>
@@ -1269,6 +1273,12 @@
       wireNumberInputs(container, ctx);
       wireStepButtons(container);
       // "Vis Køkkenskærm" button → toggle fullscreen kitchen overlay (lazy-load module if needed)
+      // Køkkenskærm-genvej-toggle: wireToggles gemmer toolbar_kitchen; spejl live til den faktiske header-knap.
+      const _rmKitchenTog = container.querySelector('[data-rm-kitchen]');
+      if (_rmKitchenTog) _rmKitchenTog.addEventListener('click', () => {
+        const b = document.getElementById('kitchen-btn');
+        if (b) b.style.display = _rmKitchenTog.classList.contains('on') ? '' : 'none';
+      });
       container.querySelector('[data-action="open-kitchen-fullscreen"]')?.addEventListener('click', () => {
         if (typeof window.__flangoToggleKitchenFullscreen === 'function') {
           window.__flangoToggleKitchenFullscreen();
@@ -1464,6 +1474,7 @@
             requiresCol: m.requiresCol || null,
             note: m.requiresCol === 'restaurant_mode_enabled' ? 'Kr\u00e6ver Restaurant Mode' : null,
             on,
+            requiresMet,
             shown: on && requiresMet, // \u00e6gte header-synlighed \u2192 preview matcher headeren
             iconHtml: this._iconHtml(m.btnId, m.icon),
           };
@@ -1500,16 +1511,22 @@
       ).join('');
     },
     _listHtml(items) {
-      return items.map(it => `<div class="fsp-tb-item" data-tb-key="${it.key}">
+      return items.map(it => {
+        const locked = it.requiresCol && !it.requiresMet; // fx Køkkenskærm når Restaurant Mode er slået fra
+        const noteHtml = locked
+          ? `<div class="fsp-tb-item-note"><a href="#" data-action="open-rm" class="fsp-tb-note-link">${it.note || 'Kræver Restaurant Mode'} →</a></div>`
+          : '';
+        return `<div class="fsp-tb-item" data-tb-key="${it.key}">
         <div class="fsp-tb-item-drag" data-tb-handle><span></span><span></span><span></span></div>
         <div class="fsp-tb-item-emoji">${it.iconHtml}</div>
         <div class="fsp-tb-item-info">
           <div class="fsp-tb-item-name">${it.n}</div>
           <div class="fsp-tb-item-desc">${it.d}</div>
-          ${it.note ? `<div class="fsp-tb-item-note">${it.note}</div>` : ''}
+          ${noteHtml}
         </div>
-        <div class="fsp-toggle${it.on ? ' on' : ''}" data-tb-toggle="${it.dbCol}"></div>
-      </div>`).join('');
+        <div class="fsp-toggle${it.on ? ' on' : ''}${locked ? ' locked' : ''}" data-tb-toggle="${it.dbCol}"></div>
+      </div>`;
+      }).join('');
     },
     render(ctx) {
       this._items = null; // Reset cache so order is re-read from DB
@@ -1519,7 +1536,9 @@
         <div class="fsp-page-desc">V\u00e6lg hvilke genvejsknapper der vises som ikoner i toolbaren over indk\u00f8bskurven. Tr\u00e6k i forh\u00e5ndsvisningen eller listen for at \u00e6ndre r\u00e6kkef\u00f8lgen.</div>
         <div class="fsp-tb-preview" data-tb-preview>
           <div class="fsp-tb-preview-label">Forh\u00e5ndsvisning</div>
+          <div class="fsp-tb-preview-icon vis fsp-tb-fixed" title="Opret produkt - altid synlig">${this._iconHtml('toolbar-new-product-btn', '➕')}</div>
           <div class="fsp-tb-preview-icons" data-tb-preview-icons>${this._previewIconsHtml(items)}</div>
+          <div class="fsp-tb-preview-icon vis fsp-tb-fixed" title="Indstillinger - altid synlig">${this._iconHtml('toolbar-gear-btn', '⚙️')}</div>
         </div>
         <div data-tb-items>
           ${this._listHtml(items)}
@@ -1555,6 +1574,7 @@
         const it = self._getItems(ctx).find(x => x.dbCol === dbCol);
         if (!it) return;
         const requiresMet = !it.requiresCol || inst[it.requiresCol] === true;
+        if (it.requiresCol && !requiresMet) return; // låst: kan ikke slås til uden kravet (fx Køkkenskærm uden Restaurant Mode)
         it.on = isOn;
         it.shown = isOn && requiresMet;
         ctx.markDirty(dbCol, isOn); // auto-save to the SAME column the header reads
@@ -1615,6 +1635,8 @@
 
       // Toggles (delegated — survive re-render).
       container.addEventListener('click', (e) => {
+        const rm = e.target.closest('[data-action="open-rm"]');
+        if (rm) { e.preventDefault(); window.FlangoSettings?.openTo?.('Hovedmenu', 'Restaurant Mode'); return; }
         const t = e.target.closest('[data-tb-toggle]');
         if (!t || !container.contains(t)) return;
         setToggle(t.dataset.tbToggle, !t.classList.contains('on'));
