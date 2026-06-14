@@ -1538,6 +1538,11 @@
         const item = e.target.closest('[data-tb-idx]');
         if (!item) return;
         dragIdx = parseInt(item.dataset.tbIdx);
+        // WebKit/WKWebView (Tauri) + Safari affyrer ikke 'drop' uden en dataTransfer-payload.
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', String(dragIdx));
+        }
         item.classList.add('dragging');
       });
       itemsContainer?.addEventListener('dragend', (e) => {
@@ -1545,6 +1550,7 @@
       });
       itemsContainer?.addEventListener('dragover', (e) => {
         e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
         const item = e.target.closest('[data-tb-idx]');
         if (item) item.classList.add('drag-over');
       });
@@ -3008,9 +3014,14 @@
         fsBtn.addEventListener('click', async () => {
           try {
             if (window.__flangoToggleFullscreen) {
-              await window.__flangoToggleFullscreen();
+              // Sæt label ud fra den RETURNEREDE state (kendt hensigt). At re-query'e
+              // OS'et midt i fullscreen-overgangen giver gammel værdi (macOS race).
+              const isFs = await window.__flangoToggleFullscreen();
+              const labelEl = container.querySelector('[data-fs-label]');
+              const iconEl = container.querySelector('[data-fs-icon]');
+              if (labelEl) labelEl.textContent = isFs ? 'Afslut fuldskærm' : 'Skift til fuldskærm';
+              if (iconEl) iconEl.textContent = isFs ? '⊡' : '⛶';
             }
-            updateLabel();
           } catch {}
         });
       }
@@ -3185,18 +3196,29 @@
             let html = '';
 
             if (latest) {
+              const macArm = latest.macos_arm64 || latest.macos;       // Apple Silicon (back-compat: 'macos' = arm)
+              const macX64 = latest.macos_x64;                          // Intel (valgfri \u2014 vises kun hvis til stede)
+              const macBtns = macX64
+                ? `<a href="${macArm}" class="fsp-btn fsp-btn-primary" style="flex:1;min-width:140px;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                    \uD83C\uDF4E macOS (Apple Silicon)
+                  </a>
+                  <a href="${macX64}" class="fsp-btn fsp-btn-primary" style="flex:1;min-width:140px;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                    \uD83C\uDF4E macOS (Intel)
+                  </a>`
+                : `<a href="${macArm}" class="fsp-btn fsp-btn-primary" style="flex:1;min-width:140px;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                    \uD83C\uDF4E macOS (.dmg)
+                  </a>`;
               html += `<div style="margin-bottom:16px">
                 <div style="font-size:12px;font-weight:600;color:var(--fsp-txt2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">
                   Nyeste version \u2014 v${latest.version}
                 </div>
-                <div style="display:flex;gap:10px">
-                  <a href="${latest.windows}" class="fsp-btn fsp-btn-primary" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                  <a href="${latest.windows}" class="fsp-btn fsp-btn-primary" style="flex:1;min-width:140px;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
                     \uD83E\uDE9F Windows (.exe)
                   </a>
-                  <a href="${latest.macos}" class="fsp-btn fsp-btn-primary" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
-                    \uD83C\uDF4E macOS (.dmg)
-                  </a>
+                  ${macBtns}
                 </div>
+                ${macX64 ? `<div style="font-size:11px;color:var(--fsp-txt3);margin-top:8px">De fleste nyere Mac er Apple Silicon (M1 og senere). V\u00E6lg Intel kun til \u00E6ldre Mac.</div>` : ''}
               </div>`;
             }
 
