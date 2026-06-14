@@ -1,13 +1,14 @@
 {
   "latest": {
+    "version": "3.0.137",
+    "windows": "https://flango.dk/desktop/Flango-Cafe-v3.0.137-Setup.exe",
+    "macos": "https://flango.dk/desktop/Flango-Cafe-v3.0.137.dmg",
+    "macos_x64": "https://flango.dk/desktop/Flango-Cafe-v3.0.137-x64.dmg"
+  },
+  "previous": {
     "version": "3.0.129",
     "windows": "https://flango.dk/desktop/Flango-Cafe-v3.0.129-Setup.exe",
     "macos": "https://flango.dk/desktop/Flango-Cafe-v3.0.129.dmg",
     "macos_x64": "https://flango.dk/desktop/Flango-Cafe-v3.0.129-x64.dmg"
-  },
-  "previous": {
-    "version": "0.2.2",
-    "windows": "https://flango.dk/desktop/Flango-Cafe-v0.2.2-Setup.exe",
-    "macos": "https://flango.dk/desktop/Flango-Cafe-v0.2.2.dmg"
   }
 }
