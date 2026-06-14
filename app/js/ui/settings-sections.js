@@ -1440,199 +1440,184 @@
   // ── Toolbar (NEW FEATURE — drag-drop + preview) ──
   sections['Toolbar'] = {
     _items: null,
-    _getItems(ctx) {
-      if (this._items) return this._items;
+    // Byg items fra den KANONISKE kilde (window.__flangoToolbarItems = TOOLBAR_MAPPING
+    // i shell.js), s\u00e5 labels, ikoner og kolonner ALTID matcher den rigtige header.
+    //   key   = orderKey (persisteret i toolbar_order \u2014 r\u00f8r ikke)
+    //   dbCol = den faktiske boolean-kolonne (toggle l\u00e6ser+skriver SAMME kolonne)
+    //   btnId = header-element til live-toggle + reorder
+    _build(ctx) {
       const inst = ctx.institutionData || {};
-      this._items = [
-        { key: 'toolbar_shift_timer', e: '\u23F1\uFE0F', n: 'Bytte-Timer', d: 'Vis bytte-timer genvej', on: inst.toolbar_shift_timer !== false },
-        { key: 'toolbar_calculator', e: '\uD83E\uDDEE', n: 'Lommeregner', d: 'Vis lommeregner genvej', on: inst.toolbar_calculator !== false },
-        { key: 'toolbar_kitchen', e: '\uD83C\uDF7D\uFE0F', n: 'K\u00f8kkensk\u00e6rm', d: 'Vis k\u00f8kkensk\u00e6rm genvej', note: 'Kr\u00e6ver Restaurant Mode', on: !!inst.toolbar_kitchen && ctx.rmActive },
-        { key: 'toolbar_products', e: '\uD83D\uDED2', n: 'Produktoversigt', d: 'Vis produktoversigt genvej', on: inst.toolbar_products !== false },
-        { key: 'toolbar_deposit', e: '\uD83D\uDCB0', n: 'Brugerpanel', d: 'Vis brugerpanel genvej', on: inst.toolbar_deposit !== false },
-        { key: 'toolbar_history', e: '\uD83D\uDCCB', n: 'Historik', d: 'Vis historik genvej', on: !!inst.toolbar_history },
-        { key: 'toolbar_help', e: '\u2753', n: 'Hj\u00e6lp', d: 'Vis hj\u00e6lp genvej', on: !!inst.toolbar_help },
-        { key: 'toolbar_min_flango', e: '\uD83D\uDC64', n: 'Min Flango', d: 'Vis avatar/profil genvej', on: inst.toolbar_min_flango !== false },
-        { key: 'toolbar_logout', e: '\uD83D\uDEAA', n: 'Log ud', d: 'Vis log ud genvej', on: inst.toolbar_logout !== false },
-        ...(window.__TAURI_INTERNALS__ ? [{ key: 'toolbar_fullscreen', e: '\u26F6', n: 'Fuldsk\u00e6rm', d: 'Skift mellem fuldsk\u00e6rm og vindue', on: !!inst.toolbar_fullscreen }] : [])
-      ];
-      // Apply stored order
-      if (inst.toolbar_order) {
-        const order = typeof inst.toolbar_order === 'string' ? JSON.parse(inst.toolbar_order) : inst.toolbar_order;
+      const isTauri = !!window.__TAURI_INTERNALS__;
+      const MAP = window.__flangoToolbarItems || [];
+      const items = MAP
+        .filter(m => !m.tauriOnly || isTauri)
+        .map(m => ({
+          key: m.orderKey,
+          dbCol: m.dbCol,
+          btnId: m.btnId,
+          e: m.icon,
+          n: m.label,
+          d: m.desc,
+          requiresCol: m.requiresCol || null,
+          note: m.requiresCol === 'restaurant_mode_enabled' ? 'Kr\u00e6ver Restaurant Mode' : null,
+          on: inst[m.dbCol] !== false,
+        }));
+      // Anvend gemt r\u00e6kkef\u00f8lge (toolbar_order)
+      const ord = inst.toolbar_order;
+      if (ord) {
+        const order = typeof ord === 'string' ? JSON.parse(ord) : ord;
         if (Array.isArray(order) && order.length > 0) {
           const orderMap = {};
-          order.forEach((key, idx) => { orderMap[key] = idx; });
-          this._items.sort((a, b) => (orderMap[a.key] ?? 999) - (orderMap[b.key] ?? 999));
+          order.forEach((k, idx) => { orderMap[k] = idx; });
+          items.sort((a, b) => (orderMap[a.key] ?? 999) - (orderMap[b.key] ?? 999));
         }
       }
+      return items;
+    },
+    _getItems(ctx) {
+      if (!this._items) this._items = this._build(ctx);
       return this._items;
+    },
+    // FORH\u00C5NDSVISNING: kun aktiverede ikoner vises (.vis) \u2014 en tro kopi af header-
+    // r\u00e6kkef\u00f8lgen. Draggable, s\u00e5 man kan omplacere direkte i forh\u00e5ndsvisningen.
+    _previewHtml(items) {
+      return items.map(it =>
+        `<div class="fsp-tb-preview-icon${it.on ? ' vis' : ''}" draggable="true" data-tb-key="${it.key}" title="${it.n}">${it.e}</div>`
+      ).join('');
+    },
+    _listHtml(items) {
+      return items.map(it => `<div class="fsp-tb-item" draggable="true" data-tb-key="${it.key}">
+        <div class="fsp-tb-item-drag"><span></span><span></span><span></span></div>
+        <div class="fsp-tb-item-emoji">${it.e}</div>
+        <div class="fsp-tb-item-info">
+          <div class="fsp-tb-item-name">${it.n}</div>
+          <div class="fsp-tb-item-desc">${it.d}</div>
+          ${it.note ? `<div class="fsp-tb-item-note">${it.note}</div>` : ''}
+        </div>
+        <div class="fsp-toggle${it.on ? ' on' : ''}" data-tb-toggle="${it.dbCol}"></div>
+      </div>`).join('');
     },
     render(ctx) {
       this._items = null; // Reset cache so order is re-read from DB
       const items = this._getItems(ctx);
       return `<div class="fsp-page">
         <div class="fsp-page-title">Toolbar</div>
-        <div class="fsp-page-desc">V\u00e6lg hvilke genvejsknapper der vises som ikoner i toolbaren over indk\u00f8bskurven. Tr\u00e6k for at \u00e6ndre r\u00e6kkef\u00f8lgen.</div>
+        <div class="fsp-page-desc">V\u00e6lg hvilke genvejsknapper der vises som ikoner i toolbaren over indk\u00f8bskurven. Tr\u00e6k i forh\u00e5ndsvisningen eller listen for at \u00e6ndre r\u00e6kkef\u00f8lgen.</div>
         <div class="fsp-tb-preview" data-tb-preview>
           <div class="fsp-tb-preview-label">Forh\u00e5ndsvisning</div>
-          ${items.map(it => `<div class="fsp-tb-preview-icon${it.on ? ' vis' : ''}" data-preview-key="${it.key}">${it.e}</div>`).join('')}
+          ${this._previewHtml(items)}
         </div>
         <div data-tb-items>
-          ${items.map((it, i) => `<div class="fsp-tb-item" draggable="true" data-tb-idx="${i}" data-tb-key="${it.key}">
-            <div class="fsp-tb-item-drag"><span></span><span></span><span></span></div>
-            <div class="fsp-tb-item-emoji">${it.e}</div>
-            <div class="fsp-tb-item-info">
-              <div class="fsp-tb-item-name">${it.n}</div>
-              <div class="fsp-tb-item-desc">${it.d}</div>
-              ${it.note ? `<div class="fsp-tb-item-note">${it.note}</div>` : ''}
-            </div>
-            <div class="fsp-toggle${it.on ? ' on' : ''}" data-tb-toggle="${it.key}"></div>
-          </div>`).join('')}
+          ${this._listHtml(items)}
         </div>
       </div>`;
     },
     wire(container, ctx) {
       pageAlign(container);
-      const items = this._getItems(ctx);
+      const self = this;
+      const previewEl = () => container.querySelector('[data-tb-preview]');
+      const listEl = () => container.querySelector('[data-tb-items]');
 
-      // Toolbar key → header button ID mapping
-      const tbBtnMap = {
-        toolbar_shift_timer: 'shift-timer-pill',
-        toolbar_calculator: 'calculator-mode-toggle',
-        toolbar_kitchen: 'kitchen-btn',
-        toolbar_products: 'toolbar-products-btn',
-        toolbar_deposit: 'toolbar-deposit-btn',
-        toolbar_history: 'toolbar-history-btn',
-        toolbar_help: 'flango-logo-button',
-        toolbar_min_flango: 'logged-in-user-avatar-container',
-        toolbar_logout: 'logout-btn',
-        toolbar_user_panel: 'toolbar-user-panel-btn',
-        toolbar_fullscreen: 'toolbar-fullscreen-btn',
-      };
+      // Gen-render liste + forhåndsvisning fra det aktuelle items-array. Delegation
+      // (lyttere på container) betyder at re-render IKKE kræver re-wiring → ingen
+      // divergens mellem en toggles opførsel "før" og "efter" en omplacering.
+      function repaint() {
+        const items = self._getItems(ctx);
+        const l = listEl();
+        if (l) l.innerHTML = self._listHtml(items);
+        const p = previewEl();
+        if (p) p.innerHTML = '<div class="fsp-tb-preview-label">Forhåndsvisning</div>' + self._previewHtml(items);
+      }
 
-      // Toggle visibility
-      container.querySelectorAll('[data-tb-toggle]').forEach(toggle => {
-        toggle.addEventListener('click', () => {
-          toggle.classList.toggle('on');
-          const key = toggle.dataset.tbToggle;
-          const isOn = toggle.classList.contains('on');
-          ctx.markDirty(key, isOn);
-          // Update preview
-          const preview = container.querySelector(`[data-preview-key="${key}"]`);
-          if (preview) preview.classList.toggle('vis', isOn);
-          // Update items array
-          const item = items.find(it => it.key === key);
-          if (item) item.on = isOn;
-          // Live update: show/hide actual toolbar button in header
-          const btnId = tbBtnMap[key];
-          if (btnId) {
-            const btn = document.getElementById(btnId);
-            if (btn) btn.style.display = isOn ? '' : 'none';
-          }
+      // Live: omplacér de faktiske header-knapper (samme insertBefore-gear-logik som applyToolbarOrder).
+      function applyLiveOrder() {
+        const headerActions = document.querySelector('.header-actions');
+        if (!headerActions) return;
+        const gearBtn = document.getElementById('toolbar-gear-btn');
+        self._getItems(ctx).forEach(it => {
+          if (!it.btnId) return;
+          const btn = document.getElementById(it.btnId);
+          if (btn) headerActions.insertBefore(btn, gearBtn);
         });
+      }
+
+      function setToggle(dbCol, isOn) {
+        const inst = ctx.institutionData || {};
+        const it = self._getItems(ctx).find(x => x.dbCol === dbCol);
+        if (!it) return;
+        it.on = isOn;
+        ctx.markDirty(dbCol, isOn); // auto-gem til SAMME kolonne som header læser
+        // shift_timer styres af en runtime-global (clerk-login + pill-oprettelse læser den) —
+        // hold den i sync, præcis som den dedikerede shift-timer-indstilling gør.
+        if (dbCol === 'shift_timer_enabled' && window.__flangoInstitutionSettings) {
+          window.__flangoInstitutionSettings.shiftTimerEnabled = isOn;
+        }
+        // Live header-synlighed — gated af SAMME requiresCol som applyToolbarSettings,
+        // så live-tilstanden matcher hvad der vises efter reload (fx kitchen kræver Restaurant Mode).
+        if (it.btnId) {
+          const requiresMet = !it.requiresCol || inst[it.requiresCol] === true;
+          const btn = document.getElementById(it.btnId);
+          if (btn) btn.style.display = (isOn && requiresMet) ? '' : 'none';
+        }
+        repaint();
+      }
+
+      function reorder(fromKey, toKey) {
+        if (!fromKey || !toKey || fromKey === toKey) return;
+        const items = self._getItems(ctx);
+        const from = items.findIndex(x => x.key === fromKey);
+        const to = items.findIndex(x => x.key === toKey);
+        if (from < 0 || to < 0 || from === to) return;
+        const [moved] = items.splice(from, 1);
+        items.splice(to, 0, moved);
+        ctx.markDirty('toolbar_order', items.map(x => x.key));
+        applyLiveOrder();
+        repaint();
+      }
+
+      // ── Toggles (delegeret — overlever re-render) ──
+      container.addEventListener('click', (e) => {
+        const t = e.target.closest('[data-tb-toggle]');
+        if (!t || !container.contains(t)) return;
+        setToggle(t.dataset.tbToggle, !t.classList.contains('on'));
       });
 
-      // Drag and drop reorder
-      let dragIdx = null;
-      const itemsContainer = container.querySelector('[data-tb-items]');
-      itemsContainer?.addEventListener('dragstart', (e) => {
-        const item = e.target.closest('[data-tb-idx]');
-        if (!item) return;
-        dragIdx = parseInt(item.dataset.tbIdx);
-        // WebKit/WKWebView (Tauri) + Safari affyrer ikke 'drop' uden en dataTransfer-payload.
+      // ── Drag-n-drop (delegeret) — virker for BÅDE forhåndsvisning og liste ──
+      let dragKey = null;
+      container.addEventListener('dragstart', (e) => {
+        const el = e.target.closest('[data-tb-key]');
+        if (!el || !container.contains(el)) return;
+        dragKey = el.dataset.tbKey;
+        // WebKit/WKWebView (Tauri)+Safari affyrer ikke 'drop' uden en payload.
         if (e.dataTransfer) {
           e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', String(dragIdx));
+          e.dataTransfer.setData('text/plain', dragKey);
         }
-        item.classList.add('dragging');
+        el.classList.add('dragging');
       });
-      itemsContainer?.addEventListener('dragend', (e) => {
-        e.target.closest?.('.fsp-tb-item')?.classList.remove('dragging');
+      container.addEventListener('dragend', () => {
+        container.querySelectorAll('.dragging, .drag-over').forEach(x => x.classList.remove('dragging', 'drag-over'));
+        dragKey = null;
       });
-      itemsContainer?.addEventListener('dragover', (e) => {
+      container.addEventListener('dragover', (e) => {
+        const el = e.target.closest('[data-tb-key]');
+        if (!el || !container.contains(el)) return;
         e.preventDefault();
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-        const item = e.target.closest('[data-tb-idx]');
-        if (item) item.classList.add('drag-over');
+        if (!el.classList.contains('drag-over')) {
+          container.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
+          el.classList.add('drag-over');
+        }
       });
-      itemsContainer?.addEventListener('dragleave', (e) => {
-        e.target.closest?.('.fsp-tb-item')?.classList.remove('drag-over');
+      container.addEventListener('dragleave', (e) => {
+        e.target.closest?.('[data-tb-key]')?.classList.remove('drag-over');
       });
-      itemsContainer?.addEventListener('drop', (e) => {
+      container.addEventListener('drop', (e) => {
+        const el = e.target.closest('[data-tb-key]');
+        if (!el || dragKey === null) return;
         e.preventDefault();
-        const target = e.target.closest('[data-tb-idx]');
-        if (!target || dragIdx === null) return;
-        target.classList.remove('drag-over');
-        const dropIdx = parseInt(target.dataset.tbIdx);
-        if (dragIdx === dropIdx) return;
-        // Reorder items array
-        const [moved] = items.splice(dragIdx, 1);
-        items.splice(dropIdx, 0, moved);
-        // Save toolbar order as single JSONB array
-        ctx.markDirty('toolbar_order', items.map(it => it.key));
-        // Live reorder actual header buttons
-        const headerActions = document.querySelector('.header-actions');
-        if (headerActions) {
-          const tbBtnMap = {
-            toolbar_shift_timer: 'shift-timer-pill',
-            toolbar_calculator: 'calculator-mode-toggle',
-            toolbar_kitchen: 'kitchen-btn',
-            toolbar_products: 'toolbar-products-btn',
-            toolbar_deposit: 'toolbar-deposit-btn',
-            toolbar_history: 'toolbar-history-btn',
-            toolbar_help: 'flango-logo-button',
-            toolbar_min_flango: 'logged-in-user-avatar-container',
-            toolbar_logout: 'logout-btn',
-            toolbar_user_panel: 'toolbar-user-panel-btn',
-          };
-          const gearBtn = document.getElementById('toolbar-gear-btn');
-          items.forEach(it => {
-            const btnId = tbBtnMap[it.key];
-            if (btnId) {
-              const btn = document.getElementById(btnId);
-              if (btn) headerActions.insertBefore(btn, gearBtn);
-            }
-          });
-        }
-        // Re-render items
-        this._items = items;
-        const parent = container.querySelector('.fsp-content') || container;
-        // Simple re-render of just the items list
-        const newHtml = items.map((it, i) => `<div class="fsp-tb-item" draggable="true" data-tb-idx="${i}" data-tb-key="${it.key}">
-          <div class="fsp-tb-item-drag"><span></span><span></span><span></span></div>
-          <div class="fsp-tb-item-emoji">${it.e}</div>
-          <div class="fsp-tb-item-info">
-            <div class="fsp-tb-item-name">${it.n}</div>
-            <div class="fsp-tb-item-desc">${it.d}</div>
-            ${it.note ? `<div class="fsp-tb-item-note">${it.note}</div>` : ''}
-          </div>
-          <div class="fsp-toggle${it.on ? ' on' : ''}" data-tb-toggle="${it.key}"></div>
-        </div>`).join('');
-        itemsContainer.innerHTML = newHtml;
-        // Re-wire toggles
-        container.querySelectorAll('[data-tb-toggle]').forEach(toggle => {
-          toggle.addEventListener('click', () => {
-            toggle.classList.toggle('on');
-            const key = toggle.dataset.tbToggle;
-            ctx.markDirty(key, toggle.classList.contains('on'));
-            const preview = container.querySelector(`[data-preview-key="${key}"]`);
-            if (preview) preview.classList.toggle('vis', toggle.classList.contains('on'));
-          });
-        });
-        // Update preview order
-        const previewEl = container.querySelector('[data-tb-preview]');
-        if (previewEl) {
-          const label = previewEl.querySelector('.fsp-tb-preview-label');
-          previewEl.innerHTML = '';
-          if (label) previewEl.appendChild(label);
-          items.forEach(it => {
-            const icon = document.createElement('div');
-            icon.className = 'fsp-tb-preview-icon' + (it.on ? ' vis' : '');
-            icon.dataset.previewKey = it.key;
-            icon.textContent = it.e;
-            previewEl.appendChild(icon);
-          });
-        }
-        dragIdx = null;
+        reorder(dragKey, el.dataset.tbKey);
+        dragKey = null;
       });
     }
   };
