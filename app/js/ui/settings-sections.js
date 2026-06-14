@@ -3290,6 +3290,10 @@
         <div style="display:flex;justify-content:flex-end;margin-bottom:40px">
           <button class="fsp-btn fsp-btn-primary" data-action="send-feedback" style="padding:12px 36px;display:flex;align-items:center;gap:8px">\uD83D\uDCE8 Send feedback</button>
         </div>
+        <div data-fb-inbox-wrap style="display:none;padding-top:24px;border-top:1px solid rgba(255,255,255,0.05);margin-bottom:8px">
+          <div class="fsp-form-label" style="margin-bottom:10px">📥 Modtagne beskeder</div>
+          <div data-fb-inbox></div>
+        </div>
         <div style="padding-top:24px;border-top:1px solid rgba(255,255,255,0.05)">
           <div class="fsp-collapse-btn" data-action="toggle-bug">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
@@ -3365,6 +3369,40 @@
       container.querySelector('[data-action="download-bug-report"]')?.addEventListener('click', () => {
         window.FLANGO_DEBUG?.showBugReportPrompt?.();
       });
+
+      // Admin-indbakke: vis modtagne feedback-beskeder for denne institution (kun admins).
+      // RLS ("Admins can view all feedback") tillader SELECT; vi filtrerer på institution.
+      (async () => {
+        const isAdmin = window.__flangoCurrentClerkProfile?.role === 'admin';
+        const wrap = container.querySelector('[data-fb-inbox-wrap]');
+        const inbox = container.querySelector('[data-fb-inbox]');
+        if (!isAdmin || !wrap || !inbox) return;
+        wrap.style.display = '';
+        inbox.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Henter…</div>';
+        const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const client = window.__flangoSupabaseClient;
+        const instId = window.getInstitutionId?.();
+        if (!client || !instId) { inbox.innerHTML = ''; return; }
+        try {
+          const { data, error } = await client.from('feedback')
+            .select('content, user_name, type, created_at')
+            .eq('institution_id', instId)
+            .order('created_at', { ascending: false })
+            .limit(50);
+          if (error) throw error;
+          if (!data || !data.length) { inbox.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Ingen modtagne beskeder endnu.</div>'; return; }
+          inbox.innerHTML = data.map(f => {
+            let when = ''; try { when = new Date(f.created_at).toLocaleString('da-DK'); } catch {}
+            const meta = [f.user_name, f.type, when].filter(Boolean).map(esc).join(' · ');
+            return `<div style="padding:12px 14px;margin-bottom:8px;border-radius:10px;background:var(--fsp-bg2);border:1px solid rgba(255,255,255,0.06)">
+              <div style="font-size:13px;color:var(--fsp-txt);white-space:pre-wrap">${esc(f.content)}</div>
+              <div style="font-size:11px;color:var(--fsp-txt3);margin-top:6px">${meta}</div>
+            </div>`;
+          }).join('');
+        } catch (e) {
+          inbox.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Kunne ikke hente beskeder.</div>';
+        }
+      })();
     }
   };
 
