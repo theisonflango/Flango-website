@@ -919,7 +919,7 @@
       ? `Inaktive profiler arkiveres og slettes automatisk efter <strong>${adMonths} måneders</strong> inaktivitet (${esc(instName)}s valg). Profilen arkiveres først og kan gendannes; du varsles pr. e-mail før den endelige sletning og kan altid bede om sletning før tid.`
       : `${esc(instName)} har ikke slået automatisk sletning til — inaktive profiler slettes kun på din eller institutionens anmodning.`;
     return `
-      <p style="margin:0 0 10px"><strong>Hvad er Flango?</strong><br>Flango er det cafésystem som ${esc(instName)} bruger til cafédriften. Dit barn handler i caféen med en digital saldo i stedet for kontanter.</p>
+      <p style="margin:0 0 10px"><strong>Hvad er Flango?</strong><br>Flango er det cafésystem som ${esc(instName)} bruger til cafédriften. Dit barn handler i caféen med en forudbetalt cafékonto — du fylder kontoen op, og barnet bruger saldoen til mad og drikke i caféen.</p>
       <p style="margin:0 0 10px"><strong>Hvilke data har vi?</strong><br>Barnets navn og kontonummer i caféen, saldo og købshistorik, eventuelle kostindstillinger du har sat (allergener, sukkerpolitik) og forbrugsgrænser du har valgt.</p>
       <p style="margin:0 0 10px"><strong>Hvem har adgang?</strong><br>Du som forælder (via denne portal), institutionens personale (via caféappen) og Flango som databehandler (teknisk drift). Kommunen er dataansvarlig.</p>
       <p style="margin:0 0 10px"><strong>Hvor opbevares data?</strong><br>Alle data opbevares i EU. Al kommunikation er krypteret. Data sælges aldrig og deles kun med de nødvendige under-databehandlere (hosting, betaling, e-mail m.fl.).</p>
