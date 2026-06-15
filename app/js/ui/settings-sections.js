@@ -390,6 +390,12 @@
           ce.addEventListener('click', e => { if (e.target === ce) ce.classList.remove('open'); });
           right.appendChild(ce);
 
+          const de = document.createElement('div');
+          de.className = 'fsp-rm-overlay';
+          de.dataset.modal = 'delete-event';
+          de.addEventListener('click', e => { if (e.target === de) de.classList.remove('open'); });
+          right.appendChild(de);
+
           _tilm.modalsInjected = true;
         }
       }
@@ -402,6 +408,9 @@
       // Event delegation on events list
       const listEl = container.querySelector('[data-events-list]');
       listEl?.addEventListener('click', (e) => {
+        // Papirkurv-knap på kort (afsluttede/aflyste) → slet, uden at toggle detalje
+        const trashBtn = e.target.closest('[data-action="trash-event"]');
+        if (trashBtn) { e.stopPropagation(); _tilmDeleteEvent(trashBtn.dataset.eventId, container, ctx); return; }
         const card = e.target.closest('[data-event-id]');
         if (!card) return;
         // Don't toggle if clicking action buttons inside detail
@@ -498,6 +507,7 @@
             <div class="fsp-arr-card-dot" style="background:${color}"></div>
             <div class="fsp-arr-card-info"><div class="fsp-arr-card-name">${esc(ev.title)}</div><div class="fsp-arr-card-meta">${esc(dateStr)} \u00b7 ${esc(timeStr)}</div></div>
             <div class="fsp-arr-card-count">${esc(capStr)}</div>
+            ${_tilm.filter !== 'active' ? `<button class="fsp-arr-card-trash" data-action="trash-event" data-event-id="${ev.id}" title="Slet permanent" aria-label="Slet arrangement"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6 4V2.5h4V4M5 4l.6 9.5h4.8L11 4M6.5 6.5v4.5M9.5 6.5v4.5"/></svg></button>` : ''}
             ${chevronSvg}
           </div>
           <div class="fsp-arr-detail${isOpen ? ' open' : ''}" data-detail-for="${ev.id}"><div class="fsp-arr-detail-inner"></div></div>`;
@@ -650,7 +660,7 @@
   // ── Render single registration row ──
   function _tilmRegRow(r, ev, isPast) {
     const u = r.users || {};
-    const name = esc(u.name || 'Ukendt');
+    const name = esc((window.__flangoUserName && window.__flangoUserName(u)) || u.name || 'Ukendt');
     const num = esc(u.number || '\u2014');
     const grade = _gradeLabel(u.grade_level);
     const saldo = _formatSaldo(u.balance);
@@ -668,6 +678,82 @@
       ${!isPast ? `<td>${showPayBtns ? `<button class="fsp-arr-table-btn" data-action="pay-other" data-reg-id="${r.id}">Registrer Betaling</button> <button class="fsp-arr-table-btn accent" data-action="pay-balance" data-reg-id="${r.id}">Betal</button>` : ''}</td>
       <td><button class="fsp-arr-table-rm" data-action="remove-reg" data-user-id="${u.id}" data-reg-id="${r.id}">\u00d7</button></td>` : ''}
     </tr>`;
+  }
+
+  // ── 24-timers tidsvælger (custom popover, locale-uafhængig) ──
+  let _timePickEl = null;
+  let _timePickCleanup = null;
+  function _closeTimePicker() {
+    if (_timePickCleanup) { _timePickCleanup(); _timePickCleanup = null; }
+    if (_timePickEl) { _timePickEl.remove(); _timePickEl = null; }
+  }
+  function _openTimePicker(input, anchorBtn) {
+    if (_timePickEl) { _closeTimePicker(); return; } // toggle
+    if (!input) return;
+    const parts = (input.value || '').split(':');
+    const curH = parseInt(parts[0], 10);
+    const curM = parseInt(parts[1], 10);
+
+    const pop = document.createElement('div');
+    pop.className = 'fsp-timepick';
+    pop.innerHTML = `<div class="fsp-timepick-col"><div class="fsp-timepick-hd">Timer</div><div class="fsp-timepick-list" data-tp="h"></div></div><div class="fsp-timepick-col"><div class="fsp-timepick-hd">Min.</div><div class="fsp-timepick-list" data-tp="m"></div></div>`;
+    const hList = pop.querySelector('[data-tp="h"]');
+    const mList = pop.querySelector('[data-tp="m"]');
+    for (let h = 0; h < 24; h++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'fsp-timepick-opt' + (h === curH ? ' sel' : '');
+      b.textContent = String(h).padStart(2, '0');
+      b.dataset.h = h;
+      hList.appendChild(b);
+    }
+    for (let m = 0; m < 60; m++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'fsp-timepick-opt' + (m === curM ? ' sel' : '');
+      b.textContent = String(m).padStart(2, '0');
+      b.dataset.m = m;
+      mList.appendChild(b);
+    }
+    document.body.appendChild(pop);
+    _timePickEl = pop;
+
+    // Positionér fixed under feltet; vend opad hvis der ikke er plads
+    const r = (anchorBtn.closest('.fsp-dt-field') || anchorBtn).getBoundingClientRect();
+    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + 'px';
+    let top = r.bottom + 6;
+    if (top + pop.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - 6 - pop.offsetHeight);
+    pop.style.top = top + 'px';
+    hList.querySelector('.sel')?.scrollIntoView({ block: 'center' });
+    mList.querySelector('.sel')?.scrollIntoView({ block: 'center' });
+
+    const apply = () => {
+      const hSel = hList.querySelector('.sel')?.dataset.h;
+      const mSel = mList.querySelector('.sel')?.dataset.m;
+      const h = hSel != null ? hSel : (isNaN(curH) ? 0 : curH);
+      const m = mSel != null ? mSel : (isNaN(curM) ? 0 : curM);
+      input.value = String(parseInt(h, 10) || 0).padStart(2, '0') + ':' + String(parseInt(m, 10) || 0).padStart(2, '0');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.classList.remove('fsp-input-error');
+    };
+    pop.addEventListener('click', (e) => {
+      const hb = e.target.closest('[data-h]');
+      const mb = e.target.closest('[data-m]');
+      if (hb) { hList.querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); hb.classList.add('sel'); apply(); }
+      else if (mb) { mList.querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); mb.classList.add('sel'); apply(); _closeTimePicker(); }
+    });
+
+    const onDocDown = (e) => { if (!pop.contains(e.target) && !anchorBtn.contains(e.target) && e.target !== anchorBtn) _closeTimePicker(); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); _closeTimePicker(); } };
+    const onScroll = (e) => { if (_timePickEl && !_timePickEl.contains(e.target)) _closeTimePicker(); };
+    setTimeout(() => document.addEventListener('mousedown', onDocDown, true), 0);
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('scroll', onScroll, true);
+    _timePickCleanup = () => {
+      document.removeEventListener('mousedown', onDocDown, true);
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('scroll', onScroll, true);
+    };
   }
 
   // ── Slide panel (create / edit) ──
@@ -694,11 +780,30 @@
           <div class="fsp-form-group"><div class="fsp-form-label">Pris</div><div class="fsp-num-wrap"><input type="number" placeholder="0 kr" data-event-price value="${isEdit ? (ev?.price || '') : ''}"><div class="fsp-num-btns"><button class="fsp-num-btn" data-sp="price" data-sd="5">${chevronUp}</button><button class="fsp-num-btn" data-sp="price" data-sd="-5">${chevronDown}</button></div></div></div>
           <div class="fsp-form-group"><div class="fsp-form-label">Kapacitet</div><div class="fsp-num-wrap"><input type="number" placeholder="f.eks. 20" data-event-cap value="${isEdit ? (ev?.capacity || '') : ''}"><div class="fsp-num-btns"><button class="fsp-num-btn" data-sp="cap" data-sd="1">${chevronUp}</button><button class="fsp-num-btn" data-sp="cap" data-sd="-1">${chevronDown}</button></div></div></div>
         </div>
-        <div class="fsp-form-group"><div class="fsp-form-label">Start</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.event_date || today) : today}" data-event-start-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="time" value="${isEdit ? (ev?.start_time || '14:00').slice(0, 5) : '14:00'}" data-event-start-time><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="time"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
-        <div class="fsp-form-group"><div class="fsp-form-label">Slut</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.end_date || ev?.event_date || today) : today}" data-event-end-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="time" value="${isEdit ? (ev?.end_time || '16:00').slice(0, 5) : '16:00'}" data-event-end-time><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="time"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
+        <div class="fsp-form-group"><div class="fsp-form-label">Start</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.event_date || today) : today}" data-event-start-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="text" inputmode="numeric" maxlength="5" placeholder="tt:mm" value="${isEdit ? (ev?.start_time || '14:00').slice(0, 5) : '14:00'}" data-event-start-time data-time-input class="fsp-time-text"><button type="button" class="fsp-dt-picker-btn" data-time-picker-btn aria-label="Vælg tid"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
+        <div class="fsp-form-group"><div class="fsp-form-label">Slut</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.end_date || ev?.event_date || today) : today}" data-event-end-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="text" inputmode="numeric" maxlength="5" placeholder="tt:mm" value="${isEdit ? (ev?.end_time || '16:00').slice(0, 5) : '16:00'}" data-event-end-time data-time-input class="fsp-time-text"><button type="button" class="fsp-dt-picker-btn" data-time-picker-btn aria-label="Vælg tid"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
         <div class="fsp-form-group"><div class="fsp-form-label">M\u00e5lgruppe</div><div style="display:flex;flex-wrap:wrap;gap:6px" data-event-chips></div><div class="fsp-form-hint">Ingen valgt = alle klassetrin kan se arrangementet</div></div>
+        <div class="fsp-form-group">
+          <div class="arr-prompt-setting-row">
+            <div>
+              <div class="fsp-form-label" style="margin-bottom:2px">Vis tilmeldings-prompt efter k\u00f8b</div>
+              <div class="fsp-form-hint" style="margin-top:0">N\u00e5r sl\u00e5et til vises arrangementet som et modal efter hvert k\u00f8b, indtil barnet er tilmeldt. Anbefalet: kun \u00e9t arrangement ad gangen.</div>
+            </div>
+            <div class="fsp-toggle${isEdit && ev?.prompt_after_purchase ? ' on' : ''}" data-event-prompt></div>
+          </div>
+        </div>
+        <div class="fsp-form-group">
+          <div class="fsp-form-label">Plakat (PDF, valgfri)</div>
+          <input type="file" accept="application/pdf,.pdf" data-event-poster-file style="display:none">
+          <div class="arr-poster-row">
+            <button type="button" class="fsp-btn fsp-btn-ghost" data-action="choose-poster">V\u00e6lg PDF\u2026</button>
+            <span class="arr-poster-status" data-poster-status>${isEdit && ev?.poster_path ? 'Plakat uploadet' : 'Ingen plakat'}</span>
+            <button type="button" class="arr-poster-remove" data-action="remove-poster" style="${isEdit && ev?.poster_path ? '' : 'display:none'}">Fjern</button>
+          </div>
+          <div class="fsp-form-hint">Vises i fuld st\u00f8rrelse i tilmeldings-prompten. Uden plakat vises titel + beskrivelse som stor tekst.</div>
+        </div>
       </div>
-      <div class="fsp-slide-footer"><button class="fsp-btn fsp-btn-ghost" data-action="close-slide">Annuller</button><button class="fsp-btn fsp-btn-primary" data-action="${submitAction}">${submitLabel}</button></div>`;
+      <div class="fsp-slide-footer">${isEdit ? '<button class="fsp-btn" style="margin-right:auto;background:none;border:1px solid rgba(232,90,111,0.3);color:#e85a6f" data-action="delete-event-slide">Slet</button>' : ''}<button class="fsp-btn fsp-btn-ghost" data-action="close-slide">Annuller</button><button class="fsp-btn fsp-btn-primary" data-action="${submitAction}">${submitLabel}</button></div>`;
 
     // Build grade chips
     const chipsEl = slidePanel.querySelector('[data-event-chips]');
@@ -719,12 +824,51 @@
       if (endDateInput) endDateInput.value = startDateInput.value;
     });
 
-    // Date/time picker buttons → trigger native picker
+    // Date picker buttons → trigger native picker (kun dato; tid er tt:mm-tekstfelt)
     slidePanel.querySelectorAll('.fsp-dt-picker-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const input = btn.parentElement.querySelector('input');
         if (input?.showPicker) input.showPicker();
         else input?.focus();
+      });
+    });
+
+    // 24-timers tid (tt:mm) — locale-uafhængig; native <input type=time> følger
+    // browserens sprog (navigator.language) og viser am/pm i fx en-US.
+    const normalizeTime = (raw) => {
+      raw = (raw || '').trim();
+      if (!raw) return null;
+      let h, m;
+      if (raw.includes(':')) {
+        const [hp, mp] = raw.split(':');
+        h = parseInt(hp, 10); m = parseInt(mp || '0', 10);
+      } else {
+        const d = raw.replace(/\D/g, '');
+        if (!d) return null;
+        if (d.length <= 2) { h = parseInt(d, 10); m = 0; }
+        else { h = parseInt(d.slice(0, d.length - 2), 10); m = parseInt(d.slice(-2), 10); }
+      }
+      if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+      return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    };
+    slidePanel.querySelectorAll('[data-time-input]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const digits = inp.value.replace(/\D/g, '').slice(0, 4);
+        inp.value = digits.length > 2 ? digits.slice(0, 2) + ':' + digits.slice(2) : digits;
+        inp.classList.remove('fsp-input-error');
+      });
+      inp.addEventListener('blur', () => {
+        const norm = normalizeTime(inp.value);
+        if (norm) { inp.value = norm; inp.classList.remove('fsp-input-error'); }
+        else if (inp.value.trim()) { inp.classList.add('fsp-input-error'); }
+      });
+    });
+
+    // Klokke-knap → custom 24-timers vælger (timer/minutter)
+    slidePanel.querySelectorAll('[data-time-picker-btn]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _openTimePicker(btn.parentElement.querySelector('[data-time-input]'), btn);
       });
     });
 
@@ -736,10 +880,43 @@
       });
     });
 
+    // Tilmeldings-prompt toggle
+    const promptToggle = slidePanel.querySelector('[data-event-prompt]');
+    promptToggle?.addEventListener('click', () => promptToggle.classList.toggle('on'));
+
+    // Plakat (PDF) — vælg/fjern; valget gemmes i closure og anvendes ved submit
+    let posterFile = null;
+    let posterRemove = false;
+    const posterInput = slidePanel.querySelector('[data-event-poster-file]');
+    const posterStatus = slidePanel.querySelector('[data-poster-status]');
+    const posterRemoveBtn = slidePanel.querySelector('[data-action="remove-poster"]');
+    slidePanel.querySelector('[data-action="choose-poster"]')?.addEventListener('click', () => posterInput?.click());
+    posterInput?.addEventListener('change', () => {
+      const f = posterInput.files?.[0];
+      if (!f) return;
+      if (f.type !== 'application/pdf') { alert('Kun PDF er tilladt.'); posterInput.value = ''; return; }
+      posterFile = f;
+      posterRemove = false;
+      if (posterStatus) posterStatus.textContent = f.name;
+      if (posterRemoveBtn) posterRemoveBtn.style.display = '';
+    });
+    posterRemoveBtn?.addEventListener('click', () => {
+      posterFile = null;
+      posterRemove = true;
+      if (posterInput) posterInput.value = '';
+      if (posterStatus) posterStatus.textContent = 'Plakat fjernes ved gem';
+      posterRemoveBtn.style.display = 'none';
+    });
+
     // Close slide
-    const closeSlide = () => { slideOverlay.classList.remove('open'); slidePanel.classList.remove('open'); };
+    const closeSlide = () => { _closeTimePicker(); slideOverlay.classList.remove('open'); slidePanel.classList.remove('open'); };
     slidePanel.querySelectorAll('[data-action="close-slide"]').forEach(btn => btn.addEventListener('click', closeSlide));
     slideOverlay.onclick = closeSlide;
+
+    // Slet-knap (kun ved redigering) → bekræft + slet permanent
+    slidePanel.querySelector('[data-action="delete-event-slide"]')?.addEventListener('click', () => {
+      _tilmDeleteEvent(editEventId, container, ctx);
+    });
 
     // Submit: create or update
     slidePanel.querySelector(`[data-action="${submitAction}"]`)?.addEventListener('click', async () => {
@@ -753,18 +930,28 @@
       const chips = slidePanel.querySelectorAll('[data-event-chips] .fsp-chip.on');
       const grades = Array.from(chips).map(c => parseInt(c.dataset.grade)).filter(n => !isNaN(n));
 
+      const startNorm = normalizeTime(slidePanel.querySelector('[data-event-start-time]')?.value);
+      if (!startNorm) { alert('Ugyldigt starttidspunkt. Brug formatet tt:mm (00:00–23:59).'); return; }
+      const endRaw = slidePanel.querySelector('[data-event-end-time]')?.value?.trim();
+      const endNorm = endRaw ? normalizeTime(endRaw) : null;
+      if (endRaw && !endNorm) { alert('Ugyldigt sluttidspunkt. Brug formatet tt:mm (00:00–23:59).'); return; }
+
       const eventData = {
         title: titleVal,
         description: slidePanel.querySelector('[data-event-desc]')?.value?.trim() || null,
         price: parseFloat(slidePanel.querySelector('[data-event-price]')?.value) || 0,
         capacity: parseInt(slidePanel.querySelector('[data-event-cap]')?.value) || null,
         event_date: slidePanel.querySelector('[data-event-start-date]')?.value || null,
-        start_time: slidePanel.querySelector('[data-event-start-time]')?.value || null,
-        end_time: slidePanel.querySelector('[data-event-end-time]')?.value || null,
+        start_time: startNorm,
+        end_time: endNorm,
         allowed_classes: grades.length > 0 ? grades : null,
+        prompt_after_purchase: !!promptToggle?.classList.contains('on'),
       };
 
+      const submitBtn = slidePanel.querySelector(`[data-action="${submitAction}"]`);
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Gemmer…'; }
       try {
+        let targetEventId = editEventId;
         if (isEdit) {
           const { error } = await mgmt.updateEvent(editEventId, eventData);
           if (error) throw error;
@@ -772,9 +959,23 @@
           eventData.institution_id = instId;
           const admin = window.__flangoCurrentAdmin;
           eventData.created_by = admin?.id || null;
-          const { error } = await mgmt.createEvent(eventData);
+          const { data: created, error } = await mgmt.createEvent(eventData);
           if (error) throw error;
+          targetEventId = created?.id;
         }
+
+        // Plakat: upload ny PDF eller fjern eksisterende (via edge function)
+        if (targetEventId && posterFile) {
+          const up = await mgmt.uploadEventPoster(targetEventId, posterFile);
+          if (!up?.success) throw new Error(up?.error || 'Plakat-upload fejlede');
+        } else if (targetEventId && posterRemove) {
+          const rm = await mgmt.removeEventPoster(targetEventId);
+          if (!rm?.success) throw new Error(rm?.error || 'Kunne ikke fjerne plakat');
+        }
+
+        // Invalidér prompt-cachen så ændringer slår igennem ved næste køb
+        window.__flangoInvalidateArrangementPromptCache?.(instId);
+
         closeSlide();
         if (isEdit && _tilm.openEventId === editEventId) {
           // Re-fetch and re-render detail
@@ -789,6 +990,7 @@
         }
       } catch (err) {
         alert('Fejl: ' + (err?.message || err));
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel; }
       }
     });
 
@@ -855,7 +1057,7 @@
           return `<div class="fsp-up-user${isEnrolled ? ' enrolled' : ''}${isHighlight ? ' fsp-up-user-highlight' : ''}" data-user-id="${u.id}">
             <div class="fsp-up-avatar" style="background:${col}22;color:${col}">${_initials(u.name)}</div>
             <div class="fsp-up-user-info">
-              <div class="fsp-up-user-name">${esc(u.name)}${isEnrolled ? ' <span class="fsp-up-enrolled-badge">\u2713 Tilmeldt</span>' : ''}</div>
+              <div class="fsp-up-user-name">${esc((window.__flangoUserName && window.__flangoUserName(u)) || u.name)}${isEnrolled ? ' <span class="fsp-up-enrolled-badge">\u2713 Tilmeldt</span>' : ''}</div>
               <div class="fsp-up-user-meta">Nr. ${esc(u.number || '')} \u00b7 ${esc(_gradeLabel(u.grade_level))}</div>
             </div>
             <div class="fsp-up-user-saldo ${bal >= 0 ? 'pos' : 'neg'}">${_formatSaldo(bal)}</div>
@@ -967,6 +1169,7 @@
       }
       // Invalidate cache and re-render detail
       _tilm.usersCache = null;
+      try { window.__flangoInvalidateCafeEventsCache?.(user.id); } catch (_) { /* ignore */ }
       overlay.classList.remove('open');
       // Re-fetch detail
       const { event, registrations } = await mgmt.fetchEventDetail(eventId);
@@ -1123,15 +1326,23 @@
       if (!result?.success) { alert('Fejl: ' + (result?.error || 'Ukendt fejl')); return; }
       overlay.classList.remove('open');
 
-      // Show refund toast if applicable
-      if (result.refunded && result.refund_amount) {
-        const refundAmt = parseFloat(result.refund_amount);
-        const newBal = (parseFloat(u.balance) || 0) + refundAmt;
-        window.__flangoShowBalanceToast?.({
-          userId: u.id, userName: u.name,
-          delta: refundAmt, newBalance: newBal,
-        });
+      // Show refund toast if applicable (best-effort — må ALDRIG blokere re-render nedenfor)
+      try {
+        if (result.refunded && result.refund_amount) {
+          const refundAmt = parseFloat(result.refund_amount);
+          const newBal = (parseFloat(u.balance) || 0) + refundAmt;
+          window.__flangoShowBalanceToast?.({
+            userId: u.id, userName: u.name,
+            delta: refundAmt, newBalance: newBal,
+          });
+        }
+      } catch (toastErr) {
+        console.warn('[tilmelding] balance-toast fejl (ignoreret):', toastErr);
       }
+
+      // Invalidér café-strippens cache så framelding slår igennem i POS'en (ellers
+      // viser strippen barnet som tilmeldt indtil cachen udløber → "kræver refresh").
+      try { window.__flangoInvalidateCafeEventsCache?.(userId); } catch (_) { /* ignore */ }
 
       // Invalidate cache, re-fetch and re-render
       _tilm.usersCache = null;
@@ -1199,6 +1410,67 @@
     });
 
     overlay.classList.add('open');
+  }
+
+  // ── Slet arrangement permanent (fra rediger-slide eller papirkurv-ikon) ──
+  function _tilmDeleteEvent(eventId, container, ctx) {
+    const mgmt = window.__flangoEventMgmt;
+    if (!mgmt) return;
+    const right = ctx.overlay?.querySelector('.fsp-right') || ctx.overlay;
+    const overlay = right?.querySelector('[data-modal="delete-event"]');
+    if (!overlay) return;
+
+    const closeSlide = () => {
+      ctx.overlay?.querySelector('#fsp-slide-overlay')?.classList.remove('open');
+      ctx.overlay?.querySelector('#fsp-slide-panel')?.classList.remove('open');
+    };
+
+    (async () => {
+      const { event, registrations } = await mgmt.fetchEventDetail(eventId);
+      if (!event) { alert('Arrangement ikke fundet.'); return; }
+      const regs = registrations || [];
+      const activeRegs = regs.filter(r => r.registration_status === 'registered');
+      const startDt = new Date(event.event_date + 'T' + (event.start_time || '00:00').slice(0, 5));
+      const isUpcoming = event.status === 'active' && startDt > new Date();
+      const activePaid = activeRegs.filter(r => r.payment_status === 'paid');
+
+      let detail = `<strong>${esc(event.title)}</strong> slettes permanent og kan ikke gendannes.`;
+      if (activeRegs.length > 0) {
+        detail += `<div style="margin-top:8px">${activeRegs.length} tilmelding${activeRegs.length === 1 ? '' : 'er'} og hele arrangementets historik fjernes.</div>`;
+      }
+      if (isUpcoming && activePaid.length > 0) {
+        const paidTotal = activePaid.reduce((s, r) => s + (parseFloat(r.price_at_signup) || 0), 0);
+        detail += `<div style="margin-top:8px;color:#e85a6f"><strong>OBS:</strong> ${activePaid.length} betalt${activePaid.length === 1 ? '' : 'e'} tilmelding${activePaid.length === 1 ? '' : 'er'} (${paidTotal.toFixed(2).replace('.', ',')} kr.) refunderes IKKE ved sletning. Brug “Aflys arrangement” først, hvis pengene skal tilbage.</div>`;
+      }
+
+      overlay.innerHTML = `<div class="fsp-rm-modal">
+        <div class="fsp-pay-title">🗑️ Slet arrangement</div>
+        <div class="fsp-pay-detail">${detail}</div>
+        <div class="fsp-pay-btns">
+          <button class="fsp-btn fsp-btn-ghost" style="padding:10px 20px;font-size:13px" data-action="de-cancel">Annuller</button>
+          <button class="fsp-btn" style="padding:10px 20px;font-size:13px;background:#e85a6f;color:#fff" data-action="de-confirm">Slet permanent</button>
+        </div>
+      </div>`;
+
+      overlay.querySelector('[data-action="de-cancel"]')?.addEventListener('click', () => overlay.classList.remove('open'));
+      overlay.querySelector('[data-action="de-confirm"]')?.addEventListener('click', async () => {
+        const btn = overlay.querySelector('[data-action="de-confirm"]');
+        if (btn) { btn.disabled = true; btn.textContent = 'Sletter…'; }
+        const { error } = await mgmt.deleteEvent(eventId, event.poster_path);
+        if (error) {
+          alert('Fejl: ' + (error.message || error));
+          if (btn) { btn.disabled = false; btn.textContent = 'Slet permanent'; }
+          return;
+        }
+        overlay.classList.remove('open');
+        closeSlide();
+        if (_tilm.openEventId === eventId) { _tilm.openEventId = null; _tilm.eventDetail = null; }
+        window.__flangoInvalidateArrangementPromptCache?.(window.getInstitutionId?.());
+        _tilmLoadEvents(container, ctx);
+      });
+
+      overlay.classList.add('open');
+    })();
   }
 
   // ── Restaurant Mode (settings section) ──

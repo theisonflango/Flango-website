@@ -372,8 +372,8 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-Dt9chzqv.js"></script>
-  <link rel="stylesheet" crossorigin href="/app/assets/main-7LHF_kKW.css">
+  <script type="module" crossorigin src="/app/assets/main-DM5urGmh.js"></script>
+  <link rel="stylesheet" crossorigin href="/app/assets/main-B99ZPx43.css">
 </head>
 <body>
 
@@ -674,7 +674,6 @@
     <div id="balance-modal" class="modal"></div>
     <div id="edit-user-detail-modal" class="modal"></div>
     <div id="assign-badge-modal" class="modal"></div>
-    <div id="event-admin-modal" class="modal"></div>
     <div id="db-history-modal" class="modal"></div>
     <div id="auto-import-modal" class="modal" style="display: none;">
         <style>
@@ -2003,7 +2002,6 @@
             </div>
         </details>
     </div></div></template>
-    <template id="event-admin-modal-template"><div class="modal-content event-admin-modal"><div class="modal-header event-admin-header"><button id="event-admin-back-btn" class="event-back-btn event-admin-back-hidden" type="button">← Tilbage</button><h2 id="event-admin-title" class="event-admin-title">Arrangementer</h2><span class="close-btn">&times;</span></div><div id="event-list-view" class="event-view"><div class="event-filter-bar"><button id="event-filter-active" class="event-filter-btn active" data-filter="active">Kommende</button><button id="event-filter-past" class="event-filter-btn" data-filter="past">Afsluttede</button><button id="event-filter-cancelled" class="event-filter-btn" data-filter="cancelled">Aflyste</button><button id="event-create-btn" class="event-create-btn">+ Opret Arrangement</button></div><div id="event-list-container" class="event-list-container"></div><div id="event-list-empty" class="event-list-empty" style="display:none;"><p>Ingen arrangementer fundet.</p></div></div><div id="event-detail-view" class="event-view" style="display:none;"><div id="event-detail-header" class="event-detail-header"></div><div id="event-detail-summary" class="event-detail-summary"></div><div id="event-detail-actions" class="event-detail-actions"></div><h4 class="event-reg-list-header">Tilmeldte brugere</h4><div id="event-reg-list" class="event-reg-list"></div></div><div id="event-form-view" class="event-view" style="display:none;"><h3 id="event-form-subtitle">Opret Arrangement</h3><div class="event-form"><input type="text" id="event-form-title" class="input" placeholder="Titel *" required><textarea id="event-form-description" class="input" placeholder="Beskrivelse (valgfrit)" rows="3"></textarea><input type="number" id="event-form-price" class="input" placeholder="Pris (kr.)" step="0.01" value="0.00"><input type="number" id="event-form-capacity" class="input" placeholder="Kapacitet (tom = ubegr&#230;nset)" min="1"><label style="font-size:13px;color:#666;">Startdato og -tid *</label><input type="datetime-local" id="event-form-start" class="input" required><label style="font-size:13px;color:#666;">Slutdato og -tid (valgfrit)</label><input type="datetime-local" id="event-form-end" class="input"><div class="event-class-section"><label style="font-size:13px;color:#666;">Tilladt klasse (ingen valgt = alle)</label><div id="event-form-classes" class="event-class-checkboxes"></div></div><div class="event-form-actions"><button id="event-form-save-btn" class="event-save-btn">Gem</button><button id="event-form-cancel-btn" class="event-cancel-btn">Annuller</button></div></div></div></div></template>
 
     <!-- Indstillinger modal -->
     <div id="settings-modal-backdrop" class="settings-modal-backdrop" style="display:none;">
@@ -2034,7 +2032,7 @@
 
     <script src="js/core/feature-modules.js"></script>
     <script src="js/ui/settings-panel.js?v=6"></script>
-    <script src="js/ui/settings-sections.js?v=16"></script>
+    <script src="js/ui/settings-sections.js?v=23"></script>
     <script src="js/ui/admin-portal-settings.js?v=2"></script>
     <script src="js/ui/admin-portal-v2.js"></script>
     <script src="js/ui/cookie-banner.js"></script>
