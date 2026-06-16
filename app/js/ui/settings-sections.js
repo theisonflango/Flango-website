@@ -558,7 +558,7 @@
       const [evRes, regRes] = await Promise.all([
         client.from('club_events').select('*').eq('id', eventId).single(),
         client.from('event_registrations')
-          .select('*, users!event_registrations_user_id_fkey(id, name, number, grade_level, balance, role, is_test_user)')
+          .select('*, users!event_registrations_user_id_fkey(id, name, last_name, number, grade_level, balance, role, is_test_user)')
           .eq('event_id', eventId).order('registered_at', { ascending: true }),
       ]);
       if (evRes.error) throw evRes.error;
@@ -802,6 +802,18 @@
           </div>
           <div class="fsp-form-hint">Vises i fuld st\u00f8rrelse i tilmeldings-prompten. Uden plakat vises titel + beskrivelse som stor tekst.</div>
         </div>
+        <div class="fsp-form-group">
+          <div class="fsp-form-label">Arrangement-ikon (valgfri)</div>
+          <input type="file" accept="image/*,application/pdf,.pdf" data-event-icon-file style="display:none">
+          <div class="arr-icon-row">
+            <div class="arr-icon-preview" data-icon-preview></div>
+            <div class="arr-icon-ctrls">
+              <button type="button" class="fsp-btn fsp-btn-ghost" data-action="choose-icon">V\u00e6lg billede/PDF\u2026</button>
+              <button type="button" class="arr-poster-remove" data-action="remove-icon" style="${isEdit && ev?.icon_path ? '' : 'display:none'}">Fjern</button>
+            </div>
+          </div>
+          <div class="fsp-form-hint">Vises p\u00e5 kortet i \u201cVis arrangementer som produkter\u201d. Billedet fylder hele kortet.</div>
+        </div>
       </div>
       <div class="fsp-slide-footer">${isEdit ? '<button class="fsp-btn" style="margin-right:auto;background:none;border:1px solid rgba(232,90,111,0.3);color:#e85a6f" data-action="delete-event-slide">Slet</button>' : ''}<button class="fsp-btn fsp-btn-ghost" data-action="close-slide">Annuller</button><button class="fsp-btn fsp-btn-primary" data-action="${submitAction}">${submitLabel}</button></div>`;
 
@@ -908,6 +920,45 @@
       posterRemoveBtn.style.display = 'none';
     });
 
+    // Arrangement-ikon — billede/PDF renderes til PNG ved valg; valget anvendes ved submit
+    let iconBlob = null;
+    let iconRemove = false;
+    const iconInput = slidePanel.querySelector('[data-event-icon-file]');
+    const iconPreview = slidePanel.querySelector('[data-icon-preview]');
+    const iconRemoveBtn = slidePanel.querySelector('[data-action="remove-icon"]');
+    const setIconPreview = (url) => {
+      if (!iconPreview) return;
+      iconPreview.innerHTML = url ? `<img src="${url}" alt="">` : '<span class="arr-icon-placeholder">🎉</span>';
+    };
+    setIconPreview(null);
+    if (isEdit && ev?.icon_path) {
+      window.__flangoEventMgmt?.getEventMediaSignedUrl?.(ev.icon_path).then(url => { if (url && !iconBlob && !iconRemove) setIconPreview(url); });
+    }
+    slidePanel.querySelector('[data-action="choose-icon"]')?.addEventListener('click', () => iconInput?.click());
+    iconInput?.addEventListener('change', async () => {
+      const f = iconInput.files?.[0];
+      if (!f) return;
+      const okType = f.type.startsWith('image/') || f.type === 'application/pdf';
+      if (!okType) { alert('Vælg et billede eller en PDF.'); iconInput.value = ''; return; }
+      const mgmt = window.__flangoEventMgmt;
+      try {
+        iconBlob = await mgmt.renderEventIconBlob(f);
+        iconRemove = false;
+        setIconPreview(URL.createObjectURL(iconBlob));
+        if (iconRemoveBtn) iconRemoveBtn.style.display = '';
+      } catch (e) {
+        alert(e?.message || 'Kunne ikke behandle filen.');
+        iconInput.value = '';
+      }
+    });
+    iconRemoveBtn?.addEventListener('click', () => {
+      iconBlob = null;
+      iconRemove = true;
+      if (iconInput) iconInput.value = '';
+      setIconPreview(null);
+      iconRemoveBtn.style.display = 'none';
+    });
+
     // Close slide
     const closeSlide = () => { _closeTimePicker(); slideOverlay.classList.remove('open'); slidePanel.classList.remove('open'); };
     slidePanel.querySelectorAll('[data-action="close-slide"]').forEach(btn => btn.addEventListener('click', closeSlide));
@@ -973,8 +1024,18 @@
           if (!rm?.success) throw new Error(rm?.error || 'Kunne ikke fjerne plakat');
         }
 
-        // Invalidér prompt-cachen så ændringer slår igennem ved næste køb
+        // Ikon: upload ny PNG (renderet ved valg) eller fjern eksisterende
+        if (targetEventId && iconBlob) {
+          const up = await mgmt.uploadEventIcon(targetEventId, iconBlob);
+          if (!up?.success) throw new Error(up?.error || 'Ikon-upload fejlede');
+        } else if (targetEventId && iconRemove) {
+          const rm = await mgmt.removeEventIcon(targetEventId);
+          if (!rm?.success) throw new Error(rm?.error || 'Kunne ikke fjerne ikon');
+        }
+
+        // Invalidér prompt- + event-cachen så ændringer (incl. ikon) slår igennem
         window.__flangoInvalidateArrangementPromptCache?.(instId);
+        window.__flangoInvalidateCafeEventsCache?.();
 
         closeSlide();
         if (isEdit && _tilm.openEventId === editEventId) {
@@ -1351,7 +1412,7 @@
         const [evRes, regRes] = await Promise.all([
           client.from('club_events').select('*').eq('id', eventId).single(),
           client.from('event_registrations')
-            .select('*, users!event_registrations_user_id_fkey(id, name, number, grade_level, balance, role, is_test_user)')
+            .select('*, users!event_registrations_user_id_fkey(id, name, last_name, number, grade_level, balance, role, is_test_user)')
             .eq('event_id', eventId).order('registered_at', { ascending: true }),
         ]);
         _tilm.eventDetail = evRes.data;
@@ -1456,7 +1517,7 @@
       overlay.querySelector('[data-action="de-confirm"]')?.addEventListener('click', async () => {
         const btn = overlay.querySelector('[data-action="de-confirm"]');
         if (btn) { btn.disabled = true; btn.textContent = 'Sletter…'; }
-        const { error } = await mgmt.deleteEvent(eventId, event.poster_path);
+        const { error } = await mgmt.deleteEvent(eventId, event.poster_path, event.icon_path);
         if (error) {
           alert('Fejl: ' + (error.message || error));
           if (btn) { btn.disabled = false; btn.textContent = 'Slet permanent'; }
