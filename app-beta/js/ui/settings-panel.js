@@ -10,10 +10,10 @@
   // ── Tab / sidebar data (from mockup) ──
   const T = [
     { name: 'Hovedmenu', items: [{ l: 'Produkter & Indbetalinger', c: '#e8734a' }, { l: 'Tilmelding', c: '#5ba0d8' }, { l: 'Restaurant Mode', c: '#f4a261' }, { l: 'Historik', c: '#c77ddb' }] },
-    { name: 'Institutionens Præferencer', items: [{ l: 'Toolbar', c: '#5ba0d8' }, { l: 'Beløbsgrænse', c: '#e8734a' }, { l: 'Sukkerpolitik', c: '#e85a6f' }] },
-    { name: 'Administration', items: [{ l: 'Forældreportal', c: '#c77ddb' }, { l: 'Betalingsmetoder', c: '#5dca7a' }, { l: 'Profilbilleder', c: '#c77ddb' }, { l: 'Produktikoner – Deling', c: '#5ba0d8' }, { l: 'MobilePay CSV Import', c: '#f4a261' }, { l: 'Opret/Opdater brugere auto.', c: '#e8734a' }] },
+    { name: 'Institutionens Præferencer', items: [{ l: 'Toolbar', c: '#5ba0d8' }, { l: 'Beløbsgrænse', c: '#e8734a' }, { l: 'Sukkerpolitik', c: '#e85a6f' }, { l: 'Ekspedient-login', c: '#f4a261' }] },
+    { name: 'Administration', items: [{ l: 'Forældreportal', c: '#c77ddb' }, { l: 'Betalingsmetoder', c: '#5dca7a' }, { l: 'Profilbilleder', c: '#c77ddb' }, { l: 'Produktikoner – Deling', c: '#5ba0d8' }, { l: 'MobilePay CSV Import', c: '#f4a261' }, { l: 'Brugernavne', c: '#5dca7a' }, { l: 'Brugernummer', c: '#5ba0d8' }, { l: 'Opret/Opdater brugere auto.', c: '#e8734a' }] },
     { name: 'Datasikkerhed', items: [{ l: 'Totrinsgodkendelse (MFA)', c: '#e85a6f' }, { l: 'Auto-sletning af inaktive', c: '#f4a261' }, { l: 'Mine enheder', c: '#5ba0d8' }, { l: 'Saldoliste ved låsning', c: '#5dca7a' }, { l: 'Anmod om nulstilling', c: '#c77ddb' }] },
-    { name: 'Diverse', items: [{ l: 'Udseende', c: '#c77ddb' }, { l: 'Dagens Sortiment', c: '#f4a261' }, { l: 'Min Flango', c: '#e8734a' }, { l: 'Hjælp', c: '#5ba0d8' }, { l: 'Opdateringer', c: '#5dca7a' }, { l: 'Feedback', c: '#f4a261' }, { l: 'Lydindstillinger', c: '#5ba0d8' }, { l: 'Log ud', c: '#e85a6f' }] }
+    { name: 'Diverse', items: [{ l: 'Udseende', c: '#c77ddb' }, { l: 'Dagens Sortiment', c: '#f4a261' }, { l: 'Min Flango', c: '#e8734a' }, { l: 'Hjælp', c: '#5ba0d8' }, { l: 'Opdateringer', c: '#5dca7a' }, { l: 'Feedback', c: '#f4a261' }, { l: 'Lydindstillinger', c: '#5ba0d8' }] }
   ];
 
   // ── SVG icon paths (from mockup icons object) ──
@@ -27,11 +27,14 @@
     'Toolbar': '<rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M1.5 6.5h13"/><circle cx="4" cy="4.7" r="0.7"/><circle cx="6.2" cy="4.7" r="0.7"/><circle cx="8.4" cy="4.7" r="0.7"/>',
     'Beløbsgrænse': '<circle cx="8" cy="8" r="6"/><path d="M8 4.5v7M5.5 6.5h5c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5H5.5"/>',
     'Sukkerpolitik': '<path d="M8 13.5S2 10 2 6a3 3 0 016-1 3 3 0 016 1c0 4-6 7.5-6 7.5z"/>',
+    'Ekspedient-login': '<rect x="4" y="7" width="8" height="6.5" rx="1.5"/><path d="M6 7V5.2a2 2 0 014 0V7"/><circle cx="8" cy="10" r="0.9"/>',
     'Forældreportal': '<circle cx="8" cy="4.5" r="2.5"/><path d="M3 14c0-2.8 2.2-5 5-5s5 2.2 5 5"/><path d="M8 10v4M6 12h4"/>',
     'Betalingsmetoder': '<rect x="1.5" y="4" width="13" height="8.5" rx="1.5"/><path d="M1.5 7.5h13"/><rect x="3.5" y="9.5" width="4" height="1.5" rx="0.5"/>',
     'Profilbilleder': '<rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="6" cy="6.5" r="2"/><path d="M2 13c1-2.5 3-4 4-4s2 .8 3.5 2c1 .8 2.2 1.5 3.5 2"/>',
     'Produktikoner – Deling': '<circle cx="11.5" cy="3.5" r="2"/><circle cx="3.5" cy="8" r="2"/><circle cx="11.5" cy="12.5" r="2"/><path d="M5.3 7l4.4-2.5M5.3 9l4.4 2.5"/>',
     'MobilePay CSV Import': '<path d="M8 10V2.5M5 5l3-3 3 3"/><rect x="2" y="10" width="12" height="4" rx="1.5"/>',
+    'Brugernavne': '<rect x="2" y="3.5" width="12" height="9" rx="1.5"/><circle cx="5.5" cy="7" r="1.4"/><path d="M3.6 10.8c.3-1.2 1.1-1.9 1.9-1.9s1.6.7 1.9 1.9"/><path d="M9.5 6.5h3M9.5 9h3"/>',
+    'Brugernummer': '<rect x="2.5" y="3" width="11" height="10" rx="1.5"/><path d="M6 6v4M6 6l-1 1M9 6h1.2v1.8c0 .6-1.2.6-1.2 1.4V10h1.4"/>',
     'Opret/Opdater brugere auto.': '<path d="M2 8a6 6 0 0110.5-4M14 8a6 6 0 01-10.5 4"/><path d="M12 1.5V4.5h-3"/><path d="M4 14.5V11.5h3"/>',
     'Totrinsgodkendelse (MFA)': '<rect x="4" y="7" width="8" height="7" rx="1.5"/><path d="M6 7V5a2 2 0 014 0v2"/><circle cx="8" cy="10.5" r="1"/>',
     'Auto-sletning af inaktive': '<path d="M3 4.5h10"/><path d="M5.5 4.5V3.5a1 1 0 011-1h3a1 1 0 011 1v1"/><path d="M4.5 4.5v8a1.5 1.5 0 001.5 1.5h4a1.5 1.5 0 001.5-1.5v-8"/>',
@@ -46,14 +49,9 @@
     'Feedback': '<circle cx="8" cy="9.5" r="4.5"/><path d="M8 5V2M3.5 7.5L1 6.5M12.5 7.5L15 6.5"/><path d="M8 8v2.5"/>',
     'Lydindstillinger': '<path d="M2 6.5h2l3.5-3.5v10L4 9.5H2z"/><path d="M11 5.5a4 4 0 010 5M13 3.5a7 7 0 010 9"/>',
     'Log ud': '<path d="M9.5 14H4.5a1.5 1.5 0 01-1.5-1.5v-9A1.5 1.5 0 014.5 2h5"/><path d="M7 8h7M12 5.5L14.5 8 12 10.5"/>',
-    'Afslut Flango': '<path d="M3 3v10a1 1 0 001 1h8M7 8h7M12 5.5L14.5 8 12 10.5"/>'
+    'Luk Programmet': '<path d="M3 3v10a1 1 0 001 1h8M7 8h7M12 5.5L14.5 8 12 10.5"/>'
   };
-
-  // Desktop-only: tilføj "Afslut Flango" til Diverse-tab
-  if (window.__TAURI_INTERNALS__) {
-    const diverseTab = T.find(t => t.name === 'Diverse');
-    if (diverseTab) diverseTab.items.push({ l: 'Afslut Flango', c: '#e85a6f' });
-  }
+  // 'Log ud' + 'Luk Programmet' bor nu i en fast sidebar-footer (buildOverlay), ikke i Diverse-tabben.
 
   const tabIcons = [
     '<rect x="3" y="3" width="4" height="4" rx="1"/><rect x="9" y="3" width="4" height="4" rx="1"/><rect x="3" y="9" width="4" height="4" rx="1"/><rect x="9" y="9" width="4" height="4" rx="1"/>',
@@ -173,7 +171,7 @@
       const btn = document.getElementById('logout-btn');
       if (btn) btn.click();
     },
-    'Afslut Flango': () => {
+    'Luk Programmet': () => {
       close();
       if (window.__flangoTauriWindow) window.__flangoTauriWindow.close();
     }
@@ -252,6 +250,8 @@
           </div>
           <div class="fsp-side-items" id="fsp-sidebar"></div>
           <div class="fsp-side-back">
+            <button class="fsp-side-exit" data-action="logout">${ic('Log ud', '#e85a6f')}Log ud</button>
+            ${window.__TAURI_INTERNALS__ ? `<button class="fsp-side-exit" data-action="quit">${ic('Luk Programmet', '#e85a6f')}Luk Programmet</button>` : ''}
             <button data-action="close">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>
               Tilbage
@@ -374,6 +374,32 @@
   }
 
   // ── Open ──
+  // ── Pile-taste-navigation: op/ned = sidebar-items, venstre/højre = faner ──
+  // Springer trigger-items (klik-handlinger som Log ud/Historik) og skjulte items over.
+  function moveItem(delta) {
+    if (!overlay) return;
+    const sb = overlay.querySelector('#fsp-sidebar');
+    const items = T[at].items;
+    const navigable = (j) => {
+      if (TRIGGERS[items[j].l]) return false; // trigger = klik-handling, ikke en sektion
+      const el = sb && sb.children[j];
+      return !!(el && el.style.display !== 'none');
+    };
+    let j = ai;
+    for (let step = 0; step < items.length; step++) {
+      j = (j + delta + items.length) % items.length;
+      if (navigable(j)) { ai = j; render(); return; }
+    }
+  }
+  function moveTab(delta) {
+    if (!overlay) return;
+    at = (at + delta + T.length) % T.length;
+    ai = 0;
+    render();
+    // Hvis fanens første item er en trigger, hop videre til første reelle sektion.
+    if (TRIGGERS[T[at].items[0].l]) moveItem(1);
+  }
+
   async function open() {
     if (overlay) return; // already open
 
@@ -384,6 +410,8 @@
 
     // Event delegation
     overlay.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action="logout"]')) { TRIGGERS['Log ud'] && TRIGGERS['Log ud'](); return; }
+      if (e.target.closest('[data-action="quit"]')) { TRIGGERS['Luk Programmet'] && TRIGGERS['Luk Programmet'](); return; }
       const btn = e.target.closest('[data-action="close"]');
       if (btn) { close(); return; }
     });
@@ -409,6 +437,20 @@
         }
         // 5. Close settings
         close();
+        return;
+      }
+      // Pile-taste-navigation: kun når man IKKE skriver i et felt og ingen under-overlay er åben.
+      if (e.key.startsWith('Arrow')) {
+        const ae = document.activeElement;
+        const tag = ((ae && ae.tagName) || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || (ae && ae.isContentEditable)) return;
+        const subOpen = overlay && overlay.querySelector('.fsp-up-overlay.open, .fsp-pay-overlay.open, .fsp-reg-overlay.open, .fsp-rm-overlay.open');
+        const slideEl = overlay && overlay.querySelector('#fsp-slide-overlay');
+        if (subOpen || (slideEl && slideEl.classList.contains('open'))) return;
+        if (e.key === 'ArrowDown') { e.preventDefault(); moveItem(1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); moveItem(-1); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); moveTab(1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); moveTab(-1); }
       }
     };
     if (window.__flangoSettingsAbort) window.__flangoSettingsAbort.abort();
@@ -434,7 +476,19 @@
     renderContent();
   }
 
+  // ── Deep-link til en bestemt fane + sektion (fx header-advarsel → Auto-sletning) ──
+  async function openTo(tabName, itemLabel) {
+    const ti = T.findIndex(t => t.name === tabName);
+    if (ti < 0) { await open(); return; }
+    const ii = Math.max(0, T[ti].items.findIndex(it => it.l === itemLabel));
+    if (!overlay) {
+      await open();
+    }
+    at = ti; ai = ii;
+    render();
+  }
+
   // ── Public API ──
-  window.FlangoSettings = { open, close, reloadCurrent, T, icons, ic, bigIc, tabIcons, extLinkSvg, markDirty, saveField, saveFields };
+  window.FlangoSettings = { open, close, openTo, reloadCurrent, T, icons, ic, bigIc, tabIcons, extLinkSvg, markDirty, saveField, saveFields };
 
 })();

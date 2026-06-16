@@ -169,7 +169,8 @@
           const label = card.dataset.card;
           window.FlangoSettings.close();
           if (label === 'Produktoversigt') {
-            window.openSugarPolicyModal?.();
+            // Tilbage fra produktoversigt fører tilbage til den nye Indstillinger (hvor man kom fra).
+            window.openSugarPolicyModal?.(() => window.FlangoSettings?.open?.());
           } else if (label === 'Brugerpanel') {
             window.openUserAdminPanel?.();
           }
@@ -389,6 +390,12 @@
           ce.addEventListener('click', e => { if (e.target === ce) ce.classList.remove('open'); });
           right.appendChild(ce);
 
+          const de = document.createElement('div');
+          de.className = 'fsp-rm-overlay';
+          de.dataset.modal = 'delete-event';
+          de.addEventListener('click', e => { if (e.target === de) de.classList.remove('open'); });
+          right.appendChild(de);
+
           _tilm.modalsInjected = true;
         }
       }
@@ -401,6 +408,9 @@
       // Event delegation on events list
       const listEl = container.querySelector('[data-events-list]');
       listEl?.addEventListener('click', (e) => {
+        // Papirkurv-knap på kort (afsluttede/aflyste) → slet, uden at toggle detalje
+        const trashBtn = e.target.closest('[data-action="trash-event"]');
+        if (trashBtn) { e.stopPropagation(); _tilmDeleteEvent(trashBtn.dataset.eventId, container, ctx); return; }
         const card = e.target.closest('[data-event-id]');
         if (!card) return;
         // Don't toggle if clicking action buttons inside detail
@@ -497,6 +507,7 @@
             <div class="fsp-arr-card-dot" style="background:${color}"></div>
             <div class="fsp-arr-card-info"><div class="fsp-arr-card-name">${esc(ev.title)}</div><div class="fsp-arr-card-meta">${esc(dateStr)} \u00b7 ${esc(timeStr)}</div></div>
             <div class="fsp-arr-card-count">${esc(capStr)}</div>
+            ${_tilm.filter !== 'active' ? `<button class="fsp-arr-card-trash" data-action="trash-event" data-event-id="${ev.id}" title="Slet permanent" aria-label="Slet arrangement"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6 4V2.5h4V4M5 4l.6 9.5h4.8L11 4M6.5 6.5v4.5M9.5 6.5v4.5"/></svg></button>` : ''}
             ${chevronSvg}
           </div>
           <div class="fsp-arr-detail${isOpen ? ' open' : ''}" data-detail-for="${ev.id}"><div class="fsp-arr-detail-inner"></div></div>`;
@@ -547,7 +558,7 @@
       const [evRes, regRes] = await Promise.all([
         client.from('club_events').select('*').eq('id', eventId).single(),
         client.from('event_registrations')
-          .select('*, users!event_registrations_user_id_fkey(id, name, number, grade_level, balance, role, is_test_user)')
+          .select('*, users!event_registrations_user_id_fkey(id, name, last_name, number, grade_level, balance, role, is_test_user)')
           .eq('event_id', eventId).order('registered_at', { ascending: true }),
       ]);
       if (evRes.error) throw evRes.error;
@@ -649,7 +660,7 @@
   // ── Render single registration row ──
   function _tilmRegRow(r, ev, isPast) {
     const u = r.users || {};
-    const name = esc(u.name || 'Ukendt');
+    const name = esc((window.__flangoUserName && window.__flangoUserName(u)) || u.name || 'Ukendt');
     const num = esc(u.number || '\u2014');
     const grade = _gradeLabel(u.grade_level);
     const saldo = _formatSaldo(u.balance);
@@ -667,6 +678,82 @@
       ${!isPast ? `<td>${showPayBtns ? `<button class="fsp-arr-table-btn" data-action="pay-other" data-reg-id="${r.id}">Registrer Betaling</button> <button class="fsp-arr-table-btn accent" data-action="pay-balance" data-reg-id="${r.id}">Betal</button>` : ''}</td>
       <td><button class="fsp-arr-table-rm" data-action="remove-reg" data-user-id="${u.id}" data-reg-id="${r.id}">\u00d7</button></td>` : ''}
     </tr>`;
+  }
+
+  // ── 24-timers tidsvælger (custom popover, locale-uafhængig) ──
+  let _timePickEl = null;
+  let _timePickCleanup = null;
+  function _closeTimePicker() {
+    if (_timePickCleanup) { _timePickCleanup(); _timePickCleanup = null; }
+    if (_timePickEl) { _timePickEl.remove(); _timePickEl = null; }
+  }
+  function _openTimePicker(input, anchorBtn) {
+    if (_timePickEl) { _closeTimePicker(); return; } // toggle
+    if (!input) return;
+    const parts = (input.value || '').split(':');
+    const curH = parseInt(parts[0], 10);
+    const curM = parseInt(parts[1], 10);
+
+    const pop = document.createElement('div');
+    pop.className = 'fsp-timepick';
+    pop.innerHTML = `<div class="fsp-timepick-col"><div class="fsp-timepick-hd">Timer</div><div class="fsp-timepick-list" data-tp="h"></div></div><div class="fsp-timepick-col"><div class="fsp-timepick-hd">Min.</div><div class="fsp-timepick-list" data-tp="m"></div></div>`;
+    const hList = pop.querySelector('[data-tp="h"]');
+    const mList = pop.querySelector('[data-tp="m"]');
+    for (let h = 0; h < 24; h++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'fsp-timepick-opt' + (h === curH ? ' sel' : '');
+      b.textContent = String(h).padStart(2, '0');
+      b.dataset.h = h;
+      hList.appendChild(b);
+    }
+    for (let m = 0; m < 60; m++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'fsp-timepick-opt' + (m === curM ? ' sel' : '');
+      b.textContent = String(m).padStart(2, '0');
+      b.dataset.m = m;
+      mList.appendChild(b);
+    }
+    document.body.appendChild(pop);
+    _timePickEl = pop;
+
+    // Positionér fixed under feltet; vend opad hvis der ikke er plads
+    const r = (anchorBtn.closest('.fsp-dt-field') || anchorBtn).getBoundingClientRect();
+    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + 'px';
+    let top = r.bottom + 6;
+    if (top + pop.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - 6 - pop.offsetHeight);
+    pop.style.top = top + 'px';
+    hList.querySelector('.sel')?.scrollIntoView({ block: 'center' });
+    mList.querySelector('.sel')?.scrollIntoView({ block: 'center' });
+
+    const apply = () => {
+      const hSel = hList.querySelector('.sel')?.dataset.h;
+      const mSel = mList.querySelector('.sel')?.dataset.m;
+      const h = hSel != null ? hSel : (isNaN(curH) ? 0 : curH);
+      const m = mSel != null ? mSel : (isNaN(curM) ? 0 : curM);
+      input.value = String(parseInt(h, 10) || 0).padStart(2, '0') + ':' + String(parseInt(m, 10) || 0).padStart(2, '0');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.classList.remove('fsp-input-error');
+    };
+    pop.addEventListener('click', (e) => {
+      const hb = e.target.closest('[data-h]');
+      const mb = e.target.closest('[data-m]');
+      if (hb) { hList.querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); hb.classList.add('sel'); apply(); }
+      else if (mb) { mList.querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); mb.classList.add('sel'); apply(); _closeTimePicker(); }
+    });
+
+    const onDocDown = (e) => { if (!pop.contains(e.target) && !anchorBtn.contains(e.target) && e.target !== anchorBtn) _closeTimePicker(); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); _closeTimePicker(); } };
+    const onScroll = (e) => { if (_timePickEl && !_timePickEl.contains(e.target)) _closeTimePicker(); };
+    setTimeout(() => document.addEventListener('mousedown', onDocDown, true), 0);
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('scroll', onScroll, true);
+    _timePickCleanup = () => {
+      document.removeEventListener('mousedown', onDocDown, true);
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('scroll', onScroll, true);
+    };
   }
 
   // ── Slide panel (create / edit) ──
@@ -693,11 +780,42 @@
           <div class="fsp-form-group"><div class="fsp-form-label">Pris</div><div class="fsp-num-wrap"><input type="number" placeholder="0 kr" data-event-price value="${isEdit ? (ev?.price || '') : ''}"><div class="fsp-num-btns"><button class="fsp-num-btn" data-sp="price" data-sd="5">${chevronUp}</button><button class="fsp-num-btn" data-sp="price" data-sd="-5">${chevronDown}</button></div></div></div>
           <div class="fsp-form-group"><div class="fsp-form-label">Kapacitet</div><div class="fsp-num-wrap"><input type="number" placeholder="f.eks. 20" data-event-cap value="${isEdit ? (ev?.capacity || '') : ''}"><div class="fsp-num-btns"><button class="fsp-num-btn" data-sp="cap" data-sd="1">${chevronUp}</button><button class="fsp-num-btn" data-sp="cap" data-sd="-1">${chevronDown}</button></div></div></div>
         </div>
-        <div class="fsp-form-group"><div class="fsp-form-label">Start</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.event_date || today) : today}" data-event-start-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="time" value="${isEdit ? (ev?.start_time || '14:00').slice(0, 5) : '14:00'}" data-event-start-time><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="time"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
-        <div class="fsp-form-group"><div class="fsp-form-label">Slut</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.end_date || ev?.event_date || today) : today}" data-event-end-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="time" value="${isEdit ? (ev?.end_time || '16:00').slice(0, 5) : '16:00'}" data-event-end-time><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="time"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
+        <div class="fsp-form-group"><div class="fsp-form-label">Start</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.event_date || today) : today}" data-event-start-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="text" inputmode="numeric" maxlength="5" placeholder="tt:mm" value="${isEdit ? (ev?.start_time || '14:00').slice(0, 5) : '14:00'}" data-event-start-time data-time-input class="fsp-time-text"><button type="button" class="fsp-dt-picker-btn" data-time-picker-btn aria-label="Vælg tid"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
+        <div class="fsp-form-group"><div class="fsp-form-label">Slut</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.end_date || ev?.event_date || today) : today}" data-event-end-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="text" inputmode="numeric" maxlength="5" placeholder="tt:mm" value="${isEdit ? (ev?.end_time || '16:00').slice(0, 5) : '16:00'}" data-event-end-time data-time-input class="fsp-time-text"><button type="button" class="fsp-dt-picker-btn" data-time-picker-btn aria-label="Vælg tid"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
         <div class="fsp-form-group"><div class="fsp-form-label">M\u00e5lgruppe</div><div style="display:flex;flex-wrap:wrap;gap:6px" data-event-chips></div><div class="fsp-form-hint">Ingen valgt = alle klassetrin kan se arrangementet</div></div>
+        <div class="fsp-form-group">
+          <div class="arr-prompt-setting-row">
+            <div>
+              <div class="fsp-form-label" style="margin-bottom:2px">Vis tilmeldings-prompt efter k\u00f8b</div>
+              <div class="fsp-form-hint" style="margin-top:0">N\u00e5r sl\u00e5et til vises arrangementet som et modal efter hvert k\u00f8b, indtil barnet er tilmeldt. Anbefalet: kun \u00e9t arrangement ad gangen.</div>
+            </div>
+            <div class="fsp-toggle${isEdit && ev?.prompt_after_purchase ? ' on' : ''}" data-event-prompt></div>
+          </div>
+        </div>
+        <div class="fsp-form-group">
+          <div class="fsp-form-label">Plakat (PDF, valgfri)</div>
+          <input type="file" accept="application/pdf,.pdf" data-event-poster-file style="display:none">
+          <div class="arr-poster-row">
+            <button type="button" class="fsp-btn fsp-btn-ghost" data-action="choose-poster">V\u00e6lg PDF\u2026</button>
+            <span class="arr-poster-status" data-poster-status>${isEdit && ev?.poster_path ? 'Plakat uploadet' : 'Ingen plakat'}</span>
+            <button type="button" class="arr-poster-remove" data-action="remove-poster" style="${isEdit && ev?.poster_path ? '' : 'display:none'}">Fjern</button>
+          </div>
+          <div class="fsp-form-hint">Vises i fuld st\u00f8rrelse i tilmeldings-prompten. Uden plakat vises titel + beskrivelse som stor tekst.</div>
+        </div>
+        <div class="fsp-form-group">
+          <div class="fsp-form-label">Arrangement-ikon (valgfri)</div>
+          <input type="file" accept="image/*,application/pdf,.pdf" data-event-icon-file style="display:none">
+          <div class="arr-icon-row">
+            <div class="arr-icon-preview" data-icon-preview></div>
+            <div class="arr-icon-ctrls">
+              <button type="button" class="fsp-btn fsp-btn-ghost" data-action="choose-icon">V\u00e6lg billede/PDF\u2026</button>
+              <button type="button" class="arr-poster-remove" data-action="remove-icon" style="${isEdit && ev?.icon_path ? '' : 'display:none'}">Fjern</button>
+            </div>
+          </div>
+          <div class="fsp-form-hint">Vises p\u00e5 kortet i \u201cVis arrangementer som produkter\u201d. Billedet fylder hele kortet.</div>
+        </div>
       </div>
-      <div class="fsp-slide-footer"><button class="fsp-btn fsp-btn-ghost" data-action="close-slide">Annuller</button><button class="fsp-btn fsp-btn-primary" data-action="${submitAction}">${submitLabel}</button></div>`;
+      <div class="fsp-slide-footer">${isEdit ? '<button class="fsp-btn" style="margin-right:auto;background:none;border:1px solid rgba(232,90,111,0.3);color:#e85a6f" data-action="delete-event-slide">Slet</button>' : ''}<button class="fsp-btn fsp-btn-ghost" data-action="close-slide">Annuller</button><button class="fsp-btn fsp-btn-primary" data-action="${submitAction}">${submitLabel}</button></div>`;
 
     // Build grade chips
     const chipsEl = slidePanel.querySelector('[data-event-chips]');
@@ -718,12 +836,51 @@
       if (endDateInput) endDateInput.value = startDateInput.value;
     });
 
-    // Date/time picker buttons → trigger native picker
+    // Date picker buttons → trigger native picker (kun dato; tid er tt:mm-tekstfelt)
     slidePanel.querySelectorAll('.fsp-dt-picker-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const input = btn.parentElement.querySelector('input');
         if (input?.showPicker) input.showPicker();
         else input?.focus();
+      });
+    });
+
+    // 24-timers tid (tt:mm) — locale-uafhængig; native <input type=time> følger
+    // browserens sprog (navigator.language) og viser am/pm i fx en-US.
+    const normalizeTime = (raw) => {
+      raw = (raw || '').trim();
+      if (!raw) return null;
+      let h, m;
+      if (raw.includes(':')) {
+        const [hp, mp] = raw.split(':');
+        h = parseInt(hp, 10); m = parseInt(mp || '0', 10);
+      } else {
+        const d = raw.replace(/\D/g, '');
+        if (!d) return null;
+        if (d.length <= 2) { h = parseInt(d, 10); m = 0; }
+        else { h = parseInt(d.slice(0, d.length - 2), 10); m = parseInt(d.slice(-2), 10); }
+      }
+      if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+      return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    };
+    slidePanel.querySelectorAll('[data-time-input]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const digits = inp.value.replace(/\D/g, '').slice(0, 4);
+        inp.value = digits.length > 2 ? digits.slice(0, 2) + ':' + digits.slice(2) : digits;
+        inp.classList.remove('fsp-input-error');
+      });
+      inp.addEventListener('blur', () => {
+        const norm = normalizeTime(inp.value);
+        if (norm) { inp.value = norm; inp.classList.remove('fsp-input-error'); }
+        else if (inp.value.trim()) { inp.classList.add('fsp-input-error'); }
+      });
+    });
+
+    // Klokke-knap → custom 24-timers vælger (timer/minutter)
+    slidePanel.querySelectorAll('[data-time-picker-btn]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _openTimePicker(btn.parentElement.querySelector('[data-time-input]'), btn);
       });
     });
 
@@ -735,10 +892,82 @@
       });
     });
 
+    // Tilmeldings-prompt toggle
+    const promptToggle = slidePanel.querySelector('[data-event-prompt]');
+    promptToggle?.addEventListener('click', () => promptToggle.classList.toggle('on'));
+
+    // Plakat (PDF) — vælg/fjern; valget gemmes i closure og anvendes ved submit
+    let posterFile = null;
+    let posterRemove = false;
+    const posterInput = slidePanel.querySelector('[data-event-poster-file]');
+    const posterStatus = slidePanel.querySelector('[data-poster-status]');
+    const posterRemoveBtn = slidePanel.querySelector('[data-action="remove-poster"]');
+    slidePanel.querySelector('[data-action="choose-poster"]')?.addEventListener('click', () => posterInput?.click());
+    posterInput?.addEventListener('change', () => {
+      const f = posterInput.files?.[0];
+      if (!f) return;
+      if (f.type !== 'application/pdf') { alert('Kun PDF er tilladt.'); posterInput.value = ''; return; }
+      posterFile = f;
+      posterRemove = false;
+      if (posterStatus) posterStatus.textContent = f.name;
+      if (posterRemoveBtn) posterRemoveBtn.style.display = '';
+    });
+    posterRemoveBtn?.addEventListener('click', () => {
+      posterFile = null;
+      posterRemove = true;
+      if (posterInput) posterInput.value = '';
+      if (posterStatus) posterStatus.textContent = 'Plakat fjernes ved gem';
+      posterRemoveBtn.style.display = 'none';
+    });
+
+    // Arrangement-ikon — billede/PDF renderes til PNG ved valg; valget anvendes ved submit
+    let iconBlob = null;
+    let iconRemove = false;
+    const iconInput = slidePanel.querySelector('[data-event-icon-file]');
+    const iconPreview = slidePanel.querySelector('[data-icon-preview]');
+    const iconRemoveBtn = slidePanel.querySelector('[data-action="remove-icon"]');
+    const setIconPreview = (url) => {
+      if (!iconPreview) return;
+      iconPreview.innerHTML = url ? `<img src="${url}" alt="">` : '<span class="arr-icon-placeholder">🎉</span>';
+    };
+    setIconPreview(null);
+    if (isEdit && ev?.icon_path) {
+      window.__flangoEventMgmt?.getEventMediaSignedUrl?.(ev.icon_path).then(url => { if (url && !iconBlob && !iconRemove) setIconPreview(url); });
+    }
+    slidePanel.querySelector('[data-action="choose-icon"]')?.addEventListener('click', () => iconInput?.click());
+    iconInput?.addEventListener('change', async () => {
+      const f = iconInput.files?.[0];
+      if (!f) return;
+      const okType = f.type.startsWith('image/') || f.type === 'application/pdf';
+      if (!okType) { alert('Vælg et billede eller en PDF.'); iconInput.value = ''; return; }
+      const mgmt = window.__flangoEventMgmt;
+      try {
+        iconBlob = await mgmt.renderEventIconBlob(f);
+        iconRemove = false;
+        setIconPreview(URL.createObjectURL(iconBlob));
+        if (iconRemoveBtn) iconRemoveBtn.style.display = '';
+      } catch (e) {
+        alert(e?.message || 'Kunne ikke behandle filen.');
+        iconInput.value = '';
+      }
+    });
+    iconRemoveBtn?.addEventListener('click', () => {
+      iconBlob = null;
+      iconRemove = true;
+      if (iconInput) iconInput.value = '';
+      setIconPreview(null);
+      iconRemoveBtn.style.display = 'none';
+    });
+
     // Close slide
-    const closeSlide = () => { slideOverlay.classList.remove('open'); slidePanel.classList.remove('open'); };
+    const closeSlide = () => { _closeTimePicker(); slideOverlay.classList.remove('open'); slidePanel.classList.remove('open'); };
     slidePanel.querySelectorAll('[data-action="close-slide"]').forEach(btn => btn.addEventListener('click', closeSlide));
     slideOverlay.onclick = closeSlide;
+
+    // Slet-knap (kun ved redigering) → bekræft + slet permanent
+    slidePanel.querySelector('[data-action="delete-event-slide"]')?.addEventListener('click', () => {
+      _tilmDeleteEvent(editEventId, container, ctx);
+    });
 
     // Submit: create or update
     slidePanel.querySelector(`[data-action="${submitAction}"]`)?.addEventListener('click', async () => {
@@ -752,18 +981,28 @@
       const chips = slidePanel.querySelectorAll('[data-event-chips] .fsp-chip.on');
       const grades = Array.from(chips).map(c => parseInt(c.dataset.grade)).filter(n => !isNaN(n));
 
+      const startNorm = normalizeTime(slidePanel.querySelector('[data-event-start-time]')?.value);
+      if (!startNorm) { alert('Ugyldigt starttidspunkt. Brug formatet tt:mm (00:00–23:59).'); return; }
+      const endRaw = slidePanel.querySelector('[data-event-end-time]')?.value?.trim();
+      const endNorm = endRaw ? normalizeTime(endRaw) : null;
+      if (endRaw && !endNorm) { alert('Ugyldigt sluttidspunkt. Brug formatet tt:mm (00:00–23:59).'); return; }
+
       const eventData = {
         title: titleVal,
         description: slidePanel.querySelector('[data-event-desc]')?.value?.trim() || null,
         price: parseFloat(slidePanel.querySelector('[data-event-price]')?.value) || 0,
         capacity: parseInt(slidePanel.querySelector('[data-event-cap]')?.value) || null,
         event_date: slidePanel.querySelector('[data-event-start-date]')?.value || null,
-        start_time: slidePanel.querySelector('[data-event-start-time]')?.value || null,
-        end_time: slidePanel.querySelector('[data-event-end-time]')?.value || null,
+        start_time: startNorm,
+        end_time: endNorm,
         allowed_classes: grades.length > 0 ? grades : null,
+        prompt_after_purchase: !!promptToggle?.classList.contains('on'),
       };
 
+      const submitBtn = slidePanel.querySelector(`[data-action="${submitAction}"]`);
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Gemmer…'; }
       try {
+        let targetEventId = editEventId;
         if (isEdit) {
           const { error } = await mgmt.updateEvent(editEventId, eventData);
           if (error) throw error;
@@ -771,9 +1010,33 @@
           eventData.institution_id = instId;
           const admin = window.__flangoCurrentAdmin;
           eventData.created_by = admin?.id || null;
-          const { error } = await mgmt.createEvent(eventData);
+          const { data: created, error } = await mgmt.createEvent(eventData);
           if (error) throw error;
+          targetEventId = created?.id;
         }
+
+        // Plakat: upload ny PDF eller fjern eksisterende (via edge function)
+        if (targetEventId && posterFile) {
+          const up = await mgmt.uploadEventPoster(targetEventId, posterFile);
+          if (!up?.success) throw new Error(up?.error || 'Plakat-upload fejlede');
+        } else if (targetEventId && posterRemove) {
+          const rm = await mgmt.removeEventPoster(targetEventId);
+          if (!rm?.success) throw new Error(rm?.error || 'Kunne ikke fjerne plakat');
+        }
+
+        // Ikon: upload ny PNG (renderet ved valg) eller fjern eksisterende
+        if (targetEventId && iconBlob) {
+          const up = await mgmt.uploadEventIcon(targetEventId, iconBlob);
+          if (!up?.success) throw new Error(up?.error || 'Ikon-upload fejlede');
+        } else if (targetEventId && iconRemove) {
+          const rm = await mgmt.removeEventIcon(targetEventId);
+          if (!rm?.success) throw new Error(rm?.error || 'Kunne ikke fjerne ikon');
+        }
+
+        // Invalidér prompt- + event-cachen så ændringer (incl. ikon) slår igennem
+        window.__flangoInvalidateArrangementPromptCache?.(instId);
+        window.__flangoInvalidateCafeEventsCache?.();
+
         closeSlide();
         if (isEdit && _tilm.openEventId === editEventId) {
           // Re-fetch and re-render detail
@@ -788,6 +1051,7 @@
         }
       } catch (err) {
         alert('Fejl: ' + (err?.message || err));
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel; }
       }
     });
 
@@ -811,7 +1075,7 @@
       if (!client || !instId) return;
       const { data } = await client
         .from('users')
-        .select('id, name, number, grade_level, balance, role, is_test_user')
+        .select('id, name, last_name, number, grade_level, balance, role, is_test_user')
         .eq('institution_id', instId)
         .neq('role', 'admin')
         .order('name', { ascending: true });
@@ -854,7 +1118,7 @@
           return `<div class="fsp-up-user${isEnrolled ? ' enrolled' : ''}${isHighlight ? ' fsp-up-user-highlight' : ''}" data-user-id="${u.id}">
             <div class="fsp-up-avatar" style="background:${col}22;color:${col}">${_initials(u.name)}</div>
             <div class="fsp-up-user-info">
-              <div class="fsp-up-user-name">${esc(u.name)}${isEnrolled ? ' <span class="fsp-up-enrolled-badge">\u2713 Tilmeldt</span>' : ''}</div>
+              <div class="fsp-up-user-name">${esc((window.__flangoUserName && window.__flangoUserName(u)) || u.name)}${isEnrolled ? ' <span class="fsp-up-enrolled-badge">\u2713 Tilmeldt</span>' : ''}</div>
               <div class="fsp-up-user-meta">Nr. ${esc(u.number || '')} \u00b7 ${esc(_gradeLabel(u.grade_level))}</div>
             </div>
             <div class="fsp-up-user-saldo ${bal >= 0 ? 'pos' : 'neg'}">${_formatSaldo(bal)}</div>
@@ -966,6 +1230,7 @@
       }
       // Invalidate cache and re-render detail
       _tilm.usersCache = null;
+      try { window.__flangoInvalidateCafeEventsCache?.(user.id); } catch (_) { /* ignore */ }
       overlay.classList.remove('open');
       // Re-fetch detail
       const { event, registrations } = await mgmt.fetchEventDetail(eventId);
@@ -1122,15 +1387,23 @@
       if (!result?.success) { alert('Fejl: ' + (result?.error || 'Ukendt fejl')); return; }
       overlay.classList.remove('open');
 
-      // Show refund toast if applicable
-      if (result.refunded && result.refund_amount) {
-        const refundAmt = parseFloat(result.refund_amount);
-        const newBal = (parseFloat(u.balance) || 0) + refundAmt;
-        window.__flangoShowBalanceToast?.({
-          userId: u.id, userName: u.name,
-          delta: refundAmt, newBalance: newBal,
-        });
+      // Show refund toast if applicable (best-effort — må ALDRIG blokere re-render nedenfor)
+      try {
+        if (result.refunded && result.refund_amount) {
+          const refundAmt = parseFloat(result.refund_amount);
+          const newBal = (parseFloat(u.balance) || 0) + refundAmt;
+          window.__flangoShowBalanceToast?.({
+            userId: u.id, userName: u.name,
+            delta: refundAmt, newBalance: newBal,
+          });
+        }
+      } catch (toastErr) {
+        console.warn('[tilmelding] balance-toast fejl (ignoreret):', toastErr);
       }
+
+      // Invalidér café-strippens cache så framelding slår igennem i POS'en (ellers
+      // viser strippen barnet som tilmeldt indtil cachen udløber → "kræver refresh").
+      try { window.__flangoInvalidateCafeEventsCache?.(userId); } catch (_) { /* ignore */ }
 
       // Invalidate cache, re-fetch and re-render
       _tilm.usersCache = null;
@@ -1139,7 +1412,7 @@
         const [evRes, regRes] = await Promise.all([
           client.from('club_events').select('*').eq('id', eventId).single(),
           client.from('event_registrations')
-            .select('*, users!event_registrations_user_id_fkey(id, name, number, grade_level, balance, role, is_test_user)')
+            .select('*, users!event_registrations_user_id_fkey(id, name, last_name, number, grade_level, balance, role, is_test_user)')
             .eq('event_id', eventId).order('registered_at', { ascending: true }),
         ]);
         _tilm.eventDetail = evRes.data;
@@ -1200,11 +1473,73 @@
     overlay.classList.add('open');
   }
 
+  // ── Slet arrangement permanent (fra rediger-slide eller papirkurv-ikon) ──
+  function _tilmDeleteEvent(eventId, container, ctx) {
+    const mgmt = window.__flangoEventMgmt;
+    if (!mgmt) return;
+    const right = ctx.overlay?.querySelector('.fsp-right') || ctx.overlay;
+    const overlay = right?.querySelector('[data-modal="delete-event"]');
+    if (!overlay) return;
+
+    const closeSlide = () => {
+      ctx.overlay?.querySelector('#fsp-slide-overlay')?.classList.remove('open');
+      ctx.overlay?.querySelector('#fsp-slide-panel')?.classList.remove('open');
+    };
+
+    (async () => {
+      const { event, registrations } = await mgmt.fetchEventDetail(eventId);
+      if (!event) { alert('Arrangement ikke fundet.'); return; }
+      const regs = registrations || [];
+      const activeRegs = regs.filter(r => r.registration_status === 'registered');
+      const startDt = new Date(event.event_date + 'T' + (event.start_time || '00:00').slice(0, 5));
+      const isUpcoming = event.status === 'active' && startDt > new Date();
+      const activePaid = activeRegs.filter(r => r.payment_status === 'paid');
+
+      let detail = `<strong>${esc(event.title)}</strong> slettes permanent og kan ikke gendannes.`;
+      if (activeRegs.length > 0) {
+        detail += `<div style="margin-top:8px">${activeRegs.length} tilmelding${activeRegs.length === 1 ? '' : 'er'} og hele arrangementets historik fjernes.</div>`;
+      }
+      if (isUpcoming && activePaid.length > 0) {
+        const paidTotal = activePaid.reduce((s, r) => s + (parseFloat(r.price_at_signup) || 0), 0);
+        detail += `<div style="margin-top:8px;color:#e85a6f"><strong>OBS:</strong> ${activePaid.length} betalt${activePaid.length === 1 ? '' : 'e'} tilmelding${activePaid.length === 1 ? '' : 'er'} (${paidTotal.toFixed(2).replace('.', ',')} kr.) refunderes IKKE ved sletning. Brug “Aflys arrangement” først, hvis pengene skal tilbage.</div>`;
+      }
+
+      overlay.innerHTML = `<div class="fsp-rm-modal">
+        <div class="fsp-pay-title">🗑️ Slet arrangement</div>
+        <div class="fsp-pay-detail">${detail}</div>
+        <div class="fsp-pay-btns">
+          <button class="fsp-btn fsp-btn-ghost" style="padding:10px 20px;font-size:13px" data-action="de-cancel">Annuller</button>
+          <button class="fsp-btn" style="padding:10px 20px;font-size:13px;background:#e85a6f;color:#fff" data-action="de-confirm">Slet permanent</button>
+        </div>
+      </div>`;
+
+      overlay.querySelector('[data-action="de-cancel"]')?.addEventListener('click', () => overlay.classList.remove('open'));
+      overlay.querySelector('[data-action="de-confirm"]')?.addEventListener('click', async () => {
+        const btn = overlay.querySelector('[data-action="de-confirm"]');
+        if (btn) { btn.disabled = true; btn.textContent = 'Sletter…'; }
+        const { error } = await mgmt.deleteEvent(eventId, event.poster_path, event.icon_path);
+        if (error) {
+          alert('Fejl: ' + (error.message || error));
+          if (btn) { btn.disabled = false; btn.textContent = 'Slet permanent'; }
+          return;
+        }
+        overlay.classList.remove('open');
+        closeSlide();
+        if (_tilm.openEventId === eventId) { _tilm.openEventId = null; _tilm.eventDetail = null; }
+        window.__flangoInvalidateArrangementPromptCache?.(window.getInstitutionId?.());
+        _tilmLoadEvents(container, ctx);
+      });
+
+      overlay.classList.add('open');
+    })();
+  }
+
   // ── Restaurant Mode (settings section) ──
   sections['Restaurant Mode'] = {
     render(ctx) {
       const inst = ctx.institutionData || {};
       const enabled = !!inst.restaurant_mode_enabled;
+      const kitchenOn = inst.toolbar_kitchen !== false;
       const tableOn = !!inst.restaurant_table_numbers_enabled;
       const tableCount = inst.restaurant_table_count ?? 8;
       const deviceOn = !!localStorage.getItem('flango_device_restaurant_mode');
@@ -1230,6 +1565,9 @@
           <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="restaurant_mode_enabled" data-expand="rm-body"></div>
         </div>
         <div class="fsp-body${enabled ? ' open' : ''}" data-expand-target="rm-body">
+          <div class="fsp-section"><div class="fsp-block">
+            <div class="fsp-row"><div style="flex:1"><div class="fsp-row-title">Vis køkkenskærm-genvej i toolbar</div><div class="fsp-row-desc">Tip: hold knappen inde for at åbne køkkenskærmen.</div></div><div class="fsp-toggle${kitchenOn ? ' on' : ''}" data-field="toolbar_kitchen" data-rm-kitchen></div></div>
+          </div></div>
           <div class="fsp-section" style="margin-bottom:20px">
             <button type="button" data-action="open-kitchen-fullscreen" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 24px;border:none;border-radius:12px;background:var(--fsp-accent-g);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s;letter-spacing:-0.2px;font-family:inherit">
               <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v10"/><path d="M2.5 3v3c0 1 .7 1.7 1.5 1.7S5.5 7 5.5 6V3"/><path d="M11 3v5.5c0 .5.2.8.5 1h1c.3-.2.5-.5.5-1V4.5C13 3.5 12.2 3 11 3z"/><path d="M11.5 9.5V13"/></svg>
@@ -1268,6 +1606,12 @@
       wireNumberInputs(container, ctx);
       wireStepButtons(container);
       // "Vis Køkkenskærm" button → toggle fullscreen kitchen overlay (lazy-load module if needed)
+      // Køkkenskærm-genvej-toggle: wireToggles gemmer toolbar_kitchen; spejl live til den faktiske header-knap.
+      const _rmKitchenTog = container.querySelector('[data-rm-kitchen]');
+      if (_rmKitchenTog) _rmKitchenTog.addEventListener('click', () => {
+        const b = document.getElementById('kitchen-btn');
+        if (b) b.style.display = _rmKitchenTog.classList.contains('on') ? '' : 'none';
+      });
       container.querySelector('[data-action="open-kitchen-fullscreen"]')?.addEventListener('click', () => {
         if (typeof window.__flangoToggleKitchenFullscreen === 'function') {
           window.__flangoToggleKitchenFullscreen();
@@ -1439,194 +1783,203 @@
   // ── Toolbar (NEW FEATURE — drag-drop + preview) ──
   sections['Toolbar'] = {
     _items: null,
-    _getItems(ctx) {
-      if (this._items) return this._items;
+    // Byg items fra den KANONISKE kilde (window.__flangoToolbarItems = TOOLBAR_MAPPING
+    // i shell.js), s\u00e5 labels, ikoner og kolonner ALTID matcher den rigtige header.
+    //   key   = orderKey (persisteret i toolbar_order \u2014 r\u00f8r ikke)
+    //   dbCol = den faktiske boolean-kolonne (toggle l\u00e6ser+skriver SAMME kolonne)
+    //   btnId = header-element til live-toggle + reorder
+    _build(ctx) {
       const inst = ctx.institutionData || {};
-      this._items = [
-        { key: 'toolbar_shift_timer', e: '\u23F1\uFE0F', n: 'Bytte-Timer', d: 'Vis bytte-timer genvej', on: inst.toolbar_shift_timer !== false },
-        { key: 'toolbar_calculator', e: '\uD83E\uDDEE', n: 'Lommeregner', d: 'Vis lommeregner genvej', on: inst.toolbar_calculator !== false },
-        { key: 'toolbar_kitchen', e: '\uD83C\uDF7D\uFE0F', n: 'K\u00f8kkensk\u00e6rm', d: 'Vis k\u00f8kkensk\u00e6rm genvej', note: 'Kr\u00e6ver Restaurant Mode', on: !!inst.toolbar_kitchen && ctx.rmActive },
-        { key: 'toolbar_products', e: '\uD83D\uDED2', n: 'Produktoversigt', d: 'Vis produktoversigt genvej', on: inst.toolbar_products !== false },
-        { key: 'toolbar_deposit', e: '\uD83D\uDCB0', n: 'Brugerpanel', d: 'Vis brugerpanel genvej', on: inst.toolbar_deposit !== false },
-        { key: 'toolbar_history', e: '\uD83D\uDCCB', n: 'Historik', d: 'Vis historik genvej', on: !!inst.toolbar_history },
-        { key: 'toolbar_help', e: '\u2753', n: 'Hj\u00e6lp', d: 'Vis hj\u00e6lp genvej', on: !!inst.toolbar_help },
-        { key: 'toolbar_min_flango', e: '\uD83D\uDC64', n: 'Min Flango', d: 'Vis avatar/profil genvej', on: inst.toolbar_min_flango !== false },
-        { key: 'toolbar_logout', e: '\uD83D\uDEAA', n: 'Log ud', d: 'Vis log ud genvej', on: inst.toolbar_logout !== false },
-        ...(window.__TAURI_INTERNALS__ ? [{ key: 'toolbar_fullscreen', e: '\u26F6', n: 'Fuldsk\u00e6rm', d: 'Skift mellem fuldsk\u00e6rm og vindue', on: !!inst.toolbar_fullscreen }] : [])
-      ];
-      // Apply stored order
-      if (inst.toolbar_order) {
-        const order = typeof inst.toolbar_order === 'string' ? JSON.parse(inst.toolbar_order) : inst.toolbar_order;
+      const isTauri = !!window.__TAURI_INTERNALS__;
+      const MAP = window.__flangoToolbarItems || [];
+      const items = MAP
+        .filter(m => !m.tauriOnly || isTauri)
+        .map(m => {
+          const on = inst[m.dbCol] !== false;
+          const requiresMet = !m.requiresCol || inst[m.requiresCol] === true;
+          return {
+            key: m.orderKey,
+            dbCol: m.dbCol,
+            btnId: m.btnId,
+            e: m.icon,
+            n: m.label,
+            d: m.desc,
+            requiresCol: m.requiresCol || null,
+            note: m.requiresCol === 'restaurant_mode_enabled' ? 'Kr\u00e6ver Restaurant Mode' : null,
+            on,
+            requiresMet,
+            alwaysOn: !!m.alwaysOn,
+            shown: on && requiresMet, // \u00e6gte header-synlighed \u2192 preview matcher headeren
+            iconHtml: this._iconHtml(m.btnId, m.icon),
+          };
+        });
+      // Anvend gemt r\u00e6kkef\u00f8lge (toolbar_order)
+      const ord = inst.toolbar_order;
+      if (ord) {
+        const order = typeof ord === 'string' ? JSON.parse(ord) : ord;
         if (Array.isArray(order) && order.length > 0) {
           const orderMap = {};
-          order.forEach((key, idx) => { orderMap[key] = idx; });
-          this._items.sort((a, b) => (orderMap[a.key] ?? 999) - (orderMap[b.key] ?? 999));
+          order.forEach((k, idx) => { orderMap[k] = idx; });
+          items.sort((a, b) => (orderMap[a.key] ?? 999) - (orderMap[b.key] ?? 999));
         }
       }
+      return items;
+    },
+    _getItems(ctx) {
+      if (!this._items) this._items = this._build(ctx);
       return this._items;
+    },
+    // FORH\u00C5NDSVISNING: kun aktiverede ikoner vises (.vis) \u2014 en tro kopi af header-
+    // r\u00e6kkef\u00f8lgen. Draggable, s\u00e5 man kan omplacere direkte i forh\u00e5ndsvisningen.
+    // Clone the real header button icon (SVG/img) so the list + preview match the cafe
+    // header EXACTLY; fallback to emoji if the button is missing or is emoji/text
+    // (e.g. the dynamic shift-timer pill).
+    _iconHtml(btnId, emoji) {
+      const el = btnId && document.getElementById(btnId);
+      const html = el && el.innerHTML && el.innerHTML.trim();
+      return (html && /<svg|<img/i.test(html)) ? html : (emoji || '');
+    },
+    _previewIconsHtml(items) {
+      return items.filter(it => it.shown).map(it =>
+        `<div class="fsp-tb-preview-icon vis" data-tb-key="${it.key}" title="${it.n}">${it.iconHtml}</div>`
+      ).join('');
+    },
+    _listHtml(items) {
+      return items.map(it => {
+        const reqLocked = it.requiresCol && !it.requiresMet; // fx Køkkenskærm når Restaurant Mode er slået fra
+        let noteHtml = '';
+        if (reqLocked) noteHtml = `<div class="fsp-tb-item-note"><a href="#" data-action="open-rm" class="fsp-tb-note-link">${it.note || 'Kræver Restaurant Mode'} →</a></div>`;
+        else if (it.alwaysOn) noteHtml = `<div class="fsp-tb-item-note">Altid synlig — kan flyttes, ikke skjules</div>`;
+        // alwaysOn (⚙️/➕): låst-tændt toggle uden data-tb-toggle (ikke en funktionel toggle), men stadig flytbar.
+        const toggleOn = it.alwaysOn || it.on;
+        const toggleLocked = it.alwaysOn || reqLocked;
+        const toggleAttr = it.alwaysOn ? '' : ` data-tb-toggle="${it.dbCol}"`;
+        return `<div class="fsp-tb-item" data-tb-key="${it.key}">
+        <div class="fsp-tb-item-drag" data-tb-handle><span></span><span></span><span></span></div>
+        <div class="fsp-tb-item-emoji">${it.iconHtml}</div>
+        <div class="fsp-tb-item-info">
+          <div class="fsp-tb-item-name">${it.n}</div>
+          <div class="fsp-tb-item-desc">${it.d}</div>
+          ${noteHtml}
+        </div>
+        <div class="fsp-toggle${toggleOn ? ' on' : ''}${toggleLocked ? ' locked' : ''}"${toggleAttr}></div>
+      </div>`;
+      }).join('');
     },
     render(ctx) {
       this._items = null; // Reset cache so order is re-read from DB
       const items = this._getItems(ctx);
       return `<div class="fsp-page">
         <div class="fsp-page-title">Toolbar</div>
-        <div class="fsp-page-desc">V\u00e6lg hvilke genvejsknapper der vises som ikoner i toolbaren over indk\u00f8bskurven. Tr\u00e6k for at \u00e6ndre r\u00e6kkef\u00f8lgen.</div>
+        <div class="fsp-page-desc">V\u00e6lg hvilke genvejsknapper der vises som ikoner i toolbaren over indk\u00f8bskurven. Tr\u00e6k i forh\u00e5ndsvisningen eller listen for at \u00e6ndre r\u00e6kkef\u00f8lgen.</div>
         <div class="fsp-tb-preview" data-tb-preview>
           <div class="fsp-tb-preview-label">Forh\u00e5ndsvisning</div>
-          ${items.map(it => `<div class="fsp-tb-preview-icon${it.on ? ' vis' : ''}" data-preview-key="${it.key}">${it.e}</div>`).join('')}
+          <div class="fsp-tb-preview-icons" data-tb-preview-icons>${this._previewIconsHtml(items)}</div>
         </div>
         <div data-tb-items>
-          ${items.map((it, i) => `<div class="fsp-tb-item" draggable="true" data-tb-idx="${i}" data-tb-key="${it.key}">
-            <div class="fsp-tb-item-drag"><span></span><span></span><span></span></div>
-            <div class="fsp-tb-item-emoji">${it.e}</div>
-            <div class="fsp-tb-item-info">
-              <div class="fsp-tb-item-name">${it.n}</div>
-              <div class="fsp-tb-item-desc">${it.d}</div>
-              ${it.note ? `<div class="fsp-tb-item-note">${it.note}</div>` : ''}
-            </div>
-            <div class="fsp-toggle${it.on ? ' on' : ''}" data-tb-toggle="${it.key}"></div>
-          </div>`).join('')}
+          ${this._listHtml(items)}
         </div>
       </div>`;
     },
     wire(container, ctx) {
       pageAlign(container);
-      const items = this._getItems(ctx);
+      const self = this;
+      const listEl = () => container.querySelector('[data-tb-items]');
+      const previewIconsEl = () => container.querySelector('[data-tb-preview-icons]');
 
-      // Toolbar key → header button ID mapping
-      const tbBtnMap = {
-        toolbar_shift_timer: 'shift-timer-pill',
-        toolbar_calculator: 'calculator-mode-toggle',
-        toolbar_kitchen: 'kitchen-btn',
-        toolbar_products: 'toolbar-products-btn',
-        toolbar_deposit: 'toolbar-deposit-btn',
-        toolbar_history: 'toolbar-history-btn',
-        toolbar_help: 'flango-logo-button',
-        toolbar_min_flango: 'logged-in-user-avatar-container',
-        toolbar_logout: 'logout-btn',
-        toolbar_user_panel: 'toolbar-user-panel-btn',
-        toolbar_fullscreen: 'toolbar-fullscreen-btn',
-      };
-
-      // Toggle visibility
-      container.querySelectorAll('[data-tb-toggle]').forEach(toggle => {
-        toggle.addEventListener('click', () => {
-          toggle.classList.toggle('on');
-          const key = toggle.dataset.tbToggle;
-          const isOn = toggle.classList.contains('on');
-          ctx.markDirty(key, isOn);
-          // Update preview
-          const preview = container.querySelector(`[data-preview-key="${key}"]`);
-          if (preview) preview.classList.toggle('vis', isOn);
-          // Update items array
-          const item = items.find(it => it.key === key);
-          if (item) item.on = isOn;
-          // Live update: show/hide actual toolbar button in header
-          const btnId = tbBtnMap[key];
-          if (btnId) {
-            const btn = document.getElementById(btnId);
-            if (btn) btn.style.display = isOn ? '' : 'none';
-          }
-        });
-      });
-
-      // Drag and drop reorder
-      let dragIdx = null;
-      const itemsContainer = container.querySelector('[data-tb-items]');
-      itemsContainer?.addEventListener('dragstart', (e) => {
-        const item = e.target.closest('[data-tb-idx]');
-        if (!item) return;
-        dragIdx = parseInt(item.dataset.tbIdx);
-        item.classList.add('dragging');
-      });
-      itemsContainer?.addEventListener('dragend', (e) => {
-        e.target.closest?.('.fsp-tb-item')?.classList.remove('dragging');
-      });
-      itemsContainer?.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        const item = e.target.closest('[data-tb-idx]');
-        if (item) item.classList.add('drag-over');
-      });
-      itemsContainer?.addEventListener('dragleave', (e) => {
-        e.target.closest?.('.fsp-tb-item')?.classList.remove('drag-over');
-      });
-      itemsContainer?.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const target = e.target.closest('[data-tb-idx]');
-        if (!target || dragIdx === null) return;
-        target.classList.remove('drag-over');
-        const dropIdx = parseInt(target.dataset.tbIdx);
-        if (dragIdx === dropIdx) return;
-        // Reorder items array
-        const [moved] = items.splice(dragIdx, 1);
-        items.splice(dropIdx, 0, moved);
-        // Save toolbar order as single JSONB array
-        ctx.markDirty('toolbar_order', items.map(it => it.key));
-        // Live reorder actual header buttons
+      // Live: move the actual header buttons (same insertBefore-gear logic as applyToolbarOrder).
+      function applyLiveOrder() {
         const headerActions = document.querySelector('.header-actions');
-        if (headerActions) {
-          const tbBtnMap = {
-            toolbar_shift_timer: 'shift-timer-pill',
-            toolbar_calculator: 'calculator-mode-toggle',
-            toolbar_kitchen: 'kitchen-btn',
-            toolbar_products: 'toolbar-products-btn',
-            toolbar_deposit: 'toolbar-deposit-btn',
-            toolbar_history: 'toolbar-history-btn',
-            toolbar_help: 'flango-logo-button',
-            toolbar_min_flango: 'logged-in-user-avatar-container',
-            toolbar_logout: 'logout-btn',
-            toolbar_user_panel: 'toolbar-user-panel-btn',
-          };
-          const gearBtn = document.getElementById('toolbar-gear-btn');
-          items.forEach(it => {
-            const btnId = tbBtnMap[it.key];
-            if (btnId) {
-              const btn = document.getElementById(btnId);
-              if (btn) headerActions.insertBefore(btn, gearBtn);
-            }
-          });
-        }
-        // Re-render items
-        this._items = items;
-        const parent = container.querySelector('.fsp-content') || container;
-        // Simple re-render of just the items list
-        const newHtml = items.map((it, i) => `<div class="fsp-tb-item" draggable="true" data-tb-idx="${i}" data-tb-key="${it.key}">
-          <div class="fsp-tb-item-drag"><span></span><span></span><span></span></div>
-          <div class="fsp-tb-item-emoji">${it.e}</div>
-          <div class="fsp-tb-item-info">
-            <div class="fsp-tb-item-name">${it.n}</div>
-            <div class="fsp-tb-item-desc">${it.d}</div>
-            ${it.note ? `<div class="fsp-tb-item-note">${it.note}</div>` : ''}
-          </div>
-          <div class="fsp-toggle${it.on ? ' on' : ''}" data-tb-toggle="${it.key}"></div>
-        </div>`).join('');
-        itemsContainer.innerHTML = newHtml;
-        // Re-wire toggles
-        container.querySelectorAll('[data-tb-toggle]').forEach(toggle => {
-          toggle.addEventListener('click', () => {
-            toggle.classList.toggle('on');
-            const key = toggle.dataset.tbToggle;
-            ctx.markDirty(key, toggle.classList.contains('on'));
-            const preview = container.querySelector(`[data-preview-key="${key}"]`);
-            if (preview) preview.classList.toggle('vis', toggle.classList.contains('on'));
-          });
+        if (!headerActions) return;
+        // appendChild i items-rækkefølge (⚙️/➕ er nu flytbare, ikke et fast anker — samme som applyToolbarOrder).
+        self._getItems(ctx).forEach(it => {
+          if (!it.btnId) return;
+          const btn = document.getElementById(it.btnId);
+          if (btn) headerActions.appendChild(btn);
         });
-        // Update preview order
-        const previewEl = container.querySelector('[data-tb-preview]');
-        if (previewEl) {
-          const label = previewEl.querySelector('.fsp-tb-preview-label');
-          previewEl.innerHTML = '';
-          if (label) previewEl.appendChild(label);
-          items.forEach(it => {
-            const icon = document.createElement('div');
-            icon.className = 'fsp-tb-preview-icon' + (it.on ? ' vis' : '');
-            icon.dataset.previewKey = it.key;
-            icon.textContent = it.e;
-            previewEl.appendChild(icon);
-          });
+      }
+      function persistOrder() {
+        ctx.markDirty('toolbar_order', self._getItems(ctx).map(x => x.key));
+        applyLiveOrder();
+      }
+      function renderListDom() { const l = listEl(); if (l) { l.innerHTML = self._listHtml(self._getItems(ctx)); mountList(); } }
+      function renderPreviewDom() { const p = previewIconsEl(); if (p) { p.innerHTML = self._previewIconsHtml(self._getItems(ctx)); mountPreview(); } }
+
+      function setToggle(dbCol, isOn) {
+        const inst = ctx.institutionData || {};
+        const it = self._getItems(ctx).find(x => x.dbCol === dbCol);
+        if (!it || it.alwaysOn) return; // alwaysOn (⚙️/➕) kan ikke skjules
+        const requiresMet = !it.requiresCol || inst[it.requiresCol] === true;
+        if (it.requiresCol && !requiresMet) return; // låst: kan ikke slås til uden kravet (fx Køkkenskærm uden Restaurant Mode)
+        it.on = isOn;
+        it.shown = isOn && requiresMet;
+        ctx.markDirty(dbCol, isOn); // auto-save to the SAME column the header reads
+        // shift_timer is gated by a runtime global (clerk-login + pill creation read it).
+        if (dbCol === 'shift_timer_enabled' && window.__flangoInstitutionSettings) {
+          window.__flangoInstitutionSettings.shiftTimerEnabled = isOn;
         }
-        dragIdx = null;
+        // Live header visibility gated by the SAME requiresCol as applyToolbarSettings (live == reload).
+        if (it.btnId) {
+          const btn = document.getElementById(it.btnId);
+          if (btn) btn.style.display = it.shown ? '' : 'none';
+        }
+        renderListDom();
+        renderPreviewDom();
+      }
+
+      // List drag: new full order = the DOM order.
+      function reorderFromList(newKeys) {
+        const items = self._getItems(ctx);
+        const byKey = {}; items.forEach(it => { byKey[it.key] = it; });
+        const next = newKeys.map(k => byKey[k]).filter(Boolean);
+        items.forEach(it => { if (!newKeys.includes(it.key)) next.push(it); });
+        self._items = next;
+        persistOrder();
+        renderPreviewDom(); // list already moved by Sortable; refresh the preview
+      }
+      // Preview drag: only the shown icons move; hidden items keep their slots.
+      function reorderFromPreview(newShownKeys) {
+        const items = self._getItems(ctx);
+        const byKey = {}; items.forEach(it => { byKey[it.key] = it; });
+        let ei = 0;
+        const next = items.map(it => it.shown ? byKey[newShownKeys[ei++]] : it).filter(Boolean);
+        self._items = next;
+        persistOrder();
+        renderListDom(); // preview already moved by Sortable; refresh the list
+      }
+
+      // SortableJS with forceFallback = pointer-based drag → robust in WKWebView/Tauri
+      // (native HTML5 drag-and-drop is unreliable there).
+      function mountList() {
+        if (self._sortList) { try { self._sortList.destroy(); } catch (e) {} self._sortList = null; }
+        const l = listEl();
+        if (!l || !window.Sortable) return;
+        self._sortList = window.Sortable.create(l, {
+          animation: 150, forceFallback: true, handle: '[data-tb-handle]', draggable: '.fsp-tb-item',
+          onEnd: () => reorderFromList(Array.from(l.querySelectorAll('.fsp-tb-item')).map(el => el.dataset.tbKey)),
+        });
+      }
+      function mountPreview() {
+        if (self._sortPreview) { try { self._sortPreview.destroy(); } catch (e) {} self._sortPreview = null; }
+        const p = previewIconsEl();
+        if (!p || !window.Sortable) return;
+        self._sortPreview = window.Sortable.create(p, {
+          animation: 150, forceFallback: true, draggable: '.fsp-tb-preview-icon',
+          onEnd: () => reorderFromPreview(Array.from(p.querySelectorAll('.fsp-tb-preview-icon')).map(el => el.dataset.tbKey)),
+        });
+      }
+
+      // Toggles (delegated — survive re-render).
+      container.addEventListener('click', (e) => {
+        const rm = e.target.closest('[data-action="open-rm"]');
+        if (rm) { e.preventDefault(); window.FlangoSettings?.openTo?.('Hovedmenu', 'Restaurant Mode'); return; }
+        const t = e.target.closest('[data-tb-toggle]');
+        if (!t || !container.contains(t)) return;
+        setToggle(t.dataset.tbToggle, !t.classList.contains('on'));
       });
+
+      mountList();
+      mountPreview();
     }
   };
 
@@ -2488,19 +2841,88 @@
   };
 
   // ── Auto-sletning af inaktive (settings section) ──
+  sections['Brugernavne'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      const enabled = !!inst.last_name_enabled;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Brugernavne</div>
+        <div class="fsp-page-desc">Vælg om børnenes <strong>efternavn</strong> skal gemmes og vises sammen med fornavnet. Slået fra vises og gemmes kun fornavn — standard for nye institutioner, da efternavn er en ekstra personoplysning.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Vis efternavn</div><div class="fsp-main-desc">Fornavn + efternavn i café, forældreportal og ved oprettelse/import. Fra = kun fornavn.</div></div>
+          <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="last_name_enabled"></div>
+        </div>
+        <div class="fsp-main-toggle" style="margin-top:10px">
+          <div style="flex:1"><div class="fsp-main-title">Kun forbogstav</div><div class="fsp-main-desc">Vis efternavnet som forbogstav i caféen — fx "Emma B." — en let måde at skelne børn med ens fornavn. Gælder kun, når efternavn er slået til ovenfor.</div></div>
+          <div class="fsp-toggle${inst.last_name_initial_only ? ' on' : ''}" data-field="last_name_initial_only"></div>
+        </div>
+        <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Ændringen slår igennem med det samme. Eksisterende navne påvirkes ikke — efternavne kan tilføjes pr. barn under rediger bruger, ved oprettelse eller via auto-import.</div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+    }
+  };
+
+  sections['Brugernummer'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      // Default true: nummer vises medmindre eksplicit slået fra.
+      const shown = inst.account_number_enabled !== false;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Brugernummer</div>
+        <div class="fsp-page-desc">Vælg om børnenes <strong>brugernummer</strong> skal vises i caféens kundevælger. Slået fra identificeres børn på navn — kombinér evt. med "Kun forbogstav" under Brugernavne, hvis flere børn deler fornavn. Nummeret tildeles og gemmes fortsat internt, så import og data er upåvirket.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Vis brugernummer</div><div class="fsp-main-desc">Til = nummer-kolonne i kundevælgeren. Fra = kun navn (og evt. profilbillede).</div></div>
+          <div class="fsp-toggle${shown ? ' on' : ''}" data-field="account_number_enabled"></div>
+        </div>
+        <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Ændringen slår igennem ved næste åbning af kundevælgeren. Selve numrene slettes ikke — de skjules blot og kan vises igen.</div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+    }
+  };
+
+  sections['Ekspedient-login'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      // Default true: PIN kræves medmindre eksplicit slået fra.
+      const required = inst.clerk_pin_required !== false;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Ekspedient-login</div>
+        <div class="fsp-page-desc">Vælg om børn skal indtaste deres personlige <strong>PIN</strong> for at logge på som ekspedient. PIN'en er en symbolsk markering af, at barnet tager rollen på sig — den er <strong>ikke</strong> en sikkerhedskode: køb kræver den ikke, og ansvaret ligger altid hos den voksne, der har låst caféen op.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Kræv PIN ved ekspedient-login</div><div class="fsp-main-desc">Til = barnet indtaster sin PIN. Fra = barnet vælger blot sig selv og går i gang.</div></div>
+          <div class="fsp-toggle${required ? ' on' : ''}" data-field="clerk_pin_required"></div>
+        </div>
+        <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Ændringen slår igennem med det samme. Slår du PIN fra, fjernes blot login-trinnet — børnenes koder bevares og kan slås til igen.</div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+    }
+  };
+
   sections['Auto-sletning af inaktive'] = {
     render(ctx) {
       const inst = ctx.institutionData || {};
-      const enabled = !!inst.auto_delete_inactive_enabled;
       const months = inst.auto_delete_inactive_months || 12;
       return `<div class="fsp-page">
-        <div class="fsp-page-title">Auto-sletning af inaktive brugere</div>
-        <div class="fsp-page-desc">N\u00e5r auto-sletning er aktiveret, slettes brugere der ikke har v\u00e6ret aktive i den valgte periode automatisk. For\u00e6ldre modtager en advarsel via e-mail 30 dage inden sletning.</div>
-        <div class="fsp-main-toggle">
-          <div style="flex:1"><div class="fsp-main-title">Aktiv\u00e9r auto-sletning</div><div class="fsp-main-desc">Brugere der ikke har handlet eller logget ind slettes automatisk.</div></div>
-          <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="auto_delete_inactive_enabled" data-expand="ad-body"></div>
+        <div class="fsp-page-title">Papirkurv & auto-arkivering</div>
+        <div class="fsp-page-desc">B\u00f8rn der ikke har brugt caf\u00e9en l\u00e6nge flyttes automatisk til papirkurven \u2014 skjult fra resten af programmet, men altid med fortrydelsesret.</div>
+
+        <div style="margin-top:16px;padding:16px 18px;background:rgba(91,160,216,0.07);border:1px solid rgba(91,160,216,0.22);border-radius:14px;line-height:1.55;font-size:13px;color:var(--fsp-txt2,#ccc)">
+          <div style="font-weight:700;color:var(--fsp-txt,#eee);margin-bottom:10px;font-size:13.5px">S\u00e5dan virker det</div>
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">1</span><div>B\u00f8rn der ikke har brugt caf\u00e9en i <strong>${months} m\u00e5neder</strong> flyttes automatisk i papirkurven. Aktivitet som ekspedient t\u00e6ller ogs\u00e5 med \u2014 s\u00e5 b\u00f8rn der hj\u00e6lper til, ryger aldrig ud ved en fejl.</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">2</span><div>I f\u00e5r <strong>besked</strong> n\u00e5r nogen ryger i papirkurven \u2014 og igen ~4 uger f\u00f8r de slettes permanent. Beskeden vises i toppen af appen og ved login, men kun n\u00e5r der er noget nyt.</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">3</span><div>I papirkurven kan barnet <strong>gendannes med saldo i 6 m\u00e5neder</strong>. For\u00e6ldre f\u00e5r besked ~4 uger f\u00f8r, og f\u00f8rst derefter slettes barnet permanent.</div></div>
         </div>
-        <div class="fsp-expand${enabled ? ' open' : ''}" data-expand-target="ad-body">
+
+        <div style="margin-top:20px">
           <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">INAKTIVITETSPERIODE</div>
           ${[
             { m: 6, h: 'Anbefalet for aktive institutioner' },
@@ -2510,19 +2932,22 @@
             <div><div class="fsp-sub-title">${opt.m} m\u00e5neder</div><div class="fsp-sub-hint">${opt.h}</div></div>
             <div class="fsp-radio${months === opt.m ? ' on' : ''}" data-field="auto_delete_inactive_months" data-value="${opt.m}"></div>
           </div>`).join('')}
-          <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">For\u00e6ldre advares automatisk 30 dage inden sletning via e-mail.</div>
+          <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Auto-arkivering kan <strong>ikke sl\u00e5s fra</strong> \u2014 det sikrer at gamle, ubrugte profiler ikke ligger for evigt. I v\u00e6lger kun, hvor l\u00e6nge der g\u00e5r f\u00f8rst.</div>
+        </div>
+
+        <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:22px;padding-top:18px">
+          <div class="fsp-main-title" style="display:flex;align-items:center;gap:8px">\ud83d\uddd1\ufe0f Papirkurv <span data-archived-count style="display:none;background:#5ba0d8;color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px"></span></div>
+          <div class="fsp-main-desc" style="margin-bottom:12px">Inaktive b\u00f8rn \u2014 skjult fra caf\u00e9en, men med saldo og historik bevaret. <strong>Gendan</strong> bringer barnet tilbage. Slettes permanent 6 m\u00e5neder efter de blev lagt her.</div>
+          <div data-archived-bulk style="display:none;margin-bottom:12px"></div>
+          <div data-archived-list style="min-height:40px">
+            <div style="text-align:center;padding:18px;color:var(--fsp-txt3);font-size:13px">Indl\u00e6ser\u2026</div>
+          </div>
         </div>
       </div>`;
     },
     wire(container, ctx) {
       pageAlign(container);
-      wireToggles(container, ctx);
-      // Expand/collapse
-      container.querySelector('[data-expand]')?.addEventListener('click', function () {
-        const target = container.querySelector(`[data-expand-target="${this.dataset.expand}"]`);
-        if (target) target.classList.toggle('open', this.classList.contains('on'));
-      });
-      // Wire radios manually with parseInt for number type (instead of wireRadios which passes string)
+      // Inaktivitetsperiode-radios (parseInt, da feltet er numerisk)
       container.querySelectorAll('.fsp-radio[data-field="auto_delete_inactive_months"]').forEach(radio => {
         radio.addEventListener('click', () => {
           const field = radio.dataset.field;
@@ -2531,6 +2956,184 @@
           ctx.markDirty(field, parseInt(radio.dataset.value));
         });
       });
+
+      // \u2500\u2500 Papirkurv (async) \u2500\u2500
+      const client = window.__flangoSupabaseClient;
+      const archivedEl = container.querySelector('[data-archived-list]');
+      const archivedBulkEl = container.querySelector('[data-archived-bulk]');
+      const archivedCountEl = container.querySelector('[data-archived-count]');
+
+      const displayName = (u) => {
+        try { return (window.__flangoUserName ? window.__flangoUserName(u) : null) || u.name || 'Ukendt'; }
+        catch { return u.name || 'Ukendt'; }
+      };
+      const krFmt = (n) => `${Math.round(Number(n) || 0)} kr`;
+      const dkDate = (iso) => { if (!iso) return 'aldrig'; try { return new Date(iso).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return 'aldrig'; } };
+      const daysUntil = (iso) => { try { return Math.round((new Date(iso).getTime() - Date.now()) / 86400000); } catch { return null; } };
+      const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+      function emptyBox(text) {
+        return `<div style="text-align:center;padding:18px;color:var(--fsp-txt3);font-size:13px">${text}</div>`;
+      }
+      function rowShell(inner) {
+        return `<div class="fsp-device-row" style="align-items:flex-start;gap:10px">${inner}</div>`;
+      }
+      // Sum-opdeling: skylder (abs af negative saldi) + tilgodehavende (positive)
+      function balanceSplit(rows) {
+        let owed = 0, credit = 0;
+        for (const r of rows) { const b = Number(r.balance) || 0; if (b < 0) owed += -b; else credit += b; }
+        return { owed, credit };
+      }
+
+      function selectedArchivedIds() {
+        return Array.from(archivedEl.querySelectorAll('input[data-ar-check]:checked')).map(c => c.dataset.arCheck);
+      }
+      function updateArchivedSelectionUI() {
+        const ids = selectedArchivedIds();
+        if (archivedBulkEl) {
+          if (ids.length) {
+            archivedBulkEl.style.display = '';
+            archivedBulkEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:rgba(91,160,216,0.07);border:1px solid rgba(91,160,216,0.2);border-radius:10px">`
+              + `<span style="font-size:12px;font-weight:600;color:var(--fsp-txt2,#ccc);margin-right:4px">${ids.length} markeret:</span>`
+              + `<button class="fsp-btn" data-ar-bulk="restore" style="padding:6px 12px;font-size:12px;background:rgba(91,160,216,0.12);color:#5ba0d8;border:1px solid rgba(91,160,216,0.3)">Gendan valgte</button>`
+              + `</div>`;
+          } else {
+            archivedBulkEl.style.display = 'none';
+            archivedBulkEl.innerHTML = '';
+          }
+        }
+        const master = archivedEl.querySelector('input[data-ar-check-all]');
+        if (master) {
+          const boxes = archivedEl.querySelectorAll('input[data-ar-check]');
+          master.checked = boxes.length > 0 && ids.length === boxes.length;
+          master.indeterminate = ids.length > 0 && ids.length < boxes.length;
+        }
+      }
+
+      function checkboxCell(attr, id) {
+        return `<label style="flex-shrink:0;padding-top:2px;cursor:pointer"><input type="checkbox" ${attr}="${esc(id)}" style="width:17px;height:17px;cursor:pointer;accent-color:#5ba0d8"></label>`;
+      }
+      function selectAllRow(attr, label) {
+        return `<label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;font-size:12px;color:var(--fsp-txt3)"><input type="checkbox" ${attr} style="width:16px;height:16px;cursor:pointer;accent-color:#5ba0d8">${label}</label>`;
+      }
+
+      async function loadArchived() {
+        if (!client) { archivedEl.innerHTML = emptyBox('Ikke tilg\u00e6ngelig.'); return; }
+        try {
+          const { data, error } = await client.rpc('get_archived_users');
+          if (error) throw error;
+          const rows = Array.isArray(data) ? data : [];
+          if (archivedCountEl) {
+            if (rows.length > 0) { archivedCountEl.textContent = String(rows.length); archivedCountEl.style.display = ''; }
+            else { archivedCountEl.style.display = 'none'; }
+          }
+          if (!rows.length) {
+            archivedEl.innerHTML = emptyBox('Papirkurven er tom. \ud83d\udc4d');
+            updateArchivedSelectionUI();
+            return;
+          }
+          const listHtml = rows.map(u => {
+            const neg = Number(u.balance) < 0;
+            const days = daysUntil(u.purge_at);
+            const soon = days != null && days <= 28;
+            const purgeTxt = days == null ? `Slettes permanent (${dkDate(u.purge_at)})`
+              : (days <= 0 ? 'Slettes permanent ved n\u00e6ste k\u00f8rsel'
+              : `Forsvinder permanent om ${days} dage (${dkDate(u.purge_at)})`);
+            const purgeLine = `<span style="color:${soon ? '#e85a6f' : 'var(--fsp-txt3)'}${soon ? ';font-weight:600' : ''}">${soon ? '\u23f3 ' : ''}${purgeTxt}</span>`;
+            return rowShell(
+              checkboxCell('data-ar-check', u.id)
+              + `<div class="fsp-device-left" style="flex:1;min-width:0">
+                <div class="fsp-device-title">${esc(displayName(u))} <span style="color:var(--fsp-txt3);font-weight:500">#${esc(u.number || '')}</span></div>
+                <div class="fsp-device-meta">Saldo: <strong style="color:${neg ? '#e85a6f' : 'inherit'}">${krFmt(u.balance)}</strong> \u00b7 Lagt i papirkurv ${dkDate(u.archived_at)}</div>
+                <div class="fsp-device-meta" style="margin-top:3px">${purgeLine}</div>
+              </div>
+              <div style="flex-shrink:0;display:flex;flex-direction:column;gap:6px">
+                <button class="fsp-btn" data-ar-row="restore" data-id="${esc(u.id)}" style="padding:8px 16px;font-size:12px;background:rgba(91,160,216,0.12);color:#5ba0d8;border:1px solid rgba(91,160,216,0.3)">Gendan</button>
+                <button class="fsp-btn" data-ar-row="purge" data-id="${esc(u.id)}" data-name="${esc(displayName(u))}" title="Slet permanent nu \u2014 kan IKKE fortrydes" style="padding:8px 16px;font-size:12px;background:rgba(232,90,111,0.08);color:#e85a6f;border:1px solid rgba(232,90,111,0.25)">Slet permanent</button>
+              </div>`);
+          }).join('');
+          const split = balanceSplit(rows);
+          const econHtml = `<div style="font-size:12px;color:var(--fsp-txt2,#ccc);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 14px;margin-bottom:12px;line-height:1.5">Hvis disse slettes permanent: <span style="color:#e85a6f;font-weight:600">afskrives ${esc(krFmt(split.owed))} g\u00e6ld</span> \u00b7 <span style="color:#5dca7a;font-weight:600">${esc(krFmt(split.credit))} doneres</span></div>`;
+          archivedEl.innerHTML = econHtml + selectAllRow('data-ar-check-all', 'Mark\u00e9r alle') + listHtml;
+          updateArchivedSelectionUI();
+        } catch (e) {
+          console.warn('[papirkurv] kunne ikke hente papirkurv:', e);
+          archivedEl.innerHTML = emptyBox('Kunne ikke hente listen.');
+        }
+      }
+
+      // \u2500\u2500 Handlinger \u2500\u2500
+      async function runRestore(ids, btns) {
+        if (!client || !ids.length) return;
+        btns.forEach(b => { if (b) b.disabled = true; });
+        try {
+          const { data, error } = await client.rpc('restore_archived_users', { p_user_ids: ids });
+          if (error) throw error;
+          await loadArchived();
+          window.__flangoRefreshUsers?.();
+          window.__flangoRefreshAutoDeleteWarning?.();
+          const n = (data && typeof data.restored === 'number') ? data.restored : ids.length;
+          window.showCustomAlert?.('Gendannet', n === 1
+            ? 'Barnet er gendannet med saldo og historik og vises igen i caf\u00e9en.'
+            : `<strong>${n}</strong> b\u00f8rn er gendannet med saldo og historik og vises igen i caf\u00e9en.`);
+        } catch (e) {
+          console.warn('[papirkurv] restore fejl:', e);
+          btns.forEach(b => { if (b) b.disabled = false; });
+          window.showCustomAlert?.('Fejl', 'Kunne ikke gendanne. Pr\u00f8v igen.');
+        }
+      }
+      // Permanent sletning NU fra papirkurven \u2014 kraftig bekr\u00e6ftelse, kan ikke fortrydes.
+      async function runPurgeNow(ids, name, btns) {
+        if (!client || !ids.length) return;
+        const who = ids.length === 1
+          ? `<strong>${esc(name || 'dette barn')}</strong>`
+          : `<strong>${ids.length} b\u00f8rn</strong>`;
+        const ok = await (window.showCustomAlert?.(
+          'Slet permanent?',
+          `<p>${who} slettes <strong>permanent og med det samme</strong>.</p>
+           <p style="margin-top:8px;color:#e85a6f;font-weight:600">Dette kan IKKE fortrydes \u2014 saldo og historik forsvinder for altid.</p>
+           <p style="margin-top:8px;font-size:0.9em;color:#888">Vil du i stedet bare lade det ligge i papirkurven, s\u00e5 slettes det automatisk efter 6 m\u00e5neder og kan gendannes indtil da.</p>`,
+          'confirm'));
+        if (!ok) return;
+        btns.forEach(b => { if (b) b.disabled = true; });
+        try {
+          const { data, error } = await client.rpc('purge_users_now', { p_user_ids: ids });
+          if (error) throw error;
+          await loadArchived();
+          window.__flangoRefreshAutoDeleteWarning?.();
+          const n = (data && typeof data.purged === 'number') ? data.purged : ids.length;
+          window.showCustomAlert?.('Slettet permanent', `${n === 1 ? 'Barnet er' : `<strong>${n}</strong> b\u00f8rn er`} slettet permanent.`);
+        } catch (e) {
+          console.warn('[papirkurv] purge_now fejl:', e);
+          btns.forEach(b => { if (b) b.disabled = false; });
+          window.showCustomAlert?.('Fejl', 'Kunne ikke slette. Pr\u00f8v igen.');
+        }
+      }
+
+      // \u2500\u2500 Event-delegation: papirkurv \u2500\u2500
+      archivedEl.addEventListener('change', (ev) => {
+        const all = ev.target.closest('input[data-ar-check-all]');
+        if (all) {
+          archivedEl.querySelectorAll('input[data-ar-check]').forEach(c => { c.checked = all.checked; });
+        }
+        if (all || ev.target.closest('input[data-ar-check]')) updateArchivedSelectionUI();
+      });
+      archivedEl.addEventListener('click', (ev) => {
+        const rowBtn = ev.target.closest('[data-ar-row]');
+        if (!rowBtn) return;
+        const action = rowBtn.dataset.arRow;
+        if (action === 'purge') runPurgeNow([rowBtn.dataset.id], rowBtn.dataset.name, [rowBtn]);
+        else runRestore([rowBtn.dataset.id], [rowBtn]);
+      });
+      archivedBulkEl.addEventListener('click', (ev) => {
+        const bulkBtn = ev.target.closest('[data-ar-bulk]');
+        if (!bulkBtn) return;
+        const ids = selectedArchivedIds();
+        if (!ids.length) return;
+        runRestore(ids, [bulkBtn]);
+      });
+
+      loadArchived();
     }
   };
 
@@ -2757,9 +3360,14 @@
         fsBtn.addEventListener('click', async () => {
           try {
             if (window.__flangoToggleFullscreen) {
-              await window.__flangoToggleFullscreen();
+              // Sæt label ud fra den RETURNEREDE state (kendt hensigt). At re-query'e
+              // OS'et midt i fullscreen-overgangen giver gammel værdi (macOS race).
+              const isFs = await window.__flangoToggleFullscreen();
+              const labelEl = container.querySelector('[data-fs-label]');
+              const iconEl = container.querySelector('[data-fs-icon]');
+              if (labelEl) labelEl.textContent = isFs ? 'Afslut fuldskærm' : 'Skift til fuldskærm';
+              if (iconEl) iconEl.textContent = isFs ? '⊡' : '⛶';
             }
-            updateLabel();
           } catch {}
         });
       }
@@ -2902,25 +3510,38 @@
         if (btn) { btn.textContent = 'Tjek for opdateringer'; btn.disabled = false; }
       });
 
-      // Desktop: Tjek for opdateringer (Tauri updater)
-      container.querySelector('[data-action="check-update-tauri"]')?.addEventListener('click', async () => {
-        const btn = container.querySelector('[data-action="check-update-tauri"]');
+      // Desktop: state-drevet knap \u2014 f\u00f8rst "Tjek", hvis ny version fundet bliver
+      // den "Opdater nu" \u2192 installerer (download + genstart). Giver en bevidst
+      // opdater-vej fra settings i stedet for kun fuldsk\u00e6rms-prompten ved opstart.
+      let _pendingTauriUpdate = null;
+      const tauriUpdBtn = container.querySelector('[data-action="check-update-tauri"]');
+      tauriUpdBtn?.addEventListener('click', async () => {
         const statusEl = container.querySelector('[data-status="version-status"]');
-        if (btn) { btn.textContent = 'Tjekker...'; btn.disabled = true; }
+        if (_pendingTauriUpdate) {
+          tauriUpdBtn.disabled = true; tauriUpdBtn.textContent = 'Opdaterer...';
+          try {
+            if (window.__flangoTauriInstall) await window.__flangoTauriInstall(_pendingTauriUpdate);
+          } catch (e) {
+            if (statusEl) { statusEl.textContent = 'Opdatering fejlede'; statusEl.style.color = '#e85a6f'; }
+            tauriUpdBtn.disabled = false; tauriUpdBtn.textContent = 'Pr\u00f8v igen';
+          }
+          return;
+        }
+        tauriUpdBtn.textContent = 'Tjekker...'; tauriUpdBtn.disabled = true;
         try {
           const update = window.__flangoTauriCheckUpdate ? await window.__flangoTauriCheckUpdate() : null;
           if (update) {
-            if (statusEl) {
-              statusEl.textContent = `Ny version tilg\u00e6ngelig: v${update.version}`;
-              statusEl.style.color = '#f59e0b';
-            }
+            _pendingTauriUpdate = update;
+            if (statusEl) { statusEl.textContent = `Ny version tilg\u00e6ngelig: v${update.version}`; statusEl.style.color = '#f59e0b'; }
+            tauriUpdBtn.textContent = `\u2b07 Opdater nu \u2014 v${update.version}`; tauriUpdBtn.disabled = false;
           } else {
             if (statusEl) statusEl.textContent = 'Du k\u00f8rer den nyeste version';
+            tauriUpdBtn.textContent = 'Tjek for opdateringer'; tauriUpdBtn.disabled = false;
           }
         } catch (e) {
           if (statusEl) { statusEl.textContent = 'Kunne ikke tjekke for opdateringer'; statusEl.style.color = '#e85a6f'; }
+          tauriUpdBtn.textContent = 'Tjek for opdateringer'; tauriUpdBtn.disabled = false;
         }
-        if (btn) { btn.textContent = 'Tjek for opdateringer'; btn.disabled = false; }
       });
 
       // Webapp: Desktop downloads
@@ -2934,18 +3555,29 @@
             let html = '';
 
             if (latest) {
+              const macArm = latest.macos_arm64 || latest.macos;       // Apple Silicon (back-compat: 'macos' = arm)
+              const macX64 = latest.macos_x64;                          // Intel (valgfri \u2014 vises kun hvis til stede)
+              const macBtns = macX64
+                ? `<a href="${macArm}" class="fsp-btn fsp-btn-primary" style="flex:1;min-width:140px;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                    \uD83C\uDF4E macOS (Apple Silicon)
+                  </a>
+                  <a href="${macX64}" class="fsp-btn fsp-btn-primary" style="flex:1;min-width:140px;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                    \uD83C\uDF4E macOS (Intel)
+                  </a>`
+                : `<a href="${macArm}" class="fsp-btn fsp-btn-primary" style="flex:1;min-width:140px;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                    \uD83C\uDF4E macOS (.dmg)
+                  </a>`;
               html += `<div style="margin-bottom:16px">
                 <div style="font-size:12px;font-weight:600;color:var(--fsp-txt2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">
                   Nyeste version \u2014 v${latest.version}
                 </div>
-                <div style="display:flex;gap:10px">
-                  <a href="${latest.windows}" class="fsp-btn fsp-btn-primary" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                  <a href="${latest.windows}" class="fsp-btn fsp-btn-primary" style="flex:1;min-width:140px;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
                     \uD83E\uDE9F Windows (.exe)
                   </a>
-                  <a href="${latest.macos}" class="fsp-btn fsp-btn-primary" style="flex:1;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
-                    \uD83C\uDF4E macOS (.dmg)
-                  </a>
+                  ${macBtns}
                 </div>
+                ${macX64 ? `<div style="font-size:11px;color:var(--fsp-txt3);margin-top:8px">De fleste nyere Mac er Apple Silicon (M1 og senere). V\u00E6lg Intel kun til \u00E6ldre Mac.</div>` : ''}
               </div>`;
             }
 
@@ -2991,6 +3623,10 @@
         <div style="display:flex;justify-content:flex-end;margin-bottom:40px">
           <button class="fsp-btn fsp-btn-primary" data-action="send-feedback" style="padding:12px 36px;display:flex;align-items:center;gap:8px">\uD83D\uDCE8 Send feedback</button>
         </div>
+        <div data-fb-inbox-wrap style="display:none;padding-top:24px;border-top:1px solid rgba(255,255,255,0.05);margin-bottom:8px">
+          <div class="fsp-form-label" style="margin-bottom:10px">📥 Modtagne beskeder</div>
+          <div data-fb-inbox></div>
+        </div>
         <div style="padding-top:24px;border-top:1px solid rgba(255,255,255,0.05)">
           <div class="fsp-collapse-btn" data-action="toggle-bug">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
@@ -3033,14 +3669,18 @@
         this.disabled = true;
         try {
           const client = window.__flangoSupabaseClient;
-          if (client) {
-            await client.from('feedback').insert({
-              institution_id: window.getInstitutionId?.(),
-              message: message,
-              type: type,
-              source: 'settings-panel'
-            });
-          }
+          if (!client) throw new Error('Ingen forbindelse');
+          const clerk = window.__flangoCurrentClerkProfile || null;
+          const { error } = await client.from('feedback').insert({
+            content: message,
+            type: type || null,
+            source: 'settings-panel',
+            institution_id: window.getInstitutionId?.() || null,
+            user_id: clerk?.id || null,
+            user_name: clerk?.name || null,
+            user_role: clerk?.role || null
+          });
+          if (error) throw error;
           container.querySelector('[data-fb-message]').value = '';
           this.textContent = '\u2713 Sendt!';
           setTimeout(() => { this.textContent = '\uD83D\uDCE8 Send feedback'; this.disabled = false; }, 2000);
@@ -3062,6 +3702,40 @@
       container.querySelector('[data-action="download-bug-report"]')?.addEventListener('click', () => {
         window.FLANGO_DEBUG?.showBugReportPrompt?.();
       });
+
+      // Admin-indbakke: vis modtagne feedback-beskeder for denne institution (kun admins).
+      // RLS ("Admins can view all feedback") tillader SELECT; vi filtrerer på institution.
+      (async () => {
+        const isAdmin = window.__flangoCurrentClerkProfile?.role === 'admin';
+        const wrap = container.querySelector('[data-fb-inbox-wrap]');
+        const inbox = container.querySelector('[data-fb-inbox]');
+        if (!isAdmin || !wrap || !inbox) return;
+        wrap.style.display = '';
+        inbox.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Henter…</div>';
+        const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const client = window.__flangoSupabaseClient;
+        const instId = window.getInstitutionId?.();
+        if (!client || !instId) { inbox.innerHTML = ''; return; }
+        try {
+          const { data, error } = await client.from('feedback')
+            .select('content, user_name, type, created_at')
+            .eq('institution_id', instId)
+            .order('created_at', { ascending: false })
+            .limit(50);
+          if (error) throw error;
+          if (!data || !data.length) { inbox.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Ingen modtagne beskeder endnu.</div>'; return; }
+          inbox.innerHTML = data.map(f => {
+            let when = ''; try { when = new Date(f.created_at).toLocaleString('da-DK'); } catch {}
+            const meta = [f.user_name, f.type, when].filter(Boolean).map(esc).join(' · ');
+            return `<div style="padding:12px 14px;margin-bottom:8px;border-radius:10px;background:var(--fsp-bg2);border:1px solid rgba(255,255,255,0.06)">
+              <div style="font-size:13px;color:var(--fsp-txt);white-space:pre-wrap">${esc(f.content)}</div>
+              <div style="font-size:11px;color:var(--fsp-txt3);margin-top:6px">${meta}</div>
+            </div>`;
+          }).join('');
+        } catch (e) {
+          inbox.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Kunne ikke hente beskeder.</div>';
+        }
+      })();
     }
   };
 

@@ -130,7 +130,7 @@
       </div>
       <div class="sidebar-child-section">
         ${_previewChildren.map(function(c, i) {
-          return '<div class="sidebar-child-item' + (i === 0 ? ' active' : '') + '" data-child-id="' + c.id + '"><div class="sidebar-child-avatar">' + c.emoji + '</div><div><div class="sidebar-child-name">' + c.name + '</div><div class="sidebar-child-saldo">' + fmtBal(c.balance) + '</div></div></div>';
+          return '<div class="sidebar-child-item' + (i === 0 ? ' active' : '') + '" data-child-id="' + c.id + '"><div class="sidebar-child-avatar">' + c.emoji + '</div><div><div class="sidebar-child-name">' + window.__flangoUserName(c) + '</div><div class="sidebar-child-saldo">' + fmtBal(c.balance) + '</div></div></div>';
         }).join('')}
         <div class="sidebar-add-child">${ICONS.plus}Tilknyt barn</div>
       </div>
@@ -214,7 +214,7 @@
     const childSelector = `
     <div class="child-selector">
       ${_previewChildren.map(function(c, i) {
-        return '<button class="child-chip' + (i === 0 ? ' active' : '') + '" data-child="' + c.id + '"><span class="child-avatar">' + c.emoji + '</span> ' + c.name + ' <span class="saldo-mini">' + fmtBalShort(c.balance) + '</span></button>';
+        return '<button class="child-chip' + (i === 0 ? ' active' : '') + '" data-child="' + c.id + '"><span class="child-avatar">' + c.emoji + '</span> ' + window.__flangoUserName(c) + ' <span class="saldo-mini">' + fmtBalShort(c.balance) + '</span></button>';
       }).join('')}
       <button class="child-chip add-child-chip">${ICONS.plus}Tilknyt</button>
     </div>`;
@@ -230,7 +230,7 @@
         <div>
           <div class="balance-label">Saldo</div>
           <div class="balance-amount">${_balWhole}<span style="font-size:32px">${_balDec}</span> <span class="currency">kr</span></div>
-          <div class="balance-child-name">${_activeChild.name} \u00b7 ${_instName}</div>
+          <div class="balance-child-name">${window.__flangoUserName(_activeChild)} \u00b7 ${_instName}</div>
         </div>
         <div class="balance-status ${_balStatus}"><span class="status-dot"></span> ${_balText}</div>
       </div>
@@ -265,7 +265,7 @@
       <div class="event-payment" style="display:none">
         <div class="event-payment-title">Tilmeld & betal \u2014 25 kr</div>
         <p style="font-size:12px;color:var(--ink-muted);margin-bottom:var(--s3)">V\u00e6lg betalingsmetode for Fredagshygge m. pizza</p>
-        <button class="event-pay-btn saldo"><span>\uD83D\uDCB0</span> Betal med ${_activeChild.name}s saldo <span style="font-size:11px;color:var(--ink-muted);margin-left:auto">Saldo: ${fmtBal(_activeChild.balance)}</span></button>
+        <button class="event-pay-btn saldo"><span>\uD83D\uDCB0</span> Betal med ${window.__flangoUserName(_activeChild)}s saldo <span style="font-size:11px;color:var(--ink-muted);margin-left:auto">Saldo: ${fmtBal(_activeChild.balance)}</span></button>
         <button class="event-pay-btn external"><span>\uD83D\uDCB3</span> Betal med kort/MobilePay</button>
         <button class="event-cancel-btn">Annuller</button>
       </div>
@@ -408,7 +408,7 @@
 
     return `
     <div class="tab-view" id="tab-pay">
-      <div class="view-header mobile-only"><div class="view-title">Indbetaling</div><div class="view-subtitle">Optank ${_activeChild.name}s saldo</div></div>
+      <div class="view-header mobile-only"><div class="view-title">Indbetaling</div><div class="view-subtitle">Optank ${window.__flangoUserName(_activeChild)}s saldo</div></div>
       ${topupSection}
     </div>`;
   }
@@ -430,9 +430,9 @@
       <div class="hint-box info" style="margin-bottom:var(--s3)"><span class="hint-icon">\uD83C\uDFEB</span><span>Institutionens daglige gr\u00e6nse: <strong>50 kr</strong></span></div>
       ${spendingAdminField}
       <div class="hint-box green" style="margin-bottom:var(--s3)"><span class="hint-icon">\uD83D\uDC64</span><span>Din daglige gr\u00e6nse: <strong>30 kr</strong></span></div>
-      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s2)">V\u00e6lg hvor meget ${_activeChild.name} maksimalt m\u00e5 bruge om dagen. Den strengeste gr\u00e6nse (din eller institutionens) g\u00e6lder altid.</p>
+      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s2)">V\u00e6lg hvor meget ${window.__flangoUserName(_activeChild)} maksimalt m\u00e5 bruge om dagen. Den strengeste gr\u00e6nse (din eller institutionens) g\u00e6lder altid.</p>
       <div class="chip-group" data-chip-group="spending-limit"><button class="chip">20 kr</button><button class="chip active">30 kr</button><button class="chip">40 kr</button><button class="chip">50 kr</button><button class="chip">Andet\u2026</button></div>
-      <div class="hint-box neutral" style="margin-top:var(--s3)"><span class="hint-icon">\uD83D\uDCA1</span><span>${_activeChild.name} kan stadig k\u00f8be, men cafeen giver besked hvis gr\u00e6nsen overskrides.</span></div>`;
+      <div class="hint-box neutral" style="margin-top:var(--s3)"><span class="hint-icon">\uD83D\uDCA1</span><span>${window.__flangoUserName(_activeChild)} kan stadig k\u00f8be, men cafeen giver besked hvis gr\u00e6nsen overskrides.</span></div>`;
     const spendingSection = buildSection('section-spending-limit', '\uD83D\uDCB0', 'var(--flango-light)', 'Daglig bel\u00f8bsgr\u00e6nse', 'Maks forbrug per dag', spendingContent);
 
     // Product limits
@@ -508,7 +508,7 @@
 
     return `
     <div class="tab-view" id="tab-limits">
-      <div class="view-header mobile-only"><div class="view-title">Gr\u00e6nser & Kost</div><div class="view-subtitle">Indstillinger for ${_activeChild.name}</div></div>
+      <div class="view-header mobile-only"><div class="view-title">Gr\u00e6nser & Kost</div><div class="view-subtitle">Indstillinger for ${window.__flangoUserName(_activeChild)}</div></div>
       ${spendingSection}
       ${productLimitsSection}
       ${sugarSection}
@@ -593,7 +593,7 @@
 
     return `
     <div class="tab-view" id="tab-screen">
-      <div class="view-header mobile-only"><div class="view-title">Sk\u00e6rmtid</div><div class="view-subtitle">Gaming-regler for ${_activeChild.name}</div></div>
+      <div class="view-header mobile-only"><div class="view-title">Sk\u00e6rmtid</div><div class="view-subtitle">Gaming-regler for ${window.__flangoUserName(_activeChild)}</div></div>
       ${screentimeSection}
       ${gamesSection}
       ${stChartSection}
@@ -747,7 +747,7 @@
     // Use real admin/test users if provided, otherwise fallback
     if (previewUsersArr && previewUsersArr.length > 0) {
       _previewChildren = previewUsersArr.map(function(u) {
-        return { id: u.id, name: u.name, balance: u.balance, emoji: u.emoji || '\uD83D\uDC64' };
+        return { id: u.id, name: u.name, last_name: u.last_name, balance: u.balance, emoji: u.emoji || '\uD83D\uDC64' };
       });
     } else {
       _previewChildren = FALLBACK_CHILDREN;
