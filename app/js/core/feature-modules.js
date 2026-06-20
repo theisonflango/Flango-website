@@ -31,6 +31,7 @@
     portal_notifications: ['parent_portal_email_notifications'],
     portal_payment: [],  // Indbetaling — enforcement via UI, ikke institution-felter
     portal_profile_pictures: ['parent_portal_profile_pictures'],
+    portal_ugeplan: ['parent_portal_ugeplan'],
     spending_limits: [
       'spending_limit_enabled', 'spending_limit_amount',
       'spending_limit_applies_to_admins', 'spending_limit_applies_to_regular_users',
@@ -127,6 +128,7 @@
   const SETTING_KEY_TO_MODULE = {
     // Portal sektioner (individuelle flags, fallback til portal_sections)
     parent_portal_events: 'portal_events',
+    parent_portal_ugeplan: 'portal_ugeplan',
     parent_portal_purchase_profile: 'portal_purchase_profile',
     parent_portal_history: 'portal_history',
     parent_portal_sortiment: 'portal_sortiment',
@@ -182,6 +184,7 @@
     'portal_events', 'portal_purchase_profile', 'portal_history',
     'portal_sortiment', 'portal_feedback', 'portal_daily_special',
     'portal_notifications', 'portal_payment', 'portal_profile_pictures',
+    'portal_ugeplan',
   ]);
 
   // ─── Helper: hent modul-flag fra flags-objekt ───
