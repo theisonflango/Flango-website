@@ -22,6 +22,8 @@
   let allergySettings = null;
   let screentimeData = null;
   let eventsData = null;
+  let ugeplanData = null;     // from get-published-ugeplan (lazy)
+  let ugeplanWeekIdx = 0;     // valgt uge i ugeplan-sektionen
   let featureFlags = {};      // from institution
   let customerAvgSpend = null; // { avg_today, avg_week, avg_month }
   let consentHistory = [];     // from get_consent_history (all rows for selected child)
@@ -37,7 +39,7 @@
 
   // ─── Tab-to-sections mapping ───
   const TAB_SECTIONS = {
-    'tab-home':    ['section-balance','section-events','section-profile','section-history','section-sortiment'],
+    'tab-home':    ['section-balance','section-events','section-ugeplan','section-profile','section-history','section-sortiment'],
     'tab-pay':     ['section-topup'],
     'tab-limits':  ['section-spending-limit','section-product-limits','section-sugar','section-diet','section-allergens'],
     'tab-screen':  ['section-screentime','section-games','section-st-chart'],
@@ -48,6 +50,7 @@
   const SECTION_LABELS = {
     'section-balance':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', label: 'Overblik' },
     'section-events':         { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', label: 'Arrangementer' },
+    'section-ugeplan':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/></svg>', label: 'Ugeplan' },
     'section-profile':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label: 'Købsprofil' },
     'section-history':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', label: 'Historik' },
     'section-sortiment':      { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>', label: 'Sortiment' },
@@ -317,6 +320,7 @@
         institution_limit: instLimitMap[p.id] ?? null,
       }));
       eventsData = events;
+      ugeplanData = null; // genindlæses dovent (institution kan skifte ved barn-skift)
       customerAvgSpend = clubAvg;
       featureFlags = childData?.institution || childData?.feature_flags || {};
       window.__featureFlags = featureFlags; // DEBUG
@@ -1461,6 +1465,8 @@
     // parent_portal_events = portal-flag (cafe_events_enabled er for POS-viewet i café-appen)
     const showEvents = featureFlags.parent_portal_events !== false || (eventsData?.events?.length > 0);
     const showScreentime = featureFlags.skaermtid_enabled === true;
+    // Ugeplan vises kun når institutionen aktivt har slået den til (default fra).
+    const showUgeplan = featureFlags.parent_portal_ugeplan === true;
 
     root.innerHTML = `
       <div class="app">
@@ -1545,6 +1551,7 @@
             </div>
 
             ${showEvents ? renderEventsSection() : ''}
+            ${showUgeplan ? renderUgeplanSection() : ''}
             ${renderPurchaseProfileSection()}
             ${renderHistorySection()}
             ${renderSortimentSection()}
@@ -1723,6 +1730,128 @@
           ${eventCards}
         </div></div></div>
       </div>`;
+  }
+
+  // ─── Ugeplan (skrivebeskyttet, lodret — "ligesom en pdf") ───
+
+  const UGEPLAN_DAYS = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag'];
+
+  // ISO-ugenummer + år for en dato
+  function isoWeekYear(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - dayNum + 3);
+    const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    const week = 1 + Math.round(((d - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+    return { week: week, year: d.getUTCFullYear() };
+  }
+
+  // Vælg den uge der er tættest på nu (uger kommer sorteret stigende fra serveren)
+  function pickUgeplanWeekIdx(weeks) {
+    if (!weeks || !weeks.length) return 0;
+    const now = isoWeekYear(new Date());
+    for (let i = 0; i < weeks.length; i++) {
+      const w = weeks[i];
+      if (w.year > now.year || (w.year === now.year && w.week_number >= now.week)) return i;
+    }
+    return weeks.length - 1;
+  }
+
+  function renderUgeplanSection() {
+    return `
+      <div class="section" id="section-ugeplan">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">🗓️</div><div><div class="section-title">Ugeplan</div><div class="section-subtitle">Ugens aktiviteter</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div id="ugeplan-content">
+            <div style="text-align:center;padding:var(--s4)"><div class="portal-loading-spinner" style="margin:0 auto"></div></div>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  async function loadUgeplan() {
+    if (!selectedChild) return;
+    const container = document.getElementById('ugeplan-content');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:var(--s4)"><div class="portal-loading-spinner" style="margin:0 auto"></div></div>';
+    try {
+      ugeplanData = await API.getPublishedUgeplan(selectedChild.institution_id);
+      ugeplanWeekIdx = pickUgeplanWeekIdx(ugeplanData?.weeks || []);
+      renderUgeplanContent(container);
+    } catch (err) {
+      console.error('[Portal] Ugeplan error:', err);
+      ugeplanData = null;
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Kunne ikke indlæse ugeplanen</div></div>';
+    }
+  }
+
+  function renderUgeplanContent(container) {
+    if (!container) return;
+    const data = ugeplanData || {};
+    const weeks = data.weeks || [];
+    if (!weeks.length) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Der er endnu ikke delt nogen ugeplan</div></div>';
+      return;
+    }
+    if (ugeplanWeekIdx >= weeks.length) ugeplanWeekIdx = 0;
+
+    const workshops = data.workshops || [];
+    const week = weeks[ugeplanWeekIdx];
+    const hidden = new Set(week.hidden_workshops || []);
+    const sched = week.schedule_data || {};
+    const visibleWs = workshops.filter(w => !hidden.has(w.slug));
+
+    // Uge-vælger (kun hvis der er flere udgivne uger)
+    let chips = '';
+    if (weeks.length > 1) {
+      chips = '<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:var(--s3);-webkit-overflow-scrolling:touch">' +
+        weeks.map((w, i) => {
+          const active = i === ugeplanWeekIdx;
+          return `<button data-ugeplan-week="${i}" style="flex:0 0 auto;border:1px solid ${active ? 'var(--flango)' : 'var(--border)'};background:${active ? 'var(--flango-light)' : '#fff'};color:${active ? 'var(--flango-dark)' : 'var(--ink)'};border-radius:var(--r-full);padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer">Uge ${w.week_number}</button>`;
+        }).join('') + '</div>';
+    }
+
+    // Lodrette dag-blokke
+    let dayBlocks = '';
+    for (let d = 0; d < 5; d++) {
+      let rows = '';
+      for (const w of visibleWs) {
+        const cell = (sched[w.slug] || [])[d];
+        if (!cell || cell.empty || cell.closed) continue;
+        const hasStaff = Array.isArray(cell.staff) && cell.staff.length > 0;
+        if (!cell.activity && !hasStaff) continue;
+        const staffStr = hasStaff ? esc(cell.staff.join(', ')) : '';
+        const timeStr = cell.time ? esc(cell.time) : '';
+        const metaParts = [timeStr, staffStr].filter(Boolean).join(' · ');
+        rows += `<div style="display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--border)">
+          <div style="flex:0 0 34%;font-size:13px;font-weight:600;color:var(--ink)">${esc(w.name)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;color:var(--ink)">${esc(cell.activity || '')}${cell.sub ? ' <span style="color:var(--ink-muted);font-size:12px">' + esc(cell.sub) + '</span>' : ''}</div>
+            ${metaParts ? `<div style="font-size:12px;color:var(--ink-muted);margin-top:2px">${metaParts}</div>` : ''}
+          </div>
+        </div>`;
+      }
+      if (!rows) rows = '<div style="padding:8px 0;border-top:1px solid var(--border);font-size:13px;color:var(--ink-muted)">Ingen planlagte aktiviteter</div>';
+      dayBlocks += `<div style="margin-bottom:var(--s3)">
+        <div style="font-size:13px;font-weight:700;color:var(--flango-dark);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${UGEPLAN_DAYS[d]}</div>
+        ${rows}
+      </div>`;
+    }
+
+    container.innerHTML = `
+      ${chips}
+      <div style="font-size:13px;color:var(--ink-muted);margin-bottom:var(--s2)">Uge ${week.week_number} · ${week.year}</div>
+      ${dayBlocks}`;
+
+    container.querySelectorAll('[data-ugeplan-week]').forEach(btn => {
+      btn.addEventListener('click', function () {
+        ugeplanWeekIdx = parseInt(btn.getAttribute('data-ugeplan-week'), 10) || 0;
+        renderUgeplanContent(container);
+      });
+    });
   }
 
   let ppCurrentPeriod = 'all';
@@ -3092,6 +3221,11 @@
       // Lazy-load purchase profile
       if (section.id === 'section-profile' && !purchaseProfile) {
         loadPurchaseProfile();
+      }
+
+      // Lazy-load ugeplan (kun ved første åbning / efter barn-skift)
+      if (section.id === 'section-ugeplan' && !ugeplanData) {
+        loadUgeplan();
       }
     }, true); // use capture phase to fire first
 

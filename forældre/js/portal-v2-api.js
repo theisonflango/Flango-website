@@ -404,6 +404,13 @@
       return invokeFunction('get-parent-events', { child_id: childId });
     },
 
+    // ─── Ugeplan ───
+
+    /** Get published weekly plans for an institution (read-only snapshot) */
+    async getPublishedUgeplan(institutionId) {
+      return invokeFunction('get-published-ugeplan', { institution_id: institutionId });
+    },
+
     /** Register child for an event */
     async registerForEvent(childId, eventId, payNow, paymentType) {
       const body = {
