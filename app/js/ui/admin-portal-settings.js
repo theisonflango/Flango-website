@@ -44,6 +44,7 @@
   const SIDEBAR_NAV = [
     { id: 'section-balance', icon: ICONS.home, label: 'Overblik', check: false },
     { id: 'section-events', icon: ICONS.calendar, label: 'Arrangementer', check: true, settingKey: 'parent_portal_events', defaultChecked: true },
+    { id: 'section-ugeplan', icon: ICONS.calendar, label: 'Ugeplan', check: true, settingKey: 'parent_portal_ugeplan', defaultChecked: false },
     { id: 'section-profile', icon: ICONS.chart, label: 'Købsprofil', check: true, settingKey: 'parent_portal_purchase_profile', defaultChecked: true },
     { id: 'section-history', icon: ICONS.clock, label: 'Historik', check: true, settingKey: 'parent_portal_history', defaultChecked: true },
     { id: 'section-sortiment', icon: ICONS.list, label: 'Sortiment', check: true, settingKey: 'parent_portal_sortiment', defaultChecked: true },
