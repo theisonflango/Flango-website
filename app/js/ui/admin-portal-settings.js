@@ -664,7 +664,6 @@
     const ppCameraOn = ppTypes.indexOf('camera') !== -1;
     const ppAiOn = !settings || settings.profile_pictures_ai_enabled !== false;
     const ppAiOpenAiOn = !settings || settings.ai_provider_openai !== false;
-    const ppAiFluxOn = settings && settings.ai_provider_flux === true;
     const ppContent = `
       <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">\u2139\uFE0F</span><span>Institutionen kan bruge profilbilleder i caf\u00e9en for at bekr\u00e6fte dit barns identitet ved k\u00f8b. Billedet er kun synligt for b\u00f8rn og personale i denne institution.</span></div>
       <div style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:12px;margin-bottom:8px">
@@ -676,8 +675,7 @@
         ${buildSettingRow('Kamera-foto', 'Personalet kan tage et foto af dit barn med caf\u00e9ens enhed. Billedet bruges kun til identifikation ved k\u00f8b og opbevares krypteret i EU.', '<label class="toggle"><input type="checkbox" data-pp-type="camera"' + (ppCameraOn ? ' checked' : '') + '><span class="toggle-track"></span></label>')}
         ${buildSettingRow('AI-genereret avatar', 'Et foto af dit barn bruges til at generere en tegnet avatar i animationsstil. Fotoet sendes til en AI-tjeneste, avataren returneres, og fotoet slettes straks. Kun avataren gemmes.', '<label class="toggle"><input type="checkbox" data-admin-setting="profile_pictures_ai_enabled" data-pp-ai-master' + (ppAiOn ? ' checked' : '') + '><span class="toggle-track"></span></label>')}
         <div data-pp-ai-providers style="margin-left:var(--s4);padding-left:var(--s3);border-left:2px solid var(--border-color, #e5e7eb);margin-top:var(--s2);${ppAiOn ? '' : 'display:none'}">
-          ${buildSettingRow('AI: OpenAI', 'OpenAI DALL\u00B7E \u2014 USA', '<label class="toggle"><input type="checkbox" data-admin-setting="ai_provider_openai"' + (ppAiOpenAiOn ? ' checked' : '') + '><span class="toggle-track"></span></label>')}
-          ${buildSettingRow('AI: FLUX', 'Black Forest Labs, FLUX 2 \u2014 Tyskland', '<label class="toggle"><input type="checkbox" data-admin-setting="ai_provider_flux"' + (ppAiFluxOn ? ' checked' : '') + '><span class="toggle-track"></span></label>')}
+          ${buildSettingRow('AI-avatar', 'Microsoft Azure OpenAI \u2014 EU', '<label class="toggle"><input type="checkbox" data-admin-setting="ai_provider_openai"' + (ppAiOpenAiOn ? ' checked' : '') + '><span class="toggle-track"></span></label>')}
         </div>
       </div>`;
     const ppSection = buildSection('section-profile-pictures', '\uD83D\uDCF7', '#e0e7ff', 'Profilbilleder', 'Samtykke til billeder i caf\u00e9en', ppContent, { disabled: ppDisabled });
@@ -905,7 +903,7 @@
       }
     });
 
-    // ── AI-master toggle: vis/skjul OpenAI/FLUX providers ──
+    // ── AI-master toggle: vis/skjul AI-avatar-indstilling ──
     container.addEventListener('change', function (e) {
       const aiMaster = e.target.closest('input[data-pp-ai-master]');
       if (!aiMaster) return;

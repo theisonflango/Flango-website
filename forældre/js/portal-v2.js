@@ -433,10 +433,10 @@
     const showAula = ppInstTypes.indexOf('upload') !== -1;
     const showCamera = ppInstTypes.indexOf('camera') !== -1;
     const aiMasterOn = featureFlags?.profile_pictures_ai_enabled !== false;
-    const showOpenai = aiMasterOn && featureFlags?.ai_provider_openai !== false;
-    const showFlux = aiMasterOn && featureFlags?.ai_provider_flux === true;
+    // Én AI-avatar-udbyder: Microsoft Azure (EU). ai_provider_openai er det legacy-
+    // navngivne flag (default true) der gater funktionen.
+    const showAi = aiMasterOn && featureFlags?.ai_provider_openai !== false;
     const ct = window.PortalConsentTexts || {};
-    const fluxIsDraft = ct.isFluxConsentTextProductionReady?.() === false;
 
     const overlay = document.createElement('div');
     overlay.id = 'flango-welcome-modal';
@@ -464,20 +464,12 @@
               <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">Personalet kan tage et nyt foto af dit barn med caféens enhed.</div>
             </div>
           </label>` : ''}
-          ${showOpenai ? `<label style="display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;cursor:pointer;">
+          ${showAi ? `<label style="display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;cursor:pointer;">
             <input type="checkbox" id="welcome-ai-openai" style="margin-top:3px;width:18px;height:18px;cursor:pointer;">
             <div style="flex:1;">
-              <div style="font-weight:600;font-size:14px;color:#111;">AI-genereret avatar (OpenAI)</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">Et foto af dit barn sendes til OpenAI for at generere en stiliseret tegneserie. Fotoet slettes straks efter — kun avataren gemmes.</div>
+              <div style="font-weight:600;font-size:14px;color:#111;">AI-genereret avatar</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">Et foto af dit barn sendes til Microsoft Azure (EU) for at generere en stiliseret tegneserie. Fotoet slettes straks efter — kun avataren gemmes.</div>
               <button type="button" id="welcome-ai-openai-readmore" style="background:none;border:none;padding:4px 0 0;color:var(--info,#2563eb);font-size:12px;cursor:pointer;font-weight:600;text-align:left;">📖 Læs mere om databehandlingen</button>
-            </div>
-          </label>` : ''}
-          ${showFlux ? `<label style="display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid ${fluxIsDraft ? 'rgba(217,119,6,0.4)' : '#e5e7eb'};border-radius:10px;margin-bottom:10px;cursor:${fluxIsDraft ? 'not-allowed' : 'pointer'};${fluxIsDraft ? 'background:rgba(245,158,11,0.05);' : ''}">
-            <input type="checkbox" id="welcome-ai-flux" style="margin-top:3px;width:18px;height:18px;cursor:${fluxIsDraft ? 'not-allowed' : 'pointer'};" ${fluxIsDraft ? 'disabled' : ''}>
-            <div style="flex:1;">
-              <div style="font-weight:600;font-size:14px;color:#111;">AI-genereret avatar (FLUX / EU-backup)${fluxIsDraft ? ' <span style="color:#d97706;font-weight:700;font-size:11px;">⚠ DRAFT</span>' : ''}</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">${fluxIsDraft ? '<strong style="color:#d97706">Samtykketeksten er ikke endeligt godkendt — kan ikke aktiveres endnu.</strong>' : 'Et foto sendes til Black Forest Labs (Tyskland) for at generere en stiliseret tegneserie.'}</div>
-              <button type="button" id="welcome-ai-flux-readmore" style="background:none;border:none;padding:4px 0 0;color:var(--info,#2563eb);font-size:12px;cursor:pointer;font-weight:600;text-align:left;">📖 Læs mere om databehandlingen${fluxIsDraft ? ' (DRAFT)' : ''}</button>
             </div>
           </label>` : ''}
           <div style="font-size:11px;color:#9ca3af;margin-top:14px;line-height:1.5;">Du kan altid ændre eller fjerne dine samtykker senere under <strong>Privatliv → Profilbilleder</strong>. Samtykker der trækkes tilbage sletter med det samme det tilhørende billede fra Flango.</div>
@@ -494,11 +486,7 @@
     // "Læs mere"-knapper
     overlay.querySelector('#welcome-ai-openai-readmore')?.addEventListener('click', (e) => {
       e.preventDefault(); e.stopPropagation();
-      openAiLayer2Modal('openai', false);
-    });
-    overlay.querySelector('#welcome-ai-flux-readmore')?.addEventListener('click', (e) => {
-      e.preventDefault(); e.stopPropagation();
-      openAiLayer2Modal('flux', false);
+      openAiLayer2Modal(false);
     });
 
     // Skip-knap (markerer dismiss så modal ikke vises igen)
@@ -513,7 +501,6 @@
       if (overlay.querySelector('#welcome-aula')?.checked) selected.push({ type: 'profile_picture_aula', version: CURRENT_CONSENT_VERSION });
       if (overlay.querySelector('#welcome-camera')?.checked) selected.push({ type: 'profile_picture_camera', version: CURRENT_CONSENT_VERSION });
       if (overlay.querySelector('#welcome-ai-openai')?.checked) selected.push({ type: 'profile_picture_ai_openai', version: ct.PARENT_AI_AVATAR_VERSION || CURRENT_CONSENT_VERSION });
-      if (overlay.querySelector('#welcome-ai-flux')?.checked && !fluxIsDraft) selected.push({ type: 'profile_picture_ai_flux', version: ct.PARENT_AI_AVATAR_FLUX_VERSION });
 
       if (selected.length === 0) {
         // Ingen valgte = behandl som skip
@@ -2423,27 +2410,21 @@
     const optOutParentUpload = childData?.profile_picture_opt_out_parent_upload || false;
     // Per-provider AI-state læses fra consentHistory (cache flag dækker begge providers samlet)
     const hasOpenaiConsent = (consentHistory || []).some(c => c.consent_type === 'profile_picture_ai_openai' && c.is_active);
-    const hasFluxConsent = (consentHistory || []).some(c => c.consent_type === 'profile_picture_ai_flux' && c.is_active);
     // Filter toggles efter hvad institutionen har slået til (jf. café settings / super-admin)
     const ppInstTypes = Array.isArray(featureFlags?.profile_picture_types) ? featureFlags.profile_picture_types : ['upload', 'camera', 'library'];
     const showAula = ppInstTypes.indexOf('upload') !== -1;
     const showCamera = ppInstTypes.indexOf('camera') !== -1;
     const aiMasterOn = featureFlags?.profile_pictures_ai_enabled !== false;
-    const showOpenai = aiMasterOn && featureFlags?.ai_provider_openai !== false;
-    const showFlux = aiMasterOn && featureFlags?.ai_provider_flux === true;
-    const showAi = showOpenai || showFlux;
+    // Én AI-avatar-udbyder: Microsoft Azure (EU). ai_provider_openai = legacy-navngivet gate (default true).
+    const showAi = aiMasterOn && featureFlags?.ai_provider_openai !== false;
     const optOutOpenai = !hasOpenaiConsent;
-    const optOutFlux = !hasFluxConsent;
     // Forælder-upload: institutions-flag fra featureFlags (parent_can_upload_pictures default true)
     const showParentUpload = featureFlags?.parent_can_upload_pictures !== false;
-    // FLUX-tekst er DRAFT indtil BFL-aftale er på plads — UI advarer
-    const fluxConsentTextReady = window.PortalConsentTexts?.isFluxConsentTextProductionReady?.() === true;
-    // "All opted out" for master-toggle: aula + camera + parent-upload + (AI hvis nogen provider aktiv)
+    // "All opted out" for master-toggle: aula + camera + parent-upload + AI
     const allOptedOut = (showAula ? optOutAula : true)
       && (showCamera ? optOutCamera : true)
       && (showParentUpload ? optOutParentUpload : true)
-      && (showOpenai ? optOutOpenai : true)
-      && (showFlux ? optOutFlux : true);
+      && (showAi ? optOutOpenai : true);
     const library = childData?.profile_picture_library || [];
     const childName = getChildName();
     const initials = childName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -2574,20 +2555,12 @@
               </div>
               ${adminSimLockedHint()}
             </div>` : ''}
-            ${showOpenai ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch;gap:4px" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+            ${showAi ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch;gap:4px" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);">
-                <div class="setting-info"><div class="setting-label">AI-genereret avatar (OpenAI)${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Et foto sendes til OpenAI's billed-AI for at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.</div></div>
+                <div class="setting-info"><div class="setting-label">AI-genereret avatar${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Et foto sendes til Microsoft Azure (EU) for at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.</div></div>
                 <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai" ${!optOutOpenai ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               <button type="button" id="pp-ai-readmore-btn" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600;text-align:left;align-self:flex-start;">📖 Læs mere om databehandlingen</button>
-              ${adminSimLockedHint()}
-            </div>` : ''}
-            ${showFlux ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch;gap:4px" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);">
-                <div class="setting-info"><div class="setting-label">AI-genereret avatar (FLUX / EU-backup)${isAdminSimulatorSession() ? ' 🔒' : ''}${!fluxConsentTextReady ? ' <span style="color:#d97706;font-weight:700;font-size:11px;">⚠ DRAFT</span>' : ''}</div><div class="setting-desc">Et foto sendes til Black Forest Labs (Tyskland) for at generere en tegnet avatar. ${!fluxConsentTextReady ? '<strong style="color:#d97706">Samtykketeksten er endnu ikke endeligt godkendt — aktivér ikke før Flango-support har bekræftet at databehandlingsaftalen er underskrevet.</strong>' : 'Fotoet slettes straks — kun avataren gemmes.'}</div></div>
-                <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai-flux" ${!optOutFlux ? 'checked' : ''} ${(!fluxConsentTextReady || isAdminSimulatorSession()) ? 'disabled' : ''}><span class="toggle-track"></span></label>
-              </div>
-              <button type="button" id="pp-ai-flux-readmore-btn" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600;text-align:left;align-self:flex-start;">📖 Læs mere om databehandlingen${!fluxConsentTextReady ? ' (DRAFT)' : ''}</button>
               ${adminSimLockedHint()}
             </div>` : ''}
           </div>
@@ -2605,12 +2578,10 @@
   //
   // Vi viser samme tabel-data som get_consent_history returnerer, men:
   //   - Ingen toggles, kun read-only visning
-  //   - FLUX-row vises kun hvis institutions-flag er aktivt (5.5)
   //   - Hver consent-type har en lille expander der viser fuld historik
   //   - Link nederst til "Profilbilleder" for styring
 
   function getConsentTypesForChild() {
-    const showFlux = !!featureFlags?.ai_provider_flux;
     const showParentUpload = featureFlags?.parent_can_upload_pictures !== false;
     const types = [
       {
@@ -2625,8 +2596,8 @@
       },
       {
         key: 'profile_picture_ai_openai',
-        label: 'AI-genereret avatar (OpenAI)',
-        desc: 'Et foto af dit barn sendes til OpenAI for at generere en tegnet avatar. Fotoet opbevares ikke hos OpenAI — kun avataren gemmes.',
+        label: 'AI-genereret avatar',
+        desc: 'Et foto af dit barn sendes til Microsoft Azure (EU) for at generere en tegnet avatar. Fotoet opbevares kun midlertidigt i EU — kun avataren gemmes.',
       },
     ];
     if (showParentUpload) {
@@ -2634,13 +2605,6 @@
         key: 'profile_picture_parent_upload',
         label: 'Forælder-upload',
         desc: 'Du kan selv uploade et profilbillede af dit barn fra denne portal. Alle uploads gennemgås af institutionen før aktivering.',
-      });
-    }
-    if (showFlux) {
-      types.push({
-        key: 'profile_picture_ai_flux',
-        label: 'AI-genereret avatar (FLUX / Black Forest Labs)',
-        desc: 'Et foto af dit barn sendes til Black Forest Labs (EU) for at generere en tegnet avatar. Fotoet opbevares ikke — kun avataren gemmes.',
       });
     }
     return types;
@@ -3441,16 +3405,11 @@
     const ppAi = document.getElementById('pp-consent-ai');
     const ppAiReadmore = document.getElementById('pp-ai-readmore-btn');
 
-    const ppAiFlux = document.getElementById('pp-consent-ai-flux');
-    const ppAiFluxReadmore = document.getElementById('pp-ai-flux-readmore-btn');
-
     if (ppMaster) ppMaster.addEventListener('change', (e) => handleMasterToggle(e));
     if (ppAula) ppAula.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_aula', 'aula'));
     if (ppCamera) ppCamera.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_camera', 'camera'));
     if (ppAi) ppAi.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_ai_openai', 'ai'));
-    if (ppAiFlux) ppAiFlux.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_ai_flux', 'ai_flux'));
-    if (ppAiReadmore) ppAiReadmore.addEventListener('click', () => openAiLayer2Modal('openai', false));
-    if (ppAiFluxReadmore) ppAiFluxReadmore.addEventListener('click', () => openAiLayer2Modal('flux', false));
+    if (ppAiReadmore) ppAiReadmore.addEventListener('click', () => openAiLayer2Modal(false));
 
     // Forælder-upload consent toggle
     const ppParentUpload = document.getElementById('pp-consent-parent-upload');
@@ -4262,43 +4221,26 @@
     });
   }
 
-  // openAiLayer2Modal('openai'|'flux', showActivateButton)
-  // Generisk Lag 2-modal — teksten vælges ud fra provider. FLUX-tekst er
-  // p.t. DRAFT; aktivér-knap blokeres hvis ikke production-ready.
-  function openAiLayer2Modal(providerOrShowActivate, showActivateButtonArg) {
-    // Backwards-compat: hvis kun én bool-arg, antag 'openai'
-    let provider, showActivateButton;
-    if (typeof providerOrShowActivate === 'boolean') {
-      provider = 'openai';
-      showActivateButton = providerOrShowActivate;
-    } else {
-      provider = providerOrShowActivate || 'openai';
-      showActivateButton = showActivateButtonArg === true;
-    }
+  // openAiLayer2Modal(showActivateButton) — Lag 2-modal for AI-avatar-samtykke
+  // (Microsoft Azure OpenAI, EU). Returnerer true hvis brugeren bekræfter aktivering.
+  function openAiLayer2Modal(showActivateButton) {
+    showActivateButton = showActivateButton === true;
 
     return new Promise((resolve) => {
       const ct = window.PortalConsentTexts || {};
-      const isFlux = provider === 'flux';
-      const layer2 = isFlux
-        ? (ct.parentAiAvatarFluxLayer2Html || '<p>FLUX-privatlivspolitik ikke tilgængelig.</p>')
-        : (ct.parentAiAvatarLayer2Html || '<p>Privatlivspolitik ikke tilgængelig.</p>');
-      const titleSuffix = isFlux ? ' (FLUX)' : '';
-      const fluxIsDraft = isFlux && ct.isFluxConsentTextProductionReady?.() === false;
-      // Hvis FLUX er DRAFT og vi prøver at aktivere, blokér med advarsel
-      const allowActivate = showActivateButton && !fluxIsDraft;
+      const layer2 = ct.parentAiAvatarLayer2Html || '<p>Privatlivspolitik ikke tilgængelig.</p>';
 
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
       overlay.innerHTML = `
         <div style="background:#fff;color:#111;border-radius:14px;max-width:680px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
           <div style="padding:18px 22px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
-            <strong style="font-size:15px;">Databehandling — AI-avatar${esc(titleSuffix)}</strong>
+            <strong style="font-size:15px;">Databehandling — AI-avatar</strong>
             <button type="button" id="ai-layer2-close" style="background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;line-height:1;">×</button>
           </div>
           <div style="padding:18px 22px;overflow-y:auto;font-size:13px;line-height:1.6;color:#374151;">${layer2}</div>
-          ${fluxIsDraft && showActivateButton ? `<div style="padding:10px 22px;background:rgba(217,119,6,0.1);border-top:1px solid rgba(217,119,6,0.3);font-size:12px;color:#92400e;font-weight:600;">⚠ Aktivering er låst indtil databehandlingsaftalen med BFL er underskrevet.</div>` : ''}
           <div style="padding:14px 22px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px;">
-            ${allowActivate ? `<button type="button" id="ai-layer2-activate" style="padding:8px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Bekræft og aktivér</button>` : ''}
+            ${showActivateButton ? `<button type="button" id="ai-layer2-activate" style="padding:8px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Bekræft og aktivér</button>` : ''}
             <button type="button" id="ai-layer2-cancel" style="padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;background:#fff;cursor:pointer;font-weight:600;">${showActivateButton ? 'Annullér' : 'Luk'}</button>
           </div>
         </div>`;
@@ -4306,7 +4248,7 @@
       const close = (result) => { overlay.remove(); resolve(result); };
       overlay.querySelector('#ai-layer2-close').onclick = () => close(false);
       overlay.querySelector('#ai-layer2-cancel').onclick = () => close(false);
-      if (allowActivate) {
+      if (showActivateButton) {
         overlay.querySelector('#ai-layer2-activate').onclick = () => close(true);
       }
     });
@@ -4328,16 +4270,7 @@
     if (nowChecked) {
       // Aktivering: konstruktiv, vis informeret samtykke (Lag 2 for AI)
       if (kind === 'ai') {
-        proceed = await openAiLayer2Modal('openai', true);
-      } else if (kind === 'ai_flux') {
-        // FLUX: hvis tekst er DRAFT, openAiLayer2Modal returnerer false
-        // (aktivér-knap blokeres). Brugeren ser kun info-modal.
-        if (!ct.isFluxConsentTextProductionReady?.()) {
-          await openAiLayer2Modal('flux', true); // viser DRAFT-warning
-          toggle.checked = false;
-          return;
-        }
-        proceed = await openAiLayer2Modal('flux', true);
+        proceed = await openAiLayer2Modal(true);
       } else {
         const label = kind === 'aula' ? 'Aula-profilbillede'
           : kind === 'camera' ? 'Kamera-foto'
@@ -4358,7 +4291,6 @@
     } else {
       // Deaktivering: destruktiv, vis advarsels-popup
       const popupKey = kind === 'ai' ? 'ai_off'
-        : kind === 'ai_flux' ? 'ai_flux_off'
         : kind === 'aula' ? 'aula_off'
         : kind === 'parent_upload' ? 'parent_upload_off'
         : 'camera_off';
@@ -4378,11 +4310,9 @@
     toggle.disabled = true;
     try {
       // Vælg den rette versionsstreng for samtykket
-      const version = kind === 'ai_flux'
-        ? (ct.PARENT_AI_AVATAR_FLUX_VERSION || CURRENT_CONSENT_VERSION)
-        : kind === 'ai'
-          ? (ct.PARENT_AI_AVATAR_VERSION || CURRENT_CONSENT_VERSION)
-          : CURRENT_CONSENT_VERSION;
+      const version = kind === 'ai'
+        ? (ct.PARENT_AI_AVATAR_VERSION || CURRENT_CONSENT_VERSION)
+        : CURRENT_CONSENT_VERSION;
       const result = nowChecked
         ? await API.giveConsent(selectedChild.child_id, consentType, version, 'forældreportal_checkbox')
         : await API.withdrawConsent(selectedChild.child_id, consentType);
@@ -4499,7 +4429,7 @@
     const has = (t) => consentHistory.some(c => c.consent_type === t && c.is_active);
     const hasAula = has('profile_picture_aula');
     const hasCamera = has('profile_picture_camera');
-    const hasAi = has('profile_picture_ai_openai') || has('profile_picture_ai_flux');
+    const hasAi = has('profile_picture_ai_openai');
     const hasParentUpload = has('profile_picture_parent_upload');
     childData.profile_picture_opt_out_aula = !hasAula;
     childData.profile_picture_opt_out_camera = !hasCamera;

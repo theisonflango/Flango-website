@@ -37,7 +37,6 @@
   };
   const AI_PROVIDER_MODULE = {
     openai: 'profile_pic_ai_openai',
-    flux: 'profile_pic_ai_flux',
   };
 
   /**
@@ -2581,9 +2580,7 @@
             <div class="fsp-expand${aiOn ? ' open' : ''}" data-expand-target="ai-body" style="max-height:${aiOn ? '400px' : '0'}">
               <div style="padding-top:14px;border-top:1px solid rgba(255,255,255,0.04)">
                 <div class="fsp-pm-detail">Aktiverer AI-genererede avatarer baseret p\u00e5 barnets foto. Fotoet sendes til den valgte udbyder og slettes straks efter. Flango sender faktura til institutionen p\u00e5 100,- kr. hvorefter I kan generere 300\u2013400 avatars.</div>
-                <div class="fsp-role" style="margin-bottom:6px"><div class="fsp-role-left"><div><div class="fsp-role-name">OpenAI</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">USA</div></div></div><div class="fsp-toggle${inst.ai_provider_openai !== false ? ' on' : ''}" data-ai-provider="openai"></div></div>
-                <div class="fsp-role"><div class="fsp-role-left"><div><div class="fsp-role-name">Black Forest Labs, FLUX 2</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">Tyskland</div></div></div><div class="fsp-toggle${inst.ai_provider_flux ? ' on' : ''}" data-ai-provider="flux"></div></div>
-                <div id="pp-ai-no-provider-warn" style="margin-top:10px;padding:8px 10px;border-radius:6px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);font-size:12px;color:#f59e0b;display:${aiOn && inst.ai_provider_openai === false && !inst.ai_provider_flux ? 'block' : 'none'}">\u26A0 Ingen udbyder valgt \u2014 aktiv\u00e9r OpenAI eller FLUX, ellers kan caf\u00e9-admins ikke generere avatars.</div>
+                <div class="fsp-role"><div class="fsp-role-left"><div><div class="fsp-role-name">Microsoft Azure OpenAI</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">EU</div></div></div><div class="fsp-toggle${inst.ai_provider_openai !== false ? ' on' : ''}" data-ai-provider="openai"></div></div>
               </div>
             </div>
           </div>
@@ -2643,23 +2640,13 @@
           target.style.maxHeight = isOpen ? '400px' : '0';
         }
       });
-      // AI provider toggles (OpenAI / FLUX)
-      const refreshNoProviderWarn = () => {
-        const warn = container.querySelector('#pp-ai-no-provider-warn');
-        if (!warn) return;
-        const masterOn = container.querySelector('[data-field="profile_pictures_ai_enabled"]')?.classList.contains('on');
-        const openAIOn = container.querySelector('[data-ai-provider="openai"]')?.classList.contains('on');
-        const fluxOn = container.querySelector('[data-ai-provider="flux"]')?.classList.contains('on');
-        warn.style.display = (masterOn && !openAIOn && !fluxOn) ? 'block' : 'none';
-      };
+      // AI provider toggle (Microsoft Azure OpenAI / EU)
       container.querySelectorAll('[data-ai-provider]').forEach(toggle => {
         toggle.addEventListener('click', () => {
           toggle.classList.toggle('on');
           ctx.markDirty('ai_provider_' + toggle.dataset.aiProvider, toggle.classList.contains('on'));
-          refreshNoProviderWarn();
         });
       });
-      container.querySelector('[data-field="profile_pictures_ai_enabled"]')?.addEventListener('click', refreshNoProviderWarn);
       // Default picture toggle grey-out
       container.querySelector('[data-action="toggle-dp"]')?.addEventListener('click', function () {
         this.classList.toggle('on');
