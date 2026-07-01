@@ -2730,6 +2730,11 @@
     const personalDaily = st.personal_daily_limit ?? st.max_daily_minutes ?? '';
     const personalSession = st.personal_max_session ?? st.max_session_minutes_override ?? '';
     const consent = st.extra_time_consent ?? true;
+    // Roblox personligt login (opt-out): default TILLADT. Vises kun som fravalgt hvis
+    // forælderen aktivt har fravalgt og ikke gen-tilladt siden (matcher server-gaten).
+    const robloxRows = historyForType('roblox_personal_login');
+    const robloxAllowed = !!activeConsentFor('roblox_personal_login')
+      || !robloxRows.some(c => !c.is_active);
 
     return `
       <div class="section" id="section-screentime">
@@ -2754,6 +2759,10 @@
           <div class="setting-row">
             <div class="setting-info"><div class="setting-label">Samtykke til forlænget spilletid</div><div class="setting-desc">Giv personalet lov til undtagelsesvis at forlænge.</div></div>
             <label class="toggle"><input type="checkbox" id="st-consent-toggle" ${consent ? 'checked' : ''}><span class="toggle-track"></span></label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info"><div class="setting-label">Tillad personligt Roblox-login</div><div class="setting-desc">Barnet kan logge ind med sin egen Roblox-konto på klubbens PC'er. Slå fra for at fravælge — et gemt login slettes.</div></div>
+            <label class="toggle"><input type="checkbox" id="roblox-personal-login-consent" ${robloxAllowed ? 'checked' : ''}><span class="toggle-track"></span></label>
           </div>
         </div></div></div>
       </div>`;
@@ -3414,6 +3423,10 @@
     // Forælder-upload consent toggle
     const ppParentUpload = document.getElementById('pp-consent-parent-upload');
     if (ppParentUpload) ppParentUpload.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_parent_upload', 'parent_upload'));
+
+    // Roblox personligt login consent toggle (opt-out) — i spilletid-sektionen
+    const robloxConsent = document.getElementById('roblox-personal-login-consent');
+    if (robloxConsent) robloxConsent.addEventListener('change', (e) => handleRobloxLoginConsentToggle(e));
 
     // Forælder-upload knap → åbn modal
     const ppUploadBtn = document.getElementById('pp-upload-btn');
@@ -4331,6 +4344,58 @@
       rerenderProfileAndConsentSections();
     } catch (err) {
       console.error('[Portal] consent toggle fejl:', err);
+      toggle.checked = !nowChecked;
+      showToast('Kunne ikke gemme', 'error');
+    } finally {
+      toggle.disabled = false;
+    }
+  }
+
+  // Roblox personligt login (opt-out): default tilladt. Slå fra = aktivt fravalg
+  // (server sletter et evt. gemt login). Slå til igen = gen-tilvalg.
+  async function handleRobloxLoginConsentToggle(e) {
+    if (!selectedChild) return;
+    const toggle = e.target;
+    if (isAdminSimulatorSession()) {
+      toggle.checked = !toggle.checked; // rul tilbage
+      showAdminSimulatorBlockedAlert('samtykker');
+      return;
+    }
+    const nowChecked = toggle.checked;
+
+    const proceed = nowChecked
+      ? await showConfirmModal({
+          title: 'Tillad personligt Roblox-login?',
+          body: 'Dit barn kan logge ind med sin egen Roblox-konto på klubbens gaming-PC\'er. Loginet gemmes krypteret, så barnet ikke skal indtaste kode hver gang.\n\nValget registreres med tidspunkt og version.',
+          confirm: 'Tillad',
+          cancel: 'Annullér',
+          danger: false,
+        })
+      : await showConfirmModal({
+          title: 'Fravælg personligt Roblox-login?',
+          body: 'Barnets gemte Roblox-login slettes, og "egen konto"-knappen forsvinder på PC\'erne. Barnet skal så selv logge ind manuelt.',
+          confirm: 'Fravælg',
+          cancel: 'Annullér',
+          danger: true,
+        });
+
+    if (!proceed) {
+      toggle.checked = !nowChecked;
+      return;
+    }
+
+    toggle.disabled = true;
+    try {
+      const result = await API.setRobloxLoginConsent(selectedChild.child_id, nowChecked, CURRENT_CONSENT_VERSION);
+      if (result && result.success === false) {
+        toggle.checked = !nowChecked;
+        showToast(result.error || 'Kunne ikke gemme', 'error');
+        return;
+      }
+      await refreshConsentHistory();
+      showToast(nowChecked ? 'Roblox-login tilladt' : 'Roblox-login fravalgt', 'success');
+    } catch (err) {
+      console.error('[Portal] roblox consent toggle fejl:', err);
       toggle.checked = !nowChecked;
       showToast('Kunne ikke gemme', 'error');
     } finally {

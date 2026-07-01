@@ -621,5 +621,16 @@
         p_child_user_id: childId,
       });
     },
+
+    /** Sæt til/fra for barnets personlige Roblox-login (opt-out-model).
+     *  allowed=false persisterer et aktivt fravalg og sletter en evt.
+     *  allerede gemt cookie server-side. */
+    async setRobloxLoginConsent(childId, allowed, consentVersion) {
+      return rpcCall('set_roblox_login_consent', {
+        p_child_user_id: childId,
+        p_allowed: allowed,
+        p_consent_version: consentVersion || 'v1.0',
+      });
+    },
   };
 })();
