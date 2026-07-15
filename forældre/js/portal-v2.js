@@ -2056,10 +2056,12 @@
     const emojiHtml = productEmojiHTML(p, 24);
     const currentLimit = p.parent_limit ?? '∞';
     const instLimit = p.institution_limit;
-    const instNote = instLimit != null ? `<span style="font-size:11px;color:var(--ink-muted)">Klub: max ${instLimit}/dag</span>` : '';
+    const priceStr = (p.price != null && p.price !== '') ? `${formatKr(p.price)} kr` : '';
+    const metaParts = [priceStr, instLimit != null ? `Klub: max ${instLimit}/dag` : ''].filter(Boolean);
+    const metaNote = metaParts.length ? `<span style="font-size:11px;color:var(--ink-muted)">${metaParts.join(' · ')}</span>` : '';
     return `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--s3) 0${!isFirst ? ';border-top:1px solid var(--border)' : ''}">
-        <div style="display:flex;align-items:center;gap:var(--s3)">${emojiHtml}<div><span style="font-weight:600;font-size:14px">${esc(cleanProductName(p.name))}</span>${instNote ? '<br>' + instNote : ''}</div></div>
+        <div style="display:flex;align-items:center;gap:var(--s3)">${emojiHtml}<div><span style="font-weight:600;font-size:14px">${esc(cleanProductName(p.name))}</span>${metaNote ? '<br>' + metaNote : ''}</div></div>
         <div class="stepper" data-product-id="${p.id}"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${currentLimit}</div><button class="stepper-btn stepper-plus">+</button></div>
       </div>`;
   }
