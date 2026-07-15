@@ -2926,7 +2926,7 @@
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="feedback-tabs" id="feedback-tabs">
             <button class="feedback-tab active" data-target="fb-club">🏫 Til ${esc(instName)}</button>
-            <button class="feedback-tab" data-target="fb-flango">🍊 Til Flango</button>
+            <button class="feedback-tab" data-target="fb-flango"><span style="display:inline-flex;align-items:center;gap:4px"><img src="assets/flango-logo.webp" alt="" style="width:15px;height:15px">Til Flango</span></button>
           </div>
           <div class="feedback-panel" id="fb-club">
             <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Send en besked direkte til ${esc(instName)}.</p>
