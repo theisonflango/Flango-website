@@ -296,11 +296,10 @@
     // ─── Product Limits ───
 
     /** Save product limits (per-product max per day) */
-    async saveProductLimits(childId, limits) {
-      return fetchFunction('save-parent-limits', {
-        child_id: childId,
-        limits: limits,
-      });
+    async saveProductLimits(childId, limits, maxDailySpecial) {
+      const body = { child_id: childId, limits: limits };
+      if (maxDailySpecial !== undefined) body.max_daily_special_per_day = maxDailySpecial;
+      return fetchFunction('save-parent-limits', body);
     },
 
     // ─── Sugar Policy ───

@@ -26,6 +26,7 @@
   let ugeplanWeekIdx = 0;     // valgt uge i ugeplan-sektionen
   let featureFlags = {};      // from institution
   let visibleSections = {};   // from get-parent-view (server-autoritativ sektion-synlighed)
+  let dailySpecialLimit = null; // samlet dagens-ret-grænse (0=spærret, null=ubegrænset) fra get-products-for-parent
   let customerAvgSpend = null; // { avg_today, avg_week, avg_month }
   let consentHistory = [];     // from get_consent_history (all rows for selected child)
   let _sidebarObserver = null; // IntersectionObserver for sidebar scroll tracking
@@ -320,6 +321,7 @@
         parent_limit: childLimitMap[p.id] ?? null,
         institution_limit: instLimitMap[p.id] ?? null,
       }));
+      dailySpecialLimit = prods?.daily_special_limit ?? null;
       eventsData = events;
       ugeplanData = null; // genindlæses dovent (institution kan skifte ved barn-skift)
       customerAvgSpend = clubAvg;
@@ -2066,7 +2068,7 @@
     // Fast sortiment: alle core_assortment produkter
     const coreProducts = products.filter(p => p.is_core_assortment === true);
     // Dagens sortiment: synlige produkter som IKKE er fast sortiment
-    const todayProducts = products.filter(p => p.is_visible !== false && p.is_core_assortment !== true);
+    const todayProducts = products.filter(p => p.is_visible !== false && p.is_core_assortment !== true && p.is_daily_special !== true);
 
     let coreHTML = '';
     if (coreProducts.length === 0) {
@@ -2085,6 +2087,26 @@
         </div>`;
     }
 
+    // Dagens ret: samlet grænse for ALLE dagens ret (retterne roterer, så en
+    // per-produkt-grænse giver ikke mening). Café-POS håndhæver den på tværs af
+    // alle is_daily_special. 0 = spærret, ∞ = ubegrænset.
+    const hasDailySpecials = products.some(p => p.is_daily_special === true);
+    const showDailySpecial = hasDailySpecials && featureFlags.parent_portal_daily_special !== false;
+    const dsBlocked = dailySpecialLimit === 0;
+    const dsMaxDisplay = (dailySpecialLimit && dailySpecialLimit > 0) ? dailySpecialLimit : '∞';
+    const dailySpecialHTML = !showDailySpecial ? '' : `
+          <div style="font-weight:700;font-size:13px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:var(--s2)">Dagens ret</div>
+          <div class="hint-box neutral" style="margin-bottom:var(--s2);font-size:12px"><span class="hint-icon">ℹ️</span><span>Gælder alle retter der er markeret som dagens ret — uanset hvad der er på menuen i dag.</span></div>
+          <div class="setting-row">
+            <div class="setting-info"><div class="setting-label">Bloker dagens ret</div><div class="setting-desc">${esc(getChildName())} kan slet ikke købe dagens ret</div></div>
+            <label class="toggle"><input type="checkbox" id="ds-block-toggle" ${dsBlocked ? 'checked' : ''}><span class="toggle-track"></span></label>
+          </div>
+          <div class="setting-row" id="ds-max-row"${dsBlocked ? ' style="opacity:.4;pointer-events:none"' : ''}>
+            <div class="setting-info"><div class="setting-label">Maks dagens ret pr. dag</div><div class="setting-desc">På tværs af alle dagens ret</div></div>
+            <div class="stepper" id="ds-max-stepper"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${dsMaxDisplay}</div><button class="stepper-btn stepper-plus">+</button></div>
+          </div>
+          <div style="height:1px;background:var(--border);margin:var(--s4) 0"></div>`;
+
     return `
       <div class="section" id="section-product-limits">
         <div class="section-header">
@@ -2093,6 +2115,7 @@
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">💡</span><span>Hvis institutionen har sat en grænse, gælder den strengeste.</span></div>
+          ${dailySpecialHTML}
           <div style="font-weight:700;font-size:13px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:var(--s2)">Fast sortiment</div>
           ${coreHTML}
           ${todayHTML}
@@ -3271,6 +3294,10 @@
       if (stepper.id === 'sugar-max-stepper' || stepper.id === 'sugar-per-product-stepper') {
         saveSugarPolicy();
       }
+      // Auto-save dagens ret samlet grænse
+      if (stepper.id === 'ds-max-stepper') {
+        saveProductLimits();
+      }
     });
 
     // History filter buttons — delegated
@@ -3387,6 +3414,12 @@
     // Sugar policy toggles
     const sugarBlock = document.getElementById('sugar-block-toggle');
     if (sugarBlock) sugarBlock.addEventListener('change', () => saveSugarPolicy());
+    const dsBlockToggle = document.getElementById('ds-block-toggle');
+    if (dsBlockToggle) dsBlockToggle.addEventListener('change', () => {
+      const row = document.getElementById('ds-max-row');
+      if (row) { row.style.opacity = dsBlockToggle.checked ? '.4' : ''; row.style.pointerEvents = dsBlockToggle.checked ? 'none' : ''; }
+      saveProductLimits();
+    });
 
     // Diet toggles
     const dietVeg = document.getElementById('diet-vegetarian');
@@ -4039,8 +4072,17 @@
       const val = valText === '∞' ? null : parseInt(valText);
       if (productId) limits.push({ product_id: productId, max_per_day: val });
     });
+    // Dagens ret samlet grænse: blok = 0, ∞ = ubegrænset (null), ellers antal.
+    let maxDailySpecial;
+    const dsBlock = document.getElementById('ds-block-toggle');
+    const dsMaxEl = document.querySelector('#ds-max-stepper .stepper-val');
+    if (dsBlock || dsMaxEl) {
+      if (dsBlock && dsBlock.checked) maxDailySpecial = 0;
+      else { const v = dsMaxEl?.textContent ?? '∞'; maxDailySpecial = v === '∞' ? null : parseInt(v); }
+    }
     try {
-      await API.saveProductLimits(selectedChild.child_id, limits);
+      await API.saveProductLimits(selectedChild.child_id, limits, maxDailySpecial);
+      if (maxDailySpecial !== undefined) dailySpecialLimit = maxDailySpecial;
       showToast('Grænse gemt', 'success');
     } catch (err) {
       console.error('[Portal] Save product limits error:', err);
