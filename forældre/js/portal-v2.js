@@ -25,6 +25,7 @@
   let ugeplanData = null;     // from get-published-ugeplan (lazy)
   let ugeplanWeekIdx = 0;     // valgt uge i ugeplan-sektionen
   let featureFlags = {};      // from institution
+  let visibleSections = {};   // from get-parent-view (server-autoritativ sektion-synlighed)
   let customerAvgSpend = null; // { avg_today, avg_week, avg_month }
   let consentHistory = [];     // from get_consent_history (all rows for selected child)
   let _sidebarObserver = null; // IntersectionObserver for sidebar scroll tracking
@@ -322,35 +323,11 @@
       eventsData = events;
       ugeplanData = null; // genindlæses dovent (institution kan skifte ved barn-skift)
       customerAvgSpend = clubAvg;
-      featureFlags = childData?.institution || childData?.feature_flags || {};
-      window.__featureFlags = featureFlags; // DEBUG
-      console.log('[Portal] featureFlags.skaermtid_enabled:', featureFlags.skaermtid_enabled, 'keys:', Object.keys(featureFlags).filter(k => k.includes('skaerm')));
-
-      // Superadmin feature flag enforcement: override institution flags
-      const saFlags = childData?.feature_flags || {};
-      if (saFlags.skaermtid === 'forced_off') featureFlags.skaermtid_enabled = false;
-      if (saFlags.sugar_policy === 'forced_off') featureFlags.parent_portal_sugar_policy = false;
-      if (saFlags.diet_preferences === 'forced_off') {
-        featureFlags.parent_portal_diet = false;
-        featureFlags.parent_portal_vegetarian_only = false;
-        featureFlags.parent_portal_no_pork = false;
-      }
-      if (saFlags.allergens === 'forced_off') featureFlags.parent_portal_allergens = false;
-      if (saFlags.spending_limits === 'forced_off') {
-        featureFlags.parent_portal_spending_limit = false;
-        featureFlags.parent_portal_product_limit = false;
-      }
-      if (saFlags.events === 'forced_off') featureFlags.cafe_events_enabled = false;
-      if (saFlags.portal_sections === 'forced_off') {
-        featureFlags.parent_portal_events = false;
-        featureFlags.parent_portal_purchase_profile = false;
-        featureFlags.parent_portal_history = false;
-        featureFlags.parent_portal_sortiment = false;
-        featureFlags.parent_portal_feedback = false;
-      }
-      if (saFlags.profile_pic_upload === 'forced_off' && saFlags.profile_pic_camera === 'forced_off' && saFlags.profile_pic_ai === 'forced_off' && saFlags.profile_pic_library === 'forced_off') {
-        featureFlags.parent_portal_profile_pictures = false;
-      }
+      featureFlags = childData?.institution || {};
+      // Server-autoritativ sektion-synlighed (institutionens flag, post-lock).
+      // Fallback: manglende felt → sektion vises (bevarer adfærd hvis et ældre
+      // backend-svar ikke sender visible_sections).
+      visibleSections = childData?.visible_sections || {};
 
       // Load screentime data if enabled
       if (featureFlags.skaermtid_enabled === true) {
@@ -1442,6 +1419,11 @@
   //  RENDER: MAIN APP
   // ═══════════════════════════════════════
 
+  // Sektion synlig? Server-autoritativ (visible_sections fra get-parent-view).
+  // Manglende felt → vist, så et ældre backend-svar aldrig skjuler ved uheld.
+  // Bruges kun til opt-out-sektioner; opt-in (skærmtid/ugeplan) har egne === true-tjek.
+  function secOn(key) { return visibleSections[key] !== false; }
+
   function renderApp() {
     const balance = getChildBalance();
     const status = getBalanceStatus(balance);
@@ -1450,7 +1432,7 @@
 
     // Determine which sections are visible based on feature flags
     // parent_portal_events = portal-flag (cafe_events_enabled er for POS-viewet i café-appen)
-    const showEvents = featureFlags.parent_portal_events !== false || (eventsData?.events?.length > 0);
+    const showEvents = secOn('events');
     const showScreentime = featureFlags.skaermtid_enabled === true;
     // Ugeplan vises kun når institutionen aktivt har slået den til (default fra).
     const showUgeplan = featureFlags.parent_portal_ugeplan === true;
@@ -1539,9 +1521,9 @@
 
             ${showEvents ? renderEventsSection() : ''}
             ${showUgeplan ? renderUgeplanSection() : ''}
-            ${renderPurchaseProfileSection()}
-            ${renderHistorySection()}
-            ${renderSortimentSection()}
+            ${secOn('purchase_profile') ? renderPurchaseProfileSection() : ''}
+            ${secOn('history') ? renderHistorySection() : ''}
+            ${secOn('sortiment') ? renderSortimentSection() : ''}
           </div>
 
           <!-- TAB: PAY -->
@@ -1553,11 +1535,11 @@
           <!-- TAB: LIMITS -->
           <div class="tab-view" id="tab-limits">
             <div class="view-header mobile-only"><div class="view-title">Grænser & Kost</div><div class="view-subtitle">Indstillinger for ${esc(name)}</div></div>
-            ${renderSpendingLimitSection()}
-            ${renderProductLimitsSection()}
-            ${renderSugarPolicySection()}
-            ${renderDietSection()}
-            ${renderAllergensSection()}
+            ${secOn('spending_limit') ? renderSpendingLimitSection() : ''}
+            ${secOn('product_limit') ? renderProductLimitsSection() : ''}
+            ${secOn('sugar_policy') ? renderSugarPolicySection() : ''}
+            ${secOn('diet') ? renderDietSection() : ''}
+            ${secOn('allergens') ? renderAllergensSection() : ''}
           </div>
 
           <!-- TAB: SCREEN TIME -->
@@ -1572,9 +1554,9 @@
           <!-- TAB: PROFILE -->
           <div class="tab-view" id="tab-profile">
             <div class="view-header mobile-only"><div class="view-title">Profil</div><div class="view-subtitle">Indstillinger & notifikationer</div></div>
-            ${renderNotificationsSection()}
+            ${secOn('notifications') ? renderNotificationsSection() : ''}
             ${renderInviteParentSection()}
-            ${renderFeedbackSection()}
+            ${secOn('feedback') ? renderFeedbackSection() : ''}
             ${renderPinSection()}
           </div>
 
@@ -2761,7 +2743,7 @@
             <label class="toggle"><input type="checkbox" id="st-consent-toggle" ${consent ? 'checked' : ''}><span class="toggle-track"></span></label>
           </div>
           <div class="setting-row">
-            <div class="setting-info"><div class="setting-label">Tillad personligt Roblox-login</div><div class="setting-desc">Barnet kan logge ind med sin egen Roblox-konto på klubbens PC'er. Slå fra for at fravælge — et gemt login slettes.</div></div>
+            <div class="setting-info"><div class="setting-label">Tillad personligt Roblox-login</div><div class="setting-desc">Barnet kan logge ind med sin egen Roblox-konto på klubbens PC'er. Loginet gemmes krypteret. Anbefales ikke, hvis barnet har Robux på kontoen. Slå fra for at fravælge — et gemt login slettes.</div></div>
             <label class="toggle"><input type="checkbox" id="roblox-personal-login-consent" ${robloxAllowed ? 'checked' : ''}><span class="toggle-track"></span></label>
           </div>
         </div></div></div>
@@ -4366,7 +4348,7 @@
     const proceed = nowChecked
       ? await showConfirmModal({
           title: 'Tillad personligt Roblox-login?',
-          body: 'Dit barn kan logge ind med sin egen Roblox-konto på klubbens gaming-PC\'er. Loginet gemmes krypteret, så barnet ikke skal indtaste kode hver gang.\n\nValget registreres med tidspunkt og version.',
+          body: 'Dit barn kan logge ind med sin egen Roblox-konto på klubbens gaming-PC\'er, så koden ikke skal indtastes hver gang. Loginet gemmes krypteret på vores server.\n\nVi anbefaler at lade være, hvis barnet har Robux eller købte ting på sin konto — et gemt login er en adgang til kontoen. Barnet kan altid logge ind manuelt i stedet.\n\nValget registreres med tidspunkt og version.',
           confirm: 'Tillad',
           cancel: 'Annullér',
           danger: false,
