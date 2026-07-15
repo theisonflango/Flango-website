@@ -53,7 +53,7 @@
       if (!FM.isModuleLocked(flags, moduleKey)) return;
       const flag = FM.getModuleFlag(flags, moduleKey);
       {
-        const reason = flag.lock_reason || 'Låst af administrator';
+        const reason = flag.lock_reason || (window.FeatureModules?.DEFAULT_LOCK_REASON || 'Låst af Flango');
         toggle.classList.add('superadmin-locked');
         toggle.style.opacity = '0.5';
         toggle.style.pointerEvents = 'none';

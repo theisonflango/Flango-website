@@ -110,7 +110,7 @@
       const featureOffClass = (!checked && nav.check) ? ' feature-off' : '';
       const lockedClass = locked ? ' superadmin-locked' : '';
       const disabledAttr = locked ? ' disabled' : '';
-      const lockTitle = lockReason || 'Låst af administrator';
+      const lockTitle = lockReason || (window.FeatureModules?.DEFAULT_LOCK_REASON || 'Låst af Flango');
       const lockIcon = locked
         ? `<span class="sa-lock" title="${lockTitle}">🔒</span>`
         : '';

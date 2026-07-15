@@ -287,5 +287,8 @@
     setConstraintsCache,
     getNameDisplayPolicy,
     displayName,
+    // Fælles default-forklaring når superadmin har låst en funktion uden at angive
+    // en grund. Bruges af begge admin-flader (admin-portal-settings + settings-sections).
+    DEFAULT_LOCK_REASON: 'Flango har låst denne funktion for jeres institution. Kontakt Flango for åbning eller yderligere forklaring.',
   };
 })();
