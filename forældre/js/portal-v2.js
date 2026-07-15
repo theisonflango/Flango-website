@@ -632,6 +632,13 @@
   function getChildEmoji() { return selectedChild?.avatar_emoji || selectedChild?.emoji || '🧒'; }
   function getChildBalance() { return childData?.balance ?? selectedChild?.balance ?? 0; }
   function getInstitutionName() { return childData?.institution_name || childData?.institution?.name || ''; }
+  // Dansk genitiv til header-labelen ("Stampens forældreportal"). Navne der ender
+  // på s/x/z får apostrof (fx "Max'"), ellers +s.
+  function instGenitive(name) {
+    const n = (name || '').trim();
+    if (!n) return '';
+    return /[sxzSXZ]$/.test(n) ? n + "'" : n + 's';
+  }
 
   // ═══════════════════════════════════════
   //  RENDER: LOGIN / SIGNUP / FORGOT PASSWORD
@@ -650,7 +657,7 @@
   function renderLogin() {
     const brandHTML = `
       <div class="login-brand">
-        <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;box-shadow:0 8px 20px rgba(245,150,10,.3)">🍊</div>
+        <img src="assets/flango-logo.webp" alt="Flango" class="login-brand-logo">
         <div class="login-brand-name">Flango</div>
       </div>`;
 
@@ -1331,7 +1338,7 @@
       <div class="login-screen">
         <div class="login-card">
           <div class="login-brand">
-            <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px">🍊</div>
+            <img src="assets/flango-logo.webp" alt="Flango" class="login-brand-logo">
             <div class="login-brand-name">Flango</div>
           </div>
           <div class="login-title">Ny adgangskode</div>
@@ -1378,7 +1385,7 @@
         <header class="topnav">
           <div class="topnav-inner">
             <div class="brand">
-              <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">🍊</div>
+              <img src="assets/flango-logo.webp" alt="Flango" class="brand-logo">
               <div><div class="brand-name">Flango</div></div>
             </div>
           </div>
@@ -1429,6 +1436,7 @@
     const status = getBalanceStatus(balance);
     const name = getChildName();
     const instName = getInstitutionName();
+    const portalSub = instName ? esc(instGenitive(instName)) + ' forældreportal' : 'Forældreportal';
 
     // Determine which sections are visible based on feature flags
     // parent_portal_events = portal-flag (cafe_events_enabled er for POS-viewet i café-appen)
@@ -1443,8 +1451,8 @@
         <!-- DESKTOP SIDEBAR -->
         <aside class="desktop-sidebar">
           <div class="brand">
-            <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">🍊</div>
-            <div><div class="brand-name">Flango</div><div class="brand-sub">Forældreportal</div></div>
+            <img src="assets/flango-logo.webp" alt="Flango" class="brand-logo">
+            <div><div class="brand-name">Flango</div><div class="brand-sub">${portalSub}</div></div>
           </div>
           <div class="sidebar-child-section" id="sidebar-children"></div>
           <div class="sidebar-divider"></div>
@@ -1458,8 +1466,8 @@
         <nav class="desktop-topnav">
           <div class="desktop-topnav-inner">
             <div class="brand">
-              <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#ff9d5a,#F5960A);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">🍊</div>
-              <div><div class="brand-name">Flango</div><div class="brand-sub">Forældreportal</div></div>
+              <img src="assets/flango-logo.webp" alt="Flango" class="brand-logo">
+              <div><div class="brand-name">Flango</div><div class="brand-sub">${portalSub}</div></div>
             </div>
             <div class="desktop-tab-bar">
               <button class="dtab-item active" data-tab="tab-home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Overblik</span></button>
@@ -1479,7 +1487,7 @@
               <img src="assets/flango-logo.webp" alt="Flango" class="brand-logo">
               <div>
                 <div class="brand-name">Flango</div>
-                <div class="brand-sub">Forældreportal</div>
+                <div class="brand-sub">${portalSub}</div>
               </div>
             </div>
             <div class="nav-actions">
@@ -1968,7 +1976,7 @@
     if (!products || products.length === 0) {
       listHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Ingen produkter tilgængelige</div></div>';
     } else {
-      listHTML = products.filter(p => p.is_visible === true && p.is_enabled !== false).map(p => {
+      listHTML = products.filter(p => p.is_visible !== false && p.is_enabled !== false).map(p => {
         const emojiHtml = productEmojiHTML(p, 20);
         const badge = p.is_core_assortment === true ? '<span class="product-badge permanent">Fast</span>' : '';
         return `<div class="product-list-item"><div class="product-emoji">${emojiHtml}</div><div class="product-name">${esc(cleanProductName(p.name))}${badge}</div><div class="product-price">${formatKr(p.price)} kr</div></div>`;
@@ -2058,7 +2066,7 @@
     // Fast sortiment: alle core_assortment produkter
     const coreProducts = products.filter(p => p.is_core_assortment === true);
     // Dagens sortiment: synlige produkter som IKKE er fast sortiment
-    const todayProducts = products.filter(p => p.is_visible === true && p.is_core_assortment !== true);
+    const todayProducts = products.filter(p => p.is_visible !== false && p.is_core_assortment !== true);
 
     let coreHTML = '';
     if (coreProducts.length === 0) {

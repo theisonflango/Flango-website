@@ -355,7 +355,9 @@ a { color: inherit; text-decoration: none; }
 .section-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s cubic-bezier(.22,.61,.36,1); }
 .section.open .section-body { grid-template-rows: 1fr; }
 .section-body-inner { overflow: hidden; }
-.section-content { padding: 0 var(--s4) var(--s4); }
+/* Top-padding giver luft mellem header-båndet og indholdet — ellers flugter
+   filter-/kontrol-rækker (Købsprofil, Historik m.fl.) klemt op mod headeren. */
+.section-content { padding: 14px var(--s4) var(--s4); }
 
 /* ─── REUSABLE COMPONENTS ─── */
 .toggle { position: relative; width: 48px; height: 28px; flex-shrink: 0; }
