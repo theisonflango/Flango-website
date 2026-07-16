@@ -1517,7 +1517,7 @@
               </div>
               <div class="topup-row">
                 <button class="topup-btn topup-primary" data-nav-tab="tab-pay"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Indbetal</button>
-                <button class="topup-btn topup-secondary" data-qa-scroll="section-feedback" data-qa-tab="tab-profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Kontakt</button>
+                <button class="topup-btn topup-secondary" data-qa-scroll="section-contact" data-qa-tab="tab-privacy"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Kontakt</button>
               </div>
             </div>
 
@@ -2402,15 +2402,19 @@
           <div style="line-height:1.7;color:var(--ink-soft)">
             <p style="margin:0 0 var(--s4)">Har du spørgsmål om hvordan dit barns data behandles, eller ønsker du at udøve dine rettigheder, er du altid velkommen til at kontakte os.</p>
             <div style="background:var(--surface-sunken);border-radius:var(--r-md);padding:var(--s4);margin-bottom:var(--s3)">
-              <div style="font-weight:700;margin-bottom:var(--s1)">Institutionen (dataansvarlig)</div>
-              <div>${esc(instName)}</div>
-              <div style="font-size:13px;color:var(--ink-muted);margin-top:var(--s1)">Kontakt institutionens personale direkte &mdash; de kan hjælpe med de fleste spørgsmål om dit barns data i Flango.</div>
+              <div style="font-weight:700;margin-bottom:var(--s1)">Dataansvarlig</div>
+              <div style="font-size:13px;color:var(--ink-muted);margin-top:var(--s1)">Din kommune er dataansvarlig for behandlingen af dit barns data. Vil du udøve dine rettigheder over for den dataansvarlige, kan institutionen henvise dig til kommunens kontakt.</div>
+            </div>
+            <div style="background:var(--surface-sunken);border-radius:var(--r-md);padding:var(--s4);margin-bottom:var(--s3)">
+              <div style="font-weight:700;margin-bottom:var(--s1)">${esc(instName)}</div>
+              <div style="font-size:13px;color:var(--ink-muted);margin-top:var(--s1)">Dit daglige kontaktpunkt. Institutionens personale kan hjælpe med de fleste spørgsmål om dit barns data i Flango.</div>
             </div>
             <div style="background:var(--surface-sunken);border-radius:var(--r-md);padding:var(--s4)">
               <div style="font-weight:700;margin-bottom:var(--s1)">Flango (databehandler)</div>
               <div>Flango &middot; CVR 34360642</div>
               <div><a href="mailto:kontakt@flango.dk" style="color:var(--info)">kontakt@flango.dk</a></div>
-              <div style="font-size:13px;color:var(--ink-muted);margin-top:var(--s1)">Vi behandler data på vegne af institutionen og kommunen. Skriv til os hvis du har tekniske spørgsmål.</div>
+              <div><a href="tel:+4550201816" style="color:var(--info)">50 20 18 16</a></div>
+              <div style="font-size:13px;color:var(--ink-muted);margin-top:var(--s1)">Vi behandler data på vegne af institutionen og kommunen. Ring eller skriv hvis du har tekniske spørgsmål.</div>
             </div>
           </div>
         </div></div></div>
