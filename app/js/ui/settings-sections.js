@@ -2873,6 +2873,132 @@
     }
   };
 
+  sections['Beskeder'] = {
+    render() {
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Beskeder</div>
+        <div class="fsp-page-desc">Modtag beskeder fra forældre direkte i Flango og/eller på e-mail. Beskeder vises i indbakken nedenfor og som en notifikation over kassen.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Modtag beskeder i Flango</div><div class="fsp-main-desc">Åbner "Til institutionen" i forældreportalen. Beskeder samles i indbakken herunder.</div></div>
+          <div class="fsp-toggle" data-msg-toggle="inbox"></div>
+        </div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Send også til e-mail</div><div class="fsp-main-desc">Videresend hver forældrebesked til en eller flere e-mails.</div></div>
+          <div class="fsp-toggle" data-msg-toggle="email"></div>
+        </div>
+        <div data-msg-email-wrap style="display:none;margin:6px 0 4px">
+          <div class="fsp-form-label" style="margin-bottom:6px">Modtager-e-mails (én pr. linje)</div>
+          <textarea data-msg-emails class="input-field input" rows="3" placeholder="kontor@skole.dk" style="width:100%;resize:vertical"></textarea>
+          <button data-msg-emails-save class="fsp-btn" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:var(--fsp-accent,#5ba0d8);color:#fff;border:none;font-weight:600;font-size:13px;cursor:pointer">Gem e-mails</button>
+        </div>
+        <div data-msg-inbox-wrap style="padding-top:20px;border-top:1px solid rgba(255,255,255,0.05);margin-top:16px">
+          <div class="fsp-form-label" style="margin-bottom:10px;display:flex;align-items:center;gap:8px">📥 Indbakke <span data-msg-unread></span></div>
+          <div data-msg-inbox><div style="font-size:13px;color:var(--fsp-txt3)">Henter…</div></div>
+        </div>
+      </div>`;
+    },
+    wire(container) {
+      pageAlign(container);
+      const client = window.__flangoSupabaseClient;
+      const instId = window.getInstitutionId && window.getInstitutionId();
+      const isAdmin = window.__flangoCurrentClerkProfile?.role === 'admin';
+      const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      if (!client || !instId) return;
+
+      const inboxToggle = container.querySelector('[data-msg-toggle="inbox"]');
+      const emailToggle = container.querySelector('[data-msg-toggle="email"]');
+      const emailWrap = container.querySelector('[data-msg-email-wrap]');
+      const emailsTa = container.querySelector('[data-msg-emails]');
+      const emailsSave = container.querySelector('[data-msg-emails-save]');
+      const inboxEl = container.querySelector('[data-msg-inbox]');
+      const inboxWrap = container.querySelector('[data-msg-inbox-wrap]');
+      const unreadEl = container.querySelector('[data-msg-unread]');
+
+      async function saveCol(col, val) {
+        try { await client.from('institutions').update({ [col]: val }).eq('id', instId); }
+        catch (e) { console.error('[Beskeder] save', col, e); if (window.showToast) window.showToast('Kunne ikke gemme', 'error'); }
+      }
+
+      // ── Config: hent frisk + hydrér + wire ──
+      (async () => {
+        try {
+          const { data } = await client.from('institutions')
+            .select('parent_messages_enabled, feedback_email_enabled, feedback_emails')
+            .eq('id', instId).single();
+          const cfg = data || {};
+          inboxToggle && inboxToggle.classList.toggle('on', cfg.parent_messages_enabled === true);
+          const emailOn = cfg.feedback_email_enabled === true;
+          emailToggle && emailToggle.classList.toggle('on', emailOn);
+          if (emailWrap) emailWrap.style.display = emailOn ? '' : 'none';
+          if (emailsTa) emailsTa.value = Array.isArray(cfg.feedback_emails) ? cfg.feedback_emails.join('\n') : '';
+        } catch (e) { console.error('[Beskeder] config-hent', e); }
+      })();
+
+      inboxToggle && inboxToggle.addEventListener('click', () => {
+        const on = !inboxToggle.classList.contains('on');
+        inboxToggle.classList.toggle('on', on);
+        saveCol('parent_messages_enabled', on);
+      });
+      emailToggle && emailToggle.addEventListener('click', () => {
+        const on = !emailToggle.classList.contains('on');
+        emailToggle.classList.toggle('on', on);
+        if (emailWrap) emailWrap.style.display = on ? '' : 'none';
+        saveCol('feedback_email_enabled', on);
+      });
+      emailsSave && emailsSave.addEventListener('click', async () => {
+        const arr = (emailsTa && emailsTa.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+        await saveCol('feedback_emails', arr);
+        if (window.showToast) window.showToast('E-mails gemt', 'success');
+      });
+
+      // ── Indbakke (kun admin) ──
+      if (!isAdmin) { if (inboxWrap) inboxWrap.style.display = 'none'; return; }
+      const btnStyle = 'width:26px;height:26px;border-radius:7px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:var(--fsp-txt);cursor:pointer;font-size:13px;line-height:1;flex-shrink:0';
+      async function loadInbox() {
+        inboxEl.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Henter…</div>';
+        try {
+          const { data, error } = await client.from('parent_messages')
+            .select('id, sender_name, sender_email, content, created_at, read_at')
+            .eq('institution_id', instId).order('created_at', { ascending: false }).limit(100);
+          if (error) throw error;
+          const rows = data || [];
+          const unread = rows.filter(r => !r.read_at).length;
+          if (unreadEl) unreadEl.innerHTML = unread ? `<span style="background:#e85a6f;color:#fff;font-size:11px;padding:1px 8px;border-radius:10px;font-weight:700">${unread} ny${unread > 1 ? 'e' : ''}</span>` : '';
+          if (!rows.length) { inboxEl.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Ingen beskeder endnu.</div>'; return; }
+          inboxEl.innerHTML = rows.map(m => {
+            let when = ''; try { when = new Date(m.created_at).toLocaleString('da-DK'); } catch (_) { /* noop */ }
+            const meta = [m.sender_name, m.sender_email, when].filter(Boolean).map(esc).join(' · ');
+            const isUnread = !m.read_at;
+            return `<div style="padding:12px 14px;margin-bottom:8px;border-radius:10px;background:var(--fsp-bg2);border:1px solid ${isUnread ? 'rgba(232,90,111,0.4)' : 'rgba(255,255,255,0.06)'}">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+                <div style="font-size:13px;color:var(--fsp-txt);white-space:pre-wrap;flex:1">${esc(m.content)}</div>
+                <div style="display:flex;gap:6px">
+                  ${isUnread ? `<button data-msg-read="${esc(m.id)}" title="Markér som læst" style="${btnStyle}">✓</button>` : ''}
+                  <button data-msg-del="${esc(m.id)}" title="Slet" style="${btnStyle}">🗑</button>
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--fsp-txt3);margin-top:6px">${isUnread ? '<span style="color:#e85a6f">● </span>' : ''}${meta}</div>
+            </div>`;
+          }).join('');
+          inboxEl.querySelectorAll('[data-msg-read]').forEach(b => b.addEventListener('click', async () => {
+            b.disabled = true;
+            await client.from('parent_messages').update({ read_at: new Date().toISOString() }).eq('id', b.dataset.msgRead);
+            loadInbox();
+          }));
+          inboxEl.querySelectorAll('[data-msg-del]').forEach(b => b.addEventListener('click', async () => {
+            b.disabled = true;
+            await client.from('parent_messages').delete().eq('id', b.dataset.msgDel);
+            loadInbox();
+          }));
+        } catch (e) {
+          console.error('[Beskeder] indbakke', e);
+          inboxEl.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Kunne ikke hente beskeder.</div>';
+        }
+      }
+      loadInbox();
+    }
+  };
+
   sections['Ekspedient-login'] = {
     render(ctx) {
       const inst = ctx.institutionData || {};

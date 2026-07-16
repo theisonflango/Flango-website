@@ -11,7 +11,7 @@
   const T = [
     { name: 'Hovedmenu', items: [{ l: 'Produkter & Indbetalinger', c: '#e8734a' }, { l: 'Tilmelding', c: '#5ba0d8' }, { l: 'Restaurant Mode', c: '#f4a261' }, { l: 'Historik', c: '#c77ddb' }] },
     { name: 'Institutionens Præferencer', items: [{ l: 'Toolbar', c: '#5ba0d8' }, { l: 'Beløbsgrænse', c: '#e8734a' }, { l: 'Sukkerpolitik', c: '#e85a6f' }, { l: 'Ekspedient-login', c: '#f4a261' }] },
-    { name: 'Administration', items: [{ l: 'Forældreportal', c: '#c77ddb' }, { l: 'Betalingsmetoder', c: '#5dca7a' }, { l: 'Profilbilleder', c: '#c77ddb' }, { l: 'Produktikoner – Deling', c: '#5ba0d8' }, { l: 'MobilePay CSV Import', c: '#f4a261' }, { l: 'Brugernavne', c: '#5dca7a' }, { l: 'Brugernummer', c: '#5ba0d8' }, { l: 'Opret/Opdater brugere auto.', c: '#e8734a' }] },
+    { name: 'Administration', items: [{ l: 'Forældreportal', c: '#c77ddb' }, { l: 'Beskeder', c: '#5dca7a' }, { l: 'Betalingsmetoder', c: '#5dca7a' }, { l: 'Profilbilleder', c: '#c77ddb' }, { l: 'Produktikoner – Deling', c: '#5ba0d8' }, { l: 'MobilePay CSV Import', c: '#f4a261' }, { l: 'Brugernavne', c: '#5dca7a' }, { l: 'Brugernummer', c: '#5ba0d8' }, { l: 'Opret/Opdater brugere auto.', c: '#e8734a' }] },
     { name: 'Datasikkerhed', items: [{ l: 'Totrinsgodkendelse (MFA)', c: '#e85a6f' }, { l: 'Auto-sletning af inaktive', c: '#f4a261' }, { l: 'Mine enheder', c: '#5ba0d8' }, { l: 'Saldoliste ved låsning', c: '#5dca7a' }, { l: 'Anmod om nulstilling', c: '#c77ddb' }] },
     { name: 'Diverse', items: [{ l: 'Udseende', c: '#c77ddb' }, { l: 'Dagens Sortiment', c: '#f4a261' }, { l: 'Min Flango', c: '#e8734a' }, { l: 'Hjælp', c: '#5ba0d8' }, { l: 'Opdateringer', c: '#5dca7a' }, { l: 'Feedback', c: '#f4a261' }, { l: 'Lydindstillinger', c: '#5ba0d8' }] }
   ];
@@ -29,6 +29,7 @@
     'Sukkerpolitik': '<path d="M8 13.5S2 10 2 6a3 3 0 016-1 3 3 0 016 1c0 4-6 7.5-6 7.5z"/>',
     'Ekspedient-login': '<rect x="4" y="7" width="8" height="6.5" rx="1.5"/><path d="M6 7V5.2a2 2 0 014 0V7"/><circle cx="8" cy="10" r="0.9"/>',
     'Forældreportal': '<circle cx="8" cy="4.5" r="2.5"/><path d="M3 14c0-2.8 2.2-5 5-5s5 2.2 5 5"/><path d="M8 10v4M6 12h4"/>',
+    'Beskeder': '<rect x="2" y="3.5" width="12" height="9" rx="1.5"/><path d="M2.5 5l5.5 3.8L13.5 5"/>',
     'Betalingsmetoder': '<rect x="1.5" y="4" width="13" height="8.5" rx="1.5"/><path d="M1.5 7.5h13"/><rect x="3.5" y="9.5" width="4" height="1.5" rx="0.5"/>',
     'Profilbilleder': '<rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="6" cy="6.5" r="2"/><path d="M2 13c1-2.5 3-4 4-4s2 .8 3.5 2c1 .8 2.2 1.5 3.5 2"/>',
     'Produktikoner – Deling': '<circle cx="11.5" cy="3.5" r="2"/><circle cx="3.5" cy="8" r="2"/><circle cx="11.5" cy="12.5" r="2"/><path d="M5.3 7l4.4-2.5M5.3 9l4.4 2.5"/>',

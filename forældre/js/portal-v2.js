@@ -2917,9 +2917,9 @@
 
   function renderFeedbackSection() {
     const instName = getInstitutionName() || 'klubben';
-    // Forælder → institution hører til beskedsystemet (endnu ikke bygget). Indtil
-    // da skjules fanerne og kun Flango-formen vises — ingen død knap.
-    const showInstitutionFeedback = false;
+    // "Til institutionen" vises kun når institutionen har slået beskeder til
+    // (café → Beskeder). Ellers kun Flango-formen — ingen død knap.
+    const showInstitutionFeedback = featureFlags.parent_messages_enabled === true;
     const flangoPanel = `
             <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Hjælp os med at gøre Flango bedre — eller rapportér en fejl.</p>
             <textarea class="feedback-textarea" id="fb-flango-text" placeholder="Beskriv problemet eller din ide..." rows="4"></textarea>
@@ -2932,9 +2932,10 @@
             <button class="feedback-tab" data-target="fb-flango"><span style="display:inline-flex;align-items:center;gap:4px"><img src="assets/flango-logo.webp" alt="" style="width:15px;height:15px">Til Flango</span></button>
           </div>
           <div class="feedback-panel" id="fb-club">
-            <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Send en besked direkte til ${esc(instName)}.</p>
+            <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Send en besked direkte til ${esc(instName)} — fx om afhentning, ferie eller en aftale.</p>
             <textarea class="feedback-textarea" id="fb-club-text" placeholder="Skriv din besked her..." rows="4"></textarea>
-            <button class="save-btn full" id="fb-club-send">Send til ${esc(instName)}</button>
+            <input type="email" id="fb-club-email" class="input-field" placeholder="Din e-mail (valgfrit — så ${esc(instName)} kan svare)" style="margin-top:var(--s2)">
+            <button class="save-btn full" id="fb-club-send" style="margin-top:var(--s3)">Send til ${esc(instName)}</button>
           </div>
           <div class="feedback-panel" id="fb-flango" style="display:none">${flangoPanel}</div>` : `
           <div class="feedback-panel" id="fb-flango">${flangoPanel}</div>`;
@@ -3618,7 +3619,7 @@
     const fbFlangoSend = document.getElementById('fb-flango-send');
     if (fbFlangoSend) fbFlangoSend.addEventListener('click', () => handleSendFeedback('flango', 'fb-flango-text', 'fb-flango-email', fbFlangoSend));
     const fbClubSend = document.getElementById('fb-club-send');
-    if (fbClubSend) fbClubSend.addEventListener('click', () => handleSendFeedback('institution', 'fb-club-text', null, fbClubSend));
+    if (fbClubSend) fbClubSend.addEventListener('click', () => handleSendFeedback('institution', 'fb-club-text', 'fb-club-email', fbClubSend));
 
     // Logout
     const sidebarLogout = document.getElementById('sidebar-logout');
