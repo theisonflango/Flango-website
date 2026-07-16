@@ -2030,6 +2030,10 @@
   function renderSpendingLimitSection() {
     const limit = childData?.daily_spend_limit || selectedChild?.daily_spend_limit;
     const instLimit = childData?.institution_daily_limit || featureFlags.spending_limit_amount;
+    const LIMIT_PRESETS = [20, 30, 40, 50];
+    // "Andet..." er kun aktiv når der FAKTISK er sat en grænse uden for præsætterne.
+    // (Før: også aktiv når ingen grænse var sat — så den så valgt ud på en frisk konto.)
+    const isCustomLimit = !!limit && !LIMIT_PRESETS.includes(Number(limit));
     return `
       <div class="section" id="section-spending-limit">
         <div class="section-header">
@@ -2045,7 +2049,11 @@
             <button class="chip${limit == 30 ? ' active' : ''}" data-limit="30">30 kr</button>
             <button class="chip${limit == 40 ? ' active' : ''}" data-limit="40">40 kr</button>
             <button class="chip${limit == 50 ? ' active' : ''}" data-limit="50">50 kr</button>
-            <button class="chip${!limit || ![20,30,40,50].includes(Number(limit)) ? ' active' : ''}" data-limit="custom">Andet...</button>
+            <button class="chip${isCustomLimit ? ' active' : ''}" data-limit="custom">Andet...</button>
+          </div>
+          <div id="limit-custom-wrap" style="display:${isCustomLimit ? 'flex' : 'none'};gap:8px;align-items:center;margin-top:var(--s3)">
+            <input type="number" inputmode="numeric" min="1" max="1000" id="limit-custom-input" class="input-field" placeholder="Indtast beløb i kr (1-1000)" value="${isCustomLimit ? esc(String(limit)) : ''}" style="flex:1;margin:0">
+            <button class="save-btn compact" id="limit-custom-save" style="white-space:nowrap;padding:10px 16px">Gem</button>
           </div>
           <div class="hint-box neutral" style="margin-top:var(--s3)"><span class="hint-icon">💡</span><span>${esc(getChildName())} kan stadig købe, men cafeen giver besked hvis grænsen overskrides.</span></div>
         </div></div></div>
@@ -3391,11 +3399,36 @@
         // Handle spending limit save
         if (group.id === 'spending-limit-chips') {
           const limit = chip.dataset.limit;
-          if (limit && limit !== 'custom' && selectedChild) {
+          const wrap = document.getElementById('limit-custom-wrap');
+          if (limit === 'custom') {
+            // "Andet...": fold beløbsfeltet ud (gemmes via Gem/Enter, ikke pr. tastetryk)
+            if (wrap) {
+              wrap.style.display = 'flex';
+              const inp = document.getElementById('limit-custom-input');
+              if (inp) setTimeout(() => inp.focus(), 50);
+            }
+          } else if (limit && selectedChild) {
+            if (wrap) wrap.style.display = 'none';
             saveDailyLimit(Number(limit));
           }
         }
       });
+    });
+
+    // Daglig grænse → "Andet...": gem custom beløb (Gem-knap eller Enter)
+    const limitCustomInput = document.getElementById('limit-custom-input');
+    const limitCustomSave = document.getElementById('limit-custom-save');
+    function saveCustomDailyLimit() {
+      const v = parseInt(limitCustomInput ? limitCustomInput.value : '', 10);
+      if (!Number.isFinite(v) || v < 1 || v > 1000) {
+        showToast('Indtast et beløb mellem 1 og 1000 kr', 'error');
+        return;
+      }
+      saveDailyLimit(v);
+    }
+    if (limitCustomSave) limitCustomSave.addEventListener('click', saveCustomDailyLimit);
+    if (limitCustomInput) limitCustomInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); saveCustomDailyLimit(); }
     });
 
     // Period toggles
@@ -4144,6 +4177,14 @@
     if (!selectedChild) return;
     try {
       await API.saveDailyLimit(selectedChild.child_id, limit);
+      // Hold lokal cache i sync, så "Din daglige grænse" + chip-tilstand er korrekte
+      // ved næste re-render (ellers viste de den gamle værdi til næste fulde load).
+      if (childData) childData.daily_spend_limit = limit;
+      if (selectedChild) selectedChild.daily_spend_limit = limit;
+      // Opdatér "Din daglige grænse"-boksen straks — ellers stod den gamle værdi og
+      // fik gemningen til at se ud som om den fejlede.
+      const limitHint = document.querySelector('#section-spending-limit .hint-box.green strong');
+      if (limitHint && limit != null) limitHint.textContent = `${formatKr(limit)} kr`;
       showToast('Daglig grænse gemt', 'success');
     } catch (err) {
       console.error('[Portal] Save daily limit error:', err);
