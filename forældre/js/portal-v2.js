@@ -2917,30 +2917,58 @@
 
   function renderFeedbackSection() {
     const instName = getInstitutionName() || 'klubben';
-    return `
-      <div class="section" id="section-feedback">
-        <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">💬</div><div><div class="section-title">Feedback & Support</div><div class="section-subtitle">Skriv til ${esc(instName)} eller Flango</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+    // Forælder → institution hører til beskedsystemet (endnu ikke bygget). Indtil
+    // da skjules fanerne og kun Flango-formen vises — ingen død knap.
+    const showInstitutionFeedback = false;
+    const flangoPanel = `
+            <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Hjælp os med at gøre Flango bedre — eller rapportér en fejl.</p>
+            <textarea class="feedback-textarea" id="fb-flango-text" placeholder="Beskriv problemet eller din ide..." rows="4"></textarea>
+            <input type="email" id="fb-flango-email" class="input-field" placeholder="Din e-mail (valgfrit — så vi kan svare)" style="margin-top:var(--s2)">
+            <div class="hint-box neutral" style="margin:var(--s3) 0"><span class="hint-icon">🔒</span><span>Din besked sendes til Flangos support. Uden e-mail er den anonym.</span></div>
+            <button class="save-btn full" id="fb-flango-send">Send til Flango</button>`;
+    const bodyInner = showInstitutionFeedback ? `
           <div class="feedback-tabs" id="feedback-tabs">
             <button class="feedback-tab active" data-target="fb-club">🏫 Til ${esc(instName)}</button>
             <button class="feedback-tab" data-target="fb-flango"><span style="display:inline-flex;align-items:center;gap:4px"><img src="assets/flango-logo.webp" alt="" style="width:15px;height:15px">Til Flango</span></button>
           </div>
           <div class="feedback-panel" id="fb-club">
             <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Send en besked direkte til ${esc(instName)}.</p>
-            <textarea class="feedback-textarea" placeholder="Skriv din besked her..." rows="4"></textarea>
-            <button class="save-btn full">Send til ${esc(instName)}</button>
+            <textarea class="feedback-textarea" id="fb-club-text" placeholder="Skriv din besked her..." rows="4"></textarea>
+            <button class="save-btn full" id="fb-club-send">Send til ${esc(instName)}</button>
           </div>
-          <div class="feedback-panel" id="fb-flango" style="display:none">
-            <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Hjælp os med at gøre Flango bedre — eller rapporter en fejl.</p>
-            <textarea class="feedback-textarea" placeholder="Beskriv problemet eller din ide..." rows="4"></textarea>
-            <div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">🔒</span><span>Din besked sendes anonymt medmindre du vælger at inkludere din e-mail.</span></div>
-            <button class="save-btn full">Send til Flango</button>
-          </div>
+          <div class="feedback-panel" id="fb-flango" style="display:none">${flangoPanel}</div>` : `
+          <div class="feedback-panel" id="fb-flango">${flangoPanel}</div>`;
+    return `
+      <div class="section" id="section-feedback">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">💬</div><div><div class="section-title">Feedback & Support</div><div class="section-subtitle">${showInstitutionFeedback ? 'Skriv til ' + esc(instName) + ' eller Flango' : 'Skriv til Flango'}</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${bodyInner}
         </div></div></div>
       </div>`;
+  }
+
+  async function handleSendFeedback(target, textId, emailId, btn) {
+    if (!selectedChild) return;
+    const textEl = document.getElementById(textId);
+    const message = (textEl?.value || '').trim();
+    if (!message) { showToast('Skriv en besked først', 'error'); return; }
+    const email = emailId ? (document.getElementById(emailId)?.value || '').trim() : '';
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Sender...';
+    try {
+      await API.sendFeedback(selectedChild.child_id, target, message, email);
+      if (textEl) textEl.value = '';
+      if (emailId) { const e = document.getElementById(emailId); if (e) e.value = ''; }
+      showToast('Tak for din besked!', 'success');
+    } catch (err) {
+      console.error('[Portal] sendFeedback:', err);
+      showToast(err?.message || 'Kunne ikke sende beskeden', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = orig;
+    }
   }
 
   function renderInviteParentSection() {
@@ -3585,6 +3613,12 @@
         if (target) target.style.display = '';
       });
     }
+
+    // Feedback: send-knapper
+    const fbFlangoSend = document.getElementById('fb-flango-send');
+    if (fbFlangoSend) fbFlangoSend.addEventListener('click', () => handleSendFeedback('flango', 'fb-flango-text', 'fb-flango-email', fbFlangoSend));
+    const fbClubSend = document.getElementById('fb-club-send');
+    if (fbClubSend) fbClubSend.addEventListener('click', () => handleSendFeedback('institution', 'fb-club-text', null, fbClubSend));
 
     // Logout
     const sidebarLogout = document.getElementById('sidebar-logout');

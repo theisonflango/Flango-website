@@ -396,6 +396,16 @@
       });
     },
 
+    /** Send feedback fra forælderen. target: 'flango' | 'institution' */
+    async sendFeedback(childId, target, message, email) {
+      return invokeFunction('submit-parent-feedback', {
+        child_id: childId,
+        target: target,
+        message: message,
+        email: email || null,
+      });
+    },
+
     // ─── Events ───
 
     /** Get events for parent's children */
