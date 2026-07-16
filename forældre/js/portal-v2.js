@@ -21,6 +21,7 @@
   let purchaseProfile = null; // from get-purchase-profile
   let allergySettings = null;
   let screentimeData = null;
+  let _stSaveTimer = null; // debounce for skærmtid-stepper-gemning
   let eventsData = null;
   let ugeplanData = null;     // from get-published-ugeplan (lazy)
   let ugeplanWeekIdx = 0;     // valgt uge i ugeplan-sektionen
@@ -2749,14 +2750,35 @@
   }
 
   function renderScreentimeSection() {
+    // get-parent-skaermtid svarer NESTED (rules.*, parent_override.*, features.*).
+    // Portalen læste tidligere flade stier (st.institution_daily_limit, st.max_daily_minutes …),
+    // som ikke findes i svaret — derfor viste hele sektionen "—".
     const st = screentimeData || childData?.screentime || {};
-    const remaining = st.remaining_minutes ?? st.balance_minutes ?? '—';
-    const used = st.used_today ?? '—';
-    const instDaily = st.institution_daily_limit ?? st.default_balance_minutes ?? '—';
-    const instSession = st.institution_max_session ?? st.max_session_minutes ?? '—';
-    const personalDaily = st.personal_daily_limit ?? st.max_daily_minutes ?? '';
-    const personalSession = st.personal_max_session ?? st.max_session_minutes_override ?? '';
-    const consent = st.extra_time_consent ?? true;
+    const feat = st.features || {};
+    const rules = st.rules || {};
+    const po = st.parent_override || {};
+    const remaining = st.balance_minutes ?? '—';
+    // Svaret har intet "brugt i dag"-felt — summér dagens sessioner fra history.
+    const todayKey = new Date().toDateString();
+    const usedToday = Array.isArray(st.history)
+      ? st.history.reduce((sum, h) => (h.start && new Date(h.start).toDateString() === todayKey ? sum + (Number(h.minutes) || 0) : sum), 0)
+      : null;
+    const used = usedToday ?? '—';
+    const instDaily = rules.default_balance_minutes ?? '—';
+    const instSession = rules.max_session_minutes ?? '—';
+    // ∞ = ingen personlig grænse (klubbens regler gælder) — samme betydning som i Købsgrænser.
+    // "—" bruges KUN til read-only felter hvor tallet er ukendt.
+    const personalDaily = po.max_daily_minutes ?? null;
+    const personalSession = po.max_session_minutes ?? null;
+    const consent = po.extra_time_consent ?? true;
+    const showRemaining = feat.show_remaining !== false;
+    const showUsage = feat.show_usage !== false;
+    const showRules = feat.show_rules !== false;
+    const allowPersonal = feat.allow_personal_limits !== false;
+    const allowExtraTime = feat.allow_extra_time_requests !== false;
+    // Loft: serveren afviser grænser over institutionens — stop dem allerede i stepperen.
+    const maxDailyAttr = typeof rules.default_balance_minutes === 'number' ? ` data-max="${rules.default_balance_minutes}"` : '';
+    const maxSessionAttr = typeof rules.max_session_minutes === 'number' ? ` data-max="${rules.max_session_minutes}"` : '';
     // Roblox personligt login (opt-out): default TILLADT. Vises kun som fravalgt hvis
     // forælderen aktivt har fravalgt og ikke gen-tilladt siden (matcher server-gaten).
     const robloxRows = historyForType('roblox_personal_login');
@@ -2771,22 +2793,24 @@
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="screentime-overview">
-            <div class="st-stat-card remaining"><div class="st-stat-value">${remaining} min</div><div class="st-stat-label">Tilbage i dag</div></div>
-            <div class="st-stat-card used"><div class="st-stat-value">${used} min</div><div class="st-stat-label">Brugt i dag</div></div>
+            ${showRemaining ? `<div class="st-stat-card remaining"><div class="st-stat-value">${remaining} min</div><div class="st-stat-label">Tilbage i dag</div></div>` : ''}
+            ${showUsage ? `<div class="st-stat-card used"><div class="st-stat-value">${used} min</div><div class="st-stat-label">Brugt i dag</div></div>` : ''}
           </div>
-          <div class="hint-box info" style="margin-bottom:var(--s3)"><span class="hint-icon">📋</span><span>Institutionens regler: ${instDaily} min/dag, maks ${instSession} min pr. session</span></div>
+          ${showRules ? `<div class="hint-box info" style="margin-bottom:var(--s3)"><span class="hint-icon">📋</span><span>Institutionens regler: ${instDaily} min/dag, maks ${instSession} min pr. session</span></div>` : ''}
+          ${allowPersonal ? `
           <div class="setting-row">
-            <div class="setting-info"><div class="setting-label">Personlig daglig grænse</div><div class="setting-desc">Kan ikke overstige institutionens regler</div></div>
-            <div class="stepper" id="st-daily-stepper"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalDaily || '—'}</div><button class="stepper-btn stepper-plus">+</button></div>
+            <div class="setting-info"><div class="setting-label">Personlig daglig grænse</div><div class="setting-desc">∞ = ingen personlig grænse — klubbens regler gælder</div></div>
+            <div class="stepper" id="st-daily-stepper" data-step="5"${maxDailyAttr}><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalDaily || '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
           </div>
           <div class="setting-row">
-            <div class="setting-info"><div class="setting-label">Maks pr. session</div><div class="setting-desc">Hvor lang tid ad gangen (minutter)</div></div>
-            <div class="stepper" id="st-session-stepper"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalSession || '—'}</div><button class="stepper-btn stepper-plus">+</button></div>
-          </div>
+            <div class="setting-info"><div class="setting-label">Maks pr. session</div><div class="setting-desc">Hvor lang tid ad gangen (minutter). ∞ = klubbens regel gælder</div></div>
+            <div class="stepper" id="st-session-stepper" data-step="5"${maxSessionAttr}><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalSession || '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
+          </div>` : ''}
+          ${allowExtraTime ? `
           <div class="setting-row">
             <div class="setting-info"><div class="setting-label">Samtykke til forlænget spilletid</div><div class="setting-desc">Giv personalet lov til undtagelsesvis at forlænge.</div></div>
             <label class="toggle"><input type="checkbox" id="st-consent-toggle" ${consent ? 'checked' : ''}><span class="toggle-track"></span></label>
-          </div>
+          </div>` : ''}
           <div class="setting-row">
             <div class="setting-info"><div class="setting-label">Tillad personligt Roblox-login</div><div class="setting-desc">Barnet kan logge ind med sin egen Roblox-konto på klubbens PC'er. Loginet gemmes krypteret. Anbefales ikke, hvis barnet har Robux på kontoen. Slå fra for at fravælge — et gemt login slettes.</div></div>
             <label class="toggle"><input type="checkbox" id="roblox-personal-login-consent" ${robloxAllowed ? 'checked' : ''}><span class="toggle-track"></span></label>
@@ -3330,13 +3354,23 @@
       const stepper = btn.closest('.stepper');
       const valEl = stepper.querySelector('.stepper-val');
       const isMinus = btn.classList.contains('stepper-minus');
+      // data-step: skærmtid tælles i MINUTTER (spring à 5) — antal-steppere går i 1.
+      // data-max: fx klubbens grænse; forældrens må ikke overstige den (serveren afviser ellers).
+      const step = parseInt(stepper.dataset.step, 10) || 1;
+      const max = stepper.dataset.max ? parseInt(stepper.dataset.max, 10) : null;
       let val = parseInt(valEl.textContent);
-      if (isNaN(val)) val = 0;
-      val = isMinus ? Math.max(0, val - 1) : val + 1;
+      if (isNaN(val)) val = 0; // '∞' → 0
+      val = isMinus ? Math.max(0, val - step) : val + step;
+      if (max != null && val > max) val = max;
       valEl.textContent = val === 0 ? '∞' : val;
       // Auto-save produkt-grænser ved ændring
       if (stepper.dataset.productId) {
         saveProductLimits();
+      }
+      // Auto-save skærmtid-grænser (debounced — stepping fyrer mange klik i træk)
+      if (stepper.id === 'st-daily-stepper' || stepper.id === 'st-session-stepper') {
+        if (_stSaveTimer) clearTimeout(_stSaveTimer);
+        _stSaveTimer = setTimeout(saveScreentimeLimits, 700);
       }
       // Auto-save sukkerpolitik steppers ved ændring
       if (stepper.id === 'sugar-max-stepper' || stepper.id === 'sugar-per-product-stepper') {
@@ -3630,6 +3664,13 @@
     if (notifSaveEmailBtn) notifSaveEmailBtn.addEventListener('click', () => saveNotifications());
     if (notifEventReminder) notifEventReminder.addEventListener('change', () => saveNotifications());
     if (notifEventInvite) notifEventInvite.addEventListener('change', () => saveNotifications());
+
+    // Skærmtid: samtykke til forlænget spilletid (havde ingen handler — gemte aldrig)
+    const stConsent = document.getElementById('st-consent-toggle');
+    if (stConsent) stConsent.addEventListener('change', async () => {
+      const ok = await saveScreentimeConsent(stConsent.checked);
+      if (!ok) stConsent.checked = !stConsent.checked; // rul tilbage ved fejl
+    });
 
     // PIN save
     const pinBtn = document.getElementById('pin-save-btn');
@@ -4189,6 +4230,62 @@
     } catch (err) {
       console.error('[Portal] Save daily limit error:', err);
       showToast('Kunne ikke gemme grænse', 'error');
+    }
+  }
+
+  // ─── Skærmtid: personlige grænser + samtykke ───
+  // Disse blev aldrig gemt før — UI'et fandtes, API.saveScreentime fandtes, men
+  // ingen af dem kaldte den. ∞ (0) = ingen personlig grænse → null på serveren.
+  function readStepperMinutes(selector) {
+    const el = document.querySelector(selector);
+    if (!el) return null;
+    const t = (el.textContent || '').trim();
+    if (t === '∞' || t === '—' || t === '') return null;
+    const n = parseInt(t, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  async function saveScreentimeLimits() {
+    if (!selectedChild) return;
+    const maxDaily = readStepperMinutes('#st-daily-stepper .stepper-val');
+    const maxSession = readStepperMinutes('#st-session-stepper .stepper-val');
+    try {
+      await API.saveScreentime(selectedChild.child_id, {
+        action: 'save_limits',
+        institution_id: selectedChild.institution_id,
+        max_daily_minutes: maxDaily,
+        max_session_minutes: maxSession,
+      });
+      if (screentimeData) {
+        screentimeData.parent_override = screentimeData.parent_override || {};
+        screentimeData.parent_override.max_daily_minutes = maxDaily;
+        screentimeData.parent_override.max_session_minutes = maxSession;
+      }
+      showToast('Spilletid gemt', 'success');
+    } catch (err) {
+      console.error('[Portal] Save screentime limits error:', err);
+      showToast(err?.message || 'Kunne ikke gemme spilletid', 'error');
+    }
+  }
+
+  async function saveScreentimeConsent(checked) {
+    if (!selectedChild) return false;
+    try {
+      await API.saveScreentime(selectedChild.child_id, {
+        action: 'save_extra_time_consent',
+        institution_id: selectedChild.institution_id,
+        extra_time_consent: checked,
+      });
+      if (screentimeData) {
+        screentimeData.parent_override = screentimeData.parent_override || {};
+        screentimeData.parent_override.extra_time_consent = checked;
+      }
+      showToast('Samtykke gemt', 'success');
+      return true;
+    } catch (err) {
+      console.error('[Portal] Save screentime consent error:', err);
+      showToast(err?.message || 'Kunne ikke gemme samtykke', 'error');
+      return false;
     }
   }
 
