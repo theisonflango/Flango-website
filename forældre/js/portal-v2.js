@@ -2897,12 +2897,17 @@
     return `
       <div class="section" id="section-notifications">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📧</div><div><div class="section-title">E-mail notifikationer</div><div class="section-subtitle">Få besked om lav saldo</div></div></div>
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📧</div><div><div class="section-title">E-mail notifikationer</div><div class="section-subtitle">Lav saldo og arrangementer</div></div></div>
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${notif.notify_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
           <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${notif.notify_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)">
+            <div class="setting-label" style="margin-bottom:var(--s2);font-weight:600">Arrangementer</div>
+            <div class="setting-row"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer</div><div class="setting-desc">E-mail 7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="notif-event-reminder" ${notif.notify_event_reminder === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+            <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="notif-event-invite" ${notif.notify_event_invite === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          </div>
           <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)">
             <div class="setting-label" style="margin-bottom:var(--s2);font-weight:600">Modtagere</div>
             <div class="setting-row"><div class="setting-info"><div class="setting-label">Kontoe-mail${parentEmail ? ' <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(' + esc(parentEmail) + ')</span>' : ''}</div><div class="setting-desc">Send notifikationer til din login-e-mail</div></div><label class="toggle"><input type="checkbox" id="notif-primary-email" ${notifyPrimary ? 'checked' : ''}><span class="toggle-track"></span></label></div>
@@ -3584,10 +3589,14 @@
     const notifLow = document.getElementById('notif-low');
     const notifPrimaryEmail = document.getElementById('notif-primary-email');
     const notifSaveEmailBtn = document.getElementById('notif-save-email-btn');
+    const notifEventReminder = document.getElementById('notif-event-reminder');
+    const notifEventInvite = document.getElementById('notif-event-invite');
     if (notifZero) notifZero.addEventListener('change', () => saveNotifications());
     if (notifLow) notifLow.addEventListener('change', () => saveNotifications());
     if (notifPrimaryEmail) notifPrimaryEmail.addEventListener('change', () => saveNotifications());
     if (notifSaveEmailBtn) notifSaveEmailBtn.addEventListener('click', () => saveNotifications());
+    if (notifEventReminder) notifEventReminder.addEventListener('change', () => saveNotifications());
+    if (notifEventInvite) notifEventInvite.addEventListener('change', () => saveNotifications());
 
     // PIN save
     const pinBtn = document.getElementById('pin-save-btn');
@@ -4922,17 +4931,29 @@
     var primaryEl = document.getElementById('notif-primary-email');
     var secondaryEl = document.getElementById('notif-secondary-email');
     var secondaryVal = secondaryEl ? secondaryEl.value.trim() : '';
+    var eventReminderEl = document.getElementById('notif-event-reminder');
+    var eventInviteEl = document.getElementById('notif-event-invite');
     // Validate secondary email if provided
     if (secondaryVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(secondaryVal)) {
       showToast('Ugyldig e-mailadresse', 'error');
       return;
     }
+    // save-parent-notification kræver en gyldig 'email' (NOT NULL i parent_notifications).
+    // Brug forælderens login-e-mail; levering sker til alle linkede forældre-emails.
+    var parentEmail = '';
+    try { parentEmail = window.portalSupabase?.auth?.session?.()?.data?.session?.user?.email || ''; } catch (_e) { /* ignore */ }
+    if (!parentEmail) { try { var _sd = JSON.parse(localStorage.getItem('flango-parent-auth') || '{}'); parentEmail = _sd?.user?.email || _sd?.currentSession?.user?.email || ''; } catch (_e2) { /* ignore */ } }
+    if (!parentEmail && childData?.notification_settings?.email) parentEmail = childData.notification_settings.email;
+    if (!parentEmail) { showToast('Kunne ikke finde din e-mail', 'error'); return; }
     try {
       await API.saveNotification(selectedChild.child_id, {
+        email: parentEmail,
         notify_at_zero: zeroEl ? zeroEl.checked : true,
         notify_at_ten: lowEl ? lowEl.checked : true,
         notify_primary_email: primaryEl ? primaryEl.checked : true,
         secondary_email: secondaryVal || null,
+        notify_event_reminder: eventReminderEl ? eventReminderEl.checked : false,
+        notify_event_invite: eventInviteEl ? eventInviteEl.checked : false,
       });
       // Update local cache so re-renders reflect the change
       if (childData && childData.notification_settings) {
@@ -4940,6 +4961,8 @@
         childData.notification_settings.notify_at_ten = lowEl ? lowEl.checked : true;
         childData.notification_settings.notify_primary_email = primaryEl ? primaryEl.checked : true;
         childData.notification_settings.secondary_email = secondaryVal || null;
+        childData.notification_settings.notify_event_reminder = eventReminderEl ? eventReminderEl.checked : false;
+        childData.notification_settings.notify_event_invite = eventInviteEl ? eventInviteEl.checked : false;
       }
       showToast('Notifikationer gemt', 'success');
     } catch (err) {
