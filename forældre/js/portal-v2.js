@@ -45,8 +45,8 @@
     'tab-pay':     ['section-topup'],
     'tab-limits':  ['section-spending-limit','section-product-limits','section-sugar','section-diet','section-allergens'],
     'tab-screen':  ['section-screentime','section-games','section-st-chart'],
-    'tab-profile': ['section-notifications','section-invite-parent','section-feedback','section-pin'],
-    'tab-privacy': ['section-privacy-policy','section-child-name','section-profile-picture','section-consents','section-data-insight','section-linked-parents','section-delete-child','section-delete-account','section-contact'],
+    'tab-profile': ['section-child-name','section-profile-picture','section-notifications','section-invite-parent','section-feedback','section-pin'],
+    'tab-privacy': ['section-privacy-policy','section-consents','section-data-insight','section-linked-parents','section-delete-child','section-delete-account','section-contact'],
   };
 
   const SECTION_LABELS = {
@@ -1563,7 +1563,9 @@
 
           <!-- TAB: PROFILE -->
           <div class="tab-view" id="tab-profile">
-            <div class="view-header mobile-only"><div class="view-title">Profil</div><div class="view-subtitle">Indstillinger & notifikationer</div></div>
+            <div class="view-header mobile-only"><div class="view-title">Profil</div><div class="view-subtitle">Barnets profil & indstillinger</div></div>
+            ${renderChildNameSection()}
+            ${renderProfilePictureSection()}
             ${secOn('notifications') ? renderNotificationsSection() : ''}
             ${renderInviteParentSection()}
             ${secOn('feedback') ? renderFeedbackSection() : ''}
@@ -1574,8 +1576,6 @@
           <div class="tab-view" id="tab-privacy">
             <div class="view-header mobile-only"><div class="view-title">Privatliv & Rettigheder</div><div class="view-subtitle">GDPR og persondata</div></div>
             ${renderPrivacyPolicySection()}
-            ${renderChildNameSection()}
-            ${renderProfilePictureSection()}
             ${renderConsentsSection()}
             ${renderDataInsightSection()}
             ${renderLinkedParentsSection()}
