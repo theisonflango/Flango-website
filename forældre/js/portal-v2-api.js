@@ -321,9 +321,13 @@
 
     /** Save allergy settings for a child */
     async saveAllergySettings(childId, settings) {
+      // Edge-fn'en forventer et ARRAY [{allergen, policy}] under nøglen 'allergy_settings'
+      // (ikke et 'settings'-map). Portalen sendte før 'settings' → edge-fn så et tomt array
+      // → 400 → INTET blev gemt. Konvertér map → array her.
+      const allergy_settings = Object.entries(settings || {}).map(([allergen, policy]) => ({ allergen, policy }));
       return invokeFunction('save-allergy-settings', {
         child_id: childId,
-        settings: settings,
+        allergy_settings,
       });
     },
 
