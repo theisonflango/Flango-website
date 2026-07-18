@@ -2826,17 +2826,19 @@
       gamesHTML = '<div class="empty-state"><div class="empty-state-icon">🎮</div><div class="empty-state-text">Ingen spil tilgængelige</div></div>';
     } else {
       gamesHTML = games.map(g => {
-        const blocked = g.institution_blocked;
-        const approved = g.parent_approved !== false;
-        const disabledAttr = blocked ? ' style="opacity:.4;pointer-events:none"' : '';
+        // get-parent-skaermtid returnerer {id, name, category, allowed, set_by} — IKKE
+        // institution_blocked/parent_approved (som render'et før læste → altid forkert).
+        const allowed = g.allowed !== false;
+        const instBlocked = g.allowed === false && g.set_by === 'institution';
+        const disabledAttr = instBlocked ? ' style="opacity:.4;pointer-events:none"' : '';
         return `
           <div class="game-row">
             <div class="game-icon">${g.icon || '🎮'}</div>
             <div class="game-info">
               <div class="game-name">${esc(g.name)}</div>
-              ${blocked ? '<div class="game-blocked">Blokeret af institutionen</div>' : `<div class="game-platform">${esc(g.platform || '')}</div>`}
+              ${instBlocked ? '<div class="game-blocked">Blokeret af institutionen</div>' : `<div class="game-platform">${esc(g.category || '')}</div>`}
             </div>
-            <label class="toggle"${disabledAttr}><input type="checkbox" data-game-id="${g.id}" ${approved && !blocked ? 'checked' : ''} ${blocked ? 'disabled' : ''}><span class="toggle-track"></span></label>
+            <label class="toggle"${disabledAttr}><input type="checkbox" data-game-id="${g.id}" ${allowed ? 'checked' : ''} ${instBlocked ? 'disabled' : ''}><span class="toggle-track"></span></label>
           </div>`;
       }).join('');
     }
@@ -3672,6 +3674,12 @@
       if (!ok) stConsent.checked = !stConsent.checked; // rul tilbage ved fejl
     });
 
+    // Godkend spil: checkbox-ændringer (havde ingen handler → gemte aldrig)
+    const gamesSection = document.getElementById('section-games');
+    if (gamesSection) gamesSection.addEventListener('change', (e) => {
+      if (e.target && e.target.matches('input[data-game-id]')) saveGamePermissions();
+    });
+
     // PIN save
     const pinBtn = document.getElementById('pin-save-btn');
     if (pinBtn) pinBtn.addEventListener('click', handlePinChange);
@@ -4286,6 +4294,35 @@
       console.error('[Portal] Save screentime consent error:', err);
       showToast(err?.message || 'Kunne ikke gemme samtykke', 'error');
       return false;
+    }
+  }
+
+  // Godkend spil: checkboxene havde ingen handler → gemte aldrig. Samler alle
+  // (springer institution-blokerede over — de kan ikke ændres af forælderen) og gemmer.
+  async function saveGamePermissions() {
+    if (!selectedChild) return;
+    const boxes = document.querySelectorAll('#section-games [data-game-id]');
+    const permissions = [];
+    boxes.forEach(b => {
+      if (b.disabled) return;
+      permissions.push({ game_id: b.dataset.gameId, allowed: b.checked });
+    });
+    if (permissions.length === 0) return;
+    try {
+      await API.saveScreentime(selectedChild.child_id, {
+        action: 'save_game_permissions',
+        institution_id: selectedChild.institution_id,
+        permissions,
+      });
+      // Hold lokal cache i sync så re-render viser korrekt tilstand
+      if (screentimeData && Array.isArray(screentimeData.games)) {
+        const map = new Map(permissions.map(p => [p.game_id, p.allowed]));
+        screentimeData.games.forEach(g => { if (map.has(g.id)) { g.allowed = map.get(g.id); g.set_by = 'parent'; } });
+      }
+      showToast('Spil-godkendelse gemt', 'success');
+    } catch (err) {
+      console.error('[Portal] Save game permissions error:', err);
+      showToast(err?.message || 'Kunne ikke gemme', 'error');
     }
   }
 
