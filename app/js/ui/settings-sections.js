@@ -2737,6 +2737,18 @@
     wire(container, ctx) {
       pageAlign(container);
       wireToggles(container, ctx);
+      // "Vis jeres ikoner" → luk indstillinger + åbn ikon-administrations-modalen
+      // (samme som den ældre shell.js-knap; wire() manglede handleren → død knap).
+      container.querySelector('[data-action="show-icons"]')?.addEventListener('click', () => {
+        window.FlangoSettings?.close?.();
+        const modal = document.getElementById('icon-management-modal');
+        if (modal) {
+          modal.style.display = 'flex';
+          if (typeof window.__flangoLoadIconManagementGrid === 'function') {
+            window.__flangoLoadIconManagementGrid();
+          }
+        }
+      });
     }
   };
 
