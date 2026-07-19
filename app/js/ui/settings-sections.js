@@ -111,7 +111,11 @@
         // Deselect siblings with same field
         container.querySelectorAll(`.fsp-radio[data-field="${field}"]`).forEach(r => r.classList.remove('on'));
         radio.classList.add('on');
-        ctx.markDirty(field, radio.dataset.value);
+        // Coerce boolean-strenge til ægte boolean, så de skrives korrekt til
+        // boolean-kolonner (fx cafe_events_as_products). Andre værdier passerer uændret.
+        const raw = radio.dataset.value;
+        const value = raw === 'true' ? true : raw === 'false' ? false : raw;
+        ctx.markDirty(field, value);
       });
     });
   }
@@ -259,6 +263,9 @@
       const inst = ctx.institutionData || {};
       const eventsOn = !!inst.cafe_events_enabled;
       const daysAhead = inst.cafe_events_days_ahead ?? 7;
+      // Visningstilstand: produktkort (default) vs. banner øverst. Gemmes i den
+      // eksisterende boolean cafe_events_as_products (true=produkter, false=banner).
+      const asProducts = inst.cafe_events_as_products !== false;
       return `<div class="fsp-page">
         <div class="fsp-page-title" style="margin-bottom:28px">Arrangementer</div>
         <div class="fsp-arr-tabs">
@@ -289,11 +296,11 @@
                     <div style="font-size:13px;color:var(--fsp-txt3);margin-bottom:16px;line-height:1.5">V\u00e6lg hvordan kommende arrangementer skal vises i caf\u00e9en.</div>
                     <div class="fsp-sub" data-ev-display="products">
                       <div><div class="fsp-sub-title">Vis arrangementer som produkter</div><div class="fsp-sub-hint">Tydeligt \u2013 vises som produktkort i caf\u00e9en</div></div>
-                      <div class="fsp-radio on" data-field="cafe_events_display_mode" data-value="products"></div>
+                      <div class="fsp-radio${asProducts ? ' on' : ''}" data-field="cafe_events_as_products" data-value="true"></div>
                     </div>
                     <div class="fsp-sub" data-ev-display="strip">
                       <div><div class="fsp-sub-title">Vis arrangementer over produkterne</div><div class="fsp-sub-hint">Diskret \u2013 vises som banner \u00f8verst</div></div>
-                      <div class="fsp-radio" data-field="cafe_events_display_mode" data-value="strip"></div>
+                      <div class="fsp-radio${asProducts ? '' : ' on'}" data-field="cafe_events_as_products" data-value="false"></div>
                     </div>
                     <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px">
                       <label style="font-size:13px;font-weight:500;color:var(--fsp-txt);white-space:nowrap">Vis events indenfor</label>
