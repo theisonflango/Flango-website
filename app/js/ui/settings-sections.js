@@ -26,7 +26,10 @@
     container.querySelectorAll('.fsp-toggle[data-field]').forEach(toggle => {
       toggle.addEventListener('click', () => {
         toggle.classList.toggle('on');
-        ctx.markDirty(toggle.dataset.field, toggle.classList.contains('on'));
+        const on = toggle.classList.contains('on');
+        // data-invert: knappen viser en POSITIV betydning ("gælder for") men kolonnen
+        // er negativ (fx balance_limit_exempt_*). Skriv den inverterede værdi.
+        ctx.markDirty(toggle.dataset.field, toggle.hasAttribute('data-invert') ? !on : on);
       });
     });
   }
@@ -2051,9 +2054,9 @@
                 <span style="font-size:13px;color:var(--fsp-txt3)">kr</span>
               </div>
               <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">G\u00e6lder for</div>
-              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC67</div><div><div class="fsp-role-name">Almindelige brugere (b\u00f8rn)</div></div></div><div class="fsp-toggle on" data-field="balance_limit_applies_to_regular_users"></div></div>
-              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC68\u200D\uD83C\uDFEB</div><div><div class="fsp-role-name">Admins (voksne)</div></div></div><div class="fsp-toggle${balAdm ? ' on' : ''}" data-field="balance_limit_exempt_admins"></div></div>
-              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83E\uDDEA</div><div><div class="fsp-role-name">Testbrugere</div></div></div><div class="fsp-toggle${balTest ? ' on' : ''}" data-field="balance_limit_exempt_test_users"></div></div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC67</div><div><div class="fsp-role-name">Almindelige brugere (b\u00f8rn)</div></div></div><div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);padding:4px 11px;border-radius:999px;background:rgba(255,255,255,0.05);white-space:nowrap" title="B\u00f8rn er altid omfattet af bel\u00f8bsgr\u00E6nsen \u2014 kan ikke fritages">Altid</div></div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC68\u200D\uD83C\uDFEB</div><div><div class="fsp-role-name">Admins (voksne)</div></div></div><div class="fsp-toggle${!balAdm ? ' on' : ''}" data-field="balance_limit_exempt_admins" data-invert></div></div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83E\uDDEA</div><div><div class="fsp-role-name">Testbrugere</div></div></div><div class="fsp-toggle${!balTest ? ' on' : ''}" data-field="balance_limit_exempt_test_users" data-invert></div></div>
             </div>
           </div>
         </div></div>
