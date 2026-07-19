@@ -2155,7 +2155,7 @@
           </div>
           <div class="setting-row">
             <div class="setting-info"><div class="setting-label">Max af hvert usundt produkt</div><div class="setting-desc">Pr. produkt (fx maks 1 chokolade)</div></div>
-            <div class="stepper" id="sugar-per-product-stepper"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${sp.max_per_product_per_day ?? '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
+            <div class="stepper" id="sugar-per-product-stepper"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${sp.max_unhealthy_per_product_per_day ?? '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
           </div>
         </div></div></div>
       </div>`;
@@ -4345,7 +4345,10 @@
     }
     if (maxPerEl) {
       const v = parseInt(maxPerEl.textContent);
-      if (!isNaN(v) && v > 0) policy.max_per_product_per_day = v;
+      // Kolonnen hedder max_unhealthy_per_product_per_day (parent_sugar_policy) — edge-fn'en
+      // + get-parent-view bruger det navn. Portalen sendte 'max_per_product_per_day' → edge-fn
+      // så undefined → per-produkt-grænsen blev ALDRIG gemt.
+      if (!isNaN(v) && v > 0) policy.max_unhealthy_per_product_per_day = v;
     }
 
     try {
