@@ -43,10 +43,10 @@
   // ─── Tab-to-sections mapping ───
   const TAB_SECTIONS = {
     'tab-home':    ['section-balance','section-events','section-ugeplan','section-profile','section-history','section-sortiment'],
-    'tab-pay':     ['section-topup','section-transfer'],
+    'tab-pay':     ['section-topup'],
     'tab-limits':  ['section-spending-limit','section-product-limits','section-sugar','section-diet','section-allergens'],
     'tab-screen':  ['section-screentime','section-games','section-st-chart'],
-    'tab-profile': ['section-child-name','section-profile-picture','section-notifications','section-invite-parent','section-feedback','section-pin'],
+    'tab-profile': ['section-child-name','section-profile-picture','section-transfer','section-notifications','section-invite-parent','section-feedback','section-pin'],
     'tab-privacy': ['section-privacy-policy','section-consents','section-data-insight','section-linked-parents','section-delete-child','section-delete-account','section-contact'],
   };
 
@@ -1559,7 +1559,6 @@
           <div class="tab-view" id="tab-pay">
             <div class="view-header mobile-only"><div class="view-title">Indbetaling</div><div class="view-subtitle">Optank ${esc(name)}s saldo</div></div>
             ${renderTopupSection()}
-            ${renderTransferSection()}
           </div>
 
           <!-- TAB: LIMITS -->
@@ -1586,6 +1585,7 @@
             <div class="view-header mobile-only"><div class="view-title">Profil</div><div class="view-subtitle">Barnets profil & indstillinger</div></div>
             ${renderChildNameSection()}
             ${renderProfilePictureSection()}
+            ${renderTransferSection()}
             ${secOn('notifications') ? renderNotificationsSection() : ''}
             ${renderInviteParentSection()}
             ${secOn('feedback') ? renderFeedbackSection() : ''}
@@ -2049,113 +2049,183 @@
 
   /** Forælderens ANDRE børn i SAMME institution — de eneste gyldige modtagere.
    *  Serveren håndhæver det samme; dette er kun for at undgå at vise umulige valg. */
-  function transferTargets() {
-    if (!selectedChild) return [];
-    return (children || []).filter(c =>
-      c.child_id !== selectedChild.child_id &&
-      c.institution_id === selectedChild.institution_id);
+  // Gyldige modtagere for en given afsender: samme institution, ikke sig selv.
+  // RPC'en håndhæver det samme server-side; dette holder bare UI'et fra umulige valg.
+  function transferTargetsFor(fromId) {
+    const from = (children || []).find(c => c.child_id === fromId);
+    if (!from) return [];
+    return (children || []).filter(c => c.child_id !== fromId && c.institution_id === from.institution_id);
+  }
+
+  // Findes der overhovedet et gyldigt par? (mindst to børn på samme institution)
+  function hasTransferPair() {
+    return (children || []).some(c => transferTargetsFor(c.child_id).length > 0);
+  }
+
+  function transferOption(c, selected) {
+    return `<option value="${esc(c.child_id)}"${selected ? ' selected' : ''}>${esc(c.child_name)} · ${Number(c.balance ?? 0).toFixed(2)} kr</option>`;
   }
 
   function renderTransferSection() {
-    const targets = transferTargets();
-    if (!targets.length) return ''; // ét barn (eller spredt på institutioner) → ingen mening
-    const bal = Number(childData?.balance ?? selectedChild?.balance ?? 0);
-    const name = getChildName();
-    return `
-      <div class="section" id="section-transfer">
+    const kids = children || [];
+    const header = `
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">🔁</div><div><div class="section-title">Overfør til søskende</div><div class="section-subtitle">Flyt saldo mellem dine børn</div></div></div>
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">🔁</div><div><div class="section-title">Overfør mellem børn</div><div class="section-subtitle">Flyt saldo fra ét barn til et andet</div></div></div>
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
+        </div>`;
+
+    // Ingen søskende at flytte imellem → kort henvisning i stedet for en formular.
+    if (!hasTransferPair()) {
+      return `
+      <div class="section" id="section-transfer">${header}
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          <div class="setting-desc" style="margin-bottom:var(--s3)">Pengene bliver på ${esc(name)}s institution — du flytter dem blot til et af dine andre børn.</div>
-          <div class="setting-row" style="align-items:center">
-            <div class="setting-info"><div class="setting-label">Fra</div><div class="setting-desc" id="transfer-from-desc">${esc(name)} · ${bal.toFixed(2)} kr</div></div>
+          <div class="setting-desc">Har du flere børn på samme institution, kan du flytte saldo mellem dem her. Kontakt institutionen for at tilknytte søskende.</div>
+        </div></div></div>
+      </div>`;
+    }
+
+    // Afsender defaulter til det viste barn hvis det har en søskende, ellers det første der har.
+    const defaultFrom = (selectedChild && transferTargetsFor(selectedChild.child_id).length)
+      ? selectedChild.child_id
+      : (kids.find(c => transferTargetsFor(c.child_id).length) || kids[0]).child_id;
+    const toList = transferTargetsFor(defaultFrom);
+    const fromBal = Number(kids.find(c => c.child_id === defaultFrom)?.balance ?? 0);
+
+    return `
+      <div class="section" id="section-transfer">${header}
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div>
+            <div class="setting-label" style="margin-bottom:6px">Fra</div>
+            <select id="transfer-from" class="input-field" style="width:100%">${kids.map(c => transferOption(c, c.child_id === defaultFrom)).join('')}</select>
           </div>
-          <div style="margin-bottom:var(--s3)">
+          <div style="display:flex;justify-content:center;margin:8px 0">
+            <button type="button" id="transfer-swap" title="Byt fra/til" aria-label="Byt fra og til" style="width:38px;height:38px;border-radius:var(--r-full);border:1px solid var(--border);background:var(--surface-sunken);cursor:pointer;font-size:17px;line-height:1;color:var(--ink-soft)">⇅</button>
+          </div>
+          <div>
             <div class="setting-label" style="margin-bottom:6px">Til</div>
-            <select id="transfer-to" class="input-field" style="width:100%">
-              ${targets.map(c => `<option value="${esc(c.child_id)}">${esc(c.child_name)} · ${Number(c.balance ?? 0).toFixed(2)} kr</option>`).join('')}
-            </select>
+            <select id="transfer-to" class="input-field" style="width:100%">${toList.map(c => transferOption(c, false)).join('')}</select>
           </div>
-          <div style="margin-bottom:var(--s3)">
+          <div style="margin-top:var(--s3)">
             <div class="setting-label" style="margin-bottom:6px">Beløb</div>
-            <input type="number" id="transfer-amount" class="input-field" style="width:100%"
-                   inputmode="decimal" min="1" step="1" max="${bal.toFixed(2)}" placeholder="Beløb i kr (maks ${bal.toFixed(2)})">
+            <input type="number" id="transfer-amount" class="input-field" style="width:100%" inputmode="decimal" min="1" step="1" max="${fromBal.toFixed(2)}" placeholder="Beløb i kr (maks ${fromBal.toFixed(2)})">
           </div>
-          <button class="save-btn" id="transfer-btn" style="width:100%"${bal <= 0 ? ' disabled' : ''}>Overfør</button>
-          ${bal <= 0 ? '<div class="setting-desc" style="margin-top:8px">Der er ingen saldo at overføre.</div>' : ''}
+          <div id="transfer-preview" style="display:none;margin-top:var(--s3);padding:10px 12px;border-radius:var(--r-md);background:var(--surface-sunken);font-size:13px;color:var(--ink-soft)"></div>
+          <button class="save-btn" id="transfer-btn" style="width:100%;margin-top:var(--s3)">Overfør</button>
         </div></div></div>
       </div>`;
   }
 
-  /** Synk sektionens felter med de saldi vi netop har fået fra serveren.
-   *  Nødvendigt fordi loadChildData() IKKE re-renderer denne sektion: uden dette
-   *  ville knappen blive hængende på "Overfører...", og de viste saldi (samt
-   *  maks-beløbet) ville være forældede efter første overførsel. */
-  function syncTransferUI() {
-    const sec = document.getElementById('section-transfer');
-    if (!sec) return;
-    const bal = Number(childData?.balance ?? selectedChild?.balance ?? 0);
-
-    const fromDesc = document.getElementById('transfer-from-desc');
-    if (fromDesc) fromDesc.textContent = `${getChildName()} · ${bal.toFixed(2)} kr`;
-
-    const amt = document.getElementById('transfer-amount');
-    if (amt) {
-      amt.value = '';
-      amt.max = bal.toFixed(2);
-      amt.placeholder = `Beløb i kr (maks ${bal.toFixed(2)})`;
-    }
-
-    const sel = document.getElementById('transfer-to');
-    if (sel) {
-      const targets = transferTargets();
-      [...sel.options].forEach(o => {
-        const c = targets.find(t => t.child_id === o.value);
-        if (c) o.text = `${c.child_name} · ${Number(c.balance ?? 0).toFixed(2)} kr`;
-      });
-    }
-
-    const btn = document.getElementById('transfer-btn');
-    if (btn) { btn.disabled = bal <= 0; btn.textContent = 'Overfør'; }
-
-    // Sidebarens børneliste viser saldi og ville ellers stå med forældede tal
-    // efter en overførsel — begge børns saldo har jo netop ændret sig.
-    try { renderSidebarChildren(); } catch { /* sidebar ikke monteret (mobil) */ }
-  }
-
-  async function handleTransfer() {
-    if (!selectedChild) return;
+  function wireTransferSection() {
+    const fromEl = document.getElementById('transfer-from');
     const toEl = document.getElementById('transfer-to');
     const amtEl = document.getElementById('transfer-amount');
     const btn = document.getElementById('transfer-btn');
-    const toId = toEl?.value;
+    const swap = document.getElementById('transfer-swap');
+    if (!fromEl || !toEl || !amtEl || !btn) return; // henvisnings-besked → intet at wire
+    const childById = (id) => (children || []).find(c => c.child_id === id);
+
+    const repopulateTo = (preferToId) => {
+      const list = transferTargetsFor(fromEl.value);
+      toEl.innerHTML = list.map(c => transferOption(c, false)).join('');
+      if (preferToId && list.some(c => c.child_id === preferToId)) toEl.value = preferToId;
+      const fromBal = Number(childById(fromEl.value)?.balance ?? 0);
+      amtEl.max = fromBal.toFixed(2);
+      amtEl.placeholder = `Beløb i kr (maks ${fromBal.toFixed(2)})`;
+    };
+    const updatePreview = () => {
+      const prev = document.getElementById('transfer-preview');
+      if (!prev) return;
+      const amt = Number(amtEl.value);
+      const from = childById(fromEl.value), to = childById(toEl.value);
+      if (!from || !to || !Number.isFinite(amt) || amt <= 0) { prev.style.display = 'none'; return; }
+      const fromAfter = Number(from.balance ?? 0) - amt, toAfter = Number(to.balance ?? 0) + amt;
+      prev.style.display = 'block';
+      prev.innerHTML = fromAfter < 0
+        ? `<span style="color:#dc2626">${esc(from.child_name)} har kun ${Number(from.balance ?? 0).toFixed(2)} kr</span>`
+        : `Efter: <strong>${esc(from.child_name)}</strong> ${fromAfter.toFixed(2)} kr &nbsp;·&nbsp; <strong>${esc(to.child_name)}</strong> ${toAfter.toFixed(2)} kr`;
+    };
+
+    fromEl.addEventListener('change', () => { repopulateTo(); updatePreview(); });
+    toEl.addEventListener('change', updatePreview);
+    amtEl.addEventListener('input', updatePreview);
+    if (swap) swap.addEventListener('click', () => {
+      const oldFrom = fromEl.value, oldTo = toEl.value;
+      if (!oldTo) return;
+      fromEl.value = oldTo; repopulateTo(oldFrom); updatePreview();
+    });
+    btn.addEventListener('click', handleTransfer);
+  }
+
+  // Re-render sektionen med friske saldi (de nye dropdowns gør felt-for-felt-sync
+  // upraktisk). loadChildData() re-renderer den ikke selv. Toggle er delegeret,
+  // så replaceWith bevarer udfold-adfærd; input-lytterne wires på ny.
+  function syncTransferUI() {
+    const sec = document.getElementById('section-transfer');
+    if (!sec) return;
+    const wasOpen = sec.classList.contains('open');
+    const temp = document.createElement('div');
+    temp.innerHTML = renderTransferSection();
+    const fresh = temp.firstElementChild;
+    if (!fresh) return;
+    if (wasOpen) fresh.classList.add('open');
+    sec.replaceWith(fresh);
+    wireTransferSection();
+    // Begge børns saldo har ændret sig → opdatér begge steder de vises:
+    try { renderSidebarChildren(); } catch { /* desktop-sidebar */ }
+    try {
+      const csel = document.querySelector('.child-selector');   // mobil chip-vælger
+      if (csel) { const t = document.createElement('div'); t.innerHTML = renderChildSelector(); if (t.firstElementChild) csel.replaceWith(t.firstElementChild); }
+    } catch { /* ingen chip-vælger (ét barn) */ }
+  }
+
+  async function handleTransfer() {
+    const fromEl = document.getElementById('transfer-from');
+    const toEl = document.getElementById('transfer-to');
+    const amtEl = document.getElementById('transfer-amount');
+    const fromId = fromEl?.value, toId = toEl?.value;
     const amount = Number(amtEl?.value);
-    if (!toId) { showToast('Vælg et barn at overføre til', 'error'); return; }
+    if (!fromId || !toId) { showToast('Vælg børn at overføre mellem', 'error'); return; }
+    if (fromId === toId) { showToast('Vælg to forskellige børn', 'error'); return; }
     if (!Number.isFinite(amount) || amount <= 0) { showToast('Indtast et beløb større end 0', 'error'); return; }
+    const from = (children || []).find(c => c.child_id === fromId);
+    const to = (children || []).find(c => c.child_id === toId);
 
-    const target = transferTargets().find(c => c.child_id === toId);
-    if (!confirm(`Overfør ${amount.toFixed(2)} kr fra ${getChildName()} til ${target?.child_name || 'barnet'}?`)) return;
+    const ok = await showConfirmModal({
+      title: 'Bekræft overførsel',
+      body: `Flyt ${amount.toFixed(2)} kr fra ${from?.child_name || ''} til ${to?.child_name || ''}?\n\nPengene bliver på institutionen — du flytter dem kun mellem dine egne børn.`,
+      confirm: 'Overfør', cancel: 'Annullér', danger: false,
+    });
+    if (!ok) return;
+    await doTransfer(fromId, toId, amount);
+  }
 
+  async function doTransfer(fromId, toId, amount) {
+    const btn = document.getElementById('transfer-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Overfører...'; }
     try {
-      const res = await API.transferBetweenChildren(selectedChild.child_id, toId, amount);
-      // Serveren er autoritativ for begge saldi — vi gætter ikke lokalt.
-      if (childData && res && res.from_new_balance != null) childData.balance = Number(res.from_new_balance);
-      if (selectedChild && res && res.from_new_balance != null) selectedChild.balance = Number(res.from_new_balance);
-      if (target && res && res.to_new_balance != null) target.balance = Number(res.to_new_balance);
+      const res = await API.transferBetweenChildren(fromId, toId, amount);
+      // Server-autoritative saldi — opdatér lokale kopier så UI ikke gætter.
+      const from = (children || []).find(c => c.child_id === fromId);
+      const to = (children || []).find(c => c.child_id === toId);
+      if (from && res?.from_new_balance != null) from.balance = Number(res.from_new_balance);
+      if (to && res?.to_new_balance != null) to.balance = Number(res.to_new_balance);
+      if (selectedChild?.child_id === fromId && res?.from_new_balance != null) { selectedChild.balance = Number(res.from_new_balance); if (childData) childData.balance = Number(res.from_new_balance); }
+      if (selectedChild?.child_id === toId && res?.to_new_balance != null) { selectedChild.balance = Number(res.to_new_balance); if (childData) childData.balance = Number(res.to_new_balance); }
       showToast('Overførsel gennemført', 'success');
-      await loadChildData();
-      syncTransferUI();   // loadChildData re-renderer ikke denne sektion
+      // Øjeblikkelig sync fra de server-autoritative saldi — ingen grund til at
+      // vente på loadChildData()'s 5 netværkskald (en overførsel rører kun saldi,
+      // ikke produkter/events). Opdatér også saldo-kortet hvis det viste barn indgik.
+      syncTransferUI();
+      if (selectedChild && (selectedChild.child_id === fromId || selectedChild.child_id === toId) && selectedChild.balance != null) {
+        const balEl = document.querySelector('.balance-amount');
+        if (balEl) balEl.textContent = formatKr(selectedChild.balance) + ' kr';
+      }
     } catch (err) {
       console.error('[Portal] Transfer error:', err);
-      // rpcCall kaster hele PostgREST-svaret som besked; træk RPC'ens danske
-      // RAISE EXCEPTION-tekst ud, så brugeren ikke får en JSON-klump at se på.
       let msg = 'Overførslen kunne ikke gennemføres';
-      try { msg = JSON.parse(err.message)?.message || msg; } catch { /* ikke JSON — behold fallback */ }
+      try { msg = JSON.parse(err.message)?.message || msg; } catch { /* ikke JSON */ }
       showToast(msg, 'error');
-      syncTransferUI();   // gendan knap + felter, så brugeren kan prøve igen
+      syncTransferUI();
     }
   }
 
@@ -2473,7 +2543,7 @@
                 &bull; Salgsbilag og hændelser bevares anonymt — beløb og datoer beholdes af bogføringshensyn (lovkrav), men barnets navn fjernes<br>
                 &bull; Audit-log bevares i 24 måneder af compliance-hensyn<br>
                 &bull; Sletningen kan ikke fortrydes<br>
-                &bull; Eventuel restsaldo kan desværre ikke refunderes
+                &bull; Eventuel restsaldo kan ikke refunderes${hasTransferPair() ? ' — men du kan <span data-qa-scroll="section-transfer" data-qa-tab="tab-profile" style="color:var(--flango);cursor:pointer;text-decoration:underline">overføre den til et af dine andre børn</span> først' : ''}
               </span>
             </div>
             <p style="color:var(--ink-soft);margin:0 0 var(--s3)">Tip: Download en kopi af dine data først (se sektionen ovenfor).</p>
@@ -3785,8 +3855,7 @@
     bindPrivacyEventListeners();
 
     // Notification toggles
-    const transferBtn = document.getElementById('transfer-btn');
-    if (transferBtn) transferBtn.addEventListener('click', handleTransfer);
+    wireTransferSection();
 
     const notifZero = document.getElementById('notif-zero');
     const notifLow = document.getElementById('notif-low');
