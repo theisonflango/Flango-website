@@ -248,6 +248,17 @@
       return rpcCall('get_children_for_parent');
     },
 
+    /** Flyt saldo mellem to af forælderens EGNE børn i samme institution.
+     *  Alle invarianter (ejerskab, institution, beløb, dækning) håndhæves
+     *  server-side i RPC'en — dette er kun transporten. */
+    async transferBetweenChildren(fromChildId, toChildId, amount) {
+      return rpcCall('transfer_balance_between_children', {
+        p_from_child_id: fromChildId,
+        p_to_child_id: toChildId,
+        p_amount: amount,
+      });
+    },
+
     // ─── Parent View (child data, balance, institution) ───
 
     /** Get child data including balance, name, institution */

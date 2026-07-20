@@ -43,7 +43,7 @@
   // ─── Tab-to-sections mapping ───
   const TAB_SECTIONS = {
     'tab-home':    ['section-balance','section-events','section-ugeplan','section-profile','section-history','section-sortiment'],
-    'tab-pay':     ['section-topup'],
+    'tab-pay':     ['section-topup','section-transfer'],
     'tab-limits':  ['section-spending-limit','section-product-limits','section-sugar','section-diet','section-allergens'],
     'tab-screen':  ['section-screentime','section-games','section-st-chart'],
     'tab-profile': ['section-child-name','section-profile-picture','section-notifications','section-invite-parent','section-feedback','section-pin'],
@@ -58,6 +58,7 @@
     'section-history':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', label: 'Historik' },
     'section-sortiment':      { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>', label: 'Sortiment' },
     'section-topup':          { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', label: 'Indbetaling' },
+    'section-transfer':       { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>', label: 'Overfør' },
     'section-spending-limit': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>', label: 'Daglig grænse' },
     'section-product-limits': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>', label: 'Købsgrænser' },
     'section-sugar':          { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>', label: 'Sukkerpolitik' },
@@ -1558,6 +1559,7 @@
           <div class="tab-view" id="tab-pay">
             <div class="view-header mobile-only"><div class="view-title">Indbetaling</div><div class="view-subtitle">Optank ${esc(name)}s saldo</div></div>
             ${renderTopupSection()}
+            ${renderTransferSection()}
           </div>
 
           <!-- TAB: LIMITS -->
@@ -2043,6 +2045,118 @@
           </div>
         </div></div></div>
       </div>`;
+  }
+
+  /** Forælderens ANDRE børn i SAMME institution — de eneste gyldige modtagere.
+   *  Serveren håndhæver det samme; dette er kun for at undgå at vise umulige valg. */
+  function transferTargets() {
+    if (!selectedChild) return [];
+    return (children || []).filter(c =>
+      c.child_id !== selectedChild.child_id &&
+      c.institution_id === selectedChild.institution_id);
+  }
+
+  function renderTransferSection() {
+    const targets = transferTargets();
+    if (!targets.length) return ''; // ét barn (eller spredt på institutioner) → ingen mening
+    const bal = Number(childData?.balance ?? selectedChild?.balance ?? 0);
+    const name = getChildName();
+    return `
+      <div class="section" id="section-transfer">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">🔁</div><div><div class="section-title">Overfør til søskende</div><div class="section-subtitle">Flyt saldo mellem dine børn</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div class="setting-desc" style="margin-bottom:var(--s3)">Pengene bliver på ${esc(name)}s institution — du flytter dem blot til et af dine andre børn.</div>
+          <div class="setting-row" style="align-items:center">
+            <div class="setting-info"><div class="setting-label">Fra</div><div class="setting-desc" id="transfer-from-desc">${esc(name)} · ${bal.toFixed(2)} kr</div></div>
+          </div>
+          <div style="margin-bottom:var(--s3)">
+            <div class="setting-label" style="margin-bottom:6px">Til</div>
+            <select id="transfer-to" class="input-field" style="width:100%">
+              ${targets.map(c => `<option value="${esc(c.child_id)}">${esc(c.child_name)} · ${Number(c.balance ?? 0).toFixed(2)} kr</option>`).join('')}
+            </select>
+          </div>
+          <div style="margin-bottom:var(--s3)">
+            <div class="setting-label" style="margin-bottom:6px">Beløb</div>
+            <input type="number" id="transfer-amount" class="input-field" style="width:100%"
+                   inputmode="decimal" min="1" step="1" max="${bal.toFixed(2)}" placeholder="Beløb i kr (maks ${bal.toFixed(2)})">
+          </div>
+          <button class="save-btn" id="transfer-btn" style="width:100%"${bal <= 0 ? ' disabled' : ''}>Overfør</button>
+          ${bal <= 0 ? '<div class="setting-desc" style="margin-top:8px">Der er ingen saldo at overføre.</div>' : ''}
+        </div></div></div>
+      </div>`;
+  }
+
+  /** Synk sektionens felter med de saldi vi netop har fået fra serveren.
+   *  Nødvendigt fordi loadChildData() IKKE re-renderer denne sektion: uden dette
+   *  ville knappen blive hængende på "Overfører...", og de viste saldi (samt
+   *  maks-beløbet) ville være forældede efter første overførsel. */
+  function syncTransferUI() {
+    const sec = document.getElementById('section-transfer');
+    if (!sec) return;
+    const bal = Number(childData?.balance ?? selectedChild?.balance ?? 0);
+
+    const fromDesc = document.getElementById('transfer-from-desc');
+    if (fromDesc) fromDesc.textContent = `${getChildName()} · ${bal.toFixed(2)} kr`;
+
+    const amt = document.getElementById('transfer-amount');
+    if (amt) {
+      amt.value = '';
+      amt.max = bal.toFixed(2);
+      amt.placeholder = `Beløb i kr (maks ${bal.toFixed(2)})`;
+    }
+
+    const sel = document.getElementById('transfer-to');
+    if (sel) {
+      const targets = transferTargets();
+      [...sel.options].forEach(o => {
+        const c = targets.find(t => t.child_id === o.value);
+        if (c) o.text = `${c.child_name} · ${Number(c.balance ?? 0).toFixed(2)} kr`;
+      });
+    }
+
+    const btn = document.getElementById('transfer-btn');
+    if (btn) { btn.disabled = bal <= 0; btn.textContent = 'Overfør'; }
+
+    // Sidebarens børneliste viser saldi og ville ellers stå med forældede tal
+    // efter en overførsel — begge børns saldo har jo netop ændret sig.
+    try { renderSidebarChildren(); } catch { /* sidebar ikke monteret (mobil) */ }
+  }
+
+  async function handleTransfer() {
+    if (!selectedChild) return;
+    const toEl = document.getElementById('transfer-to');
+    const amtEl = document.getElementById('transfer-amount');
+    const btn = document.getElementById('transfer-btn');
+    const toId = toEl?.value;
+    const amount = Number(amtEl?.value);
+    if (!toId) { showToast('Vælg et barn at overføre til', 'error'); return; }
+    if (!Number.isFinite(amount) || amount <= 0) { showToast('Indtast et beløb større end 0', 'error'); return; }
+
+    const target = transferTargets().find(c => c.child_id === toId);
+    if (!confirm(`Overfør ${amount.toFixed(2)} kr fra ${getChildName()} til ${target?.child_name || 'barnet'}?`)) return;
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Overfører...'; }
+    try {
+      const res = await API.transferBetweenChildren(selectedChild.child_id, toId, amount);
+      // Serveren er autoritativ for begge saldi — vi gætter ikke lokalt.
+      if (childData && res && res.from_new_balance != null) childData.balance = Number(res.from_new_balance);
+      if (selectedChild && res && res.from_new_balance != null) selectedChild.balance = Number(res.from_new_balance);
+      if (target && res && res.to_new_balance != null) target.balance = Number(res.to_new_balance);
+      showToast('Overførsel gennemført', 'success');
+      await loadChildData();
+      syncTransferUI();   // loadChildData re-renderer ikke denne sektion
+    } catch (err) {
+      console.error('[Portal] Transfer error:', err);
+      // rpcCall kaster hele PostgREST-svaret som besked; træk RPC'ens danske
+      // RAISE EXCEPTION-tekst ud, så brugeren ikke får en JSON-klump at se på.
+      let msg = 'Overførslen kunne ikke gennemføres';
+      try { msg = JSON.parse(err.message)?.message || msg; } catch { /* ikke JSON — behold fallback */ }
+      showToast(msg, 'error');
+      syncTransferUI();   // gendan knap + felter, så brugeren kan prøve igen
+    }
   }
 
   function renderSpendingLimitSection() {
@@ -3671,6 +3785,9 @@
     bindPrivacyEventListeners();
 
     // Notification toggles
+    const transferBtn = document.getElementById('transfer-btn');
+    if (transferBtn) transferBtn.addEventListener('click', handleTransfer);
+
     const notifZero = document.getElementById('notif-zero');
     const notifLow = document.getElementById('notif-low');
     const notifPrimaryEmail = document.getElementById('notif-primary-email');
