@@ -3875,6 +3875,41 @@
   };
 
   // ── Lydindstillinger (standalone — live save to SoundManager/localStorage) ──
+
+  // ÉN kilde til lyd-valg. Dropdown'en genereres HERFRA, og wire() slår filstien op i
+  // samme map — så de to kan ikke drive fra hinanden. Før var det to håndholdte lister:
+  // 5 valg uden fil (som slog lyden tavst FRA når de blev valgt) og 9 rigtige lydfiler
+  // der slet ikke kunne vælges. Tilføj/fjern en lyd ÉT sted: her.
+  const SOUND_FILE_MAP = {
+    'Ingen lyd': '',
+    'Add 1': 'sounds/Add%20Item/Add1.mp3',
+    'Add 2': 'sounds/Add%20Item/Add2.mp3',
+    'Slet': 'sounds/Delete%20Item/Slet.mp3',
+    'Slet 1': 'sounds/Delete%20Item/Slet1.mp3',
+    'Slet 2': 'sounds/Delete%20Item/Slet2.mp3',
+    'Slet 3': 'sounds/Delete%20Item/Slet3.mp3',
+    'Slet 4': 'sounds/Delete%20Item/Slet4.mp3',
+    'Accept 1': 'sounds/Accept/accepter-1.mp3',
+    'Accept 2': 'sounds/Accept/accepter-2.mp3',
+    'Accept 3': 'sounds/Accept/accepter-3.mp3',
+    'Accept 4': 'sounds/Accept/accepter-4.mp3',
+    'Accept 5': 'sounds/Accept/accepter-5.mp3',
+    'Accept 6': 'sounds/Accept/accepter-6.mp3',
+    'Accept 7': 'sounds/Accept/accepter-7.mp3',
+    'Fejl 1': 'sounds/Error/Fejl1.mp3',
+    'Fejl 2': 'sounds/Error/Fejl2.mp3',
+    'Fejl 3': 'sounds/Error/Fejl3.mp3',
+    'Login 1': 'sounds/Login/Login1.mp3',
+    'Login 2': 'sounds/Login/Login2.mp3'
+  };
+
+  // Entydig sti-sammenligning (tåler %20 vs mellemrum). Den gamle substring-match ville
+  // med de nu synlige valg markere både "Slet" og "Slet 1" som valgt for samme fil.
+  function sndPathEq(a, b) {
+    const norm = (p) => { try { return decodeURIComponent(p || '').toLowerCase(); } catch { return (p || '').toLowerCase(); } };
+    return norm(a) === norm(b);
+  }
+
   sections['Lydindstillinger'] = {
     render(ctx) {
       const sm = window.__flangoSoundManager;
@@ -3886,7 +3921,7 @@
         { key: 'purchase', label: 'Gennemf\u00f8r k\u00f8b', emoji: '\u2705' },
         { key: 'error', label: 'Fejl', emoji: '\u26A0\uFE0F' }
       ];
-      const sounds = ['Ingen lyd', 'Add 1', 'Add 2', 'Add 3', 'Slet', 'Accept 1', 'Accept 2', 'Accept 3', 'Fejl 1', 'Fejl 2', 'Ding', 'Bell', 'Chime', 'Pop'];
+      const sounds = Object.keys(SOUND_FILE_MAP);
       return `<div class="fsp-page" style="max-width:720px">
         <div class="fsp-page-title">Lydindstillinger</div>
         <div class="fsp-page-desc">V\u00e6lg lyde og juster lydstyrke for caf\u00e9systemet.</div>
@@ -3914,7 +3949,7 @@
               <div class="fsp-snd-row-top">
                 <span style="font-size:15px">${r.emoji}</span>
                 <div class="fsp-snd-row-label">${r.label}</div>
-                <select class="fsp-snd-select" data-snd-key="${r.key}">${sounds.map(s => `<option${currentFile.toLowerCase().includes(s.toLowerCase().replace(/ /g, '')) ? ' selected' : ''}>${s}</option>`).join('')}</select>
+                <select class="fsp-snd-select" data-snd-key="${r.key}">${sounds.map(s => `<option${sndPathEq(SOUND_FILE_MAP[s], currentFile) ? ' selected' : ''}>${s}</option>`).join('')}</select>
                 <button class="fsp-snd-play" title="Afspil" data-play="${r.key}"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg></button>
               </div>
               <div class="fsp-snd-slider-wrap">
@@ -3964,32 +3999,10 @@
         });
       });
 
-      // Sound file mapping (display name → file path)
-      const soundFileMap = {
-        'Ingen lyd': '',
-        'Add 1': 'sounds/Add%20Item/Add1.mp3',
-        'Add 2': 'sounds/Add%20Item/Add2.mp3',
-        'Slet': 'sounds/Delete%20Item/Slet.mp3',
-        'Slet 1': 'sounds/Delete%20Item/Slet1.mp3',
-        'Slet 2': 'sounds/Delete%20Item/Slet2.mp3',
-        'Slet 3': 'sounds/Delete%20Item/Slet3.mp3',
-        'Slet 4': 'sounds/Delete%20Item/Slet4.mp3',
-        'Accept 1': 'sounds/Accept/accepter-1.mp3',
-        'Accept 2': 'sounds/Accept/accepter-2.mp3',
-        'Accept 3': 'sounds/Accept/accepter-3.mp3',
-        'Accept 4': 'sounds/Accept/accepter-4.mp3',
-        'Accept 5': 'sounds/Accept/accepter-5.mp3',
-        'Fejl 1': 'sounds/Error/Fejl1.mp3',
-        'Fejl 2': 'sounds/Error/Fejl2.mp3',
-        'Fejl 3': 'sounds/Error/Fejl3.mp3',
-        'Login 1': 'sounds/Login/Login1.mp3',
-        'Login 2': 'sounds/Login/Login2.mp3'
-      };
-
-      // Dropdown change → update SoundManager file mapping
+      // Dropdown change → update SoundManager file mapping (samme kilde som render)
       container.querySelectorAll('.fsp-snd-select[data-snd-key]').forEach(sel => {
         sel.addEventListener('change', () => {
-          const filePath = soundFileMap[sel.value] || '';
+          const filePath = SOUND_FILE_MAP[sel.value] || '';
           sm.setSoundFile?.(sel.dataset.sndKey, filePath);
           markSndDirty();
         });
@@ -4000,7 +4013,7 @@
         btn.addEventListener('click', () => {
           const key = btn.dataset.play;
           const sel = container.querySelector(`.fsp-snd-select[data-snd-key="${key}"]`);
-          const filePath = soundFileMap[sel?.value] || sm.getSoundFile?.(key);
+          const filePath = SOUND_FILE_MAP[sel?.value] || sm.getSoundFile?.(key);
           if (!filePath) return;
           const audio = new Audio(filePath);
           const vol = (sm.getMasterVolume?.() ?? 1) * (sm.getSoundVolume?.(key) ?? 1);

@@ -90,10 +90,22 @@
   // klikkes — ingen afhængighed af getResponse.
   window.__flangoTurnstileTokens = window.__flangoTurnstileTokens || {};
 
-  async function verifyTurnstileToken(elementId) {
-    // Skip Turnstile on localhost (not available outside production)
+  // Turnstile springes KUN over i ægte lokal udvikling. Hostname alene duer ikke som
+  // signal: Capacitor serverer fra capacitor://localhost (iOS) og https://localhost
+  // (Android), så en wrappet app ville ellers lydløst slå anti-bot fra i produktion —
+  // stik imod hvad screeningsmaterialet lover om følsomme login-flows.
+  function isLocalDevHost() {
+    const nativeApp = location.protocol === 'capacitor:' ||
+      !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' &&
+         window.Capacitor.isNativePlatform());
+    if (nativeApp) return false;
     const host = window.location.hostname;
-    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return { ok: true };
+    return host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.');
+  }
+
+  async function verifyTurnstileToken(elementId) {
+    // Skip Turnstile i lokal udvikling (widget'en er ikke tilgængelig uden for produktion)
+    if (isLocalDevHost()) return { ok: true };
 
     const el = document.getElementById(elementId);
     if (!el) {
@@ -115,7 +127,13 @@
       }
       return { ok: true };
     } catch {
-      return { ok: true }; // Fail-open ved netværk/Edge fejl
+      // Fail-CLOSED: en netværks-/edge-fejl må ikke lydløst springe anti-bot over.
+      // Screeningsmaterialet lover at Turnstile håndhæves på følsomme login-flows —
+      // et stille "ok" her ville gøre den dokumenterede foranstaltning usand.
+      // Widget'en nulstilles så brugeren får en frisk challenge ved næste forsøg.
+      delete window.__flangoTurnstileTokens[elementId];
+      try { if (typeof turnstile !== 'undefined' && el.dataset.tsWidget) turnstile.reset(el.dataset.tsWidget); } catch {}
+      return { ok: false, error: 'Sikkerhedschecket kunne ikke gennemføres (netværksfejl). Prøv igen om et øjeblik.' };
     }
   }
 
@@ -124,8 +142,7 @@
   // window.__flangoTurnstileTokens[elementId] når challenge er klaret.
   // Det gør getResponse irrelevant — vi læser bare det gemte token direkte.
   function ensureTurnstileWidget(elementId, sitekey) {
-    const host = window.location.hostname;
-    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return;
+    if (isLocalDevHost()) return;
     const tryRender = (attempt = 0) => {
       const el = document.getElementById(elementId);
       if (!el) return;
