@@ -44,8 +44,7 @@
   const TAB_SECTIONS = {
     'tab-home':    ['section-balance','section-events','section-ugeplan','section-profile','section-history','section-sortiment'],
     'tab-pay':     ['section-topup'],
-    'tab-limits':  ['section-spending-limit','section-product-limits','section-sugar','section-diet','section-allergens'],
-    'tab-screen':  ['section-screentime','section-games','section-st-chart'],
+    'tab-limits':  ['section-spending-limit','section-product-limits','section-sugar','section-diet','section-allergens','section-screentime','section-games','section-st-chart'],
     'tab-profile': ['section-child-name','section-profile-picture','section-transfer','section-notifications','section-invite-parent','section-feedback','section-pin'],
     'tab-privacy': ['section-privacy-policy','section-consents','section-data-insight','section-linked-parents','section-delete-child','section-delete-account','section-contact'],
   };
@@ -1494,7 +1493,6 @@
               <button class="dtab-item active" data-tab="tab-home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Overblik</span></button>
               <button class="dtab-item" data-tab="tab-pay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span>Indbetal</span></button>
               <button class="dtab-item" data-tab="tab-limits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Grænser</span></button>
-              ${showScreentime ? '<button class="dtab-item" data-tab="tab-screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span>Skærmtid</span></button>' : ''}
               <button class="dtab-item" data-tab="tab-profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></button>
               <button class="dtab-item" data-tab="tab-privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Privatliv</span></button>
             </div>
@@ -1545,7 +1543,7 @@
               ${showEvents ? '<button class="qa-item" data-qa-scroll="section-events" data-qa-tab="tab-home"><div class="qa-icon red">📅</div><div class="qa-label">Events</div></button>' : '<button class="qa-item" data-qa-scroll="section-sortiment" data-qa-tab="tab-home"><div class="qa-icon red">📋</div><div class="qa-label">Sortiment</div></button>'}
               <button class="qa-item" data-qa-scroll="section-spending-limit" data-qa-tab="tab-limits"><div class="qa-icon orange">💰</div><div class="qa-label">Daglig grænse</div></button>
               <button class="qa-item" data-qa-scroll="section-allergens" data-qa-tab="tab-limits"><div class="qa-icon green">🥗</div><div class="qa-label">Kost & Allergi</div></button>
-              ${showScreentime ? '<button class="qa-item" data-qa-scroll="section-screentime" data-qa-tab="tab-screen"><div class="qa-icon blue">🕹️</div><div class="qa-label">Skærmtid</div></button>' : ''}
+              ${showScreentime ? '<button class="qa-item" data-qa-scroll="section-screentime" data-qa-tab="tab-limits"><div class="qa-icon blue">🕹️</div><div class="qa-label">Skærmtid</div></button>' : ''}
             </div>
 
             ${showEvents ? renderEventsSection() : ''}
@@ -1561,24 +1559,16 @@
             ${renderTopupSection()}
           </div>
 
-          <!-- TAB: LIMITS -->
+          <!-- TAB: LIMITS (skærmtid er nu et afsnit her, ikke en egen fane) -->
           <div class="tab-view" id="tab-limits">
-            <div class="view-header mobile-only"><div class="view-title">Grænser & Kost</div><div class="view-subtitle">Indstillinger for ${esc(name)}</div></div>
+            <div class="view-header mobile-only"><div class="view-title">Grænser</div><div class="view-subtitle">Grænser${showScreentime ? ', kost & skærmtid' : ' & kost'} for ${esc(name)}</div></div>
             ${secOn('spending_limit') ? renderSpendingLimitSection() : ''}
             ${secOn('product_limit') ? renderProductLimitsSection() : ''}
             ${secOn('sugar_policy') ? renderSugarPolicySection() : ''}
             ${secOn('diet') ? renderDietSection() : ''}
             ${secOn('allergens') ? renderAllergensSection() : ''}
+            ${showScreentime ? `${renderScreentimeSection()}${renderGamesSection()}${renderScreentimeChartSection()}` : ''}
           </div>
-
-          <!-- TAB: SCREEN TIME -->
-          ${showScreentime ? `
-          <div class="tab-view" id="tab-screen">
-            <div class="view-header mobile-only"><div class="view-title">Skærmtid</div><div class="view-subtitle">Gaming-regler for ${esc(name)}</div></div>
-            ${renderScreentimeSection()}
-            ${renderGamesSection()}
-            ${renderScreentimeChartSection()}
-          </div>` : ''}
 
           <!-- TAB: PROFILE -->
           <div class="tab-view" id="tab-profile">
@@ -1611,7 +1601,6 @@
           <button class="bnav-item active" data-tab="tab-home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="bnav-label">Overblik</span></button>
           <button class="bnav-item" data-tab="tab-pay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span class="bnav-label">Indbetal</span></button>
           <button class="bnav-item" data-tab="tab-limits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span class="bnav-label">Grænser</span></button>
-          ${showScreentime ? '<button class="bnav-item" data-tab="tab-screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span class="bnav-label">Skærmtid</span></button>' : ''}
           <button class="bnav-item" data-tab="tab-profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="bnav-label">Profil</span></button>
           <button class="bnav-item" data-tab="tab-privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span class="bnav-label">Privatliv</span></button>
         </nav>
@@ -3407,12 +3396,11 @@
     const nav = document.getElementById('sidebar-nav');
     if (!nav) return;
     const showScreentime = featureFlags.skaermtid_enabled === true;
-    const tabLabels = { 'tab-home': 'Overblik', 'tab-pay': 'Indbetaling', 'tab-limits': 'Grænser & Kost', 'tab-screen': 'Skærmtid', 'tab-profile': 'Profil', 'tab-privacy': 'Privatliv' };
-    const tabOrder = ['tab-home','tab-pay','tab-limits','tab-screen','tab-profile','tab-privacy'];
+    const tabLabels = { 'tab-home': 'Overblik', 'tab-pay': 'Indbetaling', 'tab-limits': 'Grænser & Kost', 'tab-profile': 'Profil', 'tab-privacy': 'Privatliv' };
+    const tabOrder = ['tab-home','tab-pay','tab-limits','tab-profile','tab-privacy'];
     let html = '';
     let isFirst = true;
     tabOrder.forEach(tabId => {
-      if (tabId === 'tab-screen' && !showScreentime) return;
       const sectionIds = TAB_SECTIONS[tabId] || [];
       if (!sectionIds.length) return;
       // Group divider with label
