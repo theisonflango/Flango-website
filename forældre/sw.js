@@ -12,13 +12,19 @@
  * cache-buster-bumpet i index.html er den eneste version der skal vedligeholdes.
  */
 
-const CACHE = 'flango-portal-v1';
+const CACHE = 'flango-portal-v2';
 
 // Version-stabile skal-filer (uden ?v=N) — seedet ved install for offline-brug.
+// supabase-js er nu selvhostet og kan derfor precaches (det kunne den cross-origin
+// CDN-udgave ikke) — skallen er dermed først nu reelt selvforsynende.
+// Selve font-FILERNE precaches bevidst ikke (14 stk./285 KB); font-display:swap gør
+// at teksten renderer i en fallback indtil de er hentet og runtime-cachet.
 const SHELL = [
   './',
   './index.html',
   './css/portal-v2.css',
+  './css/fonts.css',
+  './js/vendor/supabase-js-2.101.0.min.js',
   './js/portal-v2-api.js',
   './js/consent-texts.js',
   './js/parent-picture-upload-modal.js',
