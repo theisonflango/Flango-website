@@ -3395,23 +3395,24 @@
   function renderSidebarNav() {
     const nav = document.getElementById('sidebar-nav');
     if (!nav) return;
-    const showScreentime = featureFlags.skaermtid_enabled === true;
     const tabLabels = { 'tab-home': 'Overblik', 'tab-pay': 'Indbetaling', 'tab-limits': 'Grænser & Kost', 'tab-profile': 'Profil', 'tab-privacy': 'Privatliv' };
     const tabOrder = ['tab-home','tab-pay','tab-limits','tab-profile','tab-privacy'];
     let html = '';
     let isFirst = true;
     tabOrder.forEach(tabId => {
       const sectionIds = TAB_SECTIONS[tabId] || [];
-      if (!sectionIds.length) return;
-      // Group divider with label
-      html += `<div class="sidebar-group-label">${tabLabels[tabId] || ''}</div>`;
+      let groupHtml = '';
       sectionIds.forEach(id => {
-        if (!showScreentime && ['section-screentime','section-games','section-st-chart'].includes(id)) return;
+        // Vis kun sektioner der FAKTISK er renderet (flag fra ⇒ ingen sektion ⇒ ingen død nav-knap).
+        // Sidebaren læser DOM'en direkte, så alle feature-flag respekteres uden per-flag-specialtilfælde.
+        if (!document.getElementById(id)) return;
         const item = SECTION_LABELS[id];
         if (!item) return;
-        html += `<div class="sidebar-nav-item${isFirst ? ' active' : ''}" data-scroll="${id}" data-tab="${tabId}">${item.icon}${item.label}</div>`;
+        groupHtml += `<div class="sidebar-nav-item${isFirst ? ' active' : ''}" data-scroll="${id}" data-tab="${tabId}">${item.icon}${item.label}</div>`;
         isFirst = false;
       });
+      if (!groupHtml) return; // ingen synlige sektioner i gruppen ⇒ drop tom gruppe-label
+      html += `<div class="sidebar-group-label">${tabLabels[tabId] || ''}</div>` + groupHtml;
     });
     nav.innerHTML = html;
 
