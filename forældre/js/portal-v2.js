@@ -40,6 +40,15 @@
   // ved nye samtykker. Bumpes naar privatlivspolitikken opdateres.
   const CURRENT_CONSENT_VERSION = 'v1.0';
 
+  // ─── Demo-/gæsteflow ───
+  // "Prøv portalen" logger ind på en RLS-isoleret demo-institution med fiktive børn.
+  // Creds er OFFENTLIGE by design: sandkasse uden rigtige data, og rigtig betaling er
+  // spærret SERVER-side (create-topup / vipps-create-payment / create-event-payment
+  // afviser is_demo=true — UI-skjul alene er ikke nok).
+  const DEMO_EMAIL = 'demo@flango.dk';
+  const DEMO_PASSWORD = 'FlangoDemo2026';
+  function isDemo() { return featureFlags?.is_demo === true; }
+
   // ─── Tab-to-sections mapping ───
   const TAB_SECTIONS = {
     'tab-home':    ['section-balance','section-events','section-ugeplan','section-profile','section-history','section-sortiment'],
@@ -406,6 +415,8 @@
     if (!Array.isArray(consentHistory)) return false;
     // Skip i simulator-session — admin må ikke afgive samtykke på vegne af forælder
     if (isAdminSimulatorSession()) return false;
+    // Skip i demo-tilstand — fiktive børn har ingen rigtige billeder at samtykke til
+    if (isDemo()) return false;
     // Vis hvis forælder har taget en eksplicit handling tidligere (givet eller trukket)
     const hasRealAction = consentHistory.some(c => c.given_method !== 'legacy_default_consent');
     if (hasRealAction) return false;
@@ -823,6 +834,10 @@
               <a href="#" id="forgot-link">Glemt adgangskode?</a>
               <a href="#" id="goto-signup-link" class="login-link-bold">Opret konto</a>
             </div>
+            <div style="margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--border);text-align:center">
+              <button type="button" id="demo-login-btn" style="background:transparent;border:1.5px solid var(--flango);color:var(--flango);font-weight:600;font-size:14px;padding:0.6rem 1.1rem;border-radius:10px;cursor:pointer;width:100%">👀 Prøv portalen som gæst</button>
+              <div style="font-size:12px;color:var(--ink-muted);margin-top:6px">Se en demo med fiktive børn — ingen konto nødvendig</div>
+            </div>
           </div>
         </div>`;
 
@@ -831,6 +846,7 @@
       document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
       document.getElementById('forgot-link').addEventListener('click', e => { e.preventDefault(); showLoginView('forgot'); });
       document.getElementById('goto-signup-link').addEventListener('click', e => { e.preventDefault(); showLoginView('signup-code'); });
+      document.getElementById('demo-login-btn').addEventListener('click', handleDemoLogin);
       // (Turnstile fjernet fra login — se kommentar i HTML-templaten)
     }
   }
@@ -880,6 +896,26 @@
         btn.disabled = false;
         btn.textContent = 'Log ind';
       }
+    }
+  }
+
+  // ─── Demo-/gæste-login: "Prøv portalen" ───
+  async function handleDemoLogin() {
+    const errorEl = document.getElementById('login-error');
+    const btn = document.getElementById('demo-login-btn');
+    if (errorEl) errorEl.classList.remove('visible');
+    if (btn) { btn.disabled = true; btn.textContent = 'Starter demo …'; }
+    try {
+      await API.signIn(DEMO_EMAIL, DEMO_PASSWORD);
+      window.__flangoForgetOnClose = true; // demo-session skal ikke overleve at fanen lukkes
+      currentSession = await API.getSession();
+      startInactivityTimeout();
+      await loadChildren();
+      return; // success — loading-state ok mens børn hentes
+    } catch (err) {
+      console.error('[Portal] demo-login fejl:', err);
+      if (errorEl) { errorEl.textContent = 'Kunne ikke starte demoen. Prøv igen.'; errorEl.classList.add('visible'); }
+      if (btn) { btn.disabled = false; btn.textContent = '👀 Prøv portalen som gæst'; }
     }
   }
 
@@ -1466,7 +1502,12 @@
     const showUgeplan = featureFlags.parent_portal_ugeplan === true;
 
     root.innerHTML = `
-      <div class="app">
+      <div class="app${isDemo() ? ' demo-mode' : ''}">
+        ${isDemo() ? `
+        <div class="demo-banner" role="status">
+          <span class="demo-banner-badge">DEMO</span>
+          <span class="demo-banner-text">Du prøver Flango med fiktive børn. Rigtige betalinger er slået fra.</span>
+        </div>` : ''}
 
         <!-- DESKTOP SIDEBAR -->
         <aside class="desktop-sidebar">
@@ -2026,11 +2067,16 @@
             <input type="number" inputmode="numeric" min="1" max="2000" id="topup-custom-input" class="topup-custom-input" placeholder="Indtast beløb i kr (maks 2000)">
           </div>
           <div class="topup-method-section" id="topup-pay-area">
+            ${isDemo() ? `
+            <div class="demo-topup-note">
+              <div style="font-weight:700;margin-bottom:4px">🔒 Betaling er slået fra i demo-tilstand</div>
+              <div style="font-size:13px;line-height:1.5;color:var(--ink-soft)">I den rigtige portal betaler du her med MobilePay, Apple Pay, Google Pay eller kort — og pengene går direkte til institutionen.</div>
+            </div>` : `
             ${featureFlags.vipps_enabled === true
               ? `<button class="topup-method-btn mobilepay" id="pay-mobilepay" aria-label="Betal med MobilePay"><img src="assets/mobilepay-button.svg" alt="Betal med MobilePay" class="mobilepay-btn-img"></button>`
               : ''}
             <button class="topup-method-btn checkout-btn" id="pay-checkout">${featureFlags.vipps_enabled === true ? 'Andre betalingsmuligheder' : 'Fortsæt til betaling'}</button>
-            <div class="topup-pay-hint">${featureFlags.vipps_enabled === true ? 'Kort · Apple Pay · Google Pay' : 'MobilePay · Apple Pay · Google Pay · kort'}</div>
+            <div class="topup-pay-hint">${featureFlags.vipps_enabled === true ? 'Kort · Apple Pay · Google Pay' : 'MobilePay · Apple Pay · Google Pay · kort'}</div>`}
           </div>
         </div></div></div>
       </div>`;
