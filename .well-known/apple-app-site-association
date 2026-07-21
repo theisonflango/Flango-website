@@ -1,0 +1,18 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["89RQ48UJ6W.dk.flango.foraeldre"],
+        "components": [
+          { "/": "/for%C3%A6ldre" },
+          { "/": "/for%C3%A6ldre/*" },
+          { "/": "/forældre" },
+          { "/": "/forældre/*" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["89RQ48UJ6W.dk.flango.foraeldre"]
+  }
+}
