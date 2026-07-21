@@ -11,6 +11,19 @@
 
   const SUPABASE_URL = "https://jbknjgbpghrbrstqwoxj.supabase.co";
 
+  // ─── Kanonisk web-base til redirects/retur-URL'er (OAuth, betaling, e-mail-links) ───
+  // I den wrappede Capacitor-app kører portalen fra capacitor://localhost, så
+  // window.location.origin er IKKE en gyldig https-URL — OAuth-providers, betalings-
+  // returns og e-mail-bekræftelseslinks kan ikke pege derhen. Brug i stedet produktions-
+  // Universal-Link (flango.dk/forældre), så OS'et routes tilbage til appen. På web
+  // (inkl. dev) er adfærden uændret: origin + pathname. Eksponeret globalt — portal-v2.js
+  // bruger den også.
+  window.flangoReturnBase = function () {
+    var wrapped = location.protocol === 'capacitor:' ||
+      !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    return wrapped ? 'https://flango.dk/forældre/' : (window.location.origin + window.location.pathname);
+  };
+
   // ─── Helper: forny session proaktivt hvis tokenet er ved at udløbe ───
   // Mobil-Safari throttler auto-refresh-timeren når fanen er i baggrunden, så
   // tokenet kan udløbe midt i en session (→ "Ugyldig session" ved fx optankning).
@@ -130,7 +143,7 @@
     /** Send password reset email */
     async resetPassword(email) {
       const { error } = await window.portalSupabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + window.location.pathname,
+        redirectTo: window.flangoReturnBase(),
       });
       if (error) throw error;
     },
@@ -147,7 +160,7 @@
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin + window.location.pathname,
+          emailRedirectTo: window.flangoReturnBase(),
         },
       });
       if (error) throw error;
@@ -159,7 +172,7 @@
       const { data, error } = await window.portalSupabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + window.location.pathname,
+          redirectTo: window.flangoReturnBase(),
         },
       });
       if (error) throw error;

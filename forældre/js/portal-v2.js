@@ -5642,7 +5642,7 @@
       try { sessionStorage.setItem('stripe_topup_pending', JSON.stringify({ child_id: selectedChild.child_id })); } catch (_) {}
       const res = await API.createTopup(selectedChild.child_id, amt, {
         checkout: true,
-        returnUrl: window.location.origin + window.location.pathname,
+        returnUrl: window.flangoReturnBase(),
       });
       if (res && res.checkout_url) { window.location.href = res.checkout_url; return; }
       showToast('Betaling kunne ikke startes', 'error');
@@ -5775,7 +5775,7 @@
         try { sessionStorage.setItem('stripe_topup_pending', JSON.stringify({ child_id: selectedChild.child_id })); } catch (_) {}
         const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
           elements: elements,
-          confirmParams: { return_url: window.location.origin + window.location.pathname },
+          confirmParams: { return_url: window.flangoReturnBase() },
           redirect: 'if_required',
         });
         if (stripeError) {
