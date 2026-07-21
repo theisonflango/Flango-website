@@ -338,7 +338,7 @@
         API.getParentView(childId).catch(e => { console.error('[Portal] getParentView:', e); return null; }),
         API.getProducts(instId, childId).catch(e => { console.error('[Portal] getProducts:', e); return []; }),
         API.getParentEvents(childId).catch(e => { console.error('[Portal] getEvents:', e); return null; }),
-        API.getCustomerAvgSpend(instId).catch(e => { console.error('[Portal] getCustomerAvg:', e); return null; }),
+        API.getCustomerAvgSpend(childId).catch(e => { console.error('[Portal] getCustomerAvg:', e); return null; }),
         API.getConsentHistory(childId).catch(e => { console.error('[Portal] getConsentHistory:', e); return []; }),
       ]);
       childData = view;

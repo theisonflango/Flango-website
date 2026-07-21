@@ -280,12 +280,16 @@
     },
 
     /** Get customer average spend per period (today/week/month) */
-    async getCustomerAvgSpend(institutionId) {
-      const { data, error } = await window.portalSupabase.rpc('get_customer_avg_spend', {
-        p_institution_id: institutionId,
+    // Klub-gennemsnit til "Gns. pr. barn"-sammenligningen. Forælder-sikker RPC
+    // (link-tjek + k-anonymitets-tærskel) der deler beregning med café-siden.
+    // Felter kan være null når en periode har for få aktive kunder — så skjules
+    // sammenligningen (renderHistoryContent viser kun tekst når avgVal > 0).
+    async getCustomerAvgSpend(childId) {
+      const { data, error } = await window.portalSupabase.rpc('get_club_avg_for_parent', {
+        p_child_id: childId,
       });
       if (error) throw error;
-      return data || { avg_today: 0, avg_week: 0, avg_month: 0 };
+      return data || { avg_today: null, avg_week: null, avg_month: null };
     },
 
     // ─── Products ───

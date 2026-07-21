@@ -7,6 +7,9 @@ Web-portal for forældre til at se og styre deres barns cafe-saldo, forbrugsbegr
 - Vanilla HTML/CSS/JS (alt i én `index.html`, ~341 KB, ingen build-step)
 - Supabase Auth (email/password) + Edge Functions
 - Deploy: rå fil til GitHub Pages (`flango.dk/forældre`)
+- Mobil-app: Capacitor-wrap med bundlede assets (`dk.flango.foraeldre`) — `npm run cap:sync`
+  efter web-ændringer; `www/`, `ios/`, `android/` deployes ALDRIG til websitet.
+  Se [docs/capacitor-scaffold.md](../../docs/capacitor-scaffold.md)
 
 ## Views/Sider
 

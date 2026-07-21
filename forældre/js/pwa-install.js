@@ -13,6 +13,12 @@
 (function () {
   'use strict';
 
+  // I den wrappede app (Capacitor) er "læg på hjemmeskærm" meningsløst — appen
+  // ER installeret. UA-heuristikken nedenfor må ikke være det eneste værn.
+  if (location.protocol === 'capacitor:' ||
+      !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' &&
+         window.Capacitor.isNativePlatform())) return;
+
   var DISMISS_KEY = 'flango_pwa_install_dismissed';
 
   function isStandalone() {
