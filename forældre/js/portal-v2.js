@@ -48,6 +48,14 @@
   const DEMO_EMAIL = 'demo@flango.dk';
   const DEMO_PASSWORD = 'FlangoDemo2026';
   function isDemo() { return featureFlags?.is_demo === true; }
+  // Blokér handlinger der ikke giver mening / har rigtige bivirkninger i demoen
+  // (konto-writes, invitationer, sletning, billed-upload) med en venlig besked i
+  // stedet for en fejl. Returnerer true hvis det kaldende flow skal afbrydes.
+  function demoBlocked() {
+    if (!isDemo()) return false;
+    showToast('Funktionen er ikke aktiveret i demo-versionen', '');
+    return true;
+  }
 
   // ─── Tab-to-sections mapping ───
   const TAB_SECTIONS = {
@@ -2068,10 +2076,9 @@
           </div>
           <div class="topup-method-section" id="topup-pay-area">
             ${isDemo() ? `
-            <div class="demo-topup-note">
-              <div style="font-weight:700;margin-bottom:4px">🔒 Betaling er slået fra i demo-tilstand</div>
-              <div style="font-size:13px;line-height:1.5;color:var(--ink-soft)">I den rigtige portal betaler du her med MobilePay, Apple Pay, Google Pay eller kort — og pengene går direkte til institutionen.</div>
-            </div>` : `
+            <button class="topup-method-btn mobilepay" id="pay-mobilepay-demo" aria-label="Betal med MobilePay"><img src="assets/mobilepay-button.svg" alt="Betal med MobilePay" class="mobilepay-btn-img"></button>
+            <div class="topup-pay-hint">🎬 Demo — MobilePay-flowet er simuleret; ingen rigtig betaling gennemføres</div>
+            ` : `
             ${featureFlags.vipps_enabled === true
               ? `<button class="topup-method-btn mobilepay" id="pay-mobilepay" aria-label="Betal med MobilePay"><img src="assets/mobilepay-button.svg" alt="Betal med MobilePay" class="mobilepay-btn-img"></button>`
               : ''}
@@ -3232,6 +3239,7 @@
 
   async function handleSendFeedback(target, textId, emailId, btn) {
     if (!selectedChild) return;
+    if (demoBlocked()) return;
     const textEl = document.getElementById(textId);
     const message = (textEl?.value || '').trim();
     if (!message) { showToast('Skriv en besked først', 'error'); return; }
@@ -3746,6 +3754,10 @@
     const mobilepayBtn = document.getElementById('pay-mobilepay');
     if (mobilepayBtn) mobilepayBtn.addEventListener('click', handleMobilePayTopup);
 
+    // Demo: simuleret MobilePay-optankning (ingen rigtig betaling)
+    const demoMpBtn = document.getElementById('pay-mobilepay-demo');
+    if (demoMpBtn) demoMpBtn.addEventListener('click', handleDemoTopup);
+
     // Allergen cycling
     const allergenGrid = document.getElementById('allergen-grid');
     if (allergenGrid) {
@@ -3801,6 +3813,7 @@
     if (ppUploadBtn) {
       ppUploadBtn.addEventListener('click', () => {
         if (!selectedChild) return;
+        if (demoBlocked()) return;
         if (!window.PortalParentPictureUpload) {
           showToast('Upload-modul ikke indlæst', 'error');
           return;
@@ -4774,6 +4787,12 @@
       showAdminSimulatorBlockedAlert('samtykker');
       return;
     }
+    // Demo: fiktive børn har ingen rigtige billeder at samtykke til
+    if (isDemo()) {
+      toggle.checked = !toggle.checked; // rul tilbage
+      showToast('Funktionen er ikke aktiveret i demo-versionen', '');
+      return;
+    }
     const nowChecked = toggle.checked;
     const ct = window.PortalConsentTexts || {};
 
@@ -5257,6 +5276,7 @@
 
   async function handleConfirmDeletion() {
     if (!selectedChild) return;
+    if (demoBlocked()) return;
     if (isAdminSimulatorSession()) {
       showAdminSimulatorBlockedAlert('sletning af barnets data');
       return;
@@ -5288,6 +5308,7 @@
   }
 
   async function handleDeleteParentAccount() {
+    if (demoBlocked()) return;
     if (isAdminSimulatorSession()) {
       showAdminSimulatorBlockedAlert('sletning af forælderkonto');
       return;
@@ -5547,6 +5568,67 @@
   }
 
   function updateTopupAmount() { /* no-op: beløbet sendes til Checkout ved klik */ }
+
+  // ── Demo: simuleret MobilePay-optankning ──
+  // Ingen rigtig betaling (serveren 403'er is_demo). Efterligner MobilePay-godkendelsen
+  // og krediterer barnets saldo LOKALT i sessionen, så det føles som en rigtig optankning.
+  // Nulstilles ved genindlæsning (demo-session overlever ikke).
+  async function handleDemoTopup() {
+    if (!selectedChild) return;
+    const amount = getSelectedTopupAmount();
+    if (!amount) { showToast('Vælg et beløb', 'error'); return; }
+    const approved = await showDemoMobilePayModal(amount, getChildName());
+    if (!approved) return;
+    demoCreditBalance(amount);
+    showToast(`${formatKr(amount)} kr tilføjet ${getChildName()}s saldo`, 'success');
+  }
+
+  function demoCreditBalance(amount) {
+    const cid = selectedChild?.child_id;
+    if (!cid) return;
+    const newBal = Number(selectedChild.balance ?? childData?.balance ?? 0) + amount;
+    selectedChild.balance = newBal;
+    const ce = (children || []).find(c => c.child_id === cid);
+    if (ce) ce.balance = newBal;
+    if (childData && childData.child_id === cid) childData.balance = newBal;
+    const balEl = document.querySelector('.balance-amount');
+    if (balEl) balEl.textContent = formatKr(newBal) + ' kr';
+    try { renderSidebarChildren(); } catch { /* desktop-sidebar */ }
+    try {
+      const csel = document.querySelector('.child-selector');
+      if (csel) { const t = document.createElement('div'); t.innerHTML = renderChildSelector(); if (t.firstElementChild) csel.replaceWith(t.firstElementChild); }
+    } catch { /* ingen chip-vælger */ }
+  }
+
+  function showDemoMobilePayModal(amount, childName) {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.className = 'demo-mp-overlay';
+      overlay.innerHTML = `
+        <div class="demo-mp-card" role="dialog" aria-modal="true">
+          <div class="demo-mp-head"><span class="demo-mp-logo">MobilePay</span><span class="demo-mp-demo-tag">DEMO</span></div>
+          <div class="demo-mp-body" id="demo-mp-body">
+            <div class="demo-mp-amount">${formatKr(amount)} kr</div>
+            <div class="demo-mp-to">til <strong>Flango Demo</strong></div>
+            <div class="demo-mp-sub">Optankning af ${esc(childName)}s madkonto</div>
+            <button class="demo-mp-approve" id="demo-mp-approve">Godkend betaling</button>
+            <button class="demo-mp-cancel" id="demo-mp-cancel">Annullér</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const done = (val) => { overlay.remove(); resolve(val); };
+      overlay.querySelector('#demo-mp-cancel').onclick = () => done(false);
+      overlay.addEventListener('click', e => { if (e.target === overlay) done(false); });
+      overlay.querySelector('#demo-mp-approve').onclick = () => {
+        const body = overlay.querySelector('#demo-mp-body');
+        body.innerHTML = `<div class="demo-mp-spinner"></div><div class="demo-mp-sub" style="margin-top:14px">Godkender i MobilePay…</div>`;
+        setTimeout(() => {
+          body.innerHTML = `<div class="demo-mp-check">✓</div><div class="demo-mp-amount" style="font-size:22px;margin-top:8px">Betaling gennemført</div><div class="demo-mp-sub">${formatKr(amount)} kr er tilføjet ${esc(childName)}s saldo</div>`;
+          setTimeout(() => done(true), 1400);
+        }, 1100);
+      };
+    });
+  }
 
   // Stripe Checkout: opret session for det valgte beløb → redirect til Stripes
   // hostede betalingsside (alle metoder renderes af Stripe — nul rendering-risiko).
@@ -5830,6 +5912,7 @@
   }
 
   async function handlePinChange() {
+    if (demoBlocked()) return;
     const pw = document.getElementById('pin-new').value;
     const pw2 = document.getElementById('pin-confirm').value;
     if (pw.length < 6) { showToast('Mindst 6 tegn', 'error'); return; }
@@ -5846,6 +5929,7 @@
   }
 
   async function handleInviteParent() {
+    if (demoBlocked()) return;
     const btn = document.getElementById('invite-parent-btn');
     const resultDiv = document.getElementById('invite-parent-result');
     const codeEl = document.getElementById('invite-parent-code');
