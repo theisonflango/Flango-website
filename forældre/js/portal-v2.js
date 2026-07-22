@@ -103,6 +103,7 @@
     'section-games':          { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="17" cy="10" r="1"/><circle cx="15" cy="13" r="1"/></svg>', label: 'Godkend spil' },
     'section-st-chart':       { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label: 'Spilletidsoversigt' },
     'section-notifications':  { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Notifikationer' },
+    'section-email-notifications': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'E-mail påmindelser' },
     'section-invite-parent':  { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>', label: 'Invitér forælder' },
     'section-feedback':       { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>', label: 'Feedback' },
     'section-pin':            { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>', label: 'Adgangskode' },
@@ -3351,15 +3352,28 @@
     if (!parentEmail && notif.email) parentEmail = notif.email;
     var secondaryEmail = notif.secondary_email || '';
     var notifyPrimary = notif.notify_primary_email !== false;
+    const pushHint = API.isNativeApp() ? '' : `<div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">📱</span><span>Notifikationer vises på din telefon, når Flango Portal-appen er installeret. Dine valg her gælder alle dine enheder med appen.</span></div>`;
     return `
       <div class="section" id="section-notifications">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📧</div><div><div class="section-title">Notifikationer & e-mail</div><div class="section-subtitle">Lav saldo og arrangementer</div></div></div>
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">🔔</div><div><div class="section-title">Notifikationer</div><div class="section-subtitle">Beskeder på telefonen</div></div></div>
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          <div class="setting-label" style="margin-bottom:var(--s2);font-weight:600">Sådan får du besked</div>
-          ${API.isNativeApp() ? `<div class="setting-row"><div class="setting-info"><div class="setting-label">Notifikationer</div><div class="setting-desc">Vises på telefonens låseskærm — indholdet ser du i appen</div></div><label class="toggle"><input type="checkbox" id="notif-push-device" ${API.isPushEnabledOnThisDevice() ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
+          ${pushHint}${API.isNativeApp() ? `<div class="setting-row"><div class="setting-info"><div class="setting-label">Notifikationer på denne telefon</div><div class="setting-desc">Vises på låseskærmen — indholdet ser du i appen</div></div><label class="toggle"><input type="checkbox" id="notif-push-device" ${API.isPushEnabledOnThisDevice() ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)"></div>` : ''}
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="push-zero" ${notif.push_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="push-low" ${notif.push_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="push-event-reminder" ${notif.push_event_reminder === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="push-event-invite" ${notif.push_event_invite === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+        </div></div></div>
+      </div>
+      <div class="section" id="section-email-notifications">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📧</div><div><div class="section-title">E-mail påmindelser</div><div class="section-subtitle">Lav saldo og arrangementer</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="setting-row"><div class="setting-info"><div class="setting-label">E-mail${parentEmail ? ' <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(' + esc(parentEmail) + ')</span>' : ''}</div><div class="setting-desc">Påmindelser sendes til din login-e-mail</div></div><label class="toggle"><input type="checkbox" id="notif-primary-email" ${notifyPrimary ? 'checked' : ''}><span class="toggle-track"></span></label></div>
           <div style="margin-top:var(--s2)">
             <div class="setting-label" style="margin-bottom:6px">Ekstra e-mail <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(valgfri)</span></div>
@@ -3370,8 +3384,6 @@
             </div>
           </div>
           <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)">
-            <div class="setting-label" style="margin-bottom:2px;font-weight:600">Det får du besked om</div>
-            <div class="setting-desc" style="margin-bottom:var(--s2)">Dine valg gælder både notifikationer og e-mail</div>
             <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${notif.notify_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
             <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${notif.notify_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
             <div class="setting-row"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="notif-event-reminder" ${notif.notify_event_reminder === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
@@ -4104,6 +4116,10 @@
     if (notifSaveEmailBtn) notifSaveEmailBtn.addEventListener('click', () => saveNotifications());
     if (notifEventReminder) notifEventReminder.addEventListener('change', () => saveNotifications());
     if (notifEventInvite) notifEventInvite.addEventListener('change', () => saveNotifications());
+    for (const pid of ['push-zero', 'push-low', 'push-event-reminder', 'push-event-invite']) {
+      const el = document.getElementById(pid);
+      if (el) el.addEventListener('change', () => saveNotifications());
+    }
 
     // Skærmtid: samtykke til forlænget spilletid (havde ingen handler — gemte aldrig)
     const stConsent = document.getElementById('st-consent-toggle');
@@ -5556,6 +5572,10 @@
     var secondaryVal = secondaryEl ? secondaryEl.value.trim() : '';
     var eventReminderEl = document.getElementById('notif-event-reminder');
     var eventInviteEl = document.getElementById('notif-event-invite');
+    var pushZeroEl = document.getElementById('push-zero');
+    var pushLowEl = document.getElementById('push-low');
+    var pushEventReminderEl = document.getElementById('push-event-reminder');
+    var pushEventInviteEl = document.getElementById('push-event-invite');
     // Validate secondary email if provided
     if (secondaryVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(secondaryVal)) {
       showToast('Ugyldig e-mailadresse', 'error');
@@ -5577,12 +5597,20 @@
         secondary_email: secondaryVal || null,
         notify_event_reminder: eventReminderEl ? eventReminderEl.checked : false,
         notify_event_invite: eventInviteEl ? eventInviteEl.checked : false,
+        push_at_zero: pushZeroEl ? pushZeroEl.checked : true,
+        push_at_ten: pushLowEl ? pushLowEl.checked : true,
+        push_event_reminder: pushEventReminderEl ? pushEventReminderEl.checked : false,
+        push_event_invite: pushEventInviteEl ? pushEventInviteEl.checked : false,
       });
       // Update local cache so re-renders reflect the change
       if (childData && childData.notification_settings) {
         childData.notification_settings.notify_at_zero = zeroEl ? zeroEl.checked : true;
         childData.notification_settings.notify_at_ten = lowEl ? lowEl.checked : true;
         childData.notification_settings.notify_primary_email = primaryEl ? primaryEl.checked : true;
+        childData.notification_settings.push_at_zero = pushZeroEl ? pushZeroEl.checked : true;
+        childData.notification_settings.push_at_ten = pushLowEl ? pushLowEl.checked : true;
+        childData.notification_settings.push_event_reminder = pushEventReminderEl ? pushEventReminderEl.checked : false;
+        childData.notification_settings.push_event_invite = pushEventInviteEl ? pushEventInviteEl.checked : false;
         childData.notification_settings.secondary_email = secondaryVal || null;
         childData.notification_settings.notify_event_reminder = eventReminderEl ? eventReminderEl.checked : false;
         childData.notification_settings.notify_event_invite = eventInviteEl ? eventInviteEl.checked : false;
