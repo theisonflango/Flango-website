@@ -372,8 +372,8 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-DvPTazG8.js"></script>
-  <link rel="stylesheet" crossorigin href="/app/assets/main-IQUDYSb1.css">
+  <script type="module" crossorigin src="/app/assets/main-BIfgRfd4.js"></script>
+  <link rel="stylesheet" crossorigin href="/app/assets/main-BQGbJZqf.css">
 </head>
 <body>
 
@@ -382,6 +382,7 @@
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
         <div class="lock-icon">🔒</div>
         <h1>Log ind</h1>
+        <p id="full-login-notice" class="login-notice"></p>
         <form id="form-full-login" onsubmit="return false;" autocomplete="on">
             <label for="login-email-input">E-mail</label>
             <input type="email" id="login-email-input" class="input" placeholder="din@email.dk" autocomplete="email">
@@ -406,6 +407,7 @@
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
         <div class="lock-icon">🔑</div>
         <h1>Vælg din profil</h1>
+        <p id="device-unlock-notice" class="login-notice"></p>
         <form id="form-device-unlock" onsubmit="return false;" autocomplete="off">
             <label for="device-admin-select">Hvem er du?</label>
             <select id="device-admin-select" class="select"></select>
@@ -1903,7 +1905,7 @@
 <div class="form-group" id="edit-user-lastname-group" style="display:none;"><label for="edit-user-lastname-input">Efternavn</label><input type="text" id="edit-user-lastname-input" class="input" placeholder="Fx. Hansen" autocomplete="off" spellcheck="false" autocapitalize="off"></div>
 <div class="form-group"><label for="edit-user-number-input">Brugernummer</label><input type="text" id="edit-user-number-input" class="input" placeholder="Fx. 1234" autocomplete="off" spellcheck="false" autocapitalize="off"></div>
 <div class="form-group"><label for="edit-user-grade-level">Klasse</label><select id="edit-user-grade-level" class="select"><option value="">Ikke angivet</option><option value="0">0. klasse</option><option value="1">1. klasse</option><option value="2">2. klasse</option><option value="3">3. klasse</option><option value="4">4. klasse</option><option value="5">5. klasse</option><option value="6">6. klasse</option><option value="7">7. klasse</option><option value="8">8. klasse</option><option value="9">9. klasse</option></select></div>
-<div class="form-group"><label for="edit-user-pin-input">Ny PIN (4 cifre)</label><input type="text" id="edit-user-pin-input" class="input" placeholder="1234" maxlength="4" autocomplete="off" spellcheck="false" autocapitalize="off"></div>
+<div class="form-group"><label for="edit-user-pin-input">PIN (barnets kode i caféen)</label><input type="text" id="edit-user-pin-input" class="input" placeholder="1234" maxlength="4" autocomplete="off" spellcheck="false" autocapitalize="off"><div style="font-size:11px;margin-top:4px;opacity:0.6;">Bruges når barnet ekspederer. Gemmes læsbar, så personalet kan hjælpe ved glemt kode.</div></div>
 <div id="eu-admin-account-area"></div>
 </div>
 </div>
@@ -2033,7 +2035,7 @@
     <script src="js/core/feature-modules.js?v=1"></script>
     <script src="js/ui/settings-panel.js?v=7"></script>
     <script src="js/ui/settings-sections.js?v=31"></script>
-    <script src="js/ui/admin-portal-settings.js?v=4"></script>
+    <script src="js/ui/admin-portal-settings.js?v=6"></script>
     <script src="js/ui/admin-portal-v2.js"></script>
     <script src="js/ui/cookie-banner.js"></script>
 

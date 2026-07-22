@@ -48,7 +48,15 @@
     { id: 'section-profile', icon: ICONS.chart, label: 'Købsprofil', check: true, settingKey: 'parent_portal_purchase_profile', defaultChecked: true },
     { id: 'section-history', icon: ICONS.clock, label: 'Historik', check: true, settingKey: 'parent_portal_history', defaultChecked: true },
     { id: 'section-sortiment', icon: ICONS.list, label: 'Sortiment', check: true, settingKey: 'parent_portal_sortiment', defaultChecked: true },
-    { id: 'section-topup', icon: ICONS.card, label: 'Indbetaling', check: true, settingKey: 'parent_portal_payment', defaultChecked: true },
+    // Indbetaling har BEVIDST ingen checkbox. parent_portal_payment er
+    // betalingsmetode-konfigurationen (stripe_connect, mobilepay_*, cash,
+    // admin_fee_payer) — ejet af Indstillinger → Betalingsmetoder, som gemmer
+    // den atomisk via _savePaymentSettings. Den er IKKE et sektions-flag: alle
+    // andre sektioner her peger på en almindelig boolean-kolonne. Da denne flade
+    // gemmer hele objektet på én gang, nulstillede checkboxen betalingsopsætningen
+    // ved hvert gem. Skal sektionen kunne slukkes, kræver det sin egen
+    // boolean-kolonne + resolver + server-håndhævelse — ikke dette felt.
+    { id: 'section-topup', icon: ICONS.card, label: 'Indbetaling', check: false },
     { id: 'section-spending-limit', icon: ICONS.shield, label: 'Daglig gr\u00e6nse', check: true, settingKey: 'parent_portal_spending_limit', defaultChecked: true },
     { id: 'section-product-limits', icon: ICONS.bag, label: 'K\u00f8bsgr\u00e6nser', check: true, settingKey: 'parent_portal_product_limit', defaultChecked: true },
     { id: 'section-sugar', icon: ICONS.noEntry, label: 'Sukkerpolitik', check: true, settingKey: 'parent_portal_sugar_policy', defaultChecked: true },
@@ -74,10 +82,6 @@
       if (val === undefined || val === null) {
         // Aldrig sat → brug default
         return nav.defaultChecked !== undefined ? nav.defaultChecked : false;
-      }
-      // parent_portal_payment er JSONB med { enabled: bool }
-      if (nav.settingKey === 'parent_portal_payment' && typeof val === 'object') {
-        return val.enabled !== false;
       }
       return !!val;
     }
@@ -176,6 +180,13 @@
     </div>`;
   }
 
+  // Attribut-escape til værdier der kommer fra DB (filen er en IIFE, ikke et
+  // modul, så core/escape-html.js kan ikke importeres her).
+  function escAttr(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
   // ─── Build toggle ───
   function buildToggle(id, checked, extra) {
     return `<label class="toggle"${extra ? ' ' + extra : ''}><input type="checkbox"${id ? ' id="' + id + '"' : ''}${checked ? ' checked' : ''}><span class="toggle-track"></span></label>`;
@@ -241,10 +252,16 @@
       </div>
     </div>`;
 
-    // Admin: Contact phone config
+    // Admin: Contact phone config.
+    // V\u00e6rdierne SKAL komme fra settings. Feltet stod tidligere hardkodet til
+    // "45 76 28 30" + toggle=til uden load-sti, og saveSettings() skriver begge
+    // felter \u2014 s\u00e5 et hvilket som helst gem skrev mock-nummeret ind i
+    // institutions.institution_contact_phone og slog knappen til.
+    const contactPhoneVal = (settings && settings.institution_contact_phone) || '';
+    const contactEnabled = !!(settings && settings.institution_contact_phone_enabled);
     const adminContact = buildAdminField('\uD83D\uDCDE Kontakttelefon', `
-      <input type="tel" class="input-field input" id="contact-phone" value="45 76 28 30" placeholder="Telefonnummer til institutionen">
-      ${buildSettingRow('Aktiver kontaktknap', 'Vis "Kontakt"-knap i saldo-kortet, s\u00e5 for\u00e6ldre kan ringe direkte. Hvis sl\u00e5et fra, viser knappen "Feedback" i stedet.', buildToggle('contact-toggle', true))}
+      <input type="tel" class="input-field input" id="contact-phone" value="${escAttr(contactPhoneVal)}" placeholder="Telefonnummer til institutionen">
+      ${buildSettingRow('Aktiver kontaktknap', 'Vis "Kontakt"-knap i saldo-kortet, s\u00e5 for\u00e6ldre kan ringe direkte. Hvis sl\u00e5et fra, viser knappen "Feedback" i stedet.', buildToggle('contact-toggle', contactEnabled))}
     `);
 
     // Quick actions
@@ -1091,14 +1108,7 @@
     SIDEBAR_NAV.forEach(function (nav) {
       if (!nav.check || !nav.settingKey) return;
       var checkbox = container.querySelector('.sidebar-check[data-section="' + nav.id + '"]');
-      if (checkbox) {
-        // parent_portal_payment er JSONB — brug { enabled: true/false }
-        if (nav.settingKey === 'parent_portal_payment') {
-          settings[nav.settingKey] = { enabled: checkbox.checked };
-        } else {
-          settings[nav.settingKey] = checkbox.checked;
-        }
-      }
+      if (checkbox) settings[nav.settingKey] = checkbox.checked;
     });
 
     // Read admin field inputs (data-admin-setting)
