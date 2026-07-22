@@ -3354,13 +3354,13 @@
     return `
       <div class="section" id="section-notifications">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📧</div><div><div class="section-title">Notifikationer</div><div class="section-subtitle">Push og e-mail — lav saldo og arrangementer</div></div></div>
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📧</div><div><div class="section-title">Notifikationer & e-mail</div><div class="section-subtitle">Lav saldo og arrangementer</div></div></div>
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          <div class="setting-label" style="margin-bottom:var(--s2);font-weight:600">Hvordan vil du have besked?</div>
-          ${API.isNativeApp() ? `<div class="setting-row"><div class="setting-info"><div class="setting-label">Beskeder på denne telefon</div><div class="setting-desc">Vises på telefonen — indholdet ser du i appen</div></div><label class="toggle"><input type="checkbox" id="notif-push-device" ${API.isPushEnabledOnThisDevice() ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">Beskeder på e-mail${parentEmail ? ' <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(' + esc(parentEmail) + ')</span>' : ''}</div><div class="setting-desc">Sendes til din login-e-mail</div></div><label class="toggle"><input type="checkbox" id="notif-primary-email" ${notifyPrimary ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div class="setting-label" style="margin-bottom:var(--s2);font-weight:600">Sådan får du besked</div>
+          ${API.isNativeApp() ? `<div class="setting-row"><div class="setting-info"><div class="setting-label">Notifikationer</div><div class="setting-desc">Vises på telefonens låseskærm — indholdet ser du i appen</div></div><label class="toggle"><input type="checkbox" id="notif-push-device" ${API.isPushEnabledOnThisDevice() ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">E-mail${parentEmail ? ' <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(' + esc(parentEmail) + ')</span>' : ''}</div><div class="setting-desc">Påmindelser sendes til din login-e-mail</div></div><label class="toggle"><input type="checkbox" id="notif-primary-email" ${notifyPrimary ? 'checked' : ''}><span class="toggle-track"></span></label></div>
           <div style="margin-top:var(--s2)">
             <div class="setting-label" style="margin-bottom:6px">Ekstra e-mail <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(valgfri)</span></div>
             <div class="setting-desc" style="margin-bottom:8px">Send også e-mail-beskeder til fx den anden forælder</div>
@@ -3370,8 +3370,8 @@
             </div>
           </div>
           <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)">
-            <div class="setting-label" style="margin-bottom:2px;font-weight:600">Hvad vil du have besked om?</div>
-            <div class="setting-desc" style="margin-bottom:var(--s2)">Dine valg gælder alle beskeder — både telefon og e-mail</div>
+            <div class="setting-label" style="margin-bottom:2px;font-weight:600">Det får du besked om</div>
+            <div class="setting-desc" style="margin-bottom:var(--s2)">Dine valg gælder både notifikationer og e-mail</div>
             <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${notif.notify_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
             <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${notif.notify_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
             <div class="setting-row"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="notif-event-reminder" ${notif.notify_event_reminder === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
