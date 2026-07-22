@@ -33,8 +33,11 @@
   let savedSettings = null;   // institutionSettings ved mount (til kontaktfelter)
 
   function getPortalOrigin() {
+    // tauri://localhost har OGSÅ hostname 'localhost' — desktop-appen skal på
+    // prod-portalen, ikke dev-serveren. Kun ægte web-dev rammer localhost:3001.
+    const isTauri = !!window.__TAURI_INTERNALS__;
     const h = window.location.hostname;
-    return (h === 'localhost' || h === '127.0.0.1')
+    return (!isTauri && (h === 'localhost' || h === '127.0.0.1'))
       ? 'http://localhost:3001'
       : 'https://flango.dk';
   }
