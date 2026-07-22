@@ -1620,6 +1620,9 @@
     const balance = getChildBalance();
     const status = getBalanceStatus(balance);
     const name = getChildName();
+    // Brugernummer vises kun når institutionen har kontonummer-visning slået til
+    const childNo = (childData?.institution?.account_number_enabled !== false && selectedChild?.number != null)
+      ? String(selectedChild.number) : '';
     const instName = getInstitutionName();
     const portalSub = instName ? esc(instGenitive(instName)) + ' forældreportal' : 'Forældreportal';
 
@@ -1703,7 +1706,7 @@
                 <div>
                   <div class="balance-label">Saldo</div>
                   <div class="balance-amount">${renderBalanceAmount(balance)}</div>
-                  <div class="balance-child-name">${esc(name)}${instName ? ' · ' + esc(instName) : ''}</div>
+                  <div class="balance-child-name">${esc(name)}${childNo ? ' (' + esc(childNo) + ')' : ''}${instName ? ' · ' + esc(instName) : ''}</div>
                 </div>
                 <div class="balance-status ${status.cls}"><span class="status-dot"></span> ${status.text}</div>
               </div>
