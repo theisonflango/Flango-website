@@ -1803,16 +1803,18 @@
     // tom-tilstanden andetsteds sin egen "Tilknyt barn"-knap.
     if (!children.length) return '';
     const active = children.find(c => c.child_id === selectedChild?.child_id) || children[0];
-    const emojiOf = c => c.avatar_emoji || c.emoji || '🧒';
+    // Rigtigt profilbillede hvis barnet har et — ellers intet billede (ingen random emoji)
+    const avatarOf = c => c.profile_picture_url
+      ? `<img class="child-dd-avatar" src="${esc(c.profile_picture_url)}" alt="">` : '';
     const rows = children.map(c => {
       const isActive = c.child_id === active.child_id;
       const bal = c.balance != null ? `<span class="child-dd-bal">${formatKr(c.balance)} kr</span>` : '';
       const check = isActive ? '<svg class="child-dd-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '';
-      return `<button class="child-dd-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}"><span class="child-avatar">${emojiOf(c)}</span><span class="child-dd-name">${esc(formatChildName(c))}</span>${bal}${check}</button>`;
+      return `<button class="child-dd-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}">${avatarOf(c)}<span class="child-dd-name">${esc(formatChildName(c))}</span>${bal}${check}</button>`;
     }).join('');
     const activeBal = active.balance != null ? `<span class="child-dd-bal">${formatKr(active.balance)} kr</span>` : '';
     return `<div class="child-selector"><div class="child-dd" id="child-dd">
-      <button class="child-dd-trigger" id="child-dd-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="child-avatar">${emojiOf(active)}</span><span class="child-dd-name">${esc(formatChildName(active))}</span>${activeBal}<svg class="child-dd-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
+      <button class="child-dd-trigger" id="child-dd-trigger" aria-haspopup="listbox" aria-expanded="false">${avatarOf(active)}<span class="child-dd-name">${esc(formatChildName(active))}</span>${activeBal}<svg class="child-dd-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
       <div class="child-dd-menu" id="child-dd-menu" hidden>${rows}<button class="child-dd-item child-dd-add" id="add-child-btn-mobile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tilknyt ekstra barn</button></div>
     </div></div>`;
   }

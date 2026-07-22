@@ -200,7 +200,8 @@ a { color: inherit; text-decoration: none; }
 .signup-confirm-ok:hover { background: var(--flango-dark); }
 
 /* ─── Barn-vælger (dropdown over saldokortet, mobile-first) ─── */
-.child-dd { position: relative; }
+.child-dd { position: relative; width: 100%; }
+.child-dd-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 .child-dd-trigger {
   display: flex; align-items: center; gap: var(--s2);
   width: 100%; padding: 10px var(--s3);
@@ -333,8 +334,8 @@ a { color: inherit; text-decoration: none; }
 
 /* ─── CHILD SELECTOR ─── */
 .child-selector {
-  display: flex; gap: var(--s2); overflow-x: auto; scrollbar-width: none;
-  padding: var(--s1) 0; scroll-snap-type: x mandatory;
+  /* dropdown-æra: fuld bredde, flugter med saldokortet (chips-scroll er væk) */
+  display: block; padding: var(--s1) 0 var(--s2);
 }
 .child-selector::-webkit-scrollbar { display: none; }
 .child-chip {
