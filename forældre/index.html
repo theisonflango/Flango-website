@@ -17,6 +17,18 @@
     worker-src 'self';
 ">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<script>
+// Native app: lås pinch-zoom så portalen føles som en app (og man ikke kan sidde
+// fast i zoom). Web/PWA beholder fuld zoom af tilgængelighedshensyn — Safari-browseren
+// ignorerer alligevel user-scalable=no, så låsen virker reelt kun i webviews.
+(function () {
+  var native = location.protocol === 'capacitor:' ||
+    !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  if (!native) return;
+  var m = document.querySelector('meta[name="viewport"]');
+  if (m) m.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no');
+})();
+</script>
 <title>Flango Forældreportal</title>
 <!-- PWA: installérbar app (hjemmeskærm / App Store-forberedelse) -->
 <link rel="manifest" href="manifest.webmanifest">
