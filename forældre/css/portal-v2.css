@@ -108,10 +108,7 @@ a { color: inherit; text-decoration: none; }
   padding: var(--s8); box-shadow: var(--shadow-lg);
 }
 .login-lockup { display: flex; justify-content: center; margin-bottom: var(--s6); }
-.login-lockup svg { width: 100%; max-width: 195px; height: auto; overflow: visible; }
-.login-lockup > svg > svg { fill: var(--flango); }
-.login-lockup-name { font-family: var(--font); font-size: 30px; font-weight: 800; letter-spacing: -.02em; fill: var(--ink); }
-.login-lockup-tagline { font-family: var(--font); font-size: 11.5px; font-weight: 600; letter-spacing: .02em; fill: var(--ink-muted); }
+.login-lockup img { width: 100%; max-width: 210px; height: auto; }
 .login-title { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: var(--s1); }
 .login-subtitle { font-size: 13px; color: var(--ink-muted); text-align: center; margin-bottom: var(--s6); }
 .login-field { margin-bottom: var(--s3); }

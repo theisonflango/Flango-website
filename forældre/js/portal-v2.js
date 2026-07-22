@@ -67,6 +67,15 @@
     return true;
   }
 
+  // ─── Admin-preview (admin-portal-ombygningen, fase 1) ───
+  // Portalen indlejret i café-admin som live preview. URL-parametret
+  // ?admin_preview=1 loader kun modulet (js/portal-admin-preview.js) og beder
+  // serveren om preview — selve tilstanden er SERVER-bekræftet: get-parent-view
+  // sætter kun is_admin_preview når sessionen er institutionens admin-parent-
+  // konto. En forælder med parametret får derfor et helt normalt svar og UI.
+  const adminPreviewParam = new URLSearchParams(window.location.search).get('admin_preview') === '1';
+  function isAdminPreview() { return childData?.is_admin_preview === true; }
+
   // ─── Tab-to-sections mapping ───
   const TAB_SECTIONS = {
     'tab-home':    ['section-balance','section-events','section-ugeplan','section-profile','section-history','section-sortiment'],
@@ -215,6 +224,9 @@
     clearTimeout(_inactivityTimer);
     if (!currentSession) return;
     _inactivityTimer = setTimeout(async () => {
+      // Indlejret admin-preview logges ikke ud af inaktivitet — caféens egen
+      // session-styring er grænsen dér (og preview'et står ofte urørt længe).
+      if (isAdminPreview()) { _resetInactivityTimer(); return; }
       console.log('[Portal] Inactivity timeout — logging out');
       try { await API.signOut(); } catch {}
       currentSession = null;
@@ -257,6 +269,27 @@
           if (sessionErr) console.error('[Portal] Admin auto-login fejl:', sessionErr);
         } catch (e) {
           console.error('[Portal] Admin auto-login fejl:', e);
+        }
+      }
+
+      // Admin-preview: hent modulet og vent på session-handshake fra café-
+      // hosten (postMessage) FØR vi tjekker session. Fejler handshaket, falder
+      // vi igennem til normal login-skærm — parametret giver ingen adgang i
+      // sig selv.
+      if (adminPreviewParam) {
+        try {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'js/portal-admin-preview.js?v=1';
+            s.onload = resolve; s.onerror = reject;
+            document.head.appendChild(s);
+          });
+          await window.FlangoAdminPreview.bootstrap({
+            supabase: window.portalSupabase,
+            refetch: async () => { await loadChildData(); renderApp(); },
+          });
+        } catch (e) {
+          console.error('[Portal] Admin-preview bootstrap fejl:', e);
         }
       }
 
@@ -345,7 +378,7 @@
     const instId = selectedChild.institution_id;
     try {
       const [view, prods, events, clubAvg, consents] = await Promise.all([
-        API.getParentView(childId).catch(e => { console.error('[Portal] getParentView:', e); return null; }),
+        API.getParentView(childId, adminPreviewParam).catch(e => { console.error('[Portal] getParentView:', e); return null; }),
         API.getProducts(instId, childId).catch(e => { console.error('[Portal] getProducts:', e); return []; }),
         API.getParentEvents(childId).catch(e => { console.error('[Portal] getEvents:', e); return null; }),
         API.getCustomerAvgSpend(childId).catch(e => { console.error('[Portal] getCustomerAvg:', e); return null; }),
@@ -704,22 +737,11 @@
   /* Logo-lockup til login-overskriften: mark + navn + tagline som ét vektor-element.
      Marken er de samme baner som loaderen i index.html, beskåret til sit egne bounding
      box (viewBox 104 55 312 353) så lockup'et kan sættes op mod teksten uden luft. */
+  /* Theis' brand-lockup (mærke + navn + tagline). Samme fil som caféen bruger,
+     beskåret til sit indhold — luften styres i CSS, ikke i billedet. */
   const LOGIN_LOCKUP_HTML = `
       <div class="login-lockup">
-        <svg viewBox="0 0 195 60" role="img" aria-label="Flango — SFO'ernes cafésystem">
-          <svg x="0" y="2" width="49.5" height="56" viewBox="104 55 312 353">
-            <!-- Maske-regionen sættes eksplicit: uden x/y/width/height er default -10%/120%
-                 AF VIEWPORTEN, og med den beskårne viewBox lander den midt i bag-cirklen
-                 og klipper den af i en lige kant. -->
-            <defs><mask id="flangoLockupGap" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect x="0" y="0" width="512" height="512" fill="#fff"/><circle cx="214" cy="298" r="126" fill="#000"/></mask></defs>
-            <g transform="translate(247,180) rotate(-35)"><path d="M0 0 A100 100 0 0 1 0 -132 A100 100 0 0 1 0 0 Z"/></g>
-            <g transform="translate(261,180) rotate(33)"><path d="M0 0 A100 100 0 0 1 0 -132 A100 100 0 0 1 0 0 Z"/></g>
-            <circle cx="322" cy="290" r="94" mask="url(#flangoLockupGap)"/>
-            <circle cx="214" cy="298" r="110"/>
-          </svg>
-          <text class="login-lockup-name" x="63" y="35">Flango</text>
-          <text class="login-lockup-tagline" x="64" y="52">SFO'ernes cafésystem</text>
-        </svg>
+        <img src="assets/flango-lockup-tagline.webp" alt="Flango — SFO'ernes cafésystem" width="409" height="190">
       </div>`;
 
   const googleIconSVG = `<svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.997 8.997 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58Z" fill="#EA4335"/></svg>`;
@@ -1517,7 +1539,9 @@
   // Sektion synlig? Server-autoritativ (visible_sections fra get-parent-view).
   // Manglende felt → vist, så et ældre backend-svar aldrig skjuler ved uheld.
   // Bruges kun til opt-out-sektioner; opt-in (skærmtid/ugeplan) har egne === true-tjek.
-  function secOn(key) { return visibleSections[key] !== false; }
+  // Admin-preview (server-bekræftet, kun admin-parent-sessioner): ALLE sektioner
+  // renderes — preview-modulet gråtoner de slukkede i stedet for at skjule dem.
+  function secOn(key) { return isAdminPreview() || visibleSections[key] !== false; }
 
   function renderApp() {
     const balance = getChildBalance();
@@ -1529,9 +1553,14 @@
     // Determine which sections are visible based on feature flags
     // parent_portal_events = portal-flag (cafe_events_enabled er for POS-viewet i café-appen)
     const showEvents = secOn('events');
-    const showScreentime = featureFlags.skaermtid_enabled === true;
+    const showScreentime = featureFlags.skaermtid_enabled === true || isAdminPreview();
     // Ugeplan vises kun når institutionen aktivt har slået den til (default fra).
-    const showUgeplan = featureFlags.parent_portal_ugeplan === true;
+    const showUgeplan = featureFlags.parent_portal_ugeplan === true || isAdminPreview();
+    // Skærmtid-underflag: institutionen kan slå "Godkend spil" og "Spilletids-
+    // oversigt" fra separat (gaming.portal_settings, NOT NULL-kolonner der altid
+    // graftes med når skaermtid_enabled er sat — så === true er sikkert her).
+    const showGames = (showScreentime && featureFlags.skaermtid_allow_game_approval === true) || isAdminPreview();
+    const showStChart = (showScreentime && featureFlags.skaermtid_show_usage === true) || isAdminPreview();
 
     root.innerHTML = `
       <div class="app${isDemo() ? ' demo-mode' : ''}">
@@ -1640,7 +1669,7 @@
             ${secOn('sugar_policy') ? renderSugarPolicySection() : ''}
             ${secOn('diet') ? renderDietSection() : ''}
             ${secOn('allergens') ? renderAllergensSection() : ''}
-            ${showScreentime ? `${hasCafeLimitSections() ? '<div class="group-divider"><span>Skærmtid</span></div>' : ''}${renderScreentimeSection()}${renderGamesSection()}${renderScreentimeChartSection()}` : ''}
+            ${showScreentime ? `${hasCafeLimitSections() ? '<div class="group-divider"><span>Skærmtid</span></div>' : ''}${renderScreentimeSection()}${showGames ? renderGamesSection() : ''}${showStChart ? renderScreentimeChartSection() : ''}` : ''}
           </div>
 
           <!-- TAB: PROFILE -->
@@ -1685,6 +1714,11 @@
     renderSidebarChildren();
     renderSidebarNav('tab-home');
     bindEvents();
+
+    // Admin-preview: dekorér sektionerne (grå + toggle-chips) efter hver render.
+    if (isAdminPreview() && window.FlangoAdminPreview) {
+      window.FlangoAdminPreview.onRender(childData?.preview_sections || []);
+    }
 
     // Auto-load purchase profile (always open by default)
     loadPurchaseProfile();

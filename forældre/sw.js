@@ -30,6 +30,7 @@ const SHELL = [
   './js/parent-picture-upload-modal.js',
   './js/pwa-install.js',
   './assets/flango-logo.webp',
+  './assets/flango-lockup-tagline.webp',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
 ];

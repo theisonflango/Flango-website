@@ -311,8 +311,13 @@
     // ─── Parent View (child data, balance, institution) ───
 
     /** Get child data including balance, name, institution */
-    async getParentView(childId) {
-      return invokeFunction('get-parent-view', { child_id: childId });
+    async getParentView(childId, adminPreview) {
+      // admin_preview er kun et ønske — serveren honorerer det udelukkende for
+      // institutionens admin-parent-session (admin-portal-ombygningen, fase 1).
+      return invokeFunction('get-parent-view', {
+        child_id: childId,
+        ...(adminPreview === true ? { admin_preview: true } : {}),
+      });
     },
 
     /** Get customer average spend per period (today/week/month) */
