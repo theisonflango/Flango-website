@@ -119,6 +119,24 @@ a { color: inherit; text-decoration: none; }
 .login-forgot { display: block; text-align: center; font-size: 13px; color: var(--ink-muted); margin-top: var(--s3); }
 .login-forgot:hover { color: var(--flango); }
 
+/* Mobil/app: login er ikke et kort på en baggrund — det ER skærmen.
+   Kort-på-baggrund er et desktop-mønster; i en fuldskærms-webview læste
+   rammen som en kant hele vejen rundt. Kortet fylder derfor hele fladen og
+   overtager selv safe-area-afstanden (viewport-fit=cover ⇒ webview'et går
+   op bag ur/kamera og ned bag home-indikatoren). */
+@media (max-width: 767px) {
+  .login-screen { padding: 0; align-items: stretch; background: var(--surface-raised); }
+  .login-card {
+    max-width: none; border: none; border-radius: 0; box-shadow: none;
+    display: flex; flex-direction: column; justify-content: center;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + var(--s8))
+      calc(env(safe-area-inset-right, 0px) + var(--s5))
+      calc(env(safe-area-inset-bottom, 0px) + var(--s8))
+      calc(env(safe-area-inset-left, 0px) + var(--s5));
+  }
+}
+
 /* Login links row (forgot + signup) */
 .login-links {
   display: flex; justify-content: space-between; align-items: center;
@@ -407,7 +425,21 @@ a { color: inherit; text-decoration: none; }
 .hint-box.green { background: var(--positive-light); color: var(--positive); }
 .hint-box.purple { background: var(--purple-light); color: var(--purple); }
 .hint-box.neutral { background: var(--surface-sunken); color: var(--ink-soft); }
+/* blue/orange bruges i portal-v2.js (7 steder) og manglede — boksene rendrede uden
+   baggrund/farve. Samme paletter som info/warn. */
+.hint-box.blue { background: var(--info-light); color: var(--info); }
+.hint-box.orange { background: var(--caution-light); color: var(--caution); }
 .hint-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+/* Skillelinje med etiket mellem to grupper af sektioner (fx café-grænser → skærmtid
+   i Grænser-fanen, hvor de to slags grænser ellers løb sammen). */
+.group-divider {
+  display: flex; align-items: center; gap: var(--s3);
+  margin: var(--s6) 0 var(--s4);
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--ink-muted);
+}
+.group-divider::before, .group-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
 .period-toggle { display: inline-flex; background: var(--surface-sunken); border-radius: var(--r-sm); padding: 2px; gap: 2px; }
 .period-btn { padding: var(--s1) var(--s3); border-radius: 6px; font-size: 12px; font-weight: 600; color: var(--ink-muted); transition: all .15s; }
@@ -612,7 +644,15 @@ a { color: inherit; text-decoration: none; }
 .topup-option-amount { font-size: 24px; font-weight: 800; }
 .topup-option.selected .topup-option-amount { color: var(--flango-dark); }
 .topup-option-label { font-size: 12px; color: var(--ink-muted); font-weight: 500; }
-.topup-option.custom { border-style: dashed; }
+/* "Andet" ligger alene på sidste række — aflang over begge kolonner giver balance
+   i 4-preset-gitteret, og teksten lægges vandret i stedet for stablet. */
+.topup-option.custom {
+  border-style: dashed;
+  grid-column: 1 / -1;
+  flex-direction: row; gap: var(--s2);
+  padding: var(--s4);
+}
+.topup-option.custom .topup-option-amount { font-size: 18px; }
 .topup-method-section { margin-top: var(--s6); }
 .topup-method-title { font-weight: 700; font-size: 15px; margin-bottom: var(--s3); }
 .topup-method-btn {

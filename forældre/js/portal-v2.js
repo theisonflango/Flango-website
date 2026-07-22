@@ -36,6 +36,16 @@
   let topupConfig = null, topupInitStarted = false, topupInitChildId = null;
   let topupCustomAmount = null; // valgt beløb når "Andet" er aktivt
 
+  // Optanknings-beløb. Ikke institutions-konfigurerbart — der findes ingen kolonne
+  // for det, og alle institutioner har hidtil kørt samme trappe. "Andet" dækker resten.
+  const TOPUP_PRESETS = [
+    { amount: 50,  label: 'Lille optankning' },
+    { amount: 100, label: 'Anbefalet' },
+    { amount: 200, label: 'Stor optankning' },
+    { amount: 500, label: 'Ekstra stor' },
+  ];
+  const DEFAULT_TOPUP_AMOUNT = 100;
+
   // Version af privatlivspolitikken der gemmes i parent_consents.consent_version
   // ved nye samtykker. Bumpes naar privatlivspolitikken opdateres.
   const CURRENT_CONSENT_VERSION = 'v1.0';
@@ -1583,7 +1593,7 @@
               </div>
               <div class="topup-row">
                 <button class="topup-btn topup-primary" data-nav-tab="tab-pay"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Indbetal</button>
-                <button class="topup-btn topup-secondary" data-qa-scroll="section-contact" data-qa-tab="tab-privacy"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Kontakt</button>
+                ${renderBalanceSecondaryAction()}
               </div>
             </div>
 
@@ -1616,7 +1626,7 @@
             ${secOn('sugar_policy') ? renderSugarPolicySection() : ''}
             ${secOn('diet') ? renderDietSection() : ''}
             ${secOn('allergens') ? renderAllergensSection() : ''}
-            ${showScreentime ? `${renderScreentimeSection()}${renderGamesSection()}${renderScreentimeChartSection()}` : ''}
+            ${showScreentime ? `${hasCafeLimitSections() ? '<div class="group-divider"><span>Skærmtid</span></div>' : ''}${renderScreentimeSection()}${renderGamesSection()}${renderScreentimeChartSection()}` : ''}
           </div>
 
           <!-- TAB: PROFILE -->
@@ -2055,6 +2065,64 @@
       </div>`;
   }
 
+  /** Betalingsknapper for det valgte barns institution.
+   *  Vis kun veje der faktisk kan gennemføres: `card_topup_enabled` beregnes
+   *  server-side af get-parent-view med samme udtryk som create-topup selv
+   *  bruger, så knappen ikke kan overleve en institution uden aktivt
+   *  connected account (før: 400 "Kortbetaling er ikke aktiveret ... endnu"). */
+  function renderTopupMethods() {
+    const mobilepayBtn = (id) =>
+      `<button class="topup-method-btn mobilepay" id="${id}" aria-label="Betal med MobilePay"><img src="assets/mobilepay-button.svg" alt="Betal med MobilePay" class="mobilepay-btn-img"></button>`;
+
+    if (isDemo()) {
+      return `${mobilepayBtn('pay-mobilepay-demo')}
+            <div class="topup-pay-hint">🎬 Demo — MobilePay-flowet er simuleret; ingen rigtig betaling gennemføres</div>`;
+    }
+
+    const hasVipps = featureFlags.vipps_enabled === true;
+    const hasCard = featureFlags.card_topup_enabled === true;
+
+    if (!hasVipps && !hasCard) {
+      return `<div class="hint-box blue"><span class="hint-icon">💬</span><span>Online optankning er ikke aktiveret for denne institution endnu. Kontakt personalet for at tanke ${esc(getChildName())}s saldo op.</span></div>`;
+    }
+
+    const parts = [];
+    if (hasVipps) parts.push(mobilepayBtn('pay-mobilepay'));
+    if (hasCard) {
+      parts.push(`<button class="topup-method-btn checkout-btn" id="pay-checkout">${hasVipps ? 'Andre betalingsmuligheder' : 'Fortsæt til betaling'}</button>`);
+      parts.push(`<div class="topup-pay-hint">${hasVipps ? 'Kort · Apple Pay · Google Pay' : 'MobilePay · Apple Pay · Google Pay · kort'}</div>`);
+    }
+    return parts.join('\n            ');
+  }
+
+  /** Sekundær knap i saldo-kortet. Følger institutionens "Aktiver kontaktknap"
+   *  fra café-admin (institution_contact_phone_enabled + _phone) — den var indtil nu
+   *  en død indstilling: knappen var hardcodet "Kontakt" og scrollede til GDPR-
+   *  kontaktafsnittet uanset hvad institutionen valgte.
+   *  Til = ring direkte. Fra = "Feedback" (admin-UI'ets egen ordlyd). Er feedback-
+   *  sektionen også slået fra, falder vi tilbage til GDPR-kontaktafsnittet, så
+   *  knappen aldrig peger på noget der ikke findes. */
+  function renderBalanceSecondaryAction() {
+    const mailIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>';
+    const phoneIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>';
+
+    const phone = featureFlags.institution_contact_phone;
+    if (featureFlags.institution_contact_phone_enabled === true && phone) {
+      const dial = String(phone).replace(/[^\d+]/g, '');
+      return `<a class="topup-btn topup-secondary" href="tel:${esc(dial)}">${phoneIcon}Kontakt</a>`;
+    }
+    if (secOn('feedback')) {
+      return `<button class="topup-btn topup-secondary" data-qa-scroll="section-feedback" data-qa-tab="tab-profile">${mailIcon}Feedback</button>`;
+    }
+    return `<button class="topup-btn topup-secondary" data-qa-scroll="section-contact" data-qa-tab="tab-privacy">${mailIcon}Kontakt</button>`;
+  }
+
+  /** Er der overhovedet café-grænser over skærmtid i Grænser-fanen? Skillelinjen
+   *  giver kun mening som overgang — ikke som overskrift på en tom fane. */
+  function hasCafeLimitSections() {
+    return ['spending_limit', 'product_limit', 'sugar_policy', 'diet', 'allergens'].some(secOn);
+  }
+
   function renderTopupSection() {
     const name = getChildName();
     return `
@@ -2065,25 +2133,14 @@
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="topup-grid">
-            <button class="topup-option" data-amount="50"><div class="topup-option-amount">50 kr</div><div class="topup-option-label">Lille optankning</div></button>
-            <button class="topup-option selected" data-amount="100"><div class="topup-option-amount">100 kr</div><div class="topup-option-label">Anbefalet</div></button>
-            <button class="topup-option" data-amount="150"><div class="topup-option-amount">150 kr</div><div class="topup-option-label">Stor optankning</div></button>
-            <button class="topup-option" data-amount="200"><div class="topup-option-amount">200 kr</div><div class="topup-option-label">Ekstra stor</div></button>
+            ${TOPUP_PRESETS.map(p => `<button class="topup-option${p.amount === DEFAULT_TOPUP_AMOUNT ? ' selected' : ''}" data-amount="${p.amount}"><div class="topup-option-amount">${p.amount} kr</div><div class="topup-option-label">${p.label}</div></button>`).join('')}
             <button class="topup-option custom" data-amount="custom"><div class="topup-option-amount">Andet</div><div class="topup-option-label">Vælg selv</div></button>
           </div>
           <div class="topup-custom-wrap" id="topup-custom-wrap" style="display:none">
             <input type="number" inputmode="numeric" min="1" max="2000" id="topup-custom-input" class="topup-custom-input" placeholder="Indtast beløb i kr (maks 2000)">
           </div>
           <div class="topup-method-section" id="topup-pay-area">
-            ${isDemo() ? `
-            <button class="topup-method-btn mobilepay" id="pay-mobilepay-demo" aria-label="Betal med MobilePay"><img src="assets/mobilepay-button.svg" alt="Betal med MobilePay" class="mobilepay-btn-img"></button>
-            <div class="topup-pay-hint">🎬 Demo — MobilePay-flowet er simuleret; ingen rigtig betaling gennemføres</div>
-            ` : `
-            ${featureFlags.vipps_enabled === true
-              ? `<button class="topup-method-btn mobilepay" id="pay-mobilepay" aria-label="Betal med MobilePay"><img src="assets/mobilepay-button.svg" alt="Betal med MobilePay" class="mobilepay-btn-img"></button>`
-              : ''}
-            <button class="topup-method-btn checkout-btn" id="pay-checkout">${featureFlags.vipps_enabled === true ? 'Andre betalingsmuligheder' : 'Fortsæt til betaling'}</button>
-            <div class="topup-pay-hint">${featureFlags.vipps_enabled === true ? 'Kort · Apple Pay · Google Pay' : 'MobilePay · Apple Pay · Google Pay · kort'}</div>`}
+            ${renderTopupMethods()}
           </div>
         </div></div></div>
       </div>`;
@@ -2341,25 +2398,23 @@
         </div>`;
     }
 
-    // Dagens ret: samlet grænse for ALLE dagens ret (retterne roterer, så en
+    // Dagens ret: ÉN samlet grænse for alle dagens ret (retterne roterer, så en
     // per-produkt-grænse giver ikke mening). Café-POS håndhæver den på tværs af
-    // alle is_daily_special. 0 = spærret, ∞ = ubegrænset.
+    // alle is_daily_special. Vises som en helt almindelig produktrække med samme
+    // stepper som resten — den reelle brug er "max 1 pr. dag", ikke blokering
+    // (blokerings-toggle'en var aldrig brugt af nogen forælder og er fjernet).
     const hasDailySpecials = products.some(p => p.is_daily_special === true);
     const showDailySpecial = hasDailySpecials && featureFlags.parent_portal_daily_special !== false;
-    const dsBlocked = dailySpecialLimit === 0;
     const dsMaxDisplay = (dailySpecialLimit && dailySpecialLimit > 0) ? dailySpecialLimit : '∞';
     const dailySpecialHTML = !showDailySpecial ? '' : `
+        <div style="margin-top:var(--s4)">
           <div style="font-weight:700;font-size:13px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:var(--s2)">Dagens ret</div>
-          <div class="hint-box neutral" style="margin-bottom:var(--s2);font-size:12px"><span class="hint-icon">ℹ️</span><span>Gælder alle retter der er markeret som dagens ret — uanset hvad der er på menuen i dag.</span></div>
-          <div class="setting-row">
-            <div class="setting-info"><div class="setting-label">Bloker dagens ret</div><div class="setting-desc">${esc(getChildName())} kan slet ikke købe dagens ret</div></div>
-            <label class="toggle"><input type="checkbox" id="ds-block-toggle" ${dsBlocked ? 'checked' : ''}><span class="toggle-track"></span></label>
-          </div>
-          <div class="setting-row" id="ds-max-row"${dsBlocked ? ' style="opacity:.4;pointer-events:none"' : ''}>
-            <div class="setting-info"><div class="setting-label">Maks dagens ret pr. dag</div><div class="setting-desc">På tværs af alle dagens ret</div></div>
+          <div class="hint-box neutral" style="margin-bottom:var(--s2);font-size:12px"><span class="hint-icon">ℹ️</span><span>Én samlet grænse for alle retter der er markeret som dagens ret — uanset hvad der er på menuen i dag.</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--s3) 0">
+            <div style="display:flex;align-items:center;gap:var(--s3)"><span style="font-size:24px;line-height:1">🍽️</span><div><span style="font-weight:600;font-size:14px">Dagens ret</span><br><span style="font-size:11px;color:var(--ink-muted)">På tværs af alle dagens ret</span></div></div>
             <div class="stepper" id="ds-max-stepper"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${dsMaxDisplay}</div><button class="stepper-btn stepper-plus">+</button></div>
           </div>
-          <div style="height:1px;background:var(--border);margin:var(--s4) 0"></div>`;
+        </div>`;
 
     return `
       <div class="section" id="section-product-limits">
@@ -2369,10 +2424,10 @@
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">💡</span><span>Hvis institutionen har sat en grænse, gælder den strengeste.</span></div>
-          ${dailySpecialHTML}
           <div style="font-weight:700;font-size:13px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:var(--s2)">Fast sortiment</div>
           ${coreHTML}
           ${todayHTML}
+          ${dailySpecialHTML}
         </div></div></div>
       </div>`;
   }
@@ -3771,12 +3826,6 @@
     // Sugar policy toggles
     const sugarBlock = document.getElementById('sugar-block-toggle');
     if (sugarBlock) sugarBlock.addEventListener('change', () => saveSugarPolicy());
-    const dsBlockToggle = document.getElementById('ds-block-toggle');
-    if (dsBlockToggle) dsBlockToggle.addEventListener('change', () => {
-      const row = document.getElementById('ds-max-row');
-      if (row) { row.style.opacity = dsBlockToggle.checked ? '.4' : ''; row.style.pointerEvents = dsBlockToggle.checked ? 'none' : ''; }
-      saveProductLimits();
-    });
 
     // Diet toggles
     const dietVeg = document.getElementById('diet-vegetarian');
@@ -4455,13 +4504,12 @@
       const val = valText === '∞' ? null : parseInt(valText);
       if (productId) limits.push({ product_id: productId, max_per_day: val });
     });
-    // Dagens ret samlet grænse: blok = 0, ∞ = ubegrænset (null), ellers antal.
+    // Dagens ret samlet grænse: ∞ = ubegrænset (null), ellers antal.
     let maxDailySpecial;
-    const dsBlock = document.getElementById('ds-block-toggle');
     const dsMaxEl = document.querySelector('#ds-max-stepper .stepper-val');
-    if (dsBlock || dsMaxEl) {
-      if (dsBlock && dsBlock.checked) maxDailySpecial = 0;
-      else { const v = dsMaxEl?.textContent ?? '∞'; maxDailySpecial = v === '∞' ? null : parseInt(v); }
+    if (dsMaxEl) {
+      const v = dsMaxEl.textContent ?? '∞';
+      maxDailySpecial = v === '∞' ? null : parseInt(v);
     }
     try {
       await API.saveProductLimits(selectedChild.child_id, limits, maxDailySpecial);

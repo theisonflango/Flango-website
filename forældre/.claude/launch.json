@@ -4,8 +4,8 @@
     {
       "name": "portal",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", ".", "-l", "3011", "--no-clipboard"],
-      "port": 3011
+      "runtimeArgs": ["serve", ".", "-l", "3001", "--no-clipboard"],
+      "port": 3001
     }
   ]
 }
