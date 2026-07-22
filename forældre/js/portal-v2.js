@@ -3374,10 +3374,15 @@
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">E-mail${parentEmail ? ' <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(' + esc(parentEmail) + ')</span>' : ''}</div><div class="setting-desc">Påmindelser sendes til din login-e-mail</div></div><label class="toggle"><input type="checkbox" id="notif-primary-email" ${notifyPrimary ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">E-mail</div><div class="setting-desc">Modtag påmindelser pr. e-mail</div></div><label class="toggle"><input type="checkbox" id="notif-primary-email" ${notifyPrimary ? 'checked' : ''}><span class="toggle-track"></span></label></div>
           <div style="margin-top:var(--s2)">
+            <div class="setting-label" style="margin-bottom:6px">Din e-mail</div>
+            <div class="setting-desc" style="margin-bottom:8px">Forudfyldt med din login-e-mail — ret den, hvis du hellere vil have påmindelser et andet sted</div>
+            <input type="email" id="notif-email" class="input-field" placeholder="din@email.dk" value="${esc(notif.email || parentEmail || '')}" style="margin:0">
+          </div>
+          <div style="margin-top:var(--s3)">
             <div class="setting-label" style="margin-bottom:6px">Ekstra e-mail <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(valgfri)</span></div>
-            <div class="setting-desc" style="margin-bottom:8px">Påmindelser sendes også hertil — og stadig, selv om kontoe-mailen ovenfor er slået fra</div>
+            <div class="setting-desc" style="margin-bottom:8px">Til fx den anden forælder — får de samme påmindelser</div>
             <div style="display:flex;gap:8px;align-items:center">
               <input type="email" id="notif-secondary-email" class="input-field" placeholder="fx partner@mail.dk" value="${esc(secondaryEmail)}" style="flex:1;margin:0">
               <button class="save-btn compact" id="notif-save-email-btn" style="white-space:nowrap;padding:10px 16px">Gem</button>
@@ -5606,6 +5611,14 @@
     try { parentEmail = window.portalSupabase?.auth?.session?.()?.data?.session?.user?.email || ''; } catch (_e) { /* ignore */ }
     if (!parentEmail) { try { var _sd = JSON.parse(localStorage.getItem('flango-parent-auth') || '{}'); parentEmail = _sd?.user?.email || _sd?.currentSession?.user?.email || ''; } catch (_e2) { /* ignore */ } }
     if (!parentEmail && childData?.notification_settings?.email) parentEmail = childData.notification_settings.email;
+    // "Din e-mail"-feltet vinder over login-mailen (gemmes i parent_notifications.email)
+    var ownEmailEl = document.getElementById('notif-email');
+    var ownEmailVal = ownEmailEl ? ownEmailEl.value.trim() : '';
+    if (ownEmailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownEmailVal)) {
+      showToast('Ugyldig e-mailadresse i "Din e-mail"', 'error');
+      return;
+    }
+    if (ownEmailVal) parentEmail = ownEmailVal;
     if (!parentEmail) { showToast('Kunne ikke finde din e-mail', 'error'); return; }
     try {
       await API.saveNotification(selectedChild.child_id, {
