@@ -768,6 +768,53 @@
 
   const googleIconSVG = `<svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.997 8.997 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58Z" fill="#EA4335"/></svg>`;
 
+  const appleIconSVG = `<svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.86-3.08.38-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.38C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.08ZM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25Z"/></svg>`;
+
+  // Apple-login vises kun i appen (App Review guideline 4.8: ligeværdigt alternativ til
+  // Google). Web har ikke Apple-flowet — dér er e-mail/kode + Google uændret.
+  function appleAuthButtonHTML(id) {
+    if (!API.isNativeApp()) return '';
+    return `
+            <button class="apple-btn full" id="${id}">
+              ${appleIconSVG}
+              <span>Fortsæt med Apple</span>
+            </button>`;
+  }
+
+  async function handleAppleAuth(errorElId) {
+    const errEl = document.getElementById(errorElId);
+    try {
+      await API.signInWithApple();
+      window.location.reload();
+    } catch (err) {
+      const msg = String((err && err.message) || err);
+      if (/cancel|annuller|1001|afbrudt/i.test(msg)) return; // forælderen fortrød — ikke en fejl
+      console.warn('[Portal] Apple-login fejlede:', msg);
+      if (errEl) { errEl.textContent = 'Apple-login fejlede. Prøv igen.'; errEl.classList.add('visible'); }
+    }
+  }
+
+  // Push-toggle virker med det samme (uafhængigt af sektionens gem-knap) — delegeret
+  // så den overlever re-render af sektionen. iOS-prompten udløses først ved tilvalg.
+  document.addEventListener('change', async (e) => {
+    if (!e.target || e.target.id !== 'notif-push-device') return;
+    const box = e.target;
+    try {
+      if (box.checked) {
+        await API.enablePushOnThisDevice();
+        showToast('Push-notifikationer slået til på denne enhed', 'success');
+      } else {
+        await API.disablePushOnThisDevice();
+        showToast('Push slået fra på denne enhed', 'success');
+      }
+    } catch (err) {
+      box.checked = false;
+      showToast(err && err.code === 'denied'
+        ? 'Tilladelse afvist — slå notifikationer til under Indstillinger → Flango Portal'
+        : 'Kunne ikke aktivere push. Prøv igen.', 'error');
+    }
+  });
+
   function renderLogin() {
     const brandHTML = LOGIN_LOCKUP_HTML;
 
@@ -817,7 +864,7 @@
             </div>
             <div class="login-subtitle">Vælg hvordan du vil oprette din konto.</div>
             <div class="login-error" id="signup-auth-error"></div>
-            <div class="login-success" id="signup-auth-success"></div>
+            <div class="login-success" id="signup-auth-success"></div>${appleAuthButtonHTML('signup-apple-btn')}
             <button class="google-btn full" id="signup-google-btn">
               ${googleIconSVG}
               <span>Fortsæt med Google</span>
@@ -845,6 +892,8 @@
         </div>`;
 
       document.getElementById('signup-google-btn').addEventListener('click', handleSignupWithGoogle);
+      const signupAppleBtn = document.getElementById('signup-apple-btn');
+      if (signupAppleBtn) signupAppleBtn.addEventListener('click', () => handleAppleAuth('signup-auth-error'));
       document.getElementById('signup-email-btn').addEventListener('click', handleSignupWithEmail);
       document.getElementById('signup-password-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') handleSignupWithEmail(); });
       document.getElementById('back-to-code-step').addEventListener('click', e => { e.preventDefault(); showLoginView('signup-code'); });
@@ -883,7 +932,7 @@
             ${brandHTML}
             <div class="login-title">Forældreportal</div>
             <div class="login-subtitle">Log ind med din konto for at se saldo, sætte grænser og mere.</div>
-            <div class="login-error" id="login-error"></div>
+            <div class="login-error" id="login-error"></div>${appleAuthButtonHTML('login-apple-btn')}
             <button class="google-btn full" id="login-google-btn">
               ${googleIconSVG}
               <span>Fortsæt med Google</span>
@@ -921,6 +970,8 @@
         </div>`;
 
       document.getElementById('login-google-btn').addEventListener('click', handleGoogleLogin);
+      const loginAppleBtn = document.getElementById('login-apple-btn');
+      if (loginAppleBtn) loginAppleBtn.addEventListener('click', () => handleAppleAuth('login-error'));
       document.getElementById('login-btn').addEventListener('click', handleLogin);
       document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
       document.getElementById('forgot-link').addEventListener('click', e => { e.preventDefault(); showLoginView('forgot'); });
@@ -3303,6 +3354,8 @@
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${API.isNativeApp() ? `<div class="setting-row"><div class="setting-info"><div class="setting-label">Push på denne enhed</div><div class="setting-desc">Få besked direkte på telefonen — indholdet vises først når du åbner appen</div></div><label class="toggle"><input type="checkbox" id="notif-push-device" ${API.isPushEnabledOnThisDevice() ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)"></div>` : ''}
           <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${notif.notify_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
           <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${notif.notify_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
           <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)">

@@ -26,6 +26,50 @@
     return isNativeApp() ? 'https://flango.dk/forældre/' : (window.location.origin + window.location.pathname);
   };
 
+  // ─── Push-notifikationer (native, opt-in — docs/push-notifikationer-design.md) ───
+  // Payloaden er indholdsfri; tokenet er driftsdata: slettes ved log-ud/afmelding,
+  // og cascade-slettes ved kontosletning. Registrering sker KUN efter forælderens toggle.
+  var PUSH_TOKEN_KEY = 'flango_push_token';
+  var PUSH_ENABLED_KEY = 'flango_push_enabled';
+  function pushPlugin() {
+    return (isNativeApp() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) || null;
+  }
+  var pushListenersReady = false;
+  function ensurePushListeners() {
+    var p = pushPlugin();
+    if (!p || pushListenersReady) return;
+    pushListenersReady = true;
+    p.addListener('registration', async function (t) {
+      try {
+        var token = t && t.value;
+        if (!token) return;
+        localStorage.setItem(PUSH_TOKEN_KEY, token);
+        var user = (await window.portalSupabase.auth.getUser()).data.user;
+        if (!user) return;
+        await window.portalSupabase.from('parent_push_tokens').upsert(
+          { auth_user_id: user.id, token: token, platform: window.Capacitor.getPlatform(), last_seen_at: new Date().toISOString() },
+          { onConflict: 'auth_user_id,token' }
+        );
+      } catch (e) { console.warn('[Portal] push-token-registrering fejlede:', e && e.message); }
+    });
+    p.addListener('registrationError', function (e) {
+      console.warn('[Portal] push-registrering afvist:', JSON.stringify(e));
+    });
+  }
+  async function removeThisDevicePushToken() {
+    var token = localStorage.getItem(PUSH_TOKEN_KEY);
+    localStorage.removeItem(PUSH_ENABLED_KEY);
+    if (!token) return;
+    localStorage.removeItem(PUSH_TOKEN_KEY);
+    try { await window.portalSupabase.from('parent_push_tokens').delete().eq('token', token); } catch (e) { /* best effort */ }
+  }
+  // Genregistrér ved appstart (APNs-tokens roterer) — prompter aldrig; kun hvis allerede slået til
+  if (isNativeApp() && localStorage.getItem(PUSH_ENABLED_KEY) === '1') {
+    setTimeout(function () {
+      try { ensurePushListeners(); pushPlugin() && pushPlugin().register(); } catch (e) { /* ignore */ }
+    }, 2000);
+  }
+
   // ─── OAuth-retur i den wrappede app ───
   // OAuth kører i systemets login-view (SFSafariViewController via @capacitor/browser),
   // og Supabase-callbacken redirecter til dette custom scheme — IKKE til flango.dk.
@@ -166,8 +210,9 @@
       return data;
     },
 
-    /** Sign out */
+    /** Sign out — rydder også denne enheds push-token (driftsdata, jf. push-designet) */
     async signOut() {
+      try { await removeThisDevicePushToken(); } catch (e) { /* best effort */ }
       const { error } = await window.portalSupabase.auth.signOut();
       if (error) throw error;
     },
@@ -198,6 +243,47 @@
       if (error) throw error;
       return data;
     },
+
+    /** Er vi i den wrappede Capacitor-app? (bruges af UI til native-only-flader) */
+    isNativeApp() { return isNativeApp(); },
+
+    /** Sign in with Apple — kun i appen (nativt id_token-flow, ingen browser) */
+    async signInWithApple() {
+      var rawNonce = Array.from(crypto.getRandomValues(new Uint8Array(24)), function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+      var digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawNonce));
+      var hashedNonce = Array.from(new Uint8Array(digest), function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+      var result = await window.Capacitor.Plugins.SignInWithApple.authorize({
+        clientId: 'dk.flango.foraeldre',
+        scopes: 'email name',
+        nonce: hashedNonce,
+      });
+      var identityToken = result && result.response && result.response.identityToken;
+      if (!identityToken) throw new Error('Apple-login blev afbrudt');
+      const { data, error } = await window.portalSupabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: identityToken,
+        nonce: rawNonce,
+      });
+      if (error) throw error;
+      return data;
+    },
+
+    /** Push på denne enhed (opt-in) — iOS-tilladelsesprompten vises først her */
+    async enablePushOnThisDevice() {
+      var p = pushPlugin();
+      if (!p) throw new Error('Push kræver appen');
+      ensurePushListeners();
+      var perm = await p.requestPermissions();
+      if (!perm || perm.receive !== 'granted') {
+        var err = new Error('Tilladelse afvist');
+        err.code = 'denied';
+        throw err;
+      }
+      await p.register();
+      localStorage.setItem(PUSH_ENABLED_KEY, '1');
+    },
+    async disablePushOnThisDevice() { await removeThisDevicePushToken(); },
+    isPushEnabledOnThisDevice() { return isNativeApp() && localStorage.getItem(PUSH_ENABLED_KEY) === '1'; },
 
     /** Sign in with Google OAuth */
     async signInWithGoogle() {

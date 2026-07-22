@@ -199,6 +199,18 @@ a { color: inherit; text-decoration: none; }
 }
 .signup-confirm-ok:hover { background: var(--flango-dark); }
 
+/* ─── Apple-knap (Sign in with Apple — vises kun i appen, jf. HIG: sort m. hvid glyf) ─── */
+.apple-btn {
+  display: flex; align-items: center; justify-content: center; gap: var(--s3);
+  width: 100%; padding: 12px var(--s5); border-radius: var(--r-md);
+  font-family: var(--font); font-size: 15px; font-weight: 600;
+  background: #000; color: #fff; border: 1.5px solid #000;
+  cursor: pointer; transition: opacity .15s ease;
+  margin-bottom: var(--s2);
+}
+.apple-btn:active { opacity: .85; }
+.apple-btn svg { flex-shrink: 0; }
+
 /* ─── Google button ─── */
 .google-btn {
   display: flex; align-items: center; justify-content: center; gap: var(--s3);
