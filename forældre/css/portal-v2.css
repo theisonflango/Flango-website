@@ -81,6 +81,22 @@ a { color: inherit; text-decoration: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .portal-loading-text { font-size: 14px; color: var(--ink-muted); font-weight: 500; }
 
+/* Animeret Flango-mark (Theis' loading-animation, SVG+CSS — ingen dependencies).
+   Bruges i hoved-loaderen; genbrugelig hvor en stor loader giver mening. */
+.flango-loader {
+  width: 110px; height: 110px; margin: 0 auto var(--s3);
+  fill: var(--flango); display: block;
+}
+.flango-loader .fl-mark   { transform-box: view-box; transform-origin: 256px 300px; animation: fl-breathe 2.8s ease-in-out infinite; }
+.flango-loader .fl-back   { transform-box: view-box; transform-origin: 214px 298px; animation: fl-orbit 2.8s linear infinite; }
+.flango-loader .fl-leaves { transform-box: view-box; transform-origin: 253px 186px; animation: fl-sway 2.8s ease-in-out infinite; }
+@keyframes fl-orbit   { to { transform: rotate(360deg); } }
+@keyframes fl-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+@keyframes fl-sway    { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .flango-loader .fl-mark, .flango-loader .fl-back, .flango-loader .fl-leaves { animation: none; }
+}
+
 /* ─── LOGIN SCREEN ─── */
 .login-screen {
   min-height: 100dvh; display: flex; align-items: center; justify-content: center;
