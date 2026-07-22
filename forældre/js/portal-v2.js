@@ -254,21 +254,33 @@
 
   async function init() {
     try {
-      // Auto-login via admin-parent token (from café app)
+      // Auto-login via admin-parent (åbnet fra café-appen).
+      //
+      // URL'en bærer KUN en engangs-nonce — aldrig tokens. En URL rejser gennem
+      // webserver- og proxy-logs, og history.replaceState er for sent: requesten
+      // er allerede sendt. Nonce'n veksles derfor til en session via POST, hvor
+      // legitimationen ligger i svarets body. Efter første indløsning er nonce'n
+      // slettet på serveren, så det der måtte stå i en log, er inert.
       const urlParams = new URLSearchParams(window.location.search);
-      const adminToken = urlParams.get('admin_token');
-      const adminRefresh = urlParams.get('admin_refresh');
-      if (adminToken && adminRefresh) {
-        // Clear URL params (don't expose tokens in browser history)
+      const adminHandoff = urlParams.get('admin_handoff');
+      if (adminHandoff) {
         window.history.replaceState({}, '', window.location.pathname);
         try {
-          const { error: sessionErr } = await window.portalSupabase.auth.setSession({
-            access_token: adminToken,
-            refresh_token: adminRefresh,
-          });
-          if (sessionErr) console.error('[Portal] Admin auto-login fejl:', sessionErr);
+          const { data, error } = await window.portalSupabase.functions.invoke(
+            'admin-parent-redeem',
+            { body: { handoff: adminHandoff } },
+          );
+          if (error || !data?.access_token) {
+            console.error('[Portal] Admin-overlevering fejlede:', error || data?.error);
+          } else {
+            const { error: sessionErr } = await window.portalSupabase.auth.setSession({
+              access_token: data.access_token,
+              refresh_token: data.refresh_token,
+            });
+            if (sessionErr) console.error('[Portal] Admin auto-login fejl:', sessionErr);
+          }
         } catch (e) {
-          console.error('[Portal] Admin auto-login fejl:', e);
+          console.error('[Portal] Admin-overlevering fejlede:', e);
         }
       }
 
@@ -639,7 +651,17 @@
     root.innerHTML = `
       <div class="portal-loading">
         <div class="portal-loading-inner">
-          <div class="portal-loading-spinner"></div>
+          <svg class="flango-loader" viewBox="0 0 512 512" aria-hidden="true">
+            <defs><mask id="flangoLoaderGapJs" maskUnits="userSpaceOnUse"><rect x="0" y="0" width="512" height="512" fill="#fff"/><circle cx="214" cy="298" r="126" fill="#000"/></mask></defs>
+            <g class="fl-mark">
+              <g class="fl-leaves">
+                <g transform="translate(247,180) rotate(-35)"><path d="M0 0 A100 100 0 0 1 0 -132 A100 100 0 0 1 0 0 Z"/></g>
+                <g transform="translate(261,180) rotate(33)"><path d="M0 0 A100 100 0 0 1 0 -132 A100 100 0 0 1 0 0 Z"/></g>
+              </g>
+              <g class="fl-back"><circle cx="322" cy="290" r="94" mask="url(#flangoLoaderGapJs)"/></g>
+              <circle cx="214" cy="298" r="110"/>
+            </g>
+          </svg>
           <div class="portal-loading-text">Indlæser portal...</div>
         </div>
       </div>`;
