@@ -1713,14 +1713,6 @@
               </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="quick-actions">
-              ${showEvents ? '<button class="qa-item" data-qa-scroll="section-events" data-qa-tab="tab-home"><div class="qa-icon red">📅</div><div class="qa-label">Events</div></button>' : '<button class="qa-item" data-qa-scroll="section-sortiment" data-qa-tab="tab-home"><div class="qa-icon red">📋</div><div class="qa-label">Sortiment</div></button>'}
-              <button class="qa-item" data-qa-scroll="section-spending-limit" data-qa-tab="tab-limits"><div class="qa-icon orange">💰</div><div class="qa-label">Daglig grænse</div></button>
-              <button class="qa-item" data-qa-scroll="section-allergens" data-qa-tab="tab-limits"><div class="qa-icon green">🥗</div><div class="qa-label">Kost & Allergi</div></button>
-              ${showScreentime ? '<button class="qa-item" data-qa-scroll="section-screentime" data-qa-tab="tab-limits"><div class="qa-icon blue">🕹️</div><div class="qa-label">Skærmtid</div></button>' : ''}
-            </div>
-
             ${showEvents ? renderEventsSection() : ''}
             ${showUgeplan ? renderUgeplanSection() : ''}
             ${secOn('purchase_profile') ? renderPurchaseProfileSection() : ''}
@@ -1802,14 +1794,23 @@
   // ═══════════════════════════════════════
 
   function renderChildSelector() {
-    if (children.length <= 1) return '';
-    const chips = children.map(c => {
-      const isActive = c.child_id === selectedChild?.child_id;
-      const emoji = c.avatar_emoji || c.emoji || '🧒';
-      const bal = c.balance != null ? `<span class="saldo-mini">${formatKr(c.balance)} kr</span>` : '';
-      return `<button class="child-chip${isActive ? ' active' : ''}" data-child-id="${c.child_id}"><span class="child-avatar">${emoji}</span> ${esc(formatChildName(c))} ${bal}</button>`;
+    // Dropdown i Flango-stil (mobile-first). Vises også med ét barn, så
+    // "Tilknyt ekstra barn" altid er opdagelig; med 0 børn håndterer
+    // tom-tilstanden andetsteds sin egen "Tilknyt barn"-knap.
+    if (!children.length) return '';
+    const active = children.find(c => c.child_id === selectedChild?.child_id) || children[0];
+    const emojiOf = c => c.avatar_emoji || c.emoji || '🧒';
+    const rows = children.map(c => {
+      const isActive = c.child_id === active.child_id;
+      const bal = c.balance != null ? `<span class="child-dd-bal">${formatKr(c.balance)} kr</span>` : '';
+      const check = isActive ? '<svg class="child-dd-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '';
+      return `<button class="child-dd-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}"><span class="child-avatar">${emojiOf(c)}</span><span class="child-dd-name">${esc(formatChildName(c))}</span>${bal}${check}</button>`;
     }).join('');
-    return `<div class="child-selector">${chips}<button class="child-chip add-child-chip" id="add-child-btn-mobile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tilknyt</button></div>`;
+    const activeBal = active.balance != null ? `<span class="child-dd-bal">${formatKr(active.balance)} kr</span>` : '';
+    return `<div class="child-selector"><div class="child-dd" id="child-dd">
+      <button class="child-dd-trigger" id="child-dd-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="child-avatar">${emojiOf(active)}</span><span class="child-dd-name">${esc(formatChildName(active))}</span>${activeBal}<svg class="child-dd-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
+      <div class="child-dd-menu" id="child-dd-menu" hidden>${rows}<button class="child-dd-item child-dd-add" id="add-child-btn-mobile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tilknyt ekstra barn</button></div>
+    </div></div>`;
   }
 
   function renderBalanceAmount(balance) {
@@ -3354,26 +3355,24 @@
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          ${API.isNativeApp() ? `<div class="setting-row"><div class="setting-info"><div class="setting-label">Push på denne enhed</div><div class="setting-desc">Få besked direkte på telefonen — indholdet vises først når du åbner appen</div></div><label class="toggle"><input type="checkbox" id="notif-push-device" ${API.isPushEnabledOnThisDevice() ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-          <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)"></div>` : ''}
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${notif.notify_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${notif.notify_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-          <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)">
-            <div class="setting-label" style="margin-bottom:var(--s2);font-weight:600">Arrangementer</div>
-            <div class="setting-row"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer</div><div class="setting-desc">E-mail 7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="notif-event-reminder" ${notif.notify_event_reminder === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-            <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="notif-event-invite" ${notif.notify_event_invite === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div class="setting-label" style="margin-bottom:var(--s2);font-weight:600">Hvordan vil du have besked?</div>
+          ${API.isNativeApp() ? `<div class="setting-row"><div class="setting-info"><div class="setting-label">Beskeder på denne telefon</div><div class="setting-desc">Vises på telefonen — indholdet ser du i appen</div></div><label class="toggle"><input type="checkbox" id="notif-push-device" ${API.isPushEnabledOnThisDevice() ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Beskeder på e-mail${parentEmail ? ' <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(' + esc(parentEmail) + ')</span>' : ''}</div><div class="setting-desc">Sendes til din login-e-mail</div></div><label class="toggle"><input type="checkbox" id="notif-primary-email" ${notifyPrimary ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div style="margin-top:var(--s2)">
+            <div class="setting-label" style="margin-bottom:6px">Ekstra e-mail <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(valgfri)</span></div>
+            <div class="setting-desc" style="margin-bottom:8px">Send også e-mail-beskeder til fx den anden forælder</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="email" id="notif-secondary-email" class="input-field" placeholder="fx partner@mail.dk" value="${esc(secondaryEmail)}" style="flex:1;margin:0">
+              <button class="save-btn compact" id="notif-save-email-btn" style="white-space:nowrap;padding:10px 16px">Gem</button>
+            </div>
           </div>
           <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)">
-            <div class="setting-label" style="margin-bottom:var(--s2);font-weight:600">Modtagere</div>
-            <div class="setting-row"><div class="setting-info"><div class="setting-label">Kontoe-mail${parentEmail ? ' <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(' + esc(parentEmail) + ')</span>' : ''}</div><div class="setting-desc">Send notifikationer til din login-e-mail</div></div><label class="toggle"><input type="checkbox" id="notif-primary-email" ${notifyPrimary ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-            <div style="margin-top:var(--s2)">
-              <div class="setting-label" style="margin-bottom:6px">Ekstra e-mail <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(valgfri)</span></div>
-              <div class="setting-desc" style="margin-bottom:8px">Send notifikationer til en anden e-mail, fx den anden forælder</div>
-              <div style="display:flex;gap:8px;align-items:center">
-                <input type="email" id="notif-secondary-email" class="input-field" placeholder="fx partner@mail.dk" value="${esc(secondaryEmail)}" style="flex:1;margin:0">
-                <button class="save-btn compact" id="notif-save-email-btn" style="white-space:nowrap;padding:10px 16px">Gem</button>
-              </div>
-            </div>
+            <div class="setting-label" style="margin-bottom:2px;font-weight:600">Hvad vil du have besked om?</div>
+            <div class="setting-desc" style="margin-bottom:var(--s2)">Dine valg gælder alle beskeder — både telefon og e-mail</div>
+            <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${notif.notify_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+            <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${notif.notify_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+            <div class="setting-row"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="notif-event-reminder" ${notif.notify_event_reminder === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+            <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="notif-event-invite" ${notif.notify_event_invite === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
           </div>
         </div></div></div>
       </div>`;
@@ -3720,13 +3719,26 @@
       if (child) switchChild(child);
     });
 
-    // Mobile child chip selector — delegated, only bind once
+    // Mobile child selector (dropdown) — delegated, only bind once
     document.addEventListener('click', function (e) {
-      const chip = e.target.closest('.child-chip[data-child-id]');
+      const chip = e.target.closest('.child-chip[data-child-id], .child-dd-item[data-child-id]');
       if (!chip) return;
       const childId = chip.dataset.childId;
       const child = children.find(c => c.child_id === childId);
       if (child) switchChild(child);
+    });
+
+    // Barn-dropdown: trigger åbner/lukker; klik udenfor lukker (valg re-renderer selv)
+    document.addEventListener('click', function (e) {
+      const menu = document.getElementById('child-dd-menu');
+      if (!menu) return;
+      const trigger = e.target.closest('#child-dd-trigger');
+      if (trigger) {
+        menu.hidden = !menu.hidden;
+        trigger.setAttribute('aria-expanded', String(!menu.hidden));
+        return;
+      }
+      if (!menu.hidden && !e.target.closest('#child-dd')) menu.hidden = true;
     });
 
     // Sidebar nav click — delegated, auto-switches tab if needed

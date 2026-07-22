@@ -199,6 +199,36 @@ a { color: inherit; text-decoration: none; }
 }
 .signup-confirm-ok:hover { background: var(--flango-dark); }
 
+/* ─── Barn-vælger (dropdown over saldokortet, mobile-first) ─── */
+.child-dd { position: relative; }
+.child-dd-trigger {
+  display: flex; align-items: center; gap: var(--s2);
+  width: 100%; padding: 10px var(--s3);
+  background: var(--surface-raised); border: 1.5px solid var(--border);
+  border-radius: var(--r-md); font-family: var(--font); font-size: 15px; font-weight: 700;
+  color: var(--ink); cursor: pointer; box-shadow: var(--shadow-xs);
+}
+.child-dd-trigger .child-dd-chevron { width: 18px; height: 18px; margin-left: auto; flex-shrink: 0; color: var(--ink-muted); transition: transform .15s ease; }
+.child-dd-trigger[aria-expanded="true"] .child-dd-chevron { transform: rotate(180deg); }
+.child-dd-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 300;
+  background: var(--surface-raised); border: 1px solid var(--border);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-lg); padding: 6px;
+}
+.child-dd-item {
+  display: flex; align-items: center; gap: var(--s2); width: 100%;
+  padding: 10px var(--s2); border: none; background: none; border-radius: var(--r-sm);
+  font-family: var(--font); font-size: 15px; font-weight: 600; color: var(--ink);
+  cursor: pointer; text-align: left;
+}
+.child-dd-item:hover, .child-dd-item:active { background: var(--surface-sunken); }
+.child-dd-item.active { background: var(--flango-light); }
+.child-dd-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.child-dd-bal { font-size: 13px; font-weight: 700; color: var(--positive); white-space: nowrap; }
+.child-dd-check { width: 16px; height: 16px; color: var(--flango-dark); flex-shrink: 0; }
+.child-dd-add { color: var(--flango-dark); font-weight: 700; border-top: 1px solid var(--border); border-radius: 0; margin-top: 4px; padding-top: 12px; }
+.child-dd-add svg { width: 16px; height: 16px; flex-shrink: 0; }
+
 /* ─── Apple-knap (Sign in with Apple — vises kun i appen, jf. HIG: sort m. hvid glyf) ─── */
 .apple-btn {
   display: flex; align-items: center; justify-content: center; gap: var(--s3);
