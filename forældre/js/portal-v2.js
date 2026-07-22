@@ -3350,7 +3350,7 @@
     return `
       <div class="section" id="section-notifications">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📧</div><div><div class="section-title">E-mail notifikationer</div><div class="section-subtitle">Lav saldo og arrangementer</div></div></div>
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📧</div><div><div class="section-title">Notifikationer</div><div class="section-subtitle">Push og e-mail — lav saldo og arrangementer</div></div></div>
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
