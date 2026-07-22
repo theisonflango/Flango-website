@@ -58,6 +58,7 @@
   let hostOrigin = null;        // sat ved session-handshake; al efterfølgende trafik låses hertil
   let sections = [];            // seneste preview_sections fra serveren
   let draft = {};               // column → bool; hostens ugemte ændringer
+  let locks = {};               // column → { locked, reason } — superadmin-låse fra hosten
   let refetchFn = null;
 
   function post(msg) {
@@ -93,6 +94,7 @@
       }
       .flango-preview-chip[data-on="1"] .fp-dot { background: #16a34a; }
       .flango-preview-chip.fp-passive { cursor: default; border-style: dashed; font-weight: 600; }
+      .flango-preview-chip.fp-locked { cursor: not-allowed; opacity: .65; }
     `;
     document.head.appendChild(style);
   }
@@ -160,8 +162,13 @@
     chip.dataset.column = entry.column;
     const ownOn = effective(entry.column, entry.visible);
     chip.dataset.on = ownOn ? '1' : '0';
-    chip.querySelector('.fp-label').textContent = ownOn ? 'Til' : 'Fra';
-    chip.title = ownOn ? 'Synlig for forældre — klik for at skjule' : 'Skjult for forældre — klik for at vise';
+    const lock = locks[entry.column];
+    chip.disabled = !!(lock && lock.locked);
+    chip.classList.toggle('fp-locked', !!(lock && lock.locked));
+    chip.querySelector('.fp-label').textContent = (lock && lock.locked ? '🔒 ' : '') + (ownOn ? 'Til' : 'Fra');
+    chip.title = lock && lock.locked
+      ? (lock.reason || 'Låst af Flango')
+      : (ownOn ? 'Synlig for forældre — klik for at skjule' : 'Skjult for forældre — klik for at vise');
   }
 
   /** Delegeret chip-klik: capture-fase på document, så portalens accordion-
@@ -170,7 +177,7 @@
   function initChipDelegation() {
     document.addEventListener('click', (e) => {
       const chip = e.target && e.target.closest && e.target.closest('.flango-preview-chip');
-      if (!chip || chip.classList.contains('fp-passive')) return;
+      if (!chip || chip.classList.contains('fp-passive') || chip.disabled) return;
       // stopPropagation er ikke nok: accordion-handleren sidder OGSÅ på document
       // (samme node, senere fase) og ville folde sektionen ud ved chip-klik.
       e.stopImmediatePropagation();
@@ -250,6 +257,7 @@
         if (!msg || msg.type !== 'flango-preview:session') return;
         window.removeEventListener('message', onSessionMessage);
         hostOrigin = event.origin;
+        locks = (msg.locks && typeof msg.locks === 'object') ? msg.locks : {};
         try {
           const { error } = await supabase.auth.setSession({
             access_token: msg.accessToken,

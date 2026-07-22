@@ -1003,6 +1003,27 @@ a { color: inherit; text-decoration: none; }
   padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,.35);
 }
 .demo-banner-text { opacity: .96; }
+/* Desktop: hele chromet (.desktop-topnav, .desktop-sidebar) er viewport-fastgjort,
+   og .app er flex-row. Et banner i normalt flow blev derfor et flex-ITEM ved siden
+   af .main — en høj orange søjle, der oveni klemte indholdet sammen. Banneret skal
+   være fastgjort ligesom resten af chromet, og chromet rykkes ned under det.
+   Fast højde (én linje) frem for JS-måling: teksten er kort og fylder ~500px, så
+   den kan ikke ombryde selv ved 768px. */
+@media (min-width: 768px) {
+  .app.demo-mode { --demo-banner-h: 36px; }
+  .demo-banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 250;
+    height: var(--demo-banner-h);
+    padding: 0 var(--s6);
+    flex-wrap: nowrap; white-space: nowrap;
+  }
+  .demo-mode .desktop-topnav { top: var(--demo-banner-h); }
+  .demo-mode .desktop-sidebar {
+    top: calc(56px + var(--demo-banner-h));
+    height: calc(100dvh - 56px - var(--demo-banner-h));
+  }
+  .demo-mode .main { margin-top: calc(56px + var(--demo-banner-h)); }
+}
 .demo-topup-note {
   border: 1.5px dashed var(--border); border-radius: 12px;
   padding: 14px 16px; background: var(--surface);

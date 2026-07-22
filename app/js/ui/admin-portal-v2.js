@@ -42,7 +42,6 @@
   // ─── State ─────────────────────────────────────────────────────
   let overlayEl = null;
   let currentPage = 'page-portal';
-  let previewMode = false;
   let parentListFilter = '';
   let parentListSearchQuery = '';
   let parentListSortCol = -1;
@@ -55,7 +54,6 @@
   let statsData = null;
   let adoptionData = null;
   let parentListData = [];
-  let previewUsers = [];
   let featureFlags = null;
   let currentDetailChild = null; // Current child shown in detail modal
 
@@ -253,12 +251,7 @@
             <button class="admin-page-tab" data-page="page-parentlist" id="pv2-tab-parentlist">&#128101; For\u00e6ldreliste</button>
             <button class="admin-page-tab" data-page="page-profile-pics" id="pv2-tab-profile-pics">&#128247; Profilbilleder</button>
           </div>
-          <div class="admin-bar-right">
-            <div class="preview-toggle" id="pv2-preview-toggle">
-              <span class="preview-label" id="pv2-preview-label">&#128065;&#65039; For\u00e6ldrevisning</span>
-              <div class="preview-switch"></div>
-            </div>
-          </div>
+          <div class="admin-bar-right"></div>
         </div>
 
         <!-- ══════ PAGE: PORTAL SETTINGS ══════ -->
@@ -892,23 +885,6 @@
     if (activePage) activePage.scrollTop = 0;
   }
 
-  // ─── Preview mode ──────────────────────────────────────────────
-
-  function togglePreview() {
-    if (!overlayEl) return;
-    previewMode = !previewMode;
-    const root = overlayEl.querySelector('#portal-v2-root');
-    if (root) root.classList.toggle('parent-preview', previewMode);
-
-    const toggle = overlayEl.querySelector('#pv2-preview-toggle');
-    if (toggle) toggle.classList.toggle('active', previewMode);
-
-    const label = overlayEl.querySelector('#pv2-preview-label');
-    if (label) {
-      label.textContent = previewMode ? '\u2699\ufe0f Tilbage til admin' : '\ud83d\udc41\ufe0f For\u00e6ldrevisning';
-    }
-  }
-
   // ─── Parent list ───────────────────────────────────────────────
 
   function openParentList(filter) {
@@ -1326,9 +1302,6 @@
     var ppTab = overlayEl.querySelector('#pv2-tab-profile-pics');
     if (ppTab) ppTab.addEventListener('click', function () { switchPage('page-profile-pics'); });
 
-    // Preview toggle
-    overlayEl.querySelector('#pv2-preview-toggle').addEventListener('click', togglePreview);
-
     // Close portal (admin bar back button)
     var backToCafe = overlayEl.querySelector('#pv2-back-to-cafe');
     if (backToCafe) {
@@ -1483,6 +1456,7 @@
 
   function closePortal() {
     if (!overlayEl) return;
+    if (typeof AdminPortalPreviewHost !== 'undefined') AdminPortalPreviewHost.unmount();
     document.removeEventListener('keydown', handleKeyDown);
     overlayEl.remove();
     overlayEl = null;
@@ -1490,7 +1464,6 @@
 
     // Reset state
     currentPage = 'page-portal';
-    previewMode = false;
     parentListFilter = '';
     parentListSearchQuery = '';
     parentListSortCol = -1;
@@ -1499,7 +1472,6 @@
     statsData = null;
     adoptionData = null;
     parentListData = [];
-    previewUsers = [];
     institutionSettings = null;
     featureFlags = null;
   }
@@ -1517,7 +1489,6 @@
       if (typeof PortalData !== 'undefined') {
         // Hent settings + preview-brugere + feature flags parallelt
         var settingsPromise = PortalData.getInstitutionSettings();
-        var previewUsersPromise = typeof PortalData.getPreviewUsers === 'function' ? PortalData.getPreviewUsers() : Promise.resolve([]);
         var featureFlagsPromise = typeof PortalData.getFeatureFlags === 'function' ? PortalData.getFeatureFlags() : Promise.resolve(null);
 
         // Brug samlet RPC hvis tilgængelig (erstatter 9+ parallelle queries)
@@ -1527,7 +1498,7 @@
 
         if (overviewPromise) {
           // Ny RPC-baseret datahentning
-          var results = await Promise.all([settingsPromise, overviewPromise, previewUsersPromise, featureFlagsPromise]);
+          var results = await Promise.all([settingsPromise, overviewPromise, featureFlagsPromise]);
 
           if (results[0]) {
             institutionSettings = results[0];
@@ -1538,11 +1509,8 @@
             parentListData = results[1].parentList || [];
             adoptionData = results[1].adoption || null;
           }
-          if (results[2] && results[2].length > 0) {
-            previewUsers = results[2];
-          }
-          if (results[3]) {
-            featureFlags = results[3];
+          if (results[2]) {
+            featureFlags = results[2];
           }
         } else {
           // Fallback: individuelle queries (legacy)
@@ -1550,7 +1518,7 @@
           var listPromise = typeof PortalData.getParentList === 'function' ? PortalData.getParentList() : Promise.resolve([]);
           var adoptionPromise = typeof PortalData.getAdoptionStats === 'function' ? PortalData.getAdoptionStats() : Promise.resolve(null);
 
-          var results = await Promise.all([settingsPromise, statsPromise, listPromise, adoptionPromise, previewUsersPromise, featureFlagsPromise]);
+          var results = await Promise.all([settingsPromise, statsPromise, listPromise, adoptionPromise, featureFlagsPromise]);
 
           if (results[0]) {
             institutionSettings = results[0];
@@ -1565,11 +1533,8 @@
           if (results[3]) {
             adoptionData = results[3];
           }
-          if (results[4] && results[4].length > 0) {
-            previewUsers = results[4];
-          }
-          if (results[5]) {
-            featureFlags = results[5];
+          if (results[4]) {
+            featureFlags = results[4];
           }
         }
       }
@@ -1597,13 +1562,15 @@
     document.body.appendChild(overlayEl);
     document.body.style.overflow = 'hidden';
 
-    // Render Portal Settings page via AdminPortalSettings if available
+    // Portal-indstillinger = den RIGTIGE portal i preview-tilstand (iframe-host).
+    // Mock-kopien (admin-portal-settings.js) er slettet — se
+    // docs/admin-portal-ombygning-design.md.
     var settingsContainer = overlayEl.querySelector('#pv2-settings-container');
-    if (settingsContainer && typeof AdminPortalSettings !== 'undefined' && typeof AdminPortalSettings.render === 'function') {
-      AdminPortalSettings.render(settingsContainer, institutionSettings, institutionName, previewUsers, featureFlags);
-      if (typeof AdminPortalSettings.initHandlers === 'function') {
-        AdminPortalSettings.initHandlers(settingsContainer, institutionSettings);
-      }
+    if (settingsContainer && typeof AdminPortalPreviewHost !== 'undefined') {
+      AdminPortalPreviewHost.mount(settingsContainer, {
+        institutionSettings: institutionSettings,
+        featureFlags: featureFlags,
+      });
     } else if (settingsContainer) {
       // Fallback: simple placeholder for settings page
       settingsContainer.innerHTML = buildSettingsPlaceholder();
@@ -1628,7 +1595,7 @@
           </div>
           <div class="hint-box info" style="margin-bottom:var(--s4)">
             <span class="hint-icon">\u2139\ufe0f</span>
-            <span>AdminPortalSettings-modulet er ikke indl\u00e6st. Indstillingerne renderes n\u00e5r <code>admin-portal-settings.js</code> er inkluderet.</span>
+            <span>Preview-hosten er ikke indl\u00e6st. Indstillingerne renderes n\u00e5r <code>admin-portal-preview-host.js</code> er inkluderet.</span>
           </div>
           <div style="margin-top:var(--s6);padding-top:var(--s4);border-top:1px solid var(--border)">
             <a href="#" class="pv2-switch-to-v1" style="font-size:13px;color:var(--ink-muted);text-decoration:underline">Vis original version</a>
