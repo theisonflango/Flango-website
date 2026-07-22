@@ -18,11 +18,43 @@
   // Universal-Link (flango.dk/forældre), så OS'et routes tilbage til appen. På web
   // (inkl. dev) er adfærden uændret: origin + pathname. Eksponeret globalt — portal-v2.js
   // bruger den også.
-  window.flangoReturnBase = function () {
-    var wrapped = location.protocol === 'capacitor:' ||
+  function isNativeApp() {
+    return location.protocol === 'capacitor:' ||
       !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-    return wrapped ? 'https://flango.dk/forældre/' : (window.location.origin + window.location.pathname);
+  }
+  window.flangoReturnBase = function () {
+    return isNativeApp() ? 'https://flango.dk/forældre/' : (window.location.origin + window.location.pathname);
   };
+
+  // ─── OAuth-retur i den wrappede app ───
+  // OAuth kører i systemets login-view (SFSafariViewController via @capacitor/browser),
+  // og Supabase-callbacken redirecter til dette custom scheme — IKKE til flango.dk.
+  // Universal Links udløses nemlig upålideligt fra redirect-kæder inde i login-viewet,
+  // og fallback'en ville være web-appen inde i webview'et. Custom scheme åbner altid appen.
+  var NATIVE_OAUTH_CALLBACK = 'dk.flango.foraeldre://auth-callback';
+
+  if (isNativeApp() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('appUrlOpen', async function (event) {
+      var url = (event && event.url) || '';
+      if (url.indexOf(NATIVE_OAUTH_CALLBACK) !== 0) return;
+      try { await window.Capacitor.Plugins.Browser.close(); } catch (e) { /* allerede lukket */ }
+      // Implicit flow: tokens ligger i URL-fragmentet
+      var params = new URLSearchParams(url.split('#')[1] || '');
+      var access_token = params.get('access_token');
+      var refresh_token = params.get('refresh_token');
+      if (!access_token || !refresh_token) {
+        console.warn('[Portal] OAuth-callback uden tokens:', params.get('error_description') || url.split('#')[0]);
+        return;
+      }
+      var result = await window.portalSupabase.auth.setSession({ access_token: access_token, refresh_token: refresh_token });
+      if (result.error) {
+        console.warn('[Portal] OAuth setSession fejlede:', result.error.message);
+        return;
+      }
+      // Genstart appen fra roden så den starter logget ind (sessionen ligger i storage)
+      window.location.reload();
+    });
+  }
 
   // ─── Helper: forny session proaktivt hvis tokenet er ved at udløbe ───
   // Mobil-Safari throttler auto-refresh-timeren når fanen er i baggrunden, så
@@ -169,13 +201,17 @@
 
     /** Sign in with Google OAuth */
     async signInWithGoogle() {
+      const wrapped = isNativeApp();
       const { data, error } = await window.portalSupabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: window.flangoReturnBase(),
-        },
+        options: wrapped
+          ? { redirectTo: NATIVE_OAUTH_CALLBACK, skipBrowserRedirect: true }
+          : { redirectTo: window.flangoReturnBase() },
       });
       if (error) throw error;
+      if (wrapped && data && data.url) {
+        await window.Capacitor.Plugins.Browser.open({ url: data.url });
+      }
       return data;
     },
 
