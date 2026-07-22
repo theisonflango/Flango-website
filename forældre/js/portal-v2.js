@@ -3352,11 +3352,11 @@
     if (!parentEmail && notif.email) parentEmail = notif.email;
     var secondaryEmail = notif.secondary_email || '';
     var notifyPrimary = notif.notify_primary_email !== false;
-    const pushHint = API.isNativeApp() ? '' : `<div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">📱</span><span>Notifikationer vises på din telefon, når Flango Portal-appen er installeret. Dine valg her gælder alle dine enheder med appen.</span></div>`;
+    const pushHint = API.isNativeApp() ? '' : `<div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">📱</span><span>Push-notifikationer vises på alle dine enheder med Flango Portal-appen.</span></div>`;
     return `
       <div class="section" id="section-notifications">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">🔔</div><div><div class="section-title">Notifikationer</div><div class="section-subtitle">Beskeder på telefonen</div></div></div>
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">🔔</div><div><div class="section-title">Notifikationer</div><div class="section-subtitle">Påmindelser på telefonen</div></div></div>
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
@@ -3377,7 +3377,7 @@
           <div class="setting-row"><div class="setting-info"><div class="setting-label">E-mail${parentEmail ? ' <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(' + esc(parentEmail) + ')</span>' : ''}</div><div class="setting-desc">Påmindelser sendes til din login-e-mail</div></div><label class="toggle"><input type="checkbox" id="notif-primary-email" ${notifyPrimary ? 'checked' : ''}><span class="toggle-track"></span></label></div>
           <div style="margin-top:var(--s2)">
             <div class="setting-label" style="margin-bottom:6px">Ekstra e-mail <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(valgfri)</span></div>
-            <div class="setting-desc" style="margin-bottom:8px">Send også e-mail-beskeder til fx den anden forælder</div>
+            <div class="setting-desc" style="margin-bottom:8px">Påmindelser sendes også hertil — og stadig, selv om kontoe-mailen ovenfor er slået fra</div>
             <div style="display:flex;gap:8px;align-items:center">
               <input type="email" id="notif-secondary-email" class="input-field" placeholder="fx partner@mail.dk" value="${esc(secondaryEmail)}" style="flex:1;margin:0">
               <button class="save-btn compact" id="notif-save-email-btn" style="white-space:nowrap;padding:10px 16px">Gem</button>
@@ -4120,6 +4120,10 @@
       const el = document.getElementById(pid);
       if (el) el.addEventListener('change', () => saveNotifications());
     }
+    if (notifPrimaryEmail) notifPrimaryEmail.addEventListener('change', syncEmailEventTogglesUI);
+    const notifSecondaryInput = document.getElementById('notif-secondary-email');
+    if (notifSecondaryInput) notifSecondaryInput.addEventListener('input', syncEmailEventTogglesUI);
+    syncEmailEventTogglesUI();
 
     // Skærmtid: samtykke til forlænget spilletid (havde ingen handler — gemte aldrig)
     const stConsent = document.getElementById('st-consent-toggle');
@@ -5560,6 +5564,21 @@
     } catch (err) {
       console.error('[Portal] Save allergens error:', err);
       showToast('Kunne ikke gemme', 'error');
+    }
+  }
+
+  function syncEmailEventTogglesUI() {
+    const primary = document.getElementById('notif-primary-email');
+    const secondary = document.getElementById('notif-secondary-email');
+    if (!primary) return;
+    // Kanalen er kun reelt slukket når kontoe-mail er fra OG der ingen ekstra e-mail er
+    const off = !primary.checked && (!secondary || !secondary.value.trim());
+    for (const id of ['notif-zero', 'notif-low', 'notif-event-reminder', 'notif-event-invite']) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      el.disabled = off;
+      const row = el.closest('.setting-row');
+      if (row) row.style.opacity = off ? '.45' : '';
     }
   }
 
