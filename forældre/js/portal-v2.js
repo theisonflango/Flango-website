@@ -293,7 +293,7 @@
         try {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'js/portal-admin-preview.js?v=2';
+            s.src = 'js/portal-admin-preview.js?v=3';
             s.onload = resolve; s.onerror = reject;
             document.head.appendChild(s);
           });

@@ -49,32 +49,6 @@
       : origin + '/?admin_preview=1';
   }
 
-  // Superadmin-låste kolonner → { column: { locked, reason } }. Spejler mockens
-  // getNavFlagState: parent_portal-flaget låser alt under sig.
-  function computeLocks(featureFlags) {
-    const FM = window.FeatureModules;
-    if (!FM || !featureFlags) return {};
-    const locks = {};
-    const parentFlag = featureFlags.parent_portal;
-    for (const key of Object.keys(FM.SETTING_KEY_TO_MODULE)) {
-      const moduleKey = FM.SETTING_KEY_TO_MODULE[key];
-      let locked = false;
-      let reason = null;
-      if (parentFlag && parentFlag.locked === true && moduleKey !== 'parent_portal') {
-        locked = true;
-        reason = parentFlag.lock_reason || null;
-      } else {
-        const flag = FM.getModuleFlag(featureFlags, moduleKey);
-        if (flag && flag.locked === true) {
-          locked = true;
-          reason = flag.lock_reason || null;
-        }
-      }
-      if (locked) locks[key] = { locked: true, reason: reason || FM.DEFAULT_LOCK_REASON };
-    }
-    return locks;
-  }
-
   function esc(value) {
     if (value === null || value === undefined) return '';
     return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -264,7 +238,11 @@
         type: 'flango-preview:session',
         accessToken: sessionTokens.access_token,
         refreshToken: sessionTokens.refresh_token,
-        locks: computeLocks(mountOpts && mountOpts.featureFlags),
+        // Rå feature_flags (modul → { locked, lock_reason }). Preview-modulet
+        // slår selv op via serverens preview_sections[].module, så kolonne→
+        // modul-mappingen kun findes ét sted (_shared/portal-sections.ts).
+        flags: (mountOpts && mountOpts.featureFlags) || {},
+        role: 'admin',
       });
     } else if (msg.type === 'flango-preview:session-ok') {
       setStatus('hidden');

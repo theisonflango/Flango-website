@@ -1,41 +1,50 @@
 /**
- * portal-admin-preview.js — admin-preview-tilstand (admin-portal-ombygningen, fase 1)
+ * portal-admin-preview.js — admin-preview-tilstand (admin-portal-ombygningen)
  *
  * Loades KUN når portalen åbnes med ?admin_preview=1 (dynamisk script-injektion
  * fra portal-v2.js init) — forældre henter aldrig denne fil. Modulet gør tre ting:
  *
- *   1. Handshake: modtager admin-parent-sessionen fra café-hosten via postMessage
- *      (aldrig URL-params) og logger ind med den.
+ *   1. Handshake: modtager admin-parent-sessionen fra værts-fladen via
+ *      postMessage (aldrig URL-params) og logger ind med den. To værter deler
+ *      protokollen: café-appens "Portal-indstillinger" (role=admin) og
+ *      super-admin-panelets portalflade (role=superadmin).
  *   2. Dekoration: efter hver renderApp gråtones sektioner der er skjult for
  *      forældre, og hver flag-styret sektion får en toggle-chip i headeren.
- *      Hvilke sektioner og kolonner der findes, kommer fra serverens
+ *      role=superadmin får derudover en 🔒-lås-chip pr. sektion. Hvilke
+ *      sektioner, kolonner og låse-moduler der findes, kommer fra serverens
  *      preview_sections (get-parent-view) — ingen kolonne-dubletter her.
- *   3. Protokol: chip-klik meldes til hosten (som ejer draft-state + gem-baren);
- *      hosten kan sende draft-overrides retur og "saved" (→ refetch af serverens
+ *   3. Protokol: chip-klik meldes til værten (som ejer draft-state + gem-baren);
+ *      værten kan sende draft-overrides retur og "saved" (→ refetch af serverens
  *      sandhed).
  *
  * Sikkerhed: modulet giver ingen adgang i sig selv — serveren sætter kun
  * is_admin_preview for institutionens admin-parent-konto, og sessions-beskeder
- * accepteres kun fra origin-allowlisten nedenfor.
+ * accepteres kun fra origin-allowlisten nedenfor. Lås-chippen er UI: låsen
+ * håndhæves af feature_flags-triggerne i databasen.
  */
 (function () {
   'use strict';
 
   const PROTOCOL_VERSION = 1;
 
-  // Café-hosts: web-prod, lokal dev (cafe kører på 3000) og Tauri-desktop.
-  // Tauri-origin varierer pr. platform — kandidaterne verificeres i fase 2/3.
+  // Værts-flader: web-prod (café OG super-admin ligger begge på flango.dk),
+  // lokal dev (cafe 3000, super-admin 5175) og Tauri-desktop.
   const ALLOWED_HOST_ORIGINS = [
     'https://flango.dk',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://localhost:5175',
+    'http://127.0.0.1:5175',
     'tauri://localhost',
     'http://tauri.localhost',
     'https://tauri.localhost',
   ];
 
+  // Fallback når superadmin har låst uden at skrive en forklaring.
+  const DEFAULT_LOCK_TEXT = 'Låst af Flango';
+
   // Portal-DOM-id pr. server-sektionsnøgle. DOM-viden er portal-side pr. natur;
-  // flag-kolonnerne kommer fra serveren (preview_sections).
+  // flag-kolonnerne og låse-modulerne kommer fra serveren (preview_sections).
   const SECTION_DOM = {
     events: 'section-events',
     ugeplan: 'section-ugeplan',
@@ -56,9 +65,11 @@
   };
 
   let hostOrigin = null;        // sat ved session-handshake; al efterfølgende trafik låses hertil
+  let role = 'admin';           // 'admin' (café) | 'superadmin' (super-admin-panelet)
   let sections = [];            // seneste preview_sections fra serveren
-  let draft = {};               // column → bool; hostens ugemte ændringer
-  let locks = {};               // column → { locked, reason } — superadmin-låse fra hosten
+  let draft = {};               // column → bool; værtens ugemte flag-ændringer
+  let lockDraft = {};           // module → { locked, reason }; værtens ugemte lås-ændringer
+  let flags = {};               // module → { locked, lock_reason } — feature_flags fra værten
   let refetchFn = null;
 
   function post(msg) {
@@ -78,23 +89,75 @@
         letter-spacing: .04em; text-transform: uppercase;
         background: #6b7280; color: #ffffff; vertical-align: middle;
       }
-      .flango-preview-chip {
+      .flango-preview-chips {
         display: inline-flex; align-items: center; gap: 6px; flex: none;
-        margin-left: auto; margin-right: 10px; padding: 4px 10px;
-        border-radius: 999px; border: 1.5px solid #d1d5db; cursor: pointer;
-        font-size: 11px; font-weight: 700; user-select: none;
-        background: #ffffff; color: #374151;
-        /* Chippen skal ikke gråtones med sektionen — den er admin-UI, ikke indhold */
+        margin-left: auto; margin-right: 10px;
+        /* Chips skal ikke gråtones med sektionen — de er admin-UI, ikke indhold */
         filter: none; opacity: 1;
       }
-      .flango-preview-off .flango-preview-chip { filter: grayscale(0); }
-      .flango-preview-chip[data-on="1"] { border-color: #16a34a; color: #166534; background: #f0fdf4; }
-      .flango-preview-chip .fp-dot {
-        width: 8px; height: 8px; border-radius: 50%; background: #9ca3af;
+      .flango-preview-off .flango-preview-chips { filter: grayscale(0); opacity: 1; }
+      .flango-preview-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 10px; border-radius: 999px; border: 1.5px solid #d1d5db;
+        cursor: pointer; font-size: 11px; font-weight: 700; user-select: none;
+        background: #ffffff; color: #374151; line-height: 1.4;
       }
+      .flango-preview-chip[data-on="1"] { border-color: #16a34a; color: #166534; background: #f0fdf4; }
+      .flango-preview-chip .fp-dot { width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; }
       .flango-preview-chip[data-on="1"] .fp-dot { background: #16a34a; }
       .flango-preview-chip.fp-passive { cursor: default; border-style: dashed; font-weight: 600; }
-      .flango-preview-chip.fp-locked { cursor: not-allowed; opacity: .65; }
+      /* Låst for institutions-admin: ser deaktiveret ud, men skal stadig kunne
+         hoveres/tappes — derfor aria-disabled frem for disabled-attributten. */
+      .flango-preview-chip.fp-locked { opacity: .6; cursor: help; }
+      .flango-preview-chip.fp-lockchip { border-color: #d1d5db; color: #6b7280; background: #ffffff; }
+      .flango-preview-chip.fp-lockchip[data-locked="1"] { border-color: #d97706; color: #92400e; background: #fffbeb; }
+      .flango-preview-chip.fp-lockchip.fp-inherited { border-style: dashed; }
+      .flango-preview-chip.fp-dirty { box-shadow: 0 0 0 3px rgba(245, 150, 10, .22); }
+
+      .flango-preview-pop {
+        position: fixed; z-index: 2147483000; width: 268px; max-width: calc(100vw - 16px);
+        background: #ffffff; color: #1f2937; border: 1px solid #e5e7eb; border-radius: 14px;
+        box-shadow: 0 12px 32px rgba(15, 23, 42, .18); padding: 12px 14px;
+        font-size: 12.5px; line-height: 1.45; text-align: left;
+        font-family: inherit; animation: fp-pop-in .12s ease-out;
+      }
+      @keyframes fp-pop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+      .flango-preview-pop .fp-pop-head {
+        font-weight: 800; font-size: 12.5px; margin-bottom: 4px;
+        display: flex; align-items: center; gap: 6px; color: #111827;
+      }
+      .flango-preview-pop .fp-pop-body { color: #374151; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .flango-preview-pop .fp-pop-hint { color: #6b7280; font-size: 11px; margin-top: 8px; }
+      .flango-preview-pop .fp-pop-also {
+        margin-top: 8px; padding-top: 8px; border-top: 1px solid #f3f4f6;
+        color: #6b7280; font-size: 11px;
+      }
+      .flango-preview-pop .fp-pop-seg { display: flex; gap: 6px; margin: 10px 0 4px; }
+      .flango-preview-pop .fp-pop-seg button {
+        flex: 1; padding: 7px 8px; border-radius: 9px; border: 1.5px solid #e5e7eb;
+        background: #ffffff; color: #6b7280; font-size: 11.5px; font-weight: 700;
+        cursor: pointer; font-family: inherit;
+      }
+      .flango-preview-pop .fp-pop-seg button[aria-pressed="true"] { border-color: #d97706; background: #fffbeb; color: #92400e; }
+      .flango-preview-pop .fp-pop-seg button[data-lock="0"][aria-pressed="true"] { border-color: #16a34a; background: #f0fdf4; color: #166534; }
+      .flango-preview-pop .fp-pop-label { display: block; font-weight: 700; font-size: 11px; color: #374151; margin-top: 10px; }
+      .flango-preview-pop textarea {
+        width: 100%; box-sizing: border-box; margin-top: 5px; padding: 8px 9px;
+        border: 1.5px solid #e5e7eb; border-radius: 9px; font-size: 12px;
+        font-family: inherit; color: #1f2937; background: #ffffff; resize: vertical; min-height: 62px;
+      }
+      .flango-preview-pop textarea:focus { outline: none; border-color: #F5960A; }
+      .flango-preview-pop .fp-pop-done {
+        width: 100%; margin-top: 10px; padding: 8px; border: none; border-radius: 9px;
+        background: #111827; color: #ffffff; font-size: 12px; font-weight: 700;
+        cursor: pointer; font-family: inherit;
+      }
+      @media (max-width: 520px) {
+        .flango-preview-pop {
+          left: 8px !important; right: 8px !important; top: auto !important;
+          bottom: 10px !important; width: auto; border-radius: 16px; padding: 14px 16px;
+        }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -120,6 +183,173 @@
     return own;
   }
 
+  /** Låse-tilstand for et modul. Spejler enforce_feature_locks_institutions:
+   *  parent_portal og portal_sections kaskaderer KUN til portal_*-modulerne —
+   *  ikke til fx sugar_policy eller allergens. UI'et må ikke påstå en lås som
+   *  serveren ikke ville håndhæve. */
+  function resolveLock(moduleKey) {
+    if (!moduleKey) return { locked: false, reason: null, source: null };
+    if (lockDraft[moduleKey]) {
+      const d = lockDraft[moduleKey];
+      return { locked: !!d.locked, reason: d.reason || null, source: moduleKey, draft: true };
+    }
+    const own = flags[moduleKey];
+    if (own && own.locked === true) {
+      return { locked: true, reason: own.lock_reason || null, source: moduleKey };
+    }
+    if (moduleKey.indexOf('portal_') === 0) {
+      for (const parent of ['parent_portal', 'portal_sections']) {
+        const f = flags[parent];
+        if (f && f.locked === true) {
+          return { locked: true, reason: f.lock_reason || null, source: parent, inherited: true };
+        }
+      }
+    }
+    return { locked: false, reason: null, source: moduleKey };
+  }
+
+  /** Sektionstitler der deler låse-modul — så superadmin kan se hvad låsen
+   *  rammer. Titlerne læses af DOM'en; ingen label-dublet i dette modul. */
+  function siblingTitles(moduleKey, exceptKey) {
+    const out = [];
+    for (const entry of sections) {
+      if (!entry || entry.module !== moduleKey || entry.key === exceptKey) continue;
+      const el = document.getElementById(SECTION_DOM[entry.key]);
+      const title = el && el.querySelector('.section-title');
+      if (!title) continue;
+      const text = (title.childNodes[0] && title.childNodes[0].textContent || title.textContent || '').trim();
+      if (text) out.push(text);
+    }
+    return out;
+  }
+
+  // ── Popover ────────────────────────────────────────────────────────────────
+  // Ét popover ad gangen. Hover åbner "flygtigt" (lukker ved mouseleave), klik/
+  // tap åbner "fastholdt" (lukker ved klik udenfor, Escape eller ny åbning) —
+  // tooltips alene duer ikke på touch.
+
+  let popEl = null;
+  let popAnchor = null;
+  let popSticky = false;
+
+  function closePopover(force) {
+    if (!popEl) return;
+    if (popSticky && !force) return;
+    popEl.remove();
+    popEl = null;
+    popAnchor = null;
+    popSticky = false;
+  }
+
+  function positionPopover() {
+    if (!popEl || !popAnchor || !popAnchor.isConnected) { closePopover(true); return; }
+    if (window.innerWidth <= 520) return; // CSS lægger den som bundark
+    const r = popAnchor.getBoundingClientRect();
+    const w = popEl.offsetWidth;
+    const h = popEl.offsetHeight;
+    let left = r.left + r.width / 2 - w / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+    let top = r.bottom + 8;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 8);
+    popEl.style.left = left + 'px';
+    popEl.style.top = top + 'px';
+  }
+
+  /** sticky = klik/tap (fastholdt). For superadmin åbner klik REDIGERINGEN, mens
+   *  hover viser præcis det institutionen møder — så man kan kontrollere sin egen
+   *  formulering uden at risikere at miste den ved et musetræk. */
+  function openPopover(anchor, entry, sticky) {
+    closePopover(true);
+    const lock = resolveLock(entry.module);
+    const el = document.createElement('div');
+    el.className = 'flango-preview-pop';
+    el.setAttribute('role', 'dialog');
+
+    if (role === 'superadmin' && !sticky) {
+      el.innerHTML = lock.locked
+        ? `<div class="fp-pop-head">🔒 ${DEFAULT_LOCK_TEXT}</div>${lock.reason ? '<div class="fp-pop-body"></div>' : ''}<div class="fp-pop-also">Sådan ser institutionen den. Klik for at redigere.</div>`
+        : `<div class="fp-pop-head">🔓 Åben for institutionen</div><div class="fp-pop-body">Institutionens admin kan selv slå sektionen til og fra.</div><div class="fp-pop-also">Klik for at låse.</div>`;
+      const body = el.querySelector('.fp-pop-body');
+      if (body && lock.locked) body.textContent = lock.reason;
+    } else if (role === 'superadmin' && !lock.inherited) {
+      const also = siblingTitles(entry.module, entry.key);
+      el.innerHTML = `
+        <div class="fp-pop-head">Adgang for institutionen</div>
+        <div class="fp-pop-body">Låst = institutionens admin kan se indstillingen, men ikke ændre den.</div>
+        <div class="fp-pop-seg">
+          <button type="button" data-lock="0" aria-pressed="${lock.locked ? 'false' : 'true'}">Åben</button>
+          <button type="button" data-lock="1" aria-pressed="${lock.locked ? 'true' : 'false'}">🔒 Låst</button>
+        </div>
+        <label class="fp-pop-label" for="fp-pop-reason">Forklaring til institutionen (valgfri)</label>
+        <textarea id="fp-pop-reason" rows="3" placeholder="Fx: Slået fra efter aftale med kommunen"></textarea>
+        <div class="fp-pop-hint">Vises for institutionens admin på den låste knap. Uden forklaring vises “${DEFAULT_LOCK_TEXT}”.</div>
+        ${also.length ? `<div class="fp-pop-also">Samme lås gælder også: ${also.join(', ')}</div>` : ''}
+        <button type="button" class="fp-pop-done">Færdig</button>`;
+    } else if (lock.inherited) {
+      el.innerHTML = `
+        <div class="fp-pop-head">🔒 ${DEFAULT_LOCK_TEXT}</div>
+        ${lock.reason ? `<div class="fp-pop-body"></div>` : ''}
+        <div class="fp-pop-also">Arvet fra modulet “${lock.source}” — låses op der.</div>`;
+      const body = el.querySelector('.fp-pop-body');
+      if (body) body.textContent = lock.reason;
+    } else {
+      el.innerHTML = `<div class="fp-pop-head">🔒 ${DEFAULT_LOCK_TEXT}</div>${lock.reason ? '<div class="fp-pop-body"></div>' : ''}`;
+      const body = el.querySelector('.fp-pop-body');
+      if (body) body.textContent = lock.reason;
+    }
+
+    document.body.appendChild(el);
+    popEl = el;
+    popAnchor = anchor;
+    popSticky = !!sticky;
+    positionPopover();
+
+    const textarea = el.querySelector('#fp-pop-reason');
+    if (textarea) {
+      textarea.value = lock.reason || '';
+      textarea.addEventListener('input', () => {
+        setLock(entry.module, resolveLock(entry.module).locked, textarea.value);
+      });
+    }
+    el.querySelectorAll('.fp-pop-seg button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const nextLocked = btn.dataset.lock === '1';
+        const reason = textarea ? textarea.value : resolveLock(entry.module).reason;
+        setLock(entry.module, nextLocked, reason);
+        el.querySelectorAll('.fp-pop-seg button').forEach((b) => {
+          b.setAttribute('aria-pressed', String((b.dataset.lock === '1') === nextLocked));
+        });
+        decorate();
+        positionPopover();
+      });
+    });
+    const done = el.querySelector('.fp-pop-done');
+    if (done) done.addEventListener('click', () => closePopover(true));
+    // Rører man indholdet, må et musetræk ikke kunne lukke det igen.
+    el.addEventListener('focusin', () => { popSticky = true; });
+  }
+
+  /** Skriv en lås til draft'en og meld den til værten. Draft'en er modul-keyed,
+   *  så alle sektioner under samme modul opdateres i ét hug. */
+  function setLock(moduleKey, locked, reason) {
+    const trimmed = (reason || '').trim();
+    lockDraft[moduleKey] = { locked: !!locked, reason: trimmed || null };
+    post({ type: 'flango-preview:lock', module: moduleKey, locked: !!locked, reason: trimmed || null });
+  }
+
+  // ── Chips ──────────────────────────────────────────────────────────────────
+
+  function chipHolder(header) {
+    let holder = header.querySelector('.flango-preview-chips');
+    if (!holder) {
+      holder = document.createElement('span');
+      holder.className = 'flango-preview-chips';
+      const chevron = header.querySelector('.section-chevron');
+      header.insertBefore(holder, chevron || null);
+    }
+    return holder;
+  }
+
   function applyStateToSection(entry) {
     const el = document.getElementById(SECTION_DOM[entry.key]);
     if (!el) return;
@@ -141,34 +371,62 @@
       }
     }
 
-    // Toggle-chip i headeren (chippen viser sektionens EGET flag — grå-tilstanden
-    // kan afvige for skærmtid-undersektioner når hovedflaget er slukket).
-    // INGEN listener pr. chip: portalens sektioner kan re-renderes via HTML-
-    // serialisering, som bevarer chip-markup men dropper listeners — klik
-    // håndteres derfor delegeret i initChipDelegation() og chippen bærer kun
+    // Chips i headeren (on/off-chippen viser sektionens EGET flag — grå-
+    // tilstanden kan afvige for skærmtid-undersektioner når hovedflaget er
+    // slukket). INGEN listener pr. chip: portalens sektioner kan re-renderes via
+    // HTML-serialisering, som bevarer chip-markup men dropper listeners — klik
+    // håndteres derfor delegeret i initChipDelegation(), og chips bærer kun
     // data-attributter.
     const header = el.querySelector('.section-header');
     if (!header) return;
-    let chip = header.querySelector('.flango-preview-chip');
+    const holder = chipHolder(header);
+
+    let chip = holder.querySelector('.flango-preview-chip[data-chip="flag"]');
     if (!chip) {
       chip = document.createElement('button');
       chip.type = 'button';
+      chip.dataset.chip = 'flag';
       chip.className = 'flango-preview-chip';
       chip.innerHTML = '<span class="fp-dot"></span><span class="fp-label"></span>';
-      const chevron = header.querySelector('.section-chevron');
-      header.insertBefore(chip, chevron || null);
+      holder.appendChild(chip);
     }
     chip.dataset.key = entry.key;
     chip.dataset.column = entry.column;
     const ownOn = effective(entry.column, entry.visible);
     chip.dataset.on = ownOn ? '1' : '0';
-    const lock = locks[entry.column];
-    chip.disabled = !!(lock && lock.locked);
-    chip.classList.toggle('fp-locked', !!(lock && lock.locked));
-    chip.querySelector('.fp-label').textContent = (lock && lock.locked ? '🔒 ' : '') + (ownOn ? 'Til' : 'Fra');
-    chip.title = lock && lock.locked
-      ? (lock.reason || 'Låst af Flango')
-      : (ownOn ? 'Synlig for forældre — klik for at skjule' : 'Skjult for forældre — klik for at vise');
+    chip.classList.toggle('fp-dirty', draft[entry.column] !== undefined);
+
+    const lock = resolveLock(entry.module);
+    // Superadmin kan ændre værdien selv når modulet er låst (låsen gælder
+    // institutionen, ikke Flango) — kun institutions-admin ser en låst chip.
+    const flagLocked = lock.locked && role !== 'superadmin';
+    chip.classList.toggle('fp-locked', flagLocked);
+    chip.setAttribute('aria-disabled', flagLocked ? 'true' : 'false');
+    chip.querySelector('.fp-label').textContent = (flagLocked ? '🔒 ' : '') + (ownOn ? 'Til' : 'Fra');
+    chip.setAttribute('aria-label',
+      (flagLocked ? 'Låst af Flango. ' : '') + (ownOn ? 'Synlig for forældre' : 'Skjult for forældre'));
+
+    // Lås-chip: kun superadmin. Institutions-admin ser låsen på selve flag-chippen.
+    let lockChip = holder.querySelector('.flango-preview-chip[data-chip="lock"]');
+    if (role === 'superadmin') {
+      if (!lockChip) {
+        lockChip = document.createElement('button');
+        lockChip.type = 'button';
+        lockChip.dataset.chip = 'lock';
+        lockChip.className = 'flango-preview-chip fp-lockchip';
+        holder.appendChild(lockChip);
+      }
+      lockChip.dataset.key = entry.key;
+      lockChip.dataset.locked = lock.locked ? '1' : '0';
+      lockChip.classList.toggle('fp-inherited', !!lock.inherited);
+      lockChip.classList.toggle('fp-dirty', !!lock.draft);
+      lockChip.textContent = lock.locked ? '🔒 Låst' : '🔓 Åben';
+      lockChip.setAttribute('aria-label', lock.locked
+        ? 'Låst for institutionen — klik for at ændre eller skrive forklaring'
+        : 'Institutionen kan ændre — klik for at låse');
+    } else if (lockChip) {
+      lockChip.remove();
+    }
   }
 
   /** Delegeret chip-klik: capture-fase på document, så portalens accordion-
@@ -176,19 +434,57 @@
    *  sektions-re-render uanset hvordan DOM'en er genopbygget. */
   function initChipDelegation() {
     document.addEventListener('click', (e) => {
+      const inPop = e.target && e.target.closest && e.target.closest('.flango-preview-pop');
       const chip = e.target && e.target.closest && e.target.closest('.flango-preview-chip');
-      if (!chip || chip.classList.contains('fp-passive') || chip.disabled) return;
+      if (!chip) {
+        if (!inPop) closePopover(true);
+        return;
+      }
+      if (chip.classList.contains('fp-passive')) return;
       // stopPropagation er ikke nok: accordion-handleren sidder OGSÅ på document
       // (samme node, senere fase) og ville folde sektionen ud ved chip-klik.
       e.stopImmediatePropagation();
       e.preventDefault();
       const entry = sectionByKey(chip.dataset.key);
       if (!entry) return;
+
+      if (chip.dataset.chip === 'lock') {
+        openPopover(chip, entry, true);
+        return;
+      }
+      // Låst flag-chip (institutions-admin): forklar i stedet for at ændre.
+      if (chip.getAttribute('aria-disabled') === 'true') {
+        openPopover(chip, entry, true);
+        return;
+      }
+      closePopover(true);
       const next = !effective(entry.column, entry.visible);
       draft[entry.column] = next;
       decorate();
       post({ type: 'flango-preview:toggle', key: entry.key, column: entry.column, value: next });
     }, true);
+
+    // Hover: samme forklaring uden klik (desktop). Flygtigt popover — et
+    // fastholdt (klik-åbnet) popover røres ikke.
+    document.addEventListener('mouseover', (e) => {
+      const chip = e.target && e.target.closest && e.target.closest('.flango-preview-chip');
+      if (!chip || popSticky) return;
+      const isLocked = chip.getAttribute('aria-disabled') === 'true' || chip.dataset.chip === 'lock';
+      if (!isLocked) { closePopover(); return; }
+      const entry = sectionByKey(chip.dataset.key);
+      if (!entry || popAnchor === chip) return;
+      openPopover(chip, entry, false);
+    });
+    document.addEventListener('mouseout', (e) => {
+      if (popSticky || !popEl) return;
+      const to = e.relatedTarget;
+      if (to && to.closest && (to.closest('.flango-preview-pop') || to.closest('.flango-preview-chip'))) return;
+      closePopover();
+    });
+
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopover(true); });
+    window.addEventListener('resize', positionPopover);
+    window.addEventListener('scroll', positionPopover, true);
   }
 
   /** Indbetaling kan ikke slås fra som sektion — synligheden af betalingsveje
@@ -196,11 +492,13 @@
    *  admin ikke leder efter en kontakt der ikke findes. */
   function applyTopupInfoChip() {
     const header = document.querySelector('#section-topup .section-header');
-    if (!header || header.querySelector('.flango-preview-chip')) return;
+    if (!header) return;
+    const holder = chipHolder(header);
+    if (holder.querySelector('.flango-preview-chip')) return;
     const chip = document.createElement('span');
     chip.className = 'flango-preview-chip fp-passive';
     chip.textContent = 'Styres af Betalingsmetoder';
-    header.insertBefore(chip, header.querySelector('.section-chevron') || null);
+    holder.appendChild(chip);
   }
 
   function decorate() {
@@ -208,6 +506,7 @@
       if (entry && SECTION_DOM[entry.key]) applyStateToSection(entry);
     }
     applyTopupInfoChip();
+    positionPopover();
   }
 
   function handleHostMessage(event) {
@@ -216,14 +515,18 @@
     if (!msg || typeof msg !== 'object') return;
     if (msg.type === 'flango-preview:state') {
       draft = (msg.draft && typeof msg.draft === 'object') ? { ...msg.draft } : {};
+      lockDraft = (msg.lockDraft && typeof msg.lockDraft === 'object') ? { ...msg.lockDraft } : {};
       decorate();
     } else if (msg.type === 'flango-preview:saved') {
       draft = {};
+      lockDraft = {};
+      if (msg.flags && typeof msg.flags === 'object') flags = msg.flags;
+      closePopover(true);
       if (refetchFn) refetchFn();
     }
   }
 
-  /** Handshake: ping hosten med "ready" indtil sessionen ankommer (hosten kan
+  /** Handshake: ping værten med "ready" indtil sessionen ankommer (værten kan
    *  først lytte efter iframe-load — gentagne pings er den robuste rækkefølge).
    *  Timeout → false, og portal-v2.js falder tilbage til normal login-skærm. */
   function bootstrap(opts) {
@@ -257,7 +560,8 @@
         if (!msg || msg.type !== 'flango-preview:session') return;
         window.removeEventListener('message', onSessionMessage);
         hostOrigin = event.origin;
-        locks = (msg.locks && typeof msg.locks === 'object') ? msg.locks : {};
+        role = msg.role === 'superadmin' ? 'superadmin' : 'admin';
+        flags = (msg.flags && typeof msg.flags === 'object') ? msg.flags : {};
         try {
           const { error } = await supabase.auth.setSession({
             access_token: msg.accessToken,
