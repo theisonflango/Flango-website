@@ -5580,6 +5580,12 @@
     if (!primary) return;
     // Kanalen er kun reelt slukket når kontoe-mail er fra OG der ingen ekstra e-mail er
     const off = !primary.checked && (!secondary || !secondary.value.trim());
+    // "Din e-mail"-feltet følger togglen direkte (det ER kontokanalens adresse)
+    const ownEmail = document.getElementById('notif-email');
+    if (ownEmail) {
+      ownEmail.disabled = !primary.checked;
+      ownEmail.style.opacity = primary.checked ? '' : '.45';
+    }
     for (const id of ['notif-zero', 'notif-low', 'notif-event-reminder', 'notif-event-invite']) {
       const el = document.getElementById(id);
       if (!el) continue;
@@ -5649,7 +5655,7 @@
         childData.notification_settings.notify_event_reminder = eventReminderEl ? eventReminderEl.checked : false;
         childData.notification_settings.notify_event_invite = eventInviteEl ? eventInviteEl.checked : false;
       }
-      showToast('Notifikationer gemt', 'success');
+      showToast('Indstillinger gemt', 'success');
     } catch (err) {
       console.error('[Portal] Save notifications error:', err);
       showToast('Kunne ikke gemme', 'error');
