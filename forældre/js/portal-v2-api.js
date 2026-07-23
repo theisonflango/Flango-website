@@ -77,8 +77,32 @@
   // og fallback'en ville være web-appen inde i webview'et. Custom scheme åbner altid appen.
   var NATIVE_OAUTH_CALLBACK = 'dk.flango.foraeldre://auth-callback';
 
+  // Deep links (OAuth/betaling) og resume-refresh deler tidsstempel: en reload må
+  // aldrig afbryde en hjemkomst med tokens i hånden.
+  var lastUrlOpenAt = 0;
+
   if (isNativeApp() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    // ─── Resume-refresh ───
+    // Appen lever længe i baggrunden, og data (saldo, sektions-flag) hentes kun ved
+    // start/login/barne-skift. Efter længere fravær genindlæses fra roden — en frisk
+    // app frem for delvist opdaterede sektioner. Serveren håndhæver flag uanset.
+    var RESUME_STALE_MS = 10 * 60 * 1000;
+    var wentInactiveAt = 0;
+    window.Capacitor.Plugins.App.addListener('appStateChange', function (state) {
+      if (!state || state.isActive !== true) {
+        wentInactiveAt = Date.now();
+        return;
+      }
+      var awayMs = wentInactiveAt ? Date.now() - wentInactiveAt : 0;
+      wentInactiveAt = 0;
+      if (awayMs < RESUME_STALE_MS) return;
+      // Deep link for et øjeblik siden (OAuth-/betalings-retur)? Så ejer dét flow reloaden.
+      if (Date.now() - lastUrlOpenAt < 15000) return;
+      window.location.reload();
+    });
+
     window.Capacitor.Plugins.App.addListener('appUrlOpen', async function (event) {
+      lastUrlOpenAt = Date.now();
       var url = (event && event.url) || '';
       if (url.indexOf(NATIVE_OAUTH_CALLBACK) !== 0) return;
       try { await window.Capacitor.Plugins.Browser.close(); } catch (e) { /* allerede lukket */ }
