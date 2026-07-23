@@ -4117,15 +4117,15 @@
     const notifSaveEmailBtn = document.getElementById('notif-save-email-btn');
     const notifEventReminder = document.getElementById('notif-event-reminder');
     const notifEventInvite = document.getElementById('notif-event-invite');
-    if (notifZero) notifZero.addEventListener('change', () => saveNotifications());
-    if (notifLow) notifLow.addEventListener('change', () => saveNotifications());
-    if (notifPrimaryEmail) notifPrimaryEmail.addEventListener('change', () => saveNotifications());
-    if (notifSaveEmailBtn) notifSaveEmailBtn.addEventListener('click', () => saveNotifications());
-    if (notifEventReminder) notifEventReminder.addEventListener('change', () => saveNotifications());
-    if (notifEventInvite) notifEventInvite.addEventListener('change', () => saveNotifications());
+    if (notifZero) notifZero.addEventListener('change', () => saveNotifications('email'));
+    if (notifLow) notifLow.addEventListener('change', () => saveNotifications('email'));
+    if (notifPrimaryEmail) notifPrimaryEmail.addEventListener('change', () => saveNotifications('email'));
+    if (notifSaveEmailBtn) notifSaveEmailBtn.addEventListener('click', () => saveNotifications('email'));
+    if (notifEventReminder) notifEventReminder.addEventListener('change', () => saveNotifications('email'));
+    if (notifEventInvite) notifEventInvite.addEventListener('change', () => saveNotifications('email'));
     for (const pid of ['push-zero', 'push-low', 'push-event-reminder', 'push-event-invite']) {
       const el = document.getElementById(pid);
-      if (el) el.addEventListener('change', () => saveNotifications());
+      if (el) el.addEventListener('change', () => saveNotifications('push'));
     }
     if (notifPrimaryEmail) notifPrimaryEmail.addEventListener('change', syncEmailEventTogglesUI);
     const notifSecondaryInput = document.getElementById('notif-secondary-email');
@@ -5595,7 +5595,7 @@
     }
   }
 
-  async function saveNotifications() {
+  async function saveNotifications(kind) {
     if (!selectedChild) return;
     var zeroEl = document.getElementById('notif-zero');
     var lowEl = document.getElementById('notif-low');
@@ -5655,7 +5655,7 @@
         childData.notification_settings.notify_event_reminder = eventReminderEl ? eventReminderEl.checked : false;
         childData.notification_settings.notify_event_invite = eventInviteEl ? eventInviteEl.checked : false;
       }
-      showToast('Indstillinger gemt', 'success');
+      showToast(kind === 'push' ? 'Notifikationer gemt' : 'E-mail indstillinger gemt', 'success');
     } catch (err) {
       console.error('[Portal] Save notifications error:', err);
       showToast('Kunne ikke gemme', 'error');
