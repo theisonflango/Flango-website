@@ -5578,13 +5578,12 @@
     const primary = document.getElementById('notif-primary-email');
     const secondary = document.getElementById('notif-secondary-email');
     if (!primary) return;
-    // Kanalen er kun reelt slukket når kontoe-mail er fra OG der ingen ekstra e-mail er
-    const off = !primary.checked && (!secondary || !secondary.value.trim());
-    // "Din e-mail"-feltet følger togglen direkte (det ER kontokanalens adresse)
-    const ownEmail = document.getElementById('notif-email');
-    if (ownEmail) {
-      ownEmail.disabled = !primary.checked;
-      ownEmail.style.opacity = primary.checked ? '' : '.45';
+    // E-mail-togglen er master for HELE kanalen: felter + hændelsesvalg låses ved fra
+    const off = !primary.checked;
+    for (const el of [document.getElementById('notif-email'), secondary, document.getElementById('notif-save-email-btn')]) {
+      if (!el) continue;
+      el.disabled = off;
+      el.style.opacity = off ? '.45' : '';
     }
     for (const id of ['notif-zero', 'notif-low', 'notif-event-reminder', 'notif-event-invite']) {
       const el = document.getElementById(id);
