@@ -293,7 +293,7 @@
         try {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'js/portal-admin-preview.js?v=5';
+            s.src = 'js/portal-admin-preview.js?v=6';
             s.onload = resolve; s.onerror = reject;
             document.head.appendChild(s);
           });
@@ -502,12 +502,12 @@
     const childName = getChildName();
     // Vis kun typer institutionen har aktiveret
     const ppInstTypes = Array.isArray(featureFlags?.profile_picture_types) ? featureFlags.profile_picture_types : ['upload', 'camera'];
-    const showAula = ppInstTypes.indexOf('upload') !== -1;
-    const showCamera = ppInstTypes.indexOf('camera') !== -1;
+    const showAula = isAdminPreview() || ppInstTypes.indexOf('upload') !== -1;
+    const showCamera = isAdminPreview() || ppInstTypes.indexOf('camera') !== -1;
     const aiMasterOn = featureFlags?.profile_pictures_ai_enabled !== false;
     // Én AI-avatar-udbyder: Microsoft Azure (EU). ai_provider_openai er det legacy-
     // navngivne flag (default true) der gater funktionen.
-    const showAi = aiMasterOn && featureFlags?.ai_provider_openai !== false;
+    const showAi = isAdminPreview() || (aiMasterOn && featureFlags?.ai_provider_openai !== false);
     const ct = window.PortalConsentTexts || {};
 
     const overlay = document.createElement('div');
@@ -1786,7 +1786,7 @@
 
     // Admin-preview: dekorér sektionerne (grå + toggle-chips) efter hver render.
     if (isAdminPreview() && window.FlangoAdminPreview) {
-      window.FlangoAdminPreview.onRender(childData?.preview_sections || []);
+      window.FlangoAdminPreview.onRender(childData?.preview_sections || [], childData?.preview_subcontrols || []);
     }
 
     // Auto-load purchase profile (always open by default)
@@ -2877,7 +2877,7 @@
     const showAi = aiMasterOn && featureFlags?.ai_provider_openai !== false;
     const optOutOpenai = !hasOpenaiConsent;
     // Forælder-upload: institutions-flag fra featureFlags (parent_can_upload_pictures default true)
-    const showParentUpload = featureFlags?.parent_can_upload_pictures !== false;
+    const showParentUpload = isAdminPreview() || featureFlags?.parent_can_upload_pictures !== false;
     // "All opted out" for master-toggle: aula + camera + parent-upload + AI
     const allOptedOut = (showAula ? optOutAula : true)
       && (showCamera ? optOutCamera : true)
@@ -2992,28 +2992,28 @@
           </div>
 
           <div id="pp-type-toggles" style="${allOptedOut ? 'opacity:0.4;pointer-events:none' : ''}">
-            ${showAula ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+            ${showAula ? `<div data-sub="pp_aula" class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
                 <div class="setting-info"><div class="setting-label">Aula-profilbillede${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div></div>
                 <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               ${adminSimLockedHint()}
             </div>` : ''}
-            ${showCamera ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+            ${showCamera ? `<div data-sub="pp_camera" class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
                 <div class="setting-info"><div class="setting-label">Kamera-foto${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
                 <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               ${adminSimLockedHint()}
             </div>` : ''}
-            ${showParentUpload ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+            ${showParentUpload ? `<div data-sub="pp_parent_upload" class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
                 <div class="setting-info"><div class="setting-label">Forælder-upload${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Du kan selv uploade et billede af dit barn fra denne portal. Alle uploads gennemgås af institutionen før aktivering.</div></div>
                 <label class="toggle"><input type="checkbox" id="pp-consent-parent-upload" ${!optOutParentUpload ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               ${adminSimLockedHint()}
             </div>` : ''}
-            ${showAi ? `<div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch;gap:4px" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+            ${showAi ? `<div data-sub="pp_ai" class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch;gap:4px" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);">
                 <div class="setting-info"><div class="setting-label">AI-genereret avatar${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Et foto sendes til Microsoft Azure (EU) for at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.</div></div>
                 <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai" ${!optOutOpenai ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
@@ -3227,8 +3227,8 @@
             ${showUsage ? `<div class="st-stat-card used"><div class="st-stat-value">${used} min</div><div class="st-stat-label">Brugt i dag</div></div>` : ''}
           </div>
           ${showRules ? `<div class="hint-box info" style="margin-bottom:var(--s3)"><span class="hint-icon">📋</span><span>Institutionens regler: ${instDaily} min/dag, maks ${instSession} min pr. session</span></div>` : ''}
-          ${allowPersonal ? `
-          <div class="setting-row">
+          ${(isAdminPreview() || allowPersonal) ? `
+          <div class="setting-row" data-sub="st_personal_limits">
             <div class="setting-info"><div class="setting-label">Personlig daglig grænse</div><div class="setting-desc">∞ = ingen personlig grænse — klubbens regler gælder</div></div>
             <div class="stepper" id="st-daily-stepper" data-step="5"${maxDailyAttr}><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalDaily || '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
           </div>
@@ -3236,8 +3236,8 @@
             <div class="setting-info"><div class="setting-label">Maks pr. session</div><div class="setting-desc">Hvor lang tid ad gangen (minutter). ∞ = klubbens regel gælder</div></div>
             <div class="stepper" id="st-session-stepper" data-step="5"${maxSessionAttr}><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalSession || '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
           </div>` : ''}
-          ${allowExtraTime ? `
-          <div class="setting-row">
+          ${(isAdminPreview() || allowExtraTime) ? `
+          <div class="setting-row" data-sub="st_extra_time">
             <div class="setting-info"><div class="setting-label">Samtykke til forlænget spilletid</div><div class="setting-desc">Giv personalet lov til undtagelsesvis at forlænge.</div></div>
             <label class="toggle"><input type="checkbox" id="st-consent-toggle" ${consent ? 'checked' : ''}><span class="toggle-track"></span></label>
           </div>` : ''}
@@ -3359,6 +3359,11 @@
     var secondaryEmail = notif.secondary_email || '';
     var notifyPrimary = notif.notify_primary_email !== false;
     const pushHint = API.isNativeApp() ? '' : `<div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">📱</span><span>Push-notifikationer vises på alle dine enheder med Flango Portal-appen.</span></div>`;
+    // Under-kontakter: institutionen kan slå enkelte påmindelsestyper fra uden at
+    // slukke hele notifikations-kortet. I admin-preview vises rækkerne altid (grå).
+    const notifBalanceOn = isAdminPreview() || childData?.institution?.parent_portal_notify_balance !== false;
+    const notifEventsOn = isAdminPreview() || childData?.institution?.parent_portal_notify_events !== false;
+    const notifExtraEmailOn = isAdminPreview() || childData?.institution?.parent_portal_notify_extra_email !== false;
     return `
       <div class="section" id="section-notifications">
         <div class="section-header">
@@ -3368,10 +3373,10 @@
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${pushHint}${API.isNativeApp() ? `<div class="setting-row"><div class="setting-info"><div class="setting-label">Notifikationer på denne telefon</div><div class="setting-desc">Vises på låseskærmen — indholdet ser du i appen</div></div><label class="toggle"><input type="checkbox" id="notif-push-device" ${API.isPushEnabledOnThisDevice() ? 'checked' : ''}><span class="toggle-track"></span></label></div>
           <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)"></div>` : ''}
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="push-zero" ${notif.push_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="push-low" ${notif.push_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="push-event-reminder" ${notif.push_event_reminder === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="push-event-invite" ${notif.push_event_invite === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          ${notifBalanceOn ? `<div class="setting-row" data-sub="notify_balance"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="push-zero" ${notif.push_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="push-low" ${notif.push_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
+          ${notifEventsOn ? `<div class="setting-row" data-sub="notify_events"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="push-event-reminder" ${notif.push_event_reminder === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="push-event-invite" ${notif.push_event_invite === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
         </div></div></div>
       </div>
       <div class="section" id="section-email-notifications">
@@ -3386,19 +3391,19 @@
             <div class="setting-desc" style="margin-bottom:8px">Forudfyldt med din login-e-mail — ret den, hvis du hellere vil have påmindelser et andet sted</div>
             <input type="email" id="notif-email" class="input-field" placeholder="din@email.dk" value="${esc(notif.email || parentEmail || '')}" style="margin:0">
           </div>
-          <div style="margin-top:var(--s3)">
+          ${notifExtraEmailOn ? `<div style="margin-top:var(--s3)" data-sub="notify_extra_email">
             <div class="setting-label" style="margin-bottom:6px">Ekstra e-mail <span style="font-weight:400;color:var(--ink-soft);font-size:12px">(valgfri)</span></div>
             <div class="setting-desc" style="margin-bottom:8px">Til fx den anden forælder — får de samme påmindelser</div>
             <div style="display:flex;gap:8px;align-items:center">
               <input type="email" id="notif-secondary-email" class="input-field" placeholder="fx partner@mail.dk" value="${esc(secondaryEmail)}" style="flex:1;margin:0">
               <button class="save-btn compact" id="notif-save-email-btn" style="white-space:nowrap;padding:10px 16px">Gem</button>
             </div>
-          </div>
+          </div>` : ''}
           <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)">
-            <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${notif.notify_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-            <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${notif.notify_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-            <div class="setting-row"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="notif-event-reminder" ${notif.notify_event_reminder === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-            <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="notif-event-invite" ${notif.notify_event_invite === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+            ${notifBalanceOn ? `<div class="setting-row" data-sub="notify_balance"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${notif.notify_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+            <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${notif.notify_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
+            ${notifEventsOn ? `<div class="setting-row" data-sub="notify_events"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="notif-event-reminder" ${notif.notify_event_reminder === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+            <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="notif-event-invite" ${notif.notify_event_invite === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
           </div>
         </div></div></div>
       </div>`;

@@ -90,6 +90,7 @@
   let hostOrigin = null;        // sat ved session-handshake; al efterfølgende trafik låses hertil
   let role = 'admin';           // 'admin' (café) | 'superadmin' (super-admin-panelet)
   let sections = [];            // seneste preview_sections fra serveren
+  let subcontrols = [];         // seneste preview_subcontrols (under-kontakter i kortene)
   let draft = {};               // column → bool; værtens ugemte flag-ændringer
   let lockDraft = {};           // module → { locked, reason }; værtens ugemte lås-ændringer
   let flags = {};               // module → { locked, lock_reason } — feature_flags fra værten
@@ -148,6 +149,27 @@
       .fp-lock[data-locked="1"] { border-color: #d97706; background: #fffbeb; }
       .fp-lock.fp-inherited { border-style: dashed; }
       .fp-lock.fp-dirty { box-shadow: 0 0 0 3px rgba(245, 150, 10, .3); }
+      /* Under-kontakt: bor i rækken inde i kortet (kan ikke ligge udenfor —
+         rækken hører til kortets indhold). Stiplet ramme + amber markerer den
+         som admin-UI, ikke noget forælderen ser. */
+      .fp-sub {
+        position: relative; width: 34px; height: 20px; flex: none; padding: 0;
+        margin-right: 8px; border: none; border-radius: 999px; cursor: pointer;
+        background: #d1d5db; transition: background .2s;
+        -webkit-appearance: none; appearance: none;
+        box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px #e5e7eb;
+      }
+      .fp-sub::after {
+        content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+        border-radius: 50%; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,.25);
+        transition: transform .2s;
+      }
+      .fp-sub[aria-checked="true"] { background: var(--positive, #16a34a); }
+      .fp-sub[aria-checked="true"]::after { transform: translateX(14px); }
+      .fp-sub[aria-disabled="true"] { cursor: help; opacity: .55; }
+      .fp-sub.fp-dirty { box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px rgba(245,150,10,.5); }
+      .fp-sub-wrap { display: flex; align-items: center; flex: none; }
+      .fp-sub-off { opacity: .5; }
       .fp-none {
         width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
         border: none; background: none; color: #cbd5e1; font-size: 15px; font-weight: 700;
@@ -541,6 +563,56 @@
     });
   }
 
+  /** Under-kontakter inde i kortene. Rækken findes via `data-sub="<key>"` som
+   *  portalen sætter, eller — for spil — via `[data-game-id]`. Bindingen
+   *  (kolonne / array-medlem / tabelrække) er en opaque `target`-streng fra
+   *  serveren, så en ny binding ikke kræver ændringer i begge værter. */
+  function applySubcontrol(entry) {
+    let row = null;
+    if (entry.row_id) {
+      const input = document.querySelector('[data-game-id="' + entry.row_id + '"]');
+      row = input && input.closest ? input.closest('.game-row') : null;
+    } else {
+      row = document.querySelector('[data-sub="' + entry.key + '"]');
+    }
+    if (!row) return;
+
+    const on = subEffective(entry);
+    row.classList.toggle('fp-sub-off', !on);
+
+    const lock = resolveLock(entry.module);
+    const locked = lock.locked && role !== 'superadmin';
+
+    let wrap = row.querySelector(':scope > .fp-sub-wrap');
+    if (!wrap) {
+      wrap = document.createElement('span');
+      wrap.className = 'fp-sub-wrap';
+      row.insertBefore(wrap, row.firstChild);
+    }
+    let t = wrap.querySelector('.fp-sub');
+    if (!t) {
+      t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'fp-sub';
+      t.setAttribute('role', 'switch');
+      wrap.appendChild(t);
+    }
+    t.dataset.sub = entry.key;
+    t.setAttribute('aria-checked', on ? 'true' : 'false');
+    t.setAttribute('aria-disabled', locked ? 'true' : 'false');
+    t.classList.toggle('fp-dirty', draft[entry.target] !== undefined);
+    t.setAttribute('aria-label', (locked ? 'Låst af Flango. ' : '')
+      + (entry.label || entry.key) + (on ? ' — vises for forældre' : ' — skjult for forældre'));
+  }
+
+  function subEffective(entry) {
+    return draft[entry.target] !== undefined ? draft[entry.target] : entry.visible;
+  }
+
+  function subByKey(key) {
+    return subcontrols.find((s) => s && s.key === key) || null;
+  }
+
   /** Delegeret klik: capture-fase på document, så portalens accordion-handler
    *  (bubble på document) aldrig ser klikket, og så kontrollerne overlever
    *  sektions-re-render uanset hvordan DOM'en er genopbygget. */
@@ -549,7 +621,7 @@
       const t = e.target;
       if (!t || !t.closest) return;
       if (t.closest('.flango-preview-pop')) return;
-      const ctrl = t.closest('.fp-toggle, .fp-lock, .fp-none');
+      const ctrl = t.closest('.fp-toggle, .fp-lock, .fp-none, .fp-sub');
       if (!ctrl) { closePopover(true); return; }
       // stopPropagation er ikke nok: accordion-handleren sidder OGSÅ på document
       // (samme node, senere fase) og ville folde sektionen ud ved klik.
@@ -557,6 +629,18 @@
       e.preventDefault();
 
       if (ctrl.classList.contains('fp-none')) { openNoFlagPopover(ctrl, true); return; }
+
+      if (ctrl.classList.contains('fp-sub')) {
+        const sub = subByKey(ctrl.dataset.sub);
+        if (!sub) return;
+        if (ctrl.getAttribute('aria-disabled') === 'true') { openPopover(ctrl, sub, true); return; }
+        closePopover(true);
+        const next = !subEffective(sub);
+        draft[sub.target] = next;
+        decorate();
+        post({ type: 'flango-preview:toggle', key: sub.key, target: sub.target, value: next });
+        return;
+      }
 
       const entry = sectionByKey(ctrl.dataset.key);
       if (!entry) return;
@@ -574,7 +658,7 @@
     // Hover: samme forklaring uden klik (desktop). Flygtigt popover — et
     // fastholdt (klik-åbnet) popover røres ikke.
     document.addEventListener('mouseover', (e) => {
-      const ctrl = e.target && e.target.closest && e.target.closest('.fp-toggle, .fp-lock, .fp-none');
+      const ctrl = e.target && e.target.closest && e.target.closest('.fp-toggle, .fp-lock, .fp-none, .fp-sub');
       if (!ctrl || popSticky || popAnchor === ctrl) return;
       if (ctrl.classList.contains('fp-none')) { openNoFlagPopover(ctrl, false); return; }
       const explains = ctrl.classList.contains('fp-lock')
@@ -633,6 +717,7 @@
     document.querySelectorAll('.section[id^="section-"]').forEach((el) => {
       if (!claimed.has(el.id)) applyNoFlagSection(el);
     });
+    for (const sub of subcontrols) { if (sub) applySubcontrol(sub); }
     positionPopover();
   }
 
@@ -708,8 +793,9 @@
     });
   }
 
-  function onRender(previewSections) {
+  function onRender(previewSections, previewSubcontrols) {
     sections = Array.isArray(previewSections) ? previewSections : [];
+    subcontrols = Array.isArray(previewSubcontrols) ? previewSubcontrols : [];
     decorate();
   }
 

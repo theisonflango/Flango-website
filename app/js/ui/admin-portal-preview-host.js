@@ -175,9 +175,31 @@
       // skaermtid_* → gaming.portal_settings, alt andet → institutions.
       const instSettings = {};
       const stSettings = {};
+      const arrayTargets = {};   // kolonne → [{item, value}] — skrives som ÉT array
+      const rowTargets = [];     // {table, id, column, value}
       for (const key of Object.keys(draft)) {
-        if (key.indexOf('skaermtid_') === 0) stSettings[key] = draft[key];
-        else instSettings[key] = draft[key];
+        if (key.indexOf('arr:') === 0) {
+          const p = key.split(':');
+          (arrayTargets[p[1]] = arrayTargets[p[1]] || []).push({ item: p[2], value: draft[key] });
+        } else if (key.indexOf('row:') === 0) {
+          const p = key.split(':');
+          rowTargets.push({ table: p[1], id: p[2], column: p[3], value: draft[key] });
+        } else {
+          const col = key.indexOf('col:') === 0 ? key.slice(4) : key;
+          if (col.indexOf('skaermtid_') === 0) stSettings[col] = draft[key];
+          else instSettings[col] = draft[key];
+        }
+      }
+      // Array-medlemmer: læs nuværende array og skriv det samlet, så to
+      // elementer i samme kolonne ikke overskriver hinanden.
+      for (const col of Object.keys(arrayTargets)) {
+        const current = await window.PortalData.getInstitutionArrayField(col);
+        let next = current.slice();
+        for (const t of arrayTargets[col]) {
+          if (t.value && next.indexOf(t.item) === -1) next.push(t.item);
+          if (!t.value) next = next.filter(function (v) { return v !== t.item; });
+        }
+        instSettings[col] = next;
       }
       if (contactDirty) {
         const phone = containerEl.querySelector('#pvh-contact-phone');
@@ -194,8 +216,15 @@
       if (Object.keys(stSettings).length > 0) {
         stOk = await window.PortalData.saveScreentimeSettings(null, stSettings);
       }
+      // Tabelrækker (fx ét spil i game_catalog). Låsen håndhæves af triggeren
+      // på gaming.game_catalog — værten tilføjer ingen egen kontrol.
+      let rowOk = true;
+      for (const t of rowTargets) {
+        const ok = await window.PortalData.updateCatalogRow(t.table, t.id, t.column, t.value);
+        if (!ok) rowOk = false;
+      }
 
-      if (instOk && stOk) {
+      if (instOk && stOk && rowOk) {
         draft = {};
         contactDirty = false;
         updateSaveBar();
@@ -249,8 +278,13 @@
     } else if (msg.type === 'flango-preview:session-error') {
       setStatus('error', 'Portal-login fejlede: ' + (msg.message || 'ukendt fejl'));
     } else if (msg.type === 'flango-preview:toggle') {
-      if (typeof msg.column !== 'string' || typeof msg.value !== 'boolean') return;
-      draft[msg.column] = msg.value;
+      if (typeof msg.value !== 'boolean') return;
+      // Sektioner sender `column`; under-kontakter sender en `target`-streng
+      // (col:/arr:/row:) fordi de også kan pege på et array-medlem eller en
+      // tabelrække. Nøglen i draft'en ER målet.
+      const key = typeof msg.target === 'string' ? msg.target : msg.column;
+      if (typeof key !== 'string') return;
+      draft[key] = msg.value;
       updateSaveBar();
       post({ type: 'flango-preview:state', draft: { ...draft } });
     }
