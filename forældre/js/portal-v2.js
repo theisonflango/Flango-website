@@ -3212,11 +3212,6 @@
     // Loft: serveren afviser grænser over institutionens — stop dem allerede i stepperen.
     const maxDailyAttr = typeof rules.default_balance_minutes === 'number' ? ` data-max="${rules.default_balance_minutes}"` : '';
     const maxSessionAttr = typeof rules.max_session_minutes === 'number' ? ` data-max="${rules.max_session_minutes}"` : '';
-    // Roblox personligt login (opt-out): default TILLADT. Vises kun som fravalgt hvis
-    // forælderen aktivt har fravalgt og ikke gen-tilladt siden (matcher server-gaten).
-    const robloxRows = historyForType('roblox_personal_login');
-    const robloxAllowed = !!activeConsentFor('roblox_personal_login')
-      || !robloxRows.some(c => !c.is_active);
 
     return `
       <div class="section" id="section-screentime">
@@ -3261,13 +3256,13 @@
   function renderGameAccountsSection() {
     const games = childData?.game_accounts || [];
     if (!games.length) return '';
-    const robloxRows2 = historyForType('roblox_personal_login');
-    const allowed = !!activeConsentFor('roblox_personal_login')
-      || !robloxRows2.some(c => !c.is_active);
+    // Samtykket er PR. SPIL (parent_consents.game_id) og opt-out: tilladt indtil
+    // forælderen aktivt fravælger. Serveren afgør `allowed` — portalen udleder
+    // det ikke af samtykkehistorikken, som ikke bærer spil-id.
     const rows = games.map(g => `
           <div class="setting-row" data-game-account="${esc(g.id)}">
             <div class="setting-info"><div class="setting-label">Personligt login til ${esc(g.name)}</div><div class="setting-desc">Barnet kan logge ind med sin egen ${esc(g.name)}-konto på klubbens PC'er. Loginet gemmes krypteret. Anbefales ikke, hvis barnet har penge på kontoen. Slå fra for at fravælge — et gemt login slettes.</div></div>
-            <label class="toggle"><input type="checkbox" id="roblox-personal-login-consent" ${allowed ? 'checked' : ''}><span class="toggle-track"></span></label>
+            <label class="toggle"><input type="checkbox" class="game-account-consent" data-game-id="${esc(g.id)}" ${g.allowed !== false ? 'checked' : ''}><span class="toggle-track"></span></label>
           </div>`).join('');
     return `
       <div class="section" id="section-game-accounts">
@@ -4051,8 +4046,9 @@
     if (ppParentUpload) ppParentUpload.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_parent_upload', 'parent_upload'));
 
     // Roblox personligt login consent toggle (opt-out) — i spilletid-sektionen
-    const robloxConsent = document.getElementById('roblox-personal-login-consent');
-    if (robloxConsent) robloxConsent.addEventListener('change', (e) => handleRobloxLoginConsentToggle(e));
+    document.querySelectorAll('.game-account-consent').forEach((el) => {
+      el.addEventListener('change', (e) => handleGameLoginConsentToggle(e));
+    });
 
     // Forælder-upload knap → åbn modal
     const ppUploadBtn = document.getElementById('pp-upload-btn');
@@ -5123,27 +5119,31 @@
 
   // Roblox personligt login (opt-out): default tilladt. Slå fra = aktivt fravalg
   // (server sletter et evt. gemt login). Slå til igen = gen-tilvalg.
-  async function handleRobloxLoginConsentToggle(e) {
+  async function handleGameLoginConsentToggle(e) {
     if (!selectedChild) return;
     const toggle = e.target;
+    const gameId = toggle.dataset.gameId;
+    const game = (childData?.game_accounts || []).find(g => g.id === gameId);
+    if (!gameId || !game) return;
     if (isAdminSimulatorSession()) {
       toggle.checked = !toggle.checked; // rul tilbage
       showAdminSimulatorBlockedAlert('samtykker');
       return;
     }
     const nowChecked = toggle.checked;
+    const name = game.name;
 
     const proceed = nowChecked
       ? await showConfirmModal({
-          title: 'Tillad personligt Roblox-login?',
-          body: 'Dit barn kan logge ind med sin egen Roblox-konto på klubbens gaming-PC\'er, så koden ikke skal indtastes hver gang. Loginet gemmes krypteret på vores server.\n\nVi anbefaler at lade være, hvis barnet har Robux eller købte ting på sin konto — et gemt login er en adgang til kontoen. Barnet kan altid logge ind manuelt i stedet.\n\nValget registreres med tidspunkt og version.',
+          title: `Tillad personligt ${name}-login?`,
+          body: `Dit barn kan logge ind med sin egen ${name}-konto på klubbens gaming-PC'er, så koden ikke skal indtastes hver gang. Loginet gemmes krypteret og kan slettes igen når som helst.`,
           confirm: 'Tillad',
           cancel: 'Annullér',
           danger: false,
         })
       : await showConfirmModal({
-          title: 'Fravælg personligt Roblox-login?',
-          body: 'Barnets gemte Roblox-login slettes, og "egen konto"-knappen forsvinder på PC\'erne. Barnet skal så selv logge ind manuelt.',
+          title: `Fravælg personligt ${name}-login?`,
+          body: `Barnets gemte ${name}-login slettes, og "egen konto"-knappen forsvinder på PC'erne. Barnet skal så bruge klubbens fælles konto.`,
           confirm: 'Fravælg',
           cancel: 'Annullér',
           danger: true,
@@ -5156,16 +5156,17 @@
 
     toggle.disabled = true;
     try {
-      const result = await API.setRobloxLoginConsent(selectedChild.child_id, nowChecked, CURRENT_CONSENT_VERSION);
+      const result = await API.setGameLoginConsent(selectedChild.child_id, gameId, nowChecked, CURRENT_CONSENT_VERSION);
       if (result && result.success === false) {
         toggle.checked = !nowChecked;
         showToast(result.error || 'Kunne ikke gemme', 'error');
         return;
       }
+      game.allowed = nowChecked;
       await refreshConsentHistory();
-      showToast(nowChecked ? 'Roblox-login tilladt' : 'Roblox-login fravalgt', 'success');
+      showToast(nowChecked ? `${name}-login tilladt` : `${name}-login fravalgt`, 'success');
     } catch (err) {
-      console.error('[Portal] roblox consent toggle fejl:', err);
+      console.error('[Portal] spilkonto-samtykke fejl:', err);
       toggle.checked = !nowChecked;
       showToast('Kunne ikke gemme', 'error');
     } finally {

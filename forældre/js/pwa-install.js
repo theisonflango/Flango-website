@@ -21,6 +21,14 @@
 
   var DISMISS_KEY = 'flango_pwa_install_dismissed';
 
+  // App-synlighed: URL'erne er de endelige (ASC-id + bundle-id), men knapperne
+  // renderes først når flagene flippes ved release — ingen døde links inden da.
+  // Smart App Banner (index.html) er selv-gated hos Apple og kan ligge klar.
+  var APP_STORE_LIVE = false;
+  var APP_STORE_URL = 'https://apps.apple.com/dk/app/id6793543486';
+  var PLAY_STORE_LIVE = false;
+  var PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=dk.flango.foraeldre';
+
   function isStandalone() {
     return window.matchMedia('(display-mode: standalone)').matches ||
            window.navigator.standalone === true;
@@ -33,6 +41,8 @@
   var isIOS = /iphone|ipad|ipod/i.test(ua) ||
               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   var isSafari = /safari/i.test(ua) && !/chrome|crios|fxios|edgios|android/i.test(ua);
+  var isAndroid = /android/i.test(ua);
+  var isDesktop = !isIOS && !isAndroid;
 
   var deferredPrompt = null;
   var shown = false;
@@ -46,12 +56,18 @@
 
   window.addEventListener('appinstalled', function () { dismiss(true); });
 
-  // iOS/Safari har ingen beforeinstallprompt — vis vejledning.
-  if (isIOS && isSafari) {
+  // iOS/Safari har ingen beforeinstallprompt — vis App Store-knap (efter release)
+  // eller Føj-til-hjemmeskærm-vejledningen. Android m. Play-appen ude: Play-knap.
+  // Desktop: QR-kort når mindst én butik er live.
+  var initialMode = null;
+  if (isIOS && isSafari) initialMode = APP_STORE_LIVE ? 'appstore' : 'ios';
+  else if (isAndroid && PLAY_STORE_LIVE) initialMode = 'play';
+  else if (isDesktop && (APP_STORE_LIVE || PLAY_STORE_LIVE)) initialMode = 'desktop';
+  if (initialMode) {
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function () { scheduleShow('ios'); });
+      document.addEventListener('DOMContentLoaded', function () { scheduleShow(initialMode); });
     } else {
-      scheduleShow('ios');
+      scheduleShow(initialMode);
     }
   }
 
@@ -93,16 +109,33 @@
     card.setAttribute('role', 'dialog');
     card.setAttribute('aria-label', 'Installér Flango');
 
-    var action = mode === 'ios'
-      ? '<p class="fpwa-ios">Tryk på <span class="fpwa-share">' + SHARE_SVG + '</span> ' +
-        'og vælg <strong>“Føj til hjemmeskærm”</strong>.</p>'
-      : '<button type="button" id="fpwa-install-btn" class="fpwa-btn">Installér</button>';
+    var storeBtns =
+      (APP_STORE_LIVE ? '<a class="fpwa-btn fpwa-store" href="' + APP_STORE_URL + '" target="_blank" rel="noopener"> Hent i App Store</a>' : '') +
+      (PLAY_STORE_LIVE ? '<a class="fpwa-btn fpwa-store fpwa-play" href="' + PLAY_STORE_URL + '" target="_blank" rel="noopener">▶ Hent i Google Play</a>' : '');
+    var action;
+    if (mode === 'ios') {
+      action = '<p class="fpwa-ios">Tryk på <span class="fpwa-share">' + SHARE_SVG + '</span> ' +
+        'og vælg <strong>“Føj til hjemmeskærm”</strong>.</p>';
+    } else if (mode === 'appstore' || mode === 'play') {
+      action = '<div class="fpwa-actions">' + storeBtns + '</div>';
+    } else if (mode === 'desktop') {
+      action = '<div class="fpwa-actions">' + storeBtns + '</div>';
+    } else {
+      action = '<button type="button" id="fpwa-install-btn" class="fpwa-btn">Installér</button>';
+    }
+    var qr = mode === 'desktop'
+      ? '<img class="fpwa-qr" src="assets/icons/portal-qr.png" alt="QR-kode til Flango Portal" width="110" height="110">'
+      : '<img class="fpwa-icon" src="assets/icons/icon-192.png" alt="" width="44" height="44">';
+    var title = mode === 'desktop' ? 'Flango Portal findes som app' : 'Installér Flango';
+    var text = mode === 'desktop'
+      ? 'Scan koden med din telefon — så åbner portalen som app.'
+      : 'Læg portalen på hjemmeskærmen for hurtig adgang til saldo og grænser.';
 
     card.innerHTML =
-      '<img class="fpwa-icon" src="assets/icons/icon-192.png" alt="" width="44" height="44">' +
+      qr +
       '<div class="fpwa-body">' +
-        '<div class="fpwa-title">Installér Flango</div>' +
-        '<div class="fpwa-text">Læg portalen på hjemmeskærmen for hurtig adgang til saldo og grænser.</div>' +
+        '<div class="fpwa-title">' + title + '</div>' +
+        '<div class="fpwa-text">' + text + '</div>' +
         action +
       '</div>' +
       '<button type="button" class="fpwa-close" aria-label="Luk">&times;</button>';
@@ -153,6 +186,12 @@
       '#flango-pwa-install .fpwa-ios strong{color:var(--ink,#1c1917)}' +
       '#flango-pwa-install .fpwa-share{display:inline-flex;vertical-align:middle;color:var(--info,#2563eb)}' +
       '#flango-pwa-install .fpwa-share svg{width:15px;height:15px}' +
+      '#flango-pwa-install .fpwa-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}' +
+      '#flango-pwa-install .fpwa-store{display:inline-flex;align-items:center;gap:6px;background:#000;color:#fff;text-decoration:none;margin-top:0}' +
+      '#flango-pwa-install .fpwa-store:hover{background:#1c1917}' +
+      '#flango-pwa-install .fpwa-play{background:#0f9d58}' +
+      '#flango-pwa-install .fpwa-play:hover{background:#0c7f47}' +
+      '#flango-pwa-install .fpwa-qr{width:110px;height:110px;border-radius:8px;flex-shrink:0;border:1px solid var(--border,#e7e5e4)}' +
       '#flango-pwa-install .fpwa-close{position:absolute;top:6px;right:8px;background:none;border:none;' +
       'font-size:20px;line-height:1;color:var(--ink-muted,#a8a29e);cursor:pointer;padding:4px}';
     document.head.appendChild(s);

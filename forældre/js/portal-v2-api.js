@@ -790,12 +790,14 @@
       });
     },
 
-    /** Sæt til/fra for barnets personlige Roblox-login (opt-out-model).
-     *  allowed=false persisterer et aktivt fravalg og sletter en evt.
-     *  allerede gemt cookie server-side. */
-    async setRobloxLoginConsent(childId, allowed, consentVersion) {
-      return rpcCall('set_roblox_login_consent', {
+    /** Sæt til/fra for barnets personlige spilkonto PR. SPIL (opt-out-model).
+     *  allowed=false persisterer et aktivt fravalg og sletter et evt. gemt
+     *  login for spillets platform server-side. RPC'en afviser spil der ikke er
+     *  sat op til personlig konto i klienten (login_mode personal/both). */
+    async setGameLoginConsent(childId, gameId, allowed, consentVersion) {
+      return rpcCall('set_game_login_consent', {
         p_child_user_id: childId,
+        p_game_id: gameId,
         p_allowed: allowed,
         p_consent_version: consentVersion || 'v1.0',
       });
