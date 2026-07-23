@@ -85,7 +85,10 @@
       btn.textContent = 'Slår til…';
       window.PortalAPI.enablePushOnThisDevice().then(function () {
         btn.textContent = '✓ Slået til';
-        // Sørg for at notifikationssektionens toggle viser korrekt tilstand ved næste render
+        // Notifikationssektionen er allerede renderet (bages ved app-start) — synk dens
+        // master-toggle nu, så Profil-fanen ikke viser "fra" for en aktiv tilmelding.
+        var deviceToggle = document.getElementById('notif-push-device');
+        if (deviceToggle) deviceToggle.checked = true;
         setTimeout(dismiss, 900);
       }).catch(function (err) {
         var denied = err && err.code === 'denied';
