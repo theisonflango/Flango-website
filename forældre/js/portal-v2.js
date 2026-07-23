@@ -293,7 +293,7 @@
         try {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'js/portal-admin-preview.js?v=4';
+            s.src = 'js/portal-admin-preview.js?v=5';
             s.onload = resolve; s.onerror = reject;
             document.head.appendChild(s);
           });
@@ -1702,7 +1702,7 @@
             ${renderChildSelector()}
 
             <!-- Balance Card -->
-            <div class="balance-card" id="section-balance">
+            <div class="balance-card${secOn('balance') ? '' : ' section-hidden'}" id="section-balance">
               <div class="balance-header">
                 <div>
                   <div class="balance-label">Saldo</div>
@@ -1727,7 +1727,7 @@
           <!-- TAB: PAY -->
           <div class="tab-view" id="tab-pay">
             <div class="view-header mobile-only"><div class="view-title">Indbetaling</div><div class="view-subtitle">Optank ${esc(name)}s saldo</div></div>
-            ${renderTopupSection()}
+            ${secOn('topup') ? renderTopupSection() : ''}
           </div>
 
           <!-- TAB: LIMITS (skærmtid er nu et afsnit her, ikke en egen fane) -->
@@ -1746,11 +1746,11 @@
             <div class="view-header mobile-only"><div class="view-title">Profil</div><div class="view-subtitle">Barnets profil & indstillinger</div></div>
             ${renderChildNameSection()}
             ${renderProfilePictureSection()}
-            ${renderTransferSection()}
+            ${secOn('transfer') ? renderTransferSection() : ''}
             ${secOn('notifications') ? renderNotificationsSection() : ''}
-            ${renderInviteParentSection()}
+            ${secOn('invite_parent') ? renderInviteParentSection() : ''}
             ${secOn('feedback') ? renderFeedbackSection() : ''}
-            ${renderPinSection()}
+            ${secOn('pin') ? renderPinSection() : ''}
           </div>
 
           <!-- TAB: PRIVACY & RIGHTS -->
@@ -1759,7 +1759,7 @@
             ${renderPrivacyPolicySection()}
             ${renderConsentsSection()}
             ${renderDataInsightSection()}
-            ${renderLinkedParentsSection()}
+            ${secOn('linked_parents') ? renderLinkedParentsSection() : ''}
             ${renderDeleteChildDataSection()}
             ${renderDeleteParentAccountSection()}
             ${renderContactSection()}
@@ -2663,6 +2663,10 @@
   }
 
   function renderChildNameSection() {
+    // Kapacitet, ikke synlighed: kortet vises altid, men "Rediger" findes kun
+    // når institutionen tillader det. update_child_name_by_parent afviser
+    // uanset hvad — knappen er bekvemmelighed, ikke grænsen.
+    const nameEditOn = childData?.institution?.parent_portal_child_name_edit !== false;
     const lnOn = isLastNameEnabledForChild(selectedChild);
     const displayName = getChildName();
     const firstVal = getChildFirstName(selectedChild);
@@ -2702,7 +2706,7 @@
           <p style="margin:0 0 var(--s3);color:var(--ink-soft);line-height:1.6">${helpText}</p>
           <div style="display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap">
             <div style="font-weight:600;font-size:16px" id="privacy-child-name-display">${esc(displayName)}</div>
-            <button class="save-btn" id="privacy-edit-name-btn" style="padding:6px 14px;font-size:13px">Rediger</button>
+            ${nameEditOn ? '<button class="save-btn" id="privacy-edit-name-btn" style="padding:6px 14px;font-size:13px">Rediger</button>' : '<span style="font-size:12px;color:var(--ink-muted)">Kontakt institutionen for at rette navnet</span>'}
           </div>
           <div id="privacy-name-edit-form" style="display:none;margin-top:var(--s3)">
             ${editFields}

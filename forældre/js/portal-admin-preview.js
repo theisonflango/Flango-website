@@ -49,6 +49,8 @@
   // e-mail-kortet, og begge skal følge kontakten (ellers stod e-mail-kortet
   // hvidt og kontaktløst mens push-kortet var gråt).
   const SECTION_DOM = {
+    balance: ['section-balance'],
+    topup: ['section-topup'],
     events: ['section-events'],
     ugeplan: ['section-ugeplan'],
     purchase_profile: ['section-profile'],
@@ -65,23 +67,25 @@
     screentime: ['section-screentime'],
     screentime_games: ['section-games'],
     screentime_usage: ['section-st-chart'],
+    transfer: ['section-transfer'],
+    pin: ['section-pin'],
+    invite_parent: ['section-invite-parent'],
+    linked_parents: ['section-linked-parents'],
+    // Kapacitet: kortet er altid synligt, kontakten styrer kun handlingen.
+    child_name_edit: ['section-child-name'],
+    // Lovpligtige — serveren melder dem som always_on (ingen kolonne).
+    privacy_policy: ['section-privacy-policy'],
+    consents: ['section-consents'],
+    data_insight: ['section-data-insight'],
+    delete_child: ['section-delete-child'],
+    delete_account: ['section-delete-account'],
   };
 
-  // Sektioner uden flag. De har ingen kolonne i databasen og kan derfor ikke
-  // slukkes — teksten forklarer hvorfor, så et tomt felt ikke ligner en fejl.
+  // Kort som stadig ikke har en kontakt. Teksten forklarer hvorfor, så et tomt
+  // felt ikke ligner en manglende funktion.
   const NO_FLAG_REASON = {
-    'section-topup': 'Synligheden af betalingsveje følger Betalingsmetoder-opsætningen i caféen — ikke en portal-kontakt.',
-    'section-balance': 'Saldoen er portalens omdrejningspunkt og kan ikke slås fra.',
-    'section-transfer': 'Overførsel mellem søskende har ingen institutionsindstilling i dag.',
-    'section-invite-parent': 'Invitation af den anden forælder har ingen institutionsindstilling i dag.',
-    'section-child-name': 'Barnets stamdata kan ikke skjules for forælderen.',
-    'section-pin': 'Forælderens egen adgangskode kan ikke skjules.',
-    'section-linked-parents': 'Tilknyttede forældre kan ikke skjules for forælderen.',
+    'section-contact': 'Kontaktknappen styres af kontakttelefon-feltet i caféens portalindstillinger.',
   };
-  const GDPR_SECTIONS = new Set([
-    'section-consents', 'section-contact', 'section-data-insight',
-    'section-privacy-policy', 'section-delete-account', 'section-delete-child',
-  ]);
 
   let hostOrigin = null;        // sat ved session-handshake; al efterfølgende trafik låses hertil
   let role = 'admin';           // 'admin' (café) | 'superadmin' (super-admin-panelet)
@@ -112,10 +116,11 @@
          forbliver præcis det forælderen ser. Sektionen wrappes i en flex-række
          ved dekorering (portalens egen markup røres ikke). */
       .flango-preview-row { display: flex; align-items: flex-start; gap: 10px; }
-      .flango-preview-row > .section { flex: 1 1 auto; min-width: 0; }
+      /* Alt der ikke er kolonnen (kort, saldo-kort m.fl.) fylder resten */
+      .flango-preview-row > :not(.flango-preview-gutter) { flex: 1 1 auto; min-width: 0; }
       .flango-preview-gutter {
-        flex: none; width: 52px; display: flex; flex-direction: column;
-        align-items: center; gap: 6px; padding-top: 16px;
+        flex: none; width: 88px; display: flex; flex-direction: row;
+        align-items: center; justify-content: flex-end; gap: 8px; padding-top: 14px;
         /* Admin-UI — må aldrig gråtones med den slukkede sektion */
         filter: none; opacity: 1;
       }
@@ -150,11 +155,11 @@
       }
       @media (max-width: 520px) {
         .flango-preview-row { gap: 6px; }
-        .flango-preview-gutter { width: 42px; padding-top: 14px; }
-        .fp-toggle { width: 38px; height: 22px; }
-        .fp-toggle::after { width: 16px; height: 16px; }
-        .fp-toggle[aria-checked="true"]::after { transform: translateX(16px); }
-        .fp-lock { width: 28px; height: 22px; }
+        .flango-preview-gutter { width: 72px; gap: 5px; padding-top: 12px; }
+        .fp-toggle { width: 36px; height: 21px; }
+        .fp-toggle::after { width: 15px; height: 15px; }
+        .fp-toggle[aria-checked="true"]::after { transform: translateX(15px); }
+        .fp-lock { width: 26px; height: 21px; }
       }
 
       .flango-preview-pop {
@@ -312,7 +317,9 @@
     el.className = 'flango-preview-pop';
     el.setAttribute('role', 'dialog');
 
-    if (role === 'superadmin' && !sticky) {
+    if (entry.kind === 'always_on') {
+      el.innerHTML = '<div class="fp-pop-head">Lovpligtig</div><div class="fp-pop-body">Forælderens rettigheder efter GDPR (oplysning, indsigt, sletning) må ikke kunne skjules — og Apple kræver "slet konto" i appen. Derfor findes der ingen kontakt at slukke med.</div>';
+    } else if (role === 'superadmin' && !sticky) {
       el.innerHTML = lock.locked
         ? `<div class="fp-pop-head">🔒 ${DEFAULT_LOCK_TEXT}</div>${lock.reason ? '<div class="fp-pop-body"></div>' : ''}<div class="fp-pop-also">Sådan ser institutionen den. Klik for at redigere.</div>`
         : `<div class="fp-pop-head">🔓 Åben for institutionen</div><div class="fp-pop-body">Institutionens admin kan selv slå sektionen til og fra.</div><div class="fp-pop-also">Klik for at låse.</div>`;
@@ -426,7 +433,31 @@
     const els = sectionElements(entry.key);
     if (!els.length) return;
 
-    const isOn = effectiveForKey(entry);
+    // Lovpligtige sektioner: kontakten vises tændt og ulåselig, så fladen er
+    // komplet — men der findes ingen kolonne at slukke dem med. Det er ikke et
+    // hul; forælderens GDPR-rettigheder må ikke kunne skjules.
+    if (entry.kind === 'always_on') {
+      els.forEach((el) => {
+        const gutter = gutterFor(el);
+        gutter.querySelectorAll('.fp-lock, .fp-none').forEach((n) => n.remove());
+        let toggle = gutter.querySelector('.fp-toggle');
+        if (!toggle) {
+          toggle = document.createElement('button');
+          toggle.type = 'button';
+          toggle.className = 'fp-toggle';
+          toggle.setAttribute('role', 'switch');
+          gutter.appendChild(toggle);
+        }
+        toggle.dataset.key = entry.key;
+        toggle.setAttribute('aria-checked', 'true');
+        toggle.setAttribute('aria-disabled', 'true');
+        toggle.classList.remove('fp-dirty');
+        toggle.setAttribute('aria-label', 'Lovpligtig — altid synlig');
+      });
+      return;
+    }
+
+    const isOn = entry.kind === 'capability' ? true : effectiveForKey(entry);
     const ownOn = effective(entry.column, entry.visible);
     const lock = resolveLock(entry.module);
     // Superadmin kan ændre værdien selv når modulet er låst (låsen gælder
@@ -480,8 +511,10 @@
       toggle.setAttribute('aria-checked', ownOn ? 'true' : 'false');
       toggle.setAttribute('aria-disabled', toggleLocked ? 'true' : 'false');
       toggle.classList.toggle('fp-dirty', draft[entry.column] !== undefined);
-      toggle.setAttribute('aria-label',
-        (toggleLocked ? 'Låst af Flango. ' : '') + (ownOn ? 'Synlig for forældre' : 'Skjult for forældre'));
+      toggle.setAttribute('aria-label', (toggleLocked ? 'Låst af Flango. ' : '') + (
+        entry.kind === 'capability'
+          ? (ownOn ? 'Forælderen kan redigere' : 'Redigering slået fra')
+          : (ownOn ? 'Synlig for forældre' : 'Skjult for forældre')));
 
       // Låse-knap: superadmin kan altid låse/låse op; institutions-admin ser den
       // kun når sektionen ER låst (som forklaring på den døde kontakt).
@@ -528,7 +561,7 @@
       const entry = sectionByKey(ctrl.dataset.key);
       if (!entry) return;
       if (ctrl.classList.contains('fp-lock')) { openPopover(ctrl, entry, true); return; }
-      // Låst kontakt (institutions-admin): forklar i stedet for at ændre.
+      // Låst kontakt (institutions-admin) eller lovpligtig: forklar, ændr ikke.
       if (ctrl.getAttribute('aria-disabled') === 'true') { openPopover(ctrl, entry, true); return; }
 
       closePopover(true);
@@ -544,7 +577,8 @@
       const ctrl = e.target && e.target.closest && e.target.closest('.fp-toggle, .fp-lock, .fp-none');
       if (!ctrl || popSticky || popAnchor === ctrl) return;
       if (ctrl.classList.contains('fp-none')) { openNoFlagPopover(ctrl, false); return; }
-      const explains = ctrl.classList.contains('fp-lock') || ctrl.getAttribute('aria-disabled') === 'true';
+      const explains = ctrl.classList.contains('fp-lock')
+        || ctrl.getAttribute('aria-disabled') === 'true';
       if (!explains) { closePopover(); return; }
       const entry = sectionByKey(ctrl.dataset.key);
       if (!entry) return;
@@ -576,9 +610,6 @@
       head = 'Følger sektionen ovenfor';
       const entry = sectionByKey(sameKey);
       body = 'Samme kontakt styrer begge kort' + (entry ? ' (' + entry.column + ').' : '.');
-    } else if (GDPR_SECTIONS.has(anchor.dataset.noflag)) {
-      head = 'Lovpligtig';
-      body = 'Forælderens rettigheder efter GDPR (samtykke, indsigt, sletning) kan ikke slås fra.';
     } else {
       body = NO_FLAG_REASON[anchor.dataset.noflag] || 'Sektionen har ingen institutionsindstilling og er altid synlig.';
     }

@@ -358,6 +358,10 @@ a { color: inherit; text-decoration: none; }
 .add-child-chip:hover { border-color: var(--flango); color: var(--flango); }
 .add-child-chip svg { width: 16px; height: 16px; }
 
+/* Sektion slået fra af institutionen (server-autoritativ synlighed). Bruges af
+   kort der ikke kan udelades betinget i template'et. */
+.section-hidden { display: none !important; }
+
 /* ─── BALANCE CARD ─── */
 .balance-card {
   background: linear-gradient(135deg, #1C1917 0%, #292524 100%);
