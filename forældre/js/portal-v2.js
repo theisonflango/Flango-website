@@ -293,7 +293,7 @@
         try {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'js/portal-admin-preview.js?v=6';
+            s.src = 'js/portal-admin-preview.js?v=7';
             s.onload = resolve; s.onerror = reject;
             document.head.appendChild(s);
           });
@@ -1739,6 +1739,7 @@
             ${secOn('diet') ? renderDietSection() : ''}
             ${secOn('allergens') ? renderAllergensSection() : ''}
             ${showScreentime ? `${hasCafeLimitSections() ? '<div class="group-divider"><span>Skærmtid</span></div>' : ''}${renderScreentimeSection()}${showGames ? renderGamesSection() : ''}${showStChart ? renderScreentimeChartSection() : ''}` : ''}
+            ${secOn('game_accounts') ? renderGameAccountsSection() : ''}
           </div>
 
           <!-- TAB: PROFILE -->
@@ -3205,6 +3206,8 @@
     const showUsage = feat.show_usage !== false;
     const showRules = feat.show_rules !== false;
     const allowPersonal = feat.allow_personal_limits !== false;
+    // Egen kontakt siden 20260723041000 — delte før flag med allowPersonal.
+    const allowSessionLimit = feat.allow_session_limit !== false;
     const allowExtraTime = feat.allow_extra_time_requests !== false;
     // Loft: serveren afviser grænser over institutionens — stop dem allerede i stepperen.
     const maxDailyAttr = typeof rules.default_balance_minutes === 'number' ? ` data-max="${rules.default_balance_minutes}"` : '';
@@ -3231,8 +3234,9 @@
           <div class="setting-row" data-sub="st_personal_limits">
             <div class="setting-info"><div class="setting-label">Personlig daglig grænse</div><div class="setting-desc">∞ = ingen personlig grænse — klubbens regler gælder</div></div>
             <div class="stepper" id="st-daily-stepper" data-step="5"${maxDailyAttr}><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalDaily || '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
-          </div>
-          <div class="setting-row">
+          </div>` : ''}
+          ${(isAdminPreview() || allowSessionLimit) ? `
+          <div class="setting-row" data-sub="st_session_limit">
             <div class="setting-info"><div class="setting-label">Maks pr. session</div><div class="setting-desc">Hvor lang tid ad gangen (minutter). ∞ = klubbens regel gælder</div></div>
             <div class="stepper" id="st-session-stepper" data-step="5"${maxSessionAttr}><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalSession || '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
           </div>` : ''}
@@ -3241,10 +3245,37 @@
             <div class="setting-info"><div class="setting-label">Samtykke til forlænget spilletid</div><div class="setting-desc">Giv personalet lov til undtagelsesvis at forlænge.</div></div>
             <label class="toggle"><input type="checkbox" id="st-consent-toggle" ${consent ? 'checked' : ''}><span class="toggle-track"></span></label>
           </div>` : ''}
-          <div class="setting-row">
-            <div class="setting-info"><div class="setting-label">Tillad personligt Roblox-login</div><div class="setting-desc">Barnet kan logge ind med sin egen Roblox-konto på klubbens PC'er. Loginet gemmes krypteret. Anbefales ikke, hvis barnet har Robux på kontoen. Slå fra for at fravælge — et gemt login slettes.</div></div>
-            <label class="toggle"><input type="checkbox" id="roblox-personal-login-consent" ${robloxAllowed ? 'checked' : ''}><span class="toggle-track"></span></label>
-          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  /** Spilkonti — barnets EGEN spilkonto på klubbens PC'er. Ligger bevidst ikke i
+   *  "Daglig spilletid": det handler om konto-login, ikke om tid. Sektionen er
+   *  katalog-drevet (kun spil hvor institutionen har slået personligt login til),
+   *  så den slet ikke findes hvor det ikke er relevant.
+   *
+   *  NB: credential-lageret er i dag platform-specifikt for Roblox
+   *  (set_roblox_login_consent + gaming.user_game_credentials.platform='roblox').
+   *  Når en anden platform får personligt login, skal samtykket generaliseres —
+   *  rækkerne her er allerede katalog-drevne. */
+  function renderGameAccountsSection() {
+    const games = childData?.game_accounts || [];
+    if (!games.length) return '';
+    const robloxRows2 = historyForType('roblox_personal_login');
+    const allowed = !!activeConsentFor('roblox_personal_login')
+      || !robloxRows2.some(c => !c.is_active);
+    const rows = games.map(g => `
+          <div class="setting-row" data-game-account="${esc(g.id)}">
+            <div class="setting-info"><div class="setting-label">Personligt login til ${esc(g.name)}</div><div class="setting-desc">Barnet kan logge ind med sin egen ${esc(g.name)}-konto på klubbens PC'er. Loginet gemmes krypteret. Anbefales ikke, hvis barnet har penge på kontoen. Slå fra for at fravælge — et gemt login slettes.</div></div>
+            <label class="toggle"><input type="checkbox" id="roblox-personal-login-consent" ${allowed ? 'checked' : ''}><span class="toggle-track"></span></label>
+          </div>`).join('');
+    return `
+      <div class="section" id="section-game-accounts">
+        <div class="section-header">
+          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">🎮</div><div><div class="section-title">Spilkonti</div><div class="section-subtitle">Personligt login på klubbens PC'er</div></div></div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">${rows}
         </div></div></div>
       </div>`;
   }

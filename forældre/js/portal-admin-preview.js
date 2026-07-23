@@ -71,6 +71,7 @@
     pin: ['section-pin'],
     invite_parent: ['section-invite-parent'],
     linked_parents: ['section-linked-parents'],
+    game_accounts: ['section-game-accounts'],
     // Kapacitet: kortet er altid synligt, kontakten styrer kun handlingen.
     child_name_edit: ['section-child-name'],
     // Lovpligtige — serveren melder dem som always_on (ingen kolonne).
