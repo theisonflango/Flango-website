@@ -390,12 +390,16 @@
     const childId = selectedChild.child_id;
     const instId = selectedChild.institution_id;
     try {
-      const [view, prods, events, clubAvg, consents] = await Promise.all([
+      // Skærmtid hentes spekulativt MED i batchet (før flaget kendes) i stedet
+      // for serielt bagefter — serveren håndhæver selv flaget (403 når slået
+      // fra → catch → null), og flag-tjekket nedenfor består som bælte-og-seler.
+      const [view, prods, events, clubAvg, consents, screentime] = await Promise.all([
         API.getParentView(childId, adminPreviewParam).catch(e => { console.error('[Portal] getParentView:', e); return null; }),
         API.getProducts(instId, childId).catch(e => { console.error('[Portal] getProducts:', e); return []; }),
         API.getParentEvents(childId).catch(e => { console.error('[Portal] getEvents:', e); return null; }),
         API.getCustomerAvgSpend(childId).catch(e => { console.error('[Portal] getCustomerAvg:', e); return null; }),
         API.getConsentHistory(childId).catch(e => { console.error('[Portal] getConsentHistory:', e); return []; }),
+        API.getScreentime(childId, instId).catch(() => null),
       ]);
       childData = view;
       consentHistory = Array.isArray(consents) ? consents : [];
@@ -422,12 +426,7 @@
       // backend-svar ikke sender visible_sections).
       visibleSections = childData?.visible_sections || {};
 
-      // Load screentime data if enabled
-      if (featureFlags.skaermtid_enabled === true) {
-        screentimeData = await API.getScreentime(childId, instId).catch(e => { console.error('[Portal] getScreentime:', e); return null; });
-      } else {
-        screentimeData = null;
-      }
+      screentimeData = (featureFlags.skaermtid_enabled === true) ? screentime : null;
     } catch (err) {
       console.error('[Portal] loadChildData error:', err);
     }
