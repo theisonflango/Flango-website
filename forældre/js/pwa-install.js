@@ -124,9 +124,9 @@
       action = '<button type="button" id="fpwa-install-btn" class="fpwa-btn">Installér</button>';
     }
     var qr = mode === 'desktop'
-      ? '<img class="fpwa-qr" src="assets/icons/portal-qr.png" alt="QR-kode til Flango Portal" width="110" height="110">'
+      ? '<img class="fpwa-qr" src="assets/icons/portal-qr.png" alt="QR-kode til Flango Forældre" width="110" height="110">'
       : '<img class="fpwa-icon" src="assets/icons/icon-192.png" alt="" width="44" height="44">';
-    var title = mode === 'desktop' ? 'Flango Portal findes som app' : 'Installér Flango';
+    var title = mode === 'desktop' ? 'Flango Forældre findes som app' : 'Installér Flango';
     var text = mode === 'desktop'
       ? 'Scan koden med din telefon — så åbner portalen som app.'
       : 'Læg portalen på hjemmeskærmen for hurtig adgang til saldo og grænser.';
