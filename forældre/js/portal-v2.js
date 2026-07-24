@@ -12,6 +12,46 @@
   const root = document.getElementById('portal-root');
   const API = window.PortalAPI;
 
+  // Partner-deep-link (#partner=…). Læses FØR noget andet rører hash'et, og
+  // fjernes fra adresselinjen med det samme — tokenet skal ikke ligge i en
+  // URL brugeren kan komme til at dele videre. Fragmentet når aldrig serveren.
+  let pendingPartnerCode = null;
+  function readPartnerDeepLink() {
+    try {
+      const m = /[#&]partner=([A-Za-z0-9]{9})\b/.exec(window.location.hash || '');
+      if (!m) return false;
+      pendingPartnerCode = m[1].toUpperCase();
+      const cleaned = (window.location.hash || '').replace(m[0], '').replace(/^[#&]+/, '');
+      window.history.replaceState({}, '', window.location.pathname + window.location.search + (cleaned ? '#' + cleaned : ''));
+      return true;
+    } catch (_e) { return false; /* deep link er en bekvemmelighed, aldrig en forudsætning */ }
+  }
+  readPartnerDeepLink();
+
+  // Et scannet link rammer ofte en app der ALLEREDE er åben — så sker der
+  // ingen genindlæsning, kun en hash-ændring. Uden denne lytter ville
+  // linket være dødt netop i det almindelige tilfælde.
+  window.addEventListener('hashchange', () => {
+    if (readPartnerDeepLink()) consumePartnerDeepLink();
+  });
+
+  function consumePartnerDeepLink() {
+    if (!pendingPartnerCode) return;
+    const code = pendingPartnerCode;
+    pendingPartnerCode = null;
+    // En førstegangs-konto møder velkomst-/samtykke-modalen i samme øjeblik
+    // (den vises fire-and-forget, modsat vilkårs-flowet som loadChildren
+    // afventer). To modaler oven på hinanden er ubrugeligt — vent på tur.
+    let waited = 0;
+    const open = () => {
+      if (document.getElementById('flango-welcome-modal') && waited < 120000) {
+        waited += 400; setTimeout(open, 400); return;
+      }
+      openCodeModal({ prefill: code, hint: 'Partner-kode fra et scannet link.' });
+    };
+    setTimeout(open, 250);
+  }
+
   // ─── State ───
   let currentSession = null;
   let children = [];
@@ -320,9 +360,6 @@
         return;
       }
 
-      // Check for pending signup link (after Google redirect or email confirmation)
-      await checkPendingSignupLink();
-
       // Snapshot-først (kun native): vis sidste kendte data øjeblikkeligt og lad
       // det normale load køre som lydløs baggrunds-opdatering. Serveren er
       // fortsat autoritativ — snapshotten er ren visning, aldrig handlingsgrundlag.
@@ -408,6 +445,7 @@
       // ellers ville hver koldstart give et synligt "blink" over snapshotten.
       if (!silent || lastSnapshotSerial !== before) renderApp();
       maybeShowWelcomeModal();
+      consumePartnerDeepLink();
       // MobilePay-retur (best-effort; webhook+poll er sandheden bag krediteringen)
       try {
         const vref = new URLSearchParams(window.location.search).get('vipps_ref');
@@ -815,8 +853,10 @@
   //  RENDER: LOGIN / SIGNUP / FORGOT PASSWORD
   // ═══════════════════════════════════════
 
-  let loginView = 'login'; // 'login' | 'signup-code' | 'signup-auth' | 'forgot'
-  let signupVerifiedData = null; // { child_name, child_id, institution_name, institution_id } from code verification
+  // Auth-først: kontoen oprettes uden kode, og koden indløses derefter som
+  // logget ind. Det gamle 'signup-code'-trin findes ikke længere — der er
+  // ingen halvfærdig tilstand hvor en kode ligger og venter på en konto.
+  let loginView = 'login'; // 'login' | 'signup-auth' | 'forgot'
 
   function showLoginView(view) {
     loginView = view;
@@ -887,51 +927,14 @@
   function renderLogin() {
     const brandHTML = LOGIN_LOCKUP_HTML;
 
-    if (loginView === 'signup-code') {
-      // ─── STEP 1: Enter portal code ───
-      root.innerHTML = `
-        <div class="login-screen">
-          <div class="login-card">
-            ${brandHTML}
-            <div class="login-title">Opret forældrekonto</div>
-            <div class="login-subtitle">Indtast den 8-tegns kode du har modtaget fra institutionen via Aula.</div>
-            <div class="login-error" id="signup-code-error"></div>
-            <div class="login-field">
-              <label for="signup-portal-code">Portal-kode</label>
-              <input type="text" id="signup-portal-code" class="input-field signup-code-input" placeholder="F.eks. A1B2C3D4" maxlength="8" autocomplete="off" style="text-transform:uppercase;letter-spacing:3px;font-size:20px;text-align:center;font-weight:700">
-            </div>
-            <button class="save-btn full" id="verify-code-btn" style="margin-top:var(--s4)">Verificer kode</button>
-            <div class="login-links">
-              <a href="#" id="back-to-login-from-code">Har du allerede en konto? Log ind</a>
-            </div>
-          </div>
-        </div>`;
-
-      document.getElementById('verify-code-btn').addEventListener('click', handleVerifyPortalCode);
-      document.getElementById('signup-portal-code').addEventListener('keydown', e => { if (e.key === 'Enter') handleVerifyPortalCode(); });
-      document.getElementById('back-to-login-from-code').addEventListener('click', e => { e.preventDefault(); showLoginView('login'); });
-      // Auto-focus
-      setTimeout(() => document.getElementById('signup-portal-code')?.focus(), 100);
-
-    } else if (loginView === 'signup-auth') {
-      // ─── STEP 2: Choose auth method (after code verified) ───
-      const childName = signupVerifiedData?.child_name || 'dit barn';
-      const instName = signupVerifiedData?.institution_name || '';
+    if (loginView === 'signup-auth') {
+      // ─── Opret konto. Koden kommer bagefter, inde i portalen. ───
       root.innerHTML = `
         <div class="login-screen">
           <div class="login-card">
             ${brandHTML}
             <div class="login-title">Opret konto</div>
-            <div class="signup-verified-info">
-              <div class="signup-verified-child">
-                <span class="signup-verified-emoji">🧒</span>
-                <div>
-                  <div class="signup-verified-name">${childName}</div>
-                  <div class="signup-verified-inst">${instName}</div>
-                </div>
-              </div>
-            </div>
-            <div class="login-subtitle">Vælg hvordan du vil oprette din konto.</div>
+            <div class="login-subtitle">Opret først din konto — derefter indtaster du koden fra institutionen inde i portalen.</div>
             <div class="login-error" id="signup-auth-error"></div>
             <div class="login-success" id="signup-auth-success"></div>${appleAuthButtonHTML('signup-apple-btn')}
             <button class="google-btn full" id="signup-google-btn">
@@ -954,7 +957,6 @@
             <div id="turnstile-portal-signup" class="cf-turnstile" data-sitekey="0x4AAAAAACyNOCuIOJjI0pUa" data-theme="light" style="margin-top:var(--s3)"></div>
             <button class="save-btn full" id="signup-email-btn" style="margin-top:var(--s3)">Opret med e-mail</button>
             <div class="login-links">
-              <a href="#" id="back-to-code-step">Tilbage</a>
               <a href="#" id="goto-login-from-signup">Har du allerede en konto? Log ind</a>
             </div>
           </div>
@@ -965,7 +967,6 @@
       if (signupAppleBtn) signupAppleBtn.addEventListener('click', () => handleAppleAuth('signup-auth-error'));
       document.getElementById('signup-email-btn').addEventListener('click', handleSignupWithEmail);
       document.getElementById('signup-password-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') handleSignupWithEmail(); });
-      document.getElementById('back-to-code-step').addEventListener('click', e => { e.preventDefault(); showLoginView('signup-code'); });
       document.getElementById('goto-login-from-signup').addEventListener('click', e => { e.preventDefault(); showLoginView('login'); });
       ensureTurnstileWidget('turnstile-portal-signup');
 
@@ -1044,7 +1045,7 @@
       document.getElementById('login-btn').addEventListener('click', handleLogin);
       document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
       document.getElementById('forgot-link').addEventListener('click', e => { e.preventDefault(); showLoginView('forgot'); });
-      document.getElementById('goto-signup-link').addEventListener('click', e => { e.preventDefault(); showLoginView('signup-code'); });
+      document.getElementById('goto-signup-link').addEventListener('click', e => { e.preventDefault(); showLoginView('signup-auth'); });
       document.getElementById('demo-login-btn').addEventListener('click', handleDemoLogin);
       // (Turnstile fjernet fra login — se kommentar i HTML-templaten)
     }
@@ -1319,108 +1320,10 @@
     }
   }
 
-  // ─── Signup STEP 1: Verify portal code ───
-  async function handleVerifyPortalCode() {
-    const errorEl = document.getElementById('signup-code-error');
-    const btn = document.getElementById('verify-code-btn');
-    const codeInput = document.getElementById('signup-portal-code');
-
-    errorEl.classList.remove('visible');
-    const code = (codeInput?.value || '').trim().toUpperCase();
-
-    if (!code || code.length !== 8) {
-      errorEl.textContent = 'Koden skal være præcis 8 tegn.';
-      errorEl.classList.add('visible');
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = 'Verificerer...';
-
-    try {
-      // Prøv først som portal-kode (aktiveringskode fra admin)
-      const result = await API.verifyPortalCodeForSignup(code);
-      if (result?.valid) {
-        // Aktiveringskode verificeret
-        signupVerifiedData = {
-          code: code,
-          type: 'activation',
-          child_name: result.child_name,
-          child_id: result.child_id,
-          institution_name: result.institution_name,
-          institution_id: result.institution_id,
-        };
-        showLoginView('signup-auth');
-        return;
-      }
-
-      // Håndter specifikke fejl fra aktiveringskode
-      if (result?.error === 'CODE_EXPIRED') {
-        errorEl.textContent = 'Denne kode er udl\u00f8bet. Kontakt personalet for en ny kode.';
-        errorEl.classList.add('visible');
-        return;
-      }
-
-      // Hvis ikke fundet som aktiveringskode, prøv som invitationskode
-      if (result?.error === 'LOOKUP_FAILED') {
-        const inviteResult = await API.verifyInviteCodeForSignup(code);
-        if (inviteResult?.valid) {
-          // Invitationskode verificeret
-          const childNames = inviteResult.children_names || [];
-          signupVerifiedData = {
-            code: code,
-            type: 'invite',
-            invite_code: inviteResult.invite_code,
-            institution_name: inviteResult.institution_name,
-            institution_id: inviteResult.institution_id,
-            children_names: childNames,
-          };
-          showLoginView('signup-auth');
-          return;
-        }
-
-        if (inviteResult?.error === 'INVITE_EXPIRED') {
-          errorEl.textContent = 'Denne kode er udl\u00f8bet. Bed den anden for\u00e6lder om at generere en ny.';
-          errorEl.classList.add('visible');
-          return;
-        }
-
-        // Ingen match som hverken aktiverings- eller invitationskode
-        errorEl.textContent = 'Ugyldig kode. Tjek koden og pr\u00f8v igen.';
-        errorEl.classList.add('visible');
-        return;
-      }
-
-      // Andre fejl fra aktiveringskode
-      errorEl.textContent = result?.error || 'Ugyldig kode. Tjek koden og pr\u00f8v igen.';
-      errorEl.classList.add('visible');
-
-    } catch (err) {
-      console.error('[signup] Code verification error:', err);
-      errorEl.textContent = err?.message || 'Kunne ikke verificere koden. Pr\u00f8v igen.';
-      errorEl.classList.add('visible');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Verificer kode';
-    }
-  }
-
-  // ─── Signup STEP 2a: Create account with Google ───
+  // ─── Opret konto med Google ───
   async function handleSignupWithGoogle() {
     const errorEl = document.getElementById('signup-auth-error');
     if (errorEl) errorEl.classList.remove('visible');
-
-    if (!signupVerifiedData) {
-      showLoginView('signup-code');
-      return;
-    }
-
-    // Save verified data to sessionStorage so we can link after Google redirect
-    try {
-      sessionStorage.setItem('flango_signup_pending', JSON.stringify(signupVerifiedData));
-    } catch (e) {
-      console.warn('[signup] Could not save to sessionStorage:', e);
-    }
 
     try {
       await API.signInWithGoogle();
@@ -1434,7 +1337,7 @@
     }
   }
 
-  // ─── Signup STEP 2b: Create account with email/password ───
+  // ─── Opret konto med e-mail + adgangskode ───
   async function handleSignupWithEmail() {
     const errorEl = document.getElementById('signup-auth-error');
     const successEl = document.getElementById('signup-auth-success');
@@ -1442,11 +1345,6 @@
 
     errorEl.classList.remove('visible');
     successEl.classList.remove('visible');
-
-    if (!signupVerifiedData) {
-      showLoginView('signup-code');
-      return;
-    }
 
     const email = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
@@ -1500,51 +1398,17 @@
         return;
       }
 
-      // If email confirmation required (no immediate session)
+      // Kræver e-mailen bekræftelse, er der ingen session endnu. Ingen kode
+      // står og venter nogen steder — forælderen logger ind og indtaster den
+      // i portalen, uanset hvilken enhed de åbner bekræftelseslinket på.
       if (!signUpData.session) {
-        // Save pending link data for after email confirmation
-        try {
-          sessionStorage.setItem('flango_signup_pending', JSON.stringify(signupVerifiedData));
-        } catch (e) { /* ignore */ }
         successEl.textContent = 'Tjek din e-mail for at bekræfte din konto. Klik på linket i mailen, og log derefter ind.';
         successEl.classList.add('visible');
         setTimeout(() => showLoginView('login'), 4000);
         return;
       }
 
-      // Vis vilkårsaccept FØR linking
-      const termsAccepted = await showTermsAcceptForLinking(signupVerifiedData.child_name || 'dit barn');
-      if (!termsAccepted) {
-        btn.disabled = false;
-        btn.textContent = 'Opret med e-mail';
-        return;
-      }
-
-      // Link child(ren) to parent
-      btn.textContent = 'Tilknytter barn...';
-      try {
-        if (signupVerifiedData.type === 'invite') {
-          await API.redeemParentInvite(signupVerifiedData.code);
-        } else {
-          await API.linkChildByPortalCode(signupVerifiedData.code);
-        }
-        // Acceptér vilkår for nyligt tilknyttede børn
-        try {
-          const refreshed = await API.getChildren();
-          for (const c of refreshed.filter(ch => !ch.terms_accepted_at)) {
-            await API.acceptTerms(c.child_id, CURRENT_TERMS_VERSION);
-          }
-        } catch (_e) { /* non-critical */ }
-      } catch (linkErr) {
-        console.error('[signup] Link error:', linkErr);
-        // Fall through — attempt to continue
-      }
-
-      // Clear pending data
-      signupVerifiedData = null;
-      try { sessionStorage.removeItem('flango_signup_pending'); } catch (e) { /* ignore */ }
-
-      // Enter portal
+      // Ind i portalen — tom-tilstanden er onboardingen herfra.
       currentSession = await API.getSession();
       await loadChildren();
 
@@ -1555,32 +1419,6 @@
     } finally {
       btn.disabled = false;
       btn.textContent = 'Opret med e-mail';
-    }
-  }
-
-  // ─── Check for pending signup after Google redirect ───
-  async function checkPendingSignupLink() {
-    let pending = null;
-    try {
-      const raw = sessionStorage.getItem('flango_signup_pending');
-      if (raw) pending = JSON.parse(raw);
-    } catch (e) { return; }
-
-    if (!pending?.code || !pending?.institution_id) return;
-
-    console.log('[signup] Found pending signup link, attempting to link child...');
-    try {
-      if (pending.type === 'invite') {
-        await API.redeemParentInvite(pending.code);
-      } else {
-        await API.linkChildByPortalCode(pending.code);
-      }
-      // Vilkårsaccept håndteres retrospektivt i loadChildren()
-      console.log('[signup] Child linked successfully after redirect');
-    } catch (err) {
-      console.error('[signup] Pending link error:', err);
-    } finally {
-      try { sessionStorage.removeItem('flango_signup_pending'); } catch (e) { /* ignore */ }
     }
   }
 
@@ -1643,10 +1481,22 @@
           </div>
         </header>
         <main class="main">
-          <div class="empty-state" style="margin-top:var(--s16)">
-            <div class="empty-state-icon">👶</div>
-            <div class="empty-state-text">Du har endnu ikke tilknyttet nogen børn.<br>Brug koden fra institutionen for at komme i gang.</div>
-            <button class="save-btn" style="margin-top:var(--s5)" onclick="document.getElementById('add-child-modal').classList.add('visible')">Tilknyt barn</button>
+          <div class="empty-state" style="margin-top:var(--s12);max-width:420px;margin-left:auto;margin-right:auto">
+            <div class="empty-state-icon">👋</div>
+            <div class="empty-state-text" style="margin-bottom:var(--s5)">
+              Velkommen til Flango.<br>Indtast koden fra institutionen for at komme i gang.
+            </div>
+            <button class="save-btn full" id="onboard-code-btn">Indtast kode</button>
+
+            <div style="margin:var(--s6) 0 var(--s4);border-top:1px solid var(--border)"></div>
+            <div style="font-size:13px;color:var(--ink-soft);line-height:1.5;text-align:center">
+              <strong>Har din partner allerede adgang?</strong><br>
+              Så skal du ikke bruge en kode fra institutionen — vis dem i stedet din
+              partner-kode, så kan de tilføje dig.
+            </div>
+            <div id="partner-token-box" style="margin-top:var(--s3)"></div>
+            <button class="save-btn full" id="partner-show-btn" style="margin-top:var(--s3);background:var(--surface-sunken);color:var(--ink)">Vis min partner-kode</button>
+
             ${userEmail ? `<div style="margin-top:var(--s6);font-size:12px;color:var(--ink-muted);text-align:center;">Logget ind som <strong>${esc(userEmail)}</strong></div>` : ''}
             <button id="no-children-logout" type="button" style="margin-top:var(--s3);padding:10px 20px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg);color:var(--ink-soft);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -1657,8 +1507,10 @@
       </div>
       ${renderAddChildModal()}`;
     bindAddChildModal();
+    document.getElementById('partner-show-btn')?.addEventListener('click', handleShowPartnerToken);
     const logoutBtn = document.getElementById('no-children-logout');
     if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+    consumePartnerDeepLink();
   }
 
   function renderError(msg) {
@@ -3592,26 +3444,125 @@
     }
   }
 
+  // ─── Partner-deling (identitetsmodellen) ────────────────────────
+  //
+  //  Den der BEDER om adgang viser sin identitet; den der HAR adgangen
+  //  godkender eksplicit og vælger hvilke børn. Der findes ingen kode der
+  //  i sig selv åbner noget — derfor kan en videresendt kode ikke give
+  //  adgang til den forkerte person.
+
   function renderInviteParentSection() {
     return `
       <div class="section" id="section-invite-parent">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--surface-sunken)">👥</div><div><div class="section-title">Invit\u00e9r anden for\u00e6lder</div><div class="section-subtitle">Del adgang med en partner</div></div></div>
+          <div class="section-title-row"><div class="section-icon" style="background:var(--surface-sunken)">👥</div><div><div class="section-title">Del adgang med en partner</div><div class="section-subtitle">Tilknyt en anden forælder</div></div></div>
           <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          <p style="margin:var(--s2) 0;font-size:13px;color:var(--ink-muted)">Generer en invitationskode som den anden for\u00e6lder kan bruge til at oprette en konto. Alle dine b\u00f8rn tilknyttes automatisk.</p>
-          <div id="invite-parent-result" style="display:none;margin-bottom:var(--s3)">
-            <div style="text-align:center;padding:var(--s4);background:var(--surface-sunken);border-radius:12px">
-              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-muted);margin-bottom:var(--s1)">Invitationskode</div>
-              <div id="invite-parent-code" style="font-size:28px;font-weight:800;letter-spacing:4px;font-family:monospace"></div>
-              <div id="invite-parent-expiry" style="font-size:12px;color:var(--ink-muted);margin-top:var(--s1)"></div>
-              <button class="save-btn" id="invite-copy-btn" style="margin-top:var(--s3);font-size:13px">Kopier kode</button>
-            </div>
-          </div>
-          <button class="save-btn full" id="invite-parent-btn" style="margin-top:var(--s2)">Generer invitationskode</button>
+          <p style="margin:0 0 var(--s3);font-size:13px;color:var(--ink-soft);line-height:1.5">
+            Din partner opretter sin egen konto og viser dig sin <strong>partner-kode</strong>.
+            Du taster den her, ser hvem det er, og vælger hvilke børn de skal have adgang til.
+          </p>
+          <button class="save-btn full" id="partner-add-btn">Tilføj partner</button>
+
+          <div style="margin:var(--s5) 0 var(--s3);border-top:1px solid var(--border)"></div>
+
+          <p style="margin:0 0 var(--s3);font-size:13px;color:var(--ink-soft);line-height:1.5">
+            <strong>Skal du selv have adgang</strong> hos en anden forælder? Vis dem din
+            partner-kode — den udpeger kun din konto og giver i sig selv ingen adgang.
+          </p>
+          <div id="partner-token-box"></div>
+          <button class="save-btn full" id="partner-show-btn" style="background:var(--surface-sunken);color:var(--ink)">Vis min partner-kode</button>
         </div></div></div>
       </div>`;
+  }
+
+  // Web-portalen er altid QR-kodens og deep-linkets mål, så en telefons eget
+  // kamera kan åbne den — portalen beder aldrig selv om kamera-adgang.
+  // Tokenet ligger i FRAGMENTET: det når aldrig webserverens logs.
+  var PARTNER_LINK_BASE = 'https://flango.dk/for%C3%A6ldre/';
+
+  function partnerLinkFor(token) { return PARTNER_LINK_BASE + '#partner=' + token; }
+
+  function renderPartnerToken(res) {
+    const box = document.getElementById('partner-token-box');
+    if (!box) return;
+    const token = res.token;
+    const pretty = token.slice(0, 3) + '-' + token.slice(3, 6) + '-' + token.slice(6);
+    let qr = '';
+    try {
+      qr = window.flangoQR ? window.flangoQR.svg(partnerLinkFor(token)) : '';
+    } catch (e) {
+      console.warn('[Portal] QR kunne ikke tegnes:', e);
+    }
+    box.innerHTML = `
+      <div style="text-align:center;padding:var(--s4);background:var(--surface-sunken);border-radius:12px;margin-bottom:var(--s3)">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-muted);margin-bottom:var(--s1)">Din partner-kode</div>
+        <div style="font-size:26px;font-weight:800;letter-spacing:3px;font-family:monospace">${esc(pretty)}</div>
+        <div style="font-size:12px;color:var(--ink-muted);margin-top:var(--s1)">Udløber om en time</div>
+        ${qr ? `<div style="max-width:190px;margin:var(--s3) auto 0">${qr}</div>
+        <div style="font-size:12px;color:var(--ink-muted);margin-top:var(--s2)">Din partner kan scanne den med telefonens eget kamera</div>` : ''}
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:var(--s3);flex-wrap:wrap">
+          <button class="save-btn" id="partner-copy-btn" style="font-size:13px">Kopiér kode</button>
+          <button class="save-btn" id="partner-revoke-btn" style="font-size:13px;background:var(--surface);color:var(--ink);border:1px solid var(--border)">Tilbagekald</button>
+        </div>
+      </div>`;
+
+    document.getElementById('partner-copy-btn')?.addEventListener('click', () => {
+      navigator.clipboard.writeText(token).then(() => showToast('Kode kopieret', 'success'));
+    });
+    document.getElementById('partner-revoke-btn')?.addEventListener('click', async () => {
+      try {
+        await API.revokeParentLinkToken();
+        box.innerHTML = '';
+        const btn = document.getElementById('partner-show-btn');
+        if (btn) btn.style.display = '';
+        showToast('Partner-koden er trukket tilbage', 'success');
+      } catch (_e) { showToast('Kunne ikke tilbagekalde', 'error'); }
+    });
+  }
+
+  // Navnet er det eneste modtageren kan genkende os på ud over e-mailen —
+  // og for e-mail-signup og Apples relay-adresser er e-mailen intetsigende.
+  // Uden et navn ville godkendelses-trinnet være indholdsløst, og det trin
+  // ER hele værnet. Derfor spørges der, med OAuth-navnet som forslag.
+  function handleShowPartnerToken() {
+    if (demoBlocked()) return;
+    const box = document.getElementById('partner-token-box');
+    const btn = document.getElementById('partner-show-btn');
+    if (!box) return;
+    const meta = currentSession?.user?.user_metadata || {};
+    const suggested = esc(meta.full_name || meta.name || '');
+
+    if (btn) btn.style.display = 'none';
+    box.innerHTML = `
+      <div style="padding:var(--s3);background:var(--surface-sunken);border-radius:12px;text-align:left">
+        <label for="partner-name-input" style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Hvad hedder du?</label>
+        <div style="font-size:12px;color:var(--ink-muted);margin-bottom:8px">Din partner skal kunne genkende dig, når de godkender.</div>
+        <input type="text" id="partner-name-input" class="input-field" maxlength="60" value="${suggested}" placeholder="Fx Anne Jensen" autocomplete="name">
+        <button class="save-btn full" id="partner-name-ok" style="margin-top:var(--s2)">Vis koden</button>
+      </div>`;
+    const input = document.getElementById('partner-name-input');
+    setTimeout(() => input?.focus(), 60);
+    const submit = () => issuePartnerToken(input?.value || '');
+    document.getElementById('partner-name-ok').addEventListener('click', submit);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  }
+
+  async function issuePartnerToken(name) {
+    const okBtn = document.getElementById('partner-name-ok');
+    if (name.trim().length < 2) { showToast('Skriv dit navn', 'error'); return; }
+    if (okBtn) { okBtn.disabled = true; okBtn.textContent = 'Henter...'; }
+    try {
+      const res = await API.issueParentLinkToken(name.trim());
+      if (!res?.success) { showToast(codeError(res?.error), 'error'); return; }
+      renderPartnerToken(res);
+    } catch (err) {
+      console.error('[Portal] partner token:', err);
+      showToast('Kunne ikke hente din partner-kode', 'error');
+    } finally {
+      if (okBtn) { okBtn.disabled = false; okBtn.textContent = 'Vis koden'; }
+    }
   }
 
   function renderPinSection() {
@@ -3631,39 +3582,247 @@
       </div>`;
   }
 
-  function renderAddChildModal() {
-    // Institution-feltet vises kun som info når forælderen allerede har børn
-    // (dropdown'en bruges ikke til opslag — koden er globalt unik).
-    const instMap = new Map();
-    children.forEach(c => {
-      if (c.institution_id && !instMap.has(c.institution_id)) {
-        instMap.set(c.institution_id, c.institution_name || getInstitutionName() || 'Institution');
-      }
-    });
-    const instFieldHTML = instMap.size > 0
-      ? `<div class="modal-field">
-            <label>Institution</label>
-            <select id="link-institution" class="input-field">
-              ${[...instMap.entries()].map(([id, name]) => `<option value="${id}">${esc(name)}</option>`).join('')}
-            </select>
-          </div>`
-      : '';
+  // ═══════════════════════════════════════
+  //  KODE-INDLØSNING — én flade, to udfald
+  // ═══════════════════════════════════════
+  //
+  //  Forælderen skal ikke vide hvilken SLAGS kode de har fået. Der er ét
+  //  felt: serveren klassificerer koden, og fladen viser hvad der vil ske,
+  //  FØR det sker. Ingen institution-dropdown — koden er globalt unik, og
+  //  det gamle felt blev aldrig brugt til opslaget.
 
+  var codeModal = { step: 'input', data: null, busy: false, picked: null };
+
+  function renderAddChildModal() {
     return `
       <div class="modal-overlay" id="add-child-modal">
         <div class="modal" style="position:relative">
           <button class="modal-close" id="modal-close-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-          <div class="modal-title">Tilknyt barn</div>
-          <div class="modal-subtitle">Indtast den 8-cifrede kode fra institutionen</div>
-          ${instFieldHTML}
-          <div class="modal-field">
-            <label>Portalkode</label>
-            <input type="text" id="link-code" class="input-field" placeholder="fx ABC12345" maxlength="8" style="text-transform:uppercase">
-          </div>
-          <div class="login-error" id="link-error"></div>
-          <button class="save-btn full" id="link-btn" style="margin-top:var(--s3)">Tilknyt</button>
+          <div id="code-modal-body"></div>
         </div>
       </div>`;
+  }
+
+  var CODE_ERRORS = {
+    BAD_FORMAT: 'Koden skal være 8 tegn fra institutionen eller 9 tegn fra en partner.',
+    NOT_FOUND: 'Vi kan ikke finde den kode. Tjek den og prøv igen.',
+    CODE_EXPIRED: 'Koden er udløbet. Bed institutionen om en ny — den holder 7 dage.',
+    PARTNER_CODE_EXPIRED: 'Partner-koden er udløbet. Bed om en frisk — de holder én time.',
+    PARTNER_CODE_SELF: 'Det er din egen partner-kode. Det er din partner, der skal bruge den.',
+    SHARING_DISABLED: 'Institutionen har slået deling med en partner fra.',
+    NO_CHILDREN_SELECTED: 'Vælg mindst ét barn.',
+    THROTTLED: 'For mange forsøg. Vent 15 minutter og prøv igen.',
+    NOT_AUTHENTICATED: 'Du er blevet logget ud. Log ind igen.',
+  };
+
+  function codeError(code) {
+    return CODE_ERRORS[code] || 'Noget gik galt. Prøv igen.';
+  }
+
+  function openCodeModal(opts) {
+    const modal = document.getElementById('add-child-modal');
+    if (!modal) return;
+    codeModal = { step: 'input', data: null, busy: false, picked: null, hint: opts && opts.hint };
+    modal.classList.add('visible');
+    renderCodeModalBody();
+    if (opts && opts.prefill) {
+      const input = document.getElementById('code-input');
+      if (input) input.value = opts.prefill;
+      handleCodeResolve();
+    } else {
+      setTimeout(() => document.getElementById('code-input')?.focus(), 80);
+    }
+  }
+
+  function closeCodeModal() {
+    document.getElementById('add-child-modal')?.classList.remove('visible');
+  }
+
+  function renderCodeModalBody() {
+    const body = document.getElementById('code-modal-body');
+    if (!body) return;
+
+    if (codeModal.step === 'input') {
+      body.innerHTML = `
+        <div class="modal-title">Indtast kode</div>
+        <div class="modal-subtitle">${esc(codeModal.hint || 'Koden fra institutionen — eller en partner-kode fra en anden forælder.')}</div>
+        <div class="modal-field">
+          <label for="code-input">Kode</label>
+          <input type="text" id="code-input" class="input-field" placeholder="fx A1B2C3D4" maxlength="12" autocomplete="off"
+                 style="text-transform:uppercase;letter-spacing:3px;font-size:20px;text-align:center;font-weight:700">
+        </div>
+        <div class="login-error" id="code-error"></div>
+        <button class="save-btn full" id="code-continue-btn" style="margin-top:var(--s3)">Fortsæt</button>`;
+      document.getElementById('code-continue-btn').addEventListener('click', handleCodeResolve);
+      document.getElementById('code-input').addEventListener('keydown', e => { if (e.key === 'Enter') handleCodeResolve(); });
+      return;
+    }
+
+    if (codeModal.step === 'child') {
+      const d = codeModal.data;
+      const sibs = d.siblings || [];
+      body.innerHTML = `
+        <div class="modal-title">Tilknyt ${esc(d.child.name)}</div>
+        <div class="modal-subtitle">${esc(d.child.institution_name || '')}</div>
+        <div style="display:flex;align-items:center;gap:10px;padding:var(--s3);background:var(--surface-sunken);border-radius:12px;margin-bottom:var(--s3)">
+          <span style="font-size:22px">🧒</span>
+          <div><div style="font-weight:700">${esc(d.child.name)}</div>
+          <div style="font-size:12px;color:var(--ink-muted)">Bliver tilknyttet din konto</div></div>
+        </div>
+        ${sibs.length ? `
+          <div style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s2)">
+            Institutionen har registreret disse som ${esc(d.child.name)}s søskende.
+            Sæt flueben ved dem, du også er forælder til:
+          </div>
+          <div id="sibling-picker" style="display:flex;flex-direction:column;gap:6px;margin-bottom:var(--s3)">
+            ${sibs.map(s => `
+              <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer">
+                <input type="checkbox" class="sibling-check" value="${esc(s.id)}" checked style="width:18px;height:18px">
+                <span style="font-weight:600">${esc(s.name)}</span>
+              </label>`).join('')}
+          </div>` : ''}
+        <div class="login-error" id="code-error"></div>
+        <button class="save-btn full" id="code-redeem-btn">Tilknyt</button>
+        <button class="save-btn full" id="code-back-btn" style="margin-top:var(--s2);background:var(--surface-sunken);color:var(--ink)">Tilbage</button>`;
+      document.getElementById('code-redeem-btn').addEventListener('click', handleCodeRedeem);
+      document.getElementById('code-back-btn').addEventListener('click', () => { codeModal.step = 'input'; renderCodeModalBody(); });
+      return;
+    }
+
+    if (codeModal.step === 'partner') {
+      const p = codeModal.data.person;
+      const mine = children || [];
+      body.innerHTML = `
+        <div class="modal-title">Giv adgang til denne person?</div>
+        <div class="modal-subtitle">Du deler adgang — vær sikker på at du genkender kontoen.</div>
+        <div style="padding:var(--s3);background:var(--surface-sunken);border-radius:12px;margin-bottom:var(--s3)">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-muted)">Konto</div>
+          <div style="font-weight:700;font-size:15px;word-break:break-all">${esc(p.email || 'ukendt')}</div>
+          <div style="font-size:13px;color:var(--ink-soft);margin-top:2px">Skrev selv sit navn: ${esc(p.display_name || '—')}</div>
+        </div>
+        <div style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s2)">Hvilke af dine børn skal personen have adgang til?</div>
+        <div id="partner-child-picker" style="display:flex;flex-direction:column;gap:6px;margin-bottom:var(--s3)">
+          ${mine.map(c => `
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer">
+              <input type="checkbox" class="partner-child-check" value="${esc(c.child_id)}" style="width:18px;height:18px">
+              <span style="font-weight:600">${esc(formatChildName(c))}</span>
+            </label>`).join('')}
+        </div>
+        <div class="login-error" id="code-error"></div>
+        <button class="save-btn full" id="code-approve-btn">Godkend adgang</button>
+        <button class="save-btn full" id="code-back-btn" style="margin-top:var(--s2);background:var(--surface-sunken);color:var(--ink)">Annullér</button>`;
+      document.getElementById('code-approve-btn').addEventListener('click', handleCodeApprove);
+      document.getElementById('code-back-btn').addEventListener('click', () => { codeModal.step = 'input'; renderCodeModalBody(); });
+    }
+  }
+
+  function showCodeError(msg) {
+    const el = document.getElementById('code-error');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+
+  async function handleCodeResolve() {
+    if (codeModal.busy) return;
+    const input = document.getElementById('code-input');
+    const btn = document.getElementById('code-continue-btn');
+    const raw = (input?.value || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    document.getElementById('code-error')?.classList.remove('visible');
+
+    if (raw.length !== 8 && raw.length !== 9) {
+      showCodeError(CODE_ERRORS.BAD_FORMAT);
+      return;
+    }
+
+    codeModal.busy = true;
+    if (btn) { btn.disabled = true; btn.textContent = 'Tjekker...'; }
+    try {
+      const res = await API.resolveParentCode(raw);
+      if (res?.kind === 'child') {
+        if (res.already_linked) { showCodeError('Du har allerede adgang til det barn.'); return; }
+        codeModal.data = res; codeModal.step = 'child'; renderCodeModalBody(); return;
+      }
+      if (res?.kind === 'partner') {
+        if (!children || children.length === 0) {
+          showCodeError('Det er en partner-kode. Den skal indtastes af den forælder, der allerede har adgang.');
+          return;
+        }
+        codeModal.data = res; codeModal.step = 'partner'; renderCodeModalBody(); return;
+      }
+      if (res?.kind === 'throttled') { showCodeError(CODE_ERRORS.THROTTLED); return; }
+      if (res?.error === 'CODE_ALREADY_USED') {
+        showCodeError(res.already_yours
+          ? 'Koden er brugt — og barnet er allerede på din konto.'
+          : 'Koden er allerede brugt. Skal din partner have adgang, så lad dem oprette deres egen konto og tilføj dem med deres partner-kode.');
+        return;
+      }
+      showCodeError(codeError(res?.error));
+    } catch (err) {
+      console.error('[Portal] resolve code:', err);
+      showCodeError('Kunne ikke tjekke koden. Prøv igen.');
+    } finally {
+      codeModal.busy = false;
+      if (btn) { btn.disabled = false; btn.textContent = 'Fortsæt'; }
+    }
+  }
+
+  async function handleCodeRedeem() {
+    if (codeModal.busy) return;
+    const btn = document.getElementById('code-redeem-btn');
+    const picked = [...document.querySelectorAll('.sibling-check:checked')].map(el => el.value);
+
+    const accepted = await showTermsAcceptForLinking(codeModal.data.child.name || 'dit barn');
+    if (!accepted) return;
+
+    codeModal.busy = true;
+    if (btn) { btn.disabled = true; btn.textContent = 'Tilknytter...'; }
+    try {
+      const res = await API.redeemChildCode(codeModal.data.code, picked);
+      if (!res?.success) { showCodeError(codeError(res?.error)); return; }
+
+      // Vilkår for hvert nyligt tilknyttet barn
+      try {
+        const refreshed = await API.getChildren();
+        for (const c of refreshed.filter(ch => !ch.terms_accepted_at)) {
+          await API.acceptTerms(c.child_id, CURRENT_TERMS_VERSION);
+        }
+      } catch (_e) { /* ikke kritisk */ }
+
+      const n = (res.children || []).length;
+      closeCodeModal();
+      showToast(n > 1 ? `${n} børn tilknyttet!` : 'Barn tilknyttet!', 'success');
+      await loadChildren();
+    } catch (err) {
+      console.error('[Portal] redeem code:', err);
+      showCodeError('Kunne ikke tilknytte. Prøv igen.');
+    } finally {
+      codeModal.busy = false;
+      if (btn) { btn.disabled = false; btn.textContent = 'Tilknyt'; }
+    }
+  }
+
+  async function handleCodeApprove() {
+    if (codeModal.busy) return;
+    const btn = document.getElementById('code-approve-btn');
+    const picked = [...document.querySelectorAll('.partner-child-check:checked')].map(el => el.value);
+    if (picked.length === 0) { showCodeError(CODE_ERRORS.NO_CHILDREN_SELECTED); return; }
+
+    codeModal.busy = true;
+    if (btn) { btn.disabled = true; btn.textContent = 'Godkender...'; }
+    try {
+      const res = await API.approveParentLink(codeModal.data.code, picked);
+      if (!res?.success) { showCodeError(codeError(res?.error)); return; }
+      closeCodeModal();
+      showToast('Adgang givet — I får begge en bekræftelse', 'success');
+      loadLinkedParents();
+    } catch (err) {
+      console.error('[Portal] approve partner:', err);
+      showCodeError('Kunne ikke godkende. Prøv igen.');
+    } finally {
+      codeModal.busy = false;
+      if (btn) { btn.disabled = false; btn.textContent = 'Godkend adgang'; }
+    }
   }
 
   // ═══════════════════════════════════════
@@ -4310,17 +4469,13 @@
     const pinBtn = document.getElementById('pin-save-btn');
     if (pinBtn) pinBtn.addEventListener('click', handlePinChange);
 
-    // Invite parent
-    const inviteBtn = document.getElementById('invite-parent-btn');
-    if (inviteBtn) inviteBtn.addEventListener('click', handleInviteParent);
-    const inviteCopyBtn = document.getElementById('invite-copy-btn');
-    if (inviteCopyBtn) inviteCopyBtn.addEventListener('click', () => {
-      const code = document.getElementById('invite-parent-code')?.textContent;
-      if (code) navigator.clipboard.writeText(code).then(() => {
-        inviteCopyBtn.textContent = 'Kopieret!';
-        setTimeout(() => { inviteCopyBtn.textContent = 'Kopier kode'; }, 1500);
-      });
-    });
+    // Partner-deling
+    const partnerAddBtn = document.getElementById('partner-add-btn');
+    if (partnerAddBtn) partnerAddBtn.addEventListener('click', () => openCodeModal({
+      hint: 'Indtast din partners partner-kode (9 tegn).',
+    }));
+    const partnerShowBtn = document.getElementById('partner-show-btn');
+    if (partnerShowBtn) partnerShowBtn.addEventListener('click', handleShowPartnerToken);
 
     // Feedback tabs
     const feedbackTabs = document.getElementById('feedback-tabs');
@@ -4356,23 +4511,15 @@
     const modal = document.getElementById('add-child-modal');
     if (!modal) return;
 
-    // Open triggers
-    const openBtns = [
-      document.getElementById('add-child-btn-mobile'),
-      document.getElementById('add-child-btn-sidebar'),
-    ];
-    openBtns.forEach(btn => {
-      if (btn) btn.addEventListener('click', () => modal.classList.add('visible'));
+    [document.getElementById('add-child-btn-mobile'),
+     document.getElementById('add-child-btn-sidebar'),
+     document.getElementById('onboard-code-btn')].forEach(btn => {
+      if (btn) btn.addEventListener('click', () => openCodeModal());
     });
 
-    // Close
     const closeBtn = document.getElementById('modal-close-btn');
-    if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.remove('visible'));
-    modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('visible'); });
-
-    // Link child
-    const linkBtn = document.getElementById('link-btn');
-    if (linkBtn) linkBtn.addEventListener('click', handleLinkChild);
+    if (closeBtn) closeBtn.addEventListener('click', closeCodeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeCodeModal(); });
   }
 
   // ═══════════════════════════════════════
@@ -6344,118 +6491,6 @@
     } catch (err) {
       console.error('[Portal] PIN change error:', err);
       showToast('Kunne ikke opdatere adgangskode', 'error');
-    }
-  }
-
-  async function handleInviteParent() {
-    if (demoBlocked()) return;
-    const btn = document.getElementById('invite-parent-btn');
-    const resultDiv = document.getElementById('invite-parent-result');
-    const codeEl = document.getElementById('invite-parent-code');
-    const expiryEl = document.getElementById('invite-parent-expiry');
-
-    if (!btn || !selectedChild) return;
-    const institutionId = selectedChild.institution_id;
-    if (!institutionId) { showToast('Ingen institution fundet', 'error'); return; }
-
-    btn.disabled = true;
-    btn.textContent = 'Genererer...';
-
-    try {
-      const result = await API.createParentInvite(institutionId);
-      if (!result?.success) {
-        showToast(result?.error || 'Kunne ikke generere kode', 'error');
-        return;
-      }
-
-      if (codeEl) codeEl.textContent = result.invite_code;
-      if (expiryEl) {
-        const expDate = new Date(result.expires_at);
-        const daysLeft = Math.ceil((expDate - new Date()) / 86400000);
-        expiryEl.textContent = result.existing
-          ? 'Eksisterende kode \u2014 udl\u00f8ber om ' + daysLeft + ' dage'
-          : 'Udl\u00f8ber om 7 dage';
-      }
-      if (resultDiv) resultDiv.style.display = '';
-      btn.textContent = 'Generer ny kode';
-    } catch (err) {
-      console.error('[Portal] Invite error:', err);
-      showToast('Kunne ikke generere invitationskode', 'error');
-    } finally {
-      btn.disabled = false;
-      if (btn.textContent === 'Genererer...') btn.textContent = 'Generer invitationskode';
-    }
-  }
-
-  async function handleLinkChild() {
-    const codeEl = document.getElementById('link-code');
-    const errorEl = document.getElementById('link-error');
-    const code = (codeEl.value || '').trim().toUpperCase();
-
-    // institution_id er ikke nødvendig — link_child_by_portal_code og redeem_parent_invite
-    // slår op via koden selv (globalt unik), institution udledes automatisk.
-    if (!code || code.length < 8) {
-      errorEl.textContent = 'Indtast den 8-cifrede kode';
-      errorEl.classList.add('visible');
-      return;
-    }
-    errorEl.classList.remove('visible');
-
-    // Vis vilkårsaccept FØR linking
-    const accepted = await showTermsAcceptForLinking('dit barn');
-    if (!accepted) return;
-
-    try {
-      // Prøv først som portalkode (8-tegns alfanumerisk aktiveringskode fra admin)
-      const portalResult = await API.linkChildByPortalCode(code);
-      if (portalResult?.success) {
-        // Acceptér vilkår for det nyligt tilknyttede barn
-        try {
-          const refreshed = await API.getChildren();
-          const newChild = refreshed.find(c => !c.terms_accepted_at);
-          if (newChild) await API.acceptTerms(newChild.child_id, CURRENT_TERMS_VERSION);
-        } catch (_e) { /* non-critical */ }
-        showToast('Barn tilknyttet!', 'success');
-        document.getElementById('add-child-modal').classList.remove('visible');
-        await loadChildren();
-        return;
-      }
-
-      // Specifik fejl fra portalkode
-      if (portalResult?.error === 'CODE_EXPIRED') {
-        errorEl.textContent = 'Denne kode er udløbet. Kontakt personalet for en ny kode.';
-        errorEl.classList.add('visible');
-        return;
-      }
-
-      // Hvis portalkoden ikke matcher, prøv som invitationskode (fra anden forælder)
-      const inviteResult = await API.redeemParentInvite(code);
-      if (inviteResult?.valid) {
-        // Acceptér vilkår for alle nyligt tilknyttede børn
-        try {
-          const refreshed = await API.getChildren();
-          for (const c of refreshed.filter(ch => !ch.terms_accepted_at)) {
-            await API.acceptTerms(c.child_id, CURRENT_TERMS_VERSION);
-          }
-        } catch (_e) { /* non-critical */ }
-        const count = inviteResult.count || 0;
-        showToast(count + ' børn tilknyttet!', 'success');
-        document.getElementById('add-child-modal').classList.remove('visible');
-        await loadChildren();
-        return;
-      }
-
-      // Specifik fejl fra invite
-      if (inviteResult?.error === 'INVITE_EXPIRED') {
-        errorEl.textContent = 'Denne kode er udløbet. Bed den anden forælder om en ny.';
-      } else {
-        errorEl.textContent = 'Koden er ugyldig eller allerede brugt';
-      }
-      errorEl.classList.add('visible');
-    } catch (err) {
-      console.error('[Portal] Link child failed:', err);
-      errorEl.textContent = 'Koden er ugyldig eller allerede brugt';
-      errorEl.classList.add('visible');
     }
   }
 

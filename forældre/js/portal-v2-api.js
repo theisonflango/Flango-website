@@ -403,80 +403,62 @@
       return data;
     },
 
-    // ─── Signup helpers (RPC) ───
+    // ─── Kode-indløsning (auth-først: alt herunder kræver login) ───
 
-    /** Get list of public institutions (for signup dropdown) */
-    async getPublicInstitutions() {
-      const { data, error } = await window.portalSupabase.rpc('get_public_institutions');
+    /** Slå en indtastet kode op og få at vide HVAD den er, før noget sker.
+     *  Serveren klassificerer (barnekode fra institutionen / partner-kode)
+     *  og beskriver konsekvensen. Ændrer intet. */
+    async resolveParentCode(code) {
+      const { data, error } = await window.portalSupabase.rpc('resolve_parent_code', { p_code: code });
       if (error) throw error;
-      return data || [];
+      return data;
     },
 
-    /** Verify portal code for signup (before account creation) */
-    async verifyPortalCodeForSignup(code, institutionLoginCode) {
-      const { data, error } = await window.portalSupabase.rpc('verify_portal_code_for_signup', {
+    /** Indløs institutionens engangskode. `childIds` er de søskende
+     *  forælderen har valgt at tage med — serveren accepterer kun børn i
+     *  barnets egen familiegruppe. */
+    async redeemChildCode(code, childIds) {
+      const { data, error } = await window.portalSupabase.rpc('redeem_child_code', {
         p_code: code,
-        p_institution_login_code: institutionLoginCode || null,
+        p_child_ids: childIds || [],
       });
       if (error) throw error;
       return data;
     },
 
-    /** Verify 8-digit PIN and get child info */
-    async verifyPinAndGetChildInfo(pin, institutionId) {
-      const { data, error } = await window.portalSupabase.rpc('verify_pin_and_get_child_info', {
-        p_pin: pin,
-        p_institution_id: institutionId,
+    /** Udsted (og dermed rotér) mit eget partner-token. */
+    async issueParentLinkToken(displayName) {
+      const { data, error } = await window.portalSupabase.rpc('issue_parent_link_token', {
+        p_display_name: displayName,
       });
       if (error) throw error;
       return data;
     },
 
-    /** Link child to parent account via 8-digit PIN */
-    async verifyParentCodeAndLinkChild(code, institutionId) {
-      const { data, error } = await window.portalSupabase.rpc('verify_parent_code_and_link_child', {
-        p_code: code,
-        p_institution_id: institutionId,
+    /** Træk mit eget partner-token tilbage. */
+    async revokeParentLinkToken() {
+      const { data, error } = await window.portalSupabase.rpc('revoke_parent_link_token');
+      if (error) throw error;
+      return data;
+    },
+
+    /** Godkend at partner-tokenets ejer får adgang til de valgte af MINE børn. */
+    async approveParentLink(token, childIds) {
+      const { data, error } = await window.portalSupabase.rpc('approve_parent_link', {
+        p_token: token,
+        p_child_ids: childIds || [],
       });
       if (error) throw error;
       return data;
     },
 
-    /** Link child to parent account via portal code (8-char alphanumeric). Also marks code as used. */
-    async linkChildByPortalCode(portalCode) {
-      const { data, error } = await window.portalSupabase.rpc('link_child_by_portal_code', {
-        p_portal_code: portalCode,
-      });
-      if (error) throw error;
-      return data;
-    },
-
-    /** Verify invite code for signup (before account creation, anon) */
-    async verifyInviteCodeForSignup(code) {
-      const { data, error } = await window.portalSupabase.rpc('verify_invite_code_for_signup', {
-        p_code: code,
-      });
-      if (error) throw error;
-      return data;
-    },
-
-    /** Create a parent invite code (authenticated parent) */
-    async createParentInvite(institutionId) {
-      const { data, error } = await window.portalSupabase.rpc('create_parent_invite', {
-        p_institution_id: institutionId,
-      });
-      if (error) throw error;
-      return data;
-    },
-
-    /** Redeem a parent invite code (authenticated parent) */
-    async redeemParentInvite(inviteCode) {
-      const { data, error } = await window.portalSupabase.rpc('redeem_parent_invite', {
-        p_invite_code: inviteCode,
-      });
-      if (error) throw error;
-      return data;
-    },
+    // Bevidst fjernet: verifyPortalCodeForSignup, verifyInviteCodeForSignup,
+    // linkChildByPortalCode, createParentInvite, redeemParentInvite,
+    // verifyPinAndGetChildInfo, verifyParentCodeAndLinkChild og
+    // getPublicInstitutions. Kode-først-signup, bærer-invitationen og
+    // PIN-tilknytningen er erstattet af resolve/redeem/approve ovenfor.
+    // Server-funktionerne består (udrullede app-bundter kalder dem stadig) og
+    // er hærdet i migrationen — men ny kode må ikke gå den vej.
 
     // ─── Children ───
 
