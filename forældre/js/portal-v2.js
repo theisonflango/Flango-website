@@ -856,7 +856,10 @@
   // Auth-først: kontoen oprettes uden kode, og koden indløses derefter som
   // logget ind. Det gamle 'signup-code'-trin findes ikke længere — der er
   // ingen halvfærdig tilstand hvor en kode ligger og venter på en konto.
-  let loginView = 'login'; // 'login' | 'signup-auth' | 'forgot'
+  // ?signup=1 åbner signup-visningen direkte — appens e-mail-oprettelse
+  // henviser hertil, fordi Turnstile kun kører på http/https-origins.
+  let loginView = new URLSearchParams(window.location.search).get('signup') === '1'
+    ? 'signup-auth' : 'login'; // 'login' | 'signup-auth' | 'forgot'
 
   function showLoginView(view) {
     loginView = view;
@@ -929,18 +932,13 @@
 
     if (loginView === 'signup-auth') {
       // ─── Opret konto. Koden kommer bagefter, inde i portalen. ───
-      root.innerHTML = `
-        <div class="login-screen">
-          <div class="login-card">
-            ${brandHTML}
-            <div class="login-title">Opret konto</div>
-            <div class="login-subtitle">Opret først din konto — derefter indtaster du koden fra institutionen inde i portalen.</div>
-            <div class="login-error" id="signup-auth-error"></div>
-            <div class="login-success" id="signup-auth-success"></div>${appleAuthButtonHTML('signup-apple-btn')}
-            <button class="google-btn full" id="signup-google-btn">
-              ${googleIconSVG}
-              <span>Fortsæt med Google</span>
-            </button>
+      // I appen kan Turnstile ikke køre (kun http/https-origins understøttes;
+      // WKWebView serverer fra capacitor://) — e-mail-oprettelse åbner derfor
+      // web-portalen, hvor anti-bot-løftet fra screeningen faktisk håndhæves.
+      const emailSignupHTML = API.isNativeApp() ? `
+            <div class="login-divider"><span>eller</span></div>
+            <button class="save-btn full" id="signup-email-web-btn" style="margin-top:var(--s3)">Opret med e-mail</button>
+            <div class="login-subtitle" style="margin-top:var(--s2)">Oprettelse med e-mail åbner en sikker browser-visning. Når din e-mail er bekræftet, logger du ind her i appen.</div>` : `
             <div class="login-divider"><span>eller</span></div>
             <div class="login-field">
               <label for="signup-email">E-mail</label>
@@ -955,7 +953,19 @@
               <input type="password" id="signup-password-confirm" class="input-field" placeholder="Gentag adgangskode" minlength="6" autocomplete="new-password">
             </div>
             <div id="turnstile-portal-signup" class="cf-turnstile" data-sitekey="0x4AAAAAACyNOCuIOJjI0pUa" data-theme="light" style="margin-top:var(--s3)"></div>
-            <button class="save-btn full" id="signup-email-btn" style="margin-top:var(--s3)">Opret med e-mail</button>
+            <button class="save-btn full" id="signup-email-btn" style="margin-top:var(--s3)">Opret med e-mail</button>`;
+      root.innerHTML = `
+        <div class="login-screen">
+          <div class="login-card">
+            ${brandHTML}
+            <div class="login-title">Opret konto</div>
+            <div class="login-subtitle">Opret først din konto — derefter indtaster du koden fra institutionen inde i portalen.</div>
+            <div class="login-error" id="signup-auth-error"></div>
+            <div class="login-success" id="signup-auth-success"></div>${appleAuthButtonHTML('signup-apple-btn')}
+            <button class="google-btn full" id="signup-google-btn">
+              ${googleIconSVG}
+              <span>Fortsæt med Google</span>
+            </button>${emailSignupHTML}
             <div class="login-links">
               <a href="#" id="goto-login-from-signup">Har du allerede en konto? Log ind</a>
             </div>
@@ -965,10 +975,19 @@
       document.getElementById('signup-google-btn').addEventListener('click', handleSignupWithGoogle);
       const signupAppleBtn = document.getElementById('signup-apple-btn');
       if (signupAppleBtn) signupAppleBtn.addEventListener('click', () => handleAppleAuth('signup-auth-error'));
-      document.getElementById('signup-email-btn').addEventListener('click', handleSignupWithEmail);
-      document.getElementById('signup-password-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') handleSignupWithEmail(); });
+      const signupEmailBtn = document.getElementById('signup-email-btn');
+      if (signupEmailBtn) {
+        signupEmailBtn.addEventListener('click', handleSignupWithEmail);
+        document.getElementById('signup-password-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') handleSignupWithEmail(); });
+        ensureTurnstileWidget('turnstile-portal-signup');
+      }
+      const signupWebBtn = document.getElementById('signup-email-web-btn');
+      if (signupWebBtn) signupWebBtn.addEventListener('click', async () => {
+        const url = 'https://flango.dk/for%C3%A6ldre/?signup=1';
+        try { await window.Capacitor.Plugins.Browser.open({ url }); }
+        catch { window.open(url, '_blank'); }
+      });
       document.getElementById('goto-login-from-signup').addEventListener('click', e => { e.preventDefault(); showLoginView('login'); });
-      ensureTurnstileWidget('turnstile-portal-signup');
 
     } else if (loginView === 'forgot') {
       root.innerHTML = `
