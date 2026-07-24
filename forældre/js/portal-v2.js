@@ -3041,6 +3041,36 @@
         ${!optOutParentUpload ? `<div style="font-size:12px;color:var(--ink-muted, #78716c);margin-top:8px;text-align:center;line-height:1.5;">Alle uploads gennemgås af institutionen før de aktiveres. Institutionen kan til enhver tid erstatte billedet hvis det ikke egner sig som identifikation.</div>` : `<div style="font-size:12px;color:var(--ink-muted, #78716c);margin-top:8px;text-align:center;">Aktivér samtykket "Forælder-upload" nedenfor for at uploade.</div>`}
       </div>` : '';
 
+    // ── Forælder-genereret AI-avatar (nyt flag, opt-in, default OFF) ──
+    // Gated på parent_ai_avatar_enabled + aktivt AI-samtykke. Tælleren er
+    // server-autoritativ (childData.avatar_rate) — vist både her og i modalen.
+    const parentAiOn = featureFlags?.parent_ai_avatar_enabled === true;
+    const avatarRate = childData?.avatar_rate || null;
+    const avatarExhausted = !!(avatarRate && avatarRate.used >= avatarRate.limit);
+    const avatarBtnEnabled = parentAiOn && hasOpenaiConsent && !avatarExhausted && !isAdminSimulatorSession();
+    let avatarHint = '';
+    if (parentAiOn && !hasOpenaiConsent) {
+      avatarHint = 'Aktivér samtykket “AI-genereret avatar” nedenfor for at lave en avatar.';
+    } else if (avatarExhausted && avatarRate?.next_release) {
+      let d = avatarRate.next_release;
+      try { d = new Date(avatarRate.next_release).toLocaleDateString('da-DK', { day: 'numeric', month: 'long' }); } catch (_) {}
+      avatarHint = `Du har brugt alle ${avatarRate.limit} de sidste 30 dage. Ny mulighed fra ${d}.`;
+    } else if (avatarRate) {
+      avatarHint = `${avatarRate.used} af ${avatarRate.limit} brugt de sidste 30 dage. Personalet godkender hver avatar.`;
+    } else {
+      avatarHint = 'Personalet godkender hver avatar, før den kan bruges.';
+    }
+    // Kortet rendres også i admin-preview (flag OFF) så super-admin/admin-chippen
+    // (data-sub="pp_parent_ai") har et anker at montere på — ellers ville chippen
+    // forsvinde når flaget er slukket, og man kunne ikke tænde det.
+    const avatarHtml = (parentAiOn || isAdminPreview()) ? `
+      <div data-sub="pp_parent_ai" style="margin-bottom:var(--s3);padding:var(--s3);border:1px dashed var(--border, #d1d5db);border-radius:var(--r-md, 12px);background:var(--surface-sunken, #fafaf9);">
+        <button id="pp-generate-avatar-btn" ${avatarBtnEnabled ? '' : 'disabled'} style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:none;border-radius:8px;background:${avatarBtnEnabled ? 'var(--flango, #F5960A)' : 'var(--border-color, #e5e7eb)'};color:${avatarBtnEnabled ? '#fff' : 'var(--ink-muted, #78716c)'};font-weight:600;font-size:14px;cursor:${avatarBtnEnabled ? 'pointer' : 'not-allowed'};">
+          ✨ Lav en AI-avatar
+        </button>
+        <div style="font-size:12px;color:var(--ink-muted, #78716c);margin-top:8px;text-align:center;line-height:1.5;">${esc(avatarHint)}</div>
+      </div>` : '';
+
     return `
       <div class="section" id="section-profile-picture">
         <div class="section-header">
@@ -3050,6 +3080,7 @@
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${galleryHtml}
           ${uploadHtml}
+          ${avatarHtml}
           <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Profilbilleder bruges i caféen for at bekræfte dit barns identitet ved køb. Billederne er kun synlige for børn og personale i denne institution.</span></div>
 
           <div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:var(--s3);margin-bottom:var(--s2);flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
@@ -4140,6 +4171,32 @@
             } else {
               showToast(result?.error || 'Upload fejlede', 'error');
             }
+          },
+        });
+      });
+    }
+
+    // AI-avatar knap → åbn genererings-modal (3 trin: foto → info → generér)
+    const ppAvatarBtn = document.getElementById('pp-generate-avatar-btn');
+    if (ppAvatarBtn) {
+      ppAvatarBtn.addEventListener('click', () => {
+        if (!selectedChild) return;
+        if (demoBlocked()) return;
+        if (!window.PortalParentAvatar) {
+          showToast('Avatar-modul ikke indlæst', 'error');
+          return;
+        }
+        window.PortalParentAvatar.open({
+          institutionId: selectedChild.institution_id,
+          childId: selectedChild.child_id,
+          childName: getChildName(),
+          promptText: childData?.avatar_prompt_text || '',
+          rate: childData?.avatar_rate || null,
+          exampleUrl: 'assets/avatar-example.webp',
+          onSubmitted: async () => {
+            showToast('Avataren er sendt til godkendelse', 'success');
+            await loadChildData();
+            renderApp();
           },
         });
       });

@@ -2703,10 +2703,28 @@
           }
         }
         reviewBtn.addEventListener('click', () => {
-          window.FlangoSettings.close();
-          document.getElementById('parent-upload-review-btn')?.click();
+          window.FlangoSettings.openTo('Administration', 'Godkendelser');
         });
       }
+    }
+  };
+
+  // ── Godkendelser (settings section) — samlet kø: forælder-uploads + AI-avatarer ──
+  // Køen rendres af domain/parent-upload-review.js (samme testede approve/afvis-
+  // logik som før), re-parentet ind i denne sektion via [data-approvals-list].
+  sections['Godkendelser'] = {
+    render() {
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Godkendelser</div>
+        <div class="fsp-page-desc">Billeder fra forældre — almindelige uploads og AI-avatarer — der afventer jeres godkendelse. Godkend for at gøre billedet til barnets aktive profilbillede, eller afvis med en begrundelse som forælderen kan se i portalen.</div>
+        <div class="fsp-section"><div id="approvals-list" data-approvals-list style="display:flex;flex-direction:column;gap:14px;">
+          <div style="text-align:center;padding:24px;color:#78716c;">Henter …</div>
+        </div></div>
+      </div>`;
+    },
+    wire(container) {
+      pageAlign(container);
+      if (typeof window.__flangoRenderApprovalsInto === 'function') window.__flangoRenderApprovalsInto();
     }
   };
 

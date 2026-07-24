@@ -647,6 +647,59 @@
       }
     },
 
+    /**
+     * Generér en AI-avatar af barnet på Azure EU person-stien. Klienten sender
+     * KUN fotoet (multipart) — ingen stil-/prompt-input. Serveren håndhæver flag,
+     * samtykke, rate-cap (5/30 dage) og PRÆCIS-ét-ansigt FØR generering, og gemmer
+     * ALDRIG kildefotoet. Returnerer previewet (base64) + server-tælleren.
+     *
+     * Returnerer altid det parsede svar (også ved 4xx/5xx), med { ok, status }
+     * tilføjet, så kalderen kan vise kode-specifikke beskeder + rate-status.
+     */
+    async generateAvatar(childId, blob) {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Ikke logget ind');
+      const form = new FormData();
+      form.append('child_id', childId);
+      form.append('photo', blob, 'photo.webp');
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/parent-generate-avatar`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }, // ingen Content-Type: browseren sætter multipart-boundary
+        body: form,
+      });
+      let data = null;
+      try { data = await response.json(); } catch (_) { /* ignore */ }
+      if (!data) throw new Error('Uventet svar fra serveren.');
+      return { ok: response.ok, status: response.status, ...data };
+    },
+
+    /**
+     * Send en genereret AI-avatar til personale-godkendelse. Spejler
+     * uploadProfilePictureFile, men markerer kind=ai_avatar → pending row med
+     * picture_type=ai_avatar. ai_style/prompt sættes server-side (ikke af klienten).
+     */
+    async submitGeneratedAvatar(institutionId, childId, blob) {
+      const path = `${institutionId}/parent-uploads/${childId}/ai_${Date.now()}.webp`;
+      const { error: uploadError } = await window.portalSupabase.storage
+        .from('profile-pictures')
+        .upload(path, blob, { contentType: 'image/webp', cacheControl: '31536000' });
+      if (uploadError) {
+        throw new Error('Storage-upload fejlede: ' + uploadError.message);
+      }
+      try {
+        return await fetchFunction('parent-upload-profile-picture', {
+          child_id: childId,
+          storage_path: path,
+          kind: 'ai_avatar',
+        });
+      } catch (err) {
+        try {
+          await window.portalSupabase.storage.from('profile-pictures').remove([path]);
+        } catch (_) { /* best-effort */ }
+        throw err;
+      }
+    },
+
     // ─── Notifications ───
 
     /** Save notification preferences for a child */

@@ -372,7 +372,7 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-Cp1kFFDu.js"></script>
+  <script type="module" crossorigin src="/app/assets/main-CFwwAlfH.js"></script>
   <link rel="stylesheet" crossorigin href="/app/assets/main-KYOvETsV.css">
 </head>
 <body>
@@ -527,7 +527,7 @@
                 <button id="toolbar-db-history-btn" class="header-action-btn" title="DB-Historik" style="display: none;"><img src="Icons/webp/Function/Gear2.webp" alt="DB-Historik"></button>
                 <button id="auto-delete-warning-btn" class="header-action-btn" title="Papirkurv — nyt at se" style="display:none;position:relative;"><svg viewBox="0 0 16 16" fill="none" stroke="#e85a6f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Papirkurv-notifikation"><path d="M8 2.5L14.5 13.5H1.5L8 2.5Z"/><path d="M8 6.5v3.2"/><circle cx="8" cy="11.6" r="0.5" fill="#e85a6f" stroke="none"/></svg><span id="auto-delete-warning-badge" style="position:absolute;top:-4px;right:-4px;background:#e85a6f;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
                 <button id="deletion-requests-btn" class="header-action-btn" title="Sletningsanmodninger" style="display:none;position:relative;">🗑️<span id="deletion-badge" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
-                <button id="parent-upload-review-btn" class="header-action-btn" title="Forælder-uploads til godkendelse" style="display:none;position:relative;">📷<span id="parent-upload-badge" style="position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
+                <button id="parent-upload-review-btn" class="header-action-btn" title="Billeder til godkendelse" style="display:none;position:relative;">📷<span id="parent-upload-badge" style="position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
                 <button id="toolbar-products-btn" class="header-action-btn" title="Produktoversigt" style="display:none;"><svg viewBox="0 0 16 16" fill="none" stroke="#e8734a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Produktoversigt"><rect x="3" y="3" width="4.5" height="4.5" rx="1"/><rect x="9.5" y="3" width="4.5" height="4.5" rx="1"/><rect x="3" y="9.5" width="4.5" height="4.5" rx="1"/><rect x="9.5" y="9.5" width="4.5" height="4.5" rx="1"/></svg></button>
                 <button id="toolbar-new-product-btn" class="header-action-btn" title="Opret nyt produkt" style="display:none;"><svg viewBox="0 0 16 16" fill="none" stroke="#5dca7a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Opret nyt produkt"><rect x="2.5" y="2.5" width="11" height="11" rx="3"/><path d="M8 5.3v5.4M5.3 8h5.4"/></svg></button>
                 <button id="toolbar-deposit-btn" class="header-action-btn" title="Indbetaling" style="display:none;"><img src="Icons/webp/Function/Coin.webp" alt="Indbetaling"></button>
@@ -1331,24 +1331,8 @@
         </div>
     </div>
 
-    <!-- Modal: Forælder-uploads til godkendelse -->
-    <div id="parent-upload-review-modal" class="settings-modal-backdrop" style="display: none;">
-        <div class="settings-modal" style="max-width: 720px; max-height: 90vh; overflow-y: auto;">
-            <h2>📷 Forælder-uploads til godkendelse</h2>
-            <div class="settings-modal-content" style="padding: 0 16px 16px;">
-                <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
-                    <div style="font-weight:700;margin-bottom:4px;">ℹ️ Sådan fungerer det</div>
-                    <div style="font-size:13px;line-height:1.5;color:#1e3a5f;">Forældre kan selv uploade et profilbillede af deres barn. Alle uploads gennemgås af institutionen før de aktiveres. Vurdér om billedet egner sig som identifikation — afvis hvis det er upassende, viser den forkerte person, eller har for lav kvalitet.</div>
-                </div>
-                <div id="parent-upload-review-list" style="display:flex;flex-direction:column;gap:14px;">
-                    <div style="text-align:center;padding:24px;color:#78716c;">Indlæser...</div>
-                </div>
-            </div>
-            <div class="settings-modal-actions">
-                <button id="parent-upload-review-close" class="settings-button">Luk</button>
-            </div>
-        </div>
-    </div>
+    <!-- Godkendelses-køen (forælder-uploads + AI-avatarer) bor nu i settings-
+         sektionen "Godkendelser" (Administration). Header-ikonet deep-linker dertil. -->
 
     <!-- Modal #1: Optankning / Betalingsmetoder -->
     <div id="parent-portal-payment-methods-modal" class="modal" style="display: none;">
@@ -2033,8 +2017,8 @@
     <audio id="audio-preview" preload="auto"></audio>
 
     <script src="js/core/feature-modules.js?v=1"></script>
-    <script src="js/ui/settings-panel.js?v=7"></script>
-    <script src="js/ui/settings-sections.js?v=31"></script>
+    <script src="js/ui/settings-panel.js?v=8"></script>
+    <script src="js/ui/settings-sections.js?v=32"></script>
     <script src="js/ui/admin-portal-preview-host.js?v=5"></script>
     <script src="js/ui/admin-portal-v2.js?v=2"></script>
     <script src="js/ui/cookie-banner.js"></script>
