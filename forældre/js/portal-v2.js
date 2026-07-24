@@ -323,18 +323,72 @@
       // Check for pending signup link (after Google redirect or email confirmation)
       await checkPendingSignupLink();
 
-      await loadChildren();
+      // Snapshot-først (kun native): vis sidste kendte data øjeblikkeligt og lad
+      // det normale load køre som lydløs baggrunds-opdatering. Serveren er
+      // fortsat autoritativ — snapshotten er ren visning, aldrig handlingsgrundlag.
+      const hydrated = await tryHydrateFromSnapshot();
+      await loadChildren(hydrated ? { silent: true, preferChildId: selectedChild?.child_id } : undefined);
     } catch (err) {
       console.error('[Portal] Init error:', err);
       renderLogin();
     }
   }
 
-  async function loadChildren() {
-    showLoading();
+  // Genskab hele render-tilstanden fra det krypterede snapshot (API.loadSnapshot
+  // afviser selv forkert bruger, korrupt indhold og alder >7 dage).
+  async function tryHydrateFromSnapshot() {
+    if (!API.isNativeApp() || adminPreviewParam) return false;
+    try {
+      if (isAdminSimulatorSession()) return false;
+      const serial = await API.loadSnapshot(currentSession.user.id);
+      if (!serial) return false;
+      const snap = JSON.parse(serial);
+      if (!snap || !Array.isArray(snap.children) || snap.children.length === 0 || !snap.childData) return false;
+      children = snap.children;
+      selectedChild = children.find(c => c.child_id === snap.selectedChildId) || children[0];
+      childData = snap.childData;
+      products = snap.products || [];
+      dailySpecialLimit = snap.dailySpecialLimit ?? null;
+      eventsData = snap.eventsData ?? null;
+      customerAvgSpend = snap.customerAvgSpend ?? null;
+      consentHistory = snap.consentHistory || [];
+      screentimeData = snap.screentimeData ?? null;
+      featureFlags = childData?.institution || {};
+      visibleSections = childData?.visible_sections || {};
+      ugeplanData = null;
+      lastSnapshotSerial = serial;
+      renderApp();
+      return true;
+    } catch (e) {
+      console.warn('[Portal] snapshot-hydrering sprang over:', e && e.message);
+      return false;
+    }
+  }
+
+  // Fingeraftryk af den hydrérbare tilstand — bruges både som snapshot-indhold
+  // og til at afgøre om en lydløs baggrunds-opdatering kræver re-render.
+  function buildSnapshotSerial() {
+    return JSON.stringify({
+      children,
+      selectedChildId: selectedChild?.child_id ?? null,
+      childData,
+      products,
+      dailySpecialLimit,
+      eventsData,
+      customerAvgSpend,
+      consentHistory,
+      screentimeData,
+    });
+  }
+  let lastSnapshotSerial = null;
+
+  async function loadChildren(opts) {
+    const silent = opts?.silent === true;
+    if (!silent) showLoading();
     try {
       children = await API.getChildren();
       if (!children || children.length === 0) {
+        if (silent) return; // behold snapshot-visningen — tom liste kan være transient
         renderNoChildren();
         return;
       }
@@ -347,9 +401,12 @@
         children = await API.getChildren();
       }
 
-      selectedChild = children[0];
+      selectedChild = (silent && opts?.preferChildId && children.find(c => c.child_id === opts.preferChildId)) || children[0];
+      const before = lastSnapshotSerial;
       await loadChildData();
-      renderApp();
+      // Lydløs opdatering: re-render kun når noget faktisk har ændret sig —
+      // ellers ville hver koldstart give et synligt "blink" over snapshotten.
+      if (!silent || lastSnapshotSerial !== before) renderApp();
       maybeShowWelcomeModal();
       // MobilePay-retur (best-effort; webhook+poll er sandheden bag krediteringen)
       try {
@@ -381,6 +438,9 @@
       } catch (_) {}
     } catch (err) {
       console.error('[Portal] Load children error:', err);
+      // Lydløs baggrunds-opdatering (snapshot-først): en fejl her — typisk offline —
+      // må ALDRIG vælte den hydrerede visning. Snapshotten står, næste åbning prøver igen.
+      if (silent) return;
       renderError('Kunne ikke hente dine børn. Prøv at genindlæse siden.');
     }
   }
@@ -427,6 +487,13 @@
       visibleSections = childData?.visible_sections || {};
 
       screentimeData = (featureFlags.skaermtid_enabled === true) ? screentime : null;
+
+      // Snapshot til næste koldstart (kun native; api'et krypterer og ejer nøglen).
+      // Admin-flows gemmes aldrig — de er ikke forælderens egne data.
+      if (view && API.isNativeApp() && !adminPreviewParam && !isAdminSimulatorSession() && currentSession?.user?.id) {
+        lastSnapshotSerial = buildSnapshotSerial();
+        API.saveSnapshot(currentSession.user.id, lastSnapshotSerial);
+      }
     } catch (err) {
       console.error('[Portal] loadChildData error:', err);
     }

@@ -77,6 +77,79 @@
   // og fallback'en ville være web-appen inde i webview'et. Custom scheme åbner altid appen.
   var NATIVE_OAUTH_CALLBACK = 'dk.flango.foraeldre://auth-callback';
 
+  // ─── Snapshot-først opstart (kun native — datasikkerhed-first) ───
+  // Sidste parent-view gemmes AES-GCM-krypteret i appens container, så koldstart
+  // kan vise saldo øjeblikkeligt, mens frisk data hentes i baggrunden. Nøglen bor
+  // i iOS Keychain / Android Keystore (SecureKey-plugin) — aldrig ved siden af
+  // dataene. Ryddes ved log-ud og ved bruger-mismatch; web/PWA gemmer INTET
+  // (delte computere). Serveren er fortsat autoritativ for flag og handlinger.
+  var SNAPSHOT_KEY = 'flango_snapshot_v1';
+  var SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+  function secureKeyPlugin() {
+    return (isNativeApp() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SecureKey) || null;
+  }
+  var snapshotCryptoKeyPromise = null;
+  function snapshotCryptoKey() {
+    if (!snapshotCryptoKeyPromise) {
+      snapshotCryptoKeyPromise = (async function () {
+        var p = secureKeyPlugin();
+        if (!p || !window.crypto || !window.crypto.subtle) return null;
+        var res = await p.getOrCreate();
+        var raw = Uint8Array.from(atob(res.key), function (c) { return c.charCodeAt(0); });
+        if (raw.length !== 32) return null;
+        return await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+      })().catch(function () { return null; });
+    }
+    return snapshotCryptoKeyPromise;
+  }
+  var te = new TextEncoder();
+  var td = new TextDecoder();
+  function b64FromBytes(bytes) {
+    var bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  function bytesFromB64(b64) {
+    return Uint8Array.from(atob(b64), function (c) { return c.charCodeAt(0); });
+  }
+  async function saveSnapshot(authUserId, serial) {
+    try {
+      var key = await snapshotCryptoKey();
+      if (!key) return;
+      var iv = crypto.getRandomValues(new Uint8Array(12));
+      var payload = JSON.stringify({ uid: authUserId, at: Date.now(), serial: serial });
+      var ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, te.encode(payload)));
+      localStorage.setItem(SNAPSHOT_KEY, b64FromBytes(iv) + '.' + b64FromBytes(ct));
+    } catch (e) { /* snapshot er ren optimering — fejl må aldrig vælte noget */ }
+  }
+  async function loadSnapshot(authUserId) {
+    try {
+      var stored = localStorage.getItem(SNAPSHOT_KEY);
+      if (!stored) return null;
+      var key = await snapshotCryptoKey();
+      if (!key) return null;
+      var parts = stored.split('.');
+      if (parts.length !== 2) return null;
+      var plain = td.decode(await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: bytesFromB64(parts[0]) }, key, bytesFromB64(parts[1])));
+      var payload = JSON.parse(plain);
+      if (payload.uid !== authUserId) { clearSnapshot(); return null; }
+      if (Date.now() - payload.at > SNAPSHOT_MAX_AGE_MS) { clearSnapshot(); return null; }
+      return payload.serial;
+    } catch (e) {
+      clearSnapshot(); // korrupt/ulæselig → væk med den
+      return null;
+    }
+  }
+  function clearSnapshot() {
+    try { localStorage.removeItem(SNAPSHOT_KEY); } catch (e) { /* ignore */ }
+  }
+  async function clearSnapshotAndKey() {
+    clearSnapshot();
+    snapshotCryptoKeyPromise = null;
+    try { var p = secureKeyPlugin(); if (p) await p.clear(); } catch (e) { /* best effort */ }
+  }
+
   // Deep links (OAuth/betaling) og resume-refresh deler tidsstempel: en reload må
   // aldrig afbryde en hjemkomst med tokens i hånden.
   var lastUrlOpenAt = 0;
@@ -237,9 +310,14 @@
     /** Sign out — rydder også denne enheds push-token (driftsdata, jf. push-designet) */
     async signOut() {
       try { await removeThisDevicePushToken(); } catch (e) { /* best effort */ }
+      try { await clearSnapshotAndKey(); } catch (e) { /* best effort */ }
       const { error } = await window.portalSupabase.auth.signOut();
       if (error) throw error;
     },
+
+    saveSnapshot: saveSnapshot,
+    loadSnapshot: loadSnapshot,
+    clearSnapshot: clearSnapshot,
 
     /** Send password reset email */
     async resetPassword(email) {
