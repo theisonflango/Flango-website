@@ -150,15 +150,18 @@
       .fp-lock[data-locked="1"] { border-color: #d97706; background: #fffbeb; }
       .fp-lock.fp-inherited { border-style: dashed; }
       .fp-lock.fp-dirty { box-shadow: 0 0 0 3px rgba(245, 150, 10, .3); }
-      /* Under-kontakt: bor i rækken inde i kortet (kan ikke ligge udenfor —
-         rækken hører til kortets indhold). Stiplet ramme + amber markerer den
-         som admin-UI, ikke noget forælderen ser. */
+      /* Under-kontakt: bor i SAMME venstre-kolonne som sektions-kontakten —
+         aldrig inde i kortet. (Tidligere sad den i rækken inde i kortet; det
+         blandede admin-UI sammen med det forælderen ser. Theis 2026-07-25:
+         ALLE admin-toggles bor udenfor sektionen, også under-kontakter.)
+         Den placeres absolut i kolonnen ud for sin egen række — se
+         positionSubcontrols(). */
+      .flango-preview-gutter { position: relative; }
       .fp-sub {
-        position: relative; width: 34px; height: 20px; flex: none; padding: 0;
-        margin-right: 8px; border: none; border-radius: 999px; cursor: pointer;
+        position: absolute; right: 0; width: 34px; height: 20px; padding: 0;
+        border: none; border-radius: 999px; cursor: pointer;
         background: #d1d5db; transition: background .2s;
         -webkit-appearance: none; appearance: none;
-        box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px #e5e7eb;
       }
       .fp-sub::after {
         content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
@@ -168,8 +171,7 @@
       .fp-sub[aria-checked="true"] { background: var(--positive, #16a34a); }
       .fp-sub[aria-checked="true"]::after { transform: translateX(14px); }
       .fp-sub[aria-disabled="true"] { cursor: help; opacity: .55; }
-      .fp-sub.fp-dirty { box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px rgba(245,150,10,.5); }
-      .fp-sub-wrap { display: flex; align-items: center; flex: none; }
+      .fp-sub.fp-dirty { box-shadow: 0 0 0 3px rgba(245,150,10,.45); }
       .fp-sub-off { opacity: .5; }
       .fp-none {
         width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
@@ -568,15 +570,23 @@
    *  portalen sætter, eller — for spil — via `[data-game-id]`. Bindingen
    *  (kolonne / array-medlem / tabelrække) er en opaque `target`-streng fra
    *  serveren, så en ny binding ikke kræver ændringer i begge værter. */
-  function applySubcontrol(entry) {
-    let row = null;
+  function subRowFor(entry) {
     if (entry.row_id) {
       const input = document.querySelector('[data-game-id="' + entry.row_id + '"]');
-      row = input && input.closest ? input.closest('.game-row') : null;
-    } else {
-      row = document.querySelector('[data-sub="' + entry.key + '"]');
+      return input && input.closest ? input.closest('.game-row') : null;
     }
+    return document.querySelector('[data-sub="' + entry.key + '"]');
+  }
+
+  function applySubcontrol(entry) {
+    const row = subRowFor(entry);
     if (!row) return;
+
+    // Kontakten hører til den sektion rækken ligger i — den bor i sektionens
+    // egen venstre-kolonne, ikke inde i kortet.
+    const card = row.closest('.section') || row.closest('[id^="section-"]');
+    if (!card) return;
+    const gutter = gutterFor(card);
 
     const on = subEffective(entry);
     row.classList.toggle('fp-sub-off', !on);
@@ -584,26 +594,41 @@
     const lock = resolveLock(entry.module);
     const locked = lock.locked && role !== 'superadmin';
 
-    let wrap = row.querySelector(':scope > .fp-sub-wrap');
-    if (!wrap) {
-      wrap = document.createElement('span');
-      wrap.className = 'fp-sub-wrap';
-      row.insertBefore(wrap, row.firstChild);
-    }
-    let t = wrap.querySelector('.fp-sub');
+    let t = gutter.querySelector('.fp-sub[data-sub="' + entry.key + '"]');
     if (!t) {
       t = document.createElement('button');
       t.type = 'button';
       t.className = 'fp-sub';
       t.setAttribute('role', 'switch');
-      wrap.appendChild(t);
+      t.dataset.sub = entry.key;
+      gutter.appendChild(t);
     }
-    t.dataset.sub = entry.key;
     t.setAttribute('aria-checked', on ? 'true' : 'false');
     t.setAttribute('aria-disabled', locked ? 'true' : 'false');
     t.classList.toggle('fp-dirty', draft[entry.target] !== undefined);
     t.setAttribute('aria-label', (locked ? 'Låst af Flango. ' : '')
       + (entry.label || entry.key) + (on ? ' — vises for forældre' : ' — skjult for forældre'));
+  }
+
+  /** Justér under-kontakterne lodret ud for deres egen række. Kaldes efter
+   *  dekorering og når layoutet kan have flyttet sig (foldning, resize). */
+  function positionSubcontrols() {
+    for (const entry of subcontrols) {
+      if (!entry) continue;
+      const row = subRowFor(entry);
+      const t = document.querySelector('.fp-sub[data-sub="' + entry.key + '"]');
+      if (!t) continue;
+      // Foldet sektion: rækken har ingen højde → skjul kontakten med den.
+      if (!row || !row.offsetParent || !row.getClientRects().length) {
+        t.style.display = 'none';
+        continue;
+      }
+      const gutter = t.parentElement;
+      const gr = gutter.getBoundingClientRect();
+      const rr = row.getBoundingClientRect();
+      t.style.display = '';
+      t.style.top = Math.round(rr.top - gr.top + (rr.height - t.offsetHeight) / 2) + 'px';
+    }
   }
 
   function subEffective(entry) {
@@ -719,7 +744,26 @@
       if (!claimed.has(el.id)) applyNoFlagSection(el);
     });
     for (const sub of subcontrols) { if (sub) applySubcontrol(sub); }
+    positionSubcontrols();
+    // Kortene folder ud/ind med transition; mål igen når den er færdig.
+    requestAnimationFrame(positionSubcontrols);
     positionPopover();
+  }
+
+  /** Layoutet flytter sig ved foldning, resize og efter billed-indlæsning —
+   *  under-kontakterne skal følge deres række, ellers peger de på ingenting. */
+  function watchSubcontrolLayout() {
+    window.addEventListener('resize', positionSubcontrols);
+    // Accordion: portalen folder sektionerne med CSS-transition.
+    document.addEventListener('transitionend', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('section-body')) positionSubcontrols();
+    }, true);
+    // Klik kan folde en sektion uden transitionend (fx display-skift).
+    document.addEventListener('click', () => requestAnimationFrame(positionSubcontrols), true);
+    if (typeof ResizeObserver === 'function') {
+      const ro = new ResizeObserver(() => positionSubcontrols());
+      ro.observe(document.body);
+    }
   }
 
   function handleHostMessage(event) {
@@ -747,6 +791,7 @@
     const supabase = opts && opts.supabase;
     injectStyles();
     initControlDelegation();
+    watchSubcontrolLayout();
 
     return new Promise((resolve) => {
       let settled = false;
