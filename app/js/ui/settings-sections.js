@@ -2158,12 +2158,15 @@
       const gearIcon = '<svg width="84" height="84" viewBox="0 0 16 16" fill="none" stroke="{COLOR}" stroke-width="0.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2"/><path d="M8 3v1M8 12v1M12.5 5.5l-.9.5M4.4 10l-.9.5M12.5 10.5l-.9-.5M4.4 6l-.9-.5M11 3.8l-.5.9M5.5 11.3l-.5.9M11 12.2l-.5-.9M5.5 4.7l-.5-.9"/></svg>';
       const monitorIcon = '<svg width="84" height="84" viewBox="0 0 16 16" fill="none" stroke="{COLOR}" stroke-width="0.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="11" height="7.5" rx="1.5"/><path d="M6 13h4"/><path d="M8 10.5v2.5"/></svg>';
       const cards = [
-        { l: 'Indstillinger', c: '#c77ddb', d: 'Tilpas for\u00e6ldreportalen. V\u00e6lg hvilke funktioner der skal v\u00e6re tilg\u00e6ngelige for for\u00e6ldre.', icon: gearIcon },
-        { l: 'Simulator', c: '#5ba0d8', d: '\u00c5bner institutionens for\u00e6ldreportal konto, med alle brugere tilknyttet.', icon: monitorIcon }
+        { l: 'Indstillinger', c: '#c77ddb', d: 'Tilpas for\u00e6ldreportalen. V\u00e6lg hvilke funktioner der skal v\u00e6re tilg\u00e6ngelige for for\u00e6ldre. Vises med et opdigtet eksempel-barn \u2014 ingen families data.', icon: gearIcon },
+        // "Simulator" inviterer til "jeg kigger bare" \u2014 og det er pr\u00e6cis d\u00e9t
+        // fladen IKKE er: der sker \u00e6gte \u00e6ndringer for en \u00e6gte familie. Navnet
+        // l\u00e6ses hver gang og er derfor den billigste beskyttelse der findes (\u00a73c).
+        { l: 'Hj\u00e6lp', c: '#5ba0d8', d: 'S\u00e6t en families indstillinger p\u00e5 for\u00e6lderens vegne \u2014 til dem der ikke selv kan bruge appen. \u00c6ndringer registreres p\u00e5 dig.', icon: monitorIcon }
       ];
       return `<div class="fsp-big-cards">${cards.map(card =>
         `<div class="fsp-big-card" data-card="${card.l}">
-          <div class="fsp-big-card-label">${card.l === 'Indstillinger' ? 'For\u00e6ldreportal Indstillinger' : 'For\u00e6ldreportal Simulator'}</div>
+          <div class="fsp-big-card-label">${card.l === 'Indstillinger' ? 'For\u00e6ldreportal Indstillinger' : 'Hj\u00e6lp en for\u00e6lder'}</div>
           <div class="fsp-big-card-icon" style="background:${card.c}22">${card.icon.replace('{COLOR}', card.c)}</div>
           <div class="fsp-big-card-desc">${card.d}</div>
         </div>`
@@ -2176,7 +2179,7 @@
           window.FlangoSettings.close();
           if (label === 'Indstillinger') {
             window.openAdminPortalV2?.();
-          } else if (label === 'Simulator') {
+          } else if (label === 'Hjælp') {
             window.openParentPortalAsAdmin?.();
           }
         });
