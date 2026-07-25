@@ -383,7 +383,12 @@
   async function tryHydrateFromSnapshot() {
     if (!API.isNativeApp() || adminPreviewParam) return false;
     try {
-      if (isAdminSimulatorSession()) return false;
+      // Ingen simulator-check her: flaget kommer fra serveren og findes først
+      // når childData er hentet — og på dette tidspunkt i opstarten er der
+      // ingen childData endnu. Værnet sidder på SKRIVE-siden (se loadChildData),
+      // hvor tilstanden ER kendt: en admin-session gemmer aldrig et snapshot,
+      // så der findes intet at genskabe. Og genskabes et snapshot, følger
+      // is_admin_session med i snap.childData, så gaterne virker bagefter.
       const serial = await API.loadSnapshot(currentSession.user.id);
       if (!serial) return false;
       const snap = JSON.parse(serial);
@@ -566,23 +571,20 @@
   }
 
   // ─── Simulator-session detection ───
-  // Café-app's "Åbn portalen som admin"-feature logger ind på en intern konto
-  // (admin-parent-{instId}@flango.internal) der er linket til alle børn på
-  // institutionen. Når vi detecter den email-suffix, skifter portalen til
-  // read-only mode for juridisk-følsomme handlinger (samtykker, sletning) —
-  // admin kan stadig se alt og hjælpe med præferencer (grænser, kost, allergi
-  // osv.) baseret på mundtlig dialog med forælder, men må IKKE afgive
-  // samtykke på vegne af forælderen (GDPR art. 7 — kan ikke dokumenteres).
-  let __isAdminSim = null; // memoized
+  // Café-app's "Hjælp en forælder" logger ind på institutionens interne
+  // admin-parent-konto, der er linket til alle børn. I den tilstand skifter
+  // portalen til read-only for alt der er forælderens RETTIGHED (samtykker,
+  // adgangskode, partner-deling, sletning) — personalet kan stadig se alt og
+  // sætte familiens praktiske REGLER (grænser, kost, allergener), som er hele
+  // formålet. Grænsen står i docs/admin-portal-stedfortraeder-forslag.md §3b.
+  //
+  // SERVEREN afgør tilstanden: get-parent-view sammenholder sessionen med
+  // institutions.admin_parent_auth_id og sender is_admin_session. Tidligere
+  // gættede klienten på e-mail-endelsen '@flango.internal' — en navnekonvention
+  // klienten hverken ejer eller kan verificere. Ingen memoisering: flaget
+  // følger childData og skal derfor kunne skifte ved barn-skift/genindlæsning.
   function isAdminSimulatorSession() {
-    if (__isAdminSim !== null) return __isAdminSim;
-    try {
-      const email = currentSession?.user?.email || '';
-      __isAdminSim = email.endsWith('@flango.internal');
-    } catch (_) {
-      __isAdminSim = false;
-    }
-    return __isAdminSim;
+    return childData?.is_admin_session === true;
   }
 
   function shouldShowWelcomeModal() {
@@ -797,8 +799,12 @@
   // (Banner-løsningen blev erstattet af visuelt-disablede toggles + tooltip
   //  i render-tid — admin ser at handlingen er låst FØR de klikker. Alert
   //  er stadig her som defense-in-depth hvis et toggle slipper igennem.)
-  function showAdminSimulatorBlockedAlert(handlingNavn) {
-    alert(`Denne handling (${handlingNavn}) kan ikke udføres i admin-visning.\n\nForælder skal selv logge ind på portalen for at afgive samtykke. Det er et krav fra GDPR art. 7 — samtykke skal kunne dokumenteres som givet af forælderen selv.`);
+  // Begrundelsen er ikke pynt: personalet skal kunne forklare forælderen HVORFOR
+  // de ikke bare kan ordne det. Samtykke-teksten er default, fordi det er den
+  // hyppigste spærre; handlinger med en anden grund sender deres egen.
+  function showAdminSimulatorBlockedAlert(handlingNavn, begrundelse) {
+    const why = begrundelse || 'Forælder skal selv logge ind på portalen for at afgive samtykke. Det er et krav fra GDPR art. 7 — samtykke skal kunne dokumenteres som givet af forælderen selv.';
+    alert(`Denne handling (${handlingNavn}) kan ikke udføres i personalets forældre-visning.\n\n${why}`);
   }
 
   // Inline hint-tekst under låste handlinger i simulator. Synlig på mobil
@@ -3366,7 +3372,19 @@
     if (!parentEmail && notif.email) parentEmail = notif.email;
     var secondaryEmail = notif.secondary_email || '';
     var notifyPrimary = notif.notify_primary_email !== false;
-    const pushHint = API.isNativeApp() ? '' : `<div class="hint-box neutral" style="margin-bottom:var(--s3)">${hintIcon('smartphone')}<span>Push-notifikationer vises på alle dine enheder med Flango Portal-appen.</span></div>`;
+    // Push er B1-UNDTAGELSEN (§3b): e-mail-påmindelser må personalet gerne sætte
+    // for en familie uden app — men push kræver et device-token fra forælderens
+    // EGEN telefon (parent_push_tokens.auth_user_id). En familie uden app har
+    // intet token, så flaget ville være en tom aftale, og et "ja" herfra ville
+    // stille og roligt overskrive forælderens eget valg. Rækkerne bliver stående
+    // (personalet skal kunne se hvad forælderen har, og preview-fladens chips
+    // hænger på dem), men kontakterne er låst — og gemmes ikke, se saveNotifications.
+    const pushLocked = isAdminSimulatorSession();
+    const pushDis = pushLocked ? ' disabled' : '';
+    const pushLock = pushLocked ? ' ' + icon('lock', 11, 'ico-inline') : '';
+    const pushHint = pushLocked
+      ? `<div class="hint-box warn" style="margin-bottom:var(--s3)">${hintIcon('lock')}<span>Push kan kun slås til fra forælderens egen telefon — beskeden sendes til den enhed, appen er installeret på. Brug e-mail-påmindelserne nedenfor i stedet.</span></div>`
+      : (API.isNativeApp() ? '' : `<div class="hint-box neutral" style="margin-bottom:var(--s3)">${hintIcon('smartphone')}<span>Push-notifikationer vises på alle dine enheder med Flango Portal-appen.</span></div>`);
     // Under-kontakter: institutionen kan slå enkelte påmindelsestyper fra uden at
     // slukke hele notifikations-kortet. I admin-preview vises rækkerne altid (grå).
     const notifBalanceOn = isAdminPreview() || childData?.institution?.parent_portal_notify_balance !== false;
@@ -3381,10 +3399,10 @@
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${pushHint}${API.isNativeApp() ? `<div class="setting-row"><div class="setting-info"><div class="setting-label">Notifikationer på denne telefon</div><div class="setting-desc">Vises på låseskærmen — indholdet ser du i appen</div></div><label class="toggle"><input type="checkbox" id="notif-push-device" ${API.isPushEnabledOnThisDevice() ? 'checked' : ''}><span class="toggle-track"></span></label></div>
           <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)"></div>` : ''}
-          ${notifBalanceOn ? `<div class="setting-row" data-sub="notify_balance"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="push-zero" ${notif.push_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="push-low" ${notif.push_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
-          ${notifEventsOn ? `<div class="setting-row" data-sub="notify_events"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="push-event-reminder" ${notif.push_event_reminder === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="push-event-invite" ${notif.push_event_invite === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
+          ${notifBalanceOn ? `<div class="setting-row" data-sub="notify_balance"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr${pushLock}</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="push-zero" ${notif.push_at_zero !== false ? 'checked' : ''}${pushDis}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under${pushLock}</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="push-low" ${notif.push_at_ten !== false ? 'checked' : ''}${pushDis}><span class="toggle-track"></span></label></div>` : ''}
+          ${notifEventsOn ? `<div class="setting-row" data-sub="notify_events"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer${pushLock}</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="push-event-reminder" ${notif.push_event_reminder === true ? 'checked' : ''}${pushDis}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding${pushLock}</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="push-event-invite" ${notif.push_event_invite === true ? 'checked' : ''}${pushDis}><span class="toggle-track"></span></label></div>` : ''}
         </div></div></div>
       </div>
       <div class="section" id="section-email-notifications">
@@ -3483,6 +3501,24 @@
   //  adgang til den forkerte person.
 
   function renderInviteParentSection() {
+    // "Hjælp en forælder" (§3b, kategori B2): hvem der har adgang til barnet er
+    // forælderens rettighed, ikke institutionens. Sessionen her er institutionens
+    // delte konto — en godkendelse herfra ville give en fremmed varig adgang i
+    // forælderens navn, og en udstedt kode ville udpege institutionen som
+    // "partner". Serveren afviser begge (ADMIN_SESSION_BLOCKED); dette er kun
+    // den venlige udgave af den samme mur.
+    if (isAdminSimulatorSession()) {
+      return `
+      <div class="section" id="section-invite-parent">
+        <div class="section-header">
+          <div class="section-title-row">${sectionIcon('user-round-plus', 'neutral')}<div><div class="section-title">Del adgang med en partner ${icon('lock', 11, 'ico-inline')}</div><div class="section-subtitle">Kun forælderen selv</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div class="hint-box warn">${hintIcon('lock')}<span>Deling af adgang kan ikke sættes op herfra. Kun den forælder der selv har adgang, kan give den videre — og skal kunne se hvem der får den. Bed forælderen gøre det i sin egen app.</span></div>
+        </div></div></div>
+      </div>`;
+    }
     return `
       <div class="section" id="section-invite-parent">
         <div class="section-header">
@@ -3563,6 +3599,11 @@
   // ER hele værnet. Derfor spørges der, med OAuth-navnet som forslag.
   function handleShowPartnerToken() {
     if (demoBlocked()) return;
+    if (isAdminSimulatorSession()) {
+      showAdminSimulatorBlockedAlert('partner-kode',
+        'Koden ville udpege institutionens konto, ikke forælderens. Forælderen skal hente sin egen kode i sin egen app.');
+      return;
+    }
     const box = document.getElementById('partner-token-box');
     const btn = document.getElementById('partner-show-btn');
     if (!box) return;
@@ -3601,18 +3642,29 @@
   }
 
   function renderPinSection() {
-    return `
-      <div class="section" id="section-pin">
-        <div class="section-header">
-          <div class="section-title-row">${sectionIcon('key-round', 'neutral')}<div><div class="section-title">Skift adgangskode</div><div class="section-subtitle">Minimum 6 tegn</div></div></div>
-          ${icon('chevron-down', 20, 'section-chevron')}
-        </div>
-        <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          <div style="display:flex;flex-direction:column;gap:var(--s2);margin-top:var(--s2)">
+    // I "Hjælp en forælder" peger feltet slet ikke på forælderens konto: den
+    // indloggede session ER institutionens delte admin-parent-konto. En
+    // "hjælpsom" kodeændring ville derfor sætte en kode på institutionens
+    // preview-konto — for alle admins, fremover — og GoTrue tilbagekalder
+    // samtidig kontoens øvrige sessioner, så andres åbne visning dør midt i
+    // arbejdet. Feltet vises stadig (personalet skal kunne se hvad forælderen
+    // har), men det er låst.
+    const locked = isAdminSimulatorSession();
+    const body = locked
+      ? `<div class="hint-box warn" style="margin-top:var(--s2)">${hintIcon('lock')}<span>Adgangskoden hører til forælderens egen konto og kan ikke ændres herfra — denne visning er logget ind på institutionens konto. Har forælderen glemt sin kode, kan de bede om et nulstillingslink på login-siden.</span></div>`
+      : `<div style="display:flex;flex-direction:column;gap:var(--s2);margin-top:var(--s2)">
             <input type="password" id="pin-new" class="input-field" placeholder="Ny adgangskode (mindst 6 tegn)">
             <input type="password" id="pin-confirm" class="input-field" placeholder="Gentag ny adgangskode">
             <button class="save-btn full" id="pin-save-btn" style="margin-top:var(--s1)">Gem ny adgangskode</button>
-          </div>
+          </div>`;
+    return `
+      <div class="section" id="section-pin">
+        <div class="section-header">
+          <div class="section-title-row">${sectionIcon('key-round', 'neutral')}<div><div class="section-title">Skift adgangskode${locked ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="section-subtitle">${locked ? 'Kun forælderen selv' : 'Minimum 6 tegn'}</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${body}
         </div></div></div>
       </div>`;
   }
@@ -3648,6 +3700,7 @@
     NO_CHILDREN_SELECTED: 'Vælg mindst ét barn.',
     THROTTLED: 'For mange forsøg. Vent 15 minutter og prøv igen.',
     NOT_AUTHENTICATED: 'Du er blevet logget ud. Log ind igen.',
+    ADMIN_SESSION_BLOCKED: 'Deling af adgang kan ikke godkendes fra personalets forældre-visning. Kun den forælder der selv har adgang, kan give den videre.',
   };
 
   function codeError(code) {
@@ -3779,6 +3832,13 @@
         codeModal.data = res; codeModal.step = 'child'; renderCodeModalBody(); return;
       }
       if (res?.kind === 'partner') {
+        // Stop FØR identitets-skærmen: godkendelses-trinnet er hele værnet, og
+        // det kan personalet ikke udføre på forælderens vegne (§3b B2).
+        // Serveren afviser også selve godkendelsen (ADMIN_SESSION_BLOCKED).
+        if (isAdminSimulatorSession()) {
+          showCodeError(CODE_ERRORS.ADMIN_SESSION_BLOCKED);
+          return;
+        }
         if (!children || children.length === 0) {
           showCodeError('Det er en partner-kode. Den skal indtastes af den forælder, der allerede har adgang.');
           return;
@@ -3839,6 +3899,7 @@
 
   async function handleCodeApprove() {
     if (codeModal.busy) return;
+    if (isAdminSimulatorSession()) { showCodeError(CODE_ERRORS.ADMIN_SESSION_BLOCKED); return; }
     const btn = document.getElementById('code-approve-btn');
     const picked = [...document.querySelectorAll('.partner-child-check:checked')].map(el => el.value);
     if (picked.length === 0) { showCodeError(CODE_ERRORS.NO_CHILDREN_SELECTED); return; }
@@ -5975,32 +6036,36 @@
     }
     if (ownEmailVal) parentEmail = ownEmailVal;
     if (!parentEmail) { showToast('Kunne ikke finde din e-mail', 'error'); return; }
+    // En kontakt der ikke er tegnet, må ikke tælle som "sat til standard": kortet
+    // gemmer ALLE felter under ét, så en manglende kontakt overskrev tidligere den
+    // gemte værdi med en konstant. Fx slukkede institutionens 'notify_balance'-flag
+    // saldo-rækkerne, og næste gem satte så push_at_zero tilbage til true.
+    // Rigtig kilde når kontakten mangler: den gemte værdi.
+    const stored = childData?.notification_settings || {};
+    const val = (el, key, dflt) => (el ? el.checked : (typeof stored[key] === 'boolean' ? stored[key] : dflt));
+    const payload = {
+      email: parentEmail,
+      notify_at_zero: val(zeroEl, 'notify_at_zero', true),
+      notify_at_ten: val(lowEl, 'notify_at_ten', true),
+      notify_primary_email: val(primaryEl, 'notify_primary_email', true),
+      secondary_email: secondaryVal || null,
+      notify_event_reminder: val(eventReminderEl, 'notify_event_reminder', false),
+      notify_event_invite: val(eventInviteEl, 'notify_event_invite', false),
+    };
+    // Push udelades HELT i personalets forældre-visning (§3b B1-undtagelsen).
+    // save-parent-notification rører kun de felter klienten sender, så
+    // forælderens egne push-valg står urørt. Serveren afviser dem også.
+    if (!isAdminSimulatorSession()) {
+      payload.push_at_zero = val(pushZeroEl, 'push_at_zero', true);
+      payload.push_at_ten = val(pushLowEl, 'push_at_ten', true);
+      payload.push_event_reminder = val(pushEventReminderEl, 'push_event_reminder', false);
+      payload.push_event_invite = val(pushEventInviteEl, 'push_event_invite', false);
+    }
     try {
-      await API.saveNotification(selectedChild.child_id, {
-        email: parentEmail,
-        notify_at_zero: zeroEl ? zeroEl.checked : true,
-        notify_at_ten: lowEl ? lowEl.checked : true,
-        notify_primary_email: primaryEl ? primaryEl.checked : true,
-        secondary_email: secondaryVal || null,
-        notify_event_reminder: eventReminderEl ? eventReminderEl.checked : false,
-        notify_event_invite: eventInviteEl ? eventInviteEl.checked : false,
-        push_at_zero: pushZeroEl ? pushZeroEl.checked : true,
-        push_at_ten: pushLowEl ? pushLowEl.checked : true,
-        push_event_reminder: pushEventReminderEl ? pushEventReminderEl.checked : false,
-        push_event_invite: pushEventInviteEl ? pushEventInviteEl.checked : false,
-      });
+      await API.saveNotification(selectedChild.child_id, payload);
       // Update local cache so re-renders reflect the change
       if (childData && childData.notification_settings) {
-        childData.notification_settings.notify_at_zero = zeroEl ? zeroEl.checked : true;
-        childData.notification_settings.notify_at_ten = lowEl ? lowEl.checked : true;
-        childData.notification_settings.notify_primary_email = primaryEl ? primaryEl.checked : true;
-        childData.notification_settings.push_at_zero = pushZeroEl ? pushZeroEl.checked : true;
-        childData.notification_settings.push_at_ten = pushLowEl ? pushLowEl.checked : true;
-        childData.notification_settings.push_event_reminder = pushEventReminderEl ? pushEventReminderEl.checked : false;
-        childData.notification_settings.push_event_invite = pushEventInviteEl ? pushEventInviteEl.checked : false;
-        childData.notification_settings.secondary_email = secondaryVal || null;
-        childData.notification_settings.notify_event_reminder = eventReminderEl ? eventReminderEl.checked : false;
-        childData.notification_settings.notify_event_invite = eventInviteEl ? eventInviteEl.checked : false;
+        Object.assign(childData.notification_settings, payload);
       }
       showToast(kind === 'push' ? 'Notifikationer gemt' : 'E-mail indstillinger gemt', 'success');
     } catch (err) {
@@ -6514,6 +6579,14 @@
 
   async function handlePinChange() {
     if (demoBlocked()) return;
+    // Værn mod en DOM der er ældre end tilstanden (barn-skift, gammel render):
+    // knappen findes ikke i en admin-session, men findes den alligevel, må den
+    // ikke ramme institutionens delte konto. Se renderPinSection.
+    if (isAdminSimulatorSession()) {
+      showAdminSimulatorBlockedAlert('ændring af adgangskode',
+        'Denne visning er logget ind på institutionens konto, ikke forælderens. En kodeændring her ville ramme institutionens egen konto. Forælderen kan selv bede om et nulstillingslink på login-siden.');
+      return;
+    }
     const pw = document.getElementById('pin-new').value;
     const pw2 = document.getElementById('pin-confirm').value;
     if (pw.length < 6) { showToast('Mindst 6 tegn', 'error'); return; }
