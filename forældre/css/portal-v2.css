@@ -1073,6 +1073,14 @@ a { color: inherit; text-decoration: none; }
   height: var(--nav-h);
   padding-top: 0;
 }
+
+/* "Hjælp en forælder" (§3c): tilstanden skal kunne SES, ikke huskes. Rammen
+   følger hele fladen, så den ikke kan scrolles væk sammen med banneret —
+   personalet skal aldrig komme i tvivl om at ændringerne rammer en ægte familie. */
+.app.helping-parent {
+  box-shadow: inset 0 0 0 4px #b45309;
+  min-height: 100dvh;
+}
 .demo-banner-badge {
   background: rgba(255,255,255,.22); color: #fff;
   font-size: 11px; font-weight: 800; letter-spacing: .06em;

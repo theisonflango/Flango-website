@@ -119,6 +119,11 @@
   // Barnet i denne flade er fabrikeret af serveren og findes ikke i databasen —
   // derfor er der intet barn at ændre, og alle per-barn-kontroller gøres inerte.
   function isExampleChild() { return childData?.is_example_child === true; }
+  // "Hjælp en forælder": den rigtige portal, en RIGTIG familie, personalet ved
+  // tasterne. Adskilt fra eksempel-visningen ovenfor, som er samme session men
+  // uden en familie. Tilstanden skal være synlig hele tiden — derfor banner og
+  // farvet ramme, ikke bare en fane man kan glemme man står på (§3c).
+  function isHelpingParent() { return isAdminSimulatorSession() && !isExampleChild(); }
 
   // ─── Ikoner ───
   // Sættet bor i js/icons.js, så modalerne (parent-avatar, billede-upload,
@@ -1640,7 +1645,7 @@
     const showStChart = (showScreentime && featureFlags.skaermtid_show_usage === true) || isAdminPreview();
 
     root.innerHTML = `
-      <div class="app${isDemo() ? ' demo-mode' : ''}">
+      <div class="app${isDemo() ? ' demo-mode' : ''}${isHelpingParent() ? ' helping-parent' : ''}">
         ${isDemo() ? `
         <div class="demo-banner" role="status">
           <span class="demo-banner-badge">DEMO</span>
@@ -1650,6 +1655,11 @@
         <div class="demo-banner" role="status" style="background:#6366f1">
           <span class="demo-banner-badge">EKSEMPEL</span>
           <span class="demo-banner-text">Du ser portalen med et opdigtet barn — ingen families data. Her slår du funktioner til og fra for <strong>alle</strong> forældre. Skal du hjælpe én konkret familie, skal du vælge barnet først.</span>
+        </div>` : ''}
+        ${isHelpingParent() ? `
+        <div class="demo-banner" role="status" style="background:#b45309">
+          <span class="demo-banner-badge">PÅ VEGNE AF</span>
+          <span class="demo-banner-text">Du handler på vegne af <strong>${esc(getChildName())}</strong>s forælder. Ændringer er ægte og registreres på dig — ikke på forælderen.</span>
         </div>` : ''}
 
         <!-- DESKTOP SIDEBAR -->
@@ -1799,9 +1809,15 @@
       window.FlangoAdminPreview.onRender(childData?.preview_sections || [], childData?.preview_subcontrols || []);
     }
 
-    // Auto-load purchase profile (always open by default) — springes over i
-    // eksempel-visningen: den slår op på et barn der ikke findes.
-    if (!isExampleChild()) loadPurchaseProfile();
+    // Auto-load purchase profile (always open by default). I eksempel-visningen
+    // slås der ikke op — barnet findes ikke — men sektionen skal heller ikke
+    // efterlades i en spinner der aldrig stopper.
+    if (isExampleChild()) {
+      const pp = document.getElementById('purchase-profile-content');
+      if (pp) pp.innerHTML = '<div class="empty-state" style="padding:var(--s4) 0"><div class="empty-state-text">Her ser forælderen barnets mest købte varer. Ingen data i eksempel-visningen.</div></div>';
+    } else {
+      loadPurchaseProfile();
+    }
   }
 
   // Ét sted frem for en gate i hver eneste gemme-funktion: i eksempel-visningen
