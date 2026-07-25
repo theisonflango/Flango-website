@@ -115,6 +115,10 @@
   // konto. En forælder med parametret får derfor et helt normalt svar og UI.
   const adminPreviewParam = new URLSearchParams(window.location.search).get('admin_preview') === '1';
   function isAdminPreview() { return childData?.is_admin_preview === true; }
+  // "Forældreportal Indstillinger" administrerer PORTALEN, ikke en familie (§3c).
+  // Barnet i denne flade er fabrikeret af serveren og findes ikke i databasen —
+  // derfor er der intet barn at ændre, og alle per-barn-kontroller gøres inerte.
+  function isExampleChild() { return childData?.is_example_child === true; }
 
   // ─── Ikoner ───
   // Sættet bor i js/icons.js, så modalerne (parent-avatar, billede-upload,
@@ -346,7 +350,8 @@
           });
           await window.FlangoAdminPreview.bootstrap({
             supabase: window.portalSupabase,
-            refetch: async () => { await loadChildData(); renderApp(); },
+            // Refetch går ad eksempel-vejen: der findes intet barn at genhente.
+            refetch: async () => { await loadExampleForPreview(); },
           });
         } catch (e) {
           console.error('[Portal] Admin-preview bootstrap fejl:', e);
@@ -364,6 +369,13 @@
       // Check password recovery
       if (window.__pendingPasswordRecovery) {
         renderPasswordRecovery();
+        return;
+      }
+
+      // Indstillings-fladen henter ALDRIG en børneliste: den skal ikke vide
+      // hvilke familier institutionen har, og skal ikke kunne vælge én af dem.
+      if (adminPreviewParam) {
+        await loadExampleForPreview();
         return;
       }
 
@@ -431,6 +443,39 @@
   }
   let lastSnapshotSerial = null;
 
+  // Indstillings-fladen (§3c): serveren fabrikerer barnet i selve svaret, så
+  // ingen families data — og ingen placeholder-række i databasen — bruges til
+  // at vise personalet hvad de slukker. Sortimentet hentes UDEN barn (det er
+  // institutionens eget indhold, ikke en families).
+  async function loadExampleForPreview() {
+    showLoading();
+    try {
+      const view = await API.getParentView(null, true);
+      if (!view || view.error || view.is_example_child !== true) {
+        console.error('[Portal] eksempel-visning afvist:', view?.error);
+        renderLogin();
+        return;
+      }
+      childData = view;
+      children = view.allowed_children || [];
+      selectedChild = children[0] || null;
+      featureFlags = view.institution || {};
+      visibleSections = view.visible_sections || {};
+      consentHistory = [];
+      eventsData = null;
+      ugeplanData = null;
+      customerAvgSpend = null;
+      screentimeData = null;
+      const prods = await API.getProducts(featureFlags.id, null).catch(() => []);
+      products = (prods?.products || prods || []).map(p => ({ ...p, parent_limit: null, institution_limit: null }));
+      dailySpecialLimit = prods?.daily_special_limit ?? null;
+      renderApp();
+    } catch (err) {
+      console.error('[Portal] loadExampleForPreview:', err);
+      renderLogin();
+    }
+  }
+
   async function loadChildren(opts) {
     const silent = opts?.silent === true;
     if (!silent) showLoading();
@@ -497,6 +542,9 @@
 
   async function loadChildData() {
     if (!selectedChild) return;
+    // Ét værn frem for ti: eksempel-barnet findes ikke i basen, så enhver
+    // genindlæsning skal ad eksempel-vejen — uanset hvilket kaldested der bad.
+    if (isExampleChild()) { await loadExampleForPreview(); return; }
     const childId = selectedChild.child_id;
     const instId = selectedChild.institution_id;
     try {
@@ -1598,6 +1646,11 @@
           <span class="demo-banner-badge">DEMO</span>
           <span class="demo-banner-text">Du prøver Flango med fiktive børn. Rigtige betalinger er slået fra.</span>
         </div>` : ''}
+        ${isExampleChild() ? `
+        <div class="demo-banner" role="status" style="background:#6366f1">
+          <span class="demo-banner-badge">EKSEMPEL</span>
+          <span class="demo-banner-text">Du ser portalen med et opdigtet barn — ingen families data. Her slår du funktioner til og fra for <strong>alle</strong> forældre. Skal du hjælpe én konkret familie, skal du vælge barnet først.</span>
+        </div>` : ''}
 
         <!-- DESKTOP SIDEBAR -->
         <aside class="desktop-sidebar">
@@ -1737,13 +1790,31 @@
     renderSidebarNav('tab-home');
     bindEvents();
 
+    // Eksempel-visningen har intet barn at ændre — gør kontrollerne inerte FØR
+    // preview-modulet lægger sine chips på, så chipsene ikke rammes.
+    makeExampleControlsInert();
+
     // Admin-preview: dekorér sektionerne (grå + toggle-chips) efter hver render.
     if (isAdminPreview() && window.FlangoAdminPreview) {
       window.FlangoAdminPreview.onRender(childData?.preview_sections || [], childData?.preview_subcontrols || []);
     }
 
-    // Auto-load purchase profile (always open by default)
-    loadPurchaseProfile();
+    // Auto-load purchase profile (always open by default) — springes over i
+    // eksempel-visningen: den slår op på et barn der ikke findes.
+    if (!isExampleChild()) loadPurchaseProfile();
+  }
+
+  // Ét sted frem for en gate i hver eneste gemme-funktion: i eksempel-visningen
+  // er der ingen familie at skrive til, så alle per-barn-kontroller slås fra
+  // efter render. Preview-modulets egne chips (.fp-*) er undtaget — de gemmer
+  // institutions-flag, hvilket er præcis dét fladen er til for.
+  function makeExampleControlsInert() {
+    if (!isExampleChild()) return;
+    document.querySelectorAll('.section-content input, .section-content select, .section-content textarea, .section-content button')
+      .forEach(el => {
+        if (el.closest('[class*="fp-"]')) return;
+        el.disabled = true;
+      });
   }
 
   // ═══════════════════════════════════════
