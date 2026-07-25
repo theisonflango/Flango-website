@@ -61,8 +61,10 @@
 .ico { display: block; flex-shrink: 0; }
 /* Ikon der står inde i en tekstlinje (låse-markering, "Læs mere", knap-labels). */
 .ico-inline { display: inline-block; vertical-align: -0.15em; }
-/* Pil der roterer når et afsnit foldes ud. */
-.ico-spin { transition: transform .2s; }
+/* Pil i en <summary>: står inline foran teksten og peger nedad når afsnittet er åbent.
+   Rotationen manglede før — pilen sad fast på "lukket" uanset tilstand. */
+.ico-spin { display: inline-block; vertical-align: -0.15em; transition: transform .2s; }
+details[open] > summary .ico-spin { transform: rotate(90deg); }
 
 .tone-flango   { background: var(--flango-light);   color: var(--flango-dark); }
 .tone-info     { background: var(--info-light);     color: var(--info); }
