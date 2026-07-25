@@ -270,7 +270,7 @@
           <p style="margin:0 0 12px;font-size:13px;color:var(--ink-muted,#78716c);">For ${escName}</p>
 
           <div class="hint-box blue" style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:10px 12px;font-size:13px;color:#1e3a5f;line-height:1.5;margin-bottom:16px;">
-            ℹ️ Alle uploads gennemgås af institutionen før de aktiveres som profilbillede. Du får besked når billedet er godkendt eller afvist.
+            ${window.FlangoIcons.icon('info', 15, 'ico-inline')} Alle uploads gennemgås af institutionen før de aktiveres som profilbillede. Du får besked når billedet er godkendt eller afvist.
           </div>
 
           <div class="ppum-error" style="display:none;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px;"></div>
@@ -278,14 +278,14 @@
           <div class="ppum-chooser-view">
             <div style="display:flex;flex-direction:column;gap:10px;">
               <button class="ppum-camera-btn" style="display:flex;align-items:center;gap:10px;padding:14px;border:1.5px solid var(--border,#e7e5e4);border-radius:10px;background:var(--bg,#fff);font-size:15px;cursor:pointer;text-align:left;">
-                <span style="font-size:24px;">📷</span>
+                <span style="color:var(--flango,#F5960A)">${window.FlangoIcons.icon('camera', 24)}</span>
                 <div>
                   <div style="font-weight:600;">Tag et billede</div>
                   <div style="font-size:12px;color:var(--ink-muted,#78716c);">Brug kameraet på din enhed</div>
                 </div>
               </button>
               <button class="ppum-file-btn" style="display:flex;align-items:center;gap:10px;padding:14px;border:1.5px solid var(--border,#e7e5e4);border-radius:10px;background:var(--bg,#fff);font-size:15px;cursor:pointer;text-align:left;">
-                <span style="font-size:24px;">🖼️</span>
+                <span style="color:var(--flango,#F5960A)">${window.FlangoIcons.icon('image', 24)}</span>
                 <div>
                   <div style="font-weight:600;">Vælg fra galleri</div>
                   <div style="font-size:12px;color:var(--ink-muted,#78716c);">Upload en eksisterende fil</div>
@@ -299,7 +299,7 @@
             <video class="ppum-video" autoplay playsinline muted style="width:100%;max-width:400px;border-radius:12px;background:#000;display:block;margin:0 auto;"></video>
             <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;">
               <button class="ppum-back-btn" style="padding:10px 16px;border:1px solid var(--border,#d1d5db);border-radius:8px;background:var(--bg,#fff);cursor:pointer;">Tilbage</button>
-              <button class="ppum-snap-btn" style="padding:10px 20px;border:none;border-radius:8px;background:var(--flango,#F5960A);color:#fff;font-weight:600;cursor:pointer;">📸 Tag billede</button>
+              <button class="ppum-snap-btn" style="padding:10px 20px;border:none;border-radius:8px;background:var(--flango,#F5960A);color:#fff;font-weight:600;cursor:pointer;">${window.FlangoIcons.icon('camera', 16, 'ico-inline')} Tag billede</button>
             </div>
           </div>
 

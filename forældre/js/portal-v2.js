@@ -116,6 +116,11 @@
   const adminPreviewParam = new URLSearchParams(window.location.search).get('admin_preview') === '1';
   function isAdminPreview() { return childData?.is_admin_preview === true; }
 
+  // ─── Ikoner ───
+  // Sættet bor i js/icons.js, så modalerne (parent-avatar, billede-upload,
+  // push-softask) tegner fra præcis samme kilde som portalen selv.
+  const { icon, sectionIcon, hintIcon } = window.FlangoIcons;
+
   // ─── Tab-to-sections mapping ───
   const TAB_SECTIONS = {
     'tab-home':    ['section-balance','section-events','section-ugeplan','section-profile','section-history','section-sortiment'],
@@ -125,37 +130,39 @@
     'tab-privacy': ['section-privacy-policy','section-consents','section-data-insight','section-linked-parents','section-delete-child','section-delete-account','section-contact'],
   };
 
+  // Navigation (sidebar + desktop-faner): samme glyf som sektionens egen header,
+  // så et punkt i navet og dets sektion aldrig viser to forskellige ikoner.
   const SECTION_LABELS = {
-    'section-balance':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', label: 'Overblik' },
-    'section-events':         { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', label: 'Arrangementer' },
-    'section-ugeplan':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/></svg>', label: 'Ugeplan' },
-    'section-profile':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label: 'Købsprofil' },
-    'section-history':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', label: 'Historik' },
-    'section-sortiment':      { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>', label: 'Sortiment' },
-    'section-topup':          { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', label: 'Indbetaling' },
-    'section-transfer':       { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>', label: 'Overfør' },
-    'section-spending-limit': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>', label: 'Daglig grænse' },
-    'section-product-limits': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>', label: 'Købsgrænser' },
-    'section-sugar':          { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>', label: 'Sukkerpolitik' },
-    'section-diet':           { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg>', label: 'Kostpræferencer' },
-    'section-allergens':      { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>', label: 'Allergier' },
-    'section-screentime':     { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>', label: 'Skærmtid' },
-    'section-games':          { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="17" cy="10" r="1"/><circle cx="15" cy="13" r="1"/></svg>', label: 'Godkend spil' },
-    'section-st-chart':       { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', label: 'Spilletidsoversigt' },
-    'section-notifications':  { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Notifikationer' },
-    'section-email-notifications': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'E-mail påmindelser' },
-    'section-invite-parent':  { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>', label: 'Invitér forælder' },
-    'section-feedback':       { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>', label: 'Feedback' },
-    'section-pin':            { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>', label: 'Adgangskode' },
-    'section-privacy-policy': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', label: 'Privatlivspolitik' },
-    'section-child-name':     { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', label: 'Barnets navn' },
-    'section-profile-picture':{ icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>', label: 'Profilbilleder' },
-    'section-consents':       { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>', label: 'Samtykke-historik' },
-    'section-data-insight':   { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>', label: 'Dataindsigt' },
-    'section-linked-parents': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label: 'Forældrekonti' },
-    'section-delete-child':   { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>', label: 'Slet data' },
-    'section-delete-account': { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>', label: 'Slet konto' },
-    'section-contact':        { icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Kontakt' },
+    'section-balance':             { icon: 'house',                   label: 'Overblik' },
+    'section-events':              { icon: 'calendar-days',           label: 'Arrangementer' },
+    'section-ugeplan':             { icon: 'calendar-check',          label: 'Ugeplan' },
+    'section-profile':             { icon: 'chart-column-increasing', label: 'Købsprofil' },
+    'section-history':             { icon: 'history',                 label: 'Historik' },
+    'section-sortiment':           { icon: 'clipboard-list',          label: 'Sortiment' },
+    'section-topup':               { icon: 'credit-card',             label: 'Indbetaling' },
+    'section-transfer':            { icon: 'arrow-left-right',        label: 'Overfør' },
+    'section-spending-limit':      { icon: 'hand-coins',              label: 'Daglig grænse' },
+    'section-product-limits':      { icon: 'shopping-basket',         label: 'Købsgrænser' },
+    'section-sugar':               { icon: 'candy-off',               label: 'Sukkerpolitik' },
+    'section-diet':                { icon: 'salad',                   label: 'Kostpræferencer' },
+    'section-allergens':           { icon: 'nut',                     label: 'Allergier' },
+    'section-screentime':          { icon: 'hourglass',               label: 'Skærmtid' },
+    'section-games':               { icon: 'gamepad-2',               label: 'Godkend spil' },
+    'section-st-chart':            { icon: 'chart-column',            label: 'Spilletidsoversigt' },
+    'section-notifications':       { icon: 'bell-ring',               label: 'Notifikationer' },
+    'section-email-notifications': { icon: 'mail',                    label: 'E-mail påmindelser' },
+    'section-invite-parent':       { icon: 'user-round-plus',         label: 'Invitér forælder' },
+    'section-feedback':            { icon: 'messages-square',         label: 'Feedback' },
+    'section-pin':                 { icon: 'key-round',               label: 'Adgangskode' },
+    'section-privacy-policy':      { icon: 'file-text',               label: 'Privatlivspolitik' },
+    'section-child-name':          { icon: 'pencil-line',             label: 'Barnets navn' },
+    'section-profile-picture':     { icon: 'camera',                  label: 'Profilbilleder' },
+    'section-consents':            { icon: 'scroll-text',             label: 'Samtykke-historik' },
+    'section-data-insight':        { icon: 'database',                label: 'Dataindsigt' },
+    'section-linked-parents':      { icon: 'users-round',             label: 'Forældrekonti' },
+    'section-delete-child':        { icon: 'trash-2',                 label: 'Slet data' },
+    'section-delete-account':      { icon: 'user-round-x',            label: 'Slet konto' },
+    'section-contact':             { icon: 'mail',                    label: 'Kontakt' },
   };
 
   // ─── Turnstile verification helper (callback-baseret) ───
@@ -620,7 +627,7 @@
     overlay.innerHTML = `
       <div style="background:#fff;color:#111;border-radius:14px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
         <div style="padding:22px 26px;border-bottom:1px solid #e5e7eb;">
-          <div style="font-size:24px;margin-bottom:6px;">👋</div>
+          <div style="margin-bottom:6px;color:var(--flango)">${icon('hand', 24)}</div>
           <strong style="font-size:18px;display:block;margin-bottom:6px;">Velkommen til Flango forældreportal</strong>
           <div style="font-size:13px;color:#6b7280;line-height:1.5;">Du er nu tilknyttet <strong>${esc(childName)}</strong>. Før personalet kan vise dit barns profilbillede i caféen, skal du aktivt give samtykke til de billed-typer du tillader.</div>
         </div>
@@ -645,7 +652,7 @@
             <div style="flex:1;">
               <div style="font-weight:600;font-size:14px;color:#111;">AI-genereret avatar</div>
               <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">Et foto af dit barn sendes til Microsoft Azure (EU) for at generere en stiliseret tegneserie. Fotoet slettes straks efter — kun avataren gemmes.</div>
-              <button type="button" id="welcome-ai-openai-readmore" style="background:none;border:none;padding:4px 0 0;color:var(--info,#2563eb);font-size:12px;cursor:pointer;font-weight:600;text-align:left;">📖 Læs mere om databehandlingen</button>
+              <button type="button" id="welcome-ai-openai-readmore" style="background:none;border:none;padding:4px 0 0;color:var(--info,#2563eb);font-size:12px;cursor:pointer;font-weight:600;text-align:left;">${icon('book-open', 14, 'ico-inline')} Læs mere om databehandlingen</button>
             </div>
           </label>` : ''}
           <div style="font-size:11px;color:#9ca3af;margin-top:14px;line-height:1.5;">Du kan altid ændre eller fjerne dine samtykker senere under <strong>Privatliv → Profilbilleder</strong>. Samtykker der trækkes tilbage sletter med det samme det tilhørende billede fra Flango.</div>
@@ -799,7 +806,7 @@
   // ikke i simulator-session.
   function adminSimLockedHint(extraStyle) {
     if (!isAdminSimulatorSession()) return '';
-    return `<div style="font-size:11px;color:#92400e;margin-top:4px;font-style:italic;${extraStyle || ''}">🔒 Kun forælder kan ændre dette — bed forælder logge ind selv</div>`;
+    return `<div style="font-size:11px;color:#92400e;margin-top:4px;font-style:italic;${extraStyle || ''}">${icon('lock', 11, 'ico-inline')} Kun forælder kan ændre dette — bed forælder logge ind selv</div>`;
   }
 
   function getBalanceStatus(balance) {
@@ -1052,7 +1059,7 @@
               <a href="#" id="goto-signup-link" class="login-link-bold">Opret konto</a>
             </div>
             <div style="margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--border);text-align:center">
-              <button type="button" id="demo-login-btn" style="background:transparent;border:1.5px solid var(--flango);color:var(--flango);font-weight:600;font-size:14px;padding:0.6rem 1.1rem;border-radius:10px;cursor:pointer;width:100%">👀 Prøv portalen som gæst</button>
+              <button type="button" id="demo-login-btn" style="background:transparent;border:1.5px solid var(--flango);color:var(--flango);font-weight:600;font-size:14px;padding:0.6rem 1.1rem;border-radius:10px;cursor:pointer;width:100%">${icon('eye', 16, 'ico-inline')} Prøv portalen som gæst</button>
               <div style="font-size:12px;color:var(--ink-muted);margin-top:6px">Se en demo med fiktive børn — ingen konto nødvendig</div>
             </div>
           </div>
@@ -1134,7 +1141,7 @@
     } catch (err) {
       console.error('[Portal] demo-login fejl:', err);
       if (errorEl) { errorEl.textContent = 'Kunne ikke starte demoen. Prøv igen.'; errorEl.classList.add('visible'); }
-      if (btn) { btn.disabled = false; btn.textContent = '👀 Prøv portalen som gæst'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = `${icon('eye', 16, 'ico-inline')} Prøv portalen som gæst`; }
     }
   }
 
@@ -1190,7 +1197,7 @@
       </div>
       <details style="margin-bottom:var(--s4);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden;">
         <summary style="padding:10px 14px;cursor:pointer;font-weight:600;font-size:13px;color:var(--info);background:var(--surface-sunken);user-select:none;list-style:none;display:flex;align-items:center;gap:6px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform 0.2s"><polyline points="9 18 15 12 9 6"/></svg>
+          ${icon('chevron-right', 14, 'ico-spin')}
           Læs mere om hvordan vi behandler data
         </summary>
         <div style="padding:14px;font-size:13px;line-height:1.6;color:var(--ink-soft);border-top:1px solid var(--border);">
@@ -1198,7 +1205,7 @@
         </div>
       </details>
       <a href="https://flango.dk/privatlivspolitik/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;color:var(--info);font-weight:600;text-decoration:none;margin-bottom:var(--s4);font-size:13px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        ${icon('external-link', 16)}
         Læs den fulde privatlivspolitik
       </a>`;
   }
@@ -1216,7 +1223,7 @@
         box.style.cssText = 'background:#fff;border-radius:16px;padding:28px;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;';
         box.innerHTML = `
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:var(--s4)">
-            <div style="width:44px;height:44px;border-radius:12px;background:var(--flango-light);display:flex;align-items:center;justify-content:center;font-size:22px">🛡️</div>
+            <div style="width:44px;height:44px;border-radius:12px;background:var(--flango-light);display:flex;align-items:center;justify-content:center;color:var(--flango)">${icon('shield-check', 22)}</div>
             <div>
               <div style="font-weight:700;font-size:17px;color:var(--ink)">Vilkår for brug</div>
               <div style="font-size:13px;color:var(--ink-muted)">${esc(child.child_name)}</div>
@@ -1268,7 +1275,7 @@
       box.style.cssText = 'background:#fff;border-radius:16px;padding:28px;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;';
       box.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:var(--s4)">
-          <div style="width:44px;height:44px;border-radius:12px;background:var(--flango-light);display:flex;align-items:center;justify-content:center;font-size:22px">🛡️</div>
+          <div style="width:44px;height:44px;border-radius:12px;background:var(--flango-light);display:flex;align-items:center;justify-content:center;color:var(--flango)">${icon('shield-check', 22)}</div>
           <div>
             <div style="font-weight:700;font-size:17px;color:var(--ink)">Vilkår for brug</div>
             <div style="font-size:13px;color:var(--ink-muted)">Tilknyt ${esc(childName || 'barn')}</div>
@@ -1501,7 +1508,7 @@
         </header>
         <main class="main">
           <div class="empty-state" style="margin-top:var(--s12);max-width:420px;margin-left:auto;margin-right:auto">
-            <div class="empty-state-icon">👋</div>
+            <div class="empty-state-icon">${icon('hand', 40)}</div>
             <div class="empty-state-text" style="margin-bottom:var(--s5)">
               Velkommen til Flango.<br>Indtast koden fra institutionen for at komme i gang.
             </div>
@@ -1518,7 +1525,7 @@
 
             ${userEmail ? `<div style="margin-top:var(--s6);font-size:12px;color:var(--ink-muted);text-align:center;">Logget ind som <strong>${esc(userEmail)}</strong></div>` : ''}
             <button id="no-children-logout" type="button" style="margin-top:var(--s3);padding:10px 20px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg);color:var(--ink-soft);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              ${icon('log-out', 16)}
               Log ud
             </button>
           </div>
@@ -1537,7 +1544,7 @@
       <div class="app">
         <main class="main">
           <div class="empty-state" style="margin-top:var(--s16)">
-            <div class="empty-state-icon">⚠️</div>
+            <div class="empty-state-icon">${icon('triangle-alert', 40)}</div>
             <div class="empty-state-text">${msg}</div>
             <button class="save-btn" style="margin-top:var(--s5)" onclick="window.location.reload()">Prøv igen</button>
           </div>
@@ -1596,7 +1603,7 @@
           <div class="sidebar-divider"></div>
           <nav class="sidebar-nav" id="sidebar-nav"></nav>
           <div class="sidebar-footer">
-            <div class="sidebar-footer-btn" id="sidebar-logout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Log ud af denne enhed</div>
+            <div class="sidebar-footer-btn" id="sidebar-logout">${icon('log-out', 20)}Log ud af denne enhed</div>
           </div>
         </aside>
 
@@ -1608,11 +1615,11 @@
               <div><div class="brand-name">Flango</div><div class="brand-sub">${portalSub}</div></div>
             </div>
             <div class="desktop-tab-bar">
-              <button class="dtab-item active" data-tab="tab-home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Overblik</span></button>
-              <button class="dtab-item" data-tab="tab-pay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span>Indbetal</span></button>
-              <button class="dtab-item" data-tab="tab-limits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Grænser</span></button>
-              <button class="dtab-item" data-tab="tab-profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></button>
-              <button class="dtab-item" data-tab="tab-privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Privatliv</span></button>
+              <button class="dtab-item active" data-tab="tab-home">${icon('house', 24)}<span>Overblik</span></button>
+              <button class="dtab-item" data-tab="tab-pay">${icon('credit-card', 24)}<span>Indbetal</span></button>
+              <button class="dtab-item" data-tab="tab-limits">${icon('sliders-horizontal', 24)}<span>Grænser</span></button>
+              <button class="dtab-item" data-tab="tab-profile">${icon('user-round', 24)}<span>Profil</span></button>
+              <button class="dtab-item" data-tab="tab-privacy">${icon('shield-check', 24)}<span>Privatliv</span></button>
             </div>
           </div>
         </nav>
@@ -1628,7 +1635,7 @@
               </div>
             </div>
             <div class="nav-actions">
-              <button class="nav-btn" id="nav-logout-btn" title="Log ud"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+              <button class="nav-btn" id="nav-logout-btn" title="Log ud">${icon('log-out', 20)}</button>
             </div>
           </div>
         </header>
@@ -1651,7 +1658,7 @@
                 <div class="balance-status ${status.cls}"><span class="status-dot"></span> ${status.text}</div>
               </div>
               <div class="topup-row">
-                <button class="topup-btn topup-primary" data-nav-tab="tab-pay"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Indbetal</button>
+                <button class="topup-btn topup-primary" data-nav-tab="tab-pay">${icon('plus', 18)}Indbetal</button>
                 ${renderBalanceSecondaryAction()}
               </div>
             </div>
@@ -1709,11 +1716,11 @@
 
         <!-- MOBILE BOTTOM NAV -->
         <nav class="bottomnav">
-          <button class="bnav-item active" data-tab="tab-home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="bnav-label">Overblik</span></button>
-          <button class="bnav-item" data-tab="tab-pay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span class="bnav-label">Indbetal</span></button>
-          <button class="bnav-item" data-tab="tab-limits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span class="bnav-label">Grænser</span></button>
-          <button class="bnav-item" data-tab="tab-profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="bnav-label">Profil</span></button>
-          <button class="bnav-item" data-tab="tab-privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span class="bnav-label">Privatliv</span></button>
+          <button class="bnav-item active" data-tab="tab-home">${icon('house', 24)}<span class="bnav-label">Overblik</span></button>
+          <button class="bnav-item" data-tab="tab-pay">${icon('credit-card', 24)}<span class="bnav-label">Indbetal</span></button>
+          <button class="bnav-item" data-tab="tab-limits">${icon('sliders-horizontal', 24)}<span class="bnav-label">Grænser</span></button>
+          <button class="bnav-item" data-tab="tab-profile">${icon('user-round', 24)}<span class="bnav-label">Profil</span></button>
+          <button class="bnav-item" data-tab="tab-privacy">${icon('shield-check', 24)}<span class="bnav-label">Privatliv</span></button>
         </nav>
 
       </div>
@@ -1749,13 +1756,13 @@
     const rows = children.map(c => {
       const isActive = c.child_id === active.child_id;
       const bal = c.balance != null ? `<span class="child-dd-bal">${formatKr(c.balance)} kr</span>` : '';
-      const check = isActive ? '<svg class="child-dd-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '';
+      const check = isActive ? icon('check', 20, 'child-dd-check') : '';
       return `<button class="child-dd-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}">${avatarOf(c)}<span class="child-dd-name">${esc(formatChildName(c))}</span>${bal}${check}</button>`;
     }).join('');
     const activeBal = active.balance != null ? `<span class="child-dd-bal">${formatKr(active.balance)} kr</span>` : '';
     return `<div class="child-selector"><div class="child-dd" id="child-dd">
       <button class="child-dd-trigger" id="child-dd-trigger" aria-haspopup="listbox" aria-expanded="false">${avatarOf(active)}<span class="child-dd-name">${esc(formatChildName(active))}</span>${activeBal}<svg class="child-dd-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
-      <div class="child-dd-menu" id="child-dd-menu" hidden>${rows}<button class="child-dd-item child-dd-add" id="add-child-btn-mobile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tilknyt ekstra barn</button></div>
+      <div class="child-dd-menu" id="child-dd-menu" hidden>${rows}<button class="child-dd-item child-dd-add" id="add-child-btn-mobile">${icon('plus', 18)}Tilknyt ekstra barn</button></div>
     </div></div>`;
   }
 
@@ -1774,11 +1781,11 @@
       return `
         <div class="section" id="section-events">
           <div class="section-header">
-            <div class="section-title-row"><div class="section-icon" style="background:var(--negative-light)">📅</div><div><div class="section-title">Kommende arrangementer</div><div class="section-subtitle">Ingen kommende arrangementer</div></div></div>
-            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="section-title-row">${sectionIcon('calendar-days', 'negative')}<div><div class="section-title">Kommende arrangementer</div><div class="section-subtitle">Ingen kommende arrangementer</div></div></div>
+            ${icon('chevron-down', 20, 'section-chevron')}
           </div>
           <div class="section-body"><div class="section-body-inner"><div class="section-content">
-            <div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-text">Ingen kommende arrangementer</div></div>
+            <div class="empty-state"><div class="empty-state-icon">${icon('calendar-days', 40)}</div><div class="empty-state-text">Ingen kommende arrangementer</div></div>
           </div></div></div>
         </div>`;
     }
@@ -1838,8 +1845,8 @@
     return `
       <div class="section" id="section-events">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--negative-light)">📅</div><div><div class="section-title">Kommende arrangementer</div><div class="section-subtitle">${events.length} arrangement${events.length !== 1 ? 'er' : ''}</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('calendar-days', 'negative')}<div><div class="section-title">Kommende arrangementer</div><div class="section-subtitle">${events.length} arrangement${events.length !== 1 ? 'er' : ''}</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${eventCards}
@@ -1876,8 +1883,8 @@
     return `
       <div class="section" id="section-ugeplan">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">🗓️</div><div><div class="section-title">Ugeplan</div><div class="section-subtitle">Ugens aktiviteter</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('calendar-check', 'flango')}<div><div class="section-title">Ugeplan</div><div class="section-subtitle">Ugens aktiviteter</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div id="ugeplan-content">
@@ -1989,8 +1996,8 @@
     return `
       <div class="section open" id="section-profile">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">📊</div><div><div class="section-title">Købsprofil</div><div class="section-subtitle">Mest købte produkter</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('chart-column-increasing', 'flango')}<div><div class="section-title">Købsprofil</div><div class="section-subtitle">Mest købte produkter</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div id="purchase-profile-content">
@@ -2058,8 +2065,8 @@
     return `
       <div class="section" id="section-history">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📊</div><div><div class="section-title">Overblik</div><div class="section-subtitle">Forbrug og historik</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('history', 'info')}<div><div class="section-title">Overblik</div><div class="section-subtitle">Forbrug og historik</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div id="history-content">${renderHistoryContent('week')}</div>
@@ -2082,15 +2089,15 @@
     } else {
       txHTML = filteredTx.map(tx => {
         const type = tx.type || tx.event_type || 'SALE';
-        let icon = '🧃', iconCls = 'purchase', amountCls = 'negative', sign = '-';
-        if (type === 'DEPOSIT' || type === 'TOPUP') { icon = '💳'; iconCls = 'topup'; amountCls = 'positive'; sign = '+'; }
-        else if (type === 'BALANCE_EDIT' || type === 'ADJUSTMENT') { icon = '⚙️'; iconCls = 'adjust'; amountCls = parseFloat(tx.amount) >= 0 ? 'positive' : 'negative'; sign = parseFloat(tx.amount) >= 0 ? '+' : '-'; }
+        let txIcon = 'cup-soda', iconCls = 'purchase', amountCls = 'negative', sign = '-';
+        if (type === 'DEPOSIT' || type === 'TOPUP') { txIcon = 'credit-card'; iconCls = 'topup'; amountCls = 'positive'; sign = '+'; }
+        else if (type === 'BALANCE_EDIT' || type === 'ADJUSTMENT') { txIcon = 'sliders-horizontal'; iconCls = 'adjust'; amountCls = parseFloat(tx.amount) >= 0 ? 'positive' : 'negative'; sign = parseFloat(tx.amount) >= 0 ? '+' : '-'; }
         else if (type === 'SALE_UNDO' || type === 'UNDO_SALE') { icon = '↩️'; iconCls = 'topup'; amountCls = 'positive'; sign = '+'; }
         const title = tx.description || tx.product_names || type;
         const dateStr = tx.created_at || tx.date || '';
         const date = dateStr ? formatDateTime(dateStr) : '';
         const amount = Math.abs(parseFloat(tx.amount || tx.total_amount || 0));
-        return `<div class="tx-row"><div class="tx-icon ${iconCls}">${icon}</div><div class="tx-info"><div class="tx-title">${esc(title)}</div><div class="tx-date">${esc(date)}</div></div><div class="tx-amount ${amountCls}">${sign}${formatKr(amount)} kr</div></div>`;
+        return `<div class="tx-row"><div class="tx-icon ${iconCls}">${icon(txIcon, 18)}</div><div class="tx-info"><div class="tx-title">${esc(title)}</div><div class="tx-date">${esc(date)}</div></div><div class="tx-amount ${amountCls}">${sign}${formatKr(amount)} kr</div></div>`;
       }).join('');
     }
 
@@ -2112,7 +2119,7 @@
   function renderSortimentSection() {
     let listHTML = '';
     if (!products || products.length === 0) {
-      listHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Ingen produkter tilgængelige</div></div>';
+      listHTML = `<div class="empty-state"><div class="empty-state-icon">${icon('clipboard-list', 40)}</div><div class="empty-state-text">Ingen produkter tilgængelige</div></div>`;
     } else {
       listHTML = products.filter(p => p.is_visible !== false && p.is_enabled !== false).map(p => {
         const emojiHtml = productEmojiHTML(p, 20);
@@ -2124,8 +2131,8 @@
     return `
       <div class="section" id="section-sortiment">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--positive-light)">📋</div><div><div class="section-title">Dagens sortiment</div><div class="section-subtitle">Hvad kan købes i cafeen</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('clipboard-list', 'positive')}<div><div class="section-title">Dagens sortiment</div><div class="section-subtitle">Hvad kan købes i cafeen</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${listHTML}
@@ -2144,14 +2151,14 @@
 
     if (isDemo()) {
       return `${mobilepayBtn('pay-mobilepay-demo')}
-            <div class="topup-pay-hint">🎬 Demo — MobilePay-flowet er simuleret; ingen rigtig betaling gennemføres</div>`;
+            <div class="topup-pay-hint">${icon('info', 14, 'ico-inline')} Demo — MobilePay-flowet er simuleret; ingen rigtig betaling gennemføres</div>`;
     }
 
     const hasVipps = featureFlags.vipps_enabled === true;
     const hasCard = featureFlags.card_topup_enabled === true;
 
     if (!hasVipps && !hasCard) {
-      return `<div class="hint-box blue"><span class="hint-icon">💬</span><span>Online optankning er ikke aktiveret for denne institution endnu. Kontakt personalet for at tanke ${esc(getChildName())}s saldo op.</span></div>`;
+      return `<div class="hint-box blue">${hintIcon('message-circle')}<span>Online optankning er ikke aktiveret for denne institution endnu. Kontakt personalet for at tanke ${esc(getChildName())}s saldo op.</span></div>`;
     }
 
     const parts = [];
@@ -2171,8 +2178,8 @@
    *  sektionen også slået fra, falder vi tilbage til GDPR-kontaktafsnittet, så
    *  knappen aldrig peger på noget der ikke findes. */
   function renderBalanceSecondaryAction() {
-    const mailIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>';
-    const phoneIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>';
+    const mailIcon = icon('mail', 18);
+    const phoneIcon = icon('phone', 18);
 
     const phone = featureFlags.institution_contact_phone;
     if (featureFlags.institution_contact_phone_enabled === true && phone) {
@@ -2196,8 +2203,8 @@
     return `
       <div class="section" id="section-topup">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">💳</div><div><div class="section-title">Vælg beløb</div><div class="section-subtitle">Optank ${esc(name)}s saldo</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('credit-card', 'flango')}<div><div class="section-title">Vælg beløb</div><div class="section-subtitle">Optank ${esc(name)}s saldo</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="topup-grid">
@@ -2237,8 +2244,8 @@
     const kids = children || [];
     const header = `
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">🔁</div><div><div class="section-title">Overfør mellem børn</div><div class="section-subtitle">Flyt saldo fra ét barn til et andet</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('arrow-left-right', 'info')}<div><div class="section-title">Overfør mellem børn</div><div class="section-subtitle">Flyt saldo fra ét barn til et andet</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>`;
 
     // Ingen søskende at flytte imellem → kort henvisning i stedet for en formular.
@@ -2406,12 +2413,12 @@
     return `
       <div class="section" id="section-spending-limit">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">💰</div><div><div class="section-title">Daglig beløbsgrænse</div><div class="section-subtitle">Maks forbrug per dag</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('hand-coins', 'flango')}<div><div class="section-title">Daglig beløbsgrænse</div><div class="section-subtitle">Maks forbrug per dag</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          ${instLimit ? `<div class="hint-box info" style="margin-bottom:var(--s3)"><span class="hint-icon">🏫</span><span>Institutionens daglige grænse: <strong>${formatKr(instLimit)} kr</strong></span></div>` : ''}
-          ${limit ? `<div class="hint-box green" style="margin-bottom:var(--s3)"><span class="hint-icon">👤</span><span>Din daglige grænse: <strong>${formatKr(limit)} kr</strong></span></div>` : ''}
+          ${instLimit ? `<div class="hint-box info" style="margin-bottom:var(--s3)">${hintIcon('school')}<span>Institutionens daglige grænse: <strong>${formatKr(instLimit)} kr</strong></span></div>` : ''}
+          ${limit ? `<div class="hint-box green" style="margin-bottom:var(--s3)">${hintIcon('user-round')}<span>Din daglige grænse: <strong>${formatKr(limit)} kr</strong></span></div>` : ''}
           <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s2)">Vælg hvor meget ${esc(getChildName())} maksimalt må bruge om dagen. Den strengeste grænse (din eller institutionens) gælder altid.</p>
           <div class="chip-group" id="spending-limit-chips">
             <button class="chip${limit == 20 ? ' active' : ''}" data-limit="20">20 kr</button>
@@ -2424,7 +2431,7 @@
             <input type="number" inputmode="numeric" min="1" max="1000" id="limit-custom-input" class="input-field" placeholder="Indtast beløb i kr (1-1000)" value="${isCustomLimit ? esc(String(limit)) : ''}" style="flex:1;margin:0">
             <button class="save-btn compact" id="limit-custom-save" style="white-space:nowrap;padding:10px 16px">Gem</button>
           </div>
-          <div class="hint-box neutral" style="margin-top:var(--s3)"><span class="hint-icon">💡</span><span>${esc(getChildName())} kan stadig købe, men cafeen giver besked hvis grænsen overskrides.</span></div>
+          <div class="hint-box neutral" style="margin-top:var(--s3)">${hintIcon('lightbulb')}<span>${esc(getChildName())} kan stadig købe, men cafeen giver besked hvis grænsen overskrides.</span></div>
         </div></div></div>
       </div>`;
   }
@@ -2461,7 +2468,7 @@
       todayHTML = `
         <div style="margin-top:var(--s4)">
           <div style="font-weight:700;font-size:13px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:var(--s2)">Dagens sortiment</div>
-          <div class="hint-box neutral" style="margin-bottom:var(--s2);font-size:12px"><span class="hint-icon">ℹ️</span><span>Grænser for dagens sortiment gælder kun mens produktet er på menuen</span></div>
+          <div class="hint-box neutral" style="margin-bottom:var(--s2);font-size:12px">${hintIcon('info')}<span>Grænser for dagens sortiment gælder kun mens produktet er på menuen</span></div>
           ${todayProducts.map((p, i) => renderProductRow(p, i === 0)).join('')}
         </div>`;
     }
@@ -2477,9 +2484,9 @@
     const dailySpecialHTML = !showDailySpecial ? '' : `
         <div style="margin-top:var(--s4)">
           <div style="font-weight:700;font-size:13px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:var(--s2)">Dagens ret</div>
-          <div class="hint-box neutral" style="margin-bottom:var(--s2);font-size:12px"><span class="hint-icon">ℹ️</span><span>Én samlet grænse for alle retter der er markeret som dagens ret — uanset hvad der er på menuen i dag.</span></div>
+          <div class="hint-box neutral" style="margin-bottom:var(--s2);font-size:12px">${hintIcon('info')}<span>Én samlet grænse for alle retter der er markeret som dagens ret — uanset hvad der er på menuen i dag.</span></div>
           <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--s3) 0">
-            <div style="display:flex;align-items:center;gap:var(--s3)"><span style="font-size:24px;line-height:1">🍽️</span><div><span style="font-weight:600;font-size:14px">Dagens ret</span><br><span style="font-size:11px;color:var(--ink-muted)">På tværs af alle dagens ret</span></div></div>
+            <div style="display:flex;align-items:center;gap:var(--s3)"><span style="color:var(--caution)">${icon('utensils', 24)}</span><div><span style="font-weight:600;font-size:14px">Dagens ret</span><br><span style="font-size:11px;color:var(--ink-muted)">På tværs af alle dagens ret</span></div></div>
             <div class="stepper" id="ds-max-stepper"><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${dsMaxDisplay}</div><button class="stepper-btn stepper-plus">+</button></div>
           </div>
         </div>`;
@@ -2487,11 +2494,11 @@
     return `
       <div class="section" id="section-product-limits">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--caution-light)">🛒</div><div><div class="section-title">Købsgrænser pr. produkt</div><div class="section-subtitle">Begræns antal af specifikke varer</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('shopping-basket', 'caution')}<div><div class="section-title">Købsgrænser pr. produkt</div><div class="section-subtitle">Begræns antal af specifikke varer</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          <div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">💡</span><span>Hvis institutionen har sat en grænse, gælder den strengeste.</span></div>
+          <div class="hint-box neutral" style="margin-bottom:var(--s3)">${hintIcon('lightbulb')}<span>Hvis institutionen har sat en grænse, gælder den strengeste.</span></div>
           <div style="font-weight:700;font-size:13px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:var(--s2)">Fast sortiment</div>
           ${coreHTML}
           ${todayHTML}
@@ -2506,11 +2513,11 @@
     return `
       <div class="section" id="section-sugar">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:#fce7f3">🍬</div><div><div class="section-title">Sukkerpolitik</div><div class="section-subtitle">Kontrollér usunde varer</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('candy-off', 'pink')}<div><div class="section-title">Sukkerpolitik</div><div class="section-subtitle">Kontrollér usunde varer</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          ${instSugarText ? `<div class="hint-box purple" style="margin-bottom:var(--s3)"><span class="hint-icon">🏫</span><span>${esc(instSugarText)}</span></div>` : ''}
+          ${instSugarText ? `<div class="hint-box purple" style="margin-bottom:var(--s3)">${hintIcon('school')}<span>${esc(instSugarText)}</span></div>` : ''}
           <div class="setting-row" id="sugar-block-row">
             <div class="setting-info"><div class="setting-label">Bloker alle usunde varer</div><div class="setting-desc">${esc(getChildName())} kan kun købe sunde varer</div></div>
             <label class="toggle"><input type="checkbox" id="sugar-block-toggle" ${sp.block_unhealthy ? 'checked' : ''}><span class="toggle-track"></span></label>
@@ -2532,8 +2539,8 @@
     return `
       <div class="section" id="section-diet">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--positive-light)">🥗</div><div><div class="section-title">Kostpræferencer</div><div class="section-subtitle">Vegetarisk, svinekød m.m.</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('salad', 'positive')}<div><div class="section-title">Kostpræferencer</div><div class="section-subtitle">Vegetarisk, svinekød m.m.</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="setting-row"><div class="setting-info"><div class="setting-label">Kun vegetarisk</div><div class="setting-desc">Vis kun vegetariske produkter</div></div><label class="toggle"><input type="checkbox" id="diet-vegetarian" ${sp.vegetarian_only ? 'checked' : ''}><span class="toggle-track"></span></label></div>
@@ -2544,15 +2551,15 @@
 
   function renderAllergensSection() {
     const allergens = [
-      { key: 'peanuts', emoji: '🥜', name: 'Jordnødder' },
-      { key: 'tree_nuts', emoji: '🌰', name: 'Trænødder' },
-      { key: 'milk', emoji: '🥛', name: 'Mælk' },
-      { key: 'gluten', emoji: '🌾', name: 'Gluten' },
-      { key: 'egg', emoji: '🥚', name: 'Æg' },
-      { key: 'fish', emoji: '🐟', name: 'Fisk' },
-      { key: 'shellfish', emoji: '🦐', name: 'Skaldyr' },
-      { key: 'sesame', emoji: '🌿', name: 'Sesam' },
-      { key: 'soy', emoji: '🫘', name: 'Soja' },
+      { key: 'peanuts',   icon: 'nut',             name: 'Jordnødder' },
+      { key: 'tree_nuts', icon: 'tree-deciduous',  name: 'Trænødder' },
+      { key: 'milk',      icon: 'milk',            name: 'Mælk' },
+      { key: 'gluten',    icon: 'wheat',           name: 'Gluten' },
+      { key: 'egg',       icon: 'egg',             name: 'Æg' },
+      { key: 'fish',      icon: 'fish',            name: 'Fisk' },
+      { key: 'shellfish', icon: 'shrimp',          name: 'Skaldyr' },
+      { key: 'sesame',    icon: 'sprout',          name: 'Sesam' },
+      { key: 'soy',       icon: 'bean',            name: 'Soja' },
     ];
 
     const settings = childData?.allergen_settings || {};
@@ -2561,14 +2568,14 @@
       let cls = '', label = 'Tilladt';
       if (policy === 'block') { cls = ' blocked'; label = 'Blokeret'; }
       else if (policy === 'warn') { cls = ' warn'; label = 'Advarsel'; }
-      return `<div class="allergen-item${cls}" data-allergen="${a.key}"><span class="allergen-emoji">${a.emoji}</span><span class="allergen-name">${a.name}</span><span class="allergen-status">${label}</span></div>`;
+      return `<div class="allergen-item${cls}" data-allergen="${a.key}"><span class="allergen-icon">${icon(a.icon, 24)}</span><span class="allergen-name">${a.name}</span><span class="allergen-status">${label}</span></div>`;
     }).join('');
 
     return `
       <div class="section" id="section-allergens">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--caution-light)">🥜</div><div><div class="section-title">Allergier & madbegrænsninger</div><div class="section-subtitle">Tryk for at ændre status</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('nut', 'caution')}<div><div class="section-title">Allergier & madbegrænsninger</div><div class="section-subtitle">Tryk for at ændre status</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <p style="font-size:12px;color:var(--ink-muted);margin-bottom:var(--s2)">Tryk for at skifte: Tilladt → Advarsel → Blokeret</p>
@@ -2587,15 +2594,15 @@
     return `
       <div class="section" id="section-privacy-policy">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:#dbeafe">📄</div><div><div class="section-title">Privatlivspolitik</div><div class="section-subtitle">Hvordan vi behandler data</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('file-text', 'info')}<div><div class="section-title">Privatlivspolitik</div><div class="section-subtitle">Hvordan vi behandler data</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div style="line-height:1.7;color:var(--ink-soft)">
             ${renderPrivacyInfoText()}
           </div>
           <a href="https://flango.dk/privatlivspolitik/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:var(--s3);color:var(--info);font-weight:600;text-decoration:none">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            ${icon('external-link', 16)}
             Læs den fulde privatlivspolitik
           </a>
         </div></div></div>
@@ -2639,8 +2646,8 @@
     return `
       <div class="section" id="section-child-name">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:#fef3c7">✏️</div><div><div class="section-title">Barnets navn</div><div class="section-subtitle">Rediger visningsnavn</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('pencil-line', 'caution')}<div><div class="section-title">Barnets navn</div><div class="section-subtitle">Rediger visningsnavn</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <p style="margin:0 0 var(--s3);color:var(--ink-soft);line-height:1.6">${helpText}</p>
@@ -2660,8 +2667,8 @@
     return `
       <div class="section" id="section-data-insight">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:#d1fae5">📊</div><div><div class="section-title">Hvilke data har vi?</div><div class="section-subtitle">Se og download data</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('database', 'positive')}<div><div class="section-title">Hvilke data har vi?</div><div class="section-subtitle">Se og download data</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div id="privacy-data-content">
@@ -2680,8 +2687,8 @@
     return `
       <div class="section" id="section-linked-parents">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:#ede9fe">👥</div><div><div class="section-title">Tilknyttede forældre</div><div class="section-subtitle">Hvem har adgang</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('users-round', 'purple')}<div><div class="section-title">Tilknyttede forældre</div><div class="section-subtitle">Hvem har adgang</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div id="privacy-linked-parents-content">
@@ -2696,14 +2703,14 @@
     return `
       <div class="section" id="section-delete-child">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:#fee2e2">🗑️</div><div><div class="section-title">Slet barnets data</div><div class="section-subtitle">Anmod om sletning</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('trash-2', 'negative')}<div><div class="section-title">Slet barnets data</div><div class="section-subtitle">Anmod om sletning</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div id="privacy-deletion-status" style="display:none"></div>
           <div id="privacy-deletion-form">
             <div class="hint-box orange" style="margin-bottom:var(--s3)">
-              <span class="hint-icon">&#9888;&#65039;</span>
+              ${hintIcon('triangle-alert')}
               <span>
                 <strong>Hvad der sker ved sletning:</strong><br>
                 &bull; Institutionens personale modtager din anmodning<br>
@@ -2738,12 +2745,12 @@
     return `
       <div class="section" id="section-delete-account">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:#fee2e2">❌</div><div><div class="section-title">Slet din forældrekonto</div><div class="section-subtitle">Fjern din adgang til portalen</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('user-round-x', 'negative')}<div><div class="section-title">Slet din forældrekonto</div><div class="section-subtitle">Fjern din adgang til portalen</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="hint-box orange" style="margin-bottom:var(--s3)">
-            <span class="hint-icon">&#9888;&#65039;</span>
+            ${hintIcon('triangle-alert')}
             <span>
               <strong>Hvad der sker:</strong><br>
               &bull; Din konto (${esc(parentEmail)}) slettes permanent<br>
@@ -2774,8 +2781,8 @@
     return `
       <div class="section" id="section-contact">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:#dbeafe">📬</div><div><div class="section-title">Kontakt</div><div class="section-subtitle">Vedr. persondata</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('mail', 'info')}<div><div class="section-title">Kontakt</div><div class="section-subtitle">Vedr. persondata</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div style="line-height:1.7;color:var(--ink-soft)">
@@ -2858,8 +2865,8 @@
         }
         // Status-overlay-badge på thumbnail
         let statusBadge = '';
-        if (isPending) statusBadge = `<div style="position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg, #fff);" title="Afventer godkendelse">⏳</div>`;
-        else if (isRejected) statusBadge = `<div style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg, #fff);" title="Afvist">✕</div>`;
+        if (isPending) statusBadge = `<div style="position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg, #fff);" title="Afventer godkendelse">${icon('hourglass', 12)}</div>`;
+        else if (isRejected) statusBadge = `<div style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg, #fff);" title="Afvist">${icon('x', 12)}</div>`;
         // Status-tekst under thumbnail
         let statusText = '';
         if (isPending) statusText = '<span style="display:block;font-size:10px;color:#92400e;margin-top:2px;">Afventer godkendelse</span>';
@@ -2886,7 +2893,7 @@
           ${statusText}
           <div style="display:flex;gap:4px;">
             ${activateBtn}
-            <button class="pp-download-btn" data-pic-url="${esc(imgUrl)}" data-pic-type="${esc(pic.picture_type || '')}" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--ink-muted);cursor:pointer;">⬇</button>
+            <button class="pp-download-btn" data-pic-url="${esc(imgUrl)}" data-pic-type="${esc(pic.picture_type || '')}" style="font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--ink-muted);cursor:pointer;">${icon('download', 12)}</button>
             <button class="pp-delete-btn" data-pic-id="${esc(pic.id)}" style="font-size:10px;padding:2px 6px;border:1px solid #ef4444;border-radius:4px;background:var(--bg);color:#ef4444;cursor:pointer;">✕</button>
           </div>
         </div>`;
@@ -2907,7 +2914,7 @@
     const uploadHtml = showParentUpload ? `
       <div style="margin-bottom:var(--s3);padding:var(--s3);border:1px dashed var(--border, #d1d5db);border-radius:var(--r-md, 12px);background:var(--surface-sunken, #fafaf9);">
         <button id="pp-upload-btn" ${canUploadNow ? '' : 'disabled'} style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:none;border-radius:8px;background:${canUploadNow ? 'var(--flango, #F5960A)' : 'var(--border-color, #e5e7eb)'};color:${canUploadNow ? '#fff' : 'var(--ink-muted, #78716c)'};font-weight:600;font-size:14px;cursor:${canUploadNow ? 'pointer' : 'not-allowed'};">
-          📷 Upload nyt billede
+          ${icon('image-up', 17)} Upload nyt billede
         </button>
         ${!optOutParentUpload ? `<div style="font-size:12px;color:var(--ink-muted, #78716c);margin-top:8px;text-align:center;line-height:1.5;">Alle uploads gennemgås af institutionen før de aktiveres. Institutionen kan til enhver tid erstatte billedet hvis det ikke egner sig som identifikation.</div>` : `<div style="font-size:12px;color:var(--ink-muted, #78716c);margin-top:8px;text-align:center;">Aktivér samtykket "Forælder-upload" nedenfor for at uploade.</div>`}
       </div>` : '';
@@ -2937,7 +2944,7 @@
     const avatarHtml = (parentAiOn || isAdminPreview()) ? `
       <div data-sub="pp_parent_ai" style="margin-bottom:var(--s3);padding:var(--s3);border:1px dashed var(--border, #d1d5db);border-radius:var(--r-md, 12px);background:var(--surface-sunken, #fafaf9);">
         <button id="pp-generate-avatar-btn" ${avatarBtnEnabled ? '' : 'disabled'} style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:none;border-radius:8px;background:${avatarBtnEnabled ? 'var(--flango, #F5960A)' : 'var(--border-color, #e5e7eb)'};color:${avatarBtnEnabled ? '#fff' : 'var(--ink-muted, #78716c)'};font-weight:600;font-size:14px;cursor:${avatarBtnEnabled ? 'pointer' : 'not-allowed'};">
-          ✨ Lav en AI-avatar
+          ${icon('sparkles', 17)} Lav en AI-avatar
         </button>
         <div style="font-size:12px;color:var(--ink-muted, #78716c);margin-top:8px;text-align:center;line-height:1.5;">${esc(avatarHint)}</div>
       </div>` : '';
@@ -2945,18 +2952,18 @@
     return `
       <div class="section" id="section-profile-picture">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:#e0e7ff">📷</div><div><div class="section-title">Profilbilleder</div><div class="section-subtitle">Billeder og samtykke</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('camera', 'purple')}<div><div class="section-title">Profilbilleder</div><div class="section-subtitle">Billeder og samtykke</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${galleryHtml}
           ${uploadHtml}
           ${avatarHtml}
-          <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Profilbilleder bruges i caféen for at bekræfte dit barns identitet ved køb. Billederne er kun synlige for børn og personale i denne institution.</span></div>
+          <div class="hint-box blue" style="margin-bottom:var(--s3)">${hintIcon('info')}<span>Profilbilleder bruges i caféen for at bekræfte dit barns identitet ved køb. Billederne er kun synlige for børn og personale i denne institution.</span></div>
 
           <div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:var(--s3);margin-bottom:var(--s2);flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
-              <div class="setting-info"><div class="setting-label" style="font-weight:700">Tillad profilbilleder${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Slå fra for at fravælge alle billedtyper på én gang</div></div>
+              <div class="setting-info"><div class="setting-label" style="font-weight:700">Tillad profilbilleder${isAdminSimulatorSession() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Slå fra for at fravælge alle billedtyper på én gang</div></div>
               <label class="toggle"><input type="checkbox" id="pp-consent-master" ${!allOptedOut ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
             </div>
             ${adminSimLockedHint()}
@@ -2965,31 +2972,31 @@
           <div id="pp-type-toggles" style="${allOptedOut ? 'opacity:0.4;pointer-events:none' : ''}">
             ${showAula ? `<div data-sub="pp_aula" class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
-                <div class="setting-info"><div class="setting-label">Aula-profilbillede${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div></div>
+                <div class="setting-info"><div class="setting-label">Aula-profilbillede${isAdminSimulatorSession() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div></div>
                 <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               ${adminSimLockedHint()}
             </div>` : ''}
             ${showCamera ? `<div data-sub="pp_camera" class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
-                <div class="setting-info"><div class="setting-label">Kamera-foto${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
+                <div class="setting-info"><div class="setting-label">Kamera-foto${isAdminSimulatorSession() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
                 <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               ${adminSimLockedHint()}
             </div>` : ''}
             ${showParentUpload ? `<div data-sub="pp_parent_upload" class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
-                <div class="setting-info"><div class="setting-label">Forælder-upload${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Du kan selv uploade et billede af dit barn fra denne portal. Alle uploads gennemgås af institutionen før aktivering.</div></div>
+                <div class="setting-info"><div class="setting-label">Forælder-upload${isAdminSimulatorSession() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Du kan selv uploade et billede af dit barn fra denne portal. Alle uploads gennemgås af institutionen før aktivering.</div></div>
                 <label class="toggle"><input type="checkbox" id="pp-consent-parent-upload" ${!optOutParentUpload ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               ${adminSimLockedHint()}
             </div>` : ''}
             ${showAi ? `<div data-sub="pp_ai" class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch;gap:4px" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);">
-                <div class="setting-info"><div class="setting-label">AI-genereret avatar${isAdminSimulatorSession() ? ' 🔒' : ''}</div><div class="setting-desc">Et foto sendes til Microsoft Azure (EU) for at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.</div></div>
+                <div class="setting-info"><div class="setting-label">AI-genereret avatar${isAdminSimulatorSession() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Et foto sendes til Microsoft Azure (EU) for at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.</div></div>
                 <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai" ${!optOutOpenai ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
-              <button type="button" id="pp-ai-readmore-btn" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600;text-align:left;align-self:flex-start;">📖 Læs mere om databehandlingen</button>
+              <button type="button" id="pp-ai-readmore-btn" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600;text-align:left;align-self:flex-start;">${icon('book-open', 14, 'ico-inline')} Læs mere om databehandlingen</button>
               ${adminSimLockedHint()}
             </div>` : ''}
           </div>
@@ -3134,11 +3141,11 @@
     return `
       <div class="section" id="section-consents">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:#fef3c7">📜</div><div><div class="section-title">Samtykke-historik</div><div class="section-subtitle">Read-only oversigt (GDPR art. 15 ret til indsigt)</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('scroll-text', 'caution')}<div><div class="section-title">Samtykke-historik</div><div class="section-subtitle">Read-only oversigt (GDPR art. 15 ret til indsigt)</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
-          <div class="hint-box blue" style="margin-bottom:var(--s3)"><span class="hint-icon">ℹ️</span><span>Her ser du historikken over de samtykker du har afgivet (GDPR art. 7). <strong>Du administrerer dine samtykker på siden "Profilbilleder"</strong> — denne side er kun til indsigt.</span></div>
+          <div class="hint-box blue" style="margin-bottom:var(--s3)">${hintIcon('info')}<span>Her ser du historikken over de samtykker du har afgivet (GDPR art. 7). <strong>Du administrerer dine samtykker på siden "Profilbilleder"</strong> — denne side er kun til indsigt.</span></div>
 
           <h4 style="margin:0 0 var(--s2);font-size:13px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em">Aktive samtykker (${activeTypes.length})</h4>
           ${activeRowsHtml}
@@ -3186,15 +3193,15 @@
     return `
       <div class="section" id="section-screentime">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">🕹️</div><div><div class="section-title">Daglig spilletid</div><div class="section-subtitle">Grænser og samtykke</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('hourglass', 'info')}<div><div class="section-title">Daglig spilletid</div><div class="section-subtitle">Grænser og samtykke</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="screentime-overview">
             ${showRemaining ? `<div class="st-stat-card remaining"><div class="st-stat-value">${remaining} min</div><div class="st-stat-label">Tilbage i dag</div></div>` : ''}
             ${showUsage ? `<div class="st-stat-card used"><div class="st-stat-value">${used} min</div><div class="st-stat-label">Brugt i dag</div></div>` : ''}
           </div>
-          ${showRules ? `<div class="hint-box info" style="margin-bottom:var(--s3)"><span class="hint-icon">📋</span><span>Institutionens regler: ${instDaily} min/dag, maks ${instSession} min pr. session</span></div>` : ''}
+          ${showRules ? `<div class="hint-box info" style="margin-bottom:var(--s3)">${hintIcon('clipboard-list')}<span>Institutionens regler: ${instDaily} min/dag, maks ${instSession} min pr. session</span></div>` : ''}
           ${(isAdminPreview() || allowPersonal) ? `
           <div class="setting-row" data-sub="st_personal_limits">
             <div class="setting-info"><div class="setting-label">Personlig daglig grænse</div><div class="setting-desc">∞ = ingen personlig grænse — klubbens regler gælder</div></div>
@@ -3237,8 +3244,8 @@
     return `
       <div class="section" id="section-game-accounts">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">🎮</div><div><div class="section-title">Spilkonti</div><div class="section-subtitle">Personligt login på klubbens PC'er</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('user-round', 'info')}<div><div class="section-title">Spilkonti</div><div class="section-subtitle">Personligt login på klubbens PC'er</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">${rows}
         </div></div></div>
@@ -3249,7 +3256,7 @@
     const games = screentimeData?.games || childData?.games || [];
     let gamesHTML = '';
     if (games.length === 0) {
-      gamesHTML = '<div class="empty-state"><div class="empty-state-icon">🎮</div><div class="empty-state-text">Ingen spil tilgængelige</div></div>';
+      gamesHTML = `<div class="empty-state"><div class="empty-state-icon">${icon('gamepad-2', 40)}</div><div class="empty-state-text">Ingen spil tilgængelige</div></div>`;
     } else {
       gamesHTML = games.map(g => {
         // get-parent-skaermtid returnerer {id, name, category, allowed, set_by} — IKKE
@@ -3272,8 +3279,8 @@
     return `
       <div class="section" id="section-games">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--positive-light)">🎮</div><div><div class="section-title">Godkend spil</div><div class="section-subtitle">Vælg hvilke spil ${esc(getChildName())} må spille</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('gamepad-2', 'positive')}<div><div class="section-title">Godkend spil</div><div class="section-subtitle">Vælg hvilke spil ${esc(getChildName())} må spille</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${gamesHTML}
@@ -3309,7 +3316,7 @@
 
     let chartHTML = '';
     if (sessions.length === 0) {
-      chartHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">Ingen spillehistorik endnu</div></div>';
+      chartHTML = `<div class="empty-state"><div class="empty-state-icon">${icon('chart-column', 40)}</div><div class="empty-state-text">Ingen spillehistorik endnu</div></div>`;
     } else {
       const barsHTML = days.map(function (d) {
         const pct = Math.round((d.minutes / maxMin) * 100);
@@ -3331,8 +3338,8 @@
     return `
       <div class="section" id="section-st-chart">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📊</div><div><div class="section-title">Spilletidsoversigt</div><div class="section-subtitle">Forbrug de seneste 7 dage</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('chart-column', 'info')}<div><div class="section-title">Spilletidsoversigt</div><div class="section-subtitle">Forbrug de seneste 7 dage</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${chartHTML}
@@ -3354,7 +3361,7 @@
     if (!parentEmail && notif.email) parentEmail = notif.email;
     var secondaryEmail = notif.secondary_email || '';
     var notifyPrimary = notif.notify_primary_email !== false;
-    const pushHint = API.isNativeApp() ? '' : `<div class="hint-box neutral" style="margin-bottom:var(--s3)"><span class="hint-icon">📱</span><span>Push-notifikationer vises på alle dine enheder med Flango Portal-appen.</span></div>`;
+    const pushHint = API.isNativeApp() ? '' : `<div class="hint-box neutral" style="margin-bottom:var(--s3)">${hintIcon('smartphone')}<span>Push-notifikationer vises på alle dine enheder med Flango Portal-appen.</span></div>`;
     // Under-kontakter: institutionen kan slå enkelte påmindelsestyper fra uden at
     // slukke hele notifikations-kortet. I admin-preview vises rækkerne altid (grå).
     const notifBalanceOn = isAdminPreview() || childData?.institution?.parent_portal_notify_balance !== false;
@@ -3363,8 +3370,8 @@
     return `
       <div class="section" id="section-notifications">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">🔔</div><div><div class="section-title">Notifikationer</div><div class="section-subtitle">Påmindelser på telefonen</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('bell-ring', 'info')}<div><div class="section-title">Notifikationer</div><div class="section-subtitle">Påmindelser på telefonen</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${pushHint}${API.isNativeApp() ? `<div class="setting-row"><div class="setting-info"><div class="setting-label">Notifikationer på denne telefon</div><div class="setting-desc">Vises på låseskærmen — indholdet ser du i appen</div></div><label class="toggle"><input type="checkbox" id="notif-push-device" ${API.isPushEnabledOnThisDevice() ? 'checked' : ''}><span class="toggle-track"></span></label></div>
@@ -3377,8 +3384,8 @@
       </div>
       <div class="section" id="section-email-notifications">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--info-light)">📧</div><div><div class="section-title">E-mail påmindelser</div><div class="section-subtitle">Lav saldo og arrangementer</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('mail', 'info')}<div><div class="section-title">E-mail påmindelser</div><div class="section-subtitle">Lav saldo og arrangementer</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div class="setting-row"><div class="setting-info"><div class="setting-label">E-mail</div><div class="setting-desc">Modtag påmindelser pr. e-mail</div></div><label class="toggle"><input type="checkbox" id="notif-primary-email" ${notifyPrimary ? 'checked' : ''}><span class="toggle-track"></span></label></div>
@@ -3414,11 +3421,11 @@
             <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Hjælp os med at gøre Flango bedre — eller rapportér en fejl.</p>
             <textarea class="feedback-textarea" id="fb-flango-text" placeholder="Beskriv problemet eller din ide..." rows="4"></textarea>
             <input type="email" id="fb-flango-email" class="input-field" placeholder="Din e-mail (valgfrit — så vi kan svare)" style="margin-top:var(--s2)">
-            <div class="hint-box neutral" style="margin:var(--s3) 0"><span class="hint-icon">🔒</span><span>Din besked sendes til Flangos support. Uden e-mail er den anonym.</span></div>
+            <div class="hint-box neutral" style="margin:var(--s3) 0">${hintIcon('lock')}<span>Din besked sendes til Flangos support. Uden e-mail er den anonym.</span></div>
             <button class="save-btn full" id="fb-flango-send">Send til Flango</button>`;
     const bodyInner = showInstitutionFeedback ? `
           <div class="feedback-tabs" id="feedback-tabs">
-            <button class="feedback-tab active" data-target="fb-club">🏫 Til ${esc(instName)}</button>
+            <button class="feedback-tab active" data-target="fb-club">${icon('school', 15, 'ico-inline')} Til ${esc(instName)}</button>
             <button class="feedback-tab" data-target="fb-flango"><span style="display:inline-flex;align-items:center;gap:4px"><img src="assets/flango-logo.webp" alt="" style="width:15px;height:15px">Til Flango</span></button>
           </div>
           <div class="feedback-panel" id="fb-club">
@@ -3432,8 +3439,8 @@
     return `
       <div class="section" id="section-feedback">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--flango-light)">💬</div><div><div class="section-title">Feedback & Support</div><div class="section-subtitle">${showInstitutionFeedback ? 'Skriv til ' + esc(instName) + ' eller Flango' : 'Skriv til Flango'}</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('messages-square', 'flango')}<div><div class="section-title">Feedback & Support</div><div class="section-subtitle">${showInstitutionFeedback ? 'Skriv til ' + esc(instName) + ' eller Flango' : 'Skriv til Flango'}</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${bodyInner}
@@ -3474,8 +3481,8 @@
     return `
       <div class="section" id="section-invite-parent">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--surface-sunken)">👥</div><div><div class="section-title">Del adgang med en partner</div><div class="section-subtitle">Tilknyt en anden forælder</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('user-round-plus', 'neutral')}<div><div class="section-title">Del adgang med en partner</div><div class="section-subtitle">Tilknyt en anden forælder</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <p style="margin:0 0 var(--s3);font-size:13px;color:var(--ink-soft);line-height:1.5">
@@ -3592,8 +3599,8 @@
     return `
       <div class="section" id="section-pin">
         <div class="section-header">
-          <div class="section-title-row"><div class="section-icon" style="background:var(--surface-sunken)">🔑</div><div><div class="section-title">Skift adgangskode</div><div class="section-subtitle">Minimum 6 tegn</div></div></div>
-          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="section-title-row">${sectionIcon('key-round', 'neutral')}<div><div class="section-title">Skift adgangskode</div><div class="section-subtitle">Minimum 6 tegn</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           <div style="display:flex;flex-direction:column;gap:var(--s2);margin-top:var(--s2)">
@@ -3620,7 +3627,7 @@
     return `
       <div class="modal-overlay" id="add-child-modal">
         <div class="modal" style="position:relative">
-          <button class="modal-close" id="modal-close-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          <button class="modal-close" id="modal-close-btn">${icon('x', 20)}</button>
           <div id="code-modal-body"></div>
         </div>
       </div>`;
@@ -3952,7 +3959,7 @@
       const bal = c.balance != null ? `${formatKr(c.balance)} kr` : '';
       return `<div class="sidebar-child-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}"><div class="sidebar-child-avatar">${emoji}</div><div><div class="sidebar-child-name">${esc(formatChildName(c))}</div><div class="sidebar-child-saldo">${bal}</div></div></div>`;
     }).join('');
-    container.innerHTML = items + `<div class="sidebar-add-child" id="add-child-btn-sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tilknyt barn</div>`;
+    container.innerHTML = items + `<div class="sidebar-add-child" id="add-child-btn-sidebar">${icon('plus', 18)}Tilknyt barn</div>`;
   }
 
   // Build reverse lookup: section-id → tab-id
@@ -3977,7 +3984,7 @@
         if (!document.getElementById(id)) return;
         const item = SECTION_LABELS[id];
         if (!item) return;
-        groupHtml += `<div class="sidebar-nav-item${isFirst ? ' active' : ''}" data-scroll="${id}" data-tab="${tabId}">${item.icon}${item.label}</div>`;
+        groupHtml += `<div class="sidebar-nav-item${isFirst ? ' active' : ''}" data-scroll="${id}" data-tab="${tabId}">${icon(item.icon)}${item.label}</div>`;
         isFirst = false;
       });
       if (!groupHtml) return; // ingen synlige sektioner i gruppen ⇒ drop tom gruppe-label
@@ -5731,7 +5738,7 @@
 
     // Download button
     html += `<button class="save-btn" id="privacy-download-json-btn" style="margin-top:var(--s4)">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      ${icon('download', 16, 'ico-inline')}
       Download al data som JSON
     </button>`;
 
@@ -5765,7 +5772,7 @@
         const date = p.linked_at ? new Date(p.linked_at).toLocaleDateString('da-DK') : '—';
         const youTag = p.is_current_user ? ' <span style="color:var(--positive);font-weight:600">(dig)</span>' : '';
         html += `<div style="display:flex;align-items:center;gap:var(--s2);padding:var(--s2) 0;border-bottom:1px solid var(--surface-sunken)">
-          <span style="font-size:20px">👤</span>
+          ${icon('user-round', 20)}
           <div style="flex:1"><div style="font-weight:500">${esc(p.email)}${youTag}</div><div style="font-size:12px;color:var(--ink-muted)">Tilknyttet: ${date}</div></div>
         </div>`;
       });
@@ -5791,7 +5798,7 @@
         let statusHtml = '';
         if (result.status === 'pending') {
           const date = result.requested_at ? new Date(result.requested_at).toLocaleDateString('da-DK') : '—';
-          statusHtml = `<div class="hint-box blue"><span class="hint-icon">📋</span><span><strong>Sletningsanmodning</strong><br>Anmodet: ${date}<br>Status: ⏳ Under behandling<br><br>Du kan kontakte institutionen hvis du har spørgsmål.</span></div>`;
+          statusHtml = `<div class="hint-box blue">${hintIcon('clipboard-list')}<span><strong>Sletningsanmodning</strong><br>Anmodet: ${date}<br>Status: Under behandling<br><br>Du kan kontakte institutionen hvis du har spørgsmål.</span></div>`;
         } else if (result.status === 'completed') {
           const date = result.processed_at ? new Date(result.processed_at).toLocaleDateString('da-DK') : '—';
           const receipt = result.deletion_receipt;
@@ -5809,10 +5816,10 @@
                 : '') +
               `<br>• Audit-loggen bevares i 24 mdr af compliance-hensyn`;
           }
-          statusHtml = `<div class="hint-box green" style="border-color:var(--positive)"><span class="hint-icon">&#10003;</span><span><strong>Sletning gennemført</strong><br>Dato: ${date}${receiptHtml}</span></div>`;
+          statusHtml = `<div class="hint-box green" style="border-color:var(--positive)">${hintIcon('check')}<span><strong>Sletning gennemført</strong><br>Dato: ${date}${receiptHtml}</span></div>`;
         } else if (result.status === 'rejected') {
           const reason = result.rejection_reason || 'Ingen begrundelse angivet';
-          statusHtml = `<div class="hint-box orange"><span class="hint-icon">❌</span><span><strong>Anmodning afvist</strong><br>Begrundelse: ${esc(reason)}<br><br>Kontakt institutionen for yderligere information.</span></div>`;
+          statusHtml = `<div class="hint-box orange">${hintIcon('circle-x')}<span><strong>Anmodning afvist</strong><br>Begrundelse: ${esc(reason)}<br><br>Kontakt institutionen for yderligere information.</span></div>`;
           // Show form again so they can re-request
           formEl.style.display = '';
         }
@@ -6052,11 +6059,11 @@
       <div class="event-payment-modal">
         <h3>${isPayingExisting ? 'Betal tilmelding' : 'Tilmeld & betal'} — ${formatKr(price)} kr</h3>
         <button class="pay-option" data-method="balance" ${!canPayBalance ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''}>
-          <span class="pay-icon">💰</span>
+          <span class="pay-icon">${icon('wallet', 22)}</span>
           <span>Betal med ${esc(childName)}s saldo${canPayBalance ? ' (' + formatKr(balance) + ' kr)' : ' (ikke nok)'}</span>
         </button>
         <button class="pay-option" data-method="later" ${isPayingExisting ? 'style="display:none"' : ''}>
-          <span class="pay-icon">⏳</span>
+          <span class="pay-icon">${icon('hourglass', 22)}</span>
           <span>Betal senere</span>
         </button>
         <button class="pay-cancel">Annuller</button>
@@ -6212,7 +6219,7 @@
         const body = overlay.querySelector('#demo-mp-body');
         body.innerHTML = `<div class="demo-mp-spinner"></div><div class="demo-mp-sub" style="margin-top:14px">Godkender i MobilePay…</div>`;
         setTimeout(() => {
-          body.innerHTML = `<div class="demo-mp-check">✓</div><div class="demo-mp-amount" style="font-size:22px;margin-top:8px">Betaling gennemført</div><div class="demo-mp-sub">${formatKr(amount)} kr er tilføjet ${esc(childName)}s saldo</div>`;
+          body.innerHTML = `<div class="demo-mp-check">${icon('check', 30)}</div><div class="demo-mp-amount" style="font-size:22px;margin-top:8px">Betaling gennemført</div><div class="demo-mp-sub">${formatKr(amount)} kr er tilføjet ${esc(childName)}s saldo</div>`;
           setTimeout(() => done(true), 1400);
         }, 1100);
       };

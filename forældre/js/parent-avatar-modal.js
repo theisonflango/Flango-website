@@ -256,8 +256,8 @@
         '<div class="pav-view" data-pav="photo">' +
           '<div data-pav="chooser">' +
             '<p class="pav-p">Tag et klart portræt af dit barn — kun barnet selv på billedet. Fotoet sendes til AI\'en, men <b>gemmes ikke</b>.</p>' +
-            '<button class="pav-btn primary" data-pav="camera-open">📷 Tag et billede</button>' +
-            '<button class="pav-btn ghost" data-pav="file-open">🖼️ Vælg fra galleri</button>' +
+            '<button class="pav-btn primary" data-pav="camera-open">' + window.FlangoIcons.icon('camera', 17, 'ico-inline') + ' Tag et billede</button>' +
+            '<button class="pav-btn ghost" data-pav="file-open">' + window.FlangoIcons.icon('image', 17, 'ico-inline') + ' Vælg fra galleri</button>' +
             '<input type="file" accept="image/*" class="pav-file" data-pav="file">' +
           '</div>' +
           '<div data-pav="photo-actions" style="display:none">' +
@@ -284,7 +284,7 @@
             '<li>Personalet skal <b>godkende</b> avataren, før den kan bruges.</li>' +
             '<li>AI\'en beholder dit barns alder og udseende — ingen forskønnelse.</li>' +
           '</ul></div>' +
-          '<span class="pav-lock">🔒 Fast instruktion — kan ikke ændres</span>' +
+          '<span class="pav-lock">' + window.FlangoIcons.icon('lock', 12, 'ico-inline') + ' Fast instruktion — kan ikke ændres</span>' +
           '<div class="pav-prompt" data-pav="prompt"></div>' +
           '<div class="pav-counter" data-pav="info-counter"></div>' +
           '<button class="pav-btn primary" data-pav="generate">Generér avatar</button>' +

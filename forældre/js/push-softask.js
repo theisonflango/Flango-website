@@ -63,7 +63,7 @@
     card.setAttribute('role', 'dialog');
     card.setAttribute('aria-label', 'Slå notifikationer til');
     card.innerHTML =
-      '<div class="fpsa-icon">🔔</div>' +
+      '<div class="fpsa-icon">' + window.FlangoIcons.icon('bell-ring', 26) + '</div>' +
       '<div class="fpsa-body">' +
         '<div class="fpsa-title">Få besked når det gælder</div>' +
         '<div class="fpsa-text">Vi siger til, når saldoen er ved at løbe tør, og minder dig om arrangementer.</div>' +
@@ -84,7 +84,7 @@
       btn.disabled = true;
       btn.textContent = 'Slår til…';
       window.PortalAPI.enablePushOnThisDevice().then(function () {
-        btn.textContent = '✓ Slået til';
+        btn.innerHTML = window.FlangoIcons.icon('check', 15, 'ico-inline') + ' Slået til';
         // Notifikationssektionen er allerede renderet (bages ved app-start) — synk dens
         // master-toggle nu, så Profil-fanen ikke viser "fra" for en aktiv tilmelding.
         var deviceToggle = document.getElementById('notif-push-device');
@@ -119,7 +119,7 @@
       'font-family:var(--font,system-ui,sans-serif);color:var(--ink,#1c1917);z-index:9000;' +
       'opacity:0;transition:opacity .25s ease,transform .25s ease}' +
       '#flango-push-softask.show{opacity:1;transform:translateX(-50%) translateY(0)}' +
-      '#flango-push-softask .fpsa-icon{font-size:28px;line-height:1;flex-shrink:0;margin-top:2px}' +
+      '#flango-push-softask .fpsa-icon{color:var(--flango,#F5960A);flex-shrink:0;margin-top:2px}' +
       '#flango-push-softask .fpsa-body{flex:1;min-width:0;padding-right:14px}' +
       '#flango-push-softask .fpsa-title{font-size:14px;font-weight:700;line-height:1.2}' +
       '#flango-push-softask .fpsa-text{font-size:12px;color:var(--ink-soft,#57534e);margin-top:3px;line-height:1.35}' +
