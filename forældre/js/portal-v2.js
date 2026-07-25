@@ -3483,6 +3483,10 @@
             Du taster den her, ser hvem det er, og vælger hvilke børn de skal have adgang til.
           </p>
           <button class="save-btn full" id="partner-add-btn">Tilføj partner</button>
+          <p style="margin:var(--s2) 0 0;font-size:12px;color:var(--ink-muted);line-height:1.5;text-align:center">
+            Sidder I sammen? Så kan du i stedet holde din telefons kamera op mod
+            QR-koden på din partners skærm — den åbner det samme her.
+          </p>
 
           <div style="margin:var(--s5) 0 var(--s3);border-top:1px solid var(--border)"></div>
 
@@ -4491,7 +4495,7 @@
     // Partner-deling
     const partnerAddBtn = document.getElementById('partner-add-btn');
     if (partnerAddBtn) partnerAddBtn.addEventListener('click', () => openCodeModal({
-      hint: 'Indtast din partners partner-kode (9 tegn).',
+      hint: 'Indtast din partners partner-kode (9 tegn) — eller scan deres QR-kode med telefonens kamera.',
     }));
     const partnerShowBtn = document.getElementById('partner-show-btn');
     if (partnerShowBtn) partnerShowBtn.addEventListener('click', handleShowPartnerToken);

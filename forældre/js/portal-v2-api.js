@@ -177,6 +177,17 @@
     window.Capacitor.Plugins.App.addListener('appUrlOpen', async function (event) {
       lastUrlOpenAt = Date.now();
       var url = (event && event.url) || '';
+
+      // Partner-kode fra en scannet QR. Et Universal Link åbner appen UDEN at
+      // genindlæse webview'et, så hverken location.hash eller hashchange sker
+      // af sig selv — uden dette ville scanningen være død netop i app'en.
+      // Vi sætter hash'et og lader portalens eksisterende lytter tage over.
+      var partner = /[#&]partner=([A-Za-z0-9]{9})\b/.exec(url);
+      if (partner) {
+        window.location.hash = 'partner=' + partner[1].toUpperCase();
+        return;
+      }
+
       if (url.indexOf(NATIVE_OAUTH_CALLBACK) !== 0) return;
       try { await window.Capacitor.Plugins.Browser.close(); } catch (e) { /* allerede lukket */ }
       // Implicit flow: tokens ligger i URL-fragmentet
