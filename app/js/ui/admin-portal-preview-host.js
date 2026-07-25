@@ -141,8 +141,11 @@
     style.id = 'pvh-styles';
     style.textContent = `
       /* Højdekæden SKAL være eksplicit hele vejen: containeren er auto-højde,
-         og en iframe uden opløst højde kollapser til browser-default (150px). */
-      #pv2-page-portal { display:flex; flex-direction:column; overflow:hidden; }
+         og en iframe uden opløst højde kollapser til browser-default (150px).
+         Men den må IKKE sætte display på selve side-elementet: en ID-selektor
+         slår .portal-v2 .admin-page{display:none}, og så lå indstillings-siden
+         tændt bag alle andre faner. Side-synligheden ejes af admin-portal-v2.js
+         alene — her styres kun højden, og kun indefra containeren. */
       #pv2-settings-container { flex:1; min-height:0; display:flex; flex-direction:column; }
       .pvh-root { display:flex; flex-direction:column; flex:1; min-height:0; }
       .pvh-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border, #e5e7eb); background:var(--surface, #fff); flex-wrap:wrap; }
