@@ -49,19 +49,13 @@
             ctx.clearRect(0, 0, TARGET_SIZE, TARGET_SIZE);
             ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, TARGET_SIZE, TARGET_SIZE);
 
-            const tryCompress = (q) => new Promise((res) => {
-              canvas.toBlob((b) => res(b), 'image/webp', q);
-            });
-
-            (async () => {
-              for (const q of QUALITIES) {
-                const blob = await tryCompress(q);
-                if (blob && blob.size <= MAX_FILE_SIZE) { resolve(blob); return; }
-              }
-              const last = await tryCompress(QUALITIES[QUALITIES.length - 1]);
-              if (last) resolve(last);
-              else reject(new Error('Kunne ikke komprimere billedet'));
-            })();
+            // Kodning via PortalImage: iOS' WKWebView kan ikke kode webp og faldt
+            // lydløst tilbage til PNG (5-10× større, og gemt under .webp).
+            // PortalImage verificerer det faktiske format og bruger JPEG hvor
+            // webp ikke findes. Se apps/portal/js/portal-image.js.
+            window.PortalImage.encode(canvas, QUALITIES, MAX_FILE_SIZE)
+              .then((blob) => blob ? resolve(blob) : reject(new Error('Kunne ikke komprimere billedet')))
+              .catch(reject);
           } catch (err) { reject(err); }
         };
         img.onerror = () => reject(new Error('Kunne ikke læse billedet'));
@@ -84,19 +78,9 @@
         const sy = (video.videoHeight - size) / 2;
         ctx.drawImage(video, sx, sy, size, size, 0, 0, TARGET_SIZE, TARGET_SIZE);
 
-        const tryCompress = (q) => new Promise((res) => {
-          canvas.toBlob((b) => res(b), 'image/webp', q);
-        });
-
-        (async () => {
-          for (const q of QUALITIES) {
-            const blob = await tryCompress(q);
-            if (blob && blob.size <= MAX_FILE_SIZE) { resolve(blob); return; }
-          }
-          const last = await tryCompress(QUALITIES[QUALITIES.length - 1]);
-          if (last) resolve(last);
-          else reject(new Error('Kunne ikke komprimere snapshot'));
-        })();
+        window.PortalImage.encode(canvas, QUALITIES, MAX_FILE_SIZE)
+          .then((blob) => blob ? resolve(blob) : reject(new Error('Kunne ikke komprimere snapshot')))
+          .catch(reject);
       } catch (err) { reject(err); }
     });
   }

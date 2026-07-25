@@ -84,53 +84,23 @@
     else { els.err.style.display = 'none'; els.err.textContent = ''; }
   }
 
-  // ── Billedbehandling ────────────────────────────────────────────────
-  function blobFromCanvas(canvas, qualities, targetBytes) {
-    return new Promise(function (resolve) {
-      var i = 0;
-      function attempt() {
-        canvas.toBlob(function (blob) {
-          if (!blob) { resolve(null); return; }
-          if (blob.size <= targetBytes || i >= qualities.length - 1) { resolve(blob); return; }
-          i++; attempt();
-        }, 'image/webp', qualities[i]);
-      }
-      attempt();
-    });
-  }
-
-  function drawCoverSquare(img, dim) {
-    var canvas = document.createElement('canvas');
-    canvas.width = dim; canvas.height = dim;
-    var ctx = canvas.getContext('2d');
-    var iw = img.width || img.videoWidth, ih = img.height || img.videoHeight;
-    var side = Math.min(iw, ih);
-    var sx = (iw - side) / 2, sy = (ih - side) / 2;
-    ctx.drawImage(img, sx, sy, side, side, 0, 0, dim, dim);
-    return canvas;
-  }
-
+  // ── Billedbehandling (delt kilde: PortalImage) ───────────────────────
+  // Kodningen lå før her som en lokal kopi der bad om webp og ANTOG at den fik
+  // webp. iOS' WKWebView falder lydløst tilbage til PNG → serverens
+  // ansigts-kontrol (webp/jpeg) afviste billedet, og AI-avatar var umulig fra
+  // iPhone. PortalImage verificerer det faktiske format og falder tilbage til
+  // JPEG. Se apps/portal/js/portal-image.js.
   function processFile(file) {
-    return new Promise(function (resolve, reject) {
-      var url = URL.createObjectURL(file);
-      var img = new Image();
-      img.onload = function () {
-        URL.revokeObjectURL(url);
-        var dim = Math.min(MAX_SRC_DIM, Math.max(img.width, img.height));
-        var canvas = drawCoverSquare(img, Math.min(dim, MAX_SRC_DIM));
-        blobFromCanvas(canvas, SRC_QUALITY, SRC_TARGET_BYTES).then(resolve, reject);
-      };
-      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Kunne ikke læse billedet.')); };
-      img.src = url;
-    });
+    return window.PortalImage.processFile(file, MAX_SRC_DIM, SRC_QUALITY, SRC_TARGET_BYTES);
   }
 
-  function b64ToWebpBlob(b64, mime) {
+  function b64ToUploadBlob(b64, mime) {
     return new Promise(function (resolve, reject) {
       var img = new Image();
       img.onload = function () {
-        var canvas = drawCoverSquare(img, OUT_DIM);
-        blobFromCanvas(canvas, [0.85, 0.7, 0.55], OUT_TARGET_BYTES).then(resolve, reject);
+        window.PortalImage
+          .encode(window.PortalImage.squareCanvas(img, OUT_DIM), [0.85, 0.7, 0.55], OUT_TARGET_BYTES)
+          .then(resolve, reject);
       };
       img.onerror = function () { reject(new Error('Kunne ikke behandle avataren.')); };
       img.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
@@ -201,9 +171,9 @@
   function doSubmit() {
     if (busy || !generatedB64) return;
     busy = true; setErr(''); els.submitBtn.disabled = true; els.submitBtn.textContent = 'Sender…';
-    b64ToWebpBlob(generatedB64, 'image/png').then(function (webp) {
-      if (!webp) throw new Error('Kunne ikke behandle avataren.');
-      return window.PortalAPI.submitGeneratedAvatar(opts.institutionId, opts.childId, webp);
+    b64ToUploadBlob(generatedB64, 'image/png').then(function (out) {
+      if (!out) throw new Error('Kunne ikke behandle avataren.');
+      return window.PortalAPI.submitGeneratedAvatar(opts.institutionId, opts.childId, out);
     }).then(function (result) {
       var ok = result && (result.success === true || result.status === 'pending' || result.library_id);
       if (ok) {
@@ -220,23 +190,35 @@
   }
 
   // ── Kamera ──────────────────────────────────────────────────────────
+  // I den native app findes navigator.mediaDevices IKKE: iOS' WKWebView
+  // eksponerer kun getUserMedia på https-origin, og appen kører på
+  // capacitor://. Live-video-visningen kunne derfor aldrig starte på telefonen
+  // ("Kameraet er ikke tilgængeligt"). I appen bruger vi derfor SYSTEM-kameraet
+  // via <input capture> — samme vej som iOS' egen billedvælger, og den er
+  // permission-wired (NSCameraUsageDescription / Android CAMERA).
   function startCamera() {
     setErr('');
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setErr('Kameraet er ikke tilgængeligt. Vælg et billede fra galleriet i stedet.');
+    if (!window.PortalImage.canUseLiveCamera()) {
+      els.camFile.click(); // native app (eller browser uden getUserMedia)
       return;
     }
     show('camera');
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 720 } }, audio: false })
       .then(function (s) { stream = s; els.video.srcObject = s; els.video.play(); })
-      .catch(function () { show('photo'); setErr('Kunne ikke åbne kameraet. Giv adgang, eller vælg fra galleriet.'); });
+      .catch(function (err) {
+        show('photo');
+        var denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+        setErr(denied
+          ? 'Flango har ikke adgang til kameraet. Giv adgang i indstillinger, eller vælg et billede fra galleriet.'
+          : 'Kameraet kunne ikke startes. Vælg et billede fra galleriet i stedet.');
+      });
   }
 
   function snap() {
     if (!els.video.videoWidth) return;
-    var canvas = drawCoverSquare(els.video, MAX_SRC_DIM);
+    var canvas = window.PortalImage.squareCanvas(els.video, MAX_SRC_DIM);
     stopCamera();
-    blobFromCanvas(canvas, SRC_QUALITY, SRC_TARGET_BYTES).then(function (blob) {
+    window.PortalImage.encode(canvas, SRC_QUALITY, SRC_TARGET_BYTES).then(function (blob) {
       if (blob) toPreview(blob); else setErr('Kunne ikke tage billedet. Prøv igen.');
     });
   }
@@ -259,6 +241,8 @@
             '<button class="pav-btn primary" data-pav="camera-open">' + window.FlangoIcons.icon('camera', 17, 'ico-inline') + ' Tag et billede</button>' +
             '<button class="pav-btn ghost" data-pav="file-open">' + window.FlangoIcons.icon('image', 17, 'ico-inline') + ' Vælg fra galleri</button>' +
             '<input type="file" accept="image/*" class="pav-file" data-pav="file">' +
+            // Native app: systemkameraet via capture (getUserMedia findes ikke på capacitor://)
+            '<input type="file" accept="image/*" capture="user" class="pav-file" data-pav="cam-file">' +
           '</div>' +
           '<div data-pav="photo-actions" style="display:none">' +
             '<img class="pav-preview" data-pav="preview" alt="Valgt foto">' +
@@ -311,7 +295,7 @@
     els = {
       overlay: overlay, err: q('err'),
       photo: q('photo'), chooser: q('chooser'), photoActions: q('photo-actions'),
-      previewImg: q('preview'), file: q('file'),
+      previewImg: q('preview'), file: q('file'), camFile: q('cam-file'),
       camera: q('camera'), video: q('video'),
       info: q('info'), example: q('example'), prompt: q('prompt'),
       infoCounter: q('info-counter'), genBtn: q('generate'),
@@ -325,13 +309,17 @@
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
     q('camera-open').addEventListener('click', startCamera);
     q('file-open').addEventListener('click', function () { els.file.click(); });
-    els.file.addEventListener('change', function (e) {
-      var f = e.target.files && e.target.files[0];
-      if (!f) return;
-      setErr('');
-      processFile(f).then(toPreview).catch(function (err) { setErr((err && err.message) || 'Kunne ikke læse billedet.'); });
-      els.file.value = '';
-    });
+    function onFilePicked(input) {
+      return function (e) {
+        var f = e.target.files && e.target.files[0];
+        if (!f) return;
+        setErr('');
+        processFile(f).then(toPreview).catch(function (err) { setErr((err && err.message) || 'Kunne ikke læse billedet.'); });
+        input.value = '';
+      };
+    }
+    els.file.addEventListener('change', onFilePicked(els.file));
+    els.camFile.addEventListener('change', onFilePicked(els.camFile));
     q('snap').addEventListener('click', snap);
     q('cam-cancel').addEventListener('click', function () { show('photo'); els.chooser.style.display = 'block'; els.photoActions.style.display = 'none'; });
     q('retake').addEventListener('click', function () { els.chooser.style.display = 'block'; els.photoActions.style.display = 'none'; setErr(''); });

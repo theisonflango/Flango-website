@@ -616,11 +616,12 @@
      * og aktiveres først når institutions-admin har godkendt billedet.
      */
     async uploadProfilePictureFile(institutionId, childId, blob) {
-      const path = `${institutionId}/parent-uploads/${childId}/${Date.now()}.webp`;
+      const ext = window.PortalImage ? window.PortalImage.extFor(blob) : 'webp';
+      const path = `${institutionId}/parent-uploads/${childId}/${Date.now()}.${ext}`;
       const { error: uploadError } = await window.portalSupabase.storage
         .from('profile-pictures')
         .upload(path, blob, {
-          contentType: 'image/webp',
+          contentType: blob.type || 'image/webp',
           cacheControl: '31536000',
         });
       if (uploadError) {
@@ -672,10 +673,13 @@
      * picture_type=ai_avatar. ai_style/prompt sættes server-side (ikke af klienten).
      */
     async submitGeneratedAvatar(institutionId, childId, blob) {
-      const path = `${institutionId}/parent-uploads/${childId}/ai_${Date.now()}.webp`;
+      // Endelse + contentType følger blobbens FAKTISKE type. iOS kan ikke kode
+      // webp i canvas, så dér bliver det jpeg — og så skal filen ikke hedde .webp.
+      const ext = window.PortalImage ? window.PortalImage.extFor(blob) : 'webp';
+      const path = `${institutionId}/parent-uploads/${childId}/ai_${Date.now()}.${ext}`;
       const { error: uploadError } = await window.portalSupabase.storage
         .from('profile-pictures')
-        .upload(path, blob, { contentType: 'image/webp', cacheControl: '31536000' });
+        .upload(path, blob, { contentType: blob.type || 'image/webp', cacheControl: '31536000' });
       if (uploadError) {
         throw new Error('Storage-upload fejlede: ' + uploadError.message);
       }

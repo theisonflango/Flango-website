@@ -2819,7 +2819,12 @@
     const ppInstTypes = Array.isArray(featureFlags?.profile_picture_types) ? featureFlags.profile_picture_types : ['upload', 'camera', 'library'];
     const showAula = ppInstTypes.indexOf('upload') !== -1;
     const showCamera = ppInstTypes.indexOf('camera') !== -1;
-    const aiMasterOn = featureFlags?.profile_pictures_ai_enabled !== false;
+    // De to avatar-flag er uafhængige (personale-drevet vs. forælder-drevet).
+    // Samtykke-toggle'en skal derfor vises hvis MINDST ét af dem er tændt —
+    // ellers opstår en blindgyde: forælderen ser "Lav en AI-avatar", men kan
+    // ikke give det samtykke knappen kræver, fordi toggle'en er skjult.
+    const aiMasterOn = featureFlags?.profile_pictures_ai_enabled !== false
+      || featureFlags?.parent_ai_avatar_enabled === true;
     // Én AI-avatar-udbyder: Microsoft Azure (EU). ai_provider_openai = legacy-navngivet gate (default true).
     const showAi = aiMasterOn && featureFlags?.ai_provider_openai !== false;
     const optOutOpenai = !hasOpenaiConsent;
