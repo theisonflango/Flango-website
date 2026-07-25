@@ -26,7 +26,10 @@
     container.querySelectorAll('.fsp-toggle[data-field]').forEach(toggle => {
       toggle.addEventListener('click', () => {
         toggle.classList.toggle('on');
-        ctx.markDirty(toggle.dataset.field, toggle.classList.contains('on'));
+        const on = toggle.classList.contains('on');
+        // data-invert: knappen viser en POSITIV betydning ("gælder for") men kolonnen
+        // er negativ (fx balance_limit_exempt_*). Skriv den inverterede værdi.
+        ctx.markDirty(toggle.dataset.field, toggle.hasAttribute('data-invert') ? !on : on);
       });
     });
   }
@@ -37,7 +40,6 @@
   };
   const AI_PROVIDER_MODULE = {
     openai: 'profile_pic_ai_openai',
-    flux: 'profile_pic_ai_flux',
   };
 
   /**
@@ -54,7 +56,7 @@
       if (!FM.isModuleLocked(flags, moduleKey)) return;
       const flag = FM.getModuleFlag(flags, moduleKey);
       {
-        const reason = flag.lock_reason || 'Låst af administrator';
+        const reason = flag.lock_reason || (window.FeatureModules?.DEFAULT_LOCK_REASON || 'Låst af Flango');
         toggle.classList.add('superadmin-locked');
         toggle.style.opacity = '0.5';
         toggle.style.pointerEvents = 'none';
@@ -112,7 +114,11 @@
         // Deselect siblings with same field
         container.querySelectorAll(`.fsp-radio[data-field="${field}"]`).forEach(r => r.classList.remove('on'));
         radio.classList.add('on');
-        ctx.markDirty(field, radio.dataset.value);
+        // Coerce boolean-strenge til ægte boolean, så de skrives korrekt til
+        // boolean-kolonner (fx cafe_events_as_products). Andre værdier passerer uændret.
+        const raw = radio.dataset.value;
+        const value = raw === 'true' ? true : raw === 'false' ? false : raw;
+        ctx.markDirty(field, value);
       });
     });
   }
@@ -260,6 +266,9 @@
       const inst = ctx.institutionData || {};
       const eventsOn = !!inst.cafe_events_enabled;
       const daysAhead = inst.cafe_events_days_ahead ?? 7;
+      // Visningstilstand: produktkort (default) vs. banner øverst. Gemmes i den
+      // eksisterende boolean cafe_events_as_products (true=produkter, false=banner).
+      const asProducts = inst.cafe_events_as_products !== false;
       return `<div class="fsp-page">
         <div class="fsp-page-title" style="margin-bottom:28px">Arrangementer</div>
         <div class="fsp-arr-tabs">
@@ -290,11 +299,11 @@
                     <div style="font-size:13px;color:var(--fsp-txt3);margin-bottom:16px;line-height:1.5">V\u00e6lg hvordan kommende arrangementer skal vises i caf\u00e9en.</div>
                     <div class="fsp-sub" data-ev-display="products">
                       <div><div class="fsp-sub-title">Vis arrangementer som produkter</div><div class="fsp-sub-hint">Tydeligt \u2013 vises som produktkort i caf\u00e9en</div></div>
-                      <div class="fsp-radio on" data-field="cafe_events_display_mode" data-value="products"></div>
+                      <div class="fsp-radio${asProducts ? ' on' : ''}" data-field="cafe_events_as_products" data-value="true"></div>
                     </div>
                     <div class="fsp-sub" data-ev-display="strip">
                       <div><div class="fsp-sub-title">Vis arrangementer over produkterne</div><div class="fsp-sub-hint">Diskret \u2013 vises som banner \u00f8verst</div></div>
-                      <div class="fsp-radio" data-field="cafe_events_display_mode" data-value="strip"></div>
+                      <div class="fsp-radio${asProducts ? '' : ' on'}" data-field="cafe_events_as_products" data-value="false"></div>
                     </div>
                     <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px">
                       <label style="font-size:13px;font-weight:500;color:var(--fsp-txt);white-space:nowrap">Vis events indenfor</label>
@@ -2045,9 +2054,9 @@
                 <span style="font-size:13px;color:var(--fsp-txt3)">kr</span>
               </div>
               <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">G\u00e6lder for</div>
-              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC67</div><div><div class="fsp-role-name">Almindelige brugere (b\u00f8rn)</div></div></div><div class="fsp-toggle on" data-field="balance_limit_applies_to_regular_users"></div></div>
-              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC68\u200D\uD83C\uDFEB</div><div><div class="fsp-role-name">Admins (voksne)</div></div></div><div class="fsp-toggle${balAdm ? ' on' : ''}" data-field="balance_limit_exempt_admins"></div></div>
-              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83E\uDDEA</div><div><div class="fsp-role-name">Testbrugere</div></div></div><div class="fsp-toggle${balTest ? ' on' : ''}" data-field="balance_limit_exempt_test_users"></div></div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC67</div><div><div class="fsp-role-name">Almindelige brugere (b\u00f8rn)</div></div></div><div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);padding:4px 11px;border-radius:999px;background:rgba(255,255,255,0.05);white-space:nowrap" title="B\u00f8rn er altid omfattet af bel\u00f8bsgr\u00E6nsen \u2014 kan ikke fritages">Altid</div></div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC68\u200D\uD83C\uDFEB</div><div><div class="fsp-role-name">Admins (voksne)</div></div></div><div class="fsp-toggle${!balAdm ? ' on' : ''}" data-field="balance_limit_exempt_admins" data-invert></div></div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83E\uDDEA</div><div><div class="fsp-role-name">Testbrugere</div></div></div><div class="fsp-toggle${!balTest ? ' on' : ''}" data-field="balance_limit_exempt_test_users" data-invert></div></div>
             </div>
           </div>
         </div></div>
@@ -2581,9 +2590,7 @@
             <div class="fsp-expand${aiOn ? ' open' : ''}" data-expand-target="ai-body" style="max-height:${aiOn ? '400px' : '0'}">
               <div style="padding-top:14px;border-top:1px solid rgba(255,255,255,0.04)">
                 <div class="fsp-pm-detail">Aktiverer AI-genererede avatarer baseret p\u00e5 barnets foto. Fotoet sendes til den valgte udbyder og slettes straks efter. Flango sender faktura til institutionen p\u00e5 100,- kr. hvorefter I kan generere 300\u2013400 avatars.</div>
-                <div class="fsp-role" style="margin-bottom:6px"><div class="fsp-role-left"><div><div class="fsp-role-name">OpenAI</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">USA</div></div></div><div class="fsp-toggle${inst.ai_provider_openai !== false ? ' on' : ''}" data-ai-provider="openai"></div></div>
-                <div class="fsp-role"><div class="fsp-role-left"><div><div class="fsp-role-name">Black Forest Labs, FLUX 2</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">Tyskland</div></div></div><div class="fsp-toggle${inst.ai_provider_flux ? ' on' : ''}" data-ai-provider="flux"></div></div>
-                <div id="pp-ai-no-provider-warn" style="margin-top:10px;padding:8px 10px;border-radius:6px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);font-size:12px;color:#f59e0b;display:${aiOn && inst.ai_provider_openai === false && !inst.ai_provider_flux ? 'block' : 'none'}">\u26A0 Ingen udbyder valgt \u2014 aktiv\u00e9r OpenAI eller FLUX, ellers kan caf\u00e9-admins ikke generere avatars.</div>
+                <div class="fsp-role"><div class="fsp-role-left"><div><div class="fsp-role-name">Microsoft Azure OpenAI</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">EU</div></div></div><div class="fsp-toggle${inst.ai_provider_openai !== false ? ' on' : ''}" data-ai-provider="openai"></div></div>
               </div>
             </div>
           </div>
@@ -2643,23 +2650,13 @@
           target.style.maxHeight = isOpen ? '400px' : '0';
         }
       });
-      // AI provider toggles (OpenAI / FLUX)
-      const refreshNoProviderWarn = () => {
-        const warn = container.querySelector('#pp-ai-no-provider-warn');
-        if (!warn) return;
-        const masterOn = container.querySelector('[data-field="profile_pictures_ai_enabled"]')?.classList.contains('on');
-        const openAIOn = container.querySelector('[data-ai-provider="openai"]')?.classList.contains('on');
-        const fluxOn = container.querySelector('[data-ai-provider="flux"]')?.classList.contains('on');
-        warn.style.display = (masterOn && !openAIOn && !fluxOn) ? 'block' : 'none';
-      };
+      // AI provider toggle (Microsoft Azure OpenAI / EU)
       container.querySelectorAll('[data-ai-provider]').forEach(toggle => {
         toggle.addEventListener('click', () => {
           toggle.classList.toggle('on');
           ctx.markDirty('ai_provider_' + toggle.dataset.aiProvider, toggle.classList.contains('on'));
-          refreshNoProviderWarn();
         });
       });
-      container.querySelector('[data-field="profile_pictures_ai_enabled"]')?.addEventListener('click', refreshNoProviderWarn);
       // Default picture toggle grey-out
       container.querySelector('[data-action="toggle-dp"]')?.addEventListener('click', function () {
         this.classList.toggle('on');
@@ -2706,10 +2703,28 @@
           }
         }
         reviewBtn.addEventListener('click', () => {
-          window.FlangoSettings.close();
-          document.getElementById('parent-upload-review-btn')?.click();
+          window.FlangoSettings.openTo('Administration', 'Godkendelser');
         });
       }
+    }
+  };
+
+  // ── Godkendelser (settings section) — samlet kø: forælder-uploads + AI-avatarer ──
+  // Køen rendres af domain/parent-upload-review.js (samme testede approve/afvis-
+  // logik som før), re-parentet ind i denne sektion via [data-approvals-list].
+  sections['Godkendelser'] = {
+    render() {
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Godkendelser</div>
+        <div class="fsp-page-desc">Billeder fra forældre — almindelige uploads og AI-avatarer — der afventer jeres godkendelse. Godkend for at gøre billedet til barnets aktive profilbillede, eller afvis med en begrundelse som forælderen kan se i portalen.</div>
+        <div class="fsp-section"><div id="approvals-list" data-approvals-list style="display:flex;flex-direction:column;gap:14px;">
+          <div style="text-align:center;padding:24px;color:#78716c;">Henter …</div>
+        </div></div>
+      </div>`;
+    },
+    wire(container) {
+      pageAlign(container);
+      if (typeof window.__flangoRenderApprovalsInto === 'function') window.__flangoRenderApprovalsInto();
     }
   };
 
@@ -2740,6 +2755,18 @@
     wire(container, ctx) {
       pageAlign(container);
       wireToggles(container, ctx);
+      // "Vis jeres ikoner" → luk indstillinger + åbn ikon-administrations-modalen
+      // (samme som den ældre shell.js-knap; wire() manglede handleren → død knap).
+      container.querySelector('[data-action="show-icons"]')?.addEventListener('click', () => {
+        window.FlangoSettings?.close?.();
+        const modal = document.getElementById('icon-management-modal');
+        if (modal) {
+          modal.style.display = 'flex';
+          if (typeof window.__flangoLoadIconManagementGrid === 'function') {
+            window.__flangoLoadIconManagementGrid();
+          }
+        }
+      });
     }
   };
 
@@ -2883,6 +2910,132 @@
     wire(container, ctx) {
       pageAlign(container);
       wireToggles(container, ctx);
+    }
+  };
+
+  sections['Beskeder'] = {
+    render() {
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Beskeder</div>
+        <div class="fsp-page-desc">Modtag beskeder fra forældre direkte i Flango og/eller på e-mail. Beskeder vises i indbakken nedenfor og som en notifikation over kassen.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Modtag beskeder i Flango</div><div class="fsp-main-desc">Åbner "Til institutionen" i forældreportalen. Beskeder samles i indbakken herunder.</div></div>
+          <div class="fsp-toggle" data-msg-toggle="inbox"></div>
+        </div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Send også til e-mail</div><div class="fsp-main-desc">Videresend hver forældrebesked til en eller flere e-mails.</div></div>
+          <div class="fsp-toggle" data-msg-toggle="email"></div>
+        </div>
+        <div data-msg-email-wrap style="display:none;margin:6px 0 4px">
+          <div class="fsp-form-label" style="margin-bottom:6px">Modtager-e-mails (én pr. linje)</div>
+          <textarea data-msg-emails class="input-field input" rows="3" placeholder="kontor@skole.dk" style="width:100%;resize:vertical"></textarea>
+          <button data-msg-emails-save class="fsp-btn" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:var(--fsp-accent,#5ba0d8);color:#fff;border:none;font-weight:600;font-size:13px;cursor:pointer">Gem e-mails</button>
+        </div>
+        <div data-msg-inbox-wrap style="padding-top:20px;border-top:1px solid rgba(255,255,255,0.05);margin-top:16px">
+          <div class="fsp-form-label" style="margin-bottom:10px;display:flex;align-items:center;gap:8px">📥 Indbakke <span data-msg-unread></span></div>
+          <div data-msg-inbox><div style="font-size:13px;color:var(--fsp-txt3)">Henter…</div></div>
+        </div>
+      </div>`;
+    },
+    wire(container) {
+      pageAlign(container);
+      const client = window.__flangoSupabaseClient;
+      const instId = window.getInstitutionId && window.getInstitutionId();
+      const isAdmin = window.__flangoCurrentClerkProfile?.role === 'admin';
+      const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      if (!client || !instId) return;
+
+      const inboxToggle = container.querySelector('[data-msg-toggle="inbox"]');
+      const emailToggle = container.querySelector('[data-msg-toggle="email"]');
+      const emailWrap = container.querySelector('[data-msg-email-wrap]');
+      const emailsTa = container.querySelector('[data-msg-emails]');
+      const emailsSave = container.querySelector('[data-msg-emails-save]');
+      const inboxEl = container.querySelector('[data-msg-inbox]');
+      const inboxWrap = container.querySelector('[data-msg-inbox-wrap]');
+      const unreadEl = container.querySelector('[data-msg-unread]');
+
+      async function saveCol(col, val) {
+        try { await client.from('institutions').update({ [col]: val }).eq('id', instId); }
+        catch (e) { console.error('[Beskeder] save', col, e); if (window.showToast) window.showToast('Kunne ikke gemme', 'error'); }
+      }
+
+      // ── Config: hent frisk + hydrér + wire ──
+      (async () => {
+        try {
+          const { data } = await client.from('institutions')
+            .select('parent_messages_enabled, feedback_email_enabled, feedback_emails')
+            .eq('id', instId).single();
+          const cfg = data || {};
+          inboxToggle && inboxToggle.classList.toggle('on', cfg.parent_messages_enabled === true);
+          const emailOn = cfg.feedback_email_enabled === true;
+          emailToggle && emailToggle.classList.toggle('on', emailOn);
+          if (emailWrap) emailWrap.style.display = emailOn ? '' : 'none';
+          if (emailsTa) emailsTa.value = Array.isArray(cfg.feedback_emails) ? cfg.feedback_emails.join('\n') : '';
+        } catch (e) { console.error('[Beskeder] config-hent', e); }
+      })();
+
+      inboxToggle && inboxToggle.addEventListener('click', () => {
+        const on = !inboxToggle.classList.contains('on');
+        inboxToggle.classList.toggle('on', on);
+        saveCol('parent_messages_enabled', on);
+      });
+      emailToggle && emailToggle.addEventListener('click', () => {
+        const on = !emailToggle.classList.contains('on');
+        emailToggle.classList.toggle('on', on);
+        if (emailWrap) emailWrap.style.display = on ? '' : 'none';
+        saveCol('feedback_email_enabled', on);
+      });
+      emailsSave && emailsSave.addEventListener('click', async () => {
+        const arr = (emailsTa && emailsTa.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+        await saveCol('feedback_emails', arr);
+        if (window.showToast) window.showToast('E-mails gemt', 'success');
+      });
+
+      // ── Indbakke (kun admin) ──
+      if (!isAdmin) { if (inboxWrap) inboxWrap.style.display = 'none'; return; }
+      const btnStyle = 'width:26px;height:26px;border-radius:7px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:var(--fsp-txt);cursor:pointer;font-size:13px;line-height:1;flex-shrink:0';
+      async function loadInbox() {
+        inboxEl.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Henter…</div>';
+        try {
+          const { data, error } = await client.from('parent_messages')
+            .select('id, sender_name, sender_email, content, created_at, read_at')
+            .eq('institution_id', instId).order('created_at', { ascending: false }).limit(100);
+          if (error) throw error;
+          const rows = data || [];
+          const unread = rows.filter(r => !r.read_at).length;
+          if (unreadEl) unreadEl.innerHTML = unread ? `<span style="background:#e85a6f;color:#fff;font-size:11px;padding:1px 8px;border-radius:10px;font-weight:700">${unread} ny${unread > 1 ? 'e' : ''}</span>` : '';
+          if (!rows.length) { inboxEl.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Ingen beskeder endnu.</div>'; return; }
+          inboxEl.innerHTML = rows.map(m => {
+            let when = ''; try { when = new Date(m.created_at).toLocaleString('da-DK'); } catch (_) { /* noop */ }
+            const meta = [m.sender_name, m.sender_email, when].filter(Boolean).map(esc).join(' · ');
+            const isUnread = !m.read_at;
+            return `<div style="padding:12px 14px;margin-bottom:8px;border-radius:10px;background:var(--fsp-bg2);border:1px solid ${isUnread ? 'rgba(232,90,111,0.4)' : 'rgba(255,255,255,0.06)'}">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+                <div style="font-size:13px;color:var(--fsp-txt);white-space:pre-wrap;flex:1">${esc(m.content)}</div>
+                <div style="display:flex;gap:6px">
+                  ${isUnread ? `<button data-msg-read="${esc(m.id)}" title="Markér som læst" style="${btnStyle}">✓</button>` : ''}
+                  <button data-msg-del="${esc(m.id)}" title="Slet" style="${btnStyle}">🗑</button>
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--fsp-txt3);margin-top:6px">${isUnread ? '<span style="color:#e85a6f">● </span>' : ''}${meta}</div>
+            </div>`;
+          }).join('');
+          inboxEl.querySelectorAll('[data-msg-read]').forEach(b => b.addEventListener('click', async () => {
+            b.disabled = true;
+            await client.from('parent_messages').update({ read_at: new Date().toISOString() }).eq('id', b.dataset.msgRead);
+            loadInbox();
+          }));
+          inboxEl.querySelectorAll('[data-msg-del]').forEach(b => b.addEventListener('click', async () => {
+            b.disabled = true;
+            await client.from('parent_messages').delete().eq('id', b.dataset.msgDel);
+            loadInbox();
+          }));
+        } catch (e) {
+          console.error('[Beskeder] indbakke', e);
+          inboxEl.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Kunne ikke hente beskeder.</div>';
+        }
+      }
+      loadInbox();
     }
   };
 
@@ -3740,6 +3893,41 @@
   };
 
   // ── Lydindstillinger (standalone — live save to SoundManager/localStorage) ──
+
+  // ÉN kilde til lyd-valg. Dropdown'en genereres HERFRA, og wire() slår filstien op i
+  // samme map — så de to kan ikke drive fra hinanden. Før var det to håndholdte lister:
+  // 5 valg uden fil (som slog lyden tavst FRA når de blev valgt) og 9 rigtige lydfiler
+  // der slet ikke kunne vælges. Tilføj/fjern en lyd ÉT sted: her.
+  const SOUND_FILE_MAP = {
+    'Ingen lyd': '',
+    'Add 1': 'sounds/Add%20Item/Add1.mp3',
+    'Add 2': 'sounds/Add%20Item/Add2.mp3',
+    'Slet': 'sounds/Delete%20Item/Slet.mp3',
+    'Slet 1': 'sounds/Delete%20Item/Slet1.mp3',
+    'Slet 2': 'sounds/Delete%20Item/Slet2.mp3',
+    'Slet 3': 'sounds/Delete%20Item/Slet3.mp3',
+    'Slet 4': 'sounds/Delete%20Item/Slet4.mp3',
+    'Accept 1': 'sounds/Accept/accepter-1.mp3',
+    'Accept 2': 'sounds/Accept/accepter-2.mp3',
+    'Accept 3': 'sounds/Accept/accepter-3.mp3',
+    'Accept 4': 'sounds/Accept/accepter-4.mp3',
+    'Accept 5': 'sounds/Accept/accepter-5.mp3',
+    'Accept 6': 'sounds/Accept/accepter-6.mp3',
+    'Accept 7': 'sounds/Accept/accepter-7.mp3',
+    'Fejl 1': 'sounds/Error/Fejl1.mp3',
+    'Fejl 2': 'sounds/Error/Fejl2.mp3',
+    'Fejl 3': 'sounds/Error/Fejl3.mp3',
+    'Login 1': 'sounds/Login/Login1.mp3',
+    'Login 2': 'sounds/Login/Login2.mp3'
+  };
+
+  // Entydig sti-sammenligning (tåler %20 vs mellemrum). Den gamle substring-match ville
+  // med de nu synlige valg markere både "Slet" og "Slet 1" som valgt for samme fil.
+  function sndPathEq(a, b) {
+    const norm = (p) => { try { return decodeURIComponent(p || '').toLowerCase(); } catch { return (p || '').toLowerCase(); } };
+    return norm(a) === norm(b);
+  }
+
   sections['Lydindstillinger'] = {
     render(ctx) {
       const sm = window.__flangoSoundManager;
@@ -3751,7 +3939,7 @@
         { key: 'purchase', label: 'Gennemf\u00f8r k\u00f8b', emoji: '\u2705' },
         { key: 'error', label: 'Fejl', emoji: '\u26A0\uFE0F' }
       ];
-      const sounds = ['Ingen lyd', 'Add 1', 'Add 2', 'Add 3', 'Slet', 'Accept 1', 'Accept 2', 'Accept 3', 'Fejl 1', 'Fejl 2', 'Ding', 'Bell', 'Chime', 'Pop'];
+      const sounds = Object.keys(SOUND_FILE_MAP);
       return `<div class="fsp-page" style="max-width:720px">
         <div class="fsp-page-title">Lydindstillinger</div>
         <div class="fsp-page-desc">V\u00e6lg lyde og juster lydstyrke for caf\u00e9systemet.</div>
@@ -3779,7 +3967,7 @@
               <div class="fsp-snd-row-top">
                 <span style="font-size:15px">${r.emoji}</span>
                 <div class="fsp-snd-row-label">${r.label}</div>
-                <select class="fsp-snd-select" data-snd-key="${r.key}">${sounds.map(s => `<option${currentFile.toLowerCase().includes(s.toLowerCase().replace(/ /g, '')) ? ' selected' : ''}>${s}</option>`).join('')}</select>
+                <select class="fsp-snd-select" data-snd-key="${r.key}">${sounds.map(s => `<option${sndPathEq(SOUND_FILE_MAP[s], currentFile) ? ' selected' : ''}>${s}</option>`).join('')}</select>
                 <button class="fsp-snd-play" title="Afspil" data-play="${r.key}"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg></button>
               </div>
               <div class="fsp-snd-slider-wrap">
@@ -3829,32 +4017,10 @@
         });
       });
 
-      // Sound file mapping (display name → file path)
-      const soundFileMap = {
-        'Ingen lyd': '',
-        'Add 1': 'sounds/Add%20Item/Add1.mp3',
-        'Add 2': 'sounds/Add%20Item/Add2.mp3',
-        'Slet': 'sounds/Delete%20Item/Slet.mp3',
-        'Slet 1': 'sounds/Delete%20Item/Slet1.mp3',
-        'Slet 2': 'sounds/Delete%20Item/Slet2.mp3',
-        'Slet 3': 'sounds/Delete%20Item/Slet3.mp3',
-        'Slet 4': 'sounds/Delete%20Item/Slet4.mp3',
-        'Accept 1': 'sounds/Accept/accepter-1.mp3',
-        'Accept 2': 'sounds/Accept/accepter-2.mp3',
-        'Accept 3': 'sounds/Accept/accepter-3.mp3',
-        'Accept 4': 'sounds/Accept/accepter-4.mp3',
-        'Accept 5': 'sounds/Accept/accepter-5.mp3',
-        'Fejl 1': 'sounds/Error/Fejl1.mp3',
-        'Fejl 2': 'sounds/Error/Fejl2.mp3',
-        'Fejl 3': 'sounds/Error/Fejl3.mp3',
-        'Login 1': 'sounds/Login/Login1.mp3',
-        'Login 2': 'sounds/Login/Login2.mp3'
-      };
-
-      // Dropdown change → update SoundManager file mapping
+      // Dropdown change → update SoundManager file mapping (samme kilde som render)
       container.querySelectorAll('.fsp-snd-select[data-snd-key]').forEach(sel => {
         sel.addEventListener('change', () => {
-          const filePath = soundFileMap[sel.value] || '';
+          const filePath = SOUND_FILE_MAP[sel.value] || '';
           sm.setSoundFile?.(sel.dataset.sndKey, filePath);
           markSndDirty();
         });
@@ -3865,7 +4031,7 @@
         btn.addEventListener('click', () => {
           const key = btn.dataset.play;
           const sel = container.querySelector(`.fsp-snd-select[data-snd-key="${key}"]`);
-          const filePath = soundFileMap[sel?.value] || sm.getSoundFile?.(key);
+          const filePath = SOUND_FILE_MAP[sel?.value] || sm.getSoundFile?.(key);
           if (!filePath) return;
           const audio = new Audio(filePath);
           const vol = (sm.getMasterVolume?.() ?? 1) * (sm.getSoundVolume?.(key) ?? 1);

@@ -372,8 +372,8 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app-beta/assets/main-CSMZufqa.js"></script>
-  <link rel="stylesheet" crossorigin href="/app-beta/assets/main-aHefIVEF.css">
+  <script type="module" crossorigin src="/app-beta/assets/main-_NJbzlv9.js"></script>
+  <link rel="stylesheet" crossorigin href="/app-beta/assets/main-NBeoRtR0.css">
 </head>
 <body>
 
@@ -382,6 +382,7 @@
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
         <div class="lock-icon">🔒</div>
         <h1>Log ind</h1>
+        <p id="full-login-notice" class="login-notice"></p>
         <form id="form-full-login" onsubmit="return false;" autocomplete="on">
             <label for="login-email-input">E-mail</label>
             <input type="email" id="login-email-input" class="input" placeholder="din@email.dk" autocomplete="email">
@@ -406,6 +407,7 @@
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
         <div class="lock-icon">🔑</div>
         <h1>Vælg din profil</h1>
+        <p id="device-unlock-notice" class="login-notice"></p>
         <form id="form-device-unlock" onsubmit="return false;" autocomplete="off">
             <label for="device-admin-select">Hvem er du?</label>
             <select id="device-admin-select" class="select"></select>
@@ -525,7 +527,7 @@
                 <button id="toolbar-db-history-btn" class="header-action-btn" title="DB-Historik" style="display: none;"><img src="Icons/webp/Function/Gear2.webp" alt="DB-Historik"></button>
                 <button id="auto-delete-warning-btn" class="header-action-btn" title="Papirkurv — nyt at se" style="display:none;position:relative;"><svg viewBox="0 0 16 16" fill="none" stroke="#e85a6f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Papirkurv-notifikation"><path d="M8 2.5L14.5 13.5H1.5L8 2.5Z"/><path d="M8 6.5v3.2"/><circle cx="8" cy="11.6" r="0.5" fill="#e85a6f" stroke="none"/></svg><span id="auto-delete-warning-badge" style="position:absolute;top:-4px;right:-4px;background:#e85a6f;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
                 <button id="deletion-requests-btn" class="header-action-btn" title="Sletningsanmodninger" style="display:none;position:relative;">🗑️<span id="deletion-badge" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
-                <button id="parent-upload-review-btn" class="header-action-btn" title="Forælder-uploads til godkendelse" style="display:none;position:relative;">📷<span id="parent-upload-badge" style="position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
+                <button id="parent-upload-review-btn" class="header-action-btn" title="Billeder til godkendelse" style="display:none;position:relative;">📷<span id="parent-upload-badge" style="position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
                 <button id="toolbar-products-btn" class="header-action-btn" title="Produktoversigt" style="display:none;"><svg viewBox="0 0 16 16" fill="none" stroke="#e8734a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Produktoversigt"><rect x="3" y="3" width="4.5" height="4.5" rx="1"/><rect x="9.5" y="3" width="4.5" height="4.5" rx="1"/><rect x="3" y="9.5" width="4.5" height="4.5" rx="1"/><rect x="9.5" y="9.5" width="4.5" height="4.5" rx="1"/></svg></button>
                 <button id="toolbar-new-product-btn" class="header-action-btn" title="Opret nyt produkt" style="display:none;"><svg viewBox="0 0 16 16" fill="none" stroke="#5dca7a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Opret nyt produkt"><rect x="2.5" y="2.5" width="11" height="11" rx="3"/><path d="M8 5.3v5.4M5.3 8h5.4"/></svg></button>
                 <button id="toolbar-deposit-btn" class="header-action-btn" title="Indbetaling" style="display:none;"><img src="Icons/webp/Function/Coin.webp" alt="Indbetaling"></button>
@@ -892,11 +894,11 @@
                                 <input type="checkbox" id="pp-type-ai-avatar" style="width: 18px; height: 18px; cursor: pointer;">
                                 <div>
                                     <strong style="font-size: 14px;">🤖 AI-Avatar</strong>
-                                    <div style="font-size: 12px; color: #666;">Generer Pixar-stil avatar fra foto (OpenAI)</div>
+                                    <div style="font-size: 12px; color: #666;">Generer Pixar-stil avatar fra foto (Microsoft Azure, EU)</div>
                                 </div>
                             </label>
                             <div id="pp-ai-warning" style="display: none; margin-top: 8px; padding: 8px 12px; background: #fff3cd; border-radius: 6px; font-size: 11px; color: #856404;">
-                                Aktiverer AI-genererede avatarer baseret på barnets foto. Fotoet sendes til OpenAI og slettes straks efter. Forældres fravalg respekteres altid.
+                                Aktiverer AI-genererede avatarer baseret på barnets foto. Fotoet sendes til Microsoft Azure (EU) og slettes straks efter. Forældres fravalg respekteres altid.
                             </div>
                         </div>
                     </div>
@@ -1285,31 +1287,6 @@
         </div>
     </div>
 
-    <!-- Parent Portal Settings Menu (3-button menu) -->
-    <div id="parent-portal-settings-modal" class="settings-modal-backdrop" style="display: none;">
-        <div class="settings-modal" style="max-width: 600px;">
-            <h2 id="parent-portal-settings-title">Forældreportalen</h2>
-            <div id="parent-portal-settings-content" class="settings-modal-content">
-                <button id="parent-portal-payment-methods-btn" class="settings-item-btn">
-                    <strong>Optankning / Betalingsmetoder</strong>
-                    <div style="font-size: 12px; margin-top: 2px;">Konfigurer hvordan forældre kan indbetale</div>
-                </button>
-                <button id="parent-portal-features-btn" class="settings-item-btn">
-                    <strong>Aktive funktioner på forældreportalen</strong>
-                    <div style="font-size: 12px; margin-top: 2px;">Vælg hvilke funktioner forældre kan bruge</div>
-                </button>
-                <button id="parent-portal-codes-menu-btn" class="settings-item-btn">
-                    <strong>Forældreportal-koder</strong>
-                    <div style="font-size: 12px; margin-top: 2px;">Administrer adgangskoder til forældreportalen</div>
-                </button>
-            </div>
-            <div class="settings-modal-actions">
-                <button id="back-to-preferences-parent-portal-btn" class="settings-button">← Tilbage</button>
-                <button id="parent-portal-settings-close" class="settings-button">Luk</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Modal: Sletningsanmodninger (GDPR) -->
     <div id="deletion-requests-modal" class="settings-modal-backdrop" style="display: none;">
         <div class="settings-modal" style="max-width: 650px; max-height: 90vh; overflow-y: auto;">
@@ -1329,24 +1306,8 @@
         </div>
     </div>
 
-    <!-- Modal: Forælder-uploads til godkendelse -->
-    <div id="parent-upload-review-modal" class="settings-modal-backdrop" style="display: none;">
-        <div class="settings-modal" style="max-width: 720px; max-height: 90vh; overflow-y: auto;">
-            <h2>📷 Forælder-uploads til godkendelse</h2>
-            <div class="settings-modal-content" style="padding: 0 16px 16px;">
-                <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
-                    <div style="font-weight:700;margin-bottom:4px;">ℹ️ Sådan fungerer det</div>
-                    <div style="font-size:13px;line-height:1.5;color:#1e3a5f;">Forældre kan selv uploade et profilbillede af deres barn. Alle uploads gennemgås af institutionen før de aktiveres. Vurdér om billedet egner sig som identifikation — afvis hvis det er upassende, viser den forkerte person, eller har for lav kvalitet.</div>
-                </div>
-                <div id="parent-upload-review-list" style="display:flex;flex-direction:column;gap:14px;">
-                    <div style="text-align:center;padding:24px;color:#78716c;">Indlæser...</div>
-                </div>
-            </div>
-            <div class="settings-modal-actions">
-                <button id="parent-upload-review-close" class="settings-button">Luk</button>
-            </div>
-        </div>
-    </div>
+    <!-- Godkendelses-køen (forælder-uploads + AI-avatarer) bor nu i settings-
+         sektionen "Godkendelser" (Administration). Header-ikonet deep-linker dertil. -->
 
     <!-- Modal #1: Optankning / Betalingsmetoder -->
     <div id="parent-portal-payment-methods-modal" class="modal" style="display: none;">
@@ -1383,132 +1344,6 @@
         </div>
     </div>
 
-    <!-- Modal #2: Aktive funktioner på forældreportalen -->
-    <div id="parent-portal-features-modal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 600px;">
-            <div class="modal-header">
-                <h2>Aktive funktioner på forældreportalen</h2>
-                <span class="close-btn">&times;</span>
-            </div>
-            <div class="modal-user-list" style="padding: 20px;">
-                <div class="settings-section">
-                    <div style="padding: 15px;">
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="parent-portal-email-notifications" style="margin-right: 12px; cursor: pointer;" checked>
-                            <div>
-                                <strong>Få saldo notifikationer på e-mail</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre modtager e-mail når saldo er lav</div>
-                            </div>
-                        </label>
-
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="parent-portal-spending-limit" style="margin-right: 12px; cursor: pointer;" checked>
-                            <div>
-                                <strong>Daglig Beløbsgrænse</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan sætte daglig forbrugsgrænse for deres barn</div>
-                            </div>
-                        </label>
-
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="parent-portal-allergens" style="margin-right: 12px; cursor: pointer;" checked>
-                            <div>
-                                <strong>Allergener</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan vælge allergener for deres barn</div>
-                            </div>
-                        </label>
-
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="parent-portal-product-limit" style="margin-right: 12px; cursor: pointer;">
-                            <div>
-                                <strong>Købsgrænse pr produkt</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan begrænse antal af specifikke produkter per dag</div>
-                            </div>
-                        </label>
-
-                        <!-- Dagens Ret indstillinger (synlig når Købsgrænse er aktiv) -->
-                        <div id="daily-special-portal-settings" style="display: none; margin-left: 34px; margin-bottom: 15px; padding: 12px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
-                            <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer; margin-bottom: 10px;">
-                                <input type="checkbox" id="parent-portal-daily-special" style="cursor: pointer;" checked />
-                                <span style="font-size: 13px;">Vis Dagens Ret i portalen</span>
-                            </label>
-                            <label style="display: block; font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 4px;">Pris for Dagens Ret</label>
-                            <input
-                                type="text"
-                                id="parent-portal-daily-special-price"
-                                class="input"
-                                placeholder="fx 5-7 kr"
-                                style="width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box;"
-                            />
-                        </div>
-
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="parent-portal-sugar-policy" style="margin-right: 12px; cursor: pointer;">
-                            <div>
-                                <strong>Sukkerpolitik</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan begrænse usunde produkter for deres barn</div>
-                            </div>
-                        </label>
-
-                        <!-- Info-boks indstillinger (synlig når sukkerpolitik er aktiv) -->
-                        <div id="sugar-policy-info-settings" style="display: none; margin-left: 34px; margin-bottom: 15px; padding: 12px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
-                            <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer; margin-bottom: 10px;">
-                                <input type="checkbox" id="sugar-policy-info-enabled" style="cursor: pointer;" checked />
-                                <span style="font-size: 13px;">Vis info-boks i portalen</span>
-                            </label>
-                            <label style="display: block; font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 4px;">Tekst i info-boksen (tom = standardtekst)</label>
-                            <textarea
-                                id="sugar-policy-info-text"
-                                class="input"
-                                rows="4"
-                                placeholder="Klubben har foretaget en pædagogisk vurdering med fokus på børns sundhed og ernæring. Vi prioriterer en hverdag med stabil energi, trivsel og gode vaner – og tilbyder derfor kun sukkerholdige eftermiddagssnacks i et meget begrænset omfang.&#10;&#10;Ønsker du en yderligere begrænsning af dit barns adgang til sukker, kan du justere forbruget herunder."
-                                style="width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; resize: vertical; box-sizing: border-box; font-family: inherit;"
-                            ></textarea>
-                        </div>
-
-                    </div>
-
-                    <h4 style="margin: 0 15px 10px; color: #666; font-size: 13px; font-weight: 500;">Kostpræferencer</h4>
-                    <div style="padding: 0 15px 15px;">
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="parent-portal-vegetarian-only" style="margin-right: 12px; cursor: pointer;">
-                            <div>
-                                <strong>Kun Vegetarisk</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan markere at deres barn kun må købe vegetariske produkter</div>
-                            </div>
-                        </label>
-
-                        <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                            <input type="checkbox" id="parent-portal-no-pork" style="margin-right: 12px; cursor: pointer;">
-                            <div>
-                                <strong>Må ikke få svinekød</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 3px;">Forældre kan markere at deres barn ikke må få svinekød</div>
-                            </div>
-                        </label>
-
-                    </div>
-
-                    <div style="margin-top: 20px; padding: 15px; border-top: 1px solid #e5e7eb;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Kontakttelefon til forældre</label>
-                        <input
-                            type="tel"
-                            id="institution-contact-phone-input"
-                            class="input"
-                            placeholder="fx 12345678"
-                            style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 8px; box-sizing: border-box;"
-                        />
-                        <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
-                            <input type="checkbox" id="institution-contact-phone-enabled" style="cursor: pointer;" />
-                            <span>Vis telefon i forældreportalen</span>
-                        </label>
-                    </div>
-                </div>
-                <div style="padding: 20px 0 0 0; display: flex; justify-content: space-between; gap: 10px;">
-                    <button id="back-to-parent-portal-menu-features-btn" style="padding: 12px 40px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">← Tilbage</button>
-                    <button id="save-parent-portal-features-btn" class="btn-primary" style="padding: 12px 40px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">GEM</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Stripe Onboarding Modal -->
     <div id="stripe-onboarding-modal" class="modal" style="display: none;">
@@ -1550,29 +1385,6 @@
         </div>
     </div>
 
-    <!-- Modal #3: Forældreportal-koder -->
-    <div id="parent-portal-codes-modal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 600px;">
-            <div class="modal-header">
-                <h2>Forældreportal-koder</h2>
-                <span class="close-btn">&times;</span>
-            </div>
-            <div class="modal-user-list" style="padding: 20px;">
-                <div id="parent-portal-codes-content">
-                    <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
-                        Her kan I administrere adgangskoder til forældreportalen. Hver familie får en unik kode, som de bruger til at logge ind.
-                    </p>
-                    <button id="parent-portal-codes-admin-btn" class="settings-item-btn" style="width: 100%; margin-bottom: 15px;">
-                        <strong>Administrer Forældreportal-koder</strong>
-                        <div style="font-size: 12px; margin-top: 2px;">Åbn administrationsvinduet for at se og administrere alle koder</div>
-                    </button>
-                </div>
-                <div style="padding: 20px 0 0 0; display: flex; justify-content: flex-start;">
-                    <button id="back-to-parent-portal-menu-codes-btn" style="padding: 12px 40px; font-size: 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">← Tilbage</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <div id="admin-rules-modal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -1903,7 +1715,7 @@
 <div class="form-group" id="edit-user-lastname-group" style="display:none;"><label for="edit-user-lastname-input">Efternavn</label><input type="text" id="edit-user-lastname-input" class="input" placeholder="Fx. Hansen" autocomplete="off" spellcheck="false" autocapitalize="off"></div>
 <div class="form-group"><label for="edit-user-number-input">Brugernummer</label><input type="text" id="edit-user-number-input" class="input" placeholder="Fx. 1234" autocomplete="off" spellcheck="false" autocapitalize="off"></div>
 <div class="form-group"><label for="edit-user-grade-level">Klasse</label><select id="edit-user-grade-level" class="select"><option value="">Ikke angivet</option><option value="0">0. klasse</option><option value="1">1. klasse</option><option value="2">2. klasse</option><option value="3">3. klasse</option><option value="4">4. klasse</option><option value="5">5. klasse</option><option value="6">6. klasse</option><option value="7">7. klasse</option><option value="8">8. klasse</option><option value="9">9. klasse</option></select></div>
-<div class="form-group"><label for="edit-user-pin-input">Ny PIN (4 cifre)</label><input type="text" id="edit-user-pin-input" class="input" placeholder="1234" maxlength="4" autocomplete="off" spellcheck="false" autocapitalize="off"></div>
+<div class="form-group"><label for="edit-user-pin-input">PIN (barnets kode i caféen)</label><input type="text" id="edit-user-pin-input" class="input" placeholder="1234" maxlength="4" autocomplete="off" spellcheck="false" autocapitalize="off"><div style="font-size:11px;margin-top:4px;opacity:0.6;">Bruges når barnet ekspederer. Gemmes læsbar, så personalet kan hjælpe ved glemt kode.</div></div>
 <div id="eu-admin-account-area"></div>
 </div>
 </div>
@@ -2030,11 +1842,12 @@
     <audio id="audio-logout" src="sounds/Accept/accepter-7.mp3" preload="auto"></audio>
     <audio id="audio-preview" preload="auto"></audio>
 
-    <script src="js/core/feature-modules.js"></script>
-    <script src="js/ui/settings-panel.js?v=6"></script>
-    <script src="js/ui/settings-sections.js?v=25"></script>
-    <script src="js/ui/admin-portal-settings.js?v=2"></script>
-    <script src="js/ui/admin-portal-v2.js"></script>
+    <script src="js/core/feature-modules.js?v=1"></script>
+    <script src="js/ui/settings-panel.js?v=8"></script>
+    <script src="js/ui/settings-sections.js?v=32"></script>
+    <script src="js/ui/admin-portal-preview-host.js?v=6"></script>
+    <script src="js/ui/admin-parent-page.js?v=2"></script>
+    <script src="js/ui/admin-portal-v2.js?v=3"></script>
     <script src="js/ui/cookie-banner.js"></script>
 
 </body>
