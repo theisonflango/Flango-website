@@ -173,7 +173,12 @@
       chooserView.style.display = 'none';
       cameraView.style.display = '';
     } catch (err) {
-      showError('Kameraet kunne ikke startes: ' + (err.message || 'ukendt fejl'));
+      // Typisk afvist tilladelse. Browserens egen besked er engelsk og teknisk,
+      // så den vises ikke — forælderen får i stedet vejen videre.
+      const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+      showError(denied
+        ? 'Flango har ikke adgang til kameraet. Giv adgang i telefonens indstillinger, eller vælg et billede fra galleriet.'
+        : 'Kameraet kunne ikke startes. Vælg et billede fra galleriet i stedet.');
       stopStream();
     }
   }
