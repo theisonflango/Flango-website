@@ -24,7 +24,10 @@
   };
 
   var overlayEl = null;
-  var currentPage = PAGES.PARENTS;
+  // Standard-side: Portal-indstillinger. Kortet i Indstillinger hedder
+  // "Forældreportal Indstillinger", så det er dét man forventer at lande på;
+  // Forældre-fanen er bruger-administration og nås med ét klik.
+  var currentPage = PAGES.SETTINGS;
   var institutionName = 'Institutionen';
   var institutionId = null;
   var institutionSettings = null;
@@ -63,15 +66,15 @@
             '<div class="admin-bar-institution">' + esc(institutionName) + '</div>' +
           '</div>' +
           '<div class="admin-bar-center">' +
-            '<button class="admin-page-tab active" data-page="' + PAGES.PARENTS + '">&#128104;&#8205;&#128105;&#8205;&#128103; Forældre</button>' +
-            '<button class="admin-page-tab" data-page="' + PAGES.SETTINGS + '">&#9881;&#65039; Portal-indstillinger</button>' +
+            '<button class="admin-page-tab" data-page="' + PAGES.PARENTS + '">&#128104;&#8205;&#128105;&#8205;&#128103; Forældre</button>' +
+            '<button class="admin-page-tab active" data-page="' + PAGES.SETTINGS + '">&#9881;&#65039; Portal-indstillinger</button>' +
           '</div>' +
           '<div class="admin-bar-right"></div>' +
         '</div>' +
-        '<div class="admin-page active" id="pv2-page-parents">' +
+        '<div class="admin-page" id="pv2-page-parents">' +
           '<div class="apx-root" id="pv2-parents-container"></div>' +
         '</div>' +
-        '<div class="admin-page" id="pv2-page-portal">' +
+        '<div class="admin-page active" id="pv2-page-portal">' +
           '<div id="pv2-settings-container"></div>' +
         '</div>' +
       '</div>';
@@ -137,7 +140,7 @@
     overlayEl.remove();
     overlayEl = null;
     document.body.style.overflow = '';
-    currentPage = PAGES.PARENTS;
+    currentPage = PAGES.SETTINGS;
     institutionSettings = null;
     featureFlags = null;
   }
@@ -183,10 +186,12 @@
     overlayEl.querySelector('#pv2-back-to-cafe').addEventListener('click', closePortal);
     document.addEventListener('keydown', handleKeyDown);
 
-    var startPage = (options && options.page === 'settings') ? PAGES.SETTINGS : PAGES.PARENTS;
-    if (startPage === PAGES.SETTINGS) {
-      currentPage = PAGES.PARENTS;
-      switchPage(PAGES.SETTINGS);
+    // Kaldere kan stadig bede om Forældre-siden eksplicit; ellers åbnes
+    // Portal-indstillinger.
+    var startPage = (options && options.page === 'parents') ? PAGES.PARENTS : PAGES.SETTINGS;
+    if (startPage === PAGES.PARENTS) {
+      currentPage = PAGES.SETTINGS;
+      switchPage(PAGES.PARENTS);
     }
 
     if (window.AdminParentPage) {

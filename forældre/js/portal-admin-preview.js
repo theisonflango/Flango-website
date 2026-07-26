@@ -746,8 +746,14 @@
     });
     for (const sub of subcontrols) { if (sub) applySubcontrol(sub); }
     positionSubcontrols();
-    // Kortene folder ud/ind med transition; mål igen når den er færdig.
-    requestAnimationFrame(positionSubcontrols);
+    // Kortene folder ud/ind med transition; mål igen hen over animationen.
+    repositionOverAnimation();
+    // Portalen genopbygger sektionerne ved hver render — observeren skal have
+    // fat i de NYE elementer, ellers holder den øje med noget der er væk.
+    if (subLayoutObserver) {
+      document.querySelectorAll('.section[id^="section-"] .section-body-inner')
+        .forEach((el) => subLayoutObserver.observe(el));
+    }
     positionPopover();
   }
 
@@ -755,16 +761,39 @@
    *  under-kontakterne skal følge deres række, ellers peger de på ingenting. */
   function watchSubcontrolLayout() {
     window.addEventListener('resize', positionSubcontrols);
-    // Accordion: portalen folder sektionerne med CSS-transition.
+    // Accordion: portalen folder sektionerne med en grid-template-rows-transition
+    // (0fr → 1fr). transitionend fyrer på .section-body.
     document.addEventListener('transitionend', (e) => {
       if (e.target && e.target.classList && e.target.classList.contains('section-body')) positionSubcontrols();
     }, true);
-    // Klik kan folde en sektion uden transitionend (fx display-skift).
-    document.addEventListener('click', () => requestAnimationFrame(positionSubcontrols), true);
+    // Klik kan folde en sektion uden transitionend (fx display-skift). Ét
+    // requestAnimationFrame er ikke nok: rækken har først en boks NÅR
+    // udfoldningen er kørt, så vi måler hen over hele animationen (.25s).
+    document.addEventListener('click', () => repositionOverAnimation(), true);
     if (typeof ResizeObserver === 'function') {
+      // ⚠️ document.body var ikke nok: portalens scroll-container er .main, så
+      // body skifter ikke størrelse når et kort foldes ud — observeren fyrede
+      // aldrig, og under-kontakterne blev liggende som display:none. Observér
+      // derfor hvert kort, der hvor højden faktisk ændrer sig.
       const ro = new ResizeObserver(() => positionSubcontrols());
       ro.observe(document.body);
+      document.querySelectorAll('.section[id^="section-"] .section-body-inner')
+        .forEach((el) => ro.observe(el));
+      subLayoutObserver = ro;
     }
+  }
+
+  let subLayoutObserver = null;
+
+  /** Mål gentagne gange hen over accordion-animationen. Billigt (få frames),
+   *  og fjerner afhængigheden af at præcis ét event fyrer på præcis ét element. */
+  function repositionOverAnimation() {
+    let n = 0;
+    const tick = () => {
+      positionSubcontrols();
+      if (++n < 20) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   }
 
   function handleHostMessage(event) {
