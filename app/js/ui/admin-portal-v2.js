@@ -24,10 +24,12 @@
   };
 
   var overlayEl = null;
-  // Standard-side: Portal-indstillinger. Kortet i Indstillinger hedder
-  // "Forældreportal Indstillinger", så det er dét man forventer at lande på;
-  // Forældre-fanen er bruger-administration og nås med ét klik.
-  var currentPage = PAGES.SETTINGS;
+  // Ingen side er aktiv før switchPage() har åbnet én. Den er den ENESTE vej til
+  // at aktivere en side — også ved åbning. Havde åbningen sin egen genvej (fladen
+  // startede med page-portal markeret aktiv i HTML'en), blev mountPreview()
+  // sprunget over, og Portal-indstillinger stod tom indtil man klikkede væk og
+  // tilbage igen.
+  var currentPage = null;
   var institutionName = 'Institutionen';
   var institutionId = null;
   var institutionSettings = null;
@@ -67,14 +69,14 @@
           '</div>' +
           '<div class="admin-bar-center">' +
             '<button class="admin-page-tab" data-page="' + PAGES.PARENTS + '">&#128104;&#8205;&#128105;&#8205;&#128103; Forældre</button>' +
-            '<button class="admin-page-tab active" data-page="' + PAGES.SETTINGS + '">&#9881;&#65039; Portal-indstillinger</button>' +
+            '<button class="admin-page-tab" data-page="' + PAGES.SETTINGS + '">&#9881;&#65039; Portal-indstillinger</button>' +
           '</div>' +
           '<div class="admin-bar-right"></div>' +
         '</div>' +
         '<div class="admin-page" id="pv2-page-parents">' +
           '<div class="apx-root" id="pv2-parents-container"></div>' +
         '</div>' +
-        '<div class="admin-page active" id="pv2-page-portal">' +
+        '<div class="admin-page" id="pv2-page-portal">' +
           '<div id="pv2-settings-container"></div>' +
         '</div>' +
       '</div>';
@@ -140,7 +142,7 @@
     overlayEl.remove();
     overlayEl = null;
     document.body.style.overflow = '';
-    currentPage = PAGES.SETTINGS;
+    currentPage = null;
     institutionSettings = null;
     featureFlags = null;
   }
@@ -187,12 +189,9 @@
     document.addEventListener('keydown', handleKeyDown);
 
     // Kaldere kan stadig bede om Forældre-siden eksplicit; ellers åbnes
-    // Portal-indstillinger.
-    var startPage = (options && options.page === 'parents') ? PAGES.PARENTS : PAGES.SETTINGS;
-    if (startPage === PAGES.PARENTS) {
-      currentPage = PAGES.SETTINGS;
-      switchPage(PAGES.PARENTS);
-    }
+    // Portal-indstillinger. Begge veje går gennem switchPage() — den ejer både
+    // side-synligheden og monteringen af preview'et.
+    switchPage((options && options.page === 'parents') ? PAGES.PARENTS : PAGES.SETTINGS);
 
     if (window.AdminParentPage) {
       window.AdminParentPage.mount(overlayEl.querySelector('#pv2-parents-container'), {

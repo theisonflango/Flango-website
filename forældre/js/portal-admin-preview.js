@@ -567,42 +567,74 @@
     });
   }
 
-  /** Under-kontakter inde i kortene. Rækken findes via `data-sub="<key>"` som
-   *  portalen sætter, eller — for spil — via `[data-game-id]`. Bindingen
-   *  (kolonne / array-medlem / tabelrække) er en opaque `target`-streng fra
-   *  serveren, så en ny binding ikke kræver ændringer i begge værter. */
-  /** Find den række kontakten skal flugte med.
+  // ── Under-kontakter inde i kortene ─────────────────────────────────────────
+  // Rækken findes via `data-sub="<key>"` som portalen sætter, eller — for spil —
+  // via `[data-game-id]`. Bindingen (kolonne / array-medlem / tabelrække) er en
+  // opaque `target`-streng fra serveren, så en ny binding ikke kræver ændringer
+  // i begge værter.
+
+  /** Ser forælderen FAKTISK denne række lige nu?
    *
-   *  ⚠️ Samme data-sub findes FLERE steder: portalen viser fx saldo- og
-   *  arrangement-påmindelser i både push-kortet og e-mail-kortet, og fanerne
-   *  ligger alle i DOM'en samtidig (kun den aktive faneblad er display:block).
-   *  querySelector gav derfor den FØRSTE forekomst — som oftest lå i en skjult
-   *  fane uden layout-boks, hvorefter kontakten skjulte sig selv. Resultatet var
-   *  at næsten alle under-kontakter var usynlige, uanset hvilken fane man stod på.
+   *  ⚠️ Rod-årsagen til at kontakterne drev rundt: et foldet kort SKJULER ikke
+   *  sit indhold — det KLIPPER det (.section-body{grid-template-rows:0fr} +
+   *  .section-body-inner{overflow:hidden}). Rækken beholder både layout-boks,
+   *  offsetParent og sine rigtige koordinater; den er bare klippet væk. Både
+   *  `offsetParent` og `getClientRects()` svarede derfor "synlig" for hver eneste
+   *  foldede sektion, og kontakten blev placeret ved rækkens UKLIPPEDE top —
+   *  langt nede over de efterfølgende kort.
    *
-   *  Vi vælger nu den første forekomst der FAKTISK er lagt ud; findes ingen,
-   *  falder vi tilbage til den første, så applySubcontrol stadig kan hænge
-   *  kontakten op i den rigtige sektion. */
+   *  Foldningen skal derfor aflæses på kortet (.section.open), ikke måles på
+   *  rækken. getClientRects() fanger stadig den anden vej ind: en fane der er
+   *  display:none. */
+  function rowVisible(el) {
+    if (!el || !el.isConnected || !el.getClientRects().length) return false;
+    return !el.closest('.section:not(.open)');
+  }
+
+  /** Find den række kontakten skal flugte med — den første der er synlig NU.
+   *  Samme data-sub findes flere steder (saldo- og arrangement-påmindelser
+   *  tegnes i både push- og e-mail-kortet), og alle faner ligger i DOM'en
+   *  samtidig. Ingen synlig række → ingen kontakt at vise. */
   function subRowFor(entry) {
     if (entry.row_id) {
       const input = document.querySelector('[data-game-id="' + entry.row_id + '"]');
-      return input && input.closest ? input.closest('.game-row') : null;
+      const row = input && input.closest ? input.closest('.game-row') : null;
+      return rowVisible(row) ? row : null;
     }
-    const alle = document.querySelectorAll('[data-sub="' + entry.key + '"]');
-    for (const el of alle) {
-      if (el.offsetParent && el.getClientRects().length) return el;
+    for (const el of document.querySelectorAll('[data-sub="' + entry.key + '"]')) {
+      if (rowVisible(el)) return el;
     }
+    return null;
+  }
+
+  /** ÉN kontakt pr. nøgle — fundet i hele dokumentet, ikke kun i én rende.
+   *  Ledte vi kun i den rende vi var på vej til at bruge, blev der oprettet en
+   *  kontakt MERE hver gang den synlige række skiftede kort; den gamle blev
+   *  aldrig ryddet op, og lå tilbage uden placering.
+   *
+   *  ⚠️ Kontakten bærer `data-fp-sub`, IKKE `data-sub`. Bar den `data-sub`,
+   *  svarede den selv på søgningen efter portalens rækker — og eftersom renden
+   *  står FØR sit kort i DOM'en, var kontakten altid den første "række" der blev
+   *  fundet. Så målte den sig op ad sig selv, og fordi en kontakt ikke ligger i
+   *  nogen sektion, konkluderede næste runde at rækken var væk og skjulte den.
+   *  Den vekslen mellem "vist forkert" og "skjult" var hele driften. */
+  function subChip(key) {
+    const alle = document.querySelectorAll('.fp-sub[data-fp-sub="' + key + '"]');
+    for (let i = 1; i < alle.length; i++) alle[i].remove();
     return alle[0] || null;
   }
 
   function applySubcontrol(entry) {
     const row = subRowFor(entry);
-    if (!row) return;
+    let t = subChip(entry.key);
+
+    // Foldet kort eller anden fane: rækken findes, men ingen ser den — og så er
+    // der ingen kontakt at placere ved siden af.
+    const card = row && (row.closest('.section') || row.closest('[id^="section-"]') || row.closest('.balance-card'));
+    if (!card) { if (t) t.style.display = 'none'; return; }
 
     // Kontakten hører til den sektion rækken ligger i — den bor i sektionens
     // egen venstre-kolonne, ikke inde i kortet.
-    const card = row.closest('.section') || row.closest('[id^="section-"]');
-    if (!card) return;
     const gutter = gutterFor(card);
 
     const on = subEffective(entry);
@@ -611,15 +643,16 @@
     const lock = resolveLock(entry.module);
     const locked = lock.locked && role !== 'superadmin';
 
-    let t = gutter.querySelector('.fp-sub[data-sub="' + entry.key + '"]');
     if (!t) {
       t = document.createElement('button');
       t.type = 'button';
       t.className = 'fp-sub';
       t.setAttribute('role', 'switch');
-      t.dataset.sub = entry.key;
-      gutter.appendChild(t);
+      t.dataset.fpSub = entry.key;
     }
+    // Samme kontakt følger med til den rende hvor den synlige række er.
+    if (t.parentElement !== gutter) gutter.appendChild(t);
+    t.style.display = '';
     t.setAttribute('aria-checked', on ? 'true' : 'false');
     t.setAttribute('aria-disabled', locked ? 'true' : 'false');
     t.classList.toggle('fp-dirty', draft[entry.target] !== undefined);
@@ -627,40 +660,18 @@
       + (entry.label || entry.key) + (on ? ' — vises for forældre' : ' — skjult for forældre'));
   }
 
-  /** Justér under-kontakterne lodret ud for deres egen række. Kaldes efter
-   *  dekorering og når layoutet kan have flyttet sig (foldning, resize). */
+  /** Justér under-kontakterne lodret ud for deres egen række. Ren måling:
+   *  HVILKEN række (og dermed hvilken rende) kontakten hører til er allerede
+   *  afgjort af applySubcontrol — her sættes kun højden. */
   function positionSubcontrols() {
     for (const entry of subcontrols) {
       if (!entry) continue;
+      const t = subChip(entry.key);
+      if (!t || t.style.display === 'none' || !t.parentElement) continue;
       const row = subRowFor(entry);
-      const t = document.querySelector('.fp-sub[data-sub="' + entry.key + '"]');
-      if (!t) continue;
-      // Foldet sektion: rækken har ingen højde → skjul kontakten med den.
-      if (!row || !row.offsetParent || !row.getClientRects().length) {
-        t.style.display = 'none';
-        continue;
-      }
-      // ⚠️ RETTELSEN: kontakten SKAL ligge i renden ved det kort den synlige
-      // række hører til.
-      //
-      // Samme data-sub findes flere steder — saldo-påmindelser tegnes i både
-      // push- og e-mail-kortet, og alle faner ligger i DOM'en samtidig. Chippen
-      // blev oprettet ÉN gang ved dekorering, i renden ved dét kort der tilfældigvis
-      // blev fundet dengang. Skiftede admin'en fane, pegede den på en synlig række,
-      // men lå selv i en rende inde i en SKJULT fane — og var derfor usynlig,
-      // uanset hvor mange gange vi målte.
-      //
-      // Derfor afstemmes tilhørsforholdet her, hver gang vi måler: er chippen i
-      // den forkerte rende, flyttes den. Det gør målingen uafhængig af HVILKET
-      // event der udløste den — og fjernede behovet for at polle.
-      const card = row.closest('.section') || row.closest('[id^="section-"]');
-      const gutter = card ? gutterFor(card) : t.parentElement;
-      if (gutter && t.parentElement !== gutter) gutter.appendChild(t);
-      if (!gutter) continue;
-
-      const gr = gutter.getBoundingClientRect();
+      if (!row) { t.style.display = 'none'; continue; }
+      const gr = t.parentElement.getBoundingClientRect();
       const rr = row.getBoundingClientRect();
-      t.style.display = '';
       t.style.top = Math.round(rr.top - gr.top + (rr.height - t.offsetHeight) / 2) + 'px';
     }
   }
@@ -691,7 +702,7 @@
       if (ctrl.classList.contains('fp-none')) { openNoFlagPopover(ctrl, true); return; }
 
       if (ctrl.classList.contains('fp-sub')) {
-        const sub = subByKey(ctrl.dataset.sub);
+        const sub = subByKey(ctrl.dataset.fpSub);
         if (!sub) return;
         if (ctrl.getAttribute('aria-disabled') === 'true') { openPopover(ctrl, sub, true); return; }
         closePopover(true);
@@ -777,8 +788,7 @@
     document.querySelectorAll('.section[id^="section-"]').forEach((el) => {
       if (!claimed.has(el.id)) applyNoFlagSection(el);
     });
-    for (const sub of subcontrols) { if (sub) applySubcontrol(sub); }
-    positionSubcontrols();
+    refreshSubcontrols();
     // Kortene folder ud/ind med transition; mål igen hen over animationen.
     repositionOverAnimation();
     // Portalen genopbygger sektionerne ved hver render — observeren skal have
@@ -788,28 +798,31 @@
     positionPopover();
   }
 
+  /** Hvilken række der er synlig kan skifte med foldning og faneskift — derfor
+   *  afgøres tilhørsforholdet forfra, ikke kun højden. */
+  function refreshSubcontrols() {
+    for (const sub of subcontrols) { if (sub) applySubcontrol(sub); }
+    positionSubcontrols();
+  }
+
   /** Layoutet flytter sig ved foldning, resize og efter billed-indlæsning —
    *  under-kontakterne skal følge deres række, ellers peger de på ingenting. */
   function watchSubcontrolLayout() {
-    window.addEventListener('resize', positionSubcontrols);
+    window.addEventListener('resize', refreshSubcontrols);
     // Accordion: portalen folder sektionerne med en grid-template-rows-transition
     // (0fr → 1fr). transitionend fyrer på .section-body.
     document.addEventListener('transitionend', (e) => {
-      if (e.target && e.target.classList && e.target.classList.contains('section-body')) positionSubcontrols();
+      if (e.target && e.target.classList && e.target.classList.contains('section-body')) refreshSubcontrols();
     }, true);
-    // Klik kan folde en sektion uden transitionend (fx display-skift). Ét
-    // requestAnimationFrame er ikke nok: rækken har først en boks NÅR
-    // udfoldningen er kørt, så vi måler hen over hele animationen (.25s).
+    // Klik folder et kort ud eller ind — kontakten skal følge indholdet hen over
+    // de .25s foldningen tager, ikke først lande når den er ovre.
     document.addEventListener('click', () => repositionOverAnimation(), true);
     watchTabSwitches();
-    startLayoutSafetyNet();
     if (typeof ResizeObserver === 'function') {
-      // ⚠️ document.body var ikke nok: portalens scroll-container er .main, så
-      // body skifter ikke størrelse når et kort foldes ud eller en fane skifter
-      // — observeren fyrede aldrig, og under-kontakterne blev liggende som
-      // display:none. Observér dét der FAKTISK ændrer størrelse: fanerne (som
-      // går fra display:none til udlagt) og hvert korts indre.
-      const ro = new ResizeObserver(() => positionSubcontrols());
+      // Portalens scroll-container er .main — document.body skifter ikke
+      // størrelse når et kort foldes ud eller en fane skifter. Observér dét der
+      // FAKTISK ændrer størrelse: fanerne og hvert korts indre.
+      const ro = new ResizeObserver(() => refreshSubcontrols());
       ro.observe(document.body);
       observeLayoutTargets(ro);
       subLayoutObserver = ro;
@@ -826,30 +839,22 @@
       .forEach((el) => ro.observe(el));
   }
 
-  /** Mål gentagne gange hen over accordion-animationen OG et faneskift.
-   *  Billigt (få frames), og fjerner afhængigheden af at præcis ét event fyrer
-   *  på præcis ét element — hvilket var netop dét der fejlede: et faneskift
-   *  udløste ingen af de events vi lyttede på, så kontakterne blev liggende
-   *  skjult indtil noget andet tilfældigvis trigger'ede en måling. */
+  /** Følg kontakterne hen over foldnings-animationen (.25s) og et faneskift.
+   *  Ikke en polling: løkken er bundet til en konkret hændelse og stopper når
+   *  layoutet står stille — eller senest efter loftet. */
   function repositionOverAnimation() {
-    // Måler indtil layoutet står stille — ikke i et fast antal frames.
-    //
-    // Et fast vindue var forkert: portalens faneskift lægger indholdet ud på et
-    // tidspunkt vi ikke kan forudsige (målt i prod: efter 750 ms stod
-    // kontakterne stadig skjult, mens et resize ~1,4 s senere viste dem
-    // korrekt). Vi stopper derfor når to på hinanden følgende målinger giver
-    // samme resultat — og under alle omstændigheder efter et loft.
     if (settleTimer) cancelAnimationFrame(settleTimer);
     let stille = 0;
     let sidste = '';
     let frames = 0;
     const tick = () => {
-      positionSubcontrols();
+      refreshSubcontrols();
       const nu = subcontrolFingerprint();
       stille = (nu === sidste) ? stille + 1 : 0;
       sidste = nu;
-      // 8 rolige frames (~130 ms) = layoutet er faldet til ro.
-      if (stille >= 8 || ++frames > 240) { settleTimer = null; return; }
+      // 4 rolige frames (~65 ms) = layoutet er faldet til ro. Loftet (~1 s) er
+      // rigeligt til en .25s-transition.
+      if (stille >= 4 || ++frames > 60) { settleTimer = null; return; }
       settleTimer = requestAnimationFrame(tick);
     };
     settleTimer = requestAnimationFrame(tick);
@@ -863,40 +868,11 @@
     let ud = '';
     for (const entry of subcontrols) {
       if (!entry) continue;
-      const t = document.querySelector('.fp-sub[data-sub="' + entry.key + '"]');
+      const t = document.querySelector('.fp-sub[data-fp-sub="' + entry.key + '"]');
       ud += entry.key + (t ? t.style.display + t.style.top : '-') + '|';
     }
     return ud;
   }
-
-  /** ⚠️ MIDLERTIDIG: periodisk måling, fordi jeg ikke har fundet rod-årsagen.
-   *
-   *  Status ærligt: efter et faneskift står under-kontakterne skjulte, mens et
-   *  MANUELT resize-event viser præcis de rigtige med det samme. Samme funktion,
-   *  samme data. Jeg har prøvet fire ting og målt hver af dem mod prod:
-   *    1. ResizeObserver på .section-body-inner og .tab-view  → ingen effekt
-   *    2. MutationObserver på .tab-view's class              → observeren fyrer
-   *       (verificeret med en identisk observer i konsollen), men kontakterne
-   *       forbliver skjulte
-   *    3. subRowFor vælger nu den synligt udlagte række      → nødvendigt, men
-   *       ikke tilstrækkeligt
-   *    4. Chippen flyttes til renden ved det synlige kort     → do.
-   *    5. Måling indtil layoutet står stille (op til 4 s)     → ingen effekt
-   *
-   *  Der er altså noget der SKJULER kontakterne igen efter vores måling, og det
-   *  har jeg ikke fundet. Indtil da måles der hvert 400 ms, så fladen virker.
-   *  Prisen er 12 getBoundingClientRect hvert 400 ms og KUN i admin-preview;
-   *  forældrenes portal indlæser ikke dette modul.
-   *
-   *  Det rigtige fix er sandsynligvis at fjerne målingen helt: lad chippen bo
-   *  INDE i rækken frem for absolut i en rende. Det kræver at accordionens
-   *  overflow:hidden løses på anden vis, og er en selvstændig opgave. */
-  function startLayoutSafetyNet() {
-    if (layoutTimer) return;
-    layoutTimer = setInterval(positionSubcontrols, 400);
-  }
-
-  var layoutTimer = null;
 
   /** Fanerne skifter ved at flytte .active — ingen størrelsesændring vi kan
    *  regne med at se i tide. Se efter klasseskiftet i stedet. */

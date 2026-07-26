@@ -349,7 +349,7 @@
         try {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'js/portal-admin-preview.js?v=17';
+            s.src = 'js/portal-admin-preview.js?v=18';
             s.onload = resolve; s.onerror = reject;
             document.head.appendChild(s);
           });
@@ -1642,6 +1642,13 @@
   // renderes — preview-modulet gråtoner de slukkede i stedet for at skjule dem.
   function secOn(key) { return isAdminPreview() || visibleSections[key] !== false; }
 
+  // Samme regel for de RÆKKER inde i kortene som preview'ets under-kontakter
+  // hænger på (`data-sub`). Fjerner man rækken når institutionen har slået den
+  // fra, forsvinder admin-chippen med den — og så kan indstillingen ikke tændes
+  // igen. Alt med et data-sub-anker skal derfor gates med subOn(), ikke med
+  // flaget direkte.
+  function subOn(visible) { return isAdminPreview() || visible === true; }
+
   function renderApp() {
     const balance = getChildBalance();
     const status = getBalanceStatus(balance);
@@ -1744,7 +1751,7 @@
               </div>
               <div class="topup-row">
                 <button class="topup-btn topup-primary" data-nav-tab="tab-pay">${icon('plus', 18)}Indbetal</button>
-                <span data-sub="contact_button" style="display:contents">${renderBalanceSecondaryAction()}</span>
+                ${renderBalanceSecondaryAction()}
               </div>
             </div>
 
@@ -1777,7 +1784,7 @@
           <div class="tab-view" id="tab-profile">
             <div class="view-header mobile-only"><div class="view-title">Profil</div><div class="view-subtitle">Barnets profil & indstillinger</div></div>
             ${renderChildNameSection()}
-            ${renderProfilePictureSection()}
+            ${secOn('profile_pictures') ? renderProfilePictureSection() : ''}
             ${secOn('transfer') ? renderTransferSection() : ''}
             ${renderNotificationsSection()}
             ${secOn('invite_parent') ? renderInviteParentSection() : ''}
@@ -2334,16 +2341,20 @@
   function renderBalanceSecondaryAction() {
     const mailIcon = icon('mail', 18);
     const phoneIcon = icon('phone', 18);
+    // data-sub sidder på selve knappen — ikke på en display:contents-wrapper.
+    // En wrapper uden layout-boks kan preview'et ikke måle på, og chippen for
+    // kontaktknappen kunne derfor aldrig placeres.
+    const sub = ' data-sub="contact_button"';
 
     const phone = featureFlags.institution_contact_phone;
     if (featureFlags.institution_contact_phone_enabled === true && phone) {
       const dial = String(phone).replace(/[^\d+]/g, '');
-      return `<a class="topup-btn topup-secondary" href="tel:${esc(dial)}">${phoneIcon}Kontakt</a>`;
+      return `<a class="topup-btn topup-secondary"${sub} href="tel:${esc(dial)}">${phoneIcon}Kontakt</a>`;
     }
     if (secOn('feedback')) {
-      return `<button class="topup-btn topup-secondary" data-qa-scroll="section-feedback" data-qa-tab="tab-profile">${mailIcon}Feedback</button>`;
+      return `<button class="topup-btn topup-secondary"${sub} data-qa-scroll="section-feedback" data-qa-tab="tab-profile">${mailIcon}Feedback</button>`;
     }
-    return `<button class="topup-btn topup-secondary" data-qa-scroll="section-contact" data-qa-tab="tab-privacy">${mailIcon}Kontakt</button>`;
+    return `<button class="topup-btn topup-secondary"${sub} data-qa-scroll="section-contact" data-qa-tab="tab-privacy">${mailIcon}Kontakt</button>`;
   }
 
   /** Er der overhovedet café-grænser over skærmtid i Grænser-fanen? Skillelinjen
@@ -2962,8 +2973,9 @@
   }
 
   function renderProfilePictureSection() {
-    if (featureFlags?.parent_portal_profile_pictures === false) return '';
-
+    // Synligheden ejes af kaldestedet (secOn('profile_pictures')) som for alle
+    // andre sektioner. En ekstra flag-tjek her skjulte kortet HELT i admin-
+    // preview'et, så chippen forsvandt sammen med det.
     const optOutAula = childData?.profile_picture_opt_out_aula || false;
     const optOutCamera = childData?.profile_picture_opt_out_camera || false;
     const optOutParentUpload = childData?.profile_picture_opt_out_parent_upload || false;
@@ -2971,8 +2983,10 @@
     const hasOpenaiConsent = (consentHistory || []).some(c => c.consent_type === 'profile_picture_ai_openai' && c.is_active);
     // Filter toggles efter hvad institutionen har slået til (jf. café settings / super-admin)
     const ppInstTypes = Array.isArray(featureFlags?.profile_picture_types) ? featureFlags.profile_picture_types : ['upload', 'camera', 'library'];
-    const showAula = ppInstTypes.indexOf('upload') !== -1;
-    const showCamera = ppInstTypes.indexOf('camera') !== -1;
+    // inst* = institutionens valg (det forælderen møder). show* = om rækken
+    // RENDERES — i admin-preview altid, så chippen har et anker at sidde på.
+    const instAula = ppInstTypes.indexOf('upload') !== -1;
+    const instCamera = ppInstTypes.indexOf('camera') !== -1;
     // De to avatar-flag er uafhængige (personale-drevet vs. forælder-drevet).
     // Samtykke-toggle'en skal derfor vises hvis MINDST ét af dem er tændt —
     // ellers opstår en blindgyde: forælderen ser "Lav en AI-avatar", men kan
@@ -2980,19 +2994,25 @@
     const aiMasterOn = featureFlags?.profile_pictures_ai_enabled !== false
       || featureFlags?.parent_ai_avatar_enabled === true;
     // Én AI-avatar-udbyder: Microsoft Azure (EU). ai_provider_openai = legacy-navngivet gate (default true).
-    const showAi = aiMasterOn && featureFlags?.ai_provider_openai !== false;
+    const instAi = aiMasterOn && featureFlags?.ai_provider_openai !== false;
     const optOutOpenai = !hasOpenaiConsent;
     // Forælder-upload: institutions-flag fra featureFlags (parent_can_upload_pictures default true)
-    const showParentUpload = isAdminPreview() || featureFlags?.parent_can_upload_pictures !== false;
-    // "All opted out" for master-toggle: aula + camera + parent-upload + AI
-    const allOptedOut = (showAula ? optOutAula : true)
-      && (showCamera ? optOutCamera : true)
-      && (showParentUpload ? optOutParentUpload : true)
-      && (showAi ? optOutOpenai : true);
+    const instParentUpload = featureFlags?.parent_can_upload_pictures !== false;
+    const showAula = subOn(instAula);
+    const showCamera = subOn(instCamera);
+    const showAi = subOn(instAi);
+    const showParentUpload = subOn(instParentUpload);
+    // "All opted out" for master-toggle: aula + camera + parent-upload + AI.
+    // Regnes på institutionens VIRKELIGE valg — ikke på preview-visningen, som
+    // altid viser alle fire rækker.
+    const allOptedOut = (instAula ? optOutAula : true)
+      && (instCamera ? optOutCamera : true)
+      && (instParentUpload ? optOutParentUpload : true)
+      && (instAi ? optOutOpenai : true);
     const library = childData?.profile_picture_library || [];
     const childName = getChildName();
     const initials = childName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-    const canUploadNow = showParentUpload && !optOutParentUpload && !isHelpingParent();
+    const canUploadNow = instParentUpload && !optOutParentUpload && !isHelpingParent();
 
     // Build gallery HTML
     let galleryHtml = '';
@@ -3070,7 +3090,7 @@
     }
 
     // Upload-knap + approval-hint (kun hvis institutionen tillader OG samtykke er aktivt)
-    const uploadHtml = showParentUpload ? `
+    const uploadHtml = instParentUpload ? `
       <div style="margin-bottom:var(--s3);padding:var(--s3);border:1px dashed var(--border, #d1d5db);border-radius:var(--r-md, 12px);background:var(--surface-sunken, #fafaf9);">
         <button id="pp-upload-btn" ${canUploadNow ? '' : 'disabled'} style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:none;border-radius:8px;background:${canUploadNow ? 'var(--flango, #F5960A)' : 'var(--border-color, #e5e7eb)'};color:${canUploadNow ? '#fff' : 'var(--ink-muted, #78716c)'};font-weight:600;font-size:14px;cursor:${canUploadNow ? 'pointer' : 'not-allowed'};">
           ${icon('image-up', 17)} Upload nyt billede
@@ -3097,10 +3117,7 @@
     } else {
       avatarHint = 'Personalet godkender hver avatar, før den kan bruges.';
     }
-    // Kortet rendres også i admin-preview (flag OFF) så super-admin/admin-chippen
-    // (data-sub="pp_parent_ai") har et anker at montere på — ellers ville chippen
-    // forsvinde når flaget er slukket, og man kunne ikke tænde det.
-    const avatarHtml = (parentAiOn || isAdminPreview()) ? `
+    const avatarHtml = subOn(parentAiOn) ? `
       <div data-sub="pp_parent_ai" style="margin-bottom:var(--s3);padding:var(--s3);border:1px dashed var(--border, #d1d5db);border-radius:var(--r-md, 12px);background:var(--surface-sunken, #fafaf9);">
         <button id="pp-generate-avatar-btn" ${avatarBtnEnabled ? '' : 'disabled'} style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:none;border-radius:8px;background:${avatarBtnEnabled ? 'var(--flango, #F5960A)' : 'var(--border-color, #e5e7eb)'};color:${avatarBtnEnabled ? '#fff' : 'var(--ink-muted, #78716c)'};font-weight:600;font-size:14px;cursor:${avatarBtnEnabled ? 'pointer' : 'not-allowed'};">
           ${icon('sparkles', 17)} Lav en AI-avatar
@@ -3361,17 +3378,17 @@
             ${showUsage ? `<div class="st-stat-card used"><div class="st-stat-value">${used} min</div><div class="st-stat-label">Brugt i dag</div></div>` : ''}
           </div>
           ${showRules ? `<div class="hint-box info" style="margin-bottom:var(--s3)">${hintIcon('clipboard-list')}<span>Institutionens regler: ${instDaily} min/dag, maks ${instSession} min pr. session</span></div>` : ''}
-          ${(isAdminPreview() || allowPersonal) ? `
+          ${subOn(allowPersonal) ? `
           <div class="setting-row" data-sub="st_personal_limits">
             <div class="setting-info"><div class="setting-label">Personlig daglig grænse</div><div class="setting-desc">∞ = ingen personlig grænse — klubbens regler gælder</div></div>
             <div class="stepper" id="st-daily-stepper" data-step="5"${maxDailyAttr}><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalDaily || '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
           </div>` : ''}
-          ${(isAdminPreview() || allowSessionLimit) ? `
+          ${subOn(allowSessionLimit) ? `
           <div class="setting-row" data-sub="st_session_limit">
             <div class="setting-info"><div class="setting-label">Maks pr. session</div><div class="setting-desc">Hvor lang tid ad gangen (minutter). ∞ = klubbens regel gælder</div></div>
             <div class="stepper" id="st-session-stepper" data-step="5"${maxSessionAttr}><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalSession || '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
           </div>` : ''}
-          ${(isAdminPreview() || allowExtraTime) ? `
+          ${subOn(allowExtraTime) ? `
           <div class="setting-row" data-sub="st_extra_time">
             <div class="setting-info"><div class="setting-label">Samtykke til forlænget spilletid</div><div class="setting-desc">Giv personalet lov til undtagelsesvis at forlænge.</div></div>
             <label class="toggle"><input type="checkbox" id="st-consent-toggle" ${consent ? 'checked' : ''}><span class="toggle-track"></span></label>
@@ -3535,9 +3552,9 @@
       : (API.isNativeApp() ? '' : `<div class="hint-box neutral" style="margin-bottom:var(--s3)">${hintIcon('smartphone')}<span>Push-notifikationer vises på alle dine enheder med Flango Portal-appen.</span></div>`);
     // Under-kontakter: institutionen kan slå enkelte påmindelsestyper fra uden at
     // slukke hele notifikations-kortet. I admin-preview vises rækkerne altid (grå).
-    const notifBalanceOn = isAdminPreview() || childData?.institution?.parent_portal_notify_balance !== false;
-    const notifEventsOn = isAdminPreview() || childData?.institution?.parent_portal_notify_events !== false;
-    const notifExtraEmailOn = isAdminPreview() || childData?.institution?.parent_portal_notify_extra_email !== false;
+    const notifBalanceOn = subOn(childData?.institution?.parent_portal_notify_balance !== false);
+    const notifEventsOn = subOn(childData?.institution?.parent_portal_notify_events !== false);
+    const notifExtraEmailOn = subOn(childData?.institution?.parent_portal_notify_extra_email !== false);
     // De to kort er to selvstændige valg for institutionen (2026-07-26): push
     // kan slukkes uden at e-mail-påmindelserne følger med, og omvendt. Før hang
     // begge på ét flag, der oven i købet hed noget andet end det gjorde.
