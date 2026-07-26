@@ -291,6 +291,9 @@
         cursor: pointer; font-family: inherit; transition: border-color .15s, background .15s;
       }
       .fp-sub-cog:hover { border-color: #9ca3af; color: #111827; }
+      /* Under-kontaktens lås deler plads med tandhjulet — de vises aldrig
+         samtidig (en låst kontakt har intet at indstille). */
+      .fp-sub-lock { position: absolute; right: 42px; }
       /* Aktiv = panelet er åbent. Samme knap lukker det igen, og det skal kunne
          ses — ellers klikker man forgæves og tror den er død. */
       .fp-sub-cog.active {
@@ -815,10 +818,39 @@
     t.setAttribute('aria-label', (locked ? 'Låst af Flango. ' : '')
       + (entry.label || entry.key) + (on ? ' — vises for forældre' : ' — skjult for forældre'));
 
+    // Lås-knap på under-kontakten. Under-kontakterne har hver sit eget
+    // feature_flags-modul (portal_notify_balance, profile_pic_upload, …), og
+    // både resolveLock her og setFeatureFlag i super-admin tager et vilkårligt
+    // modul — så hele vejen fandtes allerede. Det var alene knappen der manglede,
+    // og uden den kunne superadmin kun låse hele sektioner.
+    let subLock = document.querySelector('.fp-sub-lock[data-fp-sub="' + entry.key + '"]');
+    const visLås = role === 'superadmin' || lock.locked;
+    if (visLås) {
+      if (!subLock) {
+        subLock = document.createElement('button');
+        subLock.type = 'button';
+        subLock.className = 'fp-lock fp-sub-lock';
+        subLock.dataset.fpSub = entry.key;
+      }
+      if (subLock.parentElement !== gutter) gutter.appendChild(subLock);
+      subLock.style.display = '';
+      subLock.dataset.locked = lock.locked ? '1' : '0';
+      subLock.classList.toggle('fp-inherited', !!lock.inherited);
+      subLock.classList.toggle('fp-dirty', !!lock.draft);
+      subLock.textContent = lock.locked ? '🔒' : '🔓';
+      subLock.setAttribute('aria-label', lock.locked
+        ? 'Låst for institutionen'
+        : 'Institutionen kan ændre — klik for at låse');
+    } else if (subLock) {
+      subLock.remove();
+    }
+
     // Tandhjul for kontakter der har mere end til/fra hos værten. Værten
     // annoncerer selv hvilke (settingsFor) — portalen gætter ikke.
+    // Er kontakten LÅST, ryger tandhjulet: institutionen kan alligevel ikke
+    // ændre indstillingen, og de to knapper deler samme plads i renden.
     let cog = document.querySelector('.fp-sub-cog[data-fp-sub="' + entry.key + '"]');
-    if (settingsFor.indexOf(entry.key) !== -1) {
+    if (settingsFor.indexOf(entry.key) !== -1 && !visLås) {
       if (!cog) {
         cog = document.createElement('button');
         cog.type = 'button';
@@ -845,20 +877,23 @@
     for (const entry of subcontrols) {
       if (!entry) continue;
       const t = subChip(entry.key);
-      const cog = document.querySelector('.fp-sub-cog[data-fp-sub="' + entry.key + '"]');
-      if (!t || t.style.display === 'none' || !t.parentElement) { if (cog) cog.style.display = 'none'; continue; }
+      // Tandhjul og lås deler plads og følger begge deres kontakt.
+      const extras = document.querySelectorAll(
+        '.fp-sub-cog[data-fp-sub="' + entry.key + '"], .fp-sub-lock[data-fp-sub="' + entry.key + '"]');
+      const skjul = () => extras.forEach((n) => { n.style.display = 'none'; });
+      if (!t || t.style.display === 'none' || !t.parentElement) { skjul(); continue; }
       const row = subRowFor(entry);
-      if (!row) { t.style.display = 'none'; if (cog) cog.style.display = 'none'; continue; }
+      if (!row) { t.style.display = 'none'; skjul(); continue; }
       const gr = t.parentElement.getBoundingClientRect();
       const rr = row.getBoundingClientRect();
       const top = Math.round(rr.top - gr.top + (rr.height - t.offsetHeight) / 2);
       t.style.top = top + 'px';
-      // Tandhjulet følger sin kontakt. Det er højere end kontakten (26 vs 20px),
-      // så de centreres om hinanden i stedet for at flugte i toppen.
-      if (cog) {
-        cog.style.display = '';
-        cog.style.top = Math.round(top + (t.offsetHeight - cog.offsetHeight) / 2) + 'px';
-      }
+      // De følger deres kontakt. De er højere end den (26 vs 20px), så de
+      // centreres om hinanden i stedet for at flugte i toppen.
+      extras.forEach((n) => {
+        n.style.display = '';
+        n.style.top = Math.round(top + (t.offsetHeight - n.offsetHeight) / 2) + 'px';
+      });
     }
   }
 
@@ -886,6 +921,15 @@
       e.preventDefault();
 
       if (ctrl.classList.contains('fp-none')) { openNoFlagPopover(ctrl, true); return; }
+
+      // Under-kontaktens lås. Skal stå FØR .fp-sub-testen: knappen bærer også
+      // data-fp-sub, og det er lås-popover'en der skal åbnes — ikke kontakten
+      // der skal vendes.
+      if (ctrl.classList.contains('fp-sub-lock')) {
+        const sub = subByKey(ctrl.dataset.fpSub);
+        if (sub) openPopover(ctrl, sub, true);
+        return;
+      }
 
       // Tandhjul: værten ejer panelet, så den beslutter — portalen beder blot om
       // at få det vendt og tegner den tilstand værten melder tilbage.
@@ -939,7 +983,8 @@
       hoverTimer = setTimeout(() => {
         if (popSticky || !ctrl.isConnected) return;
         if (ctrl.classList.contains('fp-none')) { openNoFlagPopover(ctrl, false); return; }
-        const entry = ctrl.classList.contains('fp-sub')
+        // Både under-kontakten og dens lås bærer data-fp-sub.
+        const entry = ctrl.dataset.fpSub
           ? subByKey(ctrl.dataset.fpSub)
           : sectionByKey(ctrl.dataset.key);
         if (!entry) return;
