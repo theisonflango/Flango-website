@@ -349,7 +349,7 @@
         try {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'js/portal-admin-preview.js?v=14';
+            s.src = 'js/portal-admin-preview.js?v=15';
             s.onload = resolve; s.onerror = reject;
             document.head.appendChild(s);
           });
@@ -1676,11 +1676,7 @@
           <span class="demo-banner-badge">EKSEMPEL</span>
           <span class="demo-banner-text">Du ser portalen med et opdigtet barn — ingen families data.</span>
         </div>` : ''}
-        ${isHelpingParent() ? `
-        <div class="demo-banner" role="status" style="background:#b45309">
-          <span class="demo-banner-badge">PÅ VEGNE AF</span>
-          <span class="demo-banner-text">Du handler på vegne af <strong>${esc(getChildName())}</strong>s forælder. Ændringer er ægte og registreres på dig — ikke på forælderen.</span>
-        </div>` : ''}
+
 
         <!-- DESKTOP SIDEBAR -->
         <aside class="desktop-sidebar">
@@ -1823,6 +1819,7 @@
     // Eksempel-visningen har intet barn at ændre — gør kontrollerne inerte FØR
     // preview-modulet lægger sine chips på, så chipsene ikke rammes.
     makeExampleControlsInert();
+    renderHelpingParentBar();
 
     // Admin-preview: dekorér sektionerne (grå + toggle-chips) efter hver render.
     if (isAdminPreview() && window.FlangoAdminPreview) {
@@ -1838,6 +1835,33 @@
     } else {
       loadPurchaseProfile();
     }
+  }
+
+  /** "Du handler på vegne af …"-linjen i BUNDEN.
+   *
+   *  Lå tidligere som et banner øverst, hvor den lagde sig oven i café-appens
+   *  egen header og skubbede indholdet ned. Den hører ikke i toppen: den er en
+   *  vedvarende tilstandsvisning, ikke en overskrift. Nederst er den altid
+   *  synlig uden at dække noget, og den kan lukkes — den FARVEDE RAMME om
+   *  fladen bliver stående som det signal der ikke kan slås fra.
+   */
+  function renderHelpingParentBar() {
+    const gammel = document.getElementById('flango-helping-bar');
+    if (gammel) gammel.remove();
+    if (!isHelpingParent()) return;
+    try { if (sessionStorage.getItem('flango_helping_bar_dismissed') === '1') return; } catch (_) {}
+
+    const bar = document.createElement('div');
+    bar.id = 'flango-helping-bar';
+    bar.setAttribute('role', 'status');
+    bar.innerHTML = `<span class="fhb-badge">PÅ VEGNE AF</span>
+      <span class="fhb-text">Du handler på vegne af <strong>${esc(getChildName())}</strong>s forælder. Ændringer er ægte og registreres på dig — ikke på forælderen.</span>
+      <button class="fhb-close" type="button" aria-label="Skjul">${icon('circle-x', 18)}</button>`;
+    document.body.appendChild(bar);
+    bar.querySelector('.fhb-close').addEventListener('click', () => {
+      try { sessionStorage.setItem('flango_helping_bar_dismissed', '1'); } catch (_) {}
+      bar.remove();
+    });
   }
 
   // Ét sted frem for en gate i hver eneste gemme-funktion: i eksempel-visningen
