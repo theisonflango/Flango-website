@@ -338,6 +338,26 @@
       if (error) throw error;
     },
 
+    /** "Hjælp en forælder"-sessionen giver sin egen midlertidige adgang fra sig.
+     *  Kaldes ved log ud og når fanen lukkes. Rammer kun kalderens egne
+     *  midlertidige links — en almindelig forælder har ingen, så kaldet er
+     *  virkningsløst for dem. TTL + cron rydder op hvis den aldrig når frem. */
+    async revokeMyAdminParentAccess(useKeepalive) {
+      const token = await getAccessToken();
+      if (!token) return;
+      // keepalive: kaldet skal overleve at fanen lukkes (pagehide).
+      await fetch(`${SUPABASE_URL}/rest/v1/rpc/revoke_my_admin_parent_access`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': window.portalSupabase?.supabaseKey || window.SUPABASE_ANON_KEY || '',
+        },
+        body: '{}',
+        keepalive: useKeepalive === true,
+      }).catch(() => { /* best-effort: TTL'en er backstoppet */ });
+    },
+
     /** Update password (for recovery flow) */
     async updatePassword(newPassword) {
       const { error } = await window.portalSupabase.auth.updateUser({ password: newPassword });

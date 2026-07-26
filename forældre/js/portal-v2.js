@@ -1373,6 +1373,14 @@
     }
   });
 
+  // Lukkes fanen midt i "Hjælp en forælder", skal adgangen til barnet dø med
+  // den. pagehide frem for beforeunload: den fyrer også når mobilen sender
+  // fanen i baggrunden og siden aldrig kommer tilbage. keepalive lader kaldet
+  // overleve nedlukningen. Fejler det, rydder TTL + cron op inden for et minut.
+  window.addEventListener('pagehide', () => {
+    if (isHelpingParent()) API.revokeMyAdminParentAccess(true);
+  });
+
   // ─── Forgot password handler ───
   async function handleForgotSubmit() {
     const email = document.getElementById('forgot-email').value.trim();
@@ -6692,6 +6700,9 @@
   async function handleLogout() {
     stopInactivityTimeout();
     try {
+      // Adgangen til barnet gives fra sig FØR sessionen dør — bagefter er der
+      // ingen token at gøre det med, og linket ville skulle vente på TTL'en.
+      if (isHelpingParent()) await API.revokeMyAdminParentAccess(false);
       await API.signOut();
       currentSession = null;
       children = [];
