@@ -349,7 +349,7 @@
         try {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'js/portal-admin-preview.js?v=15';
+            s.src = 'js/portal-admin-preview.js?v=16';
             s.onload = resolve; s.onerror = reject;
             document.head.appendChild(s);
           });

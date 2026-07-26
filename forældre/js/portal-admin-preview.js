@@ -831,12 +831,41 @@
    *  udløste ingen af de events vi lyttede på, så kontakterne blev liggende
    *  skjult indtil noget andet tilfældigvis trigger'ede en måling. */
   function repositionOverAnimation() {
-    let n = 0;
+    // Måler indtil layoutet står stille — ikke i et fast antal frames.
+    //
+    // Et fast vindue var forkert: portalens faneskift lægger indholdet ud på et
+    // tidspunkt vi ikke kan forudsige (målt i prod: efter 750 ms stod
+    // kontakterne stadig skjult, mens et resize ~1,4 s senere viste dem
+    // korrekt). Vi stopper derfor når to på hinanden følgende målinger giver
+    // samme resultat — og under alle omstændigheder efter et loft.
+    if (settleTimer) cancelAnimationFrame(settleTimer);
+    let stille = 0;
+    let sidste = '';
+    let frames = 0;
     const tick = () => {
       positionSubcontrols();
-      if (++n < 45) requestAnimationFrame(tick);
+      const nu = subcontrolFingerprint();
+      stille = (nu === sidste) ? stille + 1 : 0;
+      sidste = nu;
+      // 8 rolige frames (~130 ms) = layoutet er faldet til ro.
+      if (stille >= 8 || ++frames > 240) { settleTimer = null; return; }
+      settleTimer = requestAnimationFrame(tick);
     };
-    requestAnimationFrame(tick);
+    settleTimer = requestAnimationFrame(tick);
+  }
+
+  var settleTimer = null;
+
+  /** Kompakt aftryk af hvad der aktuelt er synligt — bruges kun til at afgøre
+   *  om layoutet har lagt sig, aldrig som tilstand. */
+  function subcontrolFingerprint() {
+    let ud = '';
+    for (const entry of subcontrols) {
+      if (!entry) continue;
+      const t = document.querySelector('.fp-sub[data-sub="' + entry.key + '"]');
+      ud += entry.key + (t ? t.style.display + t.style.top : '-') + '|';
+    }
+    return ud;
   }
 
   /** Fanerne skifter ved at flytte .active — ingen størrelsesændring vi kan
