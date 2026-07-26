@@ -108,6 +108,10 @@
     var active = overlayEl.querySelector('.admin-page.active');
     if (active) active.scrollTop = 0;
 
+    // Preview-værtens kontroller i bjælken hører kun til indstillings-siden.
+    var chrome = overlayEl.querySelector('.admin-bar-right');
+    if (chrome) chrome.style.display = (pageId === PAGES.SETTINGS) ? '' : 'none';
+
     if (pageId === PAGES.SETTINGS) mountPreview();
   }
 
@@ -123,6 +127,10 @@
     AdminPortalPreviewHost.mount(container, {
       institutionSettings: institutionSettings,
       featureFlags: featureFlags,
+      // Preview-værtens egne kontroller hører hjemme i admin-bjælken, ikke i en
+      // værktøjslinje for sig selv. Skallen ejer bjælkens layout og udlåner
+      // pladsen; værten fylder den og rydder op efter sig ved unmount.
+      chromeSlot: overlayEl.querySelector('.admin-bar-right'),
     });
   }
 

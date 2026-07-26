@@ -32,6 +32,7 @@
   let contactDirty = false;   // kontaktfelterne følger samme gem-bar
   let messageListener = null;
   let savedSettings = null;   // institutionSettings ved mount (til kontaktfelter)
+  let chromeEl = null;        // enheds-kontakten, monteret i skallens admin-bjælke
 
   function getPortalOrigin() {
     // tauri://localhost har OGSÅ hostname 'localhost' — desktop-appen skal på
@@ -62,6 +63,42 @@
 
   function isDirty() {
     return Object.keys(draft).length > 0 || contactDirty;
+  }
+
+  /** Kontakt-panelet. Værten ejer tilstanden — tandhjulet i portalen er kun en
+   *  udløser og tegner den tilstand vi melder tilbage. Ét sted at spørge, så
+   *  knap og panel ikke kan komme ud af trit. */
+  function isContactPanelOpen() {
+    const panel = containerEl && containerEl.querySelector('#pvh-contact-panel');
+    return !!panel && panel.style.display !== 'none';
+  }
+
+  function setContactPanel(open) {
+    const panel = containerEl && containerEl.querySelector('#pvh-contact-panel');
+    if (!panel) return;
+    panel.style.display = open ? '' : 'none';
+    if (open) {
+      const phone = containerEl.querySelector('#pvh-contact-phone');
+      if (phone) { phone.focus(); phone.select(); }
+    }
+    post({ type: 'flango-preview:settings-state', key: 'contact_button', open: !!open });
+  }
+
+  /** Enheds-visning. Mobil er en REN forældre-visning: renden med admin-chips
+   *  ligger inde i portalen, så i en 390px-ramme ville den æde 72px + afstand og
+   *  vise indholdet ~20% smallere end en rigtig telefon. Det ville ikke være en
+   *  mobil-visning, men en forkert en. Chippene skjules derfor — gråtoningen og
+   *  "skjult for forældre"-mærket bliver, ellers ville en slukket sektion se
+   *  levende ud. Desktop = indstil, mobil = kontrollér hvordan det ser ud. */
+  function setDevice(device) {
+    const mobil = device === 'mobile';
+    if (chromeEl) {
+      chromeEl.querySelectorAll('.pvh-device-btn')
+        .forEach(b => b.classList.toggle('active', (b.dataset.device === 'mobile') === mobil));
+    }
+    const wrap = containerEl && containerEl.querySelector('#pvh-frame-wrap');
+    if (wrap) wrap.classList.toggle('mobile', mobil);
+    post({ type: 'flango-preview:chrome', gutters: !mobil });
   }
 
   function updateSaveBar() {
@@ -102,21 +139,11 @@
     const contactEnabled = !!(settings && settings.institution_contact_phone_enabled);
     return `
       <div class="pvh-root">
-        <div class="pvh-toolbar">
-          <div class="pvh-toolbar-left">
-
-          </div>
-          <div class="pvh-toolbar-right">
-            <button class="pvh-contact-btn" id="pvh-contact-toggle-panel">📞 Kontaktknap</button>
-            <div class="pvh-device-toggle" id="pvh-device-toggle">
-              <button class="pvh-device-btn active" data-device="desktop">Desktop</button>
-              <button class="pvh-device-btn" data-device="mobile">Mobil</button>
-            </div>
-          </div>
-        </div>
         <div class="pvh-contact-panel" id="pvh-contact-panel" style="display:none">
           <div class="admin-field" style="margin:0">
-            <div class="admin-field-label">📞 Kontakttelefon (vises i portalens saldo-kort)</div>
+            <div class="admin-field-label">📞 Kontakttelefon (vises i portalens saldo-kort)
+              <button class="pvh-panel-close" id="pvh-contact-close" aria-label="Luk">✕</button>
+            </div>
             <input type="tel" class="input-field input" id="pvh-contact-phone" value="${esc(contactPhone)}" placeholder="Telefonnummer til institutionen">
             <div class="setting-row">
               <div class="setting-info"><div class="setting-label">Aktiver kontaktknap</div><div class="setting-desc">Til = forældre kan ringe direkte fra saldo-kortet. Fra = knappen viser Support i stedet.</div></div>
@@ -149,11 +176,8 @@
          alene — her styres kun højden, og kun indefra containeren. */
       #pv2-settings-container { flex:1; min-height:0; display:flex; flex-direction:column; }
       .pvh-root { display:flex; flex-direction:column; flex:1; min-height:0; }
-      .pvh-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border, #e5e7eb); background:var(--surface, #fff); flex-wrap:wrap; }
-      .pvh-hint { font-size:12px; color:var(--ink-muted, #6b7280); }
-      .pvh-toolbar-right { display:flex; align-items:center; gap:10px; }
-      .pvh-contact-btn { padding:6px 12px; border-radius:8px; border:1.5px solid var(--border, #d1d5db); background:#fff; font-size:12px; font-weight:600; cursor:pointer; color:var(--ink-soft, #374151); }
-      .pvh-contact-btn.open { border-color:var(--flango, #F5960A); color:var(--flango, #F5960A); }
+      .pvh-panel-close { float:right; border:none; background:none; cursor:pointer; font-size:14px; line-height:1; color:var(--ink-muted, #6b7280); padding:2px 4px; }
+      .pvh-panel-close:hover { color:var(--ink, #111827); }
       .pvh-device-toggle { display:flex; border:1.5px solid var(--border, #d1d5db); border-radius:8px; overflow:hidden; }
       .pvh-device-btn { padding:6px 12px; border:none; background:#fff; font-size:12px; font-weight:600; cursor:pointer; color:var(--ink-muted, #6b7280); }
       .pvh-device-btn.active { background:var(--flango-light, #FEF3E2); color:var(--flango, #b45309); }
@@ -324,9 +348,17 @@
         // modul-mappingen kun findes ét sted (_shared/portal-sections.ts).
         flags: (mountOpts && mountOpts.featureFlags) || {},
         role: 'admin',
+        // Kontakter hvor DENNE vært har et indstillings-panel. Portalen tegner et
+        // tandhjul ved dem — og kun ved dem. Super-admin-panelet indlejrer samme
+        // portal uden et kontakt-panel og sender derfor ingenting, så der dukker
+        // heller ikke et tandhjul op der ikke fører nogen steder hen.
+        settingsFor: ['contact_button'],
       });
     } else if (msg.type === 'flango-preview:session-ok') {
       setStatus('hidden');
+    } else if (msg.type === 'flango-preview:toggle-settings') {
+      if (msg.key !== 'contact_button') return;
+      setContactPanel(!isContactPanelOpen());
     } else if (msg.type === 'flango-preview:session-error') {
       setStatus('error', 'Portal-login fejlede: ' + (msg.message || 'ukendt fejl'));
     } else if (msg.type === 'flango-preview:toggle') {
@@ -367,26 +399,31 @@
     iframeEl = container.querySelector('#pvh-iframe');
     setStatus('loading');
 
-    // Kontakt-panel
-    const panelBtn = container.querySelector('#pvh-contact-toggle-panel');
-    const panel = container.querySelector('#pvh-contact-panel');
-    panelBtn.addEventListener('click', () => {
-      const open = panel.style.display === 'none';
-      panel.style.display = open ? '' : 'none';
-      panelBtn.classList.toggle('open', open);
-    });
+    // Kontakt-panelet åbnes nu fra tandhjulet ved kontaktknappens kontakt inde i
+    // preview'et (flango-preview:toggle-settings) — ikke fra en knap i bjælken.
+    // Indstillingen hører til dér hvor man kan se hvad den gør.
+    container.querySelector('#pvh-contact-close')
+      .addEventListener('click', () => setContactPanel(false));
     ['input', 'change'].forEach(evt => {
       container.querySelector('#pvh-contact-phone').addEventListener(evt, () => { contactDirty = true; updateSaveBar(); });
       container.querySelector('#pvh-contact-enabled').addEventListener(evt, () => { contactDirty = true; updateSaveBar(); });
     });
 
-    // Enheds-ramme
-    container.querySelector('#pvh-device-toggle').addEventListener('click', (e) => {
+    // Enheds-ramme. Knappen bor i admin-bjælken (skallens `chromeSlot`) — en hel
+    // værktøjslinje til én kontakt kostede 45px af den højde preview'et lever af.
+    // Skallen ejer bjælkens layout, værten ejer adfærden.
+    chromeEl = document.createElement('div');
+    chromeEl.className = 'pvh-device-toggle';
+    chromeEl.id = 'pvh-device-toggle';
+    chromeEl.innerHTML =
+      '<button class="pvh-device-btn active" data-device="desktop">Desktop</button>' +
+      '<button class="pvh-device-btn" data-device="mobile">Mobil</button>';
+    chromeEl.addEventListener('click', (e) => {
       const btn = e.target.closest('.pvh-device-btn');
       if (!btn) return;
-      container.querySelectorAll('.pvh-device-btn').forEach(b => b.classList.toggle('active', b === btn));
-      container.querySelector('#pvh-frame-wrap').classList.toggle('mobile', btn.dataset.device === 'mobile');
+      setDevice(btn.dataset.device === 'mobile' ? 'mobile' : 'desktop');
     });
+    if (mountOpts.chromeSlot) mountOpts.chromeSlot.appendChild(chromeEl);
 
     // Gem-bar
     container.querySelector('#pvh-save').addEventListener('click', saveDraft);
@@ -412,6 +449,7 @@
 
   function unmount() {
     if (messageListener) { window.removeEventListener('message', messageListener); messageListener = null; }
+    if (chromeEl) { chromeEl.remove(); chromeEl = null; }
     containerEl = null;
     iframeEl = null;
     sessionTokens = null;

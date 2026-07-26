@@ -190,6 +190,8 @@
   let draft = {};               // column → bool; værtens ugemte flag-ændringer
   let lockDraft = {};           // module → { locked, reason }; værtens ugemte lås-ændringer
   let flags = {};               // module → { locked, lock_reason } — feature_flags fra værten
+  let settingsFor = [];         // kontakt-nøgler hvor VÆRTEN har et indstillings-panel
+  let settingsOpen = {};        // nøgle → bool; meldt af værten, som ejer panelet
   let refetchFn = null;
 
   function post(msg) {
@@ -203,6 +205,13 @@
     style.id = 'flango-preview-styles';
     style.textContent = `
       .flango-preview-off { filter: grayscale(1); opacity: .55; }
+      /* Mobil-visning = REN forældre-visning. Renden ligger INDE i portalen, så
+         i en 390px-ramme ville den æde 72px + afstand og vise indholdet ~20%
+         smallere end en rigtig telefon — altså ikke en mobil-visning, men en
+         forkert en. Rækken er flex, så sektionen fylder hele bredden når renden
+         er væk. Gråtoning og "skjult for forældre"-mærket bliver: uden dem ville
+         en slukket sektion se levende ud. */
+      .fp-no-chrome .flango-preview-gutter { display: none; }
       .flango-preview-badge {
         display: inline-block; margin-left: 8px; padding: 2px 8px;
         border-radius: 999px; font-size: 10px; font-weight: 700;
@@ -268,6 +277,25 @@
       .fp-sub[aria-disabled="true"] { cursor: help; opacity: .55; }
       .fp-sub.fp-dirty { box-shadow: 0 0 0 3px rgba(245,150,10,.45); }
       .fp-sub-off { opacity: .5; }
+      /* Tandhjul ved en kontakt der har flere indstillinger end til/fra (i dag
+         kun kontakttelefonen). Ligger til VENSTRE for kontakten, absolut som den,
+         og følger dens højde — se positionSubcontrols(). */
+      /* Samme form som lås-chippen, så renden ser ud som ét sæt knapper. Den
+         erstatter en navngiven knap i bjælken ("📞 Kontaktknap") og må derfor
+         ikke være så diskret at den forsvinder. */
+      .fp-sub-cog {
+        position: absolute; right: 42px; width: 30px; height: 26px; padding: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 1.5px solid #d1d5db; border-radius: 8px; background: #ffffff;
+        font-size: 15px; line-height: 1; color: #6b7280;
+        cursor: pointer; font-family: inherit; transition: border-color .15s, background .15s;
+      }
+      .fp-sub-cog:hover { border-color: #9ca3af; color: #111827; }
+      /* Aktiv = panelet er åbent. Samme knap lukker det igen, og det skal kunne
+         ses — ellers klikker man forgæves og tror den er død. */
+      .fp-sub-cog.active {
+        border-color: var(--flango, #F5960A); background: #fffbeb; color: #b45309;
+      }
       .fp-none {
         width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
         border: none; background: none; color: #cbd5e1; font-size: 15px; font-weight: 700;
@@ -786,6 +814,28 @@
     t.classList.toggle('fp-dirty', draft[entry.target] !== undefined);
     t.setAttribute('aria-label', (locked ? 'Låst af Flango. ' : '')
       + (entry.label || entry.key) + (on ? ' — vises for forældre' : ' — skjult for forældre'));
+
+    // Tandhjul for kontakter der har mere end til/fra hos værten. Værten
+    // annoncerer selv hvilke (settingsFor) — portalen gætter ikke.
+    let cog = document.querySelector('.fp-sub-cog[data-fp-sub="' + entry.key + '"]');
+    if (settingsFor.indexOf(entry.key) !== -1) {
+      if (!cog) {
+        cog = document.createElement('button');
+        cog.type = 'button';
+        cog.className = 'fp-sub-cog';
+        cog.dataset.fpSub = entry.key;
+        cog.textContent = '⚙';
+      }
+      if (cog.parentElement !== gutter) gutter.appendChild(cog);
+      cog.style.display = '';
+      const åben = settingsOpen[entry.key] === true;
+      cog.classList.toggle('active', åben);
+      cog.setAttribute('aria-expanded', åben ? 'true' : 'false');
+      cog.title = (åben ? 'Luk indstillinger for ' : 'Indstillinger for ') + (entry.label || entry.key);
+      cog.setAttribute('aria-label', cog.title);
+    } else if (cog) {
+      cog.remove();
+    }
   }
 
   /** Justér under-kontakterne lodret ud for deres egen række. Ren måling:
@@ -795,12 +845,20 @@
     for (const entry of subcontrols) {
       if (!entry) continue;
       const t = subChip(entry.key);
-      if (!t || t.style.display === 'none' || !t.parentElement) continue;
+      const cog = document.querySelector('.fp-sub-cog[data-fp-sub="' + entry.key + '"]');
+      if (!t || t.style.display === 'none' || !t.parentElement) { if (cog) cog.style.display = 'none'; continue; }
       const row = subRowFor(entry);
-      if (!row) { t.style.display = 'none'; continue; }
+      if (!row) { t.style.display = 'none'; if (cog) cog.style.display = 'none'; continue; }
       const gr = t.parentElement.getBoundingClientRect();
       const rr = row.getBoundingClientRect();
-      t.style.top = Math.round(rr.top - gr.top + (rr.height - t.offsetHeight) / 2) + 'px';
+      const top = Math.round(rr.top - gr.top + (rr.height - t.offsetHeight) / 2);
+      t.style.top = top + 'px';
+      // Tandhjulet følger sin kontakt. Det er højere end kontakten (26 vs 20px),
+      // så de centreres om hinanden i stedet for at flugte i toppen.
+      if (cog) {
+        cog.style.display = '';
+        cog.style.top = Math.round(top + (t.offsetHeight - cog.offsetHeight) / 2) + 'px';
+      }
     }
   }
 
@@ -820,7 +878,7 @@
       const t = e.target;
       if (!t || !t.closest) return;
       if (t.closest('.flango-preview-pop')) return;
-      const ctrl = t.closest('.fp-toggle, .fp-lock, .fp-none, .fp-sub');
+      const ctrl = t.closest('.fp-toggle, .fp-lock, .fp-none, .fp-sub, .fp-sub-cog');
       if (!ctrl) { closePopover(true); return; }
       // stopPropagation er ikke nok: accordion-handleren sidder OGSÅ på document
       // (samme node, senere fase) og ville folde sektionen ud ved klik.
@@ -828,6 +886,14 @@
       e.preventDefault();
 
       if (ctrl.classList.contains('fp-none')) { openNoFlagPopover(ctrl, true); return; }
+
+      // Tandhjul: værten ejer panelet, så den beslutter — portalen beder blot om
+      // at få det vendt og tegner den tilstand værten melder tilbage.
+      if (ctrl.classList.contains('fp-sub-cog')) {
+        closePopover(true);
+        post({ type: 'flango-preview:toggle-settings', key: ctrl.dataset.fpSub });
+        return;
+      }
 
       if (ctrl.classList.contains('fp-sub')) {
         const sub = subByKey(ctrl.dataset.fpSub);
@@ -1061,6 +1127,19 @@
     if (!hostOrigin || event.origin !== hostOrigin) return;
     const msg = event.data;
     if (!msg || typeof msg !== 'object') return;
+    if (msg.type === 'flango-preview:chrome') {
+      // Værten bestemmer om admin-kontrollerne skal være fremme (desktop) eller
+      // væk (mobil = ren forældre-visning).
+      document.documentElement.classList.toggle('fp-no-chrome', msg.gutters === false);
+      refreshSubcontrols();
+      return;
+    }
+    if (msg.type === 'flango-preview:settings-state') {
+      if (typeof msg.key !== 'string' || typeof msg.open !== 'boolean') return;
+      settingsOpen[msg.key] = msg.open;
+      refreshSubcontrols();
+      return;
+    }
     if (msg.type === 'flango-preview:state') {
       draft = (msg.draft && typeof msg.draft === 'object') ? { ...msg.draft } : {};
       lockDraft = (msg.lockDraft && typeof msg.lockDraft === 'object') ? { ...msg.lockDraft } : {};
@@ -1111,6 +1190,7 @@
         hostOrigin = event.origin;
         role = msg.role === 'superadmin' ? 'superadmin' : 'admin';
         flags = (msg.flags && typeof msg.flags === 'object') ? msg.flags : {};
+        settingsFor = Array.isArray(msg.settingsFor) ? msg.settingsFor : [];
         try {
           const { error } = await supabase.auth.setSession({
             access_token: msg.accessToken,
