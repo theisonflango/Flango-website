@@ -417,6 +417,22 @@ a { color: inherit; text-decoration: none; }
   flex: 1; height: 44px; border-radius: var(--r-md); font-weight: 700; font-size: 14px;
   display: flex; align-items: center; justify-content: center; gap: var(--s2);
   transition: transform .15s, opacity .15s;
+  /* min-width:0 er nødvendig for at en flex-boks må krympe under sit indhold —
+     uden den kan etiketten ikke klippes, og et langt institutionsnavn ville
+     sprænge knappens faste 44px-højde på en telefon. */
+  min-width: 0;
+}
+.topup-btn-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* "Ring til " ryger væk når knappen er for smal til hele sætningen — så står
+   institutionsnavnet alene ved siden af telefon-ikonet, i stedet for at blive
+   klippet midt i ("Ring til Usserød S…").
+   Container query, ikke media query: det er KNAPPENS plads der afgør det, ikke
+   skærmens. Samme navn kan sagtens passe på en tablet og ikke på en telefon.
+   Understøttes ikke browseren container queries, ignoreres reglen og præfikset
+   bliver stående med ellipse — altså præcis adfærden fra før. */
+.topup-row { container-type: inline-size; }
+@container (max-width: 400px) {
+  .topup-btn-prefix { display: none; }
 }
 .topup-btn:active { transform: scale(.97); }
 .topup-primary { background: var(--flango); color: #fff; }

@@ -349,7 +349,7 @@
         try {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'js/portal-admin-preview.js?v=22';
+            s.src = 'js/portal-admin-preview.js?v=23';
             s.onload = resolve; s.onerror = reject;
             document.head.appendChild(s);
           });
@@ -2349,7 +2349,17 @@
     const phone = featureFlags.institution_contact_phone;
     if (featureFlags.institution_contact_phone_enabled === true && phone) {
       const dial = String(phone).replace(/[^\d+]/g, '');
-      return `<a class="topup-btn topup-secondary"${sub} href="tel:${esc(dial)}">${phoneIcon}Kontakt</a>`;
+      // "Ring til Stampen" frem for "Kontakt": knappen ringer FAKTISK op, og et
+      // navn gør det tydeligt hvem der ringes til.
+      //
+      // Knappen deler bredde med Indbetal, så på en telefon er der kun ~153px.
+      // Dér ryger "Ring til " væk og navnet står alene ved siden af telefon-
+      // ikonet, som i forvejen siger hvad knappen gør — bedre end "Ring til
+      // Usserød S…". Det afgøres af CSS efter PLADS, ikke af navnets længde:
+      // et navn der ikke passer på en telefon passer fint på en tablet.
+      // aria-label holder den fulde mening uanset hvad der er synligt.
+      const instName = getInstitutionName() || 'klubben';
+      return `<a class="topup-btn topup-secondary"${sub} href="tel:${esc(dial)}" aria-label="Ring til ${esc(instName)}">${phoneIcon}<span class="topup-btn-label"><span class="topup-btn-prefix">Ring til </span>${esc(instName)}</span></a>`;
     }
     if (secOn('feedback')) {
       return `<button class="topup-btn topup-secondary"${sub} data-qa-scroll="section-feedback" data-qa-tab="tab-profile">${mailIcon}Support</button>`;
@@ -3629,8 +3639,9 @@
             <button class="feedback-tab" data-target="fb-flango"><span style="display:inline-flex;align-items:center;gap:4px"><img src="assets/flango-logo.webp" alt="" style="width:15px;height:15px">Til Flango</span></button>
           </div>
           <div class="feedback-panel" id="fb-club">
-            <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Send en besked direkte til ${esc(instName)} — fx om afhentning, ferie eller en aftale.</p>
-            <textarea class="feedback-textarea" id="fb-club-text" placeholder="Skriv din besked her..." rows="4"></textarea>
+            <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Spørgsmål til ${esc(instName)} om dit barns cafékonto — fx saldo, et køb eller en indbetaling. Du kan også skrive om forældre-appen.</p>
+            <div class="hint-box orange" style="margin-bottom:var(--s3)">${hintIcon('triangle-alert')}<span><strong>Ikke til praktiske beskeder.</strong> Afhentning, ferie, sygdom og aftaler skal sendes via Aula eller ${esc(instName)}s telefon — beskeder her læses ikke nødvendigvis samme dag.</span></div>
+            <textarea class="feedback-textarea" id="fb-club-text" placeholder="Skriv dit spørgsmål om cafékontoen her..." rows="4"></textarea>
             <input type="email" id="fb-club-email" class="input-field" placeholder="Din e-mail (valgfrit — så ${esc(instName)} kan svare)" style="margin-top:var(--s2)">
             <button class="save-btn full" id="fb-club-send" style="margin-top:var(--s3)">Send til ${esc(instName)}</button>
           </div>

@@ -105,7 +105,7 @@
     purchase_profile: 'Købsprofil — barnets mest købte produkter.',
     history: 'Overblik over barnets forbrug og købshistorik.',
     sortiment: 'Dagens sortiment — hvad der kan købes i caféen.',
-    feedback: 'Forældrenes vej til at skrive til jer eller til Flango.',
+    feedback: 'Forældrenes vej til at skrive til jer om cafékontoen, eller til Flango om appen. Praktiske beskeder henvises til Aula.',
     spending_limit: 'Forældrenes daglige beløbsgrænse for barnet.',
     product_limit: 'Grænser for hvor mange enheder af enkelte varer barnet må købe.',
     sugar_policy: 'Forældrenes sukkerpolitik — kontrol med usunde varer.',
