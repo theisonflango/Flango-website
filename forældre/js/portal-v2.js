@@ -349,7 +349,7 @@
         try {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'js/portal-admin-preview.js?v=18';
+            s.src = 'js/portal-admin-preview.js?v=22';
             s.onload = resolve; s.onerror = reject;
             document.head.appendChild(s);
           });
@@ -2352,7 +2352,7 @@
       return `<a class="topup-btn topup-secondary"${sub} href="tel:${esc(dial)}">${phoneIcon}Kontakt</a>`;
     }
     if (secOn('feedback')) {
-      return `<button class="topup-btn topup-secondary"${sub} data-qa-scroll="section-feedback" data-qa-tab="tab-profile">${mailIcon}Feedback</button>`;
+      return `<button class="topup-btn topup-secondary"${sub} data-qa-scroll="section-feedback" data-qa-tab="tab-profile">${mailIcon}Support</button>`;
     }
     return `<button class="topup-btn topup-secondary"${sub} data-qa-scroll="section-contact" data-qa-tab="tab-privacy">${mailIcon}Kontakt</button>`;
   }
@@ -2907,6 +2907,13 @@
   function renderDeleteParentAccountSection() {
     let parentEmail = '';
     try { parentEmail = currentSession?.user?.email || ''; } catch (_e) {}
+    // I admin-preview er den indloggede konto institutionens SYNTETISKE
+    // admin-parent (admin-parent-<uuid>@flango.internal). At skrive den adresse
+    // ud er både forvirrende — barnet hedder "Eksempel" — og et internt
+    // identifikatorlæk i en flade der skal vise hvad FORÆLDEREN ser. Preview'et
+    // viser derfor ingen adresse; den rigtige forælder ser sin egen.
+    if (isAdminPreview()) parentEmail = '';
+    const emailParens = parentEmail ? ` (${esc(parentEmail)})` : '';
     return `
       <div class="section" id="section-delete-account">
         <div class="section-header">
@@ -2918,7 +2925,7 @@
             ${hintIcon('triangle-alert')}
             <span>
               <strong>Hvad der sker:</strong><br>
-              &bull; Din konto (${esc(parentEmail)}) slettes permanent<br>
+              &bull; Din konto${emailParens} slettes permanent<br>
               &bull; Du mister adgang til forældreportalen<br>
               &bull; Dine børns data påvirkes IKKE &mdash; de forbliver i systemet<br>
               &bull; Andre forældrekonti tilknyttet dine børn påvirkes ikke
@@ -2931,7 +2938,7 @@
           <div id="privacy-delete-account-confirm" style="display:none">
             <p style="margin:0 0 var(--s2);font-weight:600">Er du sikker? Skriv din e-mailadresse for at bekraefte:</p>
             <div style="display:flex;gap:var(--s2);align-items:center">
-              <input type="text" id="privacy-delete-account-email-input" placeholder="${esc(parentEmail)}" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:14px" />
+              <input type="text" id="privacy-delete-account-email-input" placeholder="${esc(parentEmail || 'din e-mailadresse')}" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:14px" />
               <button class="save-btn" id="privacy-confirm-delete-account-btn" style="background:var(--negative,#dc2626);color:#fff;padding:8px 16px">Bekræft</button>
               <button class="save-btn" id="privacy-cancel-delete-account-btn" style="padding:8px 16px;background:var(--surface-sunken);color:var(--ink)">Annuller</button>
             </div>

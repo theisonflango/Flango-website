@@ -28,6 +28,7 @@
   let sessionTokens = null;
   let sessionDelivered = false;
   let draft = {};             // kolonne → bool (chip-toggles fra portalen)
+  let draftMeta = {};         // samme nøgle → { label, effect } til gem-bekræftelsen
   let contactDirty = false;   // kontaktfelterne følger samme gem-bar
   let messageListener = null;
   let savedSettings = null;   // institutionSettings ved mount (til kontaktfelter)
@@ -118,7 +119,7 @@
             <div class="admin-field-label">📞 Kontakttelefon (vises i portalens saldo-kort)</div>
             <input type="tel" class="input-field input" id="pvh-contact-phone" value="${esc(contactPhone)}" placeholder="Telefonnummer til institutionen">
             <div class="setting-row">
-              <div class="setting-info"><div class="setting-label">Aktiver kontaktknap</div><div class="setting-desc">Til = forældre kan ringe direkte fra saldo-kortet. Fra = knappen viser Feedback i stedet.</div></div>
+              <div class="setting-info"><div class="setting-label">Aktiver kontaktknap</div><div class="setting-desc">Til = forældre kan ringe direkte fra saldo-kortet. Fra = knappen viser Support i stedet.</div></div>
               <label class="toggle"><input type="checkbox" id="pvh-contact-enabled"${contactEnabled ? ' checked' : ''}><span class="toggle-track"></span></label>
             </div>
           </div>
@@ -170,7 +171,53 @@
     document.head.appendChild(style);
   }
 
+  /** Gem-bekræftelse: hvad ændrer sig, og hvad betyder det for forældrene.
+   *  Ændringerne rammer ALLE institutionens forældre på én gang og er usynlige
+   *  herfra bagefter — derfor skal de siges højt før de sendes, ikke bare
+   *  tælles. (Et enkelt fejlklik + Gem ændrede en indstilling under test uden
+   *  at nogen opdagede det.) */
+  async function confirmSave() {
+    const rows = [];
+    for (const key of Object.keys(draft)) {
+      const m = draftMeta[key] || {};
+      const label = esc(m.label || key);
+      const verb = draft[key] ? 'tændes' : 'slukkes';
+      const effect = m.effect ? ' — ' + esc(m.effect) : '';
+      rows.push('<li style="margin:0 0 8px"><b>' + label + '</b> ' + verb +
+        '<div style="color:#6b7280;font-size:12.5px;line-height:1.45">' +
+        (draft[key] ? '✓' : '✕') + effect + '</div></li>');
+    }
+    if (contactDirty) {
+      const enabled = containerEl.querySelector('#pvh-contact-enabled');
+      const phone = containerEl.querySelector('#pvh-contact-phone');
+      rows.push('<li style="margin:0 0 8px"><b>Kontaktknap</b> opdateres' +
+        '<div style="color:#6b7280;font-size:12.5px;line-height:1.45">' +
+        (enabled && enabled.checked
+          ? 'Forældre kan ringe til ' + esc((phone && phone.value.trim()) || 'nummeret') + ' fra saldo-kortet'
+          : 'Knappen viser Support i stedet for et telefonnummer') +
+        '</div></li>');
+    }
+    if (!rows.length) return true;
+
+    const body =
+      '<div style="text-align:left">' +
+        '<div style="margin-bottom:10px">Følgende ændres for <b>alle forældre</b> i institutionen:</div>' +
+        '<ul style="margin:0;padding-left:18px">' + rows.join('') + '</ul>' +
+        '<div style="margin-top:12px;color:#6b7280;font-size:12.5px">' +
+          'Ændringen gælder med det samme. Du kan altid slå det til igen samme sted.' +
+        '</div>' +
+      '</div>';
+
+    if (typeof window.__flangoShowCustomAlert !== 'function') {
+      return window.confirm('Gem ' + rows.length + ' ændring(er) for alle forældre?');
+    }
+    return await window.__flangoShowCustomAlert('Gem ændringer?', body, {
+      type: 'confirm', okText: 'Gem ændringer', cancelText: 'Fortryd', focus: 'cancel', zIndex: 20000,
+    });
+  }
+
   async function saveDraft() {
+    if (!(await confirmSave())) return;
     const saveBtn = containerEl.querySelector('#pvh-save');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Gemmer...'; }
     try {
@@ -229,6 +276,7 @@
 
       if (instOk && stOk && rowOk) {
         draft = {};
+        draftMeta = {};
         contactDirty = false;
         updateSaveBar();
         post({ type: 'flango-preview:saved' });
@@ -246,6 +294,7 @@
 
   function discardDraft() {
     draft = {};
+    draftMeta = {};
     if (contactDirty && savedSettings) {
       const phone = containerEl.querySelector('#pvh-contact-phone');
       const enabled = containerEl.querySelector('#pvh-contact-enabled');
@@ -288,6 +337,13 @@
       const key = typeof msg.target === 'string' ? msg.target : msg.column;
       if (typeof key !== 'string') return;
       draft[key] = msg.value;
+      // Portalen sender navn + konsekvens med. Værten kender ikke sektionerne og
+      // skal ikke lære dem — den gemmer blot beskrivelsen til bekræftelsen.
+      draftMeta[key] = {
+        label: typeof msg.label === 'string' ? msg.label : key,
+        effect: typeof msg.effect === 'string' ? msg.effect : '',
+        value: msg.value,
+      };
       updateSaveBar();
       post({ type: 'flango-preview:state', draft: { ...draft } });
     }
@@ -301,6 +357,7 @@
     savedSettings = mountOpts.institutionSettings || {};
     savedSettings.__mountOpts = mountOpts;
     draft = {};
+    draftMeta = {};
     contactDirty = false;
     sessionDelivered = false;
     portalOrigin = getPortalOrigin();
@@ -360,6 +417,7 @@
     sessionTokens = null;
     sessionDelivered = false;
     draft = {};
+    draftMeta = {};
     contactDirty = false;
     savedSettings = null;
     mountOpts = null;

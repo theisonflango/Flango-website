@@ -89,6 +89,100 @@
   // Tom: alle kort har nu enten en kontakt eller er markeret lovpligtige.
   const NO_FLAG_REASON = {};
 
+  // Hvad hver kontakt STYRER, i én sætning. Bruges to steder: forklaringen når
+  // man holder musen over kontakten, og konsekvens-listen i gem-bekræftelsen —
+  // så de to aldrig kan sige noget forskelligt.
+  //
+  // Teksten bor her og ikke på serveren, fordi det er UI-formidling, ikke
+  // datamodel. Begge værter (café og super-admin) indlejrer den SAMME portal,
+  // så det er stadig ét sted.
+  const CONTROL_HELP = {
+    // Sektioner
+    balance: 'Saldo-kortet øverst på Overblik med barnets beløb og status.',
+    topup: 'Forældrenes mulighed for at sætte penge ind på barnets konto.',
+    events: 'Kommende arrangementer barnet kan tilmeldes.',
+    ugeplan: 'Ugens aktiviteter fra institutionens ugeplan.',
+    purchase_profile: 'Købsprofil — barnets mest købte produkter.',
+    history: 'Overblik over barnets forbrug og købshistorik.',
+    sortiment: 'Dagens sortiment — hvad der kan købes i caféen.',
+    feedback: 'Forældrenes vej til at skrive til jer eller til Flango.',
+    spending_limit: 'Forældrenes daglige beløbsgrænse for barnet.',
+    product_limit: 'Grænser for hvor mange enheder af enkelte varer barnet må købe.',
+    sugar_policy: 'Forældrenes sukkerpolitik — kontrol med usunde varer.',
+    diet: 'Kostpræferencer, fx vegetarisk eller uden svinekød.',
+    allergens: 'Barnets allergier og madbegrænsninger.',
+    profile_pictures: 'Profilbilleder og forældrenes samtykke til de enkelte billedtyper.',
+    notifications: 'Push-notifikationer på forældrenes telefon.',
+    email_notifications: 'Påmindelser sendt på e-mail.',
+    screentime: 'Daglig spilletid — grænser og samtykke.',
+    screentime_games: 'Godkendelse af hvilke spil barnet må spille.',
+    screentime_usage: 'Spilletidsoversigt for de seneste 7 dage.',
+    transfer: 'Overførsel af saldo mellem søskende.',
+    pin: 'Forældrenes mulighed for at skifte deres egen adgangskode.',
+    invite_parent: 'Deling af adgang med en partner, så begge forældre kan følge barnet.',
+    linked_parents: 'Oversigt over hvem der har adgang til barnet.',
+    game_accounts: "Barnets personlige spil-login på klubbens PC'er.",
+    child_name_edit: 'Redigering af barnets visningsnavn.',
+    // Under-kontakter
+    contact_button: 'Knappen i saldo-kortet der ringer direkte til jer. Slukket viser den Support i stedet.',
+    notify_balance: 'Besked når barnets saldo er brugt op.',
+    notify_events: 'Påmindelse 7 og 1 dag før et arrangement barnet er tilmeldt.',
+    notify_extra_email: 'Ekstra e-mailadresse, så påmindelser kan nå to modtagere.',
+    pp_aula: 'Brug af barnets eksisterende Aula-foto som profilbillede.',
+    pp_camera: 'Personalets mulighed for at tage et foto med caféens enhed.',
+    pp_parent_upload: 'Forældrenes mulighed for selv at uploade et billede.',
+    pp_ai: 'Samtykket til AI-genereret avatar (personale-drevet).',
+    pp_parent_ai: 'Forældrenes egen knap til at generere en AI-avatar.',
+    st_personal_limits: 'Forældrenes personlige daglige spilletidsgrænse for barnet.',
+    st_session_limit: 'Forældrenes grænse for hvor lang tid ad gangen barnet må spille.',
+    st_extra_time: 'Samtykke til at personalet undtagelsesvis kan forlænge spilletiden.',
+  };
+
+  /** Kontaktens navn, som det STÅR i fladen — læst af DOM'en frem for skrevet
+   *  ned et ekstra sted, så en omdøbt sektion aldrig får to navne. */
+  const NAME_FALLBACK = { balance: 'Saldo', topup: 'Indbetaling' };
+
+  function controlName(entry) {
+    if (entry.kind === 'sub') return entry.label || entry.key;
+    const el = sectionElements(entry.key)[0];
+    const title = el && el.querySelector('.section-title');
+    if (title) {
+      const text = (title.childNodes[0] && title.childNodes[0].textContent || title.textContent || '').trim();
+      if (text) return text;
+    }
+    return NAME_FALLBACK[entry.key] || entry.key;
+  }
+
+  // Kontakter hvor den generiske formulering er direkte forkert. Kontaktknappen
+  // FORSVINDER ikke når den slukkes — den skifter til Support. Sagde vi "rækken
+  // forsvinder", advarede bekræftelsen om noget der ikke sker.
+  const CONTROL_EFFECT = {
+    contact_button: {
+      on: 'knappen ringer direkte til jer fra saldo-kortet',
+      off: 'knappen viser Support i stedet for et telefonnummer',
+    },
+  };
+
+  /** Hvad der SKER for forældrene ved den givne tilstand. Formuleret pr.
+   *  kontakt-type, så en kapacitet ikke påstår at kortet forsvinder. */
+  function consequence(entry, on) {
+    const override = CONTROL_EFFECT[entry.key];
+    if (override) return on ? override.on : override.off;
+    if (entry.kind === 'capability') {
+      return on ? 'forældrene kan redigere feltet'
+                : 'kortet vises stadig, men forældrene kan ikke ændre noget';
+    }
+    if (entry.kind === 'sub') {
+      return on ? 'rækken vises i kortet' : 'rækken forsvinder fra forældrenes kort';
+    }
+    return on ? 'sektionen vises i portalen' : 'hele sektionen forsvinder fra forældrenes portal';
+  }
+
+  /** Kontaktens aktuelle tilstand (draft medregnet) — samme værdi som chippen viser. */
+  function controlOn(entry) {
+    return entry.kind === 'sub' ? subEffective(entry) : effective(entry.column, entry.visible);
+  }
+
   let hostOrigin = null;        // sat ved session-handshake; al efterfølgende trafik låses hertil
   let role = 'admin';           // 'admin' (café) | 'superadmin' (super-admin-panelet)
   let sections = [];            // seneste preview_sections fra serveren
@@ -201,6 +295,39 @@
         display: flex; align-items: center; gap: 6px; color: #111827;
       }
       .flango-preview-pop .fp-pop-body { color: #374151; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .flango-preview-pop .fp-pop-state {
+        margin-top: 8px; padding: 6px 8px; border-radius: 8px;
+        font-weight: 700; font-size: 11.5px; line-height: 1.4;
+      }
+      .flango-preview-pop .fp-pop-state.on { background: #f0fdf4; color: #166534; }
+      .flango-preview-pop .fp-pop-state.off { background: #f3f4f6; color: #4b5563; }
+      /* Forældrenes EGNE kontakter inde i kortene tones ned. De er med for at
+         vise hvad forælderen ser — ikke for at blive skruet på herfra; admin-
+         kontakterne i renden er dem der virker. Rent CSS og kun i preview-
+         stylesheet'et: ingen klasser at sætte, intet at genskabe når portalen
+         re-renderer, og forældrenes egen portal rører det aldrig.
+         Chippene er .fp-toggle/.fp-sub UDEN for .section og rammes ikke. */
+      .section .toggle, .section .stepper, .section .stepper-btn,
+      .balance-card .toggle, .balance-card .stepper, .balance-card .stepper-btn {
+        opacity: .45;
+        /* INGEN hover-effekt og ingen pointer-markør. Lyste de op eller skiftede
+           markøren, læste man dem som noget man skulle trykke på — og det er
+           præcis dét de ikke er her. De skal ligne en gengivelse, ikke en knap. */
+        cursor: default;
+      }
+      /* ⚠️ .toggle-track ligger absolut inset:0 OVEN PÅ hele kontakten og sætter
+         sin EGEN cursor:pointer (portal-v2.css). Markøren står derfor aldrig på
+         <label class="toggle"> — den står på sporet, og en regel på forælderen
+         nåede den aldrig. Det var dét der gjorde at markøren stadig skiftede. */
+      .section .toggle-track, .balance-card .toggle-track { cursor: default; }
+      /* Portalens egen .stepper-btn:hover skifter baggrund. Den skal også dø her. */
+      .section .stepper-btn:hover, .balance-card .stepper-btn:hover { background: none; }
+      /* Beløbs-valgene (20/30/40/50/Andet…) er forældrenes kontakter på samme
+         måde som en toggle. De tones IKKE ned — den aktive chip fortæller hvad
+         grænsen står på, og dét skal kunne læses — men de interaktive tegn skal
+         væk: ingen markør-skift, ingen kant der lyser op. */
+      .section .chip { cursor: default; }
+      .section .chip:hover { border-color: var(--border); }
       .flango-preview-pop .fp-pop-hint { color: #6b7280; font-size: 11px; margin-top: 8px; }
       .flango-preview-pop .fp-pop-also {
         margin-top: 8px; padding-top: 8px; border-top: 1px solid #f3f4f6;
@@ -309,6 +436,7 @@
   let popEl = null;
   let popAnchor = null;
   let popSticky = false;
+  let hoverTimer = null;
 
   function closePopover(force) {
     if (!popEl) return;
@@ -709,7 +837,12 @@
         const next = !subEffective(sub);
         draft[sub.target] = next;
         decorate();
-        post({ type: 'flango-preview:toggle', key: sub.key, target: sub.target, value: next });
+        // Navn + konsekvens følger med, så værtens gem-bekræftelse kan sige hvad
+        // ændringen betyder uden selv at kende sektionerne.
+        post({
+          type: 'flango-preview:toggle', key: sub.key, target: sub.target, value: next,
+          label: controlName(sub), effect: consequence(sub, next),
+        });
         return;
       }
 
@@ -723,23 +856,38 @@
       const next = !effective(entry.column, entry.visible);
       draft[entry.column] = next;
       decorate();
-      post({ type: 'flango-preview:toggle', key: entry.key, column: entry.column, value: next });
+      post({
+        type: 'flango-preview:toggle', key: entry.key, column: entry.column, value: next,
+        label: controlName(entry), effect: consequence(entry, next),
+      });
     }, true);
 
-    // Hover: samme forklaring uden klik (desktop). Flygtigt popover — et
-    // fastholdt (klik-åbnet) popover røres ikke.
+    // Hover: forklaring uden klik (desktop). ALLE kontakter forklarer sig selv —
+    // en låst siger hvorfor den er låst, en almindelig siger hvad den styrer og
+    // hvad der sker hvis man vender den. Et fastholdt (klik-åbnet) popover røres
+    // ikke. Lille forsinkelse, så et musetræk hen over renden ikke blinker.
     document.addEventListener('mouseover', (e) => {
       const ctrl = e.target && e.target.closest && e.target.closest('.fp-toggle, .fp-lock, .fp-none, .fp-sub');
       if (!ctrl || popSticky || popAnchor === ctrl) return;
-      if (ctrl.classList.contains('fp-none')) { openNoFlagPopover(ctrl, false); return; }
-      const explains = ctrl.classList.contains('fp-lock')
-        || ctrl.getAttribute('aria-disabled') === 'true';
-      if (!explains) { closePopover(); return; }
-      const entry = sectionByKey(ctrl.dataset.key);
-      if (!entry) return;
-      openPopover(ctrl, entry, false);
+      clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(() => {
+        if (popSticky || !ctrl.isConnected) return;
+        if (ctrl.classList.contains('fp-none')) { openNoFlagPopover(ctrl, false); return; }
+        const entry = ctrl.classList.contains('fp-sub')
+          ? subByKey(ctrl.dataset.fpSub)
+          : sectionByKey(ctrl.dataset.key);
+        if (!entry) return;
+        // Låst, eller lovpligtig og dermed uden kontakt at vende: forklar dét.
+        // Ellers den pædagogiske forklaring på hvad kontakten gør.
+        if (ctrl.classList.contains('fp-lock') || ctrl.getAttribute('aria-disabled') === 'true') {
+          openPopover(ctrl, entry, false);
+        } else {
+          openExplainPopover(ctrl, entry);
+        }
+      }, 280);
     });
     document.addEventListener('mouseout', (e) => {
+      clearTimeout(hoverTimer);
       if (popSticky || !popEl) return;
       const to = e.relatedTarget;
       if (to && to.closest && (to.closest('.flango-preview-pop') || to.closest('.flango-preview-gutter'))) return;
@@ -749,6 +897,31 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopover(true); });
     window.addEventListener('resize', positionPopover);
     window.addEventListener('scroll', positionPopover, true);
+  }
+
+  /** Pædagogisk forklaring på en helt almindelig kontakt: hvad den styrer, hvad
+   *  den står på nu, og hvad der sker hvis man vender den. Vises ved hover, så
+   *  man kan forstå fladen uden at klikke og fortryde. */
+  function openExplainPopover(anchor, entry) {
+    closePopover(true);
+    const on = controlOn(entry);
+    const el = document.createElement('div');
+    el.className = 'flango-preview-pop';
+    el.setAttribute('role', 'tooltip');
+    el.innerHTML =
+      '<div class="fp-pop-head"></div>' +
+      '<div class="fp-pop-body"></div>' +
+      '<div class="fp-pop-state ' + (on ? 'on' : 'off') + '"></div>' +
+      '<div class="fp-pop-hint"></div>';
+    el.querySelector('.fp-pop-head').textContent = controlName(entry);
+    el.querySelector('.fp-pop-body').textContent = CONTROL_HELP[entry.key] || 'Institutionsindstilling for forældreportalen.';
+    el.querySelector('.fp-pop-state').textContent =
+      (on ? 'Tændt nu — ' : 'Slukket nu — ') + consequence(entry, on) + '.';
+    el.querySelector('.fp-pop-hint').textContent =
+      'Klik for at ' + (on ? 'slukke' : 'tænde') + '. Ændringen gemmes først når du trykker “Gem ændringer”.';
+    document.body.appendChild(el);
+    popEl = el; popAnchor = anchor; popSticky = false;
+    positionPopover();
   }
 
   /** Forklaring på en sektion uden kontakt — så et tomt felt ikke læses som
