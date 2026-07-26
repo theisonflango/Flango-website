@@ -766,10 +766,8 @@
     repositionOverAnimation();
     // Portalen genopbygger sektionerne ved hver render — observeren skal have
     // fat i de NYE elementer, ellers holder den øje med noget der er væk.
-    if (subLayoutObserver) {
-      document.querySelectorAll('.section[id^="section-"] .section-body-inner')
-        .forEach((el) => subLayoutObserver.observe(el));
-    }
+    observeLayoutTargets(subLayoutObserver);
+    watchTabSwitches();
     positionPopover();
   }
 
@@ -786,30 +784,52 @@
     // requestAnimationFrame er ikke nok: rækken har først en boks NÅR
     // udfoldningen er kørt, så vi måler hen over hele animationen (.25s).
     document.addEventListener('click', () => repositionOverAnimation(), true);
+    watchTabSwitches();
     if (typeof ResizeObserver === 'function') {
       // ⚠️ document.body var ikke nok: portalens scroll-container er .main, så
-      // body skifter ikke størrelse når et kort foldes ud — observeren fyrede
-      // aldrig, og under-kontakterne blev liggende som display:none. Observér
-      // derfor hvert kort, der hvor højden faktisk ændrer sig.
+      // body skifter ikke størrelse når et kort foldes ud eller en fane skifter
+      // — observeren fyrede aldrig, og under-kontakterne blev liggende som
+      // display:none. Observér dét der FAKTISK ændrer størrelse: fanerne (som
+      // går fra display:none til udlagt) og hvert korts indre.
       const ro = new ResizeObserver(() => positionSubcontrols());
       ro.observe(document.body);
-      document.querySelectorAll('.section[id^="section-"] .section-body-inner')
-        .forEach((el) => ro.observe(el));
+      observeLayoutTargets(ro);
       subLayoutObserver = ro;
     }
   }
 
-  let subLayoutObserver = null;
+  var subLayoutObserver = null;
 
-  /** Mål gentagne gange hen over accordion-animationen. Billigt (få frames),
-   *  og fjerner afhængigheden af at præcis ét event fyrer på præcis ét element. */
+  /** Elementerne hvis størrelse afgør hvor under-kontakterne skal ligge.
+   *  Portalen genopbygger dem ved hver render, så listen skal fornys. */
+  function observeLayoutTargets(ro) {
+    if (!ro) return;
+    document.querySelectorAll('.tab-view, .section[id^="section-"] .section-body-inner')
+      .forEach((el) => ro.observe(el));
+  }
+
+  /** Mål gentagne gange hen over accordion-animationen OG et faneskift.
+   *  Billigt (få frames), og fjerner afhængigheden af at præcis ét event fyrer
+   *  på præcis ét element — hvilket var netop dét der fejlede: et faneskift
+   *  udløste ingen af de events vi lyttede på, så kontakterne blev liggende
+   *  skjult indtil noget andet tilfældigvis trigger'ede en måling. */
   function repositionOverAnimation() {
     let n = 0;
     const tick = () => {
       positionSubcontrols();
-      if (++n < 20) requestAnimationFrame(tick);
+      if (++n < 45) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
+  }
+
+  /** Fanerne skifter ved at flytte .active — ingen størrelsesændring vi kan
+   *  regne med at se i tide. Se efter klasseskiftet i stedet. */
+  function watchTabSwitches() {
+    if (typeof MutationObserver !== 'function') return;
+    const mo = new MutationObserver(() => repositionOverAnimation());
+    document.querySelectorAll('.tab-view').forEach((el) => {
+      mo.observe(el, { attributes: true, attributeFilter: ['class'] });
+    });
   }
 
   function handleHostMessage(event) {
