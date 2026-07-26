@@ -643,7 +643,8 @@
   function shouldShowWelcomeModal() {
     if (!selectedChild) return false;
     if (!Array.isArray(consentHistory)) return false;
-    // Skip i simulator-session — admin må ikke afgive samtykke på vegne af forælder
+    // Skip i BEGGE admin-flader: personalet må ikke afgive samtykke på vegne af
+    // forælderen, og eksempel-visningen har slet ingen familie at spørge.
     if (isAdminSimulatorSession()) return false;
     // Skip i demo-tilstand — fiktive børn har ingen rigtige billeder at samtykke til
     if (isDemo()) return false;
@@ -864,7 +865,7 @@
   // (hvor title-tooltips ikke virker pga. touch). Returnerer tom streng hvis
   // ikke i simulator-session.
   function adminSimLockedHint(extraStyle) {
-    if (!isAdminSimulatorSession()) return '';
+    if (!isHelpingParent()) return '';
     return `<div style="font-size:11px;color:#92400e;margin-top:4px;font-style:italic;${extraStyle || ''}">${icon('lock', 11, 'ico-inline')} Kun forælder kan ændre dette — bed forælder logge ind selv</div>`;
   }
 
@@ -1575,12 +1576,23 @@
         </header>
         <main class="main">
           <div class="empty-state" style="margin-top:var(--s12);max-width:420px;margin-left:auto;margin-right:auto">
+            ${isAdminSimulatorSession() ? `
+            <div class="empty-state-icon">${icon('triangle-alert', 40)}</div>
+            <div class="empty-state-text" style="margin-bottom:var(--s4)">
+              <strong>Der blev ikke valgt et barn.</strong><br>
+              "Hjælp en forælder" åbner nu portalen for ét barn ad gangen, og adgangen
+              følger dét valg. Denne visning fik ingen — som regel fordi café-appen
+              stadig kører en ældre version i fanen.
+            </div>
+            <div class="hint-box neutral" style="text-align:left;margin-bottom:var(--s4)">${hintIcon('info')}<span>Genindlæs café-appen (⌘R / Ctrl-R) og prøv igen. Så kommer barnevælgeren frem, før portalen åbnes.</span></div>
+            ` : `
             <div class="empty-state-icon">${icon('hand', 40)}</div>
             <div class="empty-state-text" style="margin-bottom:var(--s5)">
               Velkommen til Flango.<br>Indtast koden fra institutionen for at komme i gang.
             </div>
-            <button class="save-btn full" id="onboard-code-btn">Indtast kode</button>
+            <button class="save-btn full" id="onboard-code-btn">Indtast kode</button>`}
 
+            ${isAdminSimulatorSession() ? '' : `
             <div style="margin:var(--s6) 0 var(--s4);border-top:1px solid var(--border)"></div>
             <div style="font-size:13px;color:var(--ink-soft);line-height:1.5;text-align:center">
               <strong>Har din partner allerede adgang?</strong><br>
@@ -1588,7 +1600,7 @@
               partner-kode, så kan de tilføje dig.
             </div>
             <div id="partner-token-box" style="margin-top:var(--s3)"></div>
-            <button class="save-btn full" id="partner-show-btn" style="margin-top:var(--s3);background:var(--surface-sunken);color:var(--ink)">Vis min partner-kode</button>
+            <button class="save-btn full" id="partner-show-btn" style="margin-top:var(--s3);background:var(--surface-sunken);color:var(--ink)">Vis min partner-kode</button>`}
 
             ${userEmail ? `<div style="margin-top:var(--s6);font-size:12px;color:var(--ink-muted);text-align:center;">Logget ind som <strong>${esc(userEmail)}</strong></div>` : ''}
             <button id="no-children-logout" type="button" style="margin-top:var(--s3);padding:10px 20px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg);color:var(--ink-soft);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
@@ -1659,10 +1671,10 @@
           <span class="demo-banner-badge">DEMO</span>
           <span class="demo-banner-text">Du prøver Flango med fiktive børn. Rigtige betalinger er slået fra.</span>
         </div>` : ''}
-        ${isExampleChild() ? `
+        ${(isExampleChild() && !adminPreviewParam) ? `
         <div class="demo-banner" role="status" style="background:#6366f1">
           <span class="demo-banner-badge">EKSEMPEL</span>
-          <span class="demo-banner-text">Du ser portalen med et opdigtet barn — ingen families data. Her slår du funktioner til og fra for <strong>alle</strong> forældre. Skal du hjælpe én konkret familie, skal du vælge barnet først.</span>
+          <span class="demo-banner-text">Du ser portalen med et opdigtet barn — ingen families data.</span>
         </div>` : ''}
         ${isHelpingParent() ? `
         <div class="demo-banner" role="status" style="background:#b45309">
@@ -2841,7 +2853,7 @@
               </span>
             </div>
             <p style="color:var(--ink-soft);margin:0 0 var(--s3)">Tip: Download en kopi af dine data først (se sektionen ovenfor).</p>
-            <button class="save-btn" id="privacy-request-deletion-btn" ${isAdminSimulatorSession() ? 'disabled title="Kun forælder kan anmode om sletning (admin-visning)"' : ''} style="background:var(--negative,#dc2626);color:#fff${isAdminSimulatorSession() ? ';opacity:0.5;cursor:not-allowed' : ''}">${isAdminSimulatorSession() ? '🔒 ' : ''}Anmod om sletning af data for ${esc(name)}</button>
+            <button class="save-btn" id="privacy-request-deletion-btn" ${isHelpingParent() ? 'disabled title="Kun forælder kan anmode om sletning (admin-visning)"' : ''} style="background:var(--negative,#dc2626);color:#fff${isHelpingParent() ? ';opacity:0.5;cursor:not-allowed' : ''}">${isHelpingParent() ? '🔒 ' : ''}Anmod om sletning af data for ${esc(name)}</button>
             ${adminSimLockedHint()}
           </div>
           <div id="privacy-deletion-confirm" style="display:none">
@@ -2878,7 +2890,7 @@
             </span>
           </div>
           <div id="privacy-delete-account-form">
-            <button class="save-btn" id="privacy-delete-account-btn" ${isAdminSimulatorSession() ? 'disabled title="Kun forælder kan slette egen konto (admin-visning)"' : ''} style="background:var(--negative,#dc2626);color:#fff${isAdminSimulatorSession() ? ';opacity:0.5;cursor:not-allowed' : ''}">${isAdminSimulatorSession() ? '🔒 ' : ''}Slet min konto permanent</button>
+            <button class="save-btn" id="privacy-delete-account-btn" ${isHelpingParent() ? 'disabled title="Kun forælder kan slette egen konto (admin-visning)"' : ''} style="background:var(--negative,#dc2626);color:#fff${isHelpingParent() ? ';opacity:0.5;cursor:not-allowed' : ''}">${isHelpingParent() ? '🔒 ' : ''}Slet min konto permanent</button>
             ${adminSimLockedHint()}
           </div>
           <div id="privacy-delete-account-confirm" style="display:none">
@@ -2956,7 +2968,7 @@
     const library = childData?.profile_picture_library || [];
     const childName = getChildName();
     const initials = childName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-    const canUploadNow = showParentUpload && !optOutParentUpload && !isAdminSimulatorSession();
+    const canUploadNow = showParentUpload && !optOutParentUpload && !isHelpingParent();
 
     // Build gallery HTML
     let galleryHtml = '';
@@ -3048,7 +3060,7 @@
     const parentAiOn = featureFlags?.parent_ai_avatar_enabled === true;
     const avatarRate = childData?.avatar_rate || null;
     const avatarExhausted = !!(avatarRate && avatarRate.used >= avatarRate.limit);
-    const avatarBtnEnabled = parentAiOn && hasOpenaiConsent && !avatarExhausted && !isAdminSimulatorSession();
+    const avatarBtnEnabled = parentAiOn && hasOpenaiConsent && !avatarExhausted && !isHelpingParent();
     let avatarHint = '';
     if (parentAiOn && !hasOpenaiConsent) {
       avatarHint = 'Aktivér samtykket “AI-genereret avatar” nedenfor for at lave en avatar.';
@@ -3084,40 +3096,40 @@
           ${avatarHtml}
           <div class="hint-box blue" style="margin-bottom:var(--s3)">${hintIcon('info')}<span>Profilbilleder bruges i caféen for at bekræfte dit barns identitet ved køb. Billederne er kun synlige for børn og personale i denne institution.</span></div>
 
-          <div class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:var(--s3);margin-bottom:var(--s2);flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+          <div class="setting-row${isHelpingParent() ? ' consent-locked-sim' : ''}" style="border-bottom:1px solid var(--border-color, #e5e7eb);padding-bottom:var(--s3);margin-bottom:var(--s2);flex-direction:column;align-items:stretch" ${isHelpingParent() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
-              <div class="setting-info"><div class="setting-label" style="font-weight:700">Tillad profilbilleder${isAdminSimulatorSession() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Slå fra for at fravælge alle billedtyper på én gang</div></div>
-              <label class="toggle"><input type="checkbox" id="pp-consent-master" ${!allOptedOut ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+              <div class="setting-info"><div class="setting-label" style="font-weight:700">Tillad profilbilleder${isHelpingParent() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Slå fra for at fravælge alle billedtyper på én gang</div></div>
+              <label class="toggle"><input type="checkbox" id="pp-consent-master" ${!allOptedOut ? 'checked' : ''} ${isHelpingParent() ? 'disabled' : ''}><span class="toggle-track"></span></label>
             </div>
             ${adminSimLockedHint()}
           </div>
 
           <div id="pp-type-toggles" style="${allOptedOut ? 'opacity:0.4;pointer-events:none' : ''}">
-            ${showAula ? `<div data-sub="pp_aula" class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+            ${showAula ? `<div data-sub="pp_aula" class="setting-row${isHelpingParent() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isHelpingParent() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
-                <div class="setting-info"><div class="setting-label">Aula-profilbillede${isAdminSimulatorSession() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div></div>
-                <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+                <div class="setting-info"><div class="setting-label">Aula-profilbillede${isHelpingParent() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div></div>
+                <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''} ${isHelpingParent() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               ${adminSimLockedHint()}
             </div>` : ''}
-            ${showCamera ? `<div data-sub="pp_camera" class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+            ${showCamera ? `<div data-sub="pp_camera" class="setting-row${isHelpingParent() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isHelpingParent() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
-                <div class="setting-info"><div class="setting-label">Kamera-foto${isAdminSimulatorSession() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
-                <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+                <div class="setting-info"><div class="setting-label">Kamera-foto${isHelpingParent() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Personalet kan tage et foto af dit barn med caféens enhed.</div></div>
+                <label class="toggle"><input type="checkbox" id="pp-consent-camera" ${!optOutCamera ? 'checked' : ''} ${isHelpingParent() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               ${adminSimLockedHint()}
             </div>` : ''}
-            ${showParentUpload ? `<div data-sub="pp_parent_upload" class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+            ${showParentUpload ? `<div data-sub="pp_parent_upload" class="setting-row${isHelpingParent() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isHelpingParent() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
-                <div class="setting-info"><div class="setting-label">Forælder-upload${isAdminSimulatorSession() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Du kan selv uploade et billede af dit barn fra denne portal. Alle uploads gennemgås af institutionen før aktivering.</div></div>
-                <label class="toggle"><input type="checkbox" id="pp-consent-parent-upload" ${!optOutParentUpload ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+                <div class="setting-info"><div class="setting-label">Forælder-upload${isHelpingParent() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Du kan selv uploade et billede af dit barn fra denne portal. Alle uploads gennemgås af institutionen før aktivering.</div></div>
+                <label class="toggle"><input type="checkbox" id="pp-consent-parent-upload" ${!optOutParentUpload ? 'checked' : ''} ${isHelpingParent() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               ${adminSimLockedHint()}
             </div>` : ''}
-            ${showAi ? `<div data-sub="pp_ai" class="setting-row${isAdminSimulatorSession() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch;gap:4px" ${isAdminSimulatorSession() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+            ${showAi ? `<div data-sub="pp_ai" class="setting-row${isHelpingParent() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch;gap:4px" ${isHelpingParent() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);">
-                <div class="setting-info"><div class="setting-label">AI-genereret avatar${isAdminSimulatorSession() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Et foto sendes til Microsoft Azure (EU) for at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.</div></div>
-                <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai" ${!optOutOpenai ? 'checked' : ''} ${isAdminSimulatorSession() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+                <div class="setting-info"><div class="setting-label">AI-genereret avatar${isHelpingParent() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Et foto sendes til Microsoft Azure (EU) for at generere en tegnet avatar. Fotoet slettes straks — kun avataren gemmes.</div></div>
+                <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai" ${!optOutOpenai ? 'checked' : ''} ${isHelpingParent() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               <button type="button" id="pp-ai-readmore-btn" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600;text-align:left;align-self:flex-start;">${icon('book-open', 14, 'ico-inline')} Læs mere om databehandlingen</button>
               ${adminSimLockedHint()}
@@ -3491,7 +3503,7 @@
     // stille og roligt overskrive forælderens eget valg. Rækkerne bliver stående
     // (personalet skal kunne se hvad forælderen har, og preview-fladens chips
     // hænger på dem), men kontakterne er låst — og gemmes ikke, se saveNotifications.
-    const pushLocked = isAdminSimulatorSession();
+    const pushLocked = isHelpingParent();
     const pushDis = pushLocked ? ' disabled' : '';
     const pushLock = pushLocked ? ' ' + icon('lock', 11, 'ico-inline') : '';
     const pushHint = pushLocked
@@ -3619,7 +3631,7 @@
     // forælderens navn, og en udstedt kode ville udpege institutionen som
     // "partner". Serveren afviser begge (ADMIN_SESSION_BLOCKED); dette er kun
     // den venlige udgave af den samme mur.
-    if (isAdminSimulatorSession()) {
+    if (isHelpingParent()) {
       return `
       <div class="section" id="section-invite-parent">
         <div class="section-header">
@@ -3711,7 +3723,7 @@
   // ER hele værnet. Derfor spørges der, med OAuth-navnet som forslag.
   function handleShowPartnerToken() {
     if (demoBlocked()) return;
-    if (isAdminSimulatorSession()) {
+    if (isHelpingParent()) {
       showAdminSimulatorBlockedAlert('partner-kode',
         'Koden ville udpege institutionens konto, ikke forælderens. Forælderen skal hente sin egen kode i sin egen app.');
       return;
@@ -3761,7 +3773,7 @@
     // samtidig kontoens øvrige sessioner, så andres åbne visning dør midt i
     // arbejdet. Feltet vises stadig (personalet skal kunne se hvad forælderen
     // har), men det er låst.
-    const locked = isAdminSimulatorSession();
+    const locked = isHelpingParent();
     const body = locked
       ? `<div class="hint-box warn" style="margin-top:var(--s2)">${hintIcon('lock')}<span>Adgangskoden hører til forælderens egen konto og kan ikke ændres herfra — denne visning er logget ind på institutionens konto. Har forælderen glemt sin kode, kan de bede om et nulstillingslink på login-siden.</span></div>`
       : `<div style="display:flex;flex-direction:column;gap:var(--s2);margin-top:var(--s2)">
@@ -3947,7 +3959,7 @@
         // Stop FØR identitets-skærmen: godkendelses-trinnet er hele værnet, og
         // det kan personalet ikke udføre på forælderens vegne (§3b B2).
         // Serveren afviser også selve godkendelsen (ADMIN_SESSION_BLOCKED).
-        if (isAdminSimulatorSession()) {
+        if (isHelpingParent()) {
           showCodeError(CODE_ERRORS.ADMIN_SESSION_BLOCKED);
           return;
         }
@@ -4011,7 +4023,7 @@
 
   async function handleCodeApprove() {
     if (codeModal.busy) return;
-    if (isAdminSimulatorSession()) { showCodeError(CODE_ERRORS.ADMIN_SESSION_BLOCKED); return; }
+    if (isHelpingParent()) { showCodeError(CODE_ERRORS.ADMIN_SESSION_BLOCKED); return; }
     const btn = document.getElementById('code-approve-btn');
     const picked = [...document.querySelectorAll('.partner-child-check:checked')].map(el => el.value);
     if (picked.length === 0) { showCodeError(CODE_ERRORS.NO_CHILDREN_SELECTED); return; }
@@ -5511,7 +5523,7 @@
     if (!selectedChild) return;
     const toggle = e.target;
     // Block i simulator-session — admin må ikke afgive samtykke på vegne af forælder
-    if (isAdminSimulatorSession()) {
+    if (isHelpingParent()) {
       toggle.checked = !toggle.checked; // rul tilbage
       showAdminSimulatorBlockedAlert('samtykker');
       return;
@@ -5605,7 +5617,7 @@
     const gameId = toggle.dataset.gameId;
     const game = (childData?.game_accounts || []).find(g => g.id === gameId);
     if (!gameId || !game) return;
-    if (isAdminSimulatorSession()) {
+    if (isHelpingParent()) {
       toggle.checked = !toggle.checked; // rul tilbage
       showAdminSimulatorBlockedAlert('samtykker');
       return;
@@ -5657,7 +5669,7 @@
   async function handleMasterToggle(e) {
     if (!selectedChild) return;
     const toggle = e.target;
-    if (isAdminSimulatorSession()) {
+    if (isHelpingParent()) {
       toggle.checked = !toggle.checked;
       showAdminSimulatorBlockedAlert('samtykker');
       return;
@@ -5939,6 +5951,13 @@
     if (!selectedChild) return;
     const container = document.getElementById('privacy-linked-parents-content');
     if (!container) return;
+    // Eksempel-visningen har intet barn at slå op — opslaget fejlede og efterlod
+    // "Kunne ikke indlæse data.", som ligner en driftsfejl for den admin der bare
+    // ville se hvordan sektionen ser ud.
+    if (isExampleChild()) {
+      container.innerHTML = '<p style="color:var(--ink-soft);margin:0">Her ser forælderen hvilke forældrekonti der har adgang til barnet. Ingen data i eksempel-visningen.</p>';
+      return;
+    }
     try {
       const parents = await API.getLinkedParents(selectedChild.child_id);
       if (!parents || parents.length === 0) {
@@ -6011,7 +6030,7 @@
   async function handleConfirmDeletion() {
     if (!selectedChild) return;
     if (demoBlocked()) return;
-    if (isAdminSimulatorSession()) {
+    if (isHelpingParent()) {
       showAdminSimulatorBlockedAlert('sletning af barnets data');
       return;
     }
@@ -6043,7 +6062,7 @@
 
   async function handleDeleteParentAccount() {
     if (demoBlocked()) return;
-    if (isAdminSimulatorSession()) {
+    if (isHelpingParent()) {
       showAdminSimulatorBlockedAlert('sletning af forælderkonto');
       return;
     }
@@ -6167,7 +6186,7 @@
     // Push udelades HELT i personalets forældre-visning (§3b B1-undtagelsen).
     // save-parent-notification rører kun de felter klienten sender, så
     // forælderens egne push-valg står urørt. Serveren afviser dem også.
-    if (!isAdminSimulatorSession()) {
+    if (!isHelpingParent()) {
       payload.push_at_zero = val(pushZeroEl, 'push_at_zero', true);
       payload.push_at_ten = val(pushLowEl, 'push_at_ten', true);
       payload.push_event_reminder = val(pushEventReminderEl, 'push_event_reminder', false);
@@ -6694,7 +6713,7 @@
     // Værn mod en DOM der er ældre end tilstanden (barn-skift, gammel render):
     // knappen findes ikke i en admin-session, men findes den alligevel, må den
     // ikke ramme institutionens delte konto. Se renderPinSection.
-    if (isAdminSimulatorSession()) {
+    if (isHelpingParent()) {
       showAdminSimulatorBlockedAlert('ændring af adgangskode',
         'Denne visning er logget ind på institutionens konto, ikke forælderens. En kodeændring her ville ramme institutionens egen konto. Forælderen kan selv bede om et nulstillingslink på login-siden.');
       return;

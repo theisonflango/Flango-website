@@ -103,7 +103,7 @@
       <div class="pvh-root">
         <div class="pvh-toolbar">
           <div class="pvh-toolbar-left">
-            <span class="pvh-hint">Det du ser, er den rigtige forældreportal. Sluk/tænd sektioner direkte på dem — grå = skjult for forældre.</span>
+            <span class="pvh-hint">Det du ser, er den rigtige forældreportal med et <strong>opdigtet eksempel-barn</strong> — ingen families data. Sluk/tænd sektioner direkte på dem; grå = skjult for forældre. Skal du hjælpe én konkret familie, brug <strong>Hjælp en forælder</strong>.</span>
           </div>
           <div class="pvh-toolbar-right">
             <button class="pvh-contact-btn" id="pvh-contact-toggle-panel">📞 Kontaktknap</button>
