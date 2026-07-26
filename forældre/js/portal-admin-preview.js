@@ -785,6 +785,7 @@
     // udfoldningen er kørt, så vi måler hen over hele animationen (.25s).
     document.addEventListener('click', () => repositionOverAnimation(), true);
     watchTabSwitches();
+    startLayoutSafetyNet();
     if (typeof ResizeObserver === 'function') {
       // ⚠️ document.body var ikke nok: portalens scroll-container er .main, så
       // body skifter ikke størrelse når et kort foldes ud eller en fane skifter
@@ -821,6 +822,25 @@
     };
     requestAnimationFrame(tick);
   }
+
+  /** Sikkerhedsnet: mål med jævne mellemrum, så længe preview'et er åbent.
+   *
+   *  Ærligt: jeg fandt ikke det event der fyrer ved portalens faneskift.
+   *  Målt i prod stod 0 af 12 kontakter synlige efter et skift til "Grænser",
+   *  mens et manuelt resize-event viste de rigtige 3 med det samme —
+   *  positioneringen var altså sund, men blev aldrig kaldt. Frem for at gætte
+   *  videre på hvilket event der mangler, gør vi målingen selvkorrigerende.
+   *
+   *  Prisen er 12 getBoundingClientRect hvert 400 ms, og KUN i admin-preview.
+   *  Forældrenes portal indlæser ikke dette modul overhovedet.
+   *  Event-lytterne ovenfor beholdes som den hurtige vej — loopet er kun
+   *  garantien for at en kontakt aldrig bliver liggende usynlig. */
+  function startLayoutSafetyNet() {
+    if (layoutTimer) return;
+    layoutTimer = setInterval(positionSubcontrols, 400);
+  }
+
+  var layoutTimer = null;
 
   /** Fanerne skifter ved at flytte .active — ingen størrelsesændring vi kan
    *  regne med at se i tide. Se efter klasseskiftet i stedet. */
