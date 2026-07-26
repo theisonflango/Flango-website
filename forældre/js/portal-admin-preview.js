@@ -571,12 +571,28 @@
    *  portalen sætter, eller — for spil — via `[data-game-id]`. Bindingen
    *  (kolonne / array-medlem / tabelrække) er en opaque `target`-streng fra
    *  serveren, så en ny binding ikke kræver ændringer i begge værter. */
+  /** Find den række kontakten skal flugte med.
+   *
+   *  ⚠️ Samme data-sub findes FLERE steder: portalen viser fx saldo- og
+   *  arrangement-påmindelser i både push-kortet og e-mail-kortet, og fanerne
+   *  ligger alle i DOM'en samtidig (kun den aktive faneblad er display:block).
+   *  querySelector gav derfor den FØRSTE forekomst — som oftest lå i en skjult
+   *  fane uden layout-boks, hvorefter kontakten skjulte sig selv. Resultatet var
+   *  at næsten alle under-kontakter var usynlige, uanset hvilken fane man stod på.
+   *
+   *  Vi vælger nu den første forekomst der FAKTISK er lagt ud; findes ingen,
+   *  falder vi tilbage til den første, så applySubcontrol stadig kan hænge
+   *  kontakten op i den rigtige sektion. */
   function subRowFor(entry) {
     if (entry.row_id) {
       const input = document.querySelector('[data-game-id="' + entry.row_id + '"]');
       return input && input.closest ? input.closest('.game-row') : null;
     }
-    return document.querySelector('[data-sub="' + entry.key + '"]');
+    const alle = document.querySelectorAll('[data-sub="' + entry.key + '"]');
+    for (const el of alle) {
+      if (el.offsetParent && el.getClientRects().length) return el;
+    }
+    return alle[0] || null;
   }
 
   function applySubcontrol(entry) {
