@@ -28,7 +28,7 @@
     portal_sortiment: ['parent_portal_sortiment'],
     portal_feedback: ['parent_portal_feedback'],
     portal_daily_special: ['parent_portal_daily_special', 'parent_portal_daily_special_price'],
-    portal_notifications: ['parent_portal_email_notifications'],
+    portal_notifications: ['parent_portal_email_notifications', 'parent_portal_notifications_push'],
     portal_payment: [],  // Indbetaling — enforcement via UI, ikke institution-felter
     portal_profile_pictures: ['parent_portal_profile_pictures'],
     portal_ugeplan: ['parent_portal_ugeplan'],
@@ -134,6 +134,7 @@
     parent_portal_feedback: 'portal_feedback',
     parent_portal_daily_special: 'portal_daily_special',
     parent_portal_email_notifications: 'portal_notifications',
+    parent_portal_notifications_push: 'portal_notifications',
     // Payment / indbetaling
     parent_portal_payment: 'portal_payment',
     // Spending

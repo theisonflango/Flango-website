@@ -349,7 +349,7 @@
         try {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'js/portal-admin-preview.js?v=8';
+            s.src = 'js/portal-admin-preview.js?v=9';
             s.onload = resolve; s.onerror = reject;
             document.head.appendChild(s);
           });
@@ -1783,7 +1783,7 @@
             ${renderChildNameSection()}
             ${renderProfilePictureSection()}
             ${secOn('transfer') ? renderTransferSection() : ''}
-            ${secOn('notifications') ? renderNotificationsSection() : ''}
+            ${renderNotificationsSection()}
             ${secOn('invite_parent') ? renderInviteParentSection() : ''}
             ${secOn('feedback') ? renderFeedbackSection() : ''}
             ${secOn('pin') ? renderPinSection() : ''}
@@ -3514,7 +3514,11 @@
     const notifBalanceOn = isAdminPreview() || childData?.institution?.parent_portal_notify_balance !== false;
     const notifEventsOn = isAdminPreview() || childData?.institution?.parent_portal_notify_events !== false;
     const notifExtraEmailOn = isAdminPreview() || childData?.institution?.parent_portal_notify_extra_email !== false;
+    // De to kort er to selvstændige valg for institutionen (2026-07-26): push
+    // kan slukkes uden at e-mail-påmindelserne følger med, og omvendt. Før hang
+    // begge på ét flag, der oven i købet hed noget andet end det gjorde.
     return `
+      ${secOn('notifications') ? `
       <div class="section" id="section-notifications">
         <div class="section-header">
           <div class="section-title-row">${sectionIcon('bell-ring', 'info')}<div><div class="section-title">Notifikationer</div><div class="section-subtitle">Påmindelser på telefonen</div></div></div>
@@ -3528,7 +3532,8 @@
           ${notifEventsOn ? `<div class="setting-row" data-sub="notify_events"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer${pushLock}</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="push-event-reminder" ${notif.push_event_reminder === true ? 'checked' : ''}${pushDis}><span class="toggle-track"></span></label></div>
           <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding${pushLock}</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="push-event-invite" ${notif.push_event_invite === true ? 'checked' : ''}${pushDis}><span class="toggle-track"></span></label></div>` : ''}
         </div></div></div>
-      </div>
+      </div>` : ''}
+      ${secOn('email_notifications') ? `
       <div class="section" id="section-email-notifications">
         <div class="section-header">
           <div class="section-title-row">${sectionIcon('mail', 'info')}<div><div class="section-title">E-mail påmindelser</div><div class="section-subtitle">Lav saldo og arrangementer</div></div></div>
@@ -3556,7 +3561,7 @@
             <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="notif-event-invite" ${notif.notify_event_invite === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
           </div>
         </div></div></div>
-      </div>`;
+      </div>` : ''}`;
   }
 
   function renderFeedbackSection() {
