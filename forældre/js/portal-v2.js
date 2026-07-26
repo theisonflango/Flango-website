@@ -2190,13 +2190,30 @@
     } else {
       txHTML = filteredTx.map(tx => {
         const type = tx.type || tx.event_type || 'SALE';
+        const dateStr = tx.created_at || tx.date || '';
+        const date = dateStr ? formatDateTime(dateStr) : '';
+
+        // Indstillings-ændringer er ikke transaktioner: intet beløb, og linjen
+        // siger HVEM der ændrede det. Uden dette blev de tegnet som køb til
+        // "-0,00 kr" med titlen "USER_EDITED".
+        if (type === 'USER_EDITED') {
+          const afStaff = tx.by === 'staff';
+          const hvem = afStaff
+            ? '<span style="color:var(--caution,#b45309);font-weight:600"> · ændret af personalet</span>'
+            : '';
+          return `<div class="tx-row"><div class="tx-icon adjust">${icon('sliders-horizontal', 18)}</div><div class="tx-info"><div class="tx-title">${esc(tx.description || 'Indstilling ændret')}</div><div class="tx-date">${esc(date)}${hvem}</div></div></div>`;
+        }
+
         let txIcon = 'cup-soda', iconCls = 'purchase', amountCls = 'negative', sign = '-';
         if (type === 'DEPOSIT' || type === 'TOPUP') { txIcon = 'credit-card'; iconCls = 'topup'; amountCls = 'positive'; sign = '+'; }
         else if (type === 'BALANCE_EDIT' || type === 'ADJUSTMENT') { txIcon = 'sliders-horizontal'; iconCls = 'adjust'; amountCls = parseFloat(tx.amount) >= 0 ? 'positive' : 'negative'; sign = parseFloat(tx.amount) >= 0 ? '+' : '-'; }
-        else if (type === 'SALE_UNDO' || type === 'UNDO_SALE') { icon = '↩️'; iconCls = 'topup'; amountCls = 'positive'; sign = '+'; }
+        // ⚠️ Her stod `icon = '↩️'` — en tildeling til den const-bundne icon()-
+        // funktion fra window.FlangoIcons. I strict mode kaster det TypeError,
+        // så en forælder med bare ét fortrudt køb i perioden fik hele
+        // historik-renderingen til at fejle. 'history' findes i ikonsættet;
+        // 'undo-2' gør ikke, så et forkert navn ville bare tegne ingenting.
+        else if (type === 'SALE_UNDO' || type === 'UNDO_SALE') { txIcon = 'history'; iconCls = 'topup'; amountCls = 'positive'; sign = '+'; }
         const title = tx.description || tx.product_names || type;
-        const dateStr = tx.created_at || tx.date || '';
-        const date = dateStr ? formatDateTime(dateStr) : '';
         const amount = Math.abs(parseFloat(tx.amount || tx.total_amount || 0));
         return `<div class="tx-row"><div class="tx-icon ${iconCls}">${icon(txIcon, 18)}</div><div class="tx-info"><div class="tx-title">${esc(title)}</div><div class="tx-date">${esc(date)}</div></div><div class="tx-amount ${amountCls}">${sign}${formatKr(amount)} kr</div></div>`;
       }).join('');
