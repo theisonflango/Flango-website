@@ -349,7 +349,7 @@
         try {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'js/portal-admin-preview.js?v=9';
+            s.src = 'js/portal-admin-preview.js?v=10';
             s.onload = resolve; s.onerror = reject;
             document.head.appendChild(s);
           });
@@ -1748,7 +1748,7 @@
               </div>
               <div class="topup-row">
                 <button class="topup-btn topup-primary" data-nav-tab="tab-pay">${icon('plus', 18)}Indbetal</button>
-                ${renderBalanceSecondaryAction()}
+                <span data-sub="contact_button" style="display:contents">${renderBalanceSecondaryAction()}</span>
               </div>
             </div>
 

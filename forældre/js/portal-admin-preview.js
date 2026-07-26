@@ -81,13 +81,13 @@
     data_insight: ['section-data-insight'],
     delete_child: ['section-delete-child'],
     delete_account: ['section-delete-account'],
+    contact: ['section-contact'],
   };
 
   // Kort som stadig ikke har en kontakt. Teksten forklarer hvorfor, så et tomt
   // felt ikke ligner en manglende funktion.
-  const NO_FLAG_REASON = {
-    'section-contact': 'Kontaktknappen styres af kontakttelefon-feltet i caféens portalindstillinger.',
-  };
+  // Tom: alle kort har nu enten en kontakt eller er markeret lovpligtige.
+  const NO_FLAG_REASON = {};
 
   let hostOrigin = null;        // sat ved session-handshake; al efterfølgende trafik låses hertil
   let role = 'admin';           // 'admin' (café) | 'superadmin' (super-admin-panelet)
