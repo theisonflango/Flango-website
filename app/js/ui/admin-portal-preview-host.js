@@ -368,14 +368,22 @@
       // tabelrække. Nøglen i draft'en ER målet.
       const key = typeof msg.target === 'string' ? msg.target : msg.column;
       if (typeof key !== 'string') return;
-      draft[key] = msg.value;
-      // Portalen sender navn + konsekvens med. Værten kender ikke sektionerne og
-      // skal ikke lære dem — den gemmer blot beskrivelsen til bekræftelsen.
-      draftMeta[key] = {
-        label: typeof msg.label === 'string' ? msg.label : key,
-        effect: typeof msg.effect === 'string' ? msg.effect : '',
-        value: msg.value,
-      };
+      // revert = kontakten er vendt tilbage til den gemte værdi. Kun portalen
+      // kender serverens værdi, så den melder det; værten fjerner nøglen frem
+      // for at gemme en "ændring" der ikke er nogen.
+      if (msg.revert === true) {
+        delete draft[key];
+        delete draftMeta[key];
+      } else {
+        draft[key] = msg.value;
+        // Portalen sender navn + konsekvens med. Værten kender ikke sektionerne og
+        // skal ikke lære dem — den gemmer blot beskrivelsen til bekræftelsen.
+        draftMeta[key] = {
+          label: typeof msg.label === 'string' ? msg.label : key,
+          effect: typeof msg.effect === 'string' ? msg.effect : '',
+          value: msg.value,
+        };
+      }
       updateSaveBar();
       post({ type: 'flango-preview:state', draft: { ...draft } });
     }

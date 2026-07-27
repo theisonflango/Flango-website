@@ -945,13 +945,17 @@
         if (ctrl.getAttribute('aria-disabled') === 'true') { openPopover(ctrl, sub, true); return; }
         closePopover(true);
         const next = !subEffective(sub);
-        draft[sub.target] = next;
+        // Vendt tilbage til den GEMTE værdi = ingen ændring. Blev nøglen liggende,
+        // meldte gem-bekræftelsen en ændring der ikke fandtes ("slukkes", selvom
+        // den er tændt) — og gem-baren blev stående uden noget at gemme.
+        const uændret = next === sub.visible;
+        if (uændret) delete draft[sub.target]; else draft[sub.target] = next;
         decorate();
         // Navn + konsekvens følger med, så værtens gem-bekræftelse kan sige hvad
         // ændringen betyder uden selv at kende sektionerne.
         post({
           type: 'flango-preview:toggle', key: sub.key, target: sub.target, value: next,
-          label: controlName(sub), effect: consequence(sub, next),
+          revert: uændret, label: controlName(sub), effect: consequence(sub, next),
         });
         return;
       }
@@ -964,11 +968,12 @@
 
       closePopover(true);
       const next = !effective(entry.column, entry.visible);
-      draft[entry.column] = next;
+      const uændret = next === entry.visible;   // tilbage til serverens værdi
+      if (uændret) delete draft[entry.column]; else draft[entry.column] = next;
       decorate();
       post({
         type: 'flango-preview:toggle', key: entry.key, column: entry.column, value: next,
-        label: controlName(entry), effect: consequence(entry, next),
+        revert: uændret, label: controlName(entry), effect: consequence(entry, next),
       });
     }, true);
 
