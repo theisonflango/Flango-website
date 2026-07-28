@@ -1,9 +1,9 @@
-assets/CatalogModal-X0seSA7y.js
-assets/PosterPreview-CKkqge2b.js
-assets/SettingsScreen-DPgVxBYO.js
+assets/CatalogModal-CfMCJ0iB.js
+assets/PosterPreview-BcQmKw80.js
+assets/SettingsScreen-EI51Xtl6.js
 assets/html2canvas.esm-DXEQVQnt.js
-assets/index.es-BmuY1GFz.js
-assets/jspdf.es.min-Bc2w_Eyr.js
-assets/main-B744x4T6.js
+assets/index.es-DrXaVmeg.js
+assets/jspdf.es.min-DrVRRKiF.js
 assets/main-CkMAE9AW.css
-assets/purify.es-DrLDRNlj.js
+assets/main-Ek6Pa_5c.js
+assets/purify.es-VaSPOPhr.js
