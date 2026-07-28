@@ -11,6 +11,11 @@
       if (path.indexOf('/ugeplan/') === 0 && path !== '/ugeplan/') {
         window.location.replace('/ugeplan/?p=' + encodeURIComponent(path));
       }
+
+      // Ugeplan v5-remaken kører på sidestien indtil den afløser /ugeplan/
+      if (path.indexOf('/ugeplan-next/') === 0 && path !== '/ugeplan-next/') {
+        window.location.replace('/ugeplan-next/?p=' + encodeURIComponent(path));
+      }
     </script>
   </head>
   <body>
