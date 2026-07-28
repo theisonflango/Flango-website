@@ -2067,7 +2067,7 @@
     if (!planviewReady._p) {
       planviewReady._p = new Promise((resolve, reject) => {
         const el = document.createElement('script');
-        el.src = './js/vendor/planview.js?v=2';
+        el.src = './js/vendor/planview.js?v=3';
         el.onload = resolve;
         el.onerror = () => { planviewReady._p = null; reject(new Error('planview')); };
         document.head.appendChild(el);
@@ -2085,6 +2085,16 @@
       note: week.note || null,
       institution: (ugeplanData && ugeplanData.institution) || null,
     };
+  }
+
+  // Ferie & lukkeuger for ét år: uge → årsag. PlanView udleder selv spænd ("uge 28-30")
+  // og "vi åbner igen …" — vi sender kun det rå kort, så logikken findes ét sted.
+  function ugeplanClosures(year) {
+    const out = {};
+    ((ugeplanData && ugeplanData.closures) || []).forEach(function (c) {
+      if (c && c.year === year && c.reason) out[c.week_number] = c.reason;
+    });
+    return out;
   }
 
   function renderUgeplanContent(container) {
@@ -2115,7 +2125,9 @@
       chips = '<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:var(--s3);-webkit-overflow-scrolling:touch">' +
         weeks.map((w, i) => {
           const active = i === ugeplanWeekIdx;
-          return `<button data-ugeplan-week="${i}" style="flex:0 0 auto;min-height:38px;border:1px solid ${active ? 'var(--flango)' : 'var(--border)'};background:${active ? 'var(--flango-light)' : '#fff'};color:${active ? 'var(--flango-dark)' : 'var(--ink)'};border-radius:var(--r-full);padding:0 14px;font-size:13px;font-weight:600;cursor:pointer">Uge ${w.week_number}</button>`;
+          // Lukkeuger mærkes i strimlen: så kan man se ferien uden at klikke sig frem.
+          const shut = ugeplanClosures(w.year)[w.week_number];
+          return `<button data-ugeplan-week="${i}" title="${shut ? esc(shut) : ''}" style="flex:0 0 auto;min-height:38px;border:1px solid ${active ? 'var(--flango)' : 'var(--border)'};background:${active ? 'var(--flango-light)' : '#fff'};color:${active ? 'var(--flango-dark)' : 'var(--ink)'};border-radius:var(--r-full);padding:0 14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">Uge ${w.week_number}${shut ? '<span style="width:6px;height:6px;border-radius:50%;background:var(--ink-muted);opacity:.55"></span>' : ''}</button>`;
         }).join('') + '</div>';
     }
 
@@ -2141,6 +2153,7 @@
         weekNum: week.week_number,
         year: week.year,
         view: ugeplanView,
+        closures: ugeplanClosures(week.year),
       });
     }).catch(() => {
       // Uden skemaet er en tekstliste stadig bedre end en tom sektion
@@ -2163,7 +2176,7 @@
       btn.addEventListener('click', async function () {
         const act = btn.getAttribute('data-ugeplan-action');
         const snap = ugeplanSnapshot(week);
-        const opts = { weekNum: week.week_number, year: week.year };
+        const opts = { weekNum: week.week_number, year: week.year, closures: ugeplanClosures(week.year) };
         try {
           await planviewReady();
           if (act === 'enlarge') { if (ugeplanHandle) ugeplanHandle.enlarge(); return; }
@@ -2184,6 +2197,17 @@
 
   // Reserve: samme data som tekstliste, hvis skema-filen ikke kan hentes (offline første gang)
   function renderUgeplanFallback(container, week, data) {
+    const el0 = container.querySelector('#ugeplan-fallback');
+    // Kan skemaet ikke indlæses, er ferien stadig det vigtigste svar — og det eneste der er.
+    const shut = ugeplanClosures(week.year)[week.week_number];
+    if (shut && el0) {
+      el0.style.display = 'block';
+      el0.innerHTML = `<div style="text-align:center;padding:32px 16px;border:1px solid var(--border);border-radius:var(--r-md);background:#fff">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-muted)">Lukket</div>
+        <div style="font-size:22px;font-weight:700;color:var(--ink);margin-top:6px">${esc(shut)}</div>
+      </div>`;
+      return;
+    }
     const hidden = new Set(week.hidden_workshops || []);
     const sched = week.schedule_data || {};
     const visibleWs = (data.workshops || []).filter(w => !hidden.has(w.slug));
