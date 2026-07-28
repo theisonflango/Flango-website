@@ -1,4 +1,4 @@
-import{j as t,D as ie,v as I,x as oe,M as D,s as re,L as se,y as Q,z as V,B as K,E as Z,e as M,r as x}from"./main-CeUaD2bo.js";const J="/ugeplan-next/assets/nordisk-eng-scene-v1--za2K41g.webp",S=1160,G=653,_=120,ee=64,T=70,te=160,ne=38,ae=`
+import{j as t,D as ie,v as I,x as oe,M as D,s as re,L as se,y as Q,z as V,B as K,E as Z,e as M,r as x}from"./main-BaBS0x6X.js";const J="/ugeplan-next/assets/nordisk-eng-scene-v1--za2K41g.webp",S=1160,G=653,_=120,ee=64,T=70,te=160,ne=38,ae=`
 @keyframes nordic-sky-breathe {
   0%, 100% { transform: translate3d(0,0,0) scale(1.001); }
   50% { transform: translate3d(-1px,1px,0) scale(1.004); }
