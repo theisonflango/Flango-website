@@ -2054,33 +2054,139 @@
     }
   }
 
+  // ── Ugeplan-sektionen ──────────────────────────────────────────────────────
+  // Portalen tegner IKKE skemaet selv: den mounter PlanView (samme komponent som
+  // plakaten i Ugeplan-appen), så forældrene ser præcis det skema der hænger på væggen.
+  // Her ejer vi kun rammen — Dag/Uge-skifter, uge-strimmel og knapper i portalens sprog.
+
+  let ugeplanView = 'day';    // 'day' | 'week' — dagen er det man vil vide på en telefon
+  let ugeplanHandle = null;   // PlanView-instansen (afmonteres ved barn-/uge-skift)
+
+  function planviewReady() {
+    if (window.FlangoPlanView) return Promise.resolve();
+    if (!planviewReady._p) {
+      planviewReady._p = new Promise((resolve, reject) => {
+        const el = document.createElement('script');
+        el.src = './js/vendor/planview.js?v=1';
+        el.onload = resolve;
+        el.onerror = () => { planviewReady._p = null; reject(new Error('planview')); };
+        document.head.appendChild(el);
+      });
+    }
+    return planviewReady._p;
+  }
+
+  function ugeplanSnapshot(week) {
+    // get-published-ugeplan leverer allerede den form PlanView læser.
+    return {
+      schedule_data: week.schedule_data || {},
+      hidden_workshops: week.hidden_workshops || [],
+      workshops: (ugeplanData && ugeplanData.workshops) || [],
+      note: week.note || null,
+      institution: (ugeplanData && ugeplanData.institution) || null,
+    };
+  }
+
   function renderUgeplanContent(container) {
     if (!container) return;
     const data = ugeplanData || {};
     const weeks = data.weeks || [];
     if (!weeks.length) {
+      if (ugeplanHandle) { ugeplanHandle.destroy(); ugeplanHandle = null; }
       container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Der er endnu ikke delt nogen ugeplan</div></div>';
       return;
     }
     if (ugeplanWeekIdx >= weeks.length) ugeplanWeekIdx = 0;
-
-    const workshops = data.workshops || [];
     const week = weeks[ugeplanWeekIdx];
-    const hidden = new Set(week.hidden_workshops || []);
-    const sched = week.schedule_data || {};
-    const visibleWs = workshops.filter(w => !hidden.has(w.slug));
 
-    // Uge-vælger (kun hvis der er flere udgivne uger)
+    // Skifteren holdes NEUTRAL med vilje: skemaet har sin egen varme palet, og to
+    // forskellige accentfarver 40px fra hinanden ser ud som en fejl. Portalens orange
+    // bliver på uge-strimlen, som er portalens egen navigation.
+    const seg = (v, label) => {
+      const on = ugeplanView === v;
+      return `<button data-ugeplan-view="${v}" style="min-height:38px;padding:0 16px;border:none;border-radius:var(--r-full);cursor:pointer;font-size:14px;font-weight:${on ? '700' : '600'};background:${on ? '#fff' : 'transparent'};color:${on ? 'var(--ink)' : 'var(--ink-muted)'};box-shadow:${on ? '0 1px 3px rgba(0,0,0,.12)' : 'none'}">${label}</button>`;
+    };
+    const iconBtn = (action, name, title) =>
+      `<button data-ugeplan-action="${action}" title="${title}" aria-label="${title}" style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:#fff;border-radius:var(--r-md);color:var(--ink-muted);cursor:pointer">${icon(name, 18)}</button>`;
+
+    // Uge-strimmel kun når institutionen deler mere end én uge
     let chips = '';
     if (weeks.length > 1) {
       chips = '<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:var(--s3);-webkit-overflow-scrolling:touch">' +
         weeks.map((w, i) => {
           const active = i === ugeplanWeekIdx;
-          return `<button data-ugeplan-week="${i}" style="flex:0 0 auto;border:1px solid ${active ? 'var(--flango)' : 'var(--border)'};background:${active ? 'var(--flango-light)' : '#fff'};color:${active ? 'var(--flango-dark)' : 'var(--ink)'};border-radius:var(--r-full);padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer">Uge ${w.week_number}</button>`;
+          return `<button data-ugeplan-week="${i}" style="flex:0 0 auto;min-height:38px;border:1px solid ${active ? 'var(--flango)' : 'var(--border)'};background:${active ? 'var(--flango-light)' : '#fff'};color:${active ? 'var(--flango-dark)' : 'var(--ink)'};border-radius:var(--r-full);padding:0 14px;font-size:13px;font-weight:600;cursor:pointer">Uge ${w.week_number}</button>`;
         }).join('') + '</div>';
     }
 
-    // Lodrette dag-blokke
+    container.innerHTML = `
+      ${chips}
+      <div style="display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s3);flex-wrap:wrap">
+        <div style="display:flex;gap:2px;padding:3px;background:var(--bg-subtle,#F6F3EE);border:1px solid var(--border);border-radius:var(--r-full)">
+          ${seg('day', 'Dag')}${seg('week', 'Uge')}
+        </div>
+        <div style="display:flex;gap:6px;margin-left:auto">
+          ${iconBtn('enlarge', 'maximize', 'Vis stort')}
+          ${iconBtn('pdf', 'download', 'Hent som PDF')}
+          ${iconBtn('print', 'printer', 'Udskriv')}
+        </div>
+      </div>
+      <div id="ugeplan-plan" style="min-height:120px"></div>
+      <div id="ugeplan-fallback" style="display:none"></div>`;
+
+    const mountEl = container.querySelector('#ugeplan-plan');
+    planviewReady().then(() => {
+      if (ugeplanHandle) { ugeplanHandle.destroy(); ugeplanHandle = null; }
+      ugeplanHandle = window.FlangoPlanView.mountPortal(mountEl, ugeplanSnapshot(week), {
+        weekNum: week.week_number,
+        year: week.year,
+        view: ugeplanView,
+      });
+    }).catch(() => {
+      // Uden skemaet er en tekstliste stadig bedre end en tom sektion
+      renderUgeplanFallback(container, week, data);
+    });
+
+    container.querySelectorAll('[data-ugeplan-week]').forEach(btn => {
+      btn.addEventListener('click', function () {
+        ugeplanWeekIdx = parseInt(btn.getAttribute('data-ugeplan-week'), 10) || 0;
+        renderUgeplanContent(container);
+      });
+    });
+    container.querySelectorAll('[data-ugeplan-view]').forEach(btn => {
+      btn.addEventListener('click', function () {
+        ugeplanView = btn.getAttribute('data-ugeplan-view');
+        renderUgeplanContent(container);
+      });
+    });
+    container.querySelectorAll('[data-ugeplan-action]').forEach(btn => {
+      btn.addEventListener('click', async function () {
+        const act = btn.getAttribute('data-ugeplan-action');
+        const snap = ugeplanSnapshot(week);
+        const opts = { weekNum: week.week_number, year: week.year };
+        try {
+          await planviewReady();
+          if (act === 'enlarge') { if (ugeplanHandle) ugeplanHandle.enlarge(); return; }
+          if (act === 'print') { await window.FlangoPlanView.printPlan(snap, opts); return; }
+          btn.disabled = true;
+          btn.style.opacity = '.5';
+          await window.FlangoPlanView.downloadPdf(snap, opts);
+        } catch (err) {
+          console.error('[Portal] ugeplan-handling:', act, err);
+          if (typeof showToast === 'function') showToast('Kunne ikke ' + (act === 'pdf' ? 'hente PDF' : 'udskrive') + ' — prøv igen');
+        } finally {
+          btn.disabled = false;
+          btn.style.opacity = '';
+        }
+      });
+    });
+  }
+
+  // Reserve: samme data som tekstliste, hvis skema-filen ikke kan hentes (offline første gang)
+  function renderUgeplanFallback(container, week, data) {
+    const hidden = new Set(week.hidden_workshops || []);
+    const sched = week.schedule_data || {};
+    const visibleWs = (data.workshops || []).filter(w => !hidden.has(w.slug));
     let dayBlocks = '';
     for (let d = 0; d < 5; d++) {
       let rows = '';
@@ -2089,14 +2195,12 @@
         if (!cell || cell.empty || cell.closed) continue;
         const hasStaff = Array.isArray(cell.staff) && cell.staff.length > 0;
         if (!cell.activity && !hasStaff) continue;
-        const staffStr = hasStaff ? esc(cell.staff.join(', ')) : '';
-        const timeStr = cell.time ? esc(cell.time) : '';
-        const metaParts = [timeStr, staffStr].filter(Boolean).join(' · ');
+        const meta = [cell.time ? esc(cell.time) : '', hasStaff ? esc(cell.staff.join(', ')) : ''].filter(Boolean).join(' · ');
         rows += `<div style="display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--border)">
           <div style="flex:0 0 34%;font-size:13px;font-weight:600;color:var(--ink)">${esc(w.name)}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:14px;color:var(--ink)">${esc(cell.activity || '')}${cell.sub ? ' <span style="color:var(--ink-muted);font-size:12px">' + esc(cell.sub) + '</span>' : ''}</div>
-            ${metaParts ? `<div style="font-size:12px;color:var(--ink-muted);margin-top:2px">${metaParts}</div>` : ''}
+            <div style="font-size:14px;color:var(--ink)">${esc(cell.activity || '')}</div>
+            ${meta ? `<div style="font-size:12px;color:var(--ink-muted);margin-top:2px">${meta}</div>` : ''}
           </div>
         </div>`;
       }
@@ -2106,18 +2210,10 @@
         ${rows}
       </div>`;
     }
-
-    container.innerHTML = `
-      ${chips}
-      <div style="font-size:13px;color:var(--ink-muted);margin-bottom:var(--s2)">Uge ${week.week_number} · ${week.year}</div>
-      ${dayBlocks}`;
-
-    container.querySelectorAll('[data-ugeplan-week]').forEach(btn => {
-      btn.addEventListener('click', function () {
-        ugeplanWeekIdx = parseInt(btn.getAttribute('data-ugeplan-week'), 10) || 0;
-        renderUgeplanContent(container);
-      });
-    });
+    const el = container.querySelector('#ugeplan-fallback');
+    if (!el) return;
+    el.style.display = 'block';
+    el.innerHTML = dayBlocks;
   }
 
   let ppCurrentPeriod = 'all';
