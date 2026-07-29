@@ -2593,6 +2593,7 @@
             <div class="fsp-expand${aiOn ? ' open' : ''}" data-expand-target="ai-body" style="max-height:${aiOn ? '400px' : '0'}">
               <div style="padding-top:14px;border-top:1px solid rgba(255,255,255,0.04)">
                 <div class="fsp-pm-detail">Aktiverer AI-genererede avatarer baseret p\u00e5 barnets foto. Fotoet sendes til den valgte udbyder og slettes straks efter. Flango sender faktura til institutionen p\u00e5 100,- kr. hvorefter I kan generere 300\u2013400 avatars.</div>
+                <div class="fsp-pm-detail" style="margin-top:8px">Sl\u00e5r I den <strong>fra</strong>: eksisterende avatarer slettes IKKE \u2014 de bliver st\u00e5ende som profilbilleder. Personalet kan blot ikke lave nye. For\u00e6ldrenes samtykke best\u00e5r, og har I for\u00e6lder-AI sl\u00e5et til i Portal-indstillinger, kan for\u00e6lderen fortsat selv lave avataren. Skal en avatar v\u00e6k, sletter I billedet \u2014 eller for\u00e6lderen tr\u00e6kker sit samtykke.</div>
                 <div class="fsp-role"><div class="fsp-role-left"><div><div class="fsp-role-name">Microsoft Azure OpenAI</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">EU</div></div></div><div class="fsp-toggle${inst.ai_provider_openai !== false ? ' on' : ''}" data-ai-provider="openai"></div></div>
               </div>
             </div>
