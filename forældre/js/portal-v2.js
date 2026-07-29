@@ -349,7 +349,7 @@
         try {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'js/portal-admin-preview.js?v=29';
+            s.src = 'js/portal-admin-preview.js?v=30';
             s.onload = resolve; s.onerror = reject;
             document.head.appendChild(s);
           });
@@ -2067,7 +2067,7 @@
     if (!planviewReady._p) {
       planviewReady._p = new Promise((resolve, reject) => {
         const el = document.createElement('script');
-        el.src = './js/vendor/planview.js?v=3';
+        el.src = './js/vendor/planview.js?v=4';
         el.onload = resolve;
         el.onerror = () => { planviewReady._p = null; reject(new Error('planview')); };
         document.head.appendChild(el);
@@ -2078,12 +2078,16 @@
 
   function ugeplanSnapshot(week) {
     // get-published-ugeplan leverer allerede den form PlanView læser.
+    // design SKAL med: uden det valgte PlanView sin egen standard, og forældrene fik et
+    // andet design end det institutionen havde sat. Faldes der tilbage, er det på PlanViews
+    // default — ikke på et gæt her.
     return {
       schedule_data: week.schedule_data || {},
       hidden_workshops: week.hidden_workshops || [],
       workshops: (ugeplanData && ugeplanData.workshops) || [],
       note: week.note || null,
       institution: (ugeplanData && ugeplanData.institution) || null,
+      ...(ugeplanData && ugeplanData.design ? { design: ugeplanData.design } : {}),
     };
   }
 
@@ -3118,6 +3122,12 @@
     const optOutParentUpload = childData?.profile_picture_opt_out_parent_upload || false;
     // Per-provider AI-state læses fra consentHistory (cache flag dækker begge providers samlet)
     const hasOpenaiConsent = (consentHistory || []).some(c => c.consent_type === 'profile_picture_ai_openai' && c.is_active);
+    // Omfang: må klubben OGSÅ lave avataren? Eget samtykke, så forælderen kan
+    // sige "kun mig" uden at fravælge AI-avataren helt. Valget vises kun når der
+    // er noget at vælge: samtykket skal være givet, OG institutionen skal have
+    // slået personale-AI til — ellers kan klubben alligevel ikke.
+    const hasStaffAiConsent = (consentHistory || []).some(c => c.consent_type === 'profile_picture_ai_staff' && c.is_active);
+    const instStaffAi = featureFlags?.profile_pictures_ai_enabled !== false;
     // Filter toggles efter hvad institutionen har slået til (jf. café settings / super-admin)
     const ppInstTypes = Array.isArray(featureFlags?.profile_picture_types) ? featureFlags.profile_picture_types : ['upload', 'camera', 'library'];
     // inst* = institutionens valg (det forælderen møder). show* = om rækken
@@ -3310,6 +3320,18 @@
                 <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai" ${!optOutOpenai ? 'checked' : ''} ${isHelpingParent() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               <button type="button" id="pp-ai-readmore-btn" style="background:none;border:none;padding:0;color:var(--info);font-size:12px;cursor:pointer;font-weight:600;text-align:left;align-self:flex-start;">${icon('book-open', 14, 'ico-inline')} Læs mere om databehandlingen</button>
+              ${(hasOpenaiConsent && instStaffAi) ? `
+              <div id="pp-ai-scope" style="margin-top:var(--s2);padding:var(--s2) var(--s3);border-left:3px solid var(--border-color, #e5e7eb);background:var(--surface-sunken, #fafaf9);border-radius:0 var(--r-sm, 8px) var(--r-sm, 8px) 0">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3)">
+                  <div class="setting-info">
+                    <div class="setting-label" style="font-size:13px">Klubben må også lave den</div>
+                    <div class="setting-desc">${hasStaffAiConsent
+                      ? 'Personalet kan lave avataren — fx ud fra et foto de tager i caféen.'
+                      : 'Kun dig: du bestemmer selv hvilket billede der bruges. Personalet kan ikke lave nye.'}</div>
+                  </div>
+                  <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="pp-consent-ai-staff" ${hasStaffAiConsent ? 'checked' : ''} ${isHelpingParent() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+                </div>
+              </div>` : ''}
               ${adminSimLockedHint()}
             </div>` : ''}
           </div>
@@ -3347,6 +3369,14 @@
         key: 'profile_picture_ai_openai',
         label: 'AI-genereret avatar',
         desc: 'Et foto af dit barn sendes til Microsoft Azure (EU) for at generere en tegnet avatar. Fotoet opbevares kun midlertidigt i EU — kun avataren gemmes.',
+      },
+      // Omfanget står som sin egen linje i historikken. Det ER et selvstændigt
+      // samtykke med egen version og eget tidspunkt, og GDPR art. 15 handler om
+      // at kunne se hvad man har givet — ikke om at det skal være kortfattet.
+      {
+        key: 'profile_picture_ai_staff',
+        label: 'AI-avatar: klubben må også lave den',
+        desc: 'Personalet må lave AI-avataren, fx ud fra et foto de tager i caféen. Uden dette må kun du selv lave den fra portalen.',
       },
     ];
     if (showParentUpload) {
@@ -4701,6 +4731,8 @@
     if (ppAula) ppAula.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_aula', 'aula'));
     if (ppCamera) ppCamera.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_camera', 'camera'));
     if (ppAi) ppAi.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_ai_openai', 'ai'));
+    const ppAiStaff = document.getElementById('pp-consent-ai-staff');
+    if (ppAiStaff) ppAiStaff.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_ai_staff', 'ai_staff'));
     if (ppAiReadmore) ppAiReadmore.addEventListener('click', () => openAiLayer2Modal(false));
 
     // Forælder-upload consent toggle
@@ -5726,6 +5758,11 @@
       // Aktivering: konstruktiv, vis informeret samtykke (Lag 2 for AI)
       if (kind === 'ai') {
         proceed = await openAiLayer2Modal(true);
+      } else if (kind === 'ai_staff') {
+        // Omfangs-valget har sin egen korte tekst. Lag 2 (databehandlingen) hører
+        // til grund-samtykket og gentages ikke her, hvor det ville drukne valget.
+        const cfg = ct.confirmTexts?.ai_staff_on;
+        proceed = cfg ? await showConfirmModal(cfg) : confirm('Må klubben også lave avataren?');
       } else {
         const label = kind === 'aula' ? 'Aula-profilbillede'
           : kind === 'camera' ? 'Kamera-foto'
@@ -5746,6 +5783,7 @@
     } else {
       // Deaktivering: destruktiv, vis advarsels-popup
       const popupKey = kind === 'ai' ? 'ai_off'
+        : kind === 'ai_staff' ? 'ai_staff_off'
         : kind === 'aula' ? 'aula_off'
         : kind === 'parent_upload' ? 'parent_upload_off'
         : 'camera_off';
@@ -5767,10 +5805,19 @@
       // Vælg den rette versionsstreng for samtykket
       const version = kind === 'ai'
         ? (ct.PARENT_AI_AVATAR_VERSION || CURRENT_CONSENT_VERSION)
-        : CURRENT_CONSENT_VERSION;
+        : kind === 'ai_staff'
+          ? (ct.AI_STAFF_VERSION || CURRENT_CONSENT_VERSION)
+          : CURRENT_CONSENT_VERSION;
       const result = nowChecked
         ? await API.giveConsent(selectedChild.child_id, consentType, version, 'forældreportal_checkbox')
         : await API.withdrawConsent(selectedChild.child_id, consentType);
+      // Trækkes GRUND-samtykket, skal omfanget følge med. Serveren kræver begge,
+      // så et efterladt omfangs-samtykke ville være harmløst — men det ville stå
+      // som aktivt i samtykke-historikken, og den skal kunne læses ligefremt.
+      if (!nowChecked && kind === 'ai' && result && result.success !== false) {
+        try { await API.withdrawConsent(selectedChild.child_id, 'profile_picture_ai_staff'); }
+        catch (e) { console.warn('[Portal] kunne ikke trække AI-omfang med:', e); }
+      }
 
       if (result && result.success === false) {
         toggle.checked = !nowChecked;

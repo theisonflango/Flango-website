@@ -131,7 +131,7 @@
     pp_aula: 'Brug af barnets eksisterende Aula-foto som profilbillede.',
     pp_camera: 'Personalets mulighed for at tage et foto med caféens enhed.',
     pp_parent_upload: 'Forældrenes mulighed for selv at uploade et billede.',
-    pp_ai: 'Samtykket til AI-genereret avatar (personale-drevet).',
+    pp_ai: 'Forældrenes samtykke til AI-genereret avatar. Sig de ja, vælger de selv om KLUBBEN også må lave den, eller kun de selv — slår I personale-AI fra i café-indstillingerne, forsvinder det valg, og kun forælderen kan lave den.',
     pp_parent_ai: 'Forældrenes egen knap til at generere en AI-avatar.',
     st_personal_limits: 'Forældrenes personlige daglige spilletidsgrænse for barnet.',
     st_session_limit: 'Forældrenes grænse for hvor lang tid ad gangen barnet må spille.',

@@ -19,17 +19,36 @@
 (function () {
   'use strict';
 
-  const VERSION_PARENT_AI_AVATAR = 'v1.1-ai-avatar-parent-azure-2026-06-22';
+  // v1.2: teksten navngav før INSTITUTIONEN som den der laver avataren, uden at
+  // forælderen kunne sige "kun mig". Grund-samtykket handler nu om at avataren
+  // må laves; HVEM der må lave den er et selvstændigt valg (VERSION_AI_STAFF).
+  const VERSION_PARENT_AI_AVATAR = 'v1.2-ai-avatar-omfang-2026-07-29';
+  const VERSION_AI_STAFF = 'v1.0-ai-avatar-klubben-maa-ogsaa-2026-07-29';
 
   // ─────────────────────────────────────────────────────────────────────────
   // Forælder — AI-avatar (Microsoft Azure OpenAI, EU)
   // ─────────────────────────────────────────────────────────────────────────
 
-  const PARENT_AI_AVATAR_LAYER1 = `Hvis du aktiverer dette samtykke, må institutionen oprette en stiliseret tegneserie-avatar af dit barn. Avataren bruges som profilbillede i café-systemet og hjælper personalet med at genkende dit barn ved køb.
+  const PARENT_AI_AVATAR_LAYER1 = `Hvis du aktiverer dette samtykke, må der laves en stiliseret tegneserie-avatar af dit barn. Avataren bruges som profilbillede i café-systemet og hjælper personalet med at genkende dit barn ved køb.
+
+Du bestemmer selv hvem der må lave den — kun dig, eller også klubben. Det vælger du lige under dette samtykke.
 
 For at lave avataren sender vi et reference-foto af dit barn til Microsoft Azure OpenAI, som behandler og lagrer data i EU. Tjenesten returnerer en stiliseret version, som vi gemmer som dit barns profilbillede. Microsoft bruger ikke fotoet til at træne AI-modeller, og fotoet opbevares kun midlertidigt (op til 30 dage) i EU som led i misbrugsovervågning, hvorefter det slettes.
 
 Du kan trække dit samtykke tilbage når som helst — så slettes avataren straks fra Flango.`;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Forælder — omfang: må klubben også lave AI-avataren?
+  // Bevidst kort og i almindeligt sprog. Det er et valg, ikke en juridisk tekst:
+  // det tunge om databehandling står i AI-samtykket ovenfor, og det gentages
+  // ikke her, hvor det kun ville drukne selve valget.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const AI_STAFF_LAYER1 = `Slår du dette til, må personalet i klubben også lave avataren — fx ud fra et foto de tager med caféens enhed, eller et billede dit barn allerede har i Flango.
+
+Slår du det fra, er det kun dig der kan lave den, her i appen. Så bestemmer du selv hvilket billede der bruges. Personalet kan stadig se og bruge den avatar der findes.
+
+Du kan ændre valget når som helst.`;
 
   // Lag 2: HTML-format så vi kan rendere overskrifter, lister osv. i modalen.
   const PARENT_AI_AVATAR_LAYER2_HTML = `
@@ -77,15 +96,33 @@ Du kan trække dit samtykke tilbage når som helst — så slettes avataren stra
   window.PortalConsentTexts = {
     /** Aktuel version-streng for forælder-AI-avatar-samtykket (Microsoft Azure, EU). */
     PARENT_AI_AVATAR_VERSION: VERSION_PARENT_AI_AVATAR,
+    AI_STAFF_VERSION: VERSION_AI_STAFF,
 
     /** Lag 1 — kort tekst (plain text). */
     parentAiAvatarLayer1: PARENT_AI_AVATAR_LAYER1,
+    aiStaffLayer1: AI_STAFF_LAYER1,
 
     /** Lag 2 — fuld informeret samtykke (HTML). */
     parentAiAvatarLayer2Html: PARENT_AI_AVATAR_LAYER2_HTML,
 
     /** Korte tekster for confirmation-popups ved deaktivering. */
     confirmTexts: {
+      ai_staff_on: {
+        title: 'Må klubben også lave avataren?',
+        body: `Personalet kan så lave dit barns AI-avatar — fx ud fra et foto de tager med caféens enhed, eller et billede dit barn allerede har i Flango.
+
+Dit valg registreres med tidspunkt og version, og du kan ændre det når som helst.`,
+        confirm: 'Ja, klubben må også',
+        cancel: 'Annullér',
+      },
+      ai_staff_off: {
+        title: 'Kun dig fremover?',
+        body: `Personalet kan ikke længere lave nye AI-avatarer af dit barn. Fremover er det kun dig, her i appen.
+
+Den avatar der findes nu bliver IKKE slettet — den blev lavet mens du havde givet lov. Vil du også fjerne den, kan du slette billedet, eller trække hele AI-samtykket tilbage.`,
+        confirm: 'Kun mig fremover',
+        cancel: 'Annullér',
+      },
       ai_off: {
         title: 'Trække AI-avatar-samtykke tilbage?',
         body: `Hvis du fortryder dit samtykke til AI-avataren:
