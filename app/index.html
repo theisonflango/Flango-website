@@ -372,8 +372,8 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-DhxJtHfk.js"></script>
-  <link rel="stylesheet" crossorigin href="/app/assets/main-DgTSvFYJ.css">
+  <script type="module" crossorigin src="/app/assets/main-BrbReB9z.js"></script>
+  <link rel="stylesheet" crossorigin href="/app/assets/main-DrD-041s.css">
 </head>
 <body>
 
@@ -1730,90 +1730,16 @@
 </div>
 <!-- 4. Badges -->
 <div class="eu-section" id="eu-section-badges">
-<div class="eu-section-header"><div class="eu-section-title"><div class="eu-section-icon">🏅</div><div><span>Badges</span><div class="eu-section-subtitle">Tilføj og fjern badges</div></div></div><div class="eu-section-arrow">▼</div></div>
+<div class="eu-section-header"><div class="eu-section-title"><div class="eu-section-icon eu-section-badge-icon"><img src="Icons/webp/Badge/generated/DagensStjerne.webp" alt=""></div><div><span>Badges</span><div class="eu-section-subtitle">Tildel, se historik og tilbagekald badges</div></div></div><div class="eu-section-arrow">▼</div></div>
 <div class="eu-section-content">
-<div class="form-group"><div class="badge-row"><span id="current-badge-label">Ingen badge</span><button type="button" id="assign-badge-btn" class="action-button secondary-action">Tildel Badge</button></div><p id="assign-badge-note" class="assign-badge-note" style="display:none;"></p><div id="edit-user-badge-display" class="simple-badge-row compact"></div></div>
+<div class="badge-admin-toolbar"><div><strong>Aktive badges</strong><span id="current-badge-label">Ingen badges</span></div><button type="button" id="assign-badge-btn" class="action-button secondary-action">Tildel badge</button></div>
+<p id="assign-badge-note" class="assign-badge-note" style="display:none;"></p>
+<div id="edit-user-badge-display" class="admin-badge-gallery" aria-live="polite"></div>
+<section class="badge-admin-history" aria-labelledby="badge-admin-history-title"><div class="badge-admin-history-heading"><div><h3 id="badge-admin-history-title">Historik</h3><p>Uddelinger og tilbagekaldelser gemmes her.</p></div><span id="edit-user-badge-history-count"></span></div><div id="edit-user-badge-history" class="badge-admin-history-list" aria-live="polite"></div></section>
 </div>
 </div>
 </div></div><div class="modal-actions"><button id="save-edit-user-btn" class="action-button" style="width:100%;">Gem</button><button id="delete-edit-user-btn" class="action-button" style="width:100%; background-color: var(--danger-color); margin-top: 10px;">Slet Bruger</button></div></div></template>
-    <template id="assign-badge-modal-template"><div class="modal-content assign-badge-modal"><div class="modal-header"><h2 id="assign-badge-title">Tildel Badge</h2><span class="close-btn">&times;</span></div><div class="badge-category-list">
-        <details class="badge-section" open>
-            <summary>Faglige &amp; praktiske kompetencer 🧠</summary>
-            <div class="badge-grid">
-                <button class="badge-option" data-badge="SANS FOR DETALJER">SANS FOR DETALJER</button>
-                <button class="badge-option" data-badge="Orden & Overblik">Orden & Overblik</button>
-                <button class="badge-option" data-badge="Køkken-Kaptajn">Køkken-Kaptajn</button>
-                <button class="badge-option" data-badge="Hygiejne-Helten">Hygiejne-Helten</button>
-                <button class="badge-option" data-badge="Service-Specialist">Service-Specialist</button>
-                <button class="badge-option" data-badge="Flango Fejlfinder">Flango Fejlfinder</button>
-            </div>
-        </details>
-        <details class="badge-section">
-            <summary>Sociale kompetencer & relationsarbejde🤝</summary>
-            <div class="badge-grid">
-                <button class="badge-option" data-badge="En God Kammerat">En God Kammerat</button>
-                <button class="badge-option" data-badge="Tryghedsskaber">Tryghedsskaber</button>
-                <button class="badge-option" data-badge="Team-Spiller">Team-Spiller</button>
-                <button class="badge-option" data-badge="Empati-Ekspedient">Empati-Ekspedient</button>
-                <button class="badge-option" data-badge="Rolig Under Pres">Rolig Under Pres</button>
-                <button class="badge-option" data-badge="God Til At Lytte">God Til At Lytte</button>
-                <button class="badge-option" data-badge="SKABER GOD STEMNING">SKABER GOD STEMNING</button>
-                <button class="badge-option" data-badge="Rolig & Rar">Rolig & Rar</button>
-            </div>
-        </details>
-        <details class="badge-section">
-            <summary>Indsats, flid og vedholdenhed💪</summary>
-            <div class="badge-grid">
-                <button class="badge-option" data-badge="SUPER FLITTIG">SUPER FLITTIG</button>
-                <button class="badge-option" data-badge="Stædig Som En Stjerne">Stædig Som En Stjerne</button>
-                <button class="badge-option" data-badge="Vedholdende">Vedholdende</button>
-                <button class="badge-option" data-badge="Altid klar!">Altid klar!</button>
-                <button class="badge-option" data-badge="Topengageret Flango Fighter">Topengageret Flango Fighter</button>
-                <button class="badge-option image-badge" data-badge="Hårdtarbejdende"><img src="Icons/webp/Badge/Haardtarbejdende.webp" alt="Hårdtarbejdende badge"></button>
-                <button class="badge-option" data-badge="Månedens Ekspedient">Månedens Ekspedient</button>
-                <button class="badge-option" data-badge="Top Sælger">Top Sælger</button>
-            </div>
-        </details>
-        <details class="badge-section">
-            <summary>Modning, ansvar og selvstændighed🌱</summary>
-            <div class="badge-grid">
-                <button class="badge-option" data-badge="Ansvar Med Omhu">Ansvar Med Omhu</button>
-                <button class="badge-option" data-badge="Omsorgsfuld Ekspedient">Omsorgsfuld Ekspedient</button>
-                <button class="badge-option" data-badge="Selvstændig Stjerne">Selvstændig Stjerne</button>
-                <button class="badge-option" data-badge="Problemknuser">Problemknuser</button>
-                <button class="badge-option" data-badge="Tryg & Trofast">Tryg & Trofast</button>
-                <button class="badge-option" data-badge="Skrap Til Sikkerhed">Skrap Til Sikkerhed</button>
-            </div>
-        </details>
-        <details class="badge-section">
-            <summary>Kreativitet & initiativ🎨</summary>
-            <div class="badge-grid">
-                <button class="badge-option" data-badge="Initiativtager">Initiativtager</button>
-                <button class="badge-option" data-badge="Idé-Maskinen">Idé-Maskinen</button>
-                <button class="badge-option" data-badge="Kreativ Kok">Kreativ Kok</button>
-                <button class="badge-option" data-badge="Opfinder">Opfinder</button>
-            </div>
-        </details>
-        <details class="badge-section">
-            <summary>Køkkenrelaterede og sjove badge🧁</summary>
-            <div class="badge-grid">
-                <button class="badge-option" data-badge="Byens Børne-Kok">Byens Børne-Kok</button>
-                <button class="badge-option image-badge" data-badge="Pandekage Mester"><img src="Icons/webp/Badge/pandekagemester.webp" alt="Pandekage Mester badge"></button>
-                <button class="badge-option" data-badge="Toast-Fabrik">Toast-Fabrik</button>
-                <button class="badge-option" data-badge="Vaffel-Vokter">Vaffel-Vokter</button>
-            </div>
-        </details>
-        <details class="badge-section">
-            <summary>Adfærd & attitude-badges⭐</summary>
-            <div class="badge-grid">
-                <button class="badge-option" data-badge="SUPER HØFLIG">SUPER HØFLIG</button>
-                <button class="badge-option" data-badge="Hjælpsom">Hjælpsom</button>
-                <button class="badge-option image-badge" data-badge="God Stil"><img src="Icons/webp/Badge/GodStil.webp" alt="God Stil badge"></button>
-                <button class="badge-option" data-badge="Ekstra Ansvarlig">Ekstra Ansvarlig</button>
-                <button class="badge-option" data-badge="Dagens Stjerne">Dagens Stjerne</button>
-            </div>
-        </details>
-    </div></div></template>
+    <template id="assign-badge-modal-template"><div class="modal-content assign-badge-modal"><div class="modal-header"><h2 id="assign-badge-title">Tildel badge</h2><span class="close-btn">&times;</span></div><p class="badge-picker-intro">Vælg det badge, der passer bedst til indsatsen.</p><div id="badge-category-list" class="badge-category-list"></div><div id="badge-reason-step" class="badge-reason-step" hidden><button type="button" id="badge-picker-back" class="badge-picker-back">Tilbage til badges</button><div id="selected-badge-preview" class="selected-badge-preview"></div><label for="badge-reason-input">Hvorfor fortjener personen dette badge?</label><textarea id="badge-reason-input" maxlength="240" rows="4"></textarea><div class="badge-reason-meta"><span id="badge-reason-error" role="alert"></span><span id="badge-reason-count">0/240</span></div><button type="button" id="confirm-assign-badge-btn" class="action-button">Tildel badge</button></div></div></template>
 
     <!-- Indstillinger modal -->
     <div id="settings-modal-backdrop" class="settings-modal-backdrop" style="display:none;">
