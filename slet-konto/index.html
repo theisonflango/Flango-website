@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <title>Slet din konto – Flango</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Sådan sletter du din Flango-forælderkonto, og hvad der sker med dine data." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/shared/nav.css" />
+  <style>
+    :root {
+      --bg-soft: #ffffff;
+      --accent: #ff7a3c;
+      --accent-dark: #e0521f;
+      --text-main: #111827;
+      --text-muted: #4b5563;
+      --border-soft: #e5e7eb;
+      --radius-lg: 18px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: radial-gradient(circle at top, #ffe8d6 0, #f5f5fb 38%, #f9fafb 100%); color: var(--text-main); }
+    a { color: inherit; }
+    .page { min-height: 100vh; max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 28px; }
+    .page-title { margin: 0 0 8px; font-size: clamp(24px,4vw,30px); font-family: 'Baloo 2', cursive; }
+    .page-intro { margin: 0; font-size: 15px; color: var(--text-muted); max-width: 60ch; line-height: 1.6; }
+    .card { background: var(--bg-soft); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border-soft); box-shadow: 0 18px 36px rgba(15,23,42,0.06); }
+    .card h2 { margin: 0 0 12px; font-size: 19px; font-family: 'Baloo 2', cursive; color: var(--text-main); }
+    .card h3 { margin: 20px 0 8px; font-size: 15px; font-weight: 700; color: var(--text-main); }
+    .card p { margin: 0 0 12px; font-size: 15px; line-height: 1.6; color: var(--text-muted); }
+    .card ul, .card ol { margin: 0 0 12px; padding-left: 22px; font-size: 15px; line-height: 1.7; color: var(--text-muted); }
+    .card li { margin-bottom: 4px; }
+    .card strong { color: var(--text-main); }
+    .mail { font-weight: 700; color: var(--accent-dark); }
+    .note { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 14px 16px; font-size: 14px; line-height: 1.6; color: #7c2d12; }
+    .note p { color: inherit; margin: 0; font-size: 14px; }
+    footer { margin-top: 8px; padding-top: 24px; border-top: 1px solid var(--border-soft); font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
+  </style>
+</head>
+<body class="has-flango-nav">
+  <nav class="flango-nav" role="navigation" aria-label="Hovednavigation">
+    <div class="flango-nav-inner">
+      <a href="/" class="flango-nav-logo" aria-label="Flango forside">flango<span>.</span></a>
+      <ul class="flango-nav-links">
+        <li><a href="/pris/">Priser</a></li>
+        <li><a href="/gaming/">Gaming</a></li>
+        <li><a href="/om-flango/">Om Flango</a></li>
+      </ul>
+      <div class="flango-nav-right">
+        <a href="/forældre/" class="flango-nav-portal">Forældreportal</a>
+        <a href="mailto:kontakt@flango.dk?subject=Jeg%20vil%20høre%20mere%20om%20Flango" class="flango-nav-cta">Book en snak</a>
+      </div>
+      <button class="flango-burger" aria-label="Åbn menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="flango-mobile-menu" id="flangoMobileMenu" role="dialog" aria-label="Mobilmenu">
+      <a href="/">Forside</a>
+      <a href="/pris/">Priser</a>
+      <a href="/gaming/">Gaming</a>
+      <a href="/om-flango/">Om Flango</a>
+      <span class="flango-mobile-section">Log ind</span>
+      <a href="/forældre/">Forældreportal</a>
+      <a href="/app">Café-app (personale)</a>
+    </div>
+  </nav>
+
+  <main class="page">
+    <section>
+      <h1 class="page-title">Slet din konto</h1>
+      <p class="page-intro">
+        Denne side gælder <strong>Flango Forældre</strong> — forældreportalen til institutioner,
+        der bruger Flango. Her kan du se, hvordan du sletter din forælderkonto, hvad der bliver
+        slettet, og hvad der bevares.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Sådan sletter du din konto</h2>
+
+      <h3>I appen</h3>
+      <ol>
+        <li>Log ind i Flango Forældre.</li>
+        <li>Gå til <strong>Profil</strong>.</li>
+        <li>Vælg <strong>Slet konto</strong>.</li>
+        <li>Bekræft ved at skrive din e-mailadresse. Kontoen slettes med det samme.</li>
+      </ol>
+
+      <h3>Hvis du ikke har appen længere</h3>
+      <p>
+        Skriv til <a class="mail" href="mailto:kontakt@flango.dk?subject=Anmodning%20om%20sletning%20af%20konto">kontakt@flango.dk</a>
+        fra den e-mailadresse, kontoen er oprettet med, med emnet “Anmodning om sletning af konto”.
+        Vi bekræfter, når kontoen er slettet.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Hvad bliver slettet</h2>
+      <ul>
+        <li>Dit login — e-mailadresse og adgangskode</li>
+        <li>Tilknytningerne mellem dig og dine børn</li>
+        <li>De grænser og indstillinger, du har sat (beløbsgrænser, sukkerpolitik, kostpræferencer og allergener, notifikationsindstillinger)</li>
+        <li>Din forælderprofil</li>
+        <li>Dine samtykker trækkes tilbage, og profilbilleder, du har givet samtykke til, slettes</li>
+      </ul>
+      <div class="note">
+        <p>
+          Deler du et barn med en anden forælder, bevares barnets fælles indstillinger, så den
+          anden forælders opsætning ikke går tabt. Er du den eneste tilknyttede forælder, ryddes
+          de, og institutionens standardindstillinger overtager.
+        </p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Hvad bevares — og hvorfor</h2>
+      <ul>
+        <li>
+          <strong>Dit barns konto hos institutionen.</strong> Barnets café-konto, saldo og
+          købshistorik tilhører institutionen, som er dataansvarlig — ikke dig som forælder.
+          Den slettes derfor ikke, når du sletter din egen konto.
+        </li>
+        <li>
+          <strong>En revisionslinje.</strong> Vi noterer, at sletningen er gennemført, med
+          tidspunkt og e-mailadresse, som dokumentation for at anmodningen er efterkommet.
+        </li>
+        <li>
+          <strong>Regnskabsdata.</strong> Historiske transaktioner kan bevares som anonyme
+          regnskabsdata, efter den personhenførbare kobling er fjernet.
+        </li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Sletning af dit barns data</h2>
+      <p>
+        Barnets data ejes af institutionen. Du kan anmode om sletning direkte i portalen under
+        <strong>Profil → Privatliv</strong>, hvorfra anmodningen sendes til institutionen, som
+        behandler den. Du kan også kontakte institutionen direkte.
+      </p>
+      <p>
+        Inaktive børneprofiler ryddes desuden automatisk op: profilen arkiveres først og slettes
+        derefter permanent efter en periode, institutionen selv fastsætter. Se
+        <a href="/privatlivspolitik/">privatlivspolitikken</a> for de fulde opbevaringsperioder.
+      </p>
+    </section>
+
+    <footer>
+      <div>© <span id="year"></span> Flango – SFO'ernes cafésystem</div>
+      <div>
+        <a href="/forældre/">Forældreportal</a> ·
+        <a href="/kontakt/">Kontakt</a> ·
+        <a href="/privatlivspolitik/">Privatlivspolitik</a>
+      </div>
+    </footer>
+  </main>
+
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script src="/shared/nav.js"></script>
+</body>
+</html>
