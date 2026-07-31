@@ -365,11 +365,6 @@
 
       const session = await API.getSession();
       if (!session) {
-        // Netværksfejl er IKKE udlogning: supabase-js persisterer sessionen i
-        // localStorage og fjerner den ved ægte logout/ugyldigt refresh-token.
-        // Findes nøglen stadig, men fornyelsen fejlede (typisk offline), vises
-        // en offline-tilstand med genforsøg — aldrig login-skærmen.
-        if (hasPersistedAuthSession()) { renderOfflineRetry(); return; }
         renderLogin();
         return;
       }
@@ -396,37 +391,8 @@
       await loadChildren(hydrated ? { silent: true, preferChildId: selectedChild?.child_id } : undefined);
     } catch (err) {
       console.error('[Portal] Init error:', err);
-      if (hasPersistedAuthSession()) { renderOfflineRetry(); } else { renderLogin(); }
+      renderLogin();
     }
-  }
-
-  // supabase-js gemmer sessionen under sb-<ref>-auth-token og SLETTER nøglen ved
-  // logout og ved afvist refresh-token. Nøglens tilstedeværelse adskiller derfor
-  // "offline/kan ikke forny" fra "reelt logget ud".
-  function hasPersistedAuthSession() {
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token', k.length - 11) !== -1) return true;
-      }
-    } catch (_) {}
-    return false;
-  }
-
-  function renderOfflineRetry() {
-    root.innerHTML = `
-      <div class="app">
-        <main class="main">
-          <div class="empty-state" style="margin-top:var(--s16)">
-            <div class="empty-state-icon">${icon('triangle-alert', 40)}</div>
-            <div class="empty-state-text">Ingen forbindelse.<br>Du er stadig logget ind — portalen henter dine data, så snart forbindelsen er tilbage.</div>
-            <button class="save-btn" id="offline-retry-btn" style="margin-top:var(--s5)">Prøv igen</button>
-          </div>
-        </main>
-      </div>`;
-    document.getElementById('offline-retry-btn')?.addEventListener('click', () => window.location.reload());
-    window.addEventListener('online', () => window.location.reload(), { once: true });
-    setTimeout(() => { if (navigator.onLine !== false) window.location.reload(); }, 20000);
   }
 
   // Genskab hele render-tilstanden fra det krypterede snapshot (API.loadSnapshot
@@ -1029,7 +995,6 @@
   });
 
   function renderLogin() {
-    stopEmptyStatePoll();
     const brandHTML = LOGIN_LOCKUP_HTML;
 
     if (loginView === 'signup-auth') {
@@ -1597,27 +1562,6 @@
   //  RENDER: NO CHILDREN
   // ═══════════════════════════════════════
 
-  // Tom-tilstanden skal selv opdage, når partneren godkender tilknytningen fra
-  // en anden enhed — ellers ligner en gennemført godkendelse et dødt flow,
-  // indtil appen genstartes. Pollen kører KUN mens 0-børn-visningen står, og
-  // stoppes så snart portalen renderer noget andet.
-  let emptyStatePollTimer = null;
-  function startEmptyStatePoll() {
-    if (emptyStatePollTimer || isAdminSimulatorSession() || adminPreviewParam) return;
-    emptyStatePollTimer = setInterval(async () => {
-      try {
-        const found = await API.getChildren();
-        if (found && found.length > 0) {
-          stopEmptyStatePoll();
-          await loadChildren();
-        }
-      } catch (_) { /* offline m.m. — næste puls prøver igen */ }
-    }, 12000);
-  }
-  function stopEmptyStatePoll() {
-    if (emptyStatePollTimer) { clearInterval(emptyStatePollTimer); emptyStatePollTimer = null; }
-  }
-
   function renderNoChildren() {
     const userEmail = currentSession?.user?.email || '';
     root.innerHTML = `
@@ -1672,7 +1616,6 @@
     const logoutBtn = document.getElementById('no-children-logout');
     if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
     consumePartnerDeepLink();
-    startEmptyStatePoll();
   }
 
   function renderError(msg) {
@@ -1707,7 +1650,6 @@
   function subOn(visible) { return isAdminPreview() || visible === true; }
 
   function renderApp() {
-    stopEmptyStatePoll();
     const balance = getChildBalance();
     const status = getBalanceStatus(balance);
     const name = getChildName();
@@ -3971,18 +3913,12 @@
         <div style="font-size:12px;color:var(--ink-muted);margin-top:var(--s2)">Din partner kan scanne den med telefonens eget kamera</div>` : ''}
         <div style="display:flex;gap:8px;justify-content:center;margin-top:var(--s3);flex-wrap:wrap">
           <button class="save-btn" id="partner-copy-btn" style="font-size:13px">Kopiér kode</button>
-          <button class="save-btn" id="partner-hide-btn" style="font-size:13px;background:var(--surface);color:var(--ink);border:1px solid var(--border)">Skjul</button>
           <button class="save-btn" id="partner-revoke-btn" style="font-size:13px;background:var(--surface);color:var(--ink);border:1px solid var(--border)">Tilbagekald</button>
         </div>
       </div>`;
 
     document.getElementById('partner-copy-btn')?.addEventListener('click', () => {
       navigator.clipboard.writeText(token).then(() => showToast('Kode kopieret', 'success'));
-    });
-    // Skjul ≠ Tilbagekald: koden forbliver gyldig, visningen klapper bare sammen.
-    document.getElementById('partner-hide-btn')?.addEventListener('click', () => {
-      collapsePartnerTokenBox();
-      showToast('Koden virker stadig — vis den igen med knappen', '');
     });
     document.getElementById('partner-revoke-btn')?.addEventListener('click', async () => {
       try {
@@ -3999,16 +3935,6 @@
   // og for e-mail-signup og Apples relay-adresser er e-mailen intetsigende.
   // Uden et navn ville godkendelses-trinnet være indholdsløst, og det trin
   // ER hele værnet. Derfor spørges der, med OAuth-navnet som forslag.
-  // Klap partner-kode-boksen sammen og vis knappen igen (koden røres ikke).
-  function collapsePartnerTokenBox() {
-    const box = document.getElementById('partner-token-box');
-    if (!box || !box.innerHTML.trim()) return false;
-    box.innerHTML = '';
-    const btn = document.getElementById('partner-show-btn');
-    if (btn) btn.style.display = '';
-    return true;
-  }
-
   function handleShowPartnerToken() {
     if (demoBlocked()) return;
     if (isHelpingParent()) {
@@ -4252,7 +4178,7 @@
           return;
         }
         if (!children || children.length === 0) {
-          showCodeError('Det er en partner-kode. Den skal indtastes af den forælder, der allerede har adgang — vis i stedet din egen partner-kode (knappen på forsiden), så din partner kan tilføje dig.');
+          showCodeError('Det er en partner-kode. Den skal indtastes af den forælder, der allerede har adgang.');
           return;
         }
         codeModal.data = res; codeModal.step = 'partner'; renderCodeModalBody(); return;
@@ -7119,18 +7045,6 @@
       renderLogin();
     }
   });
-
-  // Android-tilbage: luk øverste lag i stedet for at forlade appen —
-  // kode-modalen først, dernæst partner-kode-boksen; ellers minimér (system-
-  // standarden for en rod-skærm).
-  if (API.isNativeApp() && window.Capacitor?.Plugins?.App?.addListener) {
-    window.Capacitor.Plugins.App.addListener('backButton', () => {
-      const modal = document.getElementById('add-child-modal');
-      if (modal && modal.classList.contains('visible')) { closeCodeModal(); return; }
-      if (collapsePartnerTokenBox()) return;
-      window.Capacitor.Plugins.App.minimizeApp?.();
-    });
-  }
 
   // Go!
   init();
