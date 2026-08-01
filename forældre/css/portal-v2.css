@@ -881,6 +881,28 @@ a { color: inherit; text-decoration: none; }
 .empty-state-icon { display: flex; justify-content: center; color: var(--ink-muted); margin-bottom: var(--s3); }
 .empty-state-text { font-size: 14px; color: var(--ink-muted); font-weight: 500; }
 
+/* ─── EKSPEDIENT ─── */
+.ekspedient-tal p { margin: 0 0 var(--s2); font-size: 14px; line-height: 1.5; color: var(--ink); }
+.ekspedient-tal p:last-child { margin-bottom: 0; }
+.ekspedient-tal strong { color: var(--ink); font-weight: 700; }
+
+.ekspedient-badges { margin-top: var(--s4); padding-top: var(--s3); border-top: 1px solid var(--border); }
+.ekspedient-badges-titel {
+  margin-bottom: var(--s2);
+  font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.ekspedient-badge {
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-raised);
+}
+.ekspedient-badge + .ekspedient-badge { margin-top: var(--s2); }
+.ekspedient-badge-navn { font-size: 14px; font-weight: 700; color: var(--ink); }
+.ekspedient-badge-grund { margin-top: 2px; font-size: 13px; font-style: italic; line-height: 1.45; color: var(--ink); }
+.ekspedient-badge-dato { margin-top: 4px; font-size: 11px; color: var(--ink-muted); }
+
 /* ─── ADD CHILD MODAL ─── */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 500;

@@ -1816,6 +1816,7 @@
             ${showEvents ? renderEventsSection() : ''}
             ${showUgeplan ? renderUgeplanSection() : ''}
             ${secOn('purchase_profile') ? renderPurchaseProfileSection() : ''}
+            ${secOn('ekspedient') ? renderEkspedientSection() : ''}
             ${secOn('history') ? renderHistorySection() : ''}
             ${secOn('sortiment') ? renderSortimentSection() : ''}
           </div>
@@ -1897,8 +1898,12 @@
     if (isExampleChild()) {
       const pp = document.getElementById('purchase-profile-content');
       if (pp) pp.innerHTML = '<div class="empty-state" style="padding:var(--s4) 0"><div class="empty-state-text">Her ser forælderen barnets mest købte varer. Ingen data i eksempel-visningen.</div></div>';
+      const ek = document.getElementById('ekspedient-content');
+      if (ek) ek.innerHTML = '<div class="empty-state" style="padding:var(--s4) 0"><div class="empty-state-text">Her ser forælderen barnets arbejde i caféen og de badges, det har givet. Ingen data i eksempel-visningen.</div></div>';
     } else {
       loadPurchaseProfile();
+      // Afgør selv om kortet skal vises — derfor uden for secOn-grenen.
+      if (secOn('ekspedient')) loadEkspedientSection();
     }
   }
 
@@ -2331,6 +2336,83 @@
           </div>
         </div></div></div>
       </div>`;
+  }
+
+  // Ekspedient-sektionen starter SKJULT og afsløres først, hvis barnet faktisk
+  // har en rolle i caféen. Et tomt kort ville fortælle forælderen om et fravær,
+  // de ikke kan gøre noget ved — og gøre anerkendelse til en rangliste mellem
+  // børn. I admin-preview vises den altid, ellers forsvandt chippen med kortet.
+  function renderEkspedientSection() {
+    const skjult = isAdminPreview() ? '' : ' section-hidden';
+    return `
+      <div class="section open${skjult}" id="section-ekspedient">
+        <div class="section-header">
+          <div class="section-title-row">${sectionIcon('award', 'flango')}<div><div class="section-title">Ekspedient</div><div class="section-subtitle">Arbejdet i caféen</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          <div id="ekspedient-content">
+            <div style="text-align:center;padding:var(--s4)"><div class="portal-loading-spinner" style="margin:0 auto"></div></div>
+          </div>
+        </div></div></div>
+      </div>`;
+  }
+
+  function ekspedientTid(minutter) {
+    const m = Math.max(0, Number(minutter) || 0);
+    const t = Math.floor(m / 60);
+    const rest = m % 60;
+    if (t && rest) return `${t} ${t === 1 ? 'time' : 'timer'} og ${rest} min.`;
+    if (t) return `${t} ${t === 1 ? 'time' : 'timer'}`;
+    return `${rest} min.`;
+  }
+
+  async function loadEkspedientSection() {
+    if (!selectedChild) return;
+    const kort = document.getElementById('section-ekspedient');
+    const boks = document.getElementById('ekspedient-content');
+    if (!kort || !boks) return;
+
+    let data = null;
+    try {
+      data = await API.getChildClerkProfile(selectedChild.child_id);
+    } catch (_err) {
+      // Slukket sektion eller manglende adgang: kortet forbliver skjult.
+      if (!isAdminPreview()) kort.classList.add('section-hidden');
+      return;
+    }
+
+    const minutter = Number(data?.minutes_worked) || 0;
+    const kunder = Number(data?.customers_served) || 0;
+    const badges = Array.isArray(data?.badges) ? data.badges : [];
+
+    if (!minutter && !kunder && !badges.length) {
+      if (!isAdminPreview()) { kort.classList.add('section-hidden'); return; }
+      boks.innerHTML = '<div class="empty-state"><div class="empty-state-text">Vises når barnet har arbejdet i caféen eller fået et badge.</div></div>';
+      return;
+    }
+
+    const navn = esc(selectedChild.name || 'Barnet');
+    const linjer = [];
+    if (kunder) linjer.push(`${navn} har betjent <strong>${kunder}</strong> ${kunder === 1 ? 'kunde' : 'kunder'} i caféen.`);
+    if (minutter) linjer.push(`Tid som ekspedient: <strong>${ekspedientTid(minutter)}</strong>.`);
+
+    const badgeHtml = badges.map((b) => {
+      const dato = b.awarded_at
+        ? new Date(b.awarded_at).toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric' })
+        : '';
+      return `
+        <div class="ekspedient-badge">
+          <div class="ekspedient-badge-navn">${esc(b.name || '')}</div>
+          ${b.reason ? `<div class="ekspedient-badge-grund">„${esc(b.reason)}“</div>` : ''}
+          ${dato ? `<div class="ekspedient-badge-dato">${esc(dato)}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    boks.innerHTML = `
+      ${linjer.length ? `<div class="ekspedient-tal">${linjer.map((l) => `<p>${l}</p>`).join('')}</div>` : ''}
+      ${badges.length ? `<div class="ekspedient-badges"><div class="ekspedient-badges-titel">${badges.length === 1 ? 'Badge' : 'Badges'}</div>${badgeHtml}</div>` : ''}`;
+    kort.classList.remove('section-hidden');
   }
 
   function getSpentForPeriod(periodKey) {

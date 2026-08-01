@@ -509,6 +509,13 @@
       });
     },
 
+    /** Barnets rolle i caféen: arbejdstid, betjente kunder og aktive badges.
+     *  Forælder-tilknytning og sektionsflag håndhæves i RPC'en; den kaster,
+     *  hvis institutionen har slukket sektionen. */
+    async getChildClerkProfile(childId) {
+      return rpcCall('get_child_clerk_profile_for_parent', { p_child_id: childId });
+    },
+
     // ─── Parent View (child data, balance, institution) ───
 
     /** Get child data including balance, name, institution */
