@@ -3160,7 +3160,7 @@
 
         ${cfg.views === 'week' ? '' : `<div class="fsp-section${dim}"><div class="fsp-block">
           ${label('Dagsvisning viser')}
-          ${choice('dayScope', 'today', 'Kun i dag', 'Ét dias — dagen det er nu', cfg.dayScope)}
+          ${choice('dayScope', 'today', 'Én dag pr. uge', 'I dag, hvis ugen er i gang — ellers ugens mandag', cfg.dayScope)}
           ${choice('dayScope', 'all', 'Alle ugens dage', 'Fem dias pr. uge, mandag til fredag', cfg.dayScope)}
         </div></div>`}
 
