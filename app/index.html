@@ -372,8 +372,8 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-BQQzAy6O.js"></script>
-  <link rel="stylesheet" crossorigin href="/app/assets/main-DrD-041s.css">
+  <script type="module" crossorigin src="/app/assets/main-DD23p2XA.js"></script>
+  <link rel="stylesheet" crossorigin href="/app/assets/main-DgZYK7pm.css">
 </head>
 <body>
 
@@ -522,6 +522,7 @@
             <div class="header-actions">
                 <button id="logged-in-user-avatar-container" class="header-action-btn" title="Min Flango"></button>
                 <button id="toolbar-history-btn" class="header-action-btn" title="Historik"><svg viewBox="0 0 16 16" fill="#c77ddb" stroke="none" role="img" aria-label="Historik"><rect x="2.5" y="7.5" width="3" height="6" rx="0.8"/><rect x="6.5" y="3.5" width="3" height="10" rx="0.8"/><rect x="10.5" y="9.5" width="3" height="4" rx="0.8"/></svg></button>
+                <button id="toolbar-ugeplan-btn" class="header-action-btn" title="Ugeplan (mellemrum)" style="display:none;"><svg viewBox="0 0 16 16" fill="none" stroke="#7aa87a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Ugeplan"><rect x="1.8" y="3" width="12.4" height="10.5" rx="1.6"/><path d="M1.8 6.4h12.4M5.2 1.8v2.4M10.8 1.8v2.4"/><path d="M4.4 9h2M7.2 9h2M10 9h1.6M4.4 11.2h2M7.2 11.2h2"/></svg></button>
                 <button id="calculator-mode-toggle" class="header-action-btn calculator-toggle" title="Lommeregner-mode (frie beløb)" aria-label="Toggle lommeregner-mode" aria-pressed="false">🧮</button>
                 <button id="kitchen-btn" class="header-action-btn" title="Køkkenskærm" style="display:none;">🍽️</button>
                 <button id="toolbar-db-history-btn" class="header-action-btn" title="DB-Historik" style="display: none;"><img src="Icons/webp/Function/Gear2.webp" alt="DB-Historik"></button>
@@ -1739,7 +1740,7 @@
 </div>
 </div>
 </div></div><div class="modal-actions"><button id="save-edit-user-btn" class="action-button" style="width:100%;">Gem</button><button id="delete-edit-user-btn" class="action-button" style="width:100%; background-color: var(--danger-color); margin-top: 10px;">Slet Bruger</button></div></div></template>
-    <template id="assign-badge-modal-template"><div class="modal-content assign-badge-modal"><div class="modal-header"><h2 id="assign-badge-title">Tildel badge</h2><span class="close-btn">&times;</span></div><p class="badge-picker-intro">Vælg det badge, der passer bedst til indsatsen.</p><div id="badge-category-list" class="badge-category-list"></div><div id="badge-reason-step" class="badge-reason-step" hidden><button type="button" id="badge-picker-back" class="badge-picker-back">Tilbage til badges</button><div id="selected-badge-preview" class="selected-badge-preview"></div><label for="badge-reason-input">Hvorfor fortjener personen dette badge?</label><textarea id="badge-reason-input" maxlength="240" rows="4"></textarea><div class="badge-reason-meta"><span id="badge-reason-error" role="alert"></span><span id="badge-reason-count">0/240</span></div><button type="button" id="confirm-assign-badge-btn" class="action-button">Tildel badge</button></div></div></template>
+    <template id="assign-badge-modal-template"><div class="modal-content assign-badge-modal"><div class="modal-header"><h2 id="assign-badge-title">Tildel badge</h2><span class="close-btn">&times;</span></div><p class="badge-picker-intro">Vælg det badge, der passer bedst til indsatsen.</p><div id="badge-category-list" class="badge-category-list"></div><div id="badge-reason-step" class="badge-reason-step" hidden><button type="button" id="badge-picker-back" class="badge-picker-back">Tilbage til badges</button><div id="selected-badge-preview" class="selected-badge-preview"></div><label for="badge-reason-input">Hvorfor fortjener personen dette badge? <span class="badge-reason-optional">valgfrit</span></label><textarea id="badge-reason-input" maxlength="240" rows="4"></textarea><div class="badge-reason-meta"><span id="badge-reason-error" role="alert"></span><span id="badge-reason-count">0/240</span></div><button type="button" id="confirm-assign-badge-btn" class="action-button">Tildel badge</button></div></div></template>
 
     <!-- Indstillinger modal -->
     <div id="settings-modal-backdrop" class="settings-modal-backdrop" style="display:none;">
