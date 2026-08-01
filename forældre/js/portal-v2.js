@@ -2362,9 +2362,9 @@
     const m = Math.max(0, Number(minutter) || 0);
     const t = Math.floor(m / 60);
     const rest = m % 60;
-    if (t && rest) return `${t} ${t === 1 ? 'time' : 'timer'} og ${rest} min.`;
+    if (t && rest) return `${t} ${t === 1 ? 'time' : 'timer'} og ${rest} min`;
     if (t) return `${t} ${t === 1 ? 'time' : 'timer'}`;
-    return `${rest} min.`;
+    return `${rest} min`;
   }
 
   async function loadEkspedientSection() {
@@ -2392,7 +2392,7 @@
       return;
     }
 
-    const navn = esc(selectedChild.name || 'Barnet');
+    const navn = esc(getChildName());
     const linjer = [];
     if (kunder) linjer.push(`${navn} har betjent <strong>${kunder}</strong> ${kunder === 1 ? 'kunde' : 'kunder'} i caféen.`);
     if (minutter) linjer.push(`Tid som ekspedient: <strong>${ekspedientTid(minutter)}</strong>.`);
