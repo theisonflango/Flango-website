@@ -3178,6 +3178,20 @@
           ${toggle('showStaff', 'Vis personalenavne', 'Skjuler navnene på DENNE skærm. Ændrer ikke hvad ugeplanen sender.', cfg.showStaff)}
           ${toggle('showEvents', 'Vis kommende arrangementer', 'Plakater indgår i diasset. Kun mens caféen er åben — ikke på den låste skærm.', cfg.showEvents)}
           ${cfg.showEvents ? num('eventSeconds', cfg.eventSeconds, 5, 5, 120, 'Hver plakat vises i') : ''}
+
+          ${toggle('customSlideEnabled', 'Vis eget billede', 'Et opslag eller en plakat, der ikke hører til et arrangement.', cfg.customSlideEnabled)}
+          ${cfg.customSlideEnabled ? `
+            <div class="ugs-image">
+              <div class="ugs-image-thumb" data-ug-image-thumb>${cfg.customSlidePath ? '' : '<span>Intet billede</span>'}</div>
+              <div class="ugs-image-actions">
+                <button type="button" class="fsp-btn fsp-btn-ghost" data-ug-pick-image>${cfg.customSlidePath ? 'Skift billede' : 'Vælg billede …'}</button>
+                ${cfg.customSlidePath ? '<button type="button" class="fsp-btn fsp-btn-ghost ugs-danger" data-ug-remove-image>Fjern</button>' : ''}
+                <div class="fsp-row-desc" style="width:100%;margin-top:2px">Billede eller PDF. Første side bruges; den gemmes som PNG.</div>
+              </div>
+              <input type="file" accept="image/*,application/pdf" hidden data-ug-image-input>
+            </div>
+            ${cfg.customSlidePath ? num('customSlideSeconds', cfg.customSlideSeconds, 5, 5, 120, 'Billedet vises i') : ''}
+          ` : ''}
         </div></div>
 
         <div class="fsp-section${dim}"><div class="fsp-block">
@@ -3290,6 +3304,39 @@
       container.querySelector('[data-ug-open-app]')?.addEventListener('click', () => {
         window.__flangoOpenUgeplanApp?.();
       });
+
+      // Eget billede: vælg, vis, fjern.
+      const fileInput = container.querySelector('[data-ug-image-input]');
+      const thumb = container.querySelector('[data-ug-image-thumb]');
+      container.querySelector('[data-ug-pick-image]')?.addEventListener('click', () => fileInput?.click());
+      fileInput?.addEventListener('change', async () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+        const btn = container.querySelector('[data-ug-pick-image]');
+        if (btn) { btn.disabled = true; btn.textContent = 'Uploader …'; }
+        try {
+          await api.uploadImage(file);
+          rerender();
+        } catch (e) {
+          console.error('[ugeplan-settings] upload fejlede:', e);
+          if (btn) { btn.disabled = false; btn.textContent = 'Prøv igen'; }
+          window.showAlert?.('Billedet kunne ikke gemmes. ' + (e?.message || ''));
+        }
+      });
+      container.querySelector('[data-ug-remove-image]')?.addEventListener('click', async () => {
+        try {
+          await api.removeImage();
+          rerender();
+        } catch (e) {
+          console.error('[ugeplan-settings] kunne ikke fjerne billedet:', e);
+        }
+      });
+      // Miniaturen viser DET rigtige billede, ikke et ikon — så man kan se hvad der ryger op.
+      if (thumb && api.config().customSlidePath) {
+        api.imageUrl?.().then((url) => {
+          if (url && thumb.isConnected) thumb.innerHTML = `<img src="${url}" alt="Valgt billede">`;
+        }).catch(() => {});
+      }
 
       // Previews: de rigtige dias i lille format, samme renderer som fuldskærm.
       const host = container.querySelector('.ugs-previews');
