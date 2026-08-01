@@ -3096,10 +3096,18 @@
           <div><div class="fsp-sub-title">${title}</div>${hint ? `<div class="fsp-sub-hint">${hint}</div>` : ''}</div>
           <div class="fsp-radio${cur === value ? ' on' : ''}"></div>
         </div>`;
+      // Flueben i selve chippen. Uden det kan man ikke se tændt fra slukket, når ALLE er
+      // tændt — der er intet at sammenligne med, og farven alene aflæses som "knap", ikke
+      // som "valgt".
       const chip = (w) => {
         const key = api.weekKey(w.week, w.year);
-        return `<div class="fsp-chip${chosen.has(key) ? ' on' : ''}" data-week-key="${key}">Uge ${w.week}</div>`;
+        const on = chosen.has(key);
+        const mark = on
+          ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2 4.8 8.5 9.5 3.5"/></svg>'
+          : '<span class="ugs-chip-dot"></span>';
+        return `<div class="fsp-chip ugs-week${on ? ' on' : ''}" data-week-key="${key}" role="checkbox" aria-checked="${on}">${mark}Uge ${w.week}</div>`;
       };
+      const valgte = shared.filter((w) => chosen.has(api.weekKey(w.week, w.year))).length;
       const num = (field, val, step, min, max, title) =>
         `<div class="fsp-num-row">
           <label style="flex:1">${title}</label>
@@ -3158,8 +3166,9 @@
 
         <div class="fsp-section${dim}"><div class="fsp-block">
           ${label('Uger i diasset')}
-          <div class="fsp-row-desc" style="margin-bottom:12px">Vælg blandt de uger ugeplanen sender. Fjerner pædagogen en uge, forsvinder den også her.</div>
+          <div class="fsp-row-desc" style="margin-bottom:12px">Tryk for at vælge til og fra. Fjerner pædagogen en uge, forsvinder den også her.</div>
           <div class="ugs-chips">${shared.map(chip).join('') || '<span class="fsp-row-desc">Ingen uger sendes endnu.</span>'}</div>
+          ${shared.length ? `<div class="fsp-row-desc" style="margin-top:12px">${valgte === shared.length ? `Alle ${shared.length} uger vises` : `${valgte} af ${shared.length} uger vises`}</div>` : ''}
           ${filterStale ? '<div class="fsp-row-desc" style="margin-top:10px;color:var(--fsp-txt2)">De valgte uger deles ikke længere — viser alle delte uger.</div>' : ''}
         </div></div>
 
