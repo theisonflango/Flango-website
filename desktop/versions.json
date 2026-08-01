@@ -1,13 +1,14 @@
 {
   "latest": {
+    "version": "3.0.204",
+    "windows": "https://github.com/theisonflango/Flango-website/releases/download/desktop-v3.0.204/Flango-Cafe-v3.0.204-Setup.exe",
+    "macos": "https://github.com/theisonflango/Flango-website/releases/download/desktop-v3.0.204/Flango-Cafe-v3.0.204.dmg",
+    "macos_x64": "https://github.com/theisonflango/Flango-website/releases/download/desktop-v3.0.204/Flango-Cafe-v3.0.204-x64.dmg"
+  },
+  "previous": {
     "version": "3.0.129",
     "windows": "https://flango.dk/desktop/Flango-Cafe-v3.0.129-Setup.exe",
     "macos": "https://flango.dk/desktop/Flango-Cafe-v3.0.129.dmg",
     "macos_x64": "https://flango.dk/desktop/Flango-Cafe-v3.0.129-x64.dmg"
-  },
-  "previous": {
-    "version": "3.0.85",
-    "windows": "https://flango.dk/desktop/Flango-Cafe-v3.0.85-Setup.exe",
-    "macos": "https://flango.dk/desktop/Flango-Cafe-v3.0.85.dmg"
   }
 }
