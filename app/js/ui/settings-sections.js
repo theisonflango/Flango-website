@@ -3043,6 +3043,239 @@
     }
   };
 
+  // ─── Ugeplan ────────────────────────────────────────────────────────────────
+  // Sektionen har to halvdele der IKKE må blandes sammen: hvad ugeplan-appen sender
+  // (skrivebeskyttet — det styres af pædagogen i et andet program), og hvordan caféen
+  // viser det (café'ens eget). Bland dem, og man kommer til at love brugeren noget her
+  // som først kan indfries et andet sted.
+  sections['Ugeplan'] = {
+    render() {
+      const api = window.__flangoUgeplan;
+      const payload = api?.data();
+      const cfg = api?.config() || {};
+      const shared = api?.weeks() || [];
+
+      // "Endnu ikke hentet" og "ikke koblet" er IKKE det samme. Blander man dem, påstår
+      // panelet at institutionen ikke har en ugeplan, hver gang man er hurtigere end
+      // netværket — og det er en usandhed brugeren ikke kan gennemskue.
+      if (!api || !payload) {
+        return `<div class="fsp-page">
+          <div class="fsp-page-title">Ugeplan</div>
+          <div class="fsp-page-desc">Vis institutionens ugeplan på café-skærmen — som fuldskærm man åbner med <strong>mellemrum</strong> fra forsiden, og som pauseskærm der selv kommer frem når disken står stille.</div>
+          <div class="fsp-section" style="padding:18px"><div class="fsp-row-desc">Henter ugeplanen …</div></div>
+        </div>`;
+      }
+
+      if (payload.linked === false) {
+        return `<div class="fsp-page">
+          <div class="fsp-page-title">Ugeplan</div>
+          <div class="fsp-page-desc">Vis institutionens ugeplan på café-skærmen — som fuldskærm man åbner med <strong>mellemrum</strong>, og som pauseskærm der selv kommer frem når disken står stille.</div>
+          <div class="fsp-section" style="padding:18px">
+            <div class="fsp-row-title">Ugeplanen er ikke sat op for denne institution</div>
+            <div class="fsp-row-desc" style="margin-top:6px">Institutionen er ikke koblet til et ugeplan-hus. Kontakt Flango for at få den koblet — derefter dukker indstillingerne op her.</div>
+          </div>
+        </div>`;
+      }
+
+      const sharingOn = payload.sharing?.enabled === true;
+      const chosen = new Set(cfg.weeks || shared.map((w) => api.weekKey(w.week, w.year)));
+      const filterStale = !!cfg.weeks?.length && !shared.some((w) => chosen.has(api.weekKey(w.week, w.year)));
+
+      const chip = (w) => {
+        const key = api.weekKey(w.week, w.year);
+        const on = chosen.has(key);
+        return `<button type="button" class="ugs-chip${on ? ' on' : ''}" data-week-key="${key}">Uge ${w.week}</button>`;
+      };
+      const radio = (field, value, label, cur) =>
+        `<div class="fsp-radio${cur === value ? ' on' : ''}" data-ug-field="${field}" data-ug-value="${value}">${label}</div>`;
+      const num = (field, val, step, min, max, suffix) =>
+        `<div class="fsp-num-wrap" style="width:120px"><input type="number" data-ug-num="${field}" data-min="${min}" data-max="${max}" value="${val}" style="padding:8px 12px;font-size:13px">
+          <div class="fsp-num-btns"><button class="fsp-num-btn" data-ug-step="${field}" data-delta="${step}">${chevronUp}</button><button class="fsp-num-btn" data-ug-step="${field}" data-delta="-${step}">${chevronDown}</button></div>
+        </div><span style="font-size:13px;color:var(--fsp-txt3)">${suffix}</span>`;
+
+      const dim = sharingOn ? '' : 'opacity:0.62;pointer-events:none';
+
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Ugeplan</div>
+        <div class="fsp-page-desc">Vis institutionens ugeplan på café-skærmen — som fuldskærm man åbner med <strong>mellemrum</strong> fra forsiden, og som pauseskærm der selv kommer frem når disken står stille.</div>
+
+        <div class="fsp-section" style="padding:18px">
+          <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">Det ugeplanen sender</div>
+          <div class="ugs-facts">
+            <div><span>Deling til caféen</span><b class="${sharingOn ? 'ugs-yes' : 'ugs-no'}">${sharingOn ? 'Til' : 'Fra'}</b></div>
+            <div><span>Omfang</span><b>${payload.sharing?.scope === 'multi' ? 'Flere uger' : 'Kun aktuel uge'}</b></div>
+            <div><span>Uger der sendes</span><b>${shared.length ? shared.map((w) => 'Uge ' + w.week).join(', ') : 'Ingen'}</b></div>
+            <div><span>Personalenavne</span><b>Følger med</b></div>
+            <div><span>Institution</span><b>${payload.institution || '—'}</b></div>
+          </div>
+          <div class="fsp-row-desc" style="margin-top:14px">Disse styres i Ugeplan-appen — caféen kan kun vælge inden for det, der bliver sendt.</div>
+          <button type="button" class="ugs-btn" data-ug-open-app style="margin-top:12px">Rediger ugeplan</button>
+          ${sharingOn ? '' : '<div class="fsp-row-desc" style="margin-top:12px;color:var(--fsp-txt2)">Slå <strong>Flango Café</strong> til under <strong>Del</strong> i ugeplanen, så bliver resten aktivt her.</div>'}
+        </div>
+
+        <div class="fsp-section" style="padding:18px;${dim}">
+          <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">Sådan vises den</div>
+
+          <div class="fsp-row" style="margin-bottom:16px">
+            <div style="flex:1"><div class="fsp-row-title">Ugeplan i caféen</div><div class="fsp-row-desc">Slår både knappen i toolbaren og pauseskærmen fra.</div></div>
+            <div class="fsp-toggle${cfg.enabled ? ' on' : ''}" data-ug-toggle="enabled"></div>
+          </div>
+
+          <div style="margin-bottom:16px">
+            <div class="fsp-row-title" style="margin-bottom:8px">Visning</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              ${radio('views', 'week', 'Uge', cfg.views)}${radio('views', 'day', 'Dag', cfg.views)}${radio('views', 'both', 'Begge på skift', cfg.views)}
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <label style="font-size:13px;color:var(--fsp-txt2);white-space:nowrap;width:190px">Ugevisning vises i</label>${num('weekSeconds', cfg.weekSeconds, 5, 5, 120, 'sek')}
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <label style="font-size:13px;color:var(--fsp-txt2);white-space:nowrap;width:190px">Dagsvisning vises i</label>${num('daySeconds', cfg.daySeconds, 5, 5, 120, 'sek')}
+          </div>
+
+          <div style="margin-bottom:16px">
+            <div class="fsp-row-title" style="margin-bottom:8px">Dagsvisning viser</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              ${radio('dayScope', 'today', 'Kun i dag', cfg.dayScope)}${radio('dayScope', 'all', 'Alle ugens dage', cfg.dayScope)}
+            </div>
+          </div>
+
+          <div style="margin-bottom:16px">
+            <div class="fsp-row-title" style="margin-bottom:4px">Uger i diasset</div>
+            <div class="fsp-row-desc" style="margin-bottom:8px">Vælg blandt de uger ugeplanen sender. Fjerner pædagogen en uge, forsvinder den også her.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">${shared.map(chip).join('') || '<span class="fsp-row-desc">Ingen uger sendes endnu.</span>'}</div>
+            ${filterStale ? '<div class="fsp-row-desc" style="margin-top:8px;color:var(--fsp-txt2)">De valgte uger deles ikke længere — viser alle delte uger.</div>' : ''}
+          </div>
+
+          <div class="fsp-row" style="margin-bottom:12px">
+            <div style="flex:1"><div class="fsp-row-title">Skift automatisk</div><div class="fsp-row-desc">Fra = du bladrer selv med piletasterne.</div></div>
+            <div class="fsp-toggle${cfg.autoAdvance ? ' on' : ''}" data-ug-toggle="autoAdvance"></div>
+          </div>
+          <div class="fsp-row">
+            <div style="flex:1"><div class="fsp-row-title">Vis personalenavne</div><div class="fsp-row-desc">Skjuler navnene på DENNE skærm. Ændrer ikke hvad ugeplanen sender.</div></div>
+            <div class="fsp-toggle${cfg.showStaff ? ' on' : ''}" data-ug-toggle="showStaff"></div>
+          </div>
+        </div>
+
+        <div class="fsp-section" style="padding:18px;${dim}">
+          <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">Pauseskærm</div>
+          <div class="fsp-row" style="margin-bottom:16px">
+            <div style="flex:1"><div class="fsp-row-title">Pauseskærm på denne skærm</div><div class="fsp-row-desc">Gemmes kun på denne enhed — disk-tabletten og vægskærmen kan være forskellige.</div></div>
+            <div class="fsp-toggle${window.__flangoUgeplan?.screensaverOnDevice() ? ' on' : ''}" data-ug-device-screensaver></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <label style="font-size:13px;color:var(--fsp-txt2);white-space:nowrap;width:190px">Kommer frem efter</label>${num('screensaverIdleSeconds', cfg.screensaverIdleSeconds, 30, 30, 1800, 'sek')}
+          </div>
+          <div class="fsp-row-desc" style="margin-top:14px">Caféen logger ud efter 30 minutters inaktivitet. Er ugeplanen slået til, bliver den stående på skærmen bagefter.</div>
+        </div>
+
+        <div class="fsp-section" style="padding:18px;${dim}">
+          <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">Forhåndsvisning</div>
+          <div class="fsp-row-desc" style="margin-bottom:12px">Tryk på et dias for at se det i fuld skærm.</div>
+          <div class="ugs-previews"></div>
+        </div>
+      </div>`;
+    },
+
+    wire(container) {
+      pageAlign(container);
+      const api = window.__flangoUgeplan;
+
+      const rerender = () => {
+        container.innerHTML = sections['Ugeplan'].render();
+        sections['Ugeplan'].wire(container);
+      };
+
+      // Modulet indlæses dovent ved opstart, så panelet kan nå at åbne først. Vent på det
+      // løfte app-main lægger frem — dette script er en IIFE og kan ikke selv importere.
+      if (!api || !api.data()) {
+        Promise.resolve(window.__flangoUgeplanReady)
+          .then(() => { if (container.isConnected) rerender(); })
+          .catch((e) => console.warn('[ugeplan-settings] kunne ikke indlæse:', e?.message || e));
+        return;
+      }
+
+      // Indstillingerne bor i én JSONB. Fletningen sker serverside (set_cafe_ugeplan), så to
+      // café-skærme ikke kan overskrive hinandens felter — samme fælde som parent_portal_payment.
+      const save = (patch) => api.save(patch).then(rerender).catch((e) => console.error('[ugeplan-settings]', e));
+
+      container.querySelectorAll('[data-ug-toggle]').forEach((el) => {
+        el.addEventListener('click', () => save({ [el.dataset.ugToggle]: !el.classList.contains('on') }));
+      });
+      container.querySelectorAll('[data-ug-field]').forEach((el) => {
+        el.addEventListener('click', () => save({ [el.dataset.ugField]: el.dataset.ugValue }));
+      });
+      container.querySelectorAll('input[data-ug-num]').forEach((input) => {
+        input.addEventListener('change', () => {
+          const min = Number(input.dataset.min), max = Number(input.dataset.max);
+          save({ [input.dataset.ugNum]: Math.min(max, Math.max(min, parseInt(input.value, 10) || min)) });
+        });
+      });
+      container.querySelectorAll('[data-ug-step]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const input = container.querySelector(`input[data-ug-num="${btn.dataset.ugStep}"]`);
+          if (!input) return;
+          input.value = (parseInt(input.value, 10) || 0) + Number(btn.dataset.delta);
+          input.dispatchEvent(new Event('change'));
+        });
+      });
+
+      // Ugevalget er et FILTER over det delte sæt — aldrig en kilde til uger. Fravælger man
+      // alle, gemmes null (= alle delte) frem for en tom liste der ville sortlægge skærmen.
+      container.querySelectorAll('[data-week-key]').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          const all = api.weeks().map((w) => api.weekKey(w.week, w.year));
+          const cfg = api.config();
+          const cur = new Set(cfg.weeks?.length ? cfg.weeks : all);
+          const key = chip.dataset.weekKey;
+          cur.has(key) ? cur.delete(key) : cur.add(key);
+          const next = all.filter((k) => cur.has(k));
+          save({ weeks: next.length && next.length < all.length ? next : null });
+        });
+      });
+
+      container.querySelector('[data-ug-device-screensaver]')?.addEventListener('click', (e) => {
+        const on = !e.currentTarget.classList.contains('on');
+        api.setScreensaverOnDevice(on);
+        e.currentTarget.classList.toggle('on', on);
+      });
+
+      container.querySelector('[data-ug-open-app]')?.addEventListener('click', () => {
+        window.__flangoOpenUgeplanApp?.();
+      });
+
+      // Previews: de rigtige dias i lille format, samme renderer som fuldskærm.
+      const host = container.querySelector('.ugs-previews');
+      if (!host) return;
+      const slides = api.slides();
+      if (!slides.length) {
+        host.innerHTML = '<div class="fsp-row-desc">Ingen dias at vise endnu.</div>';
+        return;
+      }
+      const MAX = 8;
+      slides.slice(0, MAX).forEach((slide, i) => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'ugs-preview';
+        // Dagsvisningen går ikke gennem FitPoster (kun plakaten gør), så den skaleres i CSS.
+        card.innerHTML = `<div class="ugs-preview-stage${slide.kind === 'day' ? ' is-day' : ''}"></div><div class="ugs-preview-label">${slide.kind === 'day' ? 'Uge ' + slide.week + ' · ' + ['Man', 'Tir', 'Ons', 'Tor', 'Fre'][slide.dayIndex] : 'Uge ' + slide.week}</div>`;
+        card.addEventListener('click', () => api.open({ mode: 'manual', startKey: slide.key }));
+        host.appendChild(card);
+        api.mountPreview(card.querySelector('.ugs-preview-stage'), slide).catch(() => {});
+        void i;
+      });
+      if (slides.length > MAX) {
+        const more = document.createElement('div');
+        more.className = 'fsp-row-desc';
+        more.style.alignSelf = 'center';
+        more.textContent = `+${slides.length - MAX} flere`;
+        host.appendChild(more);
+      }
+    }
+  };
+
   sections['Ekspedient-login'] = {
     render(ctx) {
       const inst = ctx.institutionData || {};

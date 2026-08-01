@@ -10,7 +10,7 @@
   // ── Tab / sidebar data (from mockup) ──
   const T = [
     { name: 'Hovedmenu', items: [{ l: 'Produkter & Indbetalinger', c: '#e8734a' }, { l: 'Tilmelding', c: '#5ba0d8' }, { l: 'Restaurant Mode', c: '#f4a261' }, { l: 'Historik', c: '#c77ddb' }] },
-    { name: 'Institutionens Præferencer', items: [{ l: 'Toolbar', c: '#5ba0d8' }, { l: 'Beløbsgrænse', c: '#e8734a' }, { l: 'Sukkerpolitik', c: '#e85a6f' }, { l: 'Ekspedient-login', c: '#f4a261' }] },
+    { name: 'Institutionens Præferencer', items: [{ l: 'Toolbar', c: '#5ba0d8' }, { l: 'Ugeplan', c: '#7aa87a' }, { l: 'Beløbsgrænse', c: '#e8734a' }, { l: 'Sukkerpolitik', c: '#e85a6f' }, { l: 'Ekspedient-login', c: '#f4a261' }] },
     { name: 'Administration', items: [{ l: 'Forældreportal', c: '#c77ddb' }, { l: 'Beskeder', c: '#5dca7a' }, { l: 'Betalingsmetoder', c: '#5dca7a' }, { l: 'Profilbilleder', c: '#c77ddb' }, { l: 'Godkendelser', c: '#f4a261' }, { l: 'Produktikoner – Deling', c: '#5ba0d8' }, { l: 'MobilePay CSV Import', c: '#f4a261' }, { l: 'Brugernavne', c: '#5dca7a' }, { l: 'Brugernummer', c: '#5ba0d8' }, { l: 'Opret/Opdater brugere auto.', c: '#e8734a' }] },
     { name: 'Datasikkerhed', items: [{ l: 'Totrinsgodkendelse (MFA)', c: '#e85a6f' }, { l: 'Auto-sletning af inaktive', c: '#f4a261' }, { l: 'Mine enheder', c: '#5ba0d8' }, { l: 'Saldoliste ved låsning', c: '#5dca7a' }, { l: 'Anmod om nulstilling', c: '#c77ddb' }] },
     { name: 'Diverse', items: [{ l: 'Udseende', c: '#c77ddb' }, { l: 'Dagens Sortiment', c: '#f4a261' }, { l: 'Min Flango', c: '#e8734a' }, { l: 'Hjælp', c: '#5ba0d8' }, { l: 'Opdateringer', c: '#5dca7a' }, { l: 'Feedback', c: '#f4a261' }, { l: 'Lydindstillinger', c: '#5ba0d8' }] }
@@ -25,6 +25,7 @@
     'Restaurant Mode': '<path d="M4 3v10"/><path d="M2.5 3v3c0 1 .7 1.7 1.5 1.7S5.5 7 5.5 6V3"/><path d="M11 3v5.5c0 .5.2.8.5 1h1c.3-.2.5-.5.5-1V4.5C13 3.5 12.2 3 11 3z"/><path d="M11.5 9.5V13"/>',
     'Historik': '<circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/>',
     'Toolbar': '<rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M1.5 6.5h13"/><circle cx="4" cy="4.7" r="0.7"/><circle cx="6.2" cy="4.7" r="0.7"/><circle cx="8.4" cy="4.7" r="0.7"/>',
+    'Ugeplan': '<rect x="1.8" y="3" width="12.4" height="10.5" rx="1.6"/><path d="M1.8 6.4h12.4M5.2 1.8v2.4M10.8 1.8v2.4"/><path d="M4.4 9h2M7.2 9h2M10 9h1.6M4.4 11.2h2M7.2 11.2h2"/>',
     'Beløbsgrænse': '<circle cx="8" cy="8" r="6"/><path d="M8 4.5v7M5.5 6.5h5c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5H5.5"/>',
     'Sukkerpolitik': '<path d="M8 13.5S2 10 2 6a3 3 0 016-1 3 3 0 016 1c0 4-6 7.5-6 7.5z"/>',
     'Ekspedient-login': '<rect x="4" y="7" width="8" height="6.5" rx="1.5"/><path d="M6 7V5.2a2 2 0 014 0V7"/><circle cx="8" cy="10" r="0.9"/>',
