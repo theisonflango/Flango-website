@@ -372,8 +372,8 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-Bz-uySex.js"></script>
-  <link rel="stylesheet" crossorigin href="/app/assets/main-ZLgTPbq5.css">
+  <script type="module" crossorigin src="/app/assets/main-D0qQjbHH.js"></script>
+  <link rel="stylesheet" crossorigin href="/app/assets/main-8AKlGI1Y.css">
 </head>
 <body>
 
@@ -1740,7 +1740,27 @@
 </div>
 </div>
 </div></div><div class="modal-actions"><button id="save-edit-user-btn" class="action-button" style="width:100%;">Gem</button><button id="delete-edit-user-btn" class="action-button" style="width:100%; background-color: var(--danger-color); margin-top: 10px;">Slet Bruger</button></div></div></template>
-    <template id="assign-badge-modal-template"><div class="modal-content assign-badge-modal"><div class="modal-header"><h2 id="assign-badge-title">Tildel badge</h2><span class="close-btn">&times;</span></div><p class="badge-picker-intro">Vælg det badge, der passer bedst til indsatsen.</p><div id="badge-category-list" class="badge-category-list"></div><div id="badge-reason-step" class="badge-reason-step" hidden><button type="button" id="badge-picker-back" class="badge-picker-back">Tilbage til badges</button><div id="selected-badge-preview" class="selected-badge-preview"></div><label for="badge-reason-input">Hvorfor fortjener personen dette badge? <span class="badge-reason-optional">valgfrit</span></label><textarea id="badge-reason-input" maxlength="240" rows="4"></textarea><div class="badge-reason-meta"><span id="badge-reason-error" role="alert"></span><span id="badge-reason-count">0/240</span></div><button type="button" id="confirm-assign-badge-btn" class="action-button">Tildel badge</button></div></div></template>
+    <template id="assign-badge-modal-template">
+        <div class="modal-content assign-badge-modal">
+            <div class="modal-header">
+                <h2 id="assign-badge-title">Tildel badge</h2>
+                <button type="button" class="close-btn" aria-label="Luk badgevalg">&times;</button>
+            </div>
+            <p class="badge-picker-intro">Vælg det badge, der passer bedst til indsatsen.</p>
+            <div id="badge-category-list" class="badge-category-list"></div>
+            <div id="badge-reason-step" class="badge-reason-step" hidden>
+                <button type="button" id="badge-picker-back" class="badge-picker-back">Tilbage til badges</button>
+                <div id="selected-badge-preview" class="selected-badge-preview"></div>
+                <div class="badge-reason-copy">
+                    <label id="badge-reason-label" for="badge-reason-input">Hvad lagde du mærke til? <span class="badge-reason-optional">valgfrit</span></label>
+                    <p id="badge-reason-help">En kort, konkret sætning gør badget mere personligt for modtageren.</p>
+                </div>
+                <textarea id="badge-reason-input" maxlength="240" rows="4" placeholder="Fx. tog imod kunderne med ro og et smil."></textarea>
+                <div class="badge-reason-meta"><span id="badge-reason-error" role="alert"></span><span id="badge-reason-count">0/240</span></div>
+                <button type="button" id="confirm-assign-badge-btn" class="action-button">Tildel badge</button>
+            </div>
+        </div>
+    </template>
 
     <!-- Indstillinger modal -->
     <div id="settings-modal-backdrop" class="settings-modal-backdrop" style="display:none;">

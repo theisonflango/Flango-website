@@ -882,26 +882,108 @@ a { color: inherit; text-decoration: none; }
 .empty-state-text { font-size: 14px; color: var(--ink-muted); font-weight: 500; }
 
 /* ─── EKSPEDIENT ─── */
-.ekspedient-tal p { margin: 0 0 var(--s2); font-size: 14px; line-height: 1.5; color: var(--ink); }
-.ekspedient-tal p:last-child { margin-bottom: 0; }
-.ekspedient-tal strong { color: var(--ink); font-weight: 700; }
+.ekspedient-tal {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s2);
+}
+.ekspedient-tal > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+}
+.ekspedient-tal strong { color: var(--ink); font-size: 17px; line-height: 1.25; }
+.ekspedient-tal span { color: var(--ink-muted); font-size: 11px; font-weight: 650; }
 
 .ekspedient-badges { margin-top: var(--s4); padding-top: var(--s3); border-top: 1px solid var(--border); }
-.ekspedient-badges-titel {
+.ekspedient-badges-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
   margin-bottom: var(--s2);
+}
+.ekspedient-badges-header > div:first-child { display: flex; align-items: baseline; gap: var(--s2); }
+.ekspedient-badges-titel {
   font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
   color: var(--ink-muted);
 }
-.ekspedient-badge {
-  padding: var(--s3);
+.ekspedient-badges-count { color: var(--ink-muted); font-size: 11px; font-weight: 650; }
+.ekspedient-badge-nav { display: flex; gap: 6px; }
+.ekspedient-badge-nav button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 50%;
   background: var(--surface-raised);
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
 }
-.ekspedient-badge + .ekspedient-badge { margin-top: var(--s2); }
-.ekspedient-badge-navn { font-size: 14px; font-weight: 700; color: var(--ink); }
-.ekspedient-badge-grund { margin-top: 2px; font-size: 13px; font-style: italic; line-height: 1.45; color: var(--ink); }
-.ekspedient-badge-dato { margin-top: 4px; font-size: 11px; color: var(--ink-muted); }
+.ekspedient-badge-nav button:focus-visible { outline: 3px solid color-mix(in srgb, var(--flango) 24%, transparent); outline-offset: 2px; }
+.ekspedient-badge-carousel {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(260px, calc(88% - var(--s2)));
+  gap: var(--s2);
+  overflow-x: auto;
+  padding: 2px 2px var(--s2);
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.ekspedient-badge-carousel::-webkit-scrollbar { display: none; }
+.ekspedient-badge-carousel.single { grid-auto-columns: minmax(0, 1fr); overflow: visible; padding-right: 0; }
+.ekspedient-badge {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  min-height: 142px;
+  overflow: hidden;
+  border: 1px solid rgba(184, 123, 48, .18);
+  border-radius: 18px;
+  background: #fff8eb;
+  box-shadow: 0 7px 20px rgba(82, 54, 24, .07);
+  scroll-snap-align: start;
+}
+.ekspedient-badge-art {
+  display: flex;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 6px;
+  background: radial-gradient(circle at 50% 45%, #fff 0, rgba(255,255,255,.72) 34%, rgba(244,215,172,.26) 72%, transparent 100%);
+}
+.ekspedient-badge-art img { width: 102px; height: 102px; object-fit: contain; filter: drop-shadow(0 7px 8px rgba(96, 57, 16, .16)); }
+.ekspedient-badge-copy { min-width: 0; padding: var(--s3) var(--s3) var(--s3) var(--s2); }
+.ekspedient-badge-eyebrow {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--flango);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.ekspedient-badge-navn { display: block; color: var(--ink); font-size: 15px; font-weight: 800; line-height: 1.3; }
+.ekspedient-badge-grund { margin: 5px 0 0; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+.ekspedient-badge-dato { display: block; margin-top: 7px; color: var(--ink-muted); font-size: 10px; font-weight: 600; }
+
+@media (max-width: 460px) {
+  .ekspedient-tal strong { font-size: 15px; }
+  .ekspedient-badge-carousel { grid-auto-columns: minmax(246px, calc(94% - var(--s2))); }
+  .ekspedient-badge { grid-template-columns: 92px minmax(0, 1fr); min-height: 128px; }
+  .ekspedient-badge-art img { width: 84px; height: 84px; }
+}
 
 /* ─── ADD CHILD MODAL ─── */
 .modal-overlay {

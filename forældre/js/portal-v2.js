@@ -2367,6 +2367,59 @@
     return `${rest} min`;
   }
 
+  function ekspedientBadgeAssetStem(name) {
+    return String(name || '')
+      .replaceAll('æ', 'ae').replaceAll('Æ', 'Ae')
+      .replaceAll('ø', 'oe').replaceAll('Ø', 'Oe')
+      .replaceAll('å', 'aa').replaceAll('Å', 'Aa')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/&/g, ' og ')
+      .split(/[^a-zA-Z0-9]+/)
+      .filter(Boolean)
+      .map((part) => part[0].toUpperCase() + part.slice(1).toLowerCase())
+      .join('');
+  }
+
+  function ekspedientBadgeAssetUrl(name) {
+    const stem = ekspedientBadgeAssetStem(name);
+    return stem ? `assets/badges/${stem}.webp` : '';
+  }
+
+  function setupEkspedientBadgeCarousel(scope) {
+    const viewport = scope?.querySelector('[data-ekspedient-badge-carousel]');
+    if (!viewport) return;
+    const cards = [...viewport.querySelectorAll('.ekspedient-badge')];
+    const previous = scope.querySelector('[data-ekspedient-badge-prev]');
+    const next = scope.querySelector('[data-ekspedient-badge-next]');
+    const counter = scope.querySelector('[data-ekspedient-badge-count]');
+    if (cards.length < 2) return;
+
+    let currentIndex = 0;
+    const updateCounter = () => {
+      if (counter) counter.textContent = `${currentIndex + 1} af ${cards.length}`;
+    };
+    const goTo = (index) => {
+      currentIndex = (index + cards.length) % cards.length;
+      viewport.scrollTo({ left: cards[currentIndex].offsetLeft, behavior: 'smooth' });
+      updateCounter();
+    };
+    previous?.addEventListener('click', () => goTo(currentIndex - 1));
+    next?.addEventListener('click', () => goTo(currentIndex + 1));
+    viewport.addEventListener('scroll', () => {
+      const nearest = cards.reduce((best, card, index) => (
+        Math.abs(card.offsetLeft - viewport.scrollLeft) < Math.abs(cards[best].offsetLeft - viewport.scrollLeft)
+          ? index
+          : best
+      ), currentIndex);
+      if (nearest !== currentIndex) {
+        currentIndex = nearest;
+        updateCounter();
+      }
+    }, { passive: true });
+    updateCounter();
+  }
+
   async function loadEkspedientSection() {
     if (!selectedChild) return;
     const kort = document.getElementById('section-ekspedient');
@@ -2392,26 +2445,41 @@
       return;
     }
 
-    const navn = esc(getChildName());
-    const linjer = [];
-    if (kunder) linjer.push(`${navn} har betjent <strong>${kunder}</strong> ${kunder === 1 ? 'kunde' : 'kunder'} i caféen.`);
-    if (minutter) linjer.push(`Tid som ekspedient: <strong>${ekspedientTid(minutter)}</strong>.`);
+    const stats = [];
+    if (kunder) stats.push({ value: String(kunder), label: kunder === 1 ? 'Kunde betjent' : 'Kunder betjent' });
+    if (minutter) stats.push({ value: ekspedientTid(minutter), label: 'Tid i caféen' });
 
-    const badgeHtml = badges.map((b) => {
+    const badgeHtml = badges.map((b, index) => {
       const dato = b.awarded_at
         ? new Date(b.awarded_at).toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric' })
         : '';
       return `
-        <div class="ekspedient-badge">
-          <div class="ekspedient-badge-navn">${esc(b.name || '')}</div>
-          ${b.reason ? `<div class="ekspedient-badge-grund">„${esc(b.reason)}“</div>` : ''}
-          ${dato ? `<div class="ekspedient-badge-dato">${esc(dato)}</div>` : ''}
-        </div>`;
+        <article class="ekspedient-badge" aria-label="Badge ${index + 1} af ${badges.length}: ${esc(b.name || '')}">
+          <div class="ekspedient-badge-art" aria-hidden="true">
+            <img src="${esc(ekspedientBadgeAssetUrl(b.name))}" alt="" data-ekspedient-badge-medal>
+          </div>
+          <div class="ekspedient-badge-copy">
+            <span class="ekspedient-badge-eyebrow">Badge</span>
+            <strong class="ekspedient-badge-navn">${esc(b.name || '')}</strong>
+            ${b.reason ? `<p class="ekspedient-badge-grund">${esc(b.reason)}</p>` : ''}
+            ${dato ? `<time class="ekspedient-badge-dato" datetime="${esc(b.awarded_at)}">${esc(dato)}</time>` : ''}
+          </div>
+        </article>`;
     }).join('');
 
     boks.innerHTML = `
-      ${linjer.length ? `<div class="ekspedient-tal">${linjer.map((l) => `<p>${l}</p>`).join('')}</div>` : ''}
-      ${badges.length ? `<div class="ekspedient-badges"><div class="ekspedient-badges-titel">${badges.length === 1 ? 'Badge' : 'Badges'}</div>${badgeHtml}</div>` : ''}`;
+      ${stats.length ? `<div class="ekspedient-tal">${stats.map((stat) => `<div><strong>${esc(stat.value)}</strong><span>${esc(stat.label)}</span></div>`).join('')}</div>` : ''}
+      ${badges.length ? `<div class="ekspedient-badges">
+        <div class="ekspedient-badges-header">
+          <div><span class="ekspedient-badges-titel">${badges.length === 1 ? 'Badge' : 'Badges'}</span><span class="ekspedient-badges-count" data-ekspedient-badge-count>${badges.length > 1 ? `1 af ${badges.length}` : ''}</span></div>
+          ${badges.length > 1 ? `<div class="ekspedient-badge-nav"><button type="button" data-ekspedient-badge-prev aria-label="Forrige badge">${icon('chevron-left', 18)}</button><button type="button" data-ekspedient-badge-next aria-label="Næste badge">${icon('chevron-right', 18)}</button></div>` : ''}
+        </div>
+        <div class="ekspedient-badge-carousel${badges.length === 1 ? ' single' : ''}" data-ekspedient-badge-carousel>${badgeHtml}</div>
+      </div>` : ''}`;
+    boks.querySelectorAll('[data-ekspedient-badge-medal]').forEach((image) => {
+      image.addEventListener('error', () => image.closest('.ekspedient-badge-art')?.remove(), { once: true });
+    });
+    setupEkspedientBadgeCarousel(boks);
     kort.classList.remove('section-hidden');
   }
 
