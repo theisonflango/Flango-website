@@ -24,9 +24,9 @@
   // App-synlighed: URL'erne er de endelige (ASC-id + bundle-id), men knapperne
   // renderes først når flagene flippes ved release — ingen døde links inden da.
   // Smart App Banner (index.html) er selv-gated hos Apple og kan ligge klar.
-  var APP_STORE_LIVE = false;
+  var APP_STORE_LIVE = true;   // App Store-release 2026-07-31 (kun DK)
   var APP_STORE_URL = 'https://apps.apple.com/dk/app/id6793543486';
-  var PLAY_STORE_LIVE = false;
+  var PLAY_STORE_LIVE = false; // flip ved Play-produktion (efter Googles gennemgang)
   var PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=dk.flango.foraeldre';
 
   function isStandalone() {
@@ -109,8 +109,11 @@
     card.setAttribute('role', 'dialog');
     card.setAttribute('aria-label', 'Installér Flango');
 
+    //  (Apple-logoet) findes kun i Apple-fonte — på Windows/Android bliver
+    // det en tom firkant, så glyfen vises kun hvor den faktisk renderer.
+    var appleGlyph = (isIOS || /mac/i.test(navigator.platform || '')) ? ' ' : '';
     var storeBtns =
-      (APP_STORE_LIVE ? '<a class="fpwa-btn fpwa-store" href="' + APP_STORE_URL + '" target="_blank" rel="noopener"> Hent i App Store</a>' : '') +
+      (APP_STORE_LIVE ? '<a class="fpwa-btn fpwa-store" href="' + APP_STORE_URL + '" target="_blank" rel="noopener">' + appleGlyph + 'Hent i App Store</a>' : '') +
       (PLAY_STORE_LIVE ? '<a class="fpwa-btn fpwa-store fpwa-play" href="' + PLAY_STORE_URL + '" target="_blank" rel="noopener">▶ Hent i Google Play</a>' : '');
     var action;
     if (mode === 'ios') {
