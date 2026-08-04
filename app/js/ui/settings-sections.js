@@ -265,7 +265,9 @@
     render(ctx) {
       const inst = ctx.institutionData || {};
       const eventsOn = !!inst.cafe_events_enabled;
-      const daysAhead = inst.cafe_events_days_ahead ?? 7;
+      // 14, ikke 7: det er kolonnens default og det tal cafe-events.js regner med. Feltet viste 7
+      // og skrev 7 ved næste gemning — så ændrede horisonten sig, uden at nogen havde bedt om det.
+      const daysAhead = inst.cafe_events_days_ahead ?? 14;
       // Visningstilstand: produktkort (default) vs. banner øverst. Gemmes i den
       // eksisterende boolean cafe_events_as_products (true=produkter, false=banner).
       const asProducts = inst.cafe_events_as_products !== false;
