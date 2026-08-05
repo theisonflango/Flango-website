@@ -3840,7 +3840,17 @@
   }
 
   function renderScreentimeChartSection() {
-    const sessions = screentimeData?.sessions || screentimeData?.usage_history || screentimeData?.skaermtid_sessions || [];
+    // Søjlerne har altid været tomme: feltnavnene nedenfor er get-parent-VIEW's form
+    // ({device_type, device_name, minutes, date}), men opslaget skete på screentimeData,
+    // som er get-parent-SKAERMTID's svar — der hedder listen `history` og datoen `start`.
+    // Begge kilder accepteres nu. childData.skaermtid_sessions er allerede forbrugt tid
+    // (mapSession bruger balance_deducted), og history.minutes er det efter samme fix.
+    const sessions = childData?.skaermtid_sessions
+      || screentimeData?.history
+      || screentimeData?.sessions
+      || screentimeData?.usage_history
+      || screentimeData?.skaermtid_sessions
+      || [];
     const instDaily = screentimeData?.institution_daily_limit ?? screentimeData?.default_balance_minutes ?? null;
 
     // Group sessions by date (last 7 days)
@@ -3856,7 +3866,9 @@
 
     // Sum minutes per day
     sessions.forEach(function (s) {
-      const sDate = (s.date || s.started_at || s.created_at || '').split('T')[0];
+      // `start` er get-parent-skaermtid's felt (fuld ISO-timestamp); `date` er
+      // get-parent-view's (allerede YYYY-MM-DD). split('T') dækker begge.
+      const sDate = (s.date || s.start || s.started_at || s.created_at || '').split('T')[0];
       const dayEntry = days.find(function (d) { return d.key === sDate; });
       if (dayEntry) {
         dayEntry.minutes += Number(s.duration_minutes || s.minutes || s.duration || 0);
