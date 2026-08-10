@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <title>Flango Event – Flango</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/shared/nav.css" />
+  <style>
+    :root {
+      --bg: #f5f5fb;
+      --bg-soft: #ffffff;
+      --accent: #ff7a3c;
+      --accent-dark: #e0521f;
+      --text-main: #111827;
+      --text-muted: #4b5563;
+      --border-soft: #e5e7eb;
+      --radius-lg: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: radial-gradient(circle at top, #ffe8d6 0, #f5f5fb 38%, #f9fafb 100%); color: var(--text-main); }
+    a { color: inherit; text-decoration: none; }
+    .page { min-height: 100vh; max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 40px; }
+    .page-title { margin: 0; font-size: clamp(24px,4vw,30px); font-family: 'Baloo 2', cursive; }
+    .page-intro { font-size: 15px; color: var(--text-muted); max-width: 60ch; line-height: 1.5; }
+    .section-heading { margin: 0 0 16px; font-size: 20px; font-family: 'Baloo 2', cursive; }
+    .divider { margin: 32px 0; border: none; height: 0; border-top: 1px solid var(--border-soft); }
+    .about-section { max-width: 65ch; }
+    .about-section p { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+    .about-section p:last-child { margin-bottom: 0; }
+    .about-section a { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
+    .about-section a:hover { color: var(--accent); }
+    .coming-soon-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: rgba(255, 122, 60, 0.12);
+      color: var(--accent-dark);
+      border: 1px solid rgba(255, 122, 60, 0.25);
+      margin-bottom: 16px;
+    }
+    footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-soft); font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
+  </style>
+</head>
+<body class="has-flango-nav">
+  <nav class="flango-nav" role="navigation" aria-label="Hovednavigation">
+    <div class="flango-nav-inner">
+      <a href="/" class="flango-nav-logo" aria-label="Flango forside"><img src="/shared/logos/flango-fruit.webp" alt="" class="flango-nav-logo-icon">flango<span>.</span></a>
+      <ul class="flango-nav-links">
+        <li><a href="/#priser">Priser</a></li>
+        <li><a href="/om-flango/">Om Flango</a></li>
+        <li><a href="/#kontakt">Kontakt</a></li>
+      </ul>
+      <div class="flango-nav-right">
+        <a href="/forældre/" class="flango-nav-portal">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Forældreportal
+        </a>
+      </div>
+      <button class="flango-burger" aria-label="Åbn menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="flango-mobile-menu" id="flangoMobileMenu" role="dialog" aria-label="Mobilmenu">
+      <a href="/">Forside</a>
+      <a href="/#priser">Priser</a>
+      <a href="/om-flango/">Om Flango</a>
+      <a href="/#kontakt">Kontakt</a>
+      <span class="flango-mobile-section">Log ind</span>
+      <a href="/forældre/">Forældreportal</a>
+      <a href="/app">Café-app (personale)</a>
+    </div>
+  </nav>
+  <main class="page">
+    <section>
+      <span class="coming-soon-badge">Kommer snart</span>
+      <h1 class="page-title">Flango Event</h1>
+      <p class="page-intro">Til skolefester, sommermarkeder og fællesarrangementer.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section">
+      <p>Flango Event er et værktøj til skoler og institutioner der afholder arrangementer med flere børnestyrede boder, hvor forældre køber på tværs.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="hvordan-heading">
+      <h2 id="hvordan-heading" class="section-heading">Sådan fungerer det</h2>
+      <p>Sekretæren opretter eventet i Flango og tilføjer boderne — Pølsebod, Kagebod, Tombola, Loppemarked. Hver bod får en printbar QR-kode der peger på skolens MobilePay-nummer med bodens navn forudfyldt som kommentar. QR'en sættes op ved boden.</p>
+      <p>Forældre går fra bod til bod og betaler ved at scanne. De viser kvitteringen til barnet, der står i boden, som tjekker beløbet og registrerer salget i en simpel app — enten med et tryk på en forudsat vare, eller ved at taste et frit beløb for loppevarer og donationer.</p>
+      <p>Pengene går direkte fra forældrene til skolens MobilePay. Flango er ikke pengemellemmand — bare et værktøj til at registrere salget og holde styr på hvad der bliver solgt hvor.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="efter-heading">
+      <h2 id="efter-heading" class="section-heading">Efter eventet</h2>
+      <p>Sekretæren henter sin MobilePay-CSV og uploader den til Flango. Systemet afstemmer automatisk pr. bod og viser uoverensstemmelser, hvis der er nogen. Den samlede event-rapport kan eksporteres til skolens regnskab — også opdelt pr. bod, hvis pengene skal fordeles til klassekasser eller andre formål.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section">
+      <p>Vil du høre fra os når Flango Event er klar? <a href="mailto:kontakt@flango.dk?subject=Flango%20Event%20opdateringer">Skriv til os</a>, så holder vi dig orienteret.</p>
+    </section>
+
+    <footer>
+      <div>© <span id="year"></span> Flango – SFO'ernes cafésystem</div>
+      <div>
+        <a href="/forældre/">Forældre Portal</a> ·
+        <a href="/#priser">Priser</a> ·
+        <a href="/om-flango/">Om Flango</a> ·
+        <a href="/sikkerhed/">Sikkerhed</a> ·
+        <a href="/privatlivspolitik/">Privatlivspolitik</a> ·
+        <a href="/gdpr/">GDPR</a> ·
+        <a href="/#kontakt">Kontakt</a>
+      </div>
+    </footer>
+  </main>
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script src="/shared/nav.js"></script>
+</body>
+</html>

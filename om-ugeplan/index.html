@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <title>Flango Ugeplan – Flango</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/shared/nav.css" />
+  <style>
+    :root {
+      --bg: #f5f5fb;
+      --bg-soft: #ffffff;
+      --accent: #ff7a3c;
+      --accent-dark: #e0521f;
+      --text-main: #111827;
+      --text-muted: #4b5563;
+      --border-soft: #e5e7eb;
+      --radius-lg: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: radial-gradient(circle at top, #ffe8d6 0, #f5f5fb 38%, #f9fafb 100%); color: var(--text-main); }
+    a { color: inherit; text-decoration: none; }
+    .page { min-height: 100vh; max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 40px; }
+    .page-title { margin: 0; font-size: clamp(24px,4vw,30px); font-family: 'Baloo 2', cursive; }
+    .page-intro { font-size: 15px; color: var(--text-muted); max-width: 60ch; line-height: 1.5; }
+    .section-heading { margin: 0 0 16px; font-size: 20px; font-family: 'Baloo 2', cursive; }
+    .divider { margin: 32px 0; border: none; height: 0; border-top: 1px solid var(--border-soft); }
+    .about-section { max-width: 65ch; }
+    .about-section p { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+    .about-section p:last-child { margin-bottom: 0; }
+    .about-section ul { margin: 12px 0 0; padding-left: 1.25em; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
+    .about-section li { margin-bottom: 6px; }
+    .about-section a { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
+    .about-section a:hover { color: var(--accent); }
+    .module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 12px; }
+    .module-card { background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: 12px; padding: 16px; }
+    .module-card strong { font-size: 15px; color: var(--text-main); }
+    .module-card p { margin: 8px 0 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+    .tag-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .tag-pill { background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: 999px; padding: 6px 14px; font-size: 13px; color: var(--text-muted); }
+    footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-soft); font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
+  </style>
+</head>
+<body class="has-flango-nav">
+  <nav class="flango-nav" role="navigation" aria-label="Hovednavigation">
+    <div class="flango-nav-inner">
+      <a href="/" class="flango-nav-logo" aria-label="Flango forside"><img src="/shared/logos/flango-fruit.webp" alt="" class="flango-nav-logo-icon">flango<span>.</span></a>
+      <ul class="flango-nav-links">
+        <li><a href="/#priser">Priser</a></li>
+        <li><a href="/om-flango/">Om Flango</a></li>
+        <li><a href="/#kontakt">Kontakt</a></li>
+      </ul>
+      <div class="flango-nav-right">
+        <a href="/forældre/" class="flango-nav-portal">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Forældreportal
+        </a>
+      </div>
+      <button class="flango-burger" aria-label="Åbn menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="flango-mobile-menu" id="flangoMobileMenu" role="dialog" aria-label="Mobilmenu">
+      <a href="/">Forside</a>
+      <a href="/#priser">Priser</a>
+      <a href="/om-flango/">Om Flango</a>
+      <a href="/#kontakt">Kontakt</a>
+      <span class="flango-mobile-section">Log ind</span>
+      <a href="/forældre/">Forældreportal</a>
+      <a href="/app">Café-app (personale)</a>
+    </div>
+  </nav>
+  <main class="page">
+    <section>
+      <h1 class="page-title">Flango Ugeplan</h1>
+      <p class="page-intro">Digitalt planlægningsværktøj til pædagoger der planlægger ugentlige aktivitetsskemaer i SFO'er og fritidsklubber.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="hvad-heading">
+      <h2 id="hvad-heading" class="section-heading">Hvad er Flango Ugeplan?</h2>
+      <p>Flango Ugeplan giver pædagoger et samlet overblik over ugens aktiviteter — fordelt på dage, værksteder og personale. Med få klik bygges et overskueligt ugeskema, der er klart for både kolleger, børn og forældre.</p>
+      <p>Modulet er en del af Flango-paraplyen, men kan anvendes selvstændigt. Det kører i browseren — ingen installation.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="hvordan-heading">
+      <h2 id="hvordan-heading" class="section-heading">Sådan fungerer det</h2>
+      <p>Pædagogen åbner institutionens ugeplan og ser en grid-oversigt med dagene som kolonner og værksteder som rækker. Hver celle repræsenterer en aktivitet på et givent værksted på en given dag.</p>
+      <p>Aktiviteter tilføjes via et sidepanel hvor man vælger:</p>
+      <ul>
+        <li>Aktivitet — fra klubbens egne eller fra det fælles aktivitetskatalog</li>
+        <li>Personale — én eller flere ansvarlige</li>
+        <li>Tidsrum (valgfrit)</li>
+        <li>Mulighed for at markere dagen som lukket på et værksted</li>
+      </ul>
+      <p>Celler kan trækkes mellem dage for hurtig omrokering. Hele ugeskemaer kan kopieres fra en tidligere uge som udgangspunkt, og ændringer kan undo'es trin for trin.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="vaerkstederne-heading">
+      <h2 id="vaerkstederne-heading" class="section-heading">Værksteder</h2>
+      <p>Ugeplanen organiseres efter institutionens egne værksteder — fx Café, Krea, Musik, Sal, Rollespil eller andet. Antallet og navnet på værksteder tilpasses pr. institution.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="katalog-heading">
+      <h2 id="katalog-heading" class="section-heading">Aktivitetskatalog med pædagogisk metadata</h2>
+      <p>Flango Ugeplan kommer med et fælles aktivitetskatalog hvor hver aktivitet er beriget med metadata, så pædagogen hurtigt kan filtrere efter ugens tema, et bestemt læringsmål eller en intelligens man vil understøtte.</p>
+
+      <h3 style="margin: 20px 0 8px; font-size: 16px; font-weight: 700; color: var(--text-main);">Gardner-intelligenser</h3>
+      <div class="tag-grid">
+        <span class="tag-pill">Sproglig</span>
+        <span class="tag-pill">Logisk</span>
+        <span class="tag-pill">Musikalsk</span>
+        <span class="tag-pill">Kropslig</span>
+        <span class="tag-pill">Rumlig</span>
+        <span class="tag-pill">Social</span>
+        <span class="tag-pill">Personlig</span>
+        <span class="tag-pill">Naturalistisk</span>
+        <span class="tag-pill">Kulturel</span>
+      </div>
+
+      <h3 style="margin: 20px 0 8px; font-size: 16px; font-weight: 700; color: var(--text-main);">Aktivitetstyper</h3>
+      <div class="tag-grid">
+        <span class="tag-pill">Sport</span>
+        <span class="tag-pill">Dans</span>
+        <span class="tag-pill">Kunst</span>
+        <span class="tag-pill">Kreativ</span>
+        <span class="tag-pill">Mad</span>
+        <span class="tag-pill">Udeliv</span>
+        <span class="tag-pill">Samarbejde</span>
+        <span class="tag-pill">Digital</span>
+        <span class="tag-pill">Musik</span>
+        <span class="tag-pill">Fortælling</span>
+        <span class="tag-pill">Ro & fordybelse</span>
+        <span class="tag-pill">Performance</span>
+      </div>
+
+      <p style="margin-top: 20px;">Hver aktivitet kan også mærkes med læringsmål (fx finmotorik, grovmotorik, selvregulering) og temaer (fx Italien-uge, Asien-uge, Natur-uge), så ugens pædagogiske variation bliver synlig og dokumenterbar.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="paedagog-heading">
+      <h2 id="paedagog-heading" class="section-heading">For pædagogen</h2>
+      <div class="module-grid">
+        <div class="module-card">
+          <strong>Hurtigt overblik</strong>
+          <p>Hele ugen i ét grid — dage, værksteder, aktiviteter og personale.</p>
+        </div>
+        <div class="module-card">
+          <strong>Drag-and-drop</strong>
+          <p>Flyt aktiviteter mellem dage med musen. Undo/redo i hele forløbet.</p>
+        </div>
+        <div class="module-card">
+          <strong>Filtrér katalog</strong>
+          <p>Find hurtigt aktiviteter efter intelligens, læringsmål eller tema.</p>
+        </div>
+        <div class="module-card">
+          <strong>PDF-eksport</strong>
+          <p>Print eller del ugeskemaet — fx til opslag eller forældreinformation.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="institution-heading">
+      <h2 id="institution-heading" class="section-heading">For institutionen</h2>
+      <ul>
+        <li>Personalefordeling pr. uge synlig i ét overblik</li>
+        <li>Konsistens i struktur på tværs af værksteder</li>
+        <li>Aktivitetshistorik — kopier fra tidligere uger som udgangspunkt</li>
+        <li>Pædagogisk variation dokumenteret via metadata</li>
+        <li>Ingen installation — kører i browseren</li>
+      </ul>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section" aria-labelledby="sikkerhed-heading">
+      <h2 id="sikkerhed-heading" class="section-heading">Sikkerhed og databeskyttelse</h2>
+      <ul>
+        <li>Data hostes i EU</li>
+        <li>Krypteret kommunikation (TLS) og kryptering i hvile (AES-256)</li>
+        <li>Rollebaseret adgang og institutions-adskillelse på databaseniveau</li>
+        <li>Mulighed for databehandleraftale (DPA) med kommunen</li>
+      </ul>
+      <p>Yderligere dokumentation om databehandling og sikkerhedsmodel kan udleveres til den dataansvarlige ved henvendelse.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section">
+      <p>Vil du høre mere? <a href="/#kontakt">Kontakt os</a>.</p>
+    </section>
+
+    <footer>
+      <div>© <span id="year"></span> Flango – SFO'ernes cafésystem</div>
+      <div>
+        <a href="/forældre/">Forældre Portal</a> ·
+        <a href="/#priser">Priser</a> ·
+        <a href="/om-flango/">Om Flango</a> ·
+        <a href="/sikkerhed/">Sikkerhed</a> ·
+        <a href="/privatlivspolitik/">Privatlivspolitik</a> ·
+        <a href="/gdpr/">GDPR</a> ·
+        <a href="/#kontakt">Kontakt</a>
+      </div>
+    </footer>
+  </main>
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script src="/shared/nav.js"></script>
+</body>
+</html>

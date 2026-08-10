@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ekspedient — lokal preview</title>
+  <link rel="stylesheet" href="../css/portal-v2.css">
+  <style>
+    body { min-height: 100vh; margin: 0; background: var(--surface-sunken); }
+    .preview-shell { width: min(100% - 32px, 560px); margin: 40px auto; }
+    .section { overflow: visible; }
+    .section-body { max-height: none; }
+    .section-body-inner { opacity: 1; transform: none; }
+    @media (max-width: 640px) {
+      .preview-shell { width: min(100% - 24px, 560px); margin: 20px auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview-shell">
+    <section class="section open" id="section-ekspedient">
+      <div class="section-header">
+        <div class="section-title-row">
+          <span id="preview-section-icon"></span>
+          <div>
+            <div class="section-title">Ekspedient</div>
+            <div class="section-subtitle">Arbejdet i caféen</div>
+          </div>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="section-body-inner">
+          <div class="section-content">
+            <div id="ekspedient-content">
+              <div class="ekspedient-tal"><div><strong>18</strong><span>Kunder betjent</span></div><div><strong>1 time og 12 min</strong><span>Tid i caféen</span></div></div>
+              <div class="ekspedient-badges">
+                <div class="ekspedient-badges-header">
+                  <div><span class="ekspedient-badges-titel">Badges</span><span class="ekspedient-badges-count" id="preview-count">1 af 2</span></div>
+                  <div class="ekspedient-badge-nav"><button type="button" id="preview-prev" aria-label="Forrige badge"></button><button type="button" id="preview-next" aria-label="Næste badge"></button></div>
+                </div>
+                <div class="ekspedient-badge-carousel" id="preview-carousel">
+                  <article class="ekspedient-badge" aria-label="Badge 1 af 2: God Stil">
+                    <div class="ekspedient-badge-art" aria-hidden="true"><img src="../assets/badges/GodStil.webp" alt=""></div>
+                    <div class="ekspedient-badge-copy"><span class="ekspedient-badge-eyebrow">Badge</span><strong class="ekspedient-badge-navn">God Stil</strong><p class="ekspedient-badge-grund">Var venlig og tog godt imod kunderne.</p><time class="ekspedient-badge-dato">31. juli 2026</time></div>
+                  </article>
+                  <article class="ekspedient-badge" aria-label="Badge 2 af 2: Pandekage Mester">
+                    <div class="ekspedient-badge-art" aria-hidden="true"><img src="../assets/badges/PandekageMester.webp" alt=""></div>
+                    <div class="ekspedient-badge-copy"><span class="ekspedient-badge-eyebrow">Badge</span><strong class="ekspedient-badge-navn">Pandekage Mester</strong><p class="ekspedient-badge-grund">Havde helt styr på pandekagerne og hjalp andre godt i gang.</p><time class="ekspedient-badge-dato">24. juli 2026</time></div>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="../js/icons.js"></script>
+  <script>
+    const icons = window.FlangoIcons;
+    document.querySelector('#preview-section-icon').innerHTML = icons.sectionIcon('award', 'flango');
+    document.querySelector('#preview-prev').innerHTML = icons.icon('chevron-left', 18);
+    document.querySelector('#preview-next').innerHTML = icons.icon('chevron-right', 18);
+    const carousel = document.querySelector('#preview-carousel');
+    const cards = [...carousel.querySelectorAll('.ekspedient-badge')];
+    const count = document.querySelector('#preview-count');
+    let index = 0;
+    const go = (delta) => {
+      index = (index + delta + cards.length) % cards.length;
+      carousel.scrollTo({ left: cards[index].offsetLeft, behavior: 'smooth' });
+      count.textContent = `${index + 1} af ${cards.length}`;
+    };
+    document.querySelector('#preview-prev').onclick = () => go(-1);
+    document.querySelector('#preview-next').onclick = () => go(1);
+  </script>
+</body>
+</html>

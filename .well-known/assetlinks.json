@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls", "delegate_permission/common.get_login_creds"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dk.flango.foraeldre",
+      "sha256_cert_fingerprints": [
+        "6F:C7:89:A0:DC:11:7B:1B:CE:76:74:0E:8C:65:0E:00:EE:F2:64:6E:F2:CC:23:7E:D2:80:73:59:D3:4C:D5:BE"
+      ]
+    }
+  }
+]
