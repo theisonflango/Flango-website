@@ -376,8 +376,8 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-wD5cGX3d.js"></script>
-  <link rel="stylesheet" crossorigin href="/app/assets/main-D5iMSP_A.css">
+  <script type="module" crossorigin src="/app/assets/main-DBJSj9Gv.js"></script>
+  <link rel="stylesheet" crossorigin href="/app/assets/main-BhHiWaP8.css">
 </head>
 <body>
 
@@ -673,6 +673,7 @@
 
     <div id="login-modal" class="modal"></div>
     <div id="user-modal" class="modal"></div>
+    <div id="clerk-login-modal" class="modal clerk-login-modal" aria-hidden="true"></div>
     <div id="admin-user-manager-modal" class="modal"></div>
     <div id="avatar-picker-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="avatar-picker-title" aria-hidden="true"></div>
     <div id="add-edit-product-modal" class="modal"></div>
@@ -1697,6 +1698,108 @@
 
     <template id="login-modal-template"><div class="modal-content"><div class="modal-header"><h2>Login</h2><span class="close-btn">&times;</span></div><form onsubmit="return false;" autocomplete="off"><div class="modal-controls" style="flex-direction: column; gap: 10px;"><input type="email" id="login-email-input" class="input" placeholder="E-mail" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" autocomplete="off"><input type="password" id="login-password-input" class="input" placeholder="Adgangskode" style="font-size: 18px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;" autocomplete="new-password"><button type="button" id="perform-login-btn" class="action-button" style="background-color: var(--success-color); margin-top: 10px; margin-bottom: 0;">Log ind</button><p id="login-error-msg" style="color: var(--danger-color); text-align: center; display: none; margin-top: 10px;"></p></div></form></div></template>
     <template id="user-modal-template"><div class="modal-content"><div class="modal-header"><h2 id="user-modal-title">Vælg en kunde</h2><div id="user-filter-buttons" class="user-filter-buttons" style="display: none;"><button id="filter-all-btn" class="filter-btn active">Vis Alle</button><button id="filter-children-btn" class="filter-btn">Vis Børn</button><button id="filter-adults-btn" class="filter-btn">Vis Voksne</button></div><span class="close-btn">&times;</span></div><div id="admin-controls-modal"></div><div class="modal-controls"><input type="text" id="search-user-input" class="input" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="user-list-header"><div id="sort-by-name-btn" class="sort-header active">Navn</div><div id="sort-by-number-btn" class="sort-header">Nummer</div><div id="sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handling</div></div><div id="modal-user-list" class="modal-user-list"></div></div></template>
+    <template id="clerk-login-modal-template">
+        <div class="clerk-login-shell" role="dialog" aria-modal="true" aria-labelledby="clerk-login-title">
+            <button type="button" class="clerk-login-close" data-clerk-close aria-label="Luk ekspedient-login">
+                <img src="Icons/webp/Function/Kryds.webp" alt="">
+            </button>
+            <aside class="clerk-login-host" aria-label="Hr. Flango">
+                <div class="clerk-login-host-copy">
+                    <span>Din vagt i caféen</span>
+                    <h2>Klar til at hjælpe?</h2>
+                    <p data-clerk-host-message>Vælg dig selv, så gør vi caféen klar sammen.</p>
+                </div>
+                <img src="Icons/webp/Assets/Hr-Flango-vagt.png" alt="Hr. Flango">
+            </aside>
+            <main class="clerk-login-main">
+                <section class="clerk-login-stage is-active" data-clerk-stage="select">
+                    <div class="clerk-login-heading">
+                        <div>
+                            <span class="clerk-login-eyebrow">Ekspedient-login</span>
+                            <h1 id="clerk-login-title">Hvem har vagten i dag?</h1>
+                            <p>Find dit navn eller dit nummer.</p>
+                        </div>
+                    </div>
+                    <div class="clerk-login-tools">
+                        <label class="clerk-login-search">
+                            <span>Søg</span>
+                            <input type="search" data-clerk-search placeholder="Skriv navn eller nummer" autocomplete="off" spellcheck="false">
+                        </label>
+                        <div class="clerk-login-sort" aria-label="Sortér ekspedienter">
+                            <button type="button" data-clerk-sort="name" aria-pressed="true">Navn <span>A–Å</span></button>
+                            <button type="button" data-clerk-sort="number" aria-pressed="false">Nummer <span>1–9</span></button>
+                        </div>
+                    </div>
+                    <div class="clerk-login-list" data-clerk-list aria-live="polite"></div>
+                    <p class="clerk-login-list-status" data-clerk-list-status></p>
+                </section>
+
+                <section class="clerk-login-stage clerk-pin-stage" data-clerk-stage="pin" hidden>
+                    <button type="button" class="clerk-login-back" data-clerk-back>Vælg en anden</button>
+                    <div class="clerk-login-selected-person">
+                        <img data-clerk-selected-avatar src="Icons/webp/Avatar/Ekspedient-default2.webp" alt="">
+                        <div>
+                            <span>Du har valgt</span>
+                            <strong data-clerk-selected-name></strong>
+                        </div>
+                    </div>
+                    <div class="clerk-pin-copy">
+                        <span class="clerk-login-eyebrow">Din personlige kode</span>
+                        <h1>Indtast din PIN</h1>
+                        <p>Fire cifre — så er du klar til vagten.</p>
+                    </div>
+                    <div class="clerk-pin-dots" data-clerk-pin-dots aria-label="0 af 4 cifre indtastet">
+                        <span></span><span></span><span></span><span></span>
+                    </div>
+                    <div class="clerk-pin-keypad" data-clerk-pin-keypad>
+                        <button type="button" data-pin-digit="1">1</button>
+                        <button type="button" data-pin-digit="2">2</button>
+                        <button type="button" data-pin-digit="3">3</button>
+                        <button type="button" data-pin-digit="4">4</button>
+                        <button type="button" data-pin-digit="5">5</button>
+                        <button type="button" data-pin-digit="6">6</button>
+                        <button type="button" data-pin-digit="7">7</button>
+                        <button type="button" data-pin-digit="8">8</button>
+                        <button type="button" data-pin-digit="9">9</button>
+                        <button type="button" class="is-secondary" data-pin-delete>Slet</button>
+                        <button type="button" data-pin-digit="0">0</button>
+                        <button type="button" class="is-confirm" data-pin-submit>Log ind</button>
+                    </div>
+                    <p class="clerk-login-error" data-clerk-pin-error aria-live="assertive"></p>
+                </section>
+
+                <section class="clerk-login-stage clerk-welcome-stage" data-clerk-stage="welcome" hidden>
+                    <button type="button" class="clerk-login-back" data-clerk-back>Vælg en anden</button>
+                    <div class="clerk-welcome-person">
+                        <img data-clerk-welcome-avatar src="Icons/webp/Avatar/Ekspedient-default2.webp" alt="">
+                        <div>
+                            <span class="clerk-login-eyebrow">Du er logget ind</span>
+                            <h1>God vagt, <span data-clerk-welcome-name></span>!</h1>
+                        </div>
+                    </div>
+                    <div class="clerk-welcome-message">
+                        <strong>Tre gode vaner</strong>
+                        <ol>
+                            <li>Tjek, at kunden og beløbet er rigtigt.</li>
+                            <li>Lad kun dig selv bruge caféen under din vagt.</li>
+                            <li>Afslut vagten, når du er færdig.</li>
+                        </ol>
+                    </div>
+                    <div class="clerk-welcome-options">
+                        <button type="button" class="clerk-option-button" data-clerk-shift-timer hidden>
+                            <strong>Sæt bytte-timer</strong>
+                            <span>Få besked, når en anden skal overtage.</span>
+                        </button>
+                        <label class="clerk-option-toggle" data-clerk-restaurant-option hidden>
+                            <input type="checkbox" data-clerk-restaurant-checkbox>
+                            <span><strong>Restaurant-mode</strong><small>Vis bordvalg og køkkennote ved køb.</small></span>
+                        </label>
+                    </div>
+                    <button type="button" class="clerk-start-shift" data-clerk-start>Start min vagt</button>
+                </section>
+            </main>
+        </div>
+    </template>
     <template id="admin-user-manager-modal-template"><div class="modal-content"><div class="modal-header"><h2>Indbetal penge &amp; Rediger brugere</h2><span class="close-btn">&times;</span></div><div id="admin-role-toggle" class="admin-role-toggle"><button id="admin-toggle-customers" class="admin-role-toggle-btn active" type="button">Børn</button><button id="admin-toggle-admins" class="admin-role-toggle-btn" type="button">Admins</button></div><div id="admin-controls-modal"><button id="add-user-btn-modal" class="action-button admin-btn" style="margin-bottom: 10px;">➕ Tilføj Ny Bruger</button></div><div class="modal-controls"><input type="text" id="admin-search-user-input" class="input" placeholder="Søg efter navn eller nummer..." autocomplete="off" spellcheck="false" autocapitalize="off"></div><div class="user-list-header"><div id="admin-sort-by-name-btn" class="sort-header active">Navn</div><div id="admin-sort-by-number-btn" class="sort-header">Nummer</div><div id="admin-sort-by-grade-btn" class="sort-header">Klasse</div><div id="admin-sort-by-balance-btn" class="sort-header">Saldo</div><div class="static-header">Handlinger</div></div><div id="admin-modal-user-list" class="modal-user-list"></div></div></template>
     <template id="avatar-picker-modal-template"><div class="modal-content"><div class="modal-header"><div class="min-flango-header-identity"><h2 id="avatar-picker-title">Min Flango</h2></div><div id="avatar-picker-tabs" class="avatar-picker-tabs" role="tablist" aria-label="Min Flango" hidden><button type="button" id="avatar-picker-tab-overview" role="tab" aria-controls="avatar-picker-scroll-wrapper" aria-selected="true" tabindex="0" data-avatar-section="overview">Overblik</button><button type="button" id="avatar-picker-tab-library" role="tab" aria-controls="avatar-picker-scroll-wrapper" aria-selected="false" tabindex="-1" data-avatar-section="library">Avatarbibliotek</button></div><button type="button" class="close-btn" aria-label="Luk Min Flango">&times;</button></div><div id="avatar-picker-scroll-wrapper" role="tabpanel" aria-labelledby="avatar-picker-tab-overview">
         <div id="avatar-picker-summary"></div>
