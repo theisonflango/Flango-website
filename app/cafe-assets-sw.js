@@ -1,4 +1,4 @@
-const ASSET_VERSION = "b672cd8e3af68502";
+const ASSET_VERSION = "c1272a8a7c214ff9";
 const scopePath = new URL(self.registration.scope).pathname;
 const scopeKey = scopePath.replace(/^\/+|\/+$/g, '').replace(/[^a-z0-9_-]+/gi, '-') || 'root';
 const CACHE_PREFIX = `flango-cafe-images-${scopeKey}-`;
