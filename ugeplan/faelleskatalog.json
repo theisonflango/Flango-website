@@ -1,0 +1,3256 @@
+[
+  {
+    "id": "b758a420-7bc3-412e-a826-66eadb9e8ca6",
+    "name": "1-2-3 rødt lys",
+    "workshop_slugs": [
+      "salen"
+    ],
+    "activity_types": [
+      "Sport"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Grovmotorik",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Snig dig frem, mens den vender ryggen til — og frys, når han vender sig.",
+    "purpose": "Kropskontrol, at kunne stå helt stille, spænding",
+    "instruction": "1. Den står med ryggen til ved en væg. 2. Han råber et-to-tre rødt lys og vender sig. 3. Ses nogen bevæge sig, går de tilbage til start. 4. Den der først rører væggen, har vundet.",
+    "tips": "Perfekt til en gang i en lang. Sig at man også må fryse midt i et skridt — det er dér de griner, og det er dér kropskontrollen faktisk trænes. Lad vinderen være den næste, så er der grund til at gøre sig umage.",
+    "people_min": 4,
+    "people_max": 25,
+    "facilities": [
+      "Salen",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "før bussen",
+      "regnvejr",
+      "inde",
+      "ude",
+      "klassiker"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "fbdcba9c-5602-4525-9581-87f1b6415eb1",
+    "name": "Alle mine kyllinger",
+    "workshop_slugs": [
+      "ude"
+    ],
+    "activity_types": [
+      "Sport",
+      "Udeliv"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Selvtillid",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Moderhønen kalder, og kyllingerne løber over til hende gennem ræven.",
+    "purpose": "Fart, mod, den store fælles løbeleg",
+    "instruction": "1. Hønen står i den ene ende, kyllingerne i den anden. 2. Hun råber alle mine kyllinger kom hjem. 3. De råber tilbage og løber over. 4. De fangne hjælper med at fange næste gang.",
+    "tips": "Den fungerer bedst med mange børn — jo flere, jo vildere bliver overløbet. Sig at man kun må fange ved at røre, ikke ved at holde fast; ellers ender det i trækkeri og et par tårer.",
+    "people_min": 8,
+    "people_max": 30,
+    "facilities": [
+      "Udeområdet",
+      "Salen"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "stor gruppe",
+      "klassiker",
+      "ude",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "5020751c-98da-404e-9832-16e4ffa2e7d5",
+    "name": "Armbånd i makramé",
+    "workshop_slugs": [
+      "krea"
+    ],
+    "activity_types": [
+      "Kreativ",
+      "Kunst"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Vedholdenhed",
+      "Kreativt udtryk"
+    ],
+    "themes": [
+      "Kunst",
+      "Venskab"
+    ],
+    "description": "Knyt farverige venskabsarmbånd med makramé-teknik.",
+    "purpose": "Finmotorik, tålmodighed, kreativt udtryk",
+    "instruction": "1. Klip fire tråde à 80 cm og bind dem sammen i toppen. 2. Tape knuden fast til bordet og vis den flade knude. 3. Knyt videre og skift farve for hver 2 cm. 4. Mål mod håndleddet, luk med knude og klip enderne.",
+    "tips": "Tape eller en clipsemappe der holder arbejdet fast er hele forskellen — uden modhold glider knuderne løs, og så giver de op. Regn 80 cm garn til et børnehåndled; det ser meget ud, men knuderne spiser det.",
+    "people_min": 2,
+    "people_max": 10,
+    "facilities": [
+      "Krea-lokalet"
+    ],
+    "gear": [
+      "Makramégarn",
+      "Saks",
+      "Målebånd"
+    ],
+    "tags": [
+      "stille",
+      "hygge",
+      "gave",
+      "tekstil",
+      "fordybelse",
+      "inde",
+      "store børn"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "ad066f01-6a27-420a-898a-7f2596a5b93e",
+    "name": "Bagedag: boller fra bunden",
+    "workshop_slugs": [
+      "cafe"
+    ],
+    "activity_types": [
+      "Mad"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Koncentration",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Madkultur"
+    ],
+    "description": "Ælt, hæv og bag boller — spises lune med smør.",
+    "purpose": "Motorik i dejen, tal og mål, tålmodighed mens den hæver",
+    "instruction": "1. Vej ingredienser af. 2. Ælt dejen. 3. Hæv 45 min mens I rydder op. 4. Trill boller og bag 12 min ved 220°.",
+    "tips": "Hævetiden er ikke spildtid — brug den til opvasken, så er køkkenet rent når bollerne er færdige. Halv gær ved lang hævning.",
+    "people_min": 2,
+    "people_max": 12,
+    "facilities": [
+      "Køkken"
+    ],
+    "gear": [
+      "Ovn",
+      "Røremaskine",
+      "Vægt",
+      "Bageplader"
+    ],
+    "tags": [
+      "bagning",
+      "hygge",
+      "fredag",
+      "kræver indkøb",
+      "inde",
+      "duft"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "1c4e8240-c44c-412c-9ba9-e3ff999abcd1",
+    "name": "Bagedyst",
+    "workshop_slugs": [
+      "cafe",
+      "kokken"
+    ],
+    "activity_types": [
+      "Mad",
+      "Kreativ"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Samarbejdsevne",
+      "Problemløsning"
+    ],
+    "themes": [
+      "Madkultur"
+    ],
+    "description": "Små hold laver hver sin variation over den samme enkle grundopskrift.",
+    "purpose": "Samarbejde, måling, køkkenhygiejne, kreativitet og problemløsning",
+    "instruction": "1. Vask hænder og gennemgå opskriften. 2. Fordel roller på holdene. 3. Vælg smag eller pynt. 4. Bag og bedøm smag, præsentation og samarbejde.",
+    "tips": "En voksen håndterer ovnen og holder råvarer adskilt fra færdig mad. Følg husets allergenprocedure, sæt langt hår op, og vælg opgaver med passende køkkenrisiko til aldersgruppen.",
+    "people_min": 4,
+    "people_max": 12,
+    "facilities": [
+      "Køkken"
+    ],
+    "gear": [
+      "Ovn",
+      "Skåle",
+      "Vægt",
+      "Bageplader"
+    ],
+    "tags": [
+      "bagning",
+      "konkurrence",
+      "fredag",
+      "fest",
+      "kræver indkøb",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "b7a85c5f-7799-4b8c-af87-8a1ca2807a6d",
+    "name": "Bandværksted",
+    "workshop_slugs": [
+      "musik"
+    ],
+    "activity_types": [
+      "Musik"
+    ],
+    "learning_goals": [
+      "Samarbejdsevne",
+      "Selvtillid",
+      "Koncentration"
+    ],
+    "themes": [
+      "Musik-uge"
+    ],
+    "description": "Spil en enkel sang sammen med instrumenter, sang og rytmer.",
+    "purpose": "Sammenspil, lytning, musikalsk mestring og mod til at bidrage",
+    "instruction": "1. Vælg en sang med få akkorder. 2. Fordel instrumenter og andre roller. 3. Øv ét afsnit ad gangen. 4. Spil hele sangen og byt roller.",
+    "tips": "Lav roller på flere niveauer: puls, enkelt tone, akkorder, sang eller teknik. Hold lydniveauet rimeligt, læg korte hørepauser ind, og gør optræden frivillig.",
+    "people_min": 3,
+    "people_max": 8,
+    "facilities": [
+      "Musiklokalet"
+    ],
+    "gear": [
+      "Instrumenter",
+      "Mikrofon",
+      "Højttaler"
+    ],
+    "tags": [
+      "larm",
+      "store børn",
+      "klub",
+      "sammenspil",
+      "inde",
+      "øve"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "89c4d4d5-ae10-4cb9-8eb1-c49d2188e502",
+    "name": "Beat Saber turnering",
+    "workshop_slugs": [
+      "gamer"
+    ],
+    "activity_types": [
+      "Sport",
+      "Digital",
+      "Performance"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Samarbejdsevne",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Gaming-uge"
+    ],
+    "description": "VR-rytmespil med scoreboard, semifinaler og finale.",
+    "purpose": "Fysisk udfoldelse, rytmesans, social konkurrence",
+    "instruction": "1. Ryd 2×2 m gulv og sæt VR op. 2. Aftal én sang pr. tur og notér score på tavlen. 3. Tør brillen af mellem hver spiller. 4. De fire bedste spiller finale med publikum.",
+    "tips": "Aftør pandebåndet mellem hver spiller — det er den ene ting der ellers lukker aktiviteten ned. Maks 10 minutter pr. barn, og bliver nogen svimle, er det slut. Sæt en voksen som spotter: spilleren kan ikke se rummet, og de andre glemmer det.",
+    "people_min": 2,
+    "people_max": 12,
+    "facilities": [
+      "Spillerum"
+    ],
+    "gear": [
+      "VR-briller",
+      "Højttaler"
+    ],
+    "tags": [
+      "vr",
+      "gaming",
+      "turnering",
+      "konkurrence",
+      "inde",
+      "store børn"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "26ae157d-f471-4e81-9da6-6fa530f99f3c",
+    "name": "Bjørnen sover",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Sport",
+      "Musik"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Koncentration",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Sport-uge",
+      "Musik-uge"
+    ],
+    "description": "Bjørnen ligger og sover midt i kredsen — indtil den vågner.",
+    "purpose": "Spænding i kroppen, turtagning, fælles sang",
+    "instruction": "1. En bjørn lægger sig i midten. 2. De andre går rundt og synger bjørnen sover. 3. Ved ordene men man ved jo aldrig vågner bjørnen. 4. Den fangne bliver ny bjørn.",
+    "tips": "Klassiker til de mindste, og spændingen ligger i pausen inden bjørnen springer — træk den ud. Vælg en rolig bjørn til at starte med, så de yngste ikke bliver forskrækkede første gang.",
+    "people_min": 5,
+    "people_max": 20,
+    "facilities": [
+      "Fællesrum",
+      "Salen",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "børnehave",
+      "sangleg",
+      "inde",
+      "klassiker"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "43be2bc2-e32e-42c3-8789-0d33c30845d7",
+    "name": "Boogie woogie",
+    "workshop_slugs": [
+      "musik"
+    ],
+    "activity_types": [
+      "Musik",
+      "Sport"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Koncentration",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Musik-uge"
+    ],
+    "description": "Højre arm ind, højre arm ud — og så ryster vi hele kroppen.",
+    "purpose": "Kropsdele og retninger, puls, fælles fjolleri",
+    "instruction": "1. Stå i en rundkreds med god plads. 2. Syng og gør efter: højre arm ind, ud, ind og ryst. 3. Tag en kropsdel mere for hvert vers. 4. Slut med hele kroppen og en rundtur i midten.",
+    "tips": "Den lærer højre og venstre uden at det bliver en øvelse. Skru tempoet op for hvert vers — det er farten der gør, at også de store gider være med.",
+    "people_min": 5,
+    "people_max": 25,
+    "facilities": [
+      "Fællesrum",
+      "Salen",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "opvarmning",
+      "børnehave",
+      "sangleg",
+      "regnvejr",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "486bd260-ce44-4a34-a63c-8bde7343b8c6",
+    "name": "Bordtennisturnering",
+    "workshop_slugs": [
+      "salen",
+      "boldrum"
+    ],
+    "activity_types": [
+      "Sport"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Grovmotorik",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Små puljer med korte bordtenniskampe og løbende rotation mellem bordene.",
+    "purpose": "Hånd-øje-koordination, koncentration, fairplay og møder på tværs af niveauer",
+    "instruction": "1. Del spillerne i små puljer. 2. Spil kampe til syv point. 3. Rotér efter hver kamp. 4. Slut med double eller en frivillig finale.",
+    "tips": "Lav et begynderbord, hvor bolden må hoppe en ekstra gang, og et bord til double. Korte kampe holder ventetiden nede og gør nederlag mindre afgørende.",
+    "people_min": 2,
+    "people_max": 16,
+    "facilities": [
+      "Salen"
+    ],
+    "gear": [
+      "Bordtennisborde",
+      "Bat",
+      "Bolde"
+    ],
+    "tags": [
+      "turnering",
+      "konkurrence",
+      "regnvejr",
+      "inde",
+      "kort",
+      "store børn"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "a5ca87f1-6291-4afe-b7da-33e17a18c518",
+    "name": "Brætspilscafé",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Samarbejdsevne",
+      "Problemløsning"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "Åbent bord med brætspil og kort — børnene vælger og lærer hinanden reglerne.",
+    "purpose": "Turtagning, regelforståelse, ro uden skærm",
+    "instruction": "1. Stil 4-5 spil frem. 2. Lad dem vælge og danne borde. 3. Voksen forklarer ét nyt spil. 4. Ryd op sammen.",
+    "tips": "Regnvejrsdagens redning — kræver ingen forberedelse. Sæt en voksen ved det nye spil; ellers vælger alle det de kender.",
+    "people_min": 2,
+    "people_max": 16,
+    "facilities": [
+      "Fællesrum"
+    ],
+    "gear": [
+      "Brætspil",
+      "Kortspil"
+    ],
+    "tags": [
+      "regnvejr",
+      "hygge",
+      "stille",
+      "spontant",
+      "vikar",
+      "ingen forberedelse",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "09c2c026-f14e-4359-9dbb-a5555b6086ce",
+    "name": "Bro bro brille",
+    "workshop_slugs": [
+      "musik"
+    ],
+    "activity_types": [
+      "Musik",
+      "Sport"
+    ],
+    "learning_goals": [
+      "Samarbejdsevne",
+      "Grovmotorik",
+      "Sprogudvikling"
+    ],
+    "themes": [
+      "Musik-uge"
+    ],
+    "description": "Kæden går under broen, og den der fanges, skal vælge side.",
+    "purpose": "Fælles sang, turtagning, tryghed i ritualet",
+    "instruction": "1. To holder hinandens hænder som en bro. 2. De andre går under, mens I synger bro bro brille. 3. Ved klokken ringer fanges den der er under. 4. Den fangne vælger hemmeligt side og stiller sig bagved.",
+    "tips": "Klassikeren til børnehaven, og de vil have den igen og igen. Lad de to broer vælge deres hemmelige ord, inden I begynder, og hvisk valget — det er hemmeligheden der gør det spændende.",
+    "people_min": 6,
+    "people_max": 20,
+    "facilities": [
+      "Fællesrum",
+      "Salen",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "børnehave",
+      "sangleg",
+      "klassiker",
+      "inde",
+      "ude"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "f3c6f2ce-0a0b-4d6b-bcce-30c1b761c2b3",
+    "name": "Capture the Flag",
+    "workshop_slugs": [
+      "salen"
+    ],
+    "activity_types": [
+      "Sport",
+      "Udeliv",
+      "Samarbejde"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Samarbejdsevne",
+      "Problemløsning"
+    ],
+    "themes": [
+      "Sport-uge",
+      "Udendørs"
+    ],
+    "description": "Klassisk udendørs holdleg med flag, zoner og strategi.",
+    "purpose": "Fysisk aktivitet, teamwork, strategisk tænkning",
+    "instruction": "1. Markér to zoner med kegler og en midterlinje. 2. Del i to hold med vester, og placér flaget bagerst i hver zone. 3. Forklar fængsel: taget på fjendens halvdel = tilbage til start. 4. Spil runder à 10 min med pause imellem.",
+    "tips": "Fængselsreglen afgør om det bliver leg eller kaos — forklar den, og gentag den efter første runde. Lav banen mindre end du tror; en for stor bane betyder at ingen tør løbe fra egen zone.",
+    "people_min": 8,
+    "people_max": 30,
+    "facilities": [
+      "Udeområdet",
+      "Salen"
+    ],
+    "gear": [
+      "Vester",
+      "Flag",
+      "Kegler"
+    ],
+    "tags": [
+      "ude",
+      "stor gruppe",
+      "konkurrence",
+      "hold",
+      "sommer",
+      "løb"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "074acf03-13d0-4597-9cfe-1bd1f0e547d5",
+    "name": "Debatklub",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Samarbejde",
+      "Fortælling"
+    ],
+    "learning_goals": [
+      "Sprogudvikling",
+      "Demokratisk dannelse",
+      "Problemløsning",
+      "Empati"
+    ],
+    "themes": [
+      "Demokrati-uge"
+    ],
+    "description": "Struktureret debat om emner der optager børnene.",
+    "purpose": "Sprogudvikling, argumentation, demokratisk dannelse",
+    "instruction": "1. Skriv emnet på tavlen og lad dem trække side. 2. Forbered tre argumenter i hold (10 min). 3. Debattér med æggeur: 2 min pr. taler, skiftevis. 4. Slut med en runde hvor alle siger hvad der overraskede dem.",
+    "tips": "Lad dem TRÆKKE side i stedet for at vælge — at skulle argumentere for det modsatte af sin egen mening er hele øvelsen. Emner tæt på klubben (skærmtid, regler i salen, hvem rydder op) tænder dem langt mere end verdenspolitik.",
+    "people_min": 6,
+    "people_max": 20,
+    "facilities": [
+      "Fællesrum"
+    ],
+    "gear": [
+      "Tavle",
+      "Æggeur"
+    ],
+    "tags": [
+      "stille",
+      "store børn",
+      "klub",
+      "demokrati",
+      "inde",
+      "snak"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "7c9b6583-b031-46ab-9bf1-508c90a1182f",
+    "name": "Dyrepasning i kaningården",
+    "workshop_slugs": [
+      "kanin"
+    ],
+    "activity_types": [
+      "Udeliv",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Empati",
+      "Koncentration",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Natur-uge",
+      "Ro & fordybelse"
+    ],
+    "description": "Fodring, strøelse, klapning og orden i kaninernes gård.",
+    "purpose": "Omsorg for levende dyr, ansvar, ro i selskab med dyr",
+    "instruction": "1. Tjek vand og foder. 2. Skift strøelse. 3. Klap og observér dyrene roligt. 4. Skriv i pasningsbogen, og vask hænder grundigt bagefter.",
+    "tips": "En voksen viser korrekt håndtering og holder øje med dyrenes trivsel. Vask altid hænder med vand og sæbe efter kontakt med dyr, især før madlavning eller spisning.",
+    "people_min": 1,
+    "people_max": 6,
+    "facilities": [
+      "Gården"
+    ],
+    "gear": [
+      "Foder",
+      "Strøelse",
+      "Kost",
+      "Pasningsbog"
+    ],
+    "tags": [
+      "dyr",
+      "kaniner",
+      "omsorg",
+      "ude",
+      "rutine",
+      "stille"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "a646702c-95f1-48e9-a316-98b8ed130f17",
+    "name": "Fangeleg",
+    "workshop_slugs": [
+      "ude"
+    ],
+    "activity_types": [
+      "Sport",
+      "Udeliv"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Grundformen: én fanger, alle andre løber.",
+    "purpose": "Puls i kroppen, fart, den leg alle kan",
+    "instruction": "1. Vælg en fanger og aftal banens grænser. 2. Fangeren tæller til ti. 3. Den fangne bliver ny fanger. 4. Skift grænser, hvis det bliver for nemt.",
+    "tips": "Aftal grænserne FØR I starter, og peg på dem — ellers ender legen ude på parkeringspladsen. Er der mange børn, så sæt to fangere i gang; med én fanger og 25 børn løber de fleste rundt uden at blive set.",
+    "people_min": 5,
+    "people_max": 30,
+    "facilities": [
+      "Udeområdet",
+      "Salen"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "spontant",
+      "stor gruppe",
+      "klassiker",
+      "ude",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "4e3cc7de-61f9-413e-b5cc-e169b410094e",
+    "name": "Fantasirejse & afspænding",
+    "workshop_slugs": [
+      "salen"
+    ],
+    "activity_types": [
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Empati",
+      "Sprogudvikling"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "Børnene ligger ned, mens en voksen fortæller dem gennem en rolig historie.",
+    "purpose": "Selvregulering, ro i kroppen, indre billeder",
+    "instruction": "1. Læg måtter i rundkreds. 2. Rolig vejrtrækning. 3. Fortæl fantasirejsen (8-10 min). 4. Stræk og rejs jer langsomt.",
+    "tips": "Perfekt lige efter en vild udedag. Kræver kun måtter og en dæmpet stemme — ingen forberedelse. Lad dem der ikke kan ligge stille sidde op i stedet.",
+    "people_min": 3,
+    "people_max": 20,
+    "facilities": [
+      "Salen"
+    ],
+    "gear": [
+      "Yogamåtter"
+    ],
+    "tags": [
+      "ro",
+      "stille",
+      "efter en vild dag",
+      "kort",
+      "inde",
+      "ingen forberedelse"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "4c8acdcc-d39f-450d-a165-15fa62b2fe67",
+    "name": "Fastelavn: masker og tøndeslagning",
+    "workshop_slugs": [
+      "krea"
+    ],
+    "activity_types": [
+      "Kreativ",
+      "Sport"
+    ],
+    "learning_goals": [
+      "Kreativt udtryk",
+      "Grovmotorik",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Kunst",
+      "Sport-uge"
+    ],
+    "description": "Lav masker i krea og slå katten af tønden bagefter.",
+    "purpose": "Tradition, kreativt udtryk, spænding og grovmotorik",
+    "instruction": "1. Lav masker af pap, maling og fjer. 2. Pynt tønden sammen. 3. Slå efter tur fra en tydelig slaglinje. 4. Kron kattekonge og kattedronning.",
+    "tips": "Ingen bind for øjnene. En voksen styrer køen, og alle andre står bag en sikkerhedslinje uden for køllens rækkevidde. Del gerne i to tønder efter alder, så alle får en tur.",
+    "people_min": 5,
+    "people_max": 25,
+    "facilities": [
+      "Krea-lokalet",
+      "Salen"
+    ],
+    "gear": [
+      "Pap",
+      "Maling",
+      "Elastik",
+      "Tønde",
+      "Kølle"
+    ],
+    "tags": [
+      "fastelavn",
+      "tradition",
+      "vinter",
+      "fest",
+      "kræver indkøb",
+      "to gange"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "51af8313-df70-4ea5-90f9-709c889e6202",
+    "name": "Fodbold i små hold",
+    "workshop_slugs": [
+      "ude",
+      "boldrum",
+      "salen"
+    ],
+    "activity_types": [
+      "Sport"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Samarbejdsevne",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Korte kampe på små baner, så alle får mange boldberøringer.",
+    "purpose": "Grovmotorik, samarbejde, fairplay og deltagelse på forskellige niveauer",
+    "instruction": "1. Lav to eller tre små baner. 2. Dan hold med tre eller fire spillere. 3. Spil fem minutter. 4. Byt modstander og holdkammerater løbende.",
+    "tips": "Drop den samlede stilling, og giv eventuelt bonuspoint når alle på holdet har rørt bolden. Spil uden hårde tacklinger, og brug en blødere bold til begyndere.",
+    "people_min": 6,
+    "people_max": 20,
+    "facilities": [
+      "Udeområdet",
+      "Salen"
+    ],
+    "gear": [
+      "Fodbolde",
+      "Kegler",
+      "Vester"
+    ],
+    "tags": [
+      "ude",
+      "bold",
+      "konkurrence",
+      "spontant",
+      "sommer",
+      "løb"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "918ef930-fcc4-444a-b830-6d55c556b391",
+    "name": "Forhindringsbane",
+    "workshop_slugs": [
+      "salen"
+    ],
+    "activity_types": [
+      "Sport"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Problemløsning",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Byg en bane af det der står i salen, og tag tid.",
+    "purpose": "Grovmotorik og balance, planlægning, egne rekorder",
+    "instruction": "1. Byg banen sammen af måtter, bænke og kegler. 2. Gå den igennem langsomt. 3. Tag tid på hver. 4. Lad børnene bygge version 2.",
+    "tips": "Lad dem bygge banen — det er halvdelen af aktiviteten, og de laver den sværere end du ville. Tid mod sig selv, ikke mod hinanden.",
+    "people_min": 4,
+    "people_max": 20,
+    "facilities": [
+      "Salen",
+      "Udeområdet"
+    ],
+    "gear": [
+      "Gymnastikmåtter",
+      "Bænke",
+      "Kegler",
+      "Stopur"
+    ],
+    "tags": [
+      "regnvejr",
+      "inde",
+      "stor gruppe",
+      "opvarmning",
+      "spontant",
+      "løb"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "d75d93ee-b264-445e-923c-d8946cc4d1e4",
+    "name": "Gæt melodien",
+    "workshop_slugs": [
+      "musik"
+    ],
+    "activity_types": [
+      "Musik",
+      "Fortælling"
+    ],
+    "learning_goals": [
+      "Samarbejdsevne",
+      "Selvtillid",
+      "Koncentration"
+    ],
+    "themes": [
+      "Musik-uge"
+    ],
+    "description": "Musikquiz i hold — gæt sangen på de første sekunder.",
+    "purpose": "Lytning, holdånd, fælles musikkultur",
+    "instruction": "1. Dan hold og find holdnavne. 2. Spil intro på 5 sekunder. 3. Hurtigste hold svarer. 4. Sidste runde: børnene vælger sangene.",
+    "tips": "Kræver kun en højttaler og en playliste — kan startes på fem minutter. Lad børnene lave sidste runde; så bliver det deres quiz og ikke din.",
+    "people_min": 4,
+    "people_max": 20,
+    "facilities": [
+      "Musiklokalet"
+    ],
+    "gear": [
+      "Højttaler",
+      "Tablet"
+    ],
+    "tags": [
+      "quiz",
+      "kort",
+      "spontant",
+      "stor gruppe",
+      "regnvejr",
+      "inde",
+      "hygge"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "00c10f94-40e7-4020-91d0-ce6666a8a6ea",
+    "name": "Gemmeleg",
+    "workshop_slugs": [
+      "ude"
+    ],
+    "activity_types": [
+      "Sport",
+      "Udeliv"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Én tæller, resten gemmer sig.",
+    "purpose": "Tålmodighed i skjulet, spænding, kendskab til stedet",
+    "instruction": "1. Aftal hvor man må gemme sig. 2. Den tæller til halvtreds med lukkede øjne. 3. De andre gemmer sig. 4. Den fundne hjælper med at lede næste gang.",
+    "tips": "Aftal grænserne meget konkret — pegende, ikke med ord som udenfor. Lad den fundne lede med i stedet for at sidde og vente; så gider de blive ved, og ingen står alene i tyve minutter bag et skur.",
+    "people_min": 4,
+    "people_max": 20,
+    "facilities": [
+      "Udeområdet",
+      "Fællesrum"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "spontant",
+      "klassiker",
+      "ude",
+      "stille"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "cbdba961-6051-4126-9205-c1ff62ddacd4",
+    "name": "Hajfanger",
+    "workshop_slugs": [
+      "ude"
+    ],
+    "activity_types": [
+      "Sport",
+      "Udeliv"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Selvtillid",
+      "Koncentration"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Hajen står i midten og fanger dem, der løber fra bred til bred.",
+    "purpose": "Mod til at turde løbe, fart, spænding",
+    "instruction": "1. Markér to breder og et hav imellem. 2. Hajen råber: alle der har rødt tøj. 3. De løber over, og de fangne bliver haj. 4. Til sidst råbes: hele havet bølger.",
+    "tips": "At hajen råber en egenskab i stedet for alle giver de tøvende en pause og gør det mere spændende. Slut med hele havet bølger, hvor alle løber på én gang — det er det højdepunkt de husker.",
+    "people_min": 8,
+    "people_max": 30,
+    "facilities": [
+      "Udeområdet",
+      "Salen"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "spontant",
+      "stor gruppe",
+      "klassiker",
+      "ude",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "4afc3d05-9459-49d0-823c-c835c3647fd2",
+    "name": "Hip-hop dans",
+    "workshop_slugs": [
+      "salen",
+      "musik"
+    ],
+    "activity_types": [
+      "Dans",
+      "Performance",
+      "Sport"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Selvtillid",
+      "Kropsbevidsthed",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Musik-uge"
+    ],
+    "description": "Lær en simpel koreografi til et populært nummer.",
+    "purpose": "Fysisk udfoldelse, rytme, selvtillid",
+    "instruction": "1. Varm op med fælles hop og stræk. 2. Lær fire trin, hvert på otte tællinger. 3. Sæt dem sammen og kør til musik i halv fart, så fuld fart. 4. Vis det i to hold — det ene danser, det andet klapper takten.",
+    "tips": "Stå med ryggen til dem og dans spejlvendt, så de kan kopiere uden at oversætte højre og venstre. Fire trin er nok til et helt nummer; flere ender i forvirring og opgivelse.",
+    "people_min": 4,
+    "people_max": 20,
+    "facilities": [
+      "Salen"
+    ],
+    "gear": [
+      "Højttaler"
+    ],
+    "tags": [
+      "dans",
+      "optræden",
+      "store børn",
+      "inde",
+      "opvarmning",
+      "larm"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "265aa354-2f17-43ed-9597-e2b5a8edd399",
+    "name": "Historiestafet",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Fortælling",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Sprogudvikling",
+      "Kreativt udtryk",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Fantasi-uge",
+      "Ro & fordybelse"
+    ],
+    "description": "En historie fortælles videre en sætning ad gangen rundt i kredsen.",
+    "purpose": "Fantasi, sprog, at bygge videre på hinandens idéer",
+    "instruction": "1. Sid i en rundkreds. 2. Start historien med en sætning. 3. Hver tilføjer én sætning på skift. 4. Slut, når den er hele vejen rundt, og genfortæl den samlet.",
+    "tips": "Start med noget helt konkret som der stod en dør midt på fodboldbanen — en åben start giver tavshed. Sig ja til de fjollede sving; forsøger man at holde historien fornuftig, holder de op med at byde ind.",
+    "people_min": 4,
+    "people_max": 16,
+    "facilities": [
+      "Fællesrum",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "stille",
+      "regnvejr",
+      "inde",
+      "fortælling",
+      "før bussen"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "ae9cb56c-c646-4b85-ace1-b8261eedc7ce",
+    "name": "Højtlæsning i læsehulen",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Fortælling",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Sprogudvikling",
+      "Empati"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "Voksen læser højt for en lille gruppe i puder og dæmpet lys.",
+    "purpose": "Ro midt i eftermiddagen, sprog, fælles fortælling",
+    "instruction": "1. Byg hule af puder og tæpper. 2. Vælg bog sammen. 3. Læs 15-20 min. 4. Tal om hvad der sker nu.",
+    "tips": "Stop midt i et spændende kapitel — så kommer de af sig selv i morgen. Vælg en bog der holder en hel uge frem for en ny hver dag.",
+    "people_min": 2,
+    "people_max": 8,
+    "facilities": [
+      "Fællesrum"
+    ],
+    "gear": [
+      "Bøger",
+      "Puder"
+    ],
+    "tags": [
+      "stille",
+      "ro",
+      "hygge",
+      "efter en vild dag",
+      "inde",
+      "ingen forberedelse",
+      "børnehave"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "ac6b21f3-96da-4a41-aacf-7a7ecb370fd9",
+    "name": "Høvdingebold",
+    "workshop_slugs": [
+      "salen"
+    ],
+    "activity_types": [
+      "Sport"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Samarbejdsevne",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Klassisk høvdingebold med to hold og hemmelig høvding.",
+    "purpose": "Grovmotorik, holdtaktik, at være med til det sidste",
+    "instruction": "1. Del i to hold. 2. Udpeg hemmelig høvding hvert hold. 3. Spil til den ene høvding er ramt. 4. Byt banehalvdel og spil igen.",
+    "tips": "Blød bold og \"ikke over skulderhøjde\" er hele forskellen på om de tøvende tør. Nye høvdinger hver runde, så det ikke er de samme to der bestemmer.",
+    "people_min": 8,
+    "people_max": 30,
+    "facilities": [
+      "Salen",
+      "Udeområdet"
+    ],
+    "gear": [
+      "Skumbolde"
+    ],
+    "tags": [
+      "bold",
+      "stor gruppe",
+      "konkurrence",
+      "regnvejr",
+      "inde",
+      "klassiker"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "255959aa-bc47-43c2-8f00-1c164780a4fb",
+    "name": "Hviskeleg",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Ro & fordybelse",
+      "Fortælling"
+    ],
+    "learning_goals": [
+      "Sprogudvikling",
+      "Koncentration",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "En sætning hviskes rundt i kredsen og kommer forvandlet ud i den anden ende.",
+    "purpose": "Lytning, sprog, fælles grin over misforståelsen",
+    "instruction": "1. Sid i en rundkreds. 2. Hvisk en sætning til sidemanden, kun én gang. 3. Send den hele vejen rundt. 4. Sidste mand siger den højt, og den første afslører originalen.",
+    "tips": "Vælg en lidt lang og fjollet sætning — korte overlever hele vejen rundt, og så sker der ingenting. Reglen om kun én gang er vigtig, ellers bliver den korrekt, og hele pointen forsvinder.",
+    "people_min": 5,
+    "people_max": 20,
+    "facilities": [
+      "Fællesrum"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "stille",
+      "regnvejr",
+      "inde",
+      "før bussen"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "452ee7cd-8de2-4f25-bcb8-47f3ee139382",
+    "name": "Improteater",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Fortælling"
+    ],
+    "learning_goals": [
+      "Sprogudvikling",
+      "Selvtillid",
+      "Empati"
+    ],
+    "themes": [
+      "Fantasi-uge"
+    ],
+    "description": "Korte improscener ud fra ord og situationer børnene trækker.",
+    "purpose": "Mod foran andre, sprog på fødderne, at bygge på hinandens idéer",
+    "instruction": "1. Varm op med navneleg. 2. Forklar reglen \"ja, og …\". 3. Spil korte scener i par. 4. Vis de bedste for de andre.",
+    "tips": "\"Ja, og …\" er hele metoden: man må aldrig afvise sin medspillers idé. Ingen får publikum før de selv vil — så tør flere.",
+    "people_min": 4,
+    "people_max": 16,
+    "facilities": [
+      "Fællesrum"
+    ],
+    "gear": [
+      "Ordkort"
+    ],
+    "tags": [
+      "drama",
+      "ny gruppe",
+      "kort",
+      "inde",
+      "latter",
+      "store børn"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "86dc791b-e15a-4bfb-b61d-a4bfd5313df0",
+    "name": "Insekthotel-byggeri",
+    "workshop_slugs": [
+      "kanin",
+      "krea"
+    ],
+    "activity_types": [
+      "Udeliv",
+      "Kreativ"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Naturkendskab",
+      "Problemløsning"
+    ],
+    "themes": [
+      "Natur-uge",
+      "Bæredygtighed"
+    ],
+    "description": "Byg insekthotel af bambusrør, kogler og træstykker.",
+    "purpose": "Naturforståelse, finmotorik, bæredygtighed",
+    "instruction": "1. Saml bambusrør, kogler og grene. 2. Byg en kasse af træstumper — voksen borer huller på 3–8 mm. 3. Pak hulrummene tæt med rør og kogler. 4. Hæng den i sol mod syd, cirka en meter over jorden.",
+    "tips": "Kun voksne ved boret, og bor hullerne FØR børnene skal fylde i — ellers står de i kø. Huller i flere størrelser giver flere arter; ét mål giver ét insekt. Sæt en dato for at se på den igen om en måned, for det er dér oplevelsen ligger.",
+    "people_min": 2,
+    "people_max": 8,
+    "facilities": [
+      "Gården"
+    ],
+    "gear": [
+      "Træstumper",
+      "Bor",
+      "Snor",
+      "Grene"
+    ],
+    "tags": [
+      "natur",
+      "dyr",
+      "forår",
+      "ude",
+      "træ",
+      "bæredygtighed"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "f511ae0a-f7e7-4c8e-a2d3-b5e571a136eb",
+    "name": "Isfanger",
+    "workshop_slugs": [
+      "ude"
+    ],
+    "activity_types": [
+      "Sport",
+      "Udeliv"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Samarbejdsevne",
+      "Empati"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Den fangne fryser fast, indtil en kammerat befrier ham.",
+    "purpose": "Udholdenhed, at hjælpe hinanden, fart",
+    "instruction": "1. Vælg to fangere. 2. Den fangne står frosset med benene spredt. 3. En fri kammerat befrier ved at kravle mellem benene. 4. Byt fangere efter et par minutter.",
+    "tips": "Denne slutter aldrig af sig selv, så sæt en tid — tre minutter pr. runde. Det er befrielsen der er hele legen: de langsomme bliver pludselig vigtige, fordi de kan redde de andre.",
+    "people_min": 6,
+    "people_max": 30,
+    "facilities": [
+      "Udeområdet",
+      "Salen"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "spontant",
+      "stor gruppe",
+      "hjælpe hinanden",
+      "ude",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "3c5aabe5-e429-48c8-8f0a-0ab3c783757a",
+    "name": "Jeg spionerer",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Ro & fordybelse",
+      "Fortælling"
+    ],
+    "learning_goals": [
+      "Sprogudvikling",
+      "Koncentration"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "Jeg ser noget som du ikke ser, og det er blåt.",
+    "purpose": "Iagttagelse, ordforråd, ro uden at sidde stille",
+    "instruction": "1. Vælg en ting alle kan se. 2. Sig jeg ser noget som du ikke ser, og det er … . 3. De andre gætter på skift. 4. Den der gætter rigtigt, vælger næste ting.",
+    "tips": "Kan køres hvor som helst — i garderoben, i bussen, i kø. Sig at tingen skal kunne ses lige nu; ellers vælger de noget hjemme fra deres værelse, og så kan ingen gætte.",
+    "people_min": 2,
+    "people_max": 15,
+    "facilities": [
+      "Fællesrum",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "stille",
+      "før bussen",
+      "venteleg",
+      "inde",
+      "ude"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "5c941132-f09c-493a-993d-f05b6a9523fd",
+    "name": "Juleværksted: klip, klister og gaver",
+    "workshop_slugs": [
+      "krea"
+    ],
+    "activity_types": [
+      "Kreativ",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Koncentration",
+      "Kreativt udtryk"
+    ],
+    "themes": [
+      "Kunst",
+      "Ro & fordybelse"
+    ],
+    "description": "Julepynt og hjemmelavede gaver til familien — flettede hjerter, kalendere og kort.",
+    "purpose": "Finmotorik, at give frem for at få, tradition",
+    "instruction": "1. Vis 3-4 ting man kan lave. 2. Vælg og lav i eget tempo. 3. Pak gaverne ind. 4. Pynt klubben med resten.",
+    "tips": "Flettede hjerter er sværere end de ser ud — lav en færdig som skabelon der ligger på bordet. Læg gaverne væk et sted børnene ikke kan nå dem.",
+    "people_min": 2,
+    "people_max": 14,
+    "facilities": [
+      "Krea-lokalet"
+    ],
+    "gear": [
+      "Glanspapir",
+      "Saks",
+      "Lim",
+      "Gavepapir",
+      "Karton"
+    ],
+    "tags": [
+      "jul",
+      "tradition",
+      "vinter",
+      "gave",
+      "hygge",
+      "kræver indkøb",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "28e1e159-77c6-482f-b5aa-83a604c26d1d",
+    "name": "Kædefanger",
+    "workshop_slugs": [
+      "ude"
+    ],
+    "activity_types": [
+      "Sport",
+      "Udeliv"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Samarbejdsevne",
+      "Problemløsning"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "De fangne bliver en del af kæden, indtil alle er fanget.",
+    "purpose": "Samarbejde i fart, fælles taktik, grovmotorik",
+    "instruction": "1. Én er fanger. 2. Den fangne tager fangerens hånd, og de fanger videre sammen. 3. Kæden må kun fange med yderste hånd. 4. Legen slutter, når alle er i kæden.",
+    "tips": "Reglen om kun yderste hånd er det der gør den sjov — ellers bliver kæden til en mur. Bryder kæden midt i et udfald, gælder fangsten ikke; det lærer dem at holde sammen i stedet for at rykke hver sin vej.",
+    "people_min": 6,
+    "people_max": 25,
+    "facilities": [
+      "Udeområdet",
+      "Salen"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "spontant",
+      "stor gruppe",
+      "samarbejde",
+      "ude",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "543e9400-9e54-41b0-bb42-b6b376f90774",
+    "name": "Karaoke",
+    "workshop_slugs": [
+      "musik"
+    ],
+    "activity_types": [
+      "Musik",
+      "Fortælling"
+    ],
+    "learning_goals": [
+      "Selvtillid",
+      "Sprogudvikling",
+      "Empati"
+    ],
+    "themes": [
+      "Musik-uge"
+    ],
+    "description": "Syng kendte sange alene, i duet eller som gruppe.",
+    "purpose": "Musikglæde, sprogligt udtryk og tryg erfaring med at stå frem",
+    "instruction": "1. Lav en kort sangliste. 2. Vælg værter og rækkefølge. 3. Skift mellem solo, duet og fællessang. 4. Slut med et nummer alle kan være med på.",
+    "tips": "Aftal en tydelig klappekultur, og pres ingen til at synge alene. Lad børn, der ikke vil på scenen, være værter, teknikere eller vælge næste sang.",
+    "people_min": 2,
+    "people_max": 20,
+    "facilities": [
+      "Musiklokalet"
+    ],
+    "gear": [
+      "Mikrofon",
+      "Højttaler",
+      "Skærm"
+    ],
+    "tags": [
+      "sang",
+      "fest",
+      "fredag",
+      "larm",
+      "store børn",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "4e1cb9ae-3b7f-4a6b-bd2d-be44a511a06b",
+    "name": "Klappelege",
+    "workshop_slugs": [
+      "musik"
+    ],
+    "activity_types": [
+      "Musik",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Koncentration",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Musik-uge"
+    ],
+    "description": "Klappe- og rimlege to og to, fra bagerens kone til egne opfindelser.",
+    "purpose": "Rytme, finmotorik, koncentration i par",
+    "instruction": "1. Sæt jer over for hinanden to og to. 2. Lær ét klappemønster sammen langsomt. 3. Sæt fart på, til I kan det udenad. 4. Find selv på et nyt mønster og lær det til et andet par.",
+    "tips": "Kræver hverken plads eller udstyr og kan køres i garderoben eller i en kø. Lad dem lære hinanden mønstrene — børn er langt bedre end voksne til at forklare klappelege.",
+    "people_min": 2,
+    "people_max": 20,
+    "facilities": [
+      "Fællesrum",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "venteleg",
+      "før bussen",
+      "regnvejr",
+      "inde",
+      "børnehave"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "f89ccb70-ed02-4d70-8e4b-baac16fb80e4",
+    "name": "Klubbens podcast",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Digital",
+      "Fortælling"
+    ],
+    "learning_goals": [
+      "Sprogudvikling",
+      "Selvtillid",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "Optag en udsendelse om klubben — interview, anmeldelser og musikvalg.",
+    "purpose": "Sprog og formidling, mod bag mikrofonen, redigering",
+    "instruction": "1. Vælg emner og frivillige roller. 2. Forbered spørgsmål. 3. Optag 10-15 minutter i institutionens godkendte, lokale værktøj. 4. Klip og lyt sammen.",
+    "tips": "Optag kun deltagere, der selv vil være med. Gem ikke i private skytjenester, og del eller udgiv aldrig optagelsen uden institutionens godkendte procedure og nødvendige aftaler.",
+    "people_min": 2,
+    "people_max": 8,
+    "facilities": [
+      "Fællesrum"
+    ],
+    "gear": [
+      "Mikrofon",
+      "Tablet",
+      "Hovedtelefoner"
+    ],
+    "tags": [
+      "optagelse",
+      "store børn",
+      "klub",
+      "stille",
+      "inde",
+      "digital"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "954c1cc4-3235-43d9-9704-9ad1d7ff123d",
+    "name": "Klubrådet: børnenes møde",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Fortælling",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Sprogudvikling",
+      "Empati",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "Børnenes eget møde om klubbens hverdag — med dagsorden og reel indflydelse.",
+    "purpose": "Demokratisk dannelse, at lytte og argumentere, medejerskab",
+    "instruction": "1. Saml punkter i en kasse i ugen op til. 2. Vælg ordstyrer og skriver. 3. Tal på skift om hvert punkt. 4. Stem, og skriv hvad der blev besluttet.",
+    "tips": "Én beslutning SKAL føres ud i livet, ellers holder de op med at komme. Læs sidste mødes beslutninger højt som første punkt.",
+    "people_min": 4,
+    "people_max": 20,
+    "facilities": [
+      "Fællesrum"
+    ],
+    "gear": [
+      "Tavle",
+      "Forslagskasse"
+    ],
+    "tags": [
+      "demokrati",
+      "møde",
+      "stille",
+      "inde",
+      "rutine",
+      "medbestemmelse"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "8854aa7a-1765-45ed-b7ad-869e9d5a2861",
+    "name": "Kluddermor",
+    "workshop_slugs": [
+      "salen"
+    ],
+    "activity_types": [
+      "Sport",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Samarbejdsevne",
+      "Problemløsning",
+      "Koncentration"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Kredsen filtrer sig sammen til en knude, som kluddermor skal løse op.",
+    "purpose": "Samarbejde, problemløsning med kroppen, tålmodighed",
+    "instruction": "1. Kluddermor går udenfor. 2. De andre tager hinanden i hænderne og filtrer sig sammen uden at slippe. 3. Kluddermor kaldes ind. 4. Hun dirigerer, til kredsen er hel igen.",
+    "tips": "Otte til ti børn giver den bedste knude; er de flere, deles de i to kredse. Sig tydeligt at man aldrig slipper hænderne — det er hele reglen, og uden den er der ingen opgave.",
+    "people_min": 6,
+    "people_max": 12,
+    "facilities": [
+      "Salen",
+      "Fællesrum",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "samarbejde",
+      "regnvejr",
+      "inde",
+      "ny gruppe"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "0ac79284-04a1-44c9-8c4a-1da57269a237",
+    "name": "Køkkenhaven: såning og pasning",
+    "workshop_slugs": [
+      "kanin"
+    ],
+    "activity_types": [
+      "Udeliv"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Empati",
+      "Problemløsning"
+    ],
+    "themes": [
+      "Natur-uge"
+    ],
+    "description": "Så, vand, luk ud og høst i klubbens egne kasser.",
+    "purpose": "Naturens tempo, ansvar over uger, at spise sit eget",
+    "instruction": "1. Klargør jorden. 2. Så og sæt skilte med dato. 3. Lav vandingsplan. 4. Høst og smag når det er klar.",
+    "tips": "Vælg det hurtige: radiser, salat og ærter giver resultat inden de mister interessen. Vandingsplan med navne — ellers dør haven i sommerferien.",
+    "people_min": 2,
+    "people_max": 10,
+    "facilities": [
+      "Gården"
+    ],
+    "gear": [
+      "Frø",
+      "Vandkander",
+      "Skovle",
+      "Plantekasser"
+    ],
+    "tags": [
+      "have",
+      "forår",
+      "sommer",
+      "ude",
+      "natur",
+      "rutine"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "180f5ccb-f6df-42c8-8db4-19e58826db5d",
+    "name": "Kongens efterfølger",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Sport",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "Alle gør det samme som kongen — og én skal gætte, hvem kongen er.",
+    "purpose": "Iagttagelse, sammenhold i gruppen, koncentration",
+    "instruction": "1. Én går udenfor døren. 2. De andre vælger en konge i rundkredsen. 3. Alle gør efter kongen, mens han skifter bevægelse. 4. Gætteren har tre forsøg til at finde kongen.",
+    "tips": "Sig til gruppen at de IKKE må kigge på kongen — det er dét der afslører ham hver gang. Kongen skal skifte bevægelse, mens gætteren ser den anden vej; en modig konge gør legen sjov.",
+    "people_min": 6,
+    "people_max": 20,
+    "facilities": [
+      "Fællesrum",
+      "Salen",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "regnvejr",
+      "inde",
+      "før bussen",
+      "stille"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "2b5e5eb3-5973-492d-987f-f312188520bc",
+    "name": "Konsolturnering",
+    "workshop_slugs": [
+      "gamer"
+    ],
+    "activity_types": [
+      "Digital",
+      "Sport"
+    ],
+    "learning_goals": [
+      "Samarbejdsevne",
+      "Selvtillid",
+      "Koncentration"
+    ],
+    "themes": [
+      "Gaming-uge"
+    ],
+    "description": "Turnering i Mario Kart, FIFA eller lignende med pulje og finale.",
+    "purpose": "Fair play, at tabe og vinde, fælles jubel",
+    "instruction": "1. Vælg et alderssvarende spil i institutionens godkendte opsætning. 2. Lav puljer. 3. Spil korte kampe. 4. Afhold finale med frivilligt publikum.",
+    "tips": "Brug lokal multiplayer uden offentlige servere eller åbne chats, og kræv ikke børnenes private konti. Aftal fairplay, skærmtid og en rolig vej tilbage i spillet efter et nederlag.",
+    "people_min": 4,
+    "people_max": 16,
+    "facilities": [
+      "Spillerum"
+    ],
+    "gear": [
+      "Konsol",
+      "Skærm",
+      "Controllere"
+    ],
+    "tags": [
+      "gaming",
+      "turnering",
+      "konkurrence",
+      "regnvejr",
+      "inde",
+      "store børn"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "14d57da0-a4fd-4417-9441-709654ad279d",
+    "name": "Kronskjul",
+    "workshop_slugs": [
+      "ude"
+    ],
+    "activity_types": [
+      "Sport",
+      "Udeliv"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Problemløsning",
+      "Koncentration"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Fynsk dåseskjul: kronen står i midten, og man råber en-to-tre krone.",
+    "purpose": "Snuhed, timing, mod til at løbe ud fra skjulet",
+    "instruction": "1. Sæt kronen midt på pladsen og vælg en der er den. 2. Den tæller til tredive, mens resten gemmer sig. 3. Ser den nogen, løber den til kronen og råber en-to-tre krone og navnet. 4. Når en gemt selv når kronen først, er alle fri igen.",
+    "tips": "En kegle eller en foldet papirkrone virker fint — den skal bare kunne ses på afstand. Legen står og falder med at den ikke tør gå for langt fra kronen; sig det højt, ellers bliver den fanget af den første der lister ud.",
+    "people_min": 5,
+    "people_max": 20,
+    "facilities": [
+      "Udeområdet"
+    ],
+    "gear": [
+      "Kegle"
+    ],
+    "tags": [
+      "ingen forberedelse",
+      "klassiker",
+      "ude",
+      "fynsk",
+      "dåseskjul"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "06c21ff2-a2c0-407a-aea3-90a9c84a99af",
+    "name": "Lerværksted",
+    "workshop_slugs": [
+      "krea",
+      "vaerksted"
+    ],
+    "activity_types": [
+      "Kreativ",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Kreativt udtryk",
+      "Koncentration"
+    ],
+    "themes": [
+      "Kunst",
+      "Ro & fordybelse"
+    ],
+    "description": "Form dyr, fantasifigurer, skåle eller små relieffer i ler.",
+    "purpose": "Taktil fordybelse, tredimensionelt formsprog og finmotorik",
+    "instruction": "1. Vis kugle, pølse og sikker sammenføjning. 2. Lad børnene tegne eller vælge et motiv. 3. Form figuren. 4. Lad den tørre og mal den en anden dag.",
+    "tips": "Lufttørrende ler gør aktiviteten mulig uden keramikovn. Dæk bordene, skriv navn under værkerne, og brug ikke ubrændt eller ikke-fødevaregodkendt ler til mad og drikke.",
+    "people_min": 2,
+    "people_max": 10,
+    "facilities": [
+      "Krea-lokalet"
+    ],
+    "gear": [
+      "Ler",
+      "Modelleringspinde",
+      "Underlag",
+      "Maling"
+    ],
+    "tags": [
+      "ler",
+      "værksted",
+      "to gange",
+      "fordybelse",
+      "inde",
+      "kræver indkøb"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "b25a3dc6-7e6b-4cf2-bd00-95ed952a726b",
+    "name": "Minecraft byg-udfordring",
+    "workshop_slugs": [
+      "gamer"
+    ],
+    "activity_types": [
+      "Digital",
+      "Kreativ"
+    ],
+    "learning_goals": [
+      "Kreativt udtryk",
+      "Samarbejdsevne",
+      "Problemløsning"
+    ],
+    "themes": [
+      "Gaming-uge"
+    ],
+    "description": "Hold bygger efter samme opgave og viser hinanden resultatet.",
+    "purpose": "Samarbejde om et fælles bygværk, planlægning, rumlig sans",
+    "instruction": "1. Giv en afgrænset byggeopgave. 2. Dan hold i en lukket, godkendt verden. 3. Byg i 45 minutter. 4. Vis baserne frem for hinanden.",
+    "tips": "Brug institutionens godkendte opsætning uden offentlige servere, åben chat eller private børnekonti. Kreativ tilstand fjerner konflikter om ressourcer og holder fokus på samarbejdet.",
+    "people_min": 2,
+    "people_max": 12,
+    "facilities": [
+      "Spillerum"
+    ],
+    "gear": [
+      "Tablet",
+      "Minecraft"
+    ],
+    "tags": [
+      "gaming",
+      "digital",
+      "regnvejr",
+      "inde",
+      "samarbejde",
+      "store børn"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "d2954e09-5644-4008-9121-070b6e1b5197",
+    "name": "Mosaik-fliser",
+    "workshop_slugs": [
+      "krea"
+    ],
+    "activity_types": [
+      "Kunst",
+      "Kreativ"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Kreativt udtryk",
+      "Vedholdenhed"
+    ],
+    "themes": [
+      "Italien-uge",
+      "Kunst"
+    ],
+    "description": "Farverige mosaikker af knuste fliser og glasstykker på betonplade.",
+    "purpose": "Kreativ udfoldelse, tålmodighed, rumlig forståelse",
+    "instruction": "1. Voksen knækker fliser inde i et foldet håndklæde — aldrig frit i hånden. 2. Læg mønstret tørt op på pladen først. 3. Lim brikkerne med 2–3 mm mellemrum. 4. Fug dagen efter med handsker på, og tør efter med fugtig svamp.",
+    "tips": "Fliserne knækkes inde i et foldet håndklæde: det holder skårene fanget, og så kan børnene stå omkring uden risiko. Handsker på ved fugning, for fugemasse tørrer huden ud. Pladen skal stå natten over før der fuges, ellers rykker brikkerne sig.",
+    "people_min": 2,
+    "people_max": 8,
+    "facilities": [
+      "Krea-lokalet"
+    ],
+    "gear": [
+      "Mosaikbrikker",
+      "Fliselim",
+      "Fugemasse",
+      "Handsker"
+    ],
+    "tags": [
+      "værksted",
+      "to gange",
+      "fordybelse",
+      "kræver indkøb",
+      "inde",
+      "store børn"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "9cb0bc48-bb65-453b-8ab6-cb817dd49fed",
+    "name": "Naturbingo",
+    "workshop_slugs": [
+      "kanin"
+    ],
+    "activity_types": [
+      "Udeliv",
+      "Samarbejde"
+    ],
+    "learning_goals": [
+      "Naturkendskab",
+      "Grovmotorik",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Natur-uge",
+      "Udendørs"
+    ],
+    "description": "Gå tur med bingoplade og find naturens skatte.",
+    "purpose": "Observation, bevægelse, naturkendskab",
+    "instruction": "1. Print plader med ni felter — fx en fjer, en snegl, noget ruet. 2. Gå i par med én plade og blyant. 3. Aftal grænser og mødested, og at man ser frem for at samle. 4. Saml op til sidst: hvem fandt hvad, og hvor?",
+    "tips": "Par frem for både alene og flok — alene giver opgivelse, i flok finder én alt og resten ser på. Sæt et felt på pladen der er svært at finde, ellers er turen slut efter fem minutter.",
+    "people_min": 4,
+    "people_max": 20,
+    "facilities": [
+      "Udeområdet"
+    ],
+    "gear": [
+      "Bingoplader",
+      "Blyanter"
+    ],
+    "tags": [
+      "natur",
+      "ude",
+      "tur",
+      "spontant",
+      "børnehave",
+      "forår"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "60d1ad7b-a6d9-45f8-a40f-abe10465e0c0",
+    "name": "Naturfarve-eksperiment",
+    "workshop_slugs": [
+      "krea",
+      "kanin"
+    ],
+    "activity_types": [
+      "Kreativ",
+      "Udeliv",
+      "Kunst"
+    ],
+    "learning_goals": [
+      "Naturkendskab",
+      "Kreativt udtryk",
+      "Problemløsning"
+    ],
+    "themes": [
+      "Natur-uge",
+      "Bæredygtighed",
+      "Kunst"
+    ],
+    "description": "Lav farver af løgskaller, rødbeder, gurkemeje og blåbær.",
+    "purpose": "Naturvidenskab, kreativitet, bæredygtighed",
+    "instruction": "1. Voksen koger løgskaller, rødbeder, gurkemeje og blåbær i hver sin gryde. 2. Si farverne og lad dem køle af, før børnene rører dem. 3. Mal på papir og på hvidt stof. 4. Sammenlign hvad der holder farven, når det tørrer.",
+    "tips": "Kog dagen før eller mens de er ude — den kogende del er ikke børnearbejde, og ventetiden dræber aktiviteten. Gurkemeje farver alt: bord, tøj og hænder. Dæk bordet, og sig det højt inden I går i gang.",
+    "people_min": 3,
+    "people_max": 10,
+    "facilities": [
+      "Krea-lokalet",
+      "Gården"
+    ],
+    "gear": [
+      "Gryde",
+      "Sigte",
+      "Hvidt stof",
+      "Elkoger"
+    ],
+    "tags": [
+      "natur",
+      "eksperiment",
+      "farver",
+      "inde",
+      "kræver indkøb",
+      "to gange"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "f0e5d9e5-6d68-4beb-856f-e69a3fea30b5",
+    "name": "Navneleg med bevægelse",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Sport",
+      "Fortælling"
+    ],
+    "learning_goals": [
+      "Sprogudvikling",
+      "Selvtillid",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "Alle siger deres navn med en bevægelse, som resten gentager.",
+    "purpose": "At lære navne hurtigt, tryghed i en ny gruppe, mod",
+    "instruction": "1. Stil jer i en rundkreds. 2. Sig dit navn og lav en bevægelse. 3. Hele kredsen gentager navn og bevægelse. 4. Tag en runde mere, hvor alle navne siges i rækkefølge.",
+    "tips": "Den bedste første aktivitet med en ny gruppe eller for en vikar — efter ti minutter kan du alles navne. Start selv, og lav en overdreven bevægelse; så tør de andre også.",
+    "people_min": 5,
+    "people_max": 20,
+    "facilities": [
+      "Fællesrum",
+      "Salen",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "ny gruppe",
+      "vikar",
+      "inde",
+      "ude"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "b261f081-fcf7-49cb-9eb7-7084b87a3ce7",
+    "name": "Nul-spild-suppe",
+    "workshop_slugs": [
+      "cafe"
+    ],
+    "activity_types": [
+      "Mad"
+    ],
+    "learning_goals": [
+      "Problemløsning",
+      "Samarbejdsevne",
+      "Koncentration"
+    ],
+    "themes": [
+      "Madkultur",
+      "Natur-uge"
+    ],
+    "description": "Kog suppe af ugens rester og grøntsager der er ved at gå til.",
+    "purpose": "Bæredygtighed, improvisation, smag frem for opskrift",
+    "instruction": "1. Find overskudsgrønt, som stadig er egnet og korrekt opbevaret. 2. Vask og snit det. 3. Kog med fond og krydderier. 4. Smag til og servér med brød.",
+    "tips": "Brug ikke mad, der allerede har været serveret, eller råvarer med overskredet holdbarhed, forkert temperatur eller tegn på fordærv. En voksen vurderer råvarerne og styrer komfuret.",
+    "people_min": 2,
+    "people_max": 10,
+    "facilities": [
+      "Køkken"
+    ],
+    "gear": [
+      "Gryde",
+      "Knive",
+      "Skærebræt",
+      "Komfur"
+    ],
+    "tags": [
+      "mad",
+      "bæredygtighed",
+      "madspild",
+      "hygge",
+      "inde",
+      "vinter"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "1aece4de-3e84-4beb-910e-fbe3036677b2",
+    "name": "One-shot D&D eventyr",
+    "workshop_slugs": [
+      "rolle"
+    ],
+    "activity_types": [
+      "Fortælling",
+      "Samarbejde"
+    ],
+    "learning_goals": [
+      "Sprogudvikling",
+      "Samarbejdsevne",
+      "Kreativt udtryk",
+      "Empati"
+    ],
+    "themes": [
+      "Fantasi-uge"
+    ],
+    "description": "Komplet rollespilseventyr på én session (90 min).",
+    "purpose": "Fortælleevne, kreativitet, samarbejde",
+    "instruction": "1. Uddel færdige karakterark — ingen laver deres eget på dagen. 2. Sæt scenen på to minutter og lad hver præsentere sin figur. 3. Spil tre scener: et møde, en kamp, et valg. 4. Slut med at hver fortæller, hvad figuren gør bagefter.",
+    "tips": "Færdige karakterer er forskellen på at spille i 90 minutter og at bruge 60 af dem på at udfylde ark. Tre scener er rigeligt til én eftermiddag. Sig ja til deres skøre idéer — det er den halve fornøjelse, og det er derfor de bliver siddende.",
+    "people_min": 3,
+    "people_max": 6,
+    "facilities": [
+      "Rollespilsrummet"
+    ],
+    "gear": [
+      "Terninger",
+      "Regelbog",
+      "Karakterark",
+      "Blyanter"
+    ],
+    "tags": [
+      "rollespil",
+      "fantasi",
+      "store børn",
+      "klub",
+      "hele eftermiddagen",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "5af4a3fc-2d2b-4a7d-8261-e6ffac14b526",
+    "name": "Origami",
+    "workshop_slugs": [
+      "krea"
+    ],
+    "activity_types": [
+      "Kreativ",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Finmotorik",
+      "Problemløsning"
+    ],
+    "themes": [
+      "Kunst",
+      "Ro & fordybelse"
+    ],
+    "description": "Fold figurer af papir — fra båd og hoppende frø til kranfugl.",
+    "purpose": "Præcision, tålmodighed, rumlig forståelse",
+    "instruction": "1. Udlever kvadratisk papir. 2. Fold én figur trin for trin sammen. 3. Øv den igen alene. 4. Prøv en sværere.",
+    "tips": "Start med den hoppende frø — den virker med det samme og fanger også dem der siger de ikke kan. Fold selv med, langsomt, så de kan spejle dig.",
+    "people_min": 1,
+    "people_max": 12,
+    "facilities": [
+      "Krea-lokalet"
+    ],
+    "gear": [
+      "Origamipapir"
+    ],
+    "tags": [
+      "papir",
+      "stille",
+      "fordybelse",
+      "regnvejr",
+      "inde",
+      "kort"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "bb107ede-fcc3-4dc7-b4f3-7dedae7dfb7d",
+    "name": "Pandekagebar",
+    "workshop_slugs": [
+      "cafe"
+    ],
+    "activity_types": [
+      "Mad"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Selvtillid",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Madkultur"
+    ],
+    "description": "Bag pandekager på pande og fyld dem selv ved bordet.",
+    "purpose": "Selvstændighed ved panden, egne valg, fælles bord",
+    "instruction": "1. Rør dejen. 2. Bag på skiftende hold ved panden. 3. Stil fyld frem i skåle. 4. Spis sammen ved langbord.",
+    "tips": "To pander gør ventetiden halv. Lad de største bage og de mindste røre — så er alle i gang. Gør fyldet billigt: syltetøj, banan, sukker og citron.",
+    "people_min": 2,
+    "people_max": 14,
+    "facilities": [
+      "Køkken"
+    ],
+    "gear": [
+      "Pander",
+      "Komfur",
+      "Piskeris",
+      "Skåle"
+    ],
+    "tags": [
+      "bagning",
+      "hygge",
+      "fredag",
+      "inde",
+      "mad",
+      "kræver indkøb"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "47da62d9-4d46-49c5-b614-edd87dfb415d",
+    "name": "Perleplader",
+    "workshop_slugs": [
+      "krea"
+    ],
+    "activity_types": [
+      "Kreativ",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Finmotorik",
+      "Kreativt udtryk"
+    ],
+    "themes": [
+      "Kunst",
+      "Ro & fordybelse"
+    ],
+    "description": "Klassiske Hama-perler på plade, stryges fast til sidst.",
+    "purpose": "Fordybelse, finmotorik, mønstre og tal",
+    "instruction": "1. Vælg plade og motiv. 2. Sæt perler. 3. Voksen stryger med bagepapir. 4. Hæng op eller tag hjem.",
+    "tips": "Sortér perlerne i æggebakker efter farve én gang — det halverer tiden hver gang siden. Kun voksne ved strygejernet.",
+    "people_min": 1,
+    "people_max": 10,
+    "facilities": [
+      "Krea-lokalet"
+    ],
+    "gear": [
+      "Hama-perler",
+      "Perleplader",
+      "Strygejern",
+      "Bagepapir"
+    ],
+    "tags": [
+      "perler",
+      "stille",
+      "fordybelse",
+      "regnvejr",
+      "inde",
+      "klassiker",
+      "børnehave"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "be61a9fa-571a-4a17-ab36-edd4e2296f04",
+    "name": "Pizzabagning fra bunden",
+    "workshop_slugs": [
+      "cafe"
+    ],
+    "activity_types": [
+      "Mad",
+      "Samarbejde"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Kulturforståelse",
+      "Problemløsning"
+    ],
+    "themes": [
+      "Italien-uge",
+      "Madkultur"
+    ],
+    "description": "Ælt dej, lav sauce og top med selvvalgt fyld.",
+    "purpose": "Motorik, matematik, kulturforståelse",
+    "instruction": "1. Bland dej: 500 g mel, 3 dl vand, gær, salt og olie. 2. Hæv 30 min, mens I laver sauce og skærer fyld. 3. Del dejen ud, rul tynd og top. 4. Bag ved 250° i 10–12 min, til kanten er gylden.",
+    "tips": "Tynd dej og meget varm ovn — tyk dej bliver rå i midten, og det er den ene ting der skuffer dem. Én dej pr. barn med navnet skrevet på bagepapiret, så ingen bytter ved et uheld.",
+    "people_min": 2,
+    "people_max": 12,
+    "facilities": [
+      "Køkken"
+    ],
+    "gear": [
+      "Ovn",
+      "Røremaskine",
+      "Pizzasten",
+      "Dej-skraber"
+    ],
+    "tags": [
+      "bagning",
+      "hygge",
+      "fredag",
+      "kræver indkøb",
+      "inde",
+      "mad"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "c89f5a9d-e559-4899-abcf-78524c758730",
+    "name": "Rulleskøjter",
+    "workshop_slugs": [
+      "ude"
+    ],
+    "activity_types": [
+      "Sport",
+      "Udeliv"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Selvtillid",
+      "Koncentration"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Kør på rulleskøjter på asfalten med bane, forhindringer og fri leg.",
+    "purpose": "Balance, mod, mestring af noget svært",
+    "instruction": "1. Tjek at alle har hjelm og beskyttere på. 2. Øv at falde og rejse sig på græsset først. 3. Lav en bane med kegler på asfalten. 4. Slut med fri kørsel og små konkurrencer.",
+    "tips": "Ti minutter med at øve fald på græs sparer alle tårerne bagefter — de skal lære at lande på knæ og håndled fremad. Hjelm og håndledsbeskyttere er ikke til forhandling; håndleddet er dét der brækker.",
+    "people_min": 2,
+    "people_max": 15,
+    "facilities": [
+      "Udeområdet"
+    ],
+    "gear": [
+      "Rulleskøjter",
+      "Hjelme",
+      "Beskyttere",
+      "Kegler"
+    ],
+    "tags": [
+      "ude",
+      "asfalt",
+      "balance",
+      "store børn",
+      "sommer"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "8b9b317d-4b58-4d42-ba8c-9340a8c66642",
+    "name": "Rundbold",
+    "workshop_slugs": [
+      "ude"
+    ],
+    "activity_types": [
+      "Sport",
+      "Udeliv"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Samarbejdsevne",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Dansk rundbold på græs med bat, bold og fire baser.",
+    "purpose": "Slag og løb, holdspil, udeluft",
+    "instruction": "1. Markér baser. 2. Del i slag- og markhold. 3. Spil to omgange. 4. Byt roller.",
+    "tips": "Stort bat og blød bold — så rammer også de mindste. Alle slår før holdene bytter, ellers står de bagerste bare og venter.",
+    "people_min": 8,
+    "people_max": 24,
+    "facilities": [
+      "Udeområdet"
+    ],
+    "gear": [
+      "Rundboldbat",
+      "Tennisbolde",
+      "Kegler"
+    ],
+    "tags": [
+      "bold",
+      "ude",
+      "sommer",
+      "stor gruppe",
+      "klassiker",
+      "hold"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "e049e6f8-157d-4843-b6c0-3e24c4b525ff",
+    "name": "Sardin",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Sport",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Omvendt gemmeleg: én gemmer sig, og resten sniger sig ind til ham.",
+    "purpose": "Stilhed, samarbejde uden ord, spænding",
+    "instruction": "1. Én gemmer sig, mens resten tæller. 2. Alle leder hver for sig. 3. Den der finder, gemmer sig SAMMEN med ham. 4. Den sidste der finder flokken, gemmer sig næste gang.",
+    "tips": "Det morsomme er at se otte børn presset ind bag den samme dør uden at kunne holde masken. Sig at man skal snige sig ind, når man har fundet dem — råber man det ud, er legen forbi med det samme.",
+    "people_min": 5,
+    "people_max": 15,
+    "facilities": [
+      "Fællesrum",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "stille",
+      "regnvejr",
+      "inde",
+      "ude",
+      "klassiker"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "7fafd12e-e5ee-4009-9691-99c6385aa416",
+    "name": "Scratch: byg dit eget spil",
+    "workshop_slugs": [
+      "gamer"
+    ],
+    "activity_types": [
+      "Digital",
+      "Kreativ"
+    ],
+    "learning_goals": [
+      "Problemløsning",
+      "Koncentration",
+      "Kreativt udtryk"
+    ],
+    "themes": [
+      "Gaming-uge"
+    ],
+    "description": "Programmér et simpelt spil med blokke i Scratch.",
+    "purpose": "Digital skabelse frem for forbrug, logik, fejlfinding",
+    "instruction": "1. Vis et færdigt eksempel i et godkendt eller lokalt værktøj. 2. Lav en figur, der bevæger sig. 3. Tilføj point og forhindring. 4. Byt maskine og test hinandens spil.",
+    "tips": "Brug helst offline-editor eller institutionens godkendte opsætning uden børnenes private konti eller personoplysninger. Lad børnene selv finde fejlene, før en voksen viser løsningen.",
+    "people_min": 2,
+    "people_max": 12,
+    "facilities": [
+      "Spillerum"
+    ],
+    "gear": [
+      "Tablet"
+    ],
+    "tags": [
+      "programmering",
+      "kode",
+      "digital",
+      "regnvejr",
+      "inde",
+      "store børn"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "591e30ca-4c25-4f1c-bdc9-d3f2fcd7de42",
+    "name": "Skattejagt med kort",
+    "workshop_slugs": [
+      "ude"
+    ],
+    "activity_types": [
+      "Udeliv",
+      "Fortælling"
+    ],
+    "learning_goals": [
+      "Problemløsning",
+      "Samarbejdsevne",
+      "Grovmotorik"
+    ],
+    "themes": [
+      "Natur-uge",
+      "Fantasi-uge"
+    ],
+    "description": "Følg kort og gådespor rundt på området til skatten er fundet.",
+    "purpose": "Kortlæsning, gådeløsning, bevægelse med et mål",
+    "instruction": "1. Skjul poster med spor. 2. Del i små hold med kort. 3. Løs spor og find næste post. 4. Find skatten og del den.",
+    "tips": "Lad et hold lave banen til det næste — dobbelt aktivitet, halv forberedelse. Skatten må være lille; det er jagten der tæller.",
+    "people_min": 4,
+    "people_max": 20,
+    "facilities": [
+      "Udeområdet",
+      "Fællesrum"
+    ],
+    "gear": [
+      "Skattekort",
+      "Spor-sedler",
+      "Skattekiste"
+    ],
+    "tags": [
+      "ude",
+      "tur",
+      "stor gruppe",
+      "gåder",
+      "sommer",
+      "fødselsdag"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "0206eecb-bab6-4cbb-acc0-f9e9cf821787",
+    "name": "Skriv klubbens sang",
+    "workshop_slugs": [
+      "musik"
+    ],
+    "activity_types": [
+      "Musik",
+      "Fortælling"
+    ],
+    "learning_goals": [
+      "Sprogudvikling",
+      "Kreativt udtryk",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Musik-uge"
+    ],
+    "description": "Skriv tekst og melodi til en sang om klubben og syng den ind.",
+    "purpose": "Sprogleg og rim, fælles ejerskab, kreativt udtryk",
+    "instruction": "1. Brainstorm ord om klubben. 2. Skriv vers og omkvæd sammen. 3. Sæt teksten til en enkel melodi. 4. Syng den, og optag kun i institutionens godkendte løsning.",
+    "tips": "Brug helst en egen eller rettighedsfri melodi, hvis sangen skal deles. Optagelse er frivillig og må ikke offentliggøres eller gemmes i private skytjenester uden godkendt procedure.",
+    "people_min": 3,
+    "people_max": 12,
+    "facilities": [
+      "Musiklokalet"
+    ],
+    "gear": [
+      "Tavle",
+      "Højttaler",
+      "Tablet"
+    ],
+    "tags": [
+      "sang",
+      "klub",
+      "samarbejde",
+      "inde",
+      "store børn",
+      "fortælling"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "3c0f147c-21b4-4959-aedc-ba6f9e0c5c6b",
+    "name": "Smoothiebar",
+    "workshop_slugs": [
+      "cafe"
+    ],
+    "activity_types": [
+      "Mad",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Selvtillid",
+      "Problemløsning"
+    ],
+    "themes": [
+      "Madkultur"
+    ],
+    "description": "Byg din egen smoothie af frugt, yoghurt og saft.",
+    "purpose": "Sundhed, sensorisk smagning, egne kombinationer",
+    "instruction": "1. Vask hænder og skyl frisk frugt. 2. Skær frugten i stykker. 3. Vælg egen blanding og blend under opsyn. 4. Smag til og skriv opskriften op.",
+    "tips": "Brug frisk frugt eller produkter, der er klargjort efter Fødevarestyrelsens anvisning; frosne bær kan kræve kogning før brug. En voksen styrer blenderen, og husets allergenprocedure følges.",
+    "people_min": 2,
+    "people_max": 10,
+    "facilities": [
+      "Køkken"
+    ],
+    "gear": [
+      "Blender",
+      "Skærebræt",
+      "Knive"
+    ],
+    "tags": [
+      "frugt",
+      "sundhed",
+      "sommer",
+      "kort",
+      "inde",
+      "mad"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "21410915-514c-43fc-aa2d-110cbcee57db",
+    "name": "Snitteværksted",
+    "workshop_slugs": [
+      "kanin",
+      "natur",
+      "krea",
+      "vaerksted"
+    ],
+    "activity_types": [
+      "Kreativ",
+      "Udeliv",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Koncentration",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Natur-uge",
+      "Ro & fordybelse"
+    ],
+    "description": "Snit en navnepind, smørekniv eller lille figur i blødt træ.",
+    "purpose": "Finmotorik, koncentration, ansvar og håndværksmæssig mestring",
+    "instruction": "1. Gennemgå knivreglerne. 2. Vis et sikkert greb og et snit væk fra kroppen. 3. Lad børnene vælge et lille projekt. 4. Rund af med oprydning og knive i skederne.",
+    "tips": "Alle sidder med spredte ben og snitter væk fra kroppen under tæt voksenopsyn. Kniven bliver i skeden, når den ikke bruges, og førstehjælpskassen står fremme.",
+    "people_min": 2,
+    "people_max": 8,
+    "facilities": [
+      "Gården"
+    ],
+    "gear": [
+      "Snitteknive",
+      "Blødt træ",
+      "Førstehjælpskasse"
+    ],
+    "tags": [
+      "træ",
+      "kniv",
+      "værksted",
+      "ude",
+      "fordybelse",
+      "store børn"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "81497018-f21a-4091-bfce-1184673fb91f",
+    "name": "Snobrød over bål",
+    "workshop_slugs": [
+      "kanin"
+    ],
+    "activity_types": [
+      "Mad",
+      "Udeliv"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Samarbejdsevne",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Natur-uge",
+      "Madkultur"
+    ],
+    "description": "Tænd bål, snit pinde og bag snobrød over gløderne.",
+    "purpose": "Bålsikkerhed, tålmodighed, fælles måltid ude",
+    "instruction": "1. Vask hænder og klargør dejen. 2. En voksen tænder bål på en etableret bålplads. 3. Snit pinde under opsyn. 4. Bag over gløder, og sluk bålet helt.",
+    "tips": "Tjek altid lokale regler og afbrændingsforbud. Tænd ikke i kraftig vind eller tørke, hav vand klar, og lad aldrig bålet være uden en voksen. Gennemgå knivreglerne før knivene deles ud.",
+    "people_min": 3,
+    "people_max": 15,
+    "facilities": [
+      "Gården"
+    ],
+    "gear": [
+      "Bålfad",
+      "Snitteknive",
+      "Brænde",
+      "Bålhandsker"
+    ],
+    "tags": [
+      "bål",
+      "ude",
+      "hygge",
+      "tradition",
+      "efterår",
+      "mad"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "f9f484d1-7e99-4edb-9c7c-142841777877",
+    "name": "Ståtrold",
+    "workshop_slugs": [
+      "salen"
+    ],
+    "activity_types": [
+      "Sport"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Den fangne står stille som en trold, til nogen kravler under armen.",
+    "purpose": "Fart, opmærksomhed på de andre, grovmotorik",
+    "instruction": "1. Vælg en trold. 2. Den fangne står med armene ud. 3. Man befries ved at gå under en arm. 4. Bliver alle trolde, har trolden vundet.",
+    "tips": "Godt alternativ til isfanger, når gulvet er for koldt eller vådt til at kravle på. Sig tydeligt at trolden skal stå HELT stille — ellers begynder de at dreje rundt efter befrierne.",
+    "people_min": 6,
+    "people_max": 25,
+    "facilities": [
+      "Salen",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "spontant",
+      "regnvejr",
+      "inde",
+      "ude"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "24168ad6-87f0-45c4-8b67-ec4346f75980",
+    "name": "Stilleleg",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "Hvem kan være helt stille længst — uden at grine.",
+    "purpose": "Selvregulering, ro efter en vild dag, kropsbevidsthed",
+    "instruction": "1. Sid eller lig med god afstand. 2. Aftal at den der siger en lyd, sætter sig op. 3. Tag tid på, hvor længe der er helt stille. 4. Prøv igen og slå rekorden.",
+    "tips": "Virker langt bedre som en rekord end som en irettesættelse — de kæmper for tiden i stedet for mod den voksne. Skriv rekorden op på en tavle; de vil prøve igen dagen efter.",
+    "people_min": 4,
+    "people_max": 25,
+    "facilities": [
+      "Fællesrum",
+      "Salen"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "stille",
+      "ro",
+      "regnvejr",
+      "inde",
+      "efter en vild dag"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "018269cc-0b8f-4bda-9b79-a05c7cc50010",
+    "name": "Stopmotionfilm",
+    "workshop_slugs": [
+      "krea",
+      "gamer"
+    ],
+    "activity_types": [
+      "Kreativ",
+      "Digital",
+      "Fortælling"
+    ],
+    "learning_goals": [
+      "Digital kompetence",
+      "Kreativt udtryk",
+      "Vedholdenhed",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Film-uge",
+      "Digital uge"
+    ],
+    "description": "Lav kort animation med LEGO, ler eller papfigurer.",
+    "purpose": "Digital kreativitet, tålmodighed, fortælleevne",
+    "instruction": "1. Skriv en historie på fem sætninger — ikke mere. 2. Byg scenen og spænd tabletten fast i stativet. 3. Flyt figurerne en centimeter pr. billede, 10 billeder pr. sekund. 4. Læg lyd og tekst på, og se den sammen.",
+    "tips": "Kameraet må ikke flytte sig en millimeter undervejs — tape stativets ben til bordet. Regn med 100 billeder for 10 sekunders film, og sig det højt fra start, så forventningen passer. Bordlampen giver samme lys hele vejen, også når det bliver mørkt udenfor.",
+    "people_min": 2,
+    "people_max": 8,
+    "facilities": [
+      "Krea-lokalet"
+    ],
+    "gear": [
+      "Tablet",
+      "Stativ",
+      "Bordlampe",
+      "LEGO/figurer"
+    ],
+    "tags": [
+      "film",
+      "animation",
+      "digital",
+      "inde",
+      "fordybelse",
+      "to gange"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "fbe121c0-ebcd-4b56-a78a-f62ce9c49ef0",
+    "name": "Strik & hækl",
+    "workshop_slugs": [
+      "krea"
+    ],
+    "activity_types": [
+      "Kreativ",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Finmotorik",
+      "Selvtillid"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "Lær fingerstrik, pindestrik eller hæklenål og lav noget færdigt.",
+    "purpose": "Finmotorik, vedholdenhed, mestring over tid",
+    "instruction": "1. Vælg garn og pinde. 2. Slå masker op sammen. 3. Strik retstrik i ro. 4. Gem projektet til næste gang.",
+    "tips": "Læg hvert barns projekt i sin egen pose med navn — ellers dør det mellem to onsdage. Fingerstrik virker for de mindste uden pinde.",
+    "people_min": 1,
+    "people_max": 8,
+    "facilities": [
+      "Krea-lokalet"
+    ],
+    "gear": [
+      "Garn",
+      "Strikkepinde",
+      "Hæklenåle"
+    ],
+    "tags": [
+      "garn",
+      "tekstil",
+      "stille",
+      "fordybelse",
+      "inde",
+      "hygge",
+      "to gange"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "7e4eb9cd-cc52-445c-a4d0-0ede11aae4ea",
+    "name": "Sushi-ruller",
+    "workshop_slugs": [
+      "cafe"
+    ],
+    "activity_types": [
+      "Mad",
+      "Kreativ"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Kulturforståelse",
+      "Vedholdenhed"
+    ],
+    "themes": [
+      "Asien-uge",
+      "Madkultur"
+    ],
+    "description": "Børnene laver maki-ruller med ris, agurk, avocado og laks.",
+    "purpose": "Finmotorik, madkultur, sensorisk oplevelse",
+    "instruction": "1. Kog risen og lad den køle til håndvarm. 2. Læg nori på måtten og fordel ris med våde hænder — lad 2 cm fri i toppen. 3. Læg fyldet i en stribe og rul stramt med måtten. 4. Voksen skærer rullen i seks stykker med våd kniv.",
+    "tips": "Våde hænder er hele hemmeligheden; tør ris klistrer til alt undtagen norien. Voksen skærer — en pæn rulle kræver en meget skarp kniv. Brug røget laks eller grønt frem for råt fisk, så holder maden til en eftermiddag i klubkøkkenet.",
+    "people_min": 2,
+    "people_max": 10,
+    "facilities": [
+      "Køkken"
+    ],
+    "gear": [
+      "Sushimåtter",
+      "Riskoger",
+      "Knive",
+      "Skærebræt"
+    ],
+    "tags": [
+      "mad",
+      "asien",
+      "kræver indkøb",
+      "inde",
+      "store børn",
+      "fest"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "2b2fea0b-1675-40d8-8788-faab76c8d204",
+    "name": "Talentshow forberedelse",
+    "workshop_slugs": [
+      "diverse",
+      "musik"
+    ],
+    "activity_types": [
+      "Performance",
+      "Musik",
+      "Samarbejde"
+    ],
+    "learning_goals": [
+      "Selvtillid",
+      "Kreativt udtryk",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Talentshow"
+    ],
+    "description": "Børnene forbereder numre til fredagens talentshow.",
+    "purpose": "Selvtillid, performance, kreativt udtryk",
+    "instruction": "1. Brainstorm hvad man kan optræde med — også det der ikke er sang. 2. Dan grupper og sæt grænsen: maks 2 minutter pr. nummer. 3. Øv i hjørner af salen, og giv hver gruppe ét konkret råd. 4. Generalprøve i rækkefølge med mikrofon.",
+    "tips": "To minutter pr. nummer holder showet levende og gør de nervøse trygge. Lav roller til teknikere, dørmænd og konferencier, så også de der ikke vil på scenen er med. Prøv mikrofonen inden — lyden af sin egen stemme er det der overrasker dem.",
+    "people_min": 4,
+    "people_max": 20,
+    "facilities": [
+      "Salen"
+    ],
+    "gear": [
+      "Mikrofon",
+      "Højttaler"
+    ],
+    "tags": [
+      "optræden",
+      "fest",
+      "fredag",
+      "scene",
+      "stor gruppe",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "742f29a9-40d3-4b97-bfb4-7b5775e02ce0",
+    "name": "Tavs opstilling",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Sport",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Samarbejdsevne",
+      "Problemløsning",
+      "Empati"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "Stil jer i rækkefølge efter fødselsdag — uden at sige et ord.",
+    "purpose": "Samarbejde uden sprog, opfindsomhed, fælles mål",
+    "instruction": "1. Giv opgaven: stil jer efter fødselsdato, januar i den ene ende. 2. Ingen må tale eller skrive. 3. Giv dem fem minutter. 4. Gå rækken igennem og tjek, om det passer.",
+    "tips": "Fungerer også med højde, skostørrelse eller antal søskende. Grin med, når det går galt — det er lige så meget værd som at få det rigtigt, og de finder selv på fagter næste gang.",
+    "people_min": 6,
+    "people_max": 25,
+    "facilities": [
+      "Fællesrum",
+      "Salen",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "samarbejde",
+      "ny gruppe",
+      "regnvejr",
+      "inde",
+      "ude"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "cbf250c0-9623-4b48-b1a6-9de6d35c1c6c",
+    "name": "Teamstikbold",
+    "workshop_slugs": [
+      "salen",
+      "boldrum",
+      "ude"
+    ],
+    "activity_types": [
+      "Sport"
+    ],
+    "learning_goals": [
+      "Samarbejdsevne",
+      "Grovmotorik",
+      "Problemløsning"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Stikbold i to hold, hvor modstanderne skal rammes i en aftalt rækkefølge, og ingen udgår.",
+    "purpose": "Samarbejde, overblik og en inkluderende variation af en kendt boldleg",
+    "instruction": "1. Del to lige store hold. 2. Nummerér spillerne på hvert hold. 3. Ram først nummer 1, derefter nummer 2 og så videre. 4. Spil til et hold har ramt hele rækken.",
+    "tips": "Brug skumbolde. Der er ingen hovedskud eller kropskontakt, og spillerne må ikke løbe med bolden. Den ramte bliver i spillet og markerer tydeligt sit nummer.",
+    "people_min": 8,
+    "people_max": 20,
+    "facilities": [
+      "Salen",
+      "Udeområdet"
+    ],
+    "gear": [
+      "Skumbolde",
+      "Vester",
+      "Kegler"
+    ],
+    "tags": [
+      "bold",
+      "stor gruppe",
+      "konkurrence",
+      "regnvejr",
+      "inde",
+      "hold"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "ef2a4c94-958f-443a-8579-ff69d7fe95aa",
+    "name": "To mand frem for en enke",
+    "workshop_slugs": [
+      "salen"
+    ],
+    "activity_types": [
+      "Sport"
+    ],
+    "learning_goals": [
+      "Koncentration",
+      "Grovmotorik",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Sport-uge"
+    ],
+    "description": "Par går rundt, og enken bagerst forsøger at kapre en makker.",
+    "purpose": "Opmærksomhed, fart fra stilstand, latter",
+    "instruction": "1. Stil jer parvis i en rundkreds, med én enke uden makker. 2. Enken blinker til en i inderkredsen. 3. Den blinkede løber over, hvis makkeren ikke når at holde fast. 4. Byt inder- og yderkreds undervejs.",
+    "tips": "Sig at man kun må holde fast i skuldrene — griber de om håndled eller tøj, gør det ondt og river i tøjet. Byt kredsene efter fem minutter, ellers står de samme børn og venter hele tiden.",
+    "people_min": 9,
+    "people_max": 25,
+    "facilities": [
+      "Salen",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "opvarmning",
+      "regnvejr",
+      "inde",
+      "ude"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "4001cd45-e99b-4c20-8a77-c6e279153b3f",
+    "name": "To sandheder og en løgn",
+    "workshop_slugs": [
+      "diverse"
+    ],
+    "activity_types": [
+      "Fortælling",
+      "Ro & fordybelse"
+    ],
+    "learning_goals": [
+      "Sprogudvikling",
+      "Selvtillid",
+      "Empati"
+    ],
+    "themes": [
+      "Ro & fordybelse"
+    ],
+    "description": "Fortæl tre ting om dig selv — de andre skal finde løgnen.",
+    "purpose": "At lære hinanden at kende, fortælleglæde, mod",
+    "instruction": "1. Hver forbereder tre udsagn om sig selv, hvoraf ét er opdigtet. 2. Fortæl dem på skift. 3. De andre stemmer om hvilket der er løgn. 4. Afslør, og fortæl historien bag den mest overraskende sandhed.",
+    "tips": "Passer bedst til de store og til klubben. Sig at løgnen skal være troværdig og sandhederne gerne mærkelige — det er dér den bliver sjov, og de opdager ting om hinanden de ikke vidste.",
+    "people_min": 4,
+    "people_max": 15,
+    "facilities": [
+      "Fællesrum",
+      "Udeområdet"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "kort",
+      "ny gruppe",
+      "klub",
+      "store børn",
+      "inde",
+      "stille"
+    ],
+    "updated_at": "2026-07-30T23:08:27.431252+00:00"
+  },
+  {
+    "id": "ff0cf088-c3b9-4c5e-95c2-a1976c4429f0",
+    "name": "Tornerose var et vakkert barn",
+    "workshop_slugs": [
+      "musik"
+    ],
+    "activity_types": [
+      "Musik",
+      "Fortælling"
+    ],
+    "learning_goals": [
+      "Sprogudvikling",
+      "Kreativt udtryk",
+      "Grovmotorik"
+    ],
+    "themes": [
+      "Musik-uge",
+      "Fantasi-uge"
+    ],
+    "description": "Sanglegen hvor hele slottet sover og vågner igen.",
+    "purpose": "Fælles sang, dramatisk leg, motorik i store bevægelser",
+    "instruction": "1. Gå i rundkreds og syng verset. 2. Vælg en Tornerose i midten. 3. Spil med på hvert vers: sove, hæk gro, prins komme. 4. Alle vågner sammen til sidst.",
+    "tips": "Overspil selv rollerne — sover du rigtigt og snorker, gør de det også. Til de mindste er gentagelsen hele pointen; kør den samme leg flere dage i træk frem for at finde på en ny.",
+    "people_min": 6,
+    "people_max": 20,
+    "facilities": [
+      "Fællesrum",
+      "Salen"
+    ],
+    "gear": [],
+    "tags": [
+      "ingen forberedelse",
+      "børnehave",
+      "sangleg",
+      "klassiker",
+      "inde"
+    ],
+    "updated_at": "2026-07-30T22:20:16.86183+00:00"
+  },
+  {
+    "id": "a9b1989f-2e4f-42f1-a9c4-bb884572d2ef",
+    "name": "Trommecirkel",
+    "workshop_slugs": [
+      "musik"
+    ],
+    "activity_types": [
+      "Musik"
+    ],
+    "learning_goals": [
+      "Grovmotorik",
+      "Samarbejdsevne",
+      "Koncentration"
+    ],
+    "themes": [
+      "Musik-uge"
+    ],
+    "description": "Fælles rytmer på djembe, spande og hvad der ellers kan slås på.",
+    "purpose": "Puls og rytme, at lytte til hinanden, energi ud af kroppen",
+    "instruction": "1. Sid i rundkreds med en tromme hver. 2. Voksen slår en rytme. 3. Alle svarer. 4. Lad børnene være forsangere på skift.",
+    "tips": "Spande og gryder virker lige så godt som instrumenter — det behøver ikke koste noget. Slut med et fælles crescendo og et brat stop; de elsker det.",
+    "people_min": 4,
+    "people_max": 16,
+    "facilities": [
+      "Musiklokalet"
+    ],
+    "gear": [
+      "Trommer",
+      "Spande",
+      "Rytmeæg"
+    ],
+    "tags": [
+      "rytme",
+      "larm",
+      "stor gruppe",
+      "spontant",
+      "inde",
+      "børnehave"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "4ea92e5f-2947-4738-a6f2-92c27c60cdd6",
+    "name": "Ukulele for begyndere",
+    "workshop_slugs": [
+      "musik"
+    ],
+    "activity_types": [
+      "Musik"
+    ],
+    "learning_goals": [
+      "Finmotorik",
+      "Vedholdenhed",
+      "Selvtillid",
+      "Samarbejdsevne"
+    ],
+    "themes": [
+      "Musik-uge"
+    ],
+    "description": "Lær 3 akkorder og spil en hel sang på 45 minutter.",
+    "purpose": "Musikalsk udvikling, vedholdenhed, mestringsfølelse",
+    "instruction": "1. Stem alle ukuleler, før børnene kommer ind. 2. Vis C, F og G7 — én akkord ad gangen, alle spiller den. 3. Øv skiftet C→F→G7 langsomt i takt. 4. Spil en sang, der kun bruger de tre akkorder.",
+    "tips": "Stem instrumenterne FØR de kommer ind; otte ustemte ukuleler koster hele lektionen. Et lille plaster på gribebrættet, hvor fingrene skal stå, hjælper de mindste mere end nogen forklaring.",
+    "people_min": 2,
+    "people_max": 8,
+    "facilities": [
+      "Musiklokalet"
+    ],
+    "gear": [
+      "Ukuleler",
+      "Nodestativ",
+      "Stemmeapparat"
+    ],
+    "tags": [
+      "instrument",
+      "inde",
+      "store børn",
+      "musik",
+      "fordybelse"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  },
+  {
+    "id": "aa7f7989-596e-4e97-a1d7-46dde479f8c5",
+    "name": "Yoga & mindfulness",
+    "workshop_slugs": [
+      "salen"
+    ],
+    "activity_types": [
+      "Ro & fordybelse",
+      "Sport"
+    ],
+    "learning_goals": [
+      "Kropsbevidsthed",
+      "Selvregulering"
+    ],
+    "themes": [
+      "Sundhed",
+      "Ro & fordybelse"
+    ],
+    "description": "Rolig session med yogastillinger og vejrtrækningsøvelser.",
+    "purpose": "Kropsbevidsthed, ro, selvregulering",
+    "instruction": "1. Læg måtter med god afstand og sluk det store lys. 2. Fem dybe vejrtrækninger med hænderne på maven. 3. Gå gennem 8–10 stillinger med dyrenavne: hund, kat, kobra, træ. 4. Slut med to minutters hvile på ryggen under et tæppe.",
+    "tips": "Dyrenavne frem for sanskrit — nedadvendt hund forstår de med det samme. Sluk lyset og træk gardinerne for; det gør mere for roen end nogen instruktion. Lad de urolige sidde op frem for at ligge ned, så forstyrrer de ikke resten.",
+    "people_min": 3,
+    "people_max": 20,
+    "facilities": [
+      "Salen"
+    ],
+    "gear": [
+      "Yogamåtter",
+      "Højttaler"
+    ],
+    "tags": [
+      "ro",
+      "stille",
+      "efter en vild dag",
+      "inde",
+      "kort",
+      "sundhed"
+    ],
+    "updated_at": "2026-07-30T22:41:16.736935+00:00"
+  }
+]
