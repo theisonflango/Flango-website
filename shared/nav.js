@@ -17,7 +17,8 @@
     { href: '/cafe/',          label: 'Café' },
     { href: '/skaermtid/',     label: 'Skærmtid' },
     { href: '/ugeplan/',       label: 'Ugeplan' },
-    { href: '/til-foraeldre/', label: 'Forældreportal' }
+    { href: '/til-foraeldre/', label: 'Forældreportal' },
+    { href: '/ugeplan/faellesskabet', label: 'Fællesskabet' }
   ];
 
   /* Login-knappen følger den side, man står på: er man på et produkts side, er
