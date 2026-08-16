@@ -20,7 +20,16 @@
     { href: '/til-foraeldre/', label: 'Forældreportal' }
   ];
 
-  var LOGIN = { href: '/forældre/', label: 'Forældre login' };
+  /* Login-knappen følger den side, man står på: er man på et produkts side, er
+   * "Log ind" den sides eget login. Uden for produktsiderne findes der ikke ét
+   * rigtigt svar, så knappen siger eksplicit hvor den fører hen. */
+  var LOGINS = {
+    '/cafe/':          { href: '/app',              label: 'Log ind' },
+    '/skaermtid/':     { href: '/skaermtid/login/', label: 'Log ind' },
+    '/ugeplan/':       { href: '/ugeplan/log-ind',  label: 'Log ind' },
+    '/til-foraeldre/': { href: '/forældre/',        label: 'Log ind' }
+  };
+  var LOGIN_STANDARD = { href: '/forældre/', label: 'Forældre login' };
 
   var PORTAL_ICON =
     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
@@ -29,23 +38,37 @@
     '<polyline points="10 17 15 12 10 7"></polyline>' +
     '<line x1="15" y1="12" x2="3" y2="12"></line></svg>';
 
-  /* Længste match vinder, så /skaermtid/login/ markerer Skærmtid — ikke Forside. */
-  function activeHref() {
+  function nuvaerendeSti() {
     var path = decodeURIComponent(window.location.pathname);
     if (path.slice(-10) === 'index.html') path = path.slice(0, -10);
     if (path.slice(-1) !== '/') path += '/';
+    return path;
+  }
+
+  /* Længste match vinder, så /skaermtid/login/ markerer Skærmtid — ikke Forside. */
+  function laengsteMatch(stier) {
+    var path = nuvaerendeSti();
     var best = null;
-    LINKS.forEach(function (l) {
-      if (path.indexOf(l.href) === 0 && (!best || l.href.length > best.length)) best = l.href;
+    stier.forEach(function (s) {
+      if (s !== '/' && path.indexOf(s) === 0 && (!best || s.length > best.length)) best = s;
     });
-    return best;
+    return best || (path === '/' ? '/' : null);
+  }
+
+  function activeHref() {
+    return laengsteMatch(LINKS.map(function (l) { return l.href; }));
+  }
+
+  function login() {
+    var m = laengsteMatch(Object.keys(LOGINS));
+    return (m && LOGINS[m]) || LOGIN_STANDARD;
   }
 
   function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   }
 
-  function build(active) {
+  function build(active, log) {
     var desktop = LINKS.map(function (l) {
       return '<li><a href="' + esc(l.href) + '"' + (l.href === active ? ' class="here" aria-current="page"' : '') +
         '>' + esc(l.label) + '</a></li>';
@@ -63,7 +86,7 @@
             '<img src="/shared/logos/flango-fruit.webp" alt="">flango<span>.</span></a>' +
           '<ul class="flango-nav-links">' + desktop + '</ul>' +
           '<div class="flango-nav-right">' +
-            '<a href="' + esc(LOGIN.href) + '" class="flango-nav-portal">' + PORTAL_ICON + esc(LOGIN.label) + '</a>' +
+            '<a href="' + esc(log.href) + '" class="flango-nav-portal">' + PORTAL_ICON + esc(log.label) + '</a>' +
           '</div>' +
           '<button class="flango-burger" aria-label="Åbn menu" aria-expanded="false" aria-controls="flangoMobileMenu">' +
             '<span></span><span></span><span></span></button>' +
@@ -71,17 +94,19 @@
         '<div class="flango-mobile-menu" id="flangoMobileMenu" role="dialog" aria-label="Mobilmenu">' +
           mobile +
           '<span class="flango-mobile-section">Log ind</span>' +
-          '<a href="' + esc(LOGIN.href) + '">Forældreportal</a>' +
+          '<a href="/forældre/">Forældreportal</a>' +
           '<a href="/skaermtid/login/">Skærmtid (personale)</a>' +
+          '<a href="/ugeplan/log-ind">Ugeplan (personale)</a>' +
           '<a href="/app">Café-app (personale)</a>' +
         '</div>' +
       '</nav>';
   }
 
-  function init() {
-    var mount = document.querySelector('.flango-nav-mount');
-    if (!mount) return;
-    mount.innerHTML = build(activeHref());
+  function init(el) {
+    var mount = el || document.querySelector('.flango-nav-mount');
+    if (!mount || mount.getAttribute('data-navbygget') === '1') return;
+    mount.setAttribute('data-navbygget', '1');
+    mount.innerHTML = build(activeHref(), login());
 
     var burger = mount.querySelector('.flango-burger');
     var menu = mount.querySelector('#flangoMobileMenu');
@@ -109,8 +134,12 @@
     });
   }
 
+  /* Apps, der renderer deres eget DOM (ugeplanen er React), har ikke noget
+   * mount-punkt når scriptet kører. De kalder selv flangoNav.mount(el). */
+  window.flangoNav = { mount: init };
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', function () { init(); });
   } else {
     init();
   }

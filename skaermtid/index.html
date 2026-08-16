@@ -46,12 +46,8 @@
     .link-mono:hover { color: #6BEAF4; }
 
     /* ── Sidens egen ankermenu — klæber under den fælles Flango-nav (64px) ─── */
-    .topbar { position: sticky; top: 64px; z-index: 50; background: rgba(246,248,252,.88); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-bottom: 1px solid #E3E8F2; }
-    .topbar-inner { max-width: 1120px; margin: 0 auto; padding: 0 32px; height: 64px; display: flex; align-items: center; gap: 28px; }
     .topbar-links { margin-left: auto; display: flex; align-items: center; gap: 26px; font-size: 14.5px; font-weight: 500; }
-    .topbar-actions { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
     .topbar-btn { display: flex; align-items: center; white-space: nowrap; height: 42px; padding: 0 20px; border-radius: 12px; font-weight: 600; font-size: 14.5px; }
-    .topbar-brand-name { font-weight: 700; font-size: 17px; letter-spacing: .2px; white-space: nowrap; }
 
     /* ── Layout-klasser ────────────────────────────────────────────────────────
        Kun de egenskaber der skifter ved et brudpunkt bor her. Resten bliver i
@@ -85,8 +81,6 @@
     }
     @media (max-width: 860px) {
       .sec { padding: 60px 20px; }
-      .topbar-inner { padding: 0 20px; gap: 16px; }
-      .topbar-links { display: none; }
       .split { grid-template-columns: 1fr; gap: 40px; }
       .split--flip > :first-child { order: 0; }
       .cards2, .steps3, .priskort { grid-template-columns: 1fr; }
@@ -98,11 +92,8 @@
       .mockgrid > :nth-child(3) { min-height: 320px; }
       .gamegrid { grid-template-columns: repeat(2, 1fr); }
       .ctarow > a { width: 100%; justify-content: center; text-align: center; }
-      .topbar-inner { height: 56px; }
-      .topbar-brand-sub { display: none; }
       .topbar-brand-name { font-size: 15px; }
       /* "Log ind" ligger i burgermenuen på små skærme — her er der kun plads til én knap. */
-      .topbar-btn.btn-light { display: none; }
       .topbar-btn { height: 38px; padding: 0 14px; font-size: 13.5px; }
     }
 
@@ -115,30 +106,6 @@
 <body>
   <div class="flango-nav-mount"></div>
 
-<!-- Sidens egen ankermenu -->
-<div class="topbar">
-  <div class="topbar-inner">
-    <a href="#hero" style="display: flex; align-items: center; gap: 11px; color: #10162A">
-      <span style="width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: linear-gradient(135deg, #0D1322, #1E2A4A); color: #5FE6F2; flex: 0 0 auto">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"></path></svg>
-      </span>
-      <span style="display: flex; flex-direction: column; line-height: 1.05; min-width: 0">
-        <span class="topbar-brand-name">Flango Skærmtid</span>
-        <span class="topbar-brand-sub" style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: 2.6px; text-transform: uppercase; color: #6B7798">SFO · Fritidsklub · Ungdomsklub</span>
-      </span>
-    </a>
-    <nav class="topbar-links" aria-label="Sektioner på siden">
-      <a href="#funktioner" style="color: #3E4A66">Funktioner</a>
-      <a href="#foraeldre" style="color: #3E4A66">Forældre</a>
-      <a href="#priser" style="color: #3E4A66">Priser</a>
-      <a href="#faq" style="color: #3E4A66">FAQ</a>
-    </nav>
-    <div class="topbar-actions" style="margin-left: auto">
-      <a class="topbar-btn btn-light" href="/skaermtid/login/">Log ind</a>
-      <a class="topbar-btn btn-dark" href="mailto:kontakt@flango.dk?subject=Demonstration%20af%20Flango%20Sk%C3%A6rmtid">Bestil demo</a>
-    </div>
-  </div>
-</div>
 
 <!-- Hero -->
 <section id="hero" class="sec" style="--pt: 88px; --pb: 72px">
