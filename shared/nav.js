@@ -1,34 +1,117 @@
-/* Flango shared navigation — burger menu toggle */
-(function() {
-  var nav = document.querySelector('.flango-nav');
-  var burger = document.querySelector('.flango-burger');
-  var menu = document.getElementById('flangoMobileMenu');
-  var open = false;
+/* Flango fælles navigation — ÉT sted for hele websitets header.
+ *
+ * Navigationen injiceres i stedet for at stå i hver enkelt side. Det er
+ * bevidst: headeren skal være identisk på tværs af undersider, og en kopi
+ * pr. side driver fra hinanden i det øjeblik der kommer et produkt til.
+ *
+ * En side inkluderer den med:
+ *   <div class="flango-nav-mount"></div>
+ *   <link rel="stylesheet" href="/shared/nav.css">
+ *   <script src="/shared/nav.js" defer></script>
+ *
+ * Den aktive fane udledes af stien, så siderne ikke skal markere sig selv.
+ */
+(function () {
+  var LINKS = [
+    { href: '/',               label: 'Forside' },
+    { href: '/cafe/',          label: 'Café' },
+    { href: '/skaermtid/',     label: 'Skærmtid' },
+    { href: '/ugeplan/',       label: 'Ugeplan' },
+    { href: '/til-foraeldre/', label: 'Forældreportal' }
+  ];
 
-  if (!nav || !burger || !menu) return;
+  var LOGIN = { href: '/forældre/', label: 'Forældre login' };
 
-  // Scroll shadow
-  window.addEventListener('scroll', function() {
-    nav.classList.toggle('scrolled', window.scrollY > 20);
-  });
+  var PORTAL_ICON =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>' +
+    '<polyline points="10 17 15 12 10 7"></polyline>' +
+    '<line x1="15" y1="12" x2="3" y2="12"></line></svg>';
 
-  // Toggle
-  burger.addEventListener('click', function() {
-    open = !open;
-    burger.classList.toggle('active', open);
-    burger.setAttribute('aria-expanded', open);
-    menu.classList.toggle('open', open);
-    document.body.style.overflow = open ? 'hidden' : '';
-  });
-
-  // Close on link click
-  menu.querySelectorAll('a').forEach(function(a) {
-    a.addEventListener('click', function() {
-      open = false;
-      burger.classList.remove('active');
-      burger.setAttribute('aria-expanded', 'false');
-      menu.classList.remove('open');
-      document.body.style.overflow = '';
+  /* Længste match vinder, så /skaermtid/login/ markerer Skærmtid — ikke Forside. */
+  function activeHref() {
+    var path = decodeURIComponent(window.location.pathname);
+    if (path.slice(-10) === 'index.html') path = path.slice(0, -10);
+    if (path.slice(-1) !== '/') path += '/';
+    var best = null;
+    LINKS.forEach(function (l) {
+      if (path.indexOf(l.href) === 0 && (!best || l.href.length > best.length)) best = l.href;
     });
-  });
+    return best;
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  }
+
+  function build(active) {
+    var desktop = LINKS.map(function (l) {
+      return '<li><a href="' + esc(l.href) + '"' + (l.href === active ? ' class="here" aria-current="page"' : '') +
+        '>' + esc(l.label) + '</a></li>';
+    }).join('');
+
+    var mobile = LINKS.map(function (l) {
+      return '<a href="' + esc(l.href) + '"' + (l.href === active ? ' class="here" aria-current="page"' : '') +
+        '>' + esc(l.label) + '</a>';
+    }).join('');
+
+    return '' +
+      '<nav class="flango-nav" role="navigation" aria-label="Hovednavigation">' +
+        '<div class="flango-nav-inner">' +
+          '<a href="/" class="flango-nav-logo" aria-label="Flango forside">' +
+            '<img src="/shared/logos/flango-fruit.webp" alt="">flango<span>.</span></a>' +
+          '<ul class="flango-nav-links">' + desktop + '</ul>' +
+          '<div class="flango-nav-right">' +
+            '<a href="' + esc(LOGIN.href) + '" class="flango-nav-portal">' + PORTAL_ICON + esc(LOGIN.label) + '</a>' +
+          '</div>' +
+          '<button class="flango-burger" aria-label="Åbn menu" aria-expanded="false" aria-controls="flangoMobileMenu">' +
+            '<span></span><span></span><span></span></button>' +
+        '</div>' +
+        '<div class="flango-mobile-menu" id="flangoMobileMenu" role="dialog" aria-label="Mobilmenu">' +
+          mobile +
+          '<span class="flango-mobile-section">Log ind</span>' +
+          '<a href="' + esc(LOGIN.href) + '">Forældreportal</a>' +
+          '<a href="/skaermtid/login/">Skærmtid (personale)</a>' +
+          '<a href="/app">Café-app (personale)</a>' +
+        '</div>' +
+      '</nav>';
+  }
+
+  function init() {
+    var mount = document.querySelector('.flango-nav-mount');
+    if (!mount) return;
+    mount.innerHTML = build(activeHref());
+
+    var burger = mount.querySelector('.flango-burger');
+    var menu = mount.querySelector('#flangoMobileMenu');
+    if (!burger || !menu) return;
+
+    var open = false;
+    function setOpen(next) {
+      open = next;
+      burger.classList.toggle('active', open);
+      burger.setAttribute('aria-expanded', String(open));
+      menu.classList.toggle('open', open);
+      document.body.style.overflow = open ? 'hidden' : '';
+    }
+
+    burger.addEventListener('click', function () { setOpen(!open); });
+    menu.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', function () { setOpen(false); });
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && open) setOpen(false);
+    });
+    /* Menuen er kun til mobil — skifter man til desktop skal body kunne scrolle igen. */
+    window.addEventListener('resize', function () {
+      if (open && window.innerWidth > 900) setOpen(false);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 })();
