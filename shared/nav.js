@@ -27,6 +27,8 @@
   var LOGINS = {
     '/cafe/':          { href: '/app',              label: 'Log ind' },
     '/skaermtid/':     { href: '/skaermtid/login/', label: 'Log ind' },
+    // Længere match end '/ugeplan/', så fællesskabets egen indgang vinder på den sti.
+    '/ugeplan/faellesskabet': { href: '/ugeplan/faellesskabet/deltag', label: 'Log ind' },
     '/ugeplan/':       { href: '/ugeplan/log-ind',  label: 'Log ind' },
     '/til-foraeldre/': { href: '/forældre/',        label: 'Log ind' }
   };
@@ -98,6 +100,7 @@
           '<a href="/forældre/">Forældreportal</a>' +
           '<a href="/skaermtid/login/">Skærmtid (personale)</a>' +
           '<a href="/ugeplan/log-ind">Ugeplan (personale)</a>' +
+          '<a href="/ugeplan/faellesskabet/deltag">Fællesskabet</a>' +
           '<a href="/app">Café-app (personale)</a>' +
         '</div>' +
       '</nav>';
