@@ -97,6 +97,15 @@
       flowType: 'implicit',
     }
   });
+  // Logout er ENHEDS-LOKALT. supabase-js defaulter til scope:'global', som tilbagekalder
+  // sessionen på ALLE brugerens enheder og faner: logger en forælder ud på mobilen, dør
+  // også deres tablet-session — uden at tabletten opdager det. Den kører videre på et dødt
+  // token, indtil et kald fejler. Scopet sættes her ved klientens fødsel, så et nyt
+  // kaldsted ikke kan blive globalt ved en forglemmelse. Ægte global udlogning kræver nu
+  // at det skrives: signOut({ scope: 'global' }).
+  const _rawSignOut = supabaseClient.auth.signOut.bind(supabaseClient.auth);
+  supabaseClient.auth.signOut = (options) => _rawSignOut({ scope: 'local', ...options });
+
   // Expose as global for portal-v2-api.js and portal-v2.js
   window.portalSupabase = supabaseClient;
 
@@ -140,7 +149,7 @@
 })();
 </script>
 
-<script src="js/pwa-install.js?v=2"></script>
+<script src="js/pwa-install.js?v=3"></script>
 <script src="js/push-softask.js?v=2"></script>
 
 <script>

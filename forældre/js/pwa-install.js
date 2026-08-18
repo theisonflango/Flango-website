@@ -26,7 +26,7 @@
   // Smart App Banner (index.html) er selv-gated hos Apple og kan ligge klar.
   var APP_STORE_LIVE = true;   // App Store-release 2026-07-31 (kun DK)
   var APP_STORE_URL = 'https://apps.apple.com/dk/app/id6793543486';
-  var PLAY_STORE_LIVE = false; // flip ved Play-produktion (efter Googles gennemgang)
+  var PLAY_STORE_LIVE = true;  // Play-produktion indsendt 2026-08-18 (kun DK)
   var PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=dk.flango.foraeldre';
 
   function isStandalone() {
