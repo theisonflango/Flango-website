@@ -376,8 +376,8 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-Cp5Ylcuj.js"></script>
-  <link rel="stylesheet" crossorigin href="/app/assets/main-BhHiWaP8.css">
+  <script type="module" crossorigin src="/app/assets/main-33Ts6axq.js"></script>
+  <link rel="stylesheet" crossorigin href="/app/assets/main-kg9K4Bjz.css">
 </head>
 <body>
 
@@ -430,6 +430,7 @@
     <div id="screen-remember-device" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
         <div class="lock-icon">📱</div>
+        <p id="remember-device-notice" class="login-success"></p>
         <h1>Vil du huske denne enhed?</h1>
         <p class="login-subtitle">Du kan fremover logge ind med en hurtig 4-cifret PIN-kode.</p>
         <form id="form-remember-device" onsubmit="return false;" autocomplete="off">
@@ -503,7 +504,7 @@
         <p class="login-subtitle">Indtast den 6-cifrede kode fra din authenticator-app.</p>
         <label for="mfa-challenge-code">6-cifret kode</label>
         <input type="text" id="mfa-challenge-code" class="input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-        <button id="mfa-challenge-btn">Bekraeft</button>
+        <button id="mfa-challenge-btn">Bekræft</button>
         <p id="mfa-challenge-error" class="login-error"></p>
     </div>
 
@@ -1781,8 +1782,8 @@
                         <strong>Tre gode vaner</strong>
                         <ol>
                             <li>Tjek, at kunden og beløbet er rigtigt.</li>
-                            <li>Lad kun dig selv bruge caféen under din vagt.</li>
-                            <li>Afslut vagten, når du er færdig.</li>
+                            <li>Lad ikke andre bruge caféen, når du er logget ind.</li>
+                            <li>Husk at logge ud når du er færdig.</li>
                         </ol>
                     </div>
                     <div class="clerk-welcome-options">
@@ -1806,7 +1807,7 @@
         <div id="avatar-library-divider" class="flango-section-divider"><div class="divider-line"></div><span class="divider-label">Mine avatarer</span><div class="divider-line"></div></div>
         <div id="avatar-carousel-container" class="avatar-carousel-container"></div>
     </div></div></template>
-    <template id="add-edit-product-modal-template"><div class="modal-content" style="height: auto; max-height: 90%; display: flex; flex-direction: column;"><div class="modal-header" style="display:flex;align-items:center;gap:12px;"><button type="button" id="product-form-back-btn" style="padding:8px 16px;background:#666;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:14px;white-space:nowrap;">← Tilbage</button><h2 id="product-form-title" style="margin:0;flex:1;">Tilføj Produkt</h2><span class="close-btn">&times;</span></div><div id="product-form-fields" style="overflow-y: auto; flex: 1; padding-right: 10px;"></div><button id="save-product-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0; flex-shrink: 0;">Gem Produkt</button></div></template>
+    <template id="add-edit-product-modal-template"><div class="modal-content" style="height: auto; max-height: 90%; display: flex; flex-direction: column;"><div class="modal-header" style="display:flex;align-items:center;gap:12px;"><button type="button" id="product-form-back-btn" style="padding:8px 16px;background:#666;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:14px;white-space:nowrap;">← Produktoversigt</button><h2 id="product-form-title" style="margin:0;flex:1;">Tilføj Produkt</h2><span class="close-btn">&times;</span></div><div id="product-form-fields" style="overflow-y: auto; flex: 1; padding-right: 10px;"></div><button id="save-product-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0; flex-shrink: 0;">Gem Produkt</button></div></template>
     <template id="quick-login-modal-template"><div class="modal-content"><div class="modal-header"><h2>Hvem er du?</h2><span class="close-btn">&times;</span></div><div id="quick-login-user-list" class="modal-user-list"></div><p id="quick-login-error-msg" style="color: var(--danger-color); text-align: center; display: none; margin-top: 10px;"></p></div></template>
     <template id="add-edit-user-modal-template"><div class="modal-content" style="height: auto; max-height: 90%;"><div class="modal-header"><h2 id="user-form-title">Tilføj Ny Bruger</h2><span class="close-btn">&times;</span></div><div id="user-form-fields"></div><button id="save-user-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0;">Gem Bruger</button></div></template><template id="balance-modal-template"><div class="modal-content" style="height: auto; max-width: 400px;"><div class="modal-header"><h2 id="balance-form-title">Rediger Saldo</h2><span class="close-btn">&times;</span></div><div id="balance-form-fields"></div><button id="save-balance-btn" class="action-button" style="background-color: var(--success-color); margin-top: 15px; margin-bottom: 0;">Gem</button></div></template>
     <template id="edit-user-detail-modal-template"><div class="modal-content edit-user-modal"><div class="modal-header"><h2 id="edit-user-detail-title">Rediger Bruger</h2><span class="close-btn">&times;</span></div><div class="edit-user-form"><div class="edit-user-accordion">
