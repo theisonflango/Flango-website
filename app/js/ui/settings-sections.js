@@ -2848,7 +2848,7 @@
         <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">ADMIN-LOGIN MFA</div>
         <div style="margin-bottom:12px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.5;color:var(--fsp-txt2)">
           Denne indstilling styres af Flango-support. Den afgør, hvornår en medarbejder
-          skal godkende en ny maskine — og en institution skal ikke kunne slå det fra på
+          skal godkendes på en ny enhed — og en institution skal ikke kunne slå det fra på
           egen hånd. Skal den ændres, så kontakt os.
         </div>
         ${/* Radioknapperne vises uden data-field, så de hverken kan klikkes eller
@@ -3736,17 +3736,17 @@
     }
   };
 
-  // ── Godkendte maskiner (enhedsgodkendelse: anmodninger + husets maskiner) ──
+  // ── Adgang til Flango (hvem må bruge Flango hvor) ──
   //
   // Uden en liste er en godkendelse usynlig, og så er halvdelen af problemet i
   // behold. Her ses hvad huset stoler på, hvem det gælder for, og hvornår det
   // udløber — og herfra udstedes koden til en kollega, der står ved en maskine,
   // huset ikke har godkendt endnu.
-  sections['Godkendte maskiner'] = {
+  sections['Adgang til Flango'] = {
     render(ctx) {
       return `<div class="fsp-page">
-        <div class="fsp-page-title">Godkendte maskiner</div>
-        <div class="fsp-page-desc">Maskiner huset har godkendt, og hvem de gælder for. En godkendelse ophører kun, når nogen fjerner den — eller når den udløber.</div>
+        <div class="fsp-page-title">Adgang til Flango</div>
+        <div class="fsp-page-desc">Hvem der må bruge Flango, og på hvilke enheder. Adgang gives til én medarbejder på én enhed ad gangen, og ophører kun når nogen fjerner den — eller når den udløber.</div>
 
         <div data-notify-emails style="margin-bottom:18px"></div>
 
@@ -3754,7 +3754,7 @@
 
         <div data-personalise style="margin-bottom:18px"></div>
 
-        <div class="fsp-page-desc" style="margin-bottom:8px;opacity:.7">Husets maskiner</div>
+        <div class="fsp-page-desc" style="margin-bottom:8px;opacity:.7">Hvem har adgang</div>
         <div data-machines-list style="min-height:60px">
           <div style="text-align:center;padding:24px;color:var(--fsp-txt3);font-size:13px">Indlæser…</div>
         </div>
@@ -3781,15 +3781,15 @@
         const reqs = await api.listApprovalRequests();
         if (!reqs.length) { reqEl.innerHTML = ''; return; }
         reqEl.innerHTML = `
-          <div class="fsp-page-desc" style="margin-bottom:8px;opacity:.7">Venter på godkendelse</div>
+          <div class="fsp-page-desc" style="margin-bottom:8px;opacity:.7">Venter på din godkendelse</div>
           ${reqs.map(r => `
             <div class="fsp-device-row" data-request-id="${r.id}">
               <div class="fsp-device-emoji">⏳</div>
               <div class="fsp-device-left">
-                <div class="fsp-device-title">${r.requested_by_name || 'Ukendt'} — ${r.device_name || 'ukendt maskine'}</div>
-                <div class="fsp-device-meta">Bad om adgang ${new Date(r.requested_at).toLocaleString('da-DK', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</div>
+                <div class="fsp-device-title">${r.requested_by_name || 'En medarbejder'} beder om adgang</div>
+                <div class="fsp-device-meta">På ${r.device_name || 'en ukendt enhed'} · ${new Date(r.requested_at).toLocaleString('da-DK', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</div>
               </div>
-              <button class="fsp-btn" data-action="issue" style="padding:8px 16px;font-size:12px">Udsted kode</button>
+              <button class="fsp-btn" data-action="issue" style="padding:8px 16px;font-size:12px">Giv adgang</button>
             </div>
             <div data-code-for="${r.id}"></div>
           `).join('')}`;
@@ -3802,12 +3802,12 @@
         if (!btn) return;
         const id = btn.closest('[data-request-id]')?.dataset.requestId;
         if (!id) return;
-        btn.disabled = true; btn.textContent = 'Udsteder…';
+        btn.disabled = true; btn.textContent = 'Giver adgang…';
         const res = await api.issueApprovalCode(id);
         const slot = reqEl.querySelector(`[data-code-for="${id}"]`);
         if (!res.success) {
-          if (slot) slot.innerHTML = `<div style="padding:10px 14px;color:#e85a6f;font-size:13px">${res.error || 'Kunne ikke udstede koden.'}</div>`;
-          btn.disabled = false; btn.textContent = 'Udsted kode';
+          if (slot) slot.innerHTML = `<div style="padding:10px 14px;color:#e85a6f;font-size:13px">${res.error || 'Kunne ikke give adgang.'}</div>`;
+          btn.disabled = false; btn.textContent = 'Giv adgang';
           return;
         }
         btn.style.display = 'none';
@@ -3816,8 +3816,8 @@
             <div style="font-size:34px;letter-spacing:8px;font-weight:700;text-align:center;color:var(--fsp-txt1)">${res.code}</div>
             <div style="text-align:center;font-size:12px;color:var(--fsp-txt3);margin-top:8px">Gyldig i 10 minutter</div>
             <div style="margin-top:12px;font-size:13px;color:var(--fsp-txt2);line-height:1.5">
-              <strong>Sig koden til personen selv</strong> — ansigt til ansigt, eller ring op på et nummer du kender.
-              Send den ikke som mail eller besked, og udlever den aldrig på et opkald, du ikke selv har foretaget.
+              <strong>Sig koden til vedkommende selv</strong> — ansigt til ansigt, eller ring op på et nummer du kender.
+              Send den ikke som mail eller besked, og sig den aldrig til en, der selv har ringet til dig.
             </div>
           </div>`;
       });
@@ -3833,24 +3833,24 @@
           <div class="fsp-device-row">
             <div class="fsp-device-emoji">⬆️</div>
             <div class="fsp-device-left">
-              <div class="fsp-device-title">Gør denne maskine til din egen</div>
-              <div class="fsp-device-meta">Godkendelsen her gælder hele huset og udløber ${dato(arvet.expires_at)}. Knyt den til dig — ingen kode nødvendig.</div>
+              <div class="fsp-device-title">Gør din adgang personlig</div>
+              <div class="fsp-device-meta">Adgangen på denne enhed er arvet fra husets gamle ordning og udløber ${dato(arvet.expires_at)}. Knyt den til dig — det kræver ingen kode.</div>
             </div>
             <button class="fsp-btn" data-action="personalise" style="padding:8px 16px;font-size:12px">Knyt til mig</button>
           </div>` : '';
 
-        if (!maskiner.length) { listEl.innerHTML = tomt('Ingen godkendte maskiner.'); return; }
+        if (!maskiner.length) { listEl.innerHTML = tomt('Ingen har adgang endnu.'); return; }
 
         listEl.innerHTML = maskiner.map(m => {
           const dage = dageTil(m.expires_at);
           const snart = dage !== null && dage <= 14 && !m.revoked_at;
-          const person = m.person_name || 'Hele huset (arvet)';
-          const kilde = { mfa: 'via totrinsgodkendelse', migration: 'fra migrering', tap: 'via kode', self: 'selv godkendt', superadmin: 'af support', pairing: 'parret' }[m.approval_source] || m.approval_source;
+          const person = m.person_name || 'Hele huset (arvet ordning)';
+          const kilde = { mfa: 'givet via totrinsgodkendelse', migration: 'arvet fra husets ordning', tap: 'givet af en kollega', self: 'godkendt af sig selv', superadmin: 'givet af Flango-support', pairing: 'parret' }[m.approval_source] || m.approval_source;
           return `<div class="fsp-device-row" data-device-row="${m.id}" ${m.revoked_at ? 'style="opacity:.45"' : ''}>
             <div class="fsp-device-emoji">${m.device_id === mit ? '⭐' : '💻'}</div>
             <div class="fsp-device-left">
-              <div class="fsp-device-title">${m.device_name || 'Ukendt enhed'}${m.device_id === mit ? ' — denne maskine' : ''}</div>
-              <div class="fsp-device-meta">${person} · ${kilde}${m.pin_profiler ? ' · ' + m.pin_profiler + ' hurtig-PIN' : ''}</div>
+              <div class="fsp-device-title">${person}${m.device_id === mit ? ' — her' : ''}</div>
+              <div class="fsp-device-meta">På ${m.device_name || 'ukendt enhed'} · ${kilde}${m.pin_profiler ? ' · ' + m.pin_profiler + ' hurtig-PIN' : ''}</div>
               <div class="fsp-device-meta" ${snart ? 'style="color:#f4a261"' : ''}>${m.revoked_at ? 'Tilbagekaldt ' + dato(m.revoked_at) : 'Udløber ' + dato(m.expires_at) + (snart ? ' — om ' + dage + ' dage' : '')}</div>
             </div>
             ${m.revoked_at ? '' : `<button class="fsp-btn fsp-btn-ghost" data-action="revoke-device" style="padding:8px 16px;font-size:12px;color:#e85a6f;border-color:rgba(232,90,111,0.2)">Fjern</button>`}
@@ -3872,7 +3872,7 @@
         if (!btn) return;
         const id = btn.closest('[data-device-row]')?.dataset.deviceRow;
         if (!id) return;
-        if (!confirm('Fjern husets godkendelse af denne maskine? Den, der bruger den, skal bede om adgang igen.')) return;
+        if (!confirm('Fjern denne adgang? Personen skal bede om adgang igen for at bruge Flango på enheden.')) return;
         btn.disabled = true; btn.textContent = 'Fjerner…';
         const res = await api.revokeTrustedDevice(id);
         if (res.success) await loadMachines();
@@ -3892,7 +3892,7 @@
             <div class="fsp-device-emoji">\u2709\uFE0F</div>
             <div class="fsp-device-left">
               <div class="fsp-device-title">${vist}</div>
-              <div class="fsp-device-meta">Hertil sendes besked, når en medarbejder beder om adgang på en ny maskine. Koden sendes aldrig med.</div>
+              <div class="fsp-device-meta">Hertil sendes besked, når en medarbejder beder om adgang. Koden sendes aldrig med.</div>
             </div>
             <button class="fsp-btn fsp-btn-ghost" data-action="rediger-mail" style="padding:8px 16px;font-size:12px">Skift</button>
           </div>
