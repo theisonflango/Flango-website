@@ -3740,8 +3740,9 @@
   //
   // Uden en liste er en godkendelse usynlig, og så er halvdelen af problemet i
   // behold. Her ses hvad huset stoler på, hvem det gælder for, og hvornår det
-  // udløber — og herfra udstedes koden til en kollega, der står ved en maskine,
-  // huset ikke har godkendt endnu.
+  // udløber. Koden til en ny enhed sendes automatisk til institutionens adresse
+  // for adgangsbeskeder; herfra kan en godkender lave en ny, hvis mailen ikke kom
+  // frem — og den nye afløser så den, der blev sendt.
   sections['Adgang til Flango'] = {
     render(ctx) {
       return `<div class="fsp-page">
@@ -3777,6 +3778,17 @@
       const dato = (v) => v ? new Date(v).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
       const dageTil = (v) => v ? Math.round((new Date(v) - Date.now()) / 86400000) : null;
 
+      // Godkenderen skal kunne se, at der allerede ER sendt en kode — ellers
+      // trykker hun "Ny kode" i den tro at intet er sket, og slår dermed den kode
+      // ihjel, kollegaen sidder med.
+      const kodeStatus = (r) => {
+        if (!r.code_expires_at) return 'Ingen kode sendt endnu';
+        const udloebet = new Date(r.code_expires_at) < new Date();
+        if (udloebet) return 'Koden er udløbet — lav en ny';
+        const kl = new Date(r.code_expires_at).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
+        return `Kode sendt på mail · gælder til kl. ${kl}`;
+      };
+
       async function loadRequests() {
         const reqs = await api.listApprovalRequests();
         if (!reqs.length) { reqEl.innerHTML = ''; return; }
@@ -3788,33 +3800,35 @@
               <div class="fsp-device-left">
                 <div class="fsp-device-title">${r.requested_by_name || 'En medarbejder'} beder om adgang</div>
                 <div class="fsp-device-meta">På ${r.device_name || 'en ukendt enhed'} · ${new Date(r.requested_at).toLocaleString('da-DK', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</div>
+                <div class="fsp-device-meta" style="opacity:.85">${kodeStatus(r)}</div>
               </div>
-              <button class="fsp-btn" data-action="issue" style="padding:8px 16px;font-size:12px">Giv adgang</button>
+              <button class="fsp-btn" data-action="issue" style="padding:8px 16px;font-size:12px">Ny kode her</button>
             </div>
             <div data-code-for="${r.id}"></div>
           `).join('')}`;
       }
 
-      // Koden vises kun her, kun én gang, og med den regel der bærer
-      // sikkerheden: den gives til personen — ikke sendt i en besked.
+      // En ny kode her afløser den, der blev sendt på mail. Reglen der bærer
+      // sikkerheden er den samme uanset hvor koden kommer fra: den gives til
+      // personen af en, der ved hvem der spurgte.
       reqEl.addEventListener('click', async (e) => {
         const btn = e.target.closest('[data-action="issue"]');
         if (!btn) return;
         const id = btn.closest('[data-request-id]')?.dataset.requestId;
         if (!id) return;
-        btn.disabled = true; btn.textContent = 'Giver adgang…';
+        btn.disabled = true; btn.textContent = 'Laver kode…';
         const res = await api.issueApprovalCode(id);
         const slot = reqEl.querySelector(`[data-code-for="${id}"]`);
         if (!res.success) {
           if (slot) slot.innerHTML = `<div style="padding:10px 14px;color:#e85a6f;font-size:13px">${res.error || 'Kunne ikke give adgang.'}</div>`;
-          btn.disabled = false; btn.textContent = 'Giv adgang';
+          btn.disabled = false; btn.textContent = 'Ny kode her';
           return;
         }
         btn.style.display = 'none';
         if (slot) slot.innerHTML = `
           <div style="margin:0 0 14px;padding:16px;border-radius:12px;background:rgba(93,202,122,0.08);border:1px solid rgba(93,202,122,0.2)">
             <div style="font-size:34px;letter-spacing:8px;font-weight:700;text-align:center;color:var(--fsp-txt1)">${res.code}</div>
-            <div style="text-align:center;font-size:12px;color:var(--fsp-txt3);margin-top:8px">Gyldig i 10 minutter</div>
+            <div style="text-align:center;font-size:12px;color:var(--fsp-txt3);margin-top:8px">Gyldig i 10 minutter · den kode, der blev sendt på mail, virker ikke længere</div>
             <div style="margin-top:12px;font-size:13px;color:var(--fsp-txt2);line-height:1.5">
               <strong>Sig koden til vedkommende selv</strong> — ansigt til ansigt, eller ring op på et nummer du kender.
               Send den ikke som mail eller besked, og sig den aldrig til en, der selv har ringet til dig.
