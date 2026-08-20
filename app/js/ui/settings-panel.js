@@ -12,7 +12,7 @@
     { name: 'Hovedmenu', items: [{ l: 'Produkter & Indbetalinger', c: '#e8734a' }, { l: 'Tilmelding', c: '#5ba0d8' }, { l: 'Restaurant Mode', c: '#f4a261' }, { l: 'Historik', c: '#c77ddb' }] },
     { name: 'Institutionens Præferencer', items: [{ l: 'Toolbar', c: '#5ba0d8' }, { l: 'Ugeplan', c: '#7aa87a' }, { l: 'Beløbsgrænse', c: '#e8734a' }, { l: 'Sukkerpolitik', c: '#e85a6f' }, { l: 'Ekspedient-login', c: '#f4a261' }] },
     { name: 'Administration', items: [{ l: 'Forældreportal', c: '#c77ddb' }, { l: 'Beskeder', c: '#5dca7a' }, { l: 'Betalingsmetoder', c: '#5dca7a' }, { l: 'Profilbilleder', c: '#c77ddb' }, { l: 'Godkendelser', c: '#f4a261' }, { l: 'Produktikoner – Deling', c: '#5ba0d8' }, { l: 'MobilePay CSV Import', c: '#f4a261' }, { l: 'Brugernavne', c: '#5dca7a' }, { l: 'Brugernummer', c: '#5ba0d8' }, { l: 'Opret/Opdater brugere auto.', c: '#e8734a' }] },
-    { name: 'Datasikkerhed', items: [{ l: 'Totrinsgodkendelse (MFA)', c: '#e85a6f' }, { l: 'Auto-sletning af inaktive', c: '#f4a261' }, { l: 'Mine enheder', c: '#5ba0d8' }, { l: 'Adgang til Flango', c: '#5dca7a' }, { l: 'Saldoliste ved låsning', c: '#5dca7a' }, { l: 'Anmod om nulstilling', c: '#c77ddb' }] },
+    { name: 'Datasikkerhed', items: [{ l: 'Adgang til Flango', c: '#5dca7a' }, { l: 'Auto-sletning af inaktive', c: '#f4a261' }, { l: 'Saldoliste ved låsning', c: '#5dca7a' }, { l: 'Anmod om nulstilling', c: '#c77ddb' }] },
     { name: 'Diverse', items: [{ l: 'Udseende', c: '#c77ddb' }, { l: 'Dagens Sortiment', c: '#f4a261' }, { l: 'Min Flango', c: '#e8734a' }, { l: 'Hjælp', c: '#5ba0d8' }, { l: 'Opdateringer', c: '#5dca7a' }, { l: 'Feedback', c: '#f4a261' }, { l: 'Lydindstillinger', c: '#5ba0d8' }] }
   ];
 
@@ -39,9 +39,7 @@
     'Brugernavne': '<rect x="2" y="3.5" width="12" height="9" rx="1.5"/><circle cx="5.5" cy="7" r="1.4"/><path d="M3.6 10.8c.3-1.2 1.1-1.9 1.9-1.9s1.6.7 1.9 1.9"/><path d="M9.5 6.5h3M9.5 9h3"/>',
     'Brugernummer': '<rect x="2.5" y="3" width="11" height="10" rx="1.5"/><path d="M6 6v4M6 6l-1 1M9 6h1.2v1.8c0 .6-1.2.6-1.2 1.4V10h1.4"/>',
     'Opret/Opdater brugere auto.': '<path d="M2 8a6 6 0 0110.5-4M14 8a6 6 0 01-10.5 4"/><path d="M12 1.5V4.5h-3"/><path d="M4 14.5V11.5h3"/>',
-    'Totrinsgodkendelse (MFA)': '<rect x="4" y="7" width="8" height="7" rx="1.5"/><path d="M6 7V5a2 2 0 014 0v2"/><circle cx="8" cy="10.5" r="1"/>',
     'Auto-sletning af inaktive': '<path d="M3 4.5h10"/><path d="M5.5 4.5V3.5a1 1 0 011-1h3a1 1 0 011 1v1"/><path d="M4.5 4.5v8a1.5 1.5 0 001.5 1.5h4a1.5 1.5 0 001.5-1.5v-8"/>',
-    'Mine enheder': '<rect x="4" y="1.5" width="8" height="13" rx="1.5"/><path d="M7 12.5h2"/>',
     'Adgang til Flango': '<rect x="1.5" y="3" width="13" height="8" rx="1.5"/><path d="M5.5 13.5h5"/><path d="M6 8l1.5 1.5L10 6.5"/>',
     'Saldoliste ved låsning': '<path d="M3 4h10M3 7h8M3 10h6M3 13h9"/>',
     'Anmod om nulstilling': '<path d="M2 8a6 6 0 0110.5-4"/><path d="M12 1.5V4.5h-3"/><circle cx="8" cy="8" r="1.5"/>',

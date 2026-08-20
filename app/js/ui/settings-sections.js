@@ -2837,50 +2837,11 @@
   // ═══════════════════════════════════════════════════
 
   // ── Totrinsgodkendelse (MFA) (settings section) ──
-  sections['Totrinsgodkendelse (MFA)'] = {
-    render(ctx) {
-      const inst = ctx.institutionData || {};
-      const policy = inst.admin_mfa_policy || 'off';
-      const parentMfa = !!inst.parent_mfa_new_device;
-      return `<div class="fsp-page">
-        <div class="fsp-page-title">Totrinsgodkendelse (MFA)</div>
-        <div class="fsp-page-desc">Totrinsgodkendelse tilf\u00f8jer et ekstra sikkerhedslag ved login. Brugeren skal indtaste en 6-cifret kode fra en authenticator-app (Google Authenticator, Microsoft Authenticator o.l.) ud over kodeord.</div>
-        <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">ADMIN-LOGIN MFA</div>
-        <div style="margin-bottom:12px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.5;color:var(--fsp-txt2)">
-          Denne indstilling styres af Flango-support. Den afgør, hvornår en medarbejder
-          skal godkendes på en ny enhed — og en institution skal ikke kunne slå det fra på
-          egen hånd. Skal den ændres, så kontakt os.
-        </div>
-        ${/* Radioknapperne vises uden data-field, så de hverken kan klikkes eller
-             gemmes: serveren afviser alligevel ændringen (superadmin-only siden
-             20. aug.), og en knap der ser ud til at virke er værre end en, der
-             tydeligt ikke gør. */''}
-        ${[
-          { v: 'off', t: 'Fra (ingen MFA)', h: '' },
-          { v: 'new_device', t: 'Kun ved ny enhed', h: 'Kr\u00e6ver MFA f\u00f8rste gang man logger ind p\u00e5 en ny browser/enhed.' },
-          { v: 'always', t: 'Altid ved login', h: 'Kr\u00e6ver MFA ved hver ny session.' }
-        ].map(opt => `<div class="fsp-sub" style="opacity:.5;pointer-events:none">
-          <div><div class="fsp-sub-title">${opt.t}</div>${opt.h ? `<div class="fsp-sub-hint">${opt.h}</div>` : ''}</div>
-          <div class="fsp-radio${policy === opt.v ? ' on' : ''}"></div>
-        </div>`).join('')}
-        <div style="margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05)">
-          <div class="fsp-block">
-            <div class="fsp-row">
-              <div style="flex:1"><div class="fsp-row-title">Kr\u00e6v MFA for for\u00e6ldre ved ny enhed</div><div class="fsp-row-desc">For\u00e6ldre skal bruge authenticator-app f\u00f8rste gang de logger ind p\u00e5 en ny enhed i for\u00e6ldreportalen.</div></div>
-              <div class="fsp-toggle${parentMfa ? ' on' : ''}" data-field="parent_mfa_new_device"></div>
-            </div>
-          </div>
-        </div>
-      </div>`;
-    },
-    wire(container, ctx) {
-      pageAlign(container);
-      wireToggles(container, ctx);
-      wireRadios(container, ctx);
-    }
-  };
-
-  // ── Auto-sletning af inaktive (settings section) ──
+  // Totrinsgodkendelse (MFA) havde sit eget menupunkt indtil 20-08-2026. Det er
+  // fjernet, ikke flyttet: institutionen kan ikke længere ændre politikken (den er
+  // superadmin-only), og det eneste den KUNNE ændre dér var en kontakt for
+  // forældre-MFA, som ingen kode nogensinde læste. Politikken vises nu som én
+  // linje i "Adgang til Flango", hvor den hører hjemme.
   sections['Brugernavne'] = {
     render(ctx) {
       const inst = ctx.institutionData || {};
@@ -3654,100 +3615,29 @@
   };
 
   // ── Mine enheder (async action section) ──
-  sections['Mine enheder'] = {
-    render(ctx) {
-      return `<div class="fsp-page">
-        <div class="fsp-page-title">Mine enheder</div>
-        <div class="fsp-page-desc">Enheder der er husket via \u201CHusk mig\u201D. Fjern en enhed for at kr\u00e6ve login igen.</div>
-        <div data-devices-list style="min-height:60px">
-          <div style="text-align:center;padding:24px;color:var(--fsp-txt3);font-size:13px">Indl\u00e6ser enheder...</div>
-        </div>
-        <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:16px;padding-top:16px">
-          <button class="fsp-btn" data-action="revoke-all" style="width:100%;display:flex;justify-content:center;padding:14px;background:rgba(232,90,111,0.08);color:#e85a6f;border:1px solid rgba(232,90,111,0.15)">Fjern alle enheder</button>
-        </div>
-      </div>`;
-    },
-    wire(container, ctx) {
-      pageAlign(container);
-      const listEl = container.querySelector('[data-devices-list]');
-      const trust = window.__flangoDeviceTrust;
-
-      // Load devices
-      async function loadDevices() {
-        if (!trust?.getMyDeviceTokens) {
-          listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--fsp-txt3);font-size:13px">Enhedstjeneste er ikke tilg\u00e6ngelig.</div>';
-          return;
-        }
-        try {
-          const tokens = await trust.getMyDeviceTokens();
-          if (!tokens || tokens.length === 0) {
-            listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--fsp-txt3);font-size:13px">Ingen enheder registreret.</div>';
-            return;
-          }
-          listEl.innerHTML = tokens.map(t => {
-            const name = t.device_name || t.name || 'Ukendt enhed';
-            const lastUsed = t.last_used_at ? new Date(t.last_used_at).toLocaleDateString('da-DK') : '';
-            return `<div class="fsp-device-row" data-token-id="${t.id}">
-              <div class="fsp-device-emoji">\uD83D\uDCF1</div>
-              <div class="fsp-device-left">
-                <div class="fsp-device-title">${name}</div>
-                ${lastUsed ? `<div class="fsp-device-meta">Sidst brugt: ${lastUsed}</div>` : ''}
-              </div>
-              <button class="fsp-btn fsp-btn-ghost" data-action="revoke" style="padding:8px 16px;font-size:12px;color:#e85a6f;border-color:rgba(232,90,111,0.2)">Fjern</button>
-            </div>`;
-          }).join('');
-        } catch (e) {
-          listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--fsp-txt3);font-size:13px">Kunne ikke hente enheder.</div>';
-        }
-      }
-      loadDevices();
-
-      // Revoke single device
-      listEl.addEventListener('click', async (e) => {
-        const btn = e.target.closest('[data-action="revoke"]');
-        if (!btn) return;
-        const row = btn.closest('[data-token-id]');
-        const tokenId = row?.dataset.tokenId;
-        if (!tokenId) return;
-        btn.textContent = 'Fjerner...';
-        btn.disabled = true;
-        const result = await trust.revokeDeviceToken(tokenId);
-        if (result?.success) {
-          row.remove();
-          if (!listEl.querySelector('.fsp-device-row')) {
-            listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--fsp-txt3);font-size:13px">Ingen enheder registreret.</div>';
-          }
-        } else {
-          btn.textContent = 'Fjern';
-          btn.disabled = false;
-        }
-      });
-
-      // Revoke all
-      container.querySelector('[data-action="revoke-all"]')?.addEventListener('click', async function () {
-        this.textContent = 'Fjerner...';
-        this.disabled = true;
-        const result = await trust?.revokeAllDeviceTokens?.();
-        trust?.clearAllDeviceUsers?.();
-        listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--fsp-txt3);font-size:13px">Alle enheder fjernet.</div>';
-        this.textContent = 'Fjern alle enheder';
-        this.disabled = false;
-      });
-    }
-  };
-
-  // ── Adgang til Flango (hvem må bruge Flango hvor) ──
-  //
-  // Uden en liste er en godkendelse usynlig, og så er halvdelen af problemet i
-  // behold. Her ses hvad huset stoler på, hvem det gælder for, og hvornår det
-  // udløber. Koden til en ny enhed sendes automatisk til institutionens adresse
-  // for adgangsbeskeder; herfra kan en godkender lave en ny, hvis mailen ikke kom
-  // frem — og den nye afløser så den, der blev sendt.
+  // "Mine enheder" havde sit eget menupunkt og sin egen liste — over device_tokens,
+  // altså "Husk mig"/hurtig-PIN. Ved siden af "Adgang til Flango", der viser
+  // trusted_devices. To lister fra to tabeller, begge svar på "hvor må jeg bruge
+  // Flango", i samme menu. Ingen kunne se forskel. Listen ligger nu som et eget
+  // afsnit på samme side, med en overskrift der siger hvad den er.
   sections['Adgang til Flango'] = {
     render(ctx) {
+      // Politikken er superadmin-only. Den vises derfor som en oplysning, ikke som
+      // en indstilling — tre grånede radioknapper er en kontakt, der lader som om.
+      const politik = {
+        off: 'Totrinsgodkendelse er ikke påkrævet her.',
+        new_device: 'Totrinsgodkendelse kræves, første gang en medarbejder bruger en ny enhed.',
+        always: 'Totrinsgodkendelse kræves ved hvert login.',
+      }[(ctx.institutionData || {}).admin_mfa_policy || 'off'];
+
       return `<div class="fsp-page">
         <div class="fsp-page-title">Adgang til Flango</div>
         <div class="fsp-page-desc">Hvem der må bruge Flango, og på hvilke enheder. Adgang gives til én medarbejder på én enhed ad gangen, og ophører kun når nogen fjerner den — eller når den udløber.</div>
+
+        <div style="margin-bottom:18px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.5;color:var(--fsp-txt2)">
+          ${politik} Indstillingen styres af Flango-support — en institution skal ikke kunne
+          slå kravet fra på egen hånd. Skal den ændres, så kontakt os.
+        </div>
 
         <div data-notify-emails style="margin-bottom:18px"></div>
 
@@ -3759,6 +3649,12 @@
         <div data-machines-list style="min-height:60px">
           <div style="text-align:center;padding:24px;color:var(--fsp-txt3);font-size:13px">Indlæser…</div>
         </div>
+
+        <div class="fsp-page-desc" style="margin:26px 0 8px;opacity:.7">Dine huskede logins</div>
+        <div class="fsp-page-desc" style="margin-bottom:10px;font-size:12px">Enheder hvor du kan logge ind med hurtig-PIN i stedet for e-mail og kodeord. Det er noget andet end adgangen ovenfor: fjerner du et husket login, skal du taste e-mail og kodeord igen — men du beholder din adgang til Flango.</div>
+        <div data-remembered-list style="min-height:40px">
+          <div style="text-align:center;padding:18px;color:var(--fsp-txt3);font-size:13px">Indlæser…</div>
+        </div>
       </div>`;
     },
     wire(container, ctx) {
@@ -3768,6 +3664,7 @@
       const reqEl = container.querySelector('[data-approval-requests]');
       const persEl = container.querySelector('[data-personalise]');
       const listEl = container.querySelector('[data-machines-list]');
+      const husketEl = container.querySelector('[data-remembered-list]');
       const tomt = (t) => `<div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">${t}</div>`;
 
       if (!api) {
@@ -3783,10 +3680,13 @@
       // ihjel, kollegaen sidder med.
       const kodeStatus = (r) => {
         if (!r.code_expires_at) return 'Ingen kode sendt endnu';
-        const udloebet = new Date(r.code_expires_at) < new Date();
-        if (udloebet) return 'Koden er udløbet — lav en ny';
+        if (new Date(r.code_expires_at) < new Date()) return 'Koden er udløbet — lav en ny';
         const kl = new Date(r.code_expires_at).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
-        return `Kode sendt på mail · gælder til kl. ${kl}`;
+        // Hvor koden kom fra, kan fladen ikke regne ud — serveren siger det
+        // (`code_issued_by_person`). Uden det stod der "sendt på mail" om en kode,
+        // man lige havde lavet på skærmen.
+        const hvor = r.code_issued_by_person ? 'Kode vist på skærmen' : 'Kode sendt på mail';
+        return `${hvor} · gælder til kl. ${kl}`;
       };
 
       async function loadRequests() {
@@ -3893,6 +3793,56 @@
         else { btn.disabled = false; btn.textContent = 'Fjern'; }
       });
 
+      // Huskede logins (device_tokens). Egen liste, fordi det er en anden ting end
+      // adgangen ovenfor: her handler det om, hvorvidt DU slipper for at taste
+      // e-mail og kodeord — ikke om hvem huset har godkendt.
+      async function loadHuskede() {
+        const trust = window.__flangoDeviceTrust;
+        if (!trust?.getMyDeviceTokens) {
+          husketEl.innerHTML = tomt('Enhedstjenesten er ikke tilgængelig.');
+          return;
+        }
+        let tokens;
+        try { tokens = await trust.getMyDeviceTokens(); }
+        catch { husketEl.innerHTML = tomt('Kunne ikke hente huskede logins.'); return; }
+
+        if (!tokens || !tokens.length) { husketEl.innerHTML = tomt('Ingen huskede logins.'); return; }
+
+        husketEl.innerHTML = tokens.map(t => {
+          const navn = t.device_name || t.name || 'Ukendt enhed';
+          const sidst = t.last_used_at ? new Date(t.last_used_at).toLocaleDateString('da-DK') : '';
+          return `<div class="fsp-device-row" data-token-id="${t.id}">
+            <div class="fsp-device-emoji">📱</div>
+            <div class="fsp-device-left">
+              <div class="fsp-device-title">${navn}</div>
+              ${sidst ? `<div class="fsp-device-meta">Sidst brugt: ${sidst}</div>` : ''}
+            </div>
+            <button class="fsp-btn fsp-btn-ghost" data-action="glem-login" style="padding:8px 16px;font-size:12px;color:#e85a6f;border-color:rgba(232,90,111,0.2)">Fjern</button>
+          </div>`;
+        }).join('') + `<div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:12px;padding-top:12px">
+            <button class="fsp-btn" data-action="glem-alle" style="width:100%;display:flex;justify-content:center;padding:12px;background:rgba(232,90,111,0.08);color:#e85a6f;border:1px solid rgba(232,90,111,0.15)">Fjern alle huskede logins</button>
+          </div>`;
+      }
+
+      husketEl.addEventListener('click', async (e) => {
+        const trust = window.__flangoDeviceTrust;
+        const en = e.target.closest('[data-action="glem-login"]');
+        const alle = e.target.closest('[data-action="glem-alle"]');
+        if (!en && !alle) return;
+        const knap = en || alle;
+
+        if (alle && !confirm('Fjern alle huskede logins? Du skal taste e-mail og kodeord næste gang — din adgang til Flango består.')) return;
+
+        knap.disabled = true; knap.textContent = 'Fjerner…';
+        try {
+          if (en) await trust.revokeDeviceToken(en.closest('[data-token-id]').dataset.tokenId);
+          else await trust.revokeAllDeviceTokens();
+          await loadHuskede();
+        } catch {
+          knap.disabled = false; knap.textContent = en ? 'Fjern' : 'Fjern alle huskede logins';
+        }
+      });
+
       // Hvem får besked. Institutionens eget valg — ikke leverandørens felt.
       // Serveren kræver en betroet session for at ændre den: den, der kan
       // omdirigere godkendelsesbeskeder, kan omgå hele modellen.
@@ -3976,6 +3926,7 @@
       loadEmails();
       loadRequests();
       loadMachines();
+      loadHuskede();
     }
   };
 

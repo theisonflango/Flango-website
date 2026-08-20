@@ -108,7 +108,6 @@
     security_mfa: [
       'admin_mfa_policy',
     ],
-    security_mfa_parent: ['parent_mfa_new_device'],
     skaermtid: [
       'skaermtid_enabled', 'skaermtid_show_usage', 'skaermtid_show_remaining',
       'skaermtid_show_rules', 'skaermtid_allow_personal_limits',
@@ -159,7 +158,6 @@
     skaermtid_show_usage: 'skaermtid',
     // MFA
     admin_mfa_policy: 'security_mfa',
-    parent_mfa_new_device: 'security_mfa_parent',
   };
 
   // ─── Profilbillede-type → modul ───
