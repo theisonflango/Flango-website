@@ -3643,18 +3643,11 @@
 
         <div data-approval-requests style="margin-bottom:18px"></div>
 
-        <div data-personalise style="margin-bottom:18px"></div>
-
         <div class="fsp-page-desc" style="margin-bottom:8px;opacity:.7">Hvem har adgang</div>
         <div data-machines-list style="min-height:60px">
           <div style="text-align:center;padding:24px;color:var(--fsp-txt3);font-size:13px">Indlæser…</div>
         </div>
 
-        <div class="fsp-page-desc" style="margin:26px 0 8px;opacity:.7">Dine huskede logins</div>
-        <div class="fsp-page-desc" style="margin-bottom:10px;font-size:12px">Enheder hvor du kan logge ind med hurtig-PIN i stedet for e-mail og kodeord. Det er noget andet end adgangen ovenfor: fjerner du et husket login, skal du taste e-mail og kodeord igen — men du beholder din adgang til Flango.</div>
-        <div data-remembered-list style="min-height:40px">
-          <div style="text-align:center;padding:18px;color:var(--fsp-txt3);font-size:13px">Indlæser…</div>
-        </div>
       </div>`;
     },
     wire(container, ctx) {
@@ -3662,9 +3655,7 @@
       const api = window.__flangoDeviceApproval;
       const notifyEl = container.querySelector('[data-notify-emails]');
       const reqEl = container.querySelector('[data-approval-requests]');
-      const persEl = container.querySelector('[data-personalise]');
       const listEl = container.querySelector('[data-machines-list]');
-      const husketEl = container.querySelector('[data-remembered-list]');
       const tomt = (t) => `<div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">${t}</div>`;
 
       if (!api) {
@@ -3675,18 +3666,11 @@
       const dato = (v) => v ? new Date(v).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
       const dageTil = (v) => v ? Math.round((new Date(v) - Date.now()) / 86400000) : null;
 
-      // Godkenderen skal kunne se, at der allerede ER sendt en kode — ellers
-      // trykker hun "Ny kode" i den tro at intet er sket, og slår dermed den kode
-      // ihjel, kollegaen sidder med.
       const kodeStatus = (r) => {
-        if (!r.code_expires_at) return 'Ingen kode sendt endnu';
-        if (new Date(r.code_expires_at) < new Date()) return 'Koden er udløbet — lav en ny';
+        if (!r.code_expires_at) return 'Ingen kode sendt';
+        if (new Date(r.code_expires_at) < new Date()) return 'Koden er udløbet — bed om adgang igen';
         const kl = new Date(r.code_expires_at).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
-        // Hvor koden kom fra, kan fladen ikke regne ud — serveren siger det
-        // (`code_issued_by_person`). Uden det stod der "sendt på mail" om en kode,
-        // man lige havde lavet på skærmen.
-        const hvor = r.code_issued_by_person ? 'Kode vist på skærmen' : 'Kode sendt på mail';
-        return `${hvor} · gælder til kl. ${kl}`;
+        return `Kode sendt på mail · gælder til kl. ${kl}`;
       };
 
       async function loadRequests() {
@@ -3702,56 +3686,17 @@
                 <div class="fsp-device-meta">På ${r.device_name || 'en ukendt enhed'} · ${new Date(r.requested_at).toLocaleString('da-DK', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</div>
                 <div class="fsp-device-meta" style="opacity:.85">${kodeStatus(r)}</div>
               </div>
-              <button class="fsp-btn" data-action="issue" style="padding:8px 16px;font-size:12px">Ny kode her</button>
             </div>
-            <div data-code-for="${r.id}"></div>
           `).join('')}`;
       }
 
-      // En ny kode her afløser den, der blev sendt på mail. Reglen der bærer
-      // sikkerheden er den samme uanset hvor koden kommer fra: den gives til
-      // personen af en, der ved hvem der spurgte.
-      reqEl.addEventListener('click', async (e) => {
-        const btn = e.target.closest('[data-action="issue"]');
-        if (!btn) return;
-        const id = btn.closest('[data-request-id]')?.dataset.requestId;
-        if (!id) return;
-        btn.disabled = true; btn.textContent = 'Laver kode…';
-        const res = await api.issueApprovalCode(id);
-        const slot = reqEl.querySelector(`[data-code-for="${id}"]`);
-        if (!res.success) {
-          if (slot) slot.innerHTML = `<div style="padding:10px 14px;color:#e85a6f;font-size:13px">${res.error || 'Kunne ikke give adgang.'}</div>`;
-          btn.disabled = false; btn.textContent = 'Ny kode her';
-          return;
-        }
-        btn.style.display = 'none';
-        if (slot) slot.innerHTML = `
-          <div style="margin:0 0 14px;padding:16px;border-radius:12px;background:rgba(93,202,122,0.08);border:1px solid rgba(93,202,122,0.2)">
-            <div style="font-size:34px;letter-spacing:8px;font-weight:700;text-align:center;color:var(--fsp-txt1)">${res.code}</div>
-            <div style="text-align:center;font-size:12px;color:var(--fsp-txt3);margin-top:8px">Gyldig i 10 minutter · den kode, der blev sendt på mail, virker ikke længere</div>
-            <div style="margin-top:12px;font-size:13px;color:var(--fsp-txt2);line-height:1.5">
-              <strong>Sig koden til vedkommende selv</strong> — ansigt til ansigt, eller ring op på et nummer du kender.
-              Send den ikke som mail eller besked, og sig den aldrig til en, der selv har ringet til dig.
-            </div>
-          </div>`;
-      });
+      // Ingen knap til at lave en kode her. Koden fødes ved anmodningen og sendes til
+      // institutionens adresse — én vej ind, ikke to. Kommer beskeden ikke frem, er
+      // vejen at bede om adgang igen, ikke at omgå kanalen fra en skærm.
 
       async function loadMachines() {
         const maskiner = await api.listTrustedDevices();
         const mit = api.getDeviceId ? api.getDeviceId() : null;
-
-        // Arvet godkendelse på DENNE maskine kan gøres personlig uden kode:
-        // maskinen er allerede husets, og brugeren er allerede logget ind på den.
-        const arvet = maskiner.find(m => m.device_id === mit && !m.user_id && !m.revoked_at);
-        persEl.innerHTML = arvet ? `
-          <div class="fsp-device-row">
-            <div class="fsp-device-emoji">⬆️</div>
-            <div class="fsp-device-left">
-              <div class="fsp-device-title">Gør din adgang personlig</div>
-              <div class="fsp-device-meta">Adgangen på denne enhed er arvet fra husets gamle ordning og udløber ${dato(arvet.expires_at)}. Knyt den til dig — det kræver ingen kode.</div>
-            </div>
-            <button class="fsp-btn" data-action="personalise" style="padding:8px 16px;font-size:12px">Knyt til mig</button>
-          </div>` : '';
 
         if (!maskiner.length) { listEl.innerHTML = tomt('Ingen har adgang endnu.'); return; }
 
@@ -3772,15 +3717,6 @@
         }).join('');
       }
 
-      persEl.addEventListener('click', async (e) => {
-        const btn = e.target.closest('[data-action="personalise"]');
-        if (!btn) return;
-        btn.disabled = true; btn.textContent = '…';
-        const res = await api.personaliseInheritedDevice();
-        if (res.success) { await loadMachines(); }
-        else { btn.disabled = false; btn.textContent = 'Knyt til mig'; }
-      });
-
       listEl.addEventListener('click', async (e) => {
         const btn = e.target.closest('[data-action="revoke-device"]');
         if (!btn) return;
@@ -3791,56 +3727,6 @@
         const res = await api.revokeTrustedDevice(id);
         if (res.success) await loadMachines();
         else { btn.disabled = false; btn.textContent = 'Fjern'; }
-      });
-
-      // Huskede logins (device_tokens). Egen liste, fordi det er en anden ting end
-      // adgangen ovenfor: her handler det om, hvorvidt DU slipper for at taste
-      // e-mail og kodeord — ikke om hvem huset har godkendt.
-      async function loadHuskede() {
-        const trust = window.__flangoDeviceTrust;
-        if (!trust?.getMyDeviceTokens) {
-          husketEl.innerHTML = tomt('Enhedstjenesten er ikke tilgængelig.');
-          return;
-        }
-        let tokens;
-        try { tokens = await trust.getMyDeviceTokens(); }
-        catch { husketEl.innerHTML = tomt('Kunne ikke hente huskede logins.'); return; }
-
-        if (!tokens || !tokens.length) { husketEl.innerHTML = tomt('Ingen huskede logins.'); return; }
-
-        husketEl.innerHTML = tokens.map(t => {
-          const navn = t.device_name || t.name || 'Ukendt enhed';
-          const sidst = t.last_used_at ? new Date(t.last_used_at).toLocaleDateString('da-DK') : '';
-          return `<div class="fsp-device-row" data-token-id="${t.id}">
-            <div class="fsp-device-emoji">📱</div>
-            <div class="fsp-device-left">
-              <div class="fsp-device-title">${navn}</div>
-              ${sidst ? `<div class="fsp-device-meta">Sidst brugt: ${sidst}</div>` : ''}
-            </div>
-            <button class="fsp-btn fsp-btn-ghost" data-action="glem-login" style="padding:8px 16px;font-size:12px;color:#e85a6f;border-color:rgba(232,90,111,0.2)">Fjern</button>
-          </div>`;
-        }).join('') + `<div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:12px;padding-top:12px">
-            <button class="fsp-btn" data-action="glem-alle" style="width:100%;display:flex;justify-content:center;padding:12px;background:rgba(232,90,111,0.08);color:#e85a6f;border:1px solid rgba(232,90,111,0.15)">Fjern alle huskede logins</button>
-          </div>`;
-      }
-
-      husketEl.addEventListener('click', async (e) => {
-        const trust = window.__flangoDeviceTrust;
-        const en = e.target.closest('[data-action="glem-login"]');
-        const alle = e.target.closest('[data-action="glem-alle"]');
-        if (!en && !alle) return;
-        const knap = en || alle;
-
-        if (alle && !confirm('Fjern alle huskede logins? Du skal taste e-mail og kodeord næste gang — din adgang til Flango består.')) return;
-
-        knap.disabled = true; knap.textContent = 'Fjerner…';
-        try {
-          if (en) await trust.revokeDeviceToken(en.closest('[data-token-id]').dataset.tokenId);
-          else await trust.revokeAllDeviceTokens();
-          await loadHuskede();
-        } catch {
-          knap.disabled = false; knap.textContent = en ? 'Fjern' : 'Fjern alle huskede logins';
-        }
       });
 
       // Hvem får besked. Institutionens eget valg — ikke leverandørens felt.
@@ -3926,7 +3812,6 @@
       loadEmails();
       loadRequests();
       loadMachines();
-      loadHuskede();
     }
   };
 
