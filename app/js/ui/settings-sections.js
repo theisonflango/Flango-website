@@ -2846,13 +2846,22 @@
         <div class="fsp-page-title">Totrinsgodkendelse (MFA)</div>
         <div class="fsp-page-desc">Totrinsgodkendelse tilf\u00f8jer et ekstra sikkerhedslag ved login. Brugeren skal indtaste en 6-cifret kode fra en authenticator-app (Google Authenticator, Microsoft Authenticator o.l.) ud over kodeord.</div>
         <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">ADMIN-LOGIN MFA</div>
+        <div style="margin-bottom:12px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.5;color:var(--fsp-txt2)">
+          Denne indstilling styres af Flango-support. Den afgør, hvornår en medarbejder
+          skal godkende en ny maskine — og en institution skal ikke kunne slå det fra på
+          egen hånd. Skal den ændres, så kontakt os.
+        </div>
+        ${/* Radioknapperne vises uden data-field, så de hverken kan klikkes eller
+             gemmes: serveren afviser alligevel ændringen (superadmin-only siden
+             20. aug.), og en knap der ser ud til at virke er værre end en, der
+             tydeligt ikke gør. */''}
         ${[
           { v: 'off', t: 'Fra (ingen MFA)', h: '' },
           { v: 'new_device', t: 'Kun ved ny enhed', h: 'Kr\u00e6ver MFA f\u00f8rste gang man logger ind p\u00e5 en ny browser/enhed.' },
           { v: 'always', t: 'Altid ved login', h: 'Kr\u00e6ver MFA ved hver ny session.' }
-        ].map(opt => `<div class="fsp-sub">
+        ].map(opt => `<div class="fsp-sub" style="opacity:.5;pointer-events:none">
           <div><div class="fsp-sub-title">${opt.t}</div>${opt.h ? `<div class="fsp-sub-hint">${opt.h}</div>` : ''}</div>
-          <div class="fsp-radio${policy === opt.v ? ' on' : ''}" data-field="admin_mfa_policy" data-value="${opt.v}"></div>
+          <div class="fsp-radio${policy === opt.v ? ' on' : ''}"></div>
         </div>`).join('')}
         <div style="margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05)">
           <div class="fsp-block">
