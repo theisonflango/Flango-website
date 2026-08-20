@@ -376,8 +376,8 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-BsDdVVWZ.js"></script>
-  <link rel="stylesheet" crossorigin href="/app/assets/main-KAF1GpK1.css">
+  <script type="module" crossorigin src="/app/assets/main-BDfi0xvf.js"></script>
+  <link rel="stylesheet" crossorigin href="/app/assets/main-BNbfJED5.css">
 </head>
 <body>
 
@@ -485,15 +485,15 @@
     <div id="screen-device-request" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
         <div class="lock-icon">🔑</div>
-        <h1>Denne enhed er ikke godkendt til dig</h1>
-        <p class="login-subtitle" id="device-request-intro">Du er logget ind som <strong id="device-request-who">dig</strong>. Flango godkendes for én medarbejder ad gangen på hver enhed, og den her er ikke godkendt til dig endnu.</p>
-        <p class="login-subtitle" id="device-request-how">Trykker du nedenfor, sender Flango en 6-cifret kode til den, der godkender adgang hos jer. Spørg vedkommende om koden og tast den her.</p>
+        <h1 id="device-request-greeting">Hej.</h1>
+        <p class="login-subtitle fit-one-line" id="device-request-status">Din konto er ikke bekræftet på denne enhed eller browser endnu.</p>
+        <p class="login-subtitle" id="device-request-how">Tryk på “Send kode” for at sende din bekræftelseskode til <strong id="device-request-contact">din kontaktperson</strong>.</p>
         <button id="device-request-btn">Send kode</button>
         <div id="device-request-step2" style="display:none">
-            <p class="login-subtitle" style="margin-top:18px">Koden er sendt til den, der godkender adgang hos jer. Spørg vedkommende om de seks cifre — koden siges til dig og skal ikke sendes videre. Den gælder i 30 minutter.</p>
-            <label for="device-request-code">6-cifret kode</label>
+            <p class="login-subtitle" style="margin-top:18px">Spørg om de seks cifre og tast dem her. Koden gælder i 30 minutter.</p>
+            <label for="device-request-code">Bekræftelseskode</label>
             <input type="text" id="device-request-code" class="input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-            <button id="device-request-redeem-btn">Få adgang</button>
+            <button id="device-request-redeem-btn">Bekræft</button>
         </div>
         <button type="button" id="device-request-back-btn" class="secondary-action">Log ud</button>
         <p id="device-request-error" class="login-error"></p>
@@ -1898,7 +1898,7 @@
 
     <script src="js/core/feature-modules.js?v=3"></script>
     <script src="js/ui/settings-panel.js?v=13"></script>
-    <script src="js/ui/settings-sections.js?v=58"></script>
+    <script src="js/ui/settings-sections.js?v=59"></script>
     <script src="js/ui/admin-portal-preview-host.js?v=14"></script>
     <script src="js/ui/admin-parent-page.js?v=2"></script>
     <script src="js/ui/admin-portal-v2.js?v=6"></script>

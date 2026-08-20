@@ -3720,20 +3720,25 @@
       // Serveren kræver en betroet session for at ændre den: den, der kan
       // omdirigere godkendelsesbeskeder, kan omgå hele modellen.
       async function loadEmails() {
-        const mails = await api.getNotificationEmails();
-        if (mails === null) { notifyEl.innerHTML = ''; return; }
+        const data = await api.getNotificationEmails();
+        if (data === null) { notifyEl.innerHTML = ''; return; }
+        const mails = data.emails || [];
+        const navn = data.name || '';
         const vist = mails.length ? mails.join(', ') : 'Ingen valgt';
         notifyEl.innerHTML = `
           <div class="fsp-page-desc" style="margin-bottom:8px;opacity:.7">Hvem får besked</div>
           <div class="fsp-device-row">
             <div class="fsp-device-emoji">\u2709\uFE0F</div>
             <div class="fsp-device-left">
-              <div class="fsp-device-title">${vist}</div>
+              <div class="fsp-device-title">${navn ? navn + ' · ' : ''}${vist}</div>
               <div class="fsp-device-meta">Hertil sendes koden, når en medarbejder beder om adgang. Sig den til personen selv — send den aldrig videre.</div>
+              <div class="fsp-device-meta" style="opacity:.85">Navnet er det, medarbejderen får at vide, hun skal spørge: <strong>${navn || 'ikke valgt'}</strong></div>
             </div>
             <button class="fsp-btn fsp-btn-ghost" data-action="rediger-mail" style="padding:8px 16px;font-size:12px">Skift</button>
           </div>
           <div data-mail-form style="display:none;margin-top:10px">
+            <input type="text" data-navn-input value="${navn}" placeholder="Navn — fx Mette eller Kontoret"
+                   style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:14px;margin-bottom:8px">
             <input type="text" data-mail-input value="${mails.join(', ')}" placeholder="leder@institution.dk, kontor@institution.dk"
                    style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:14px">
             <div style="display:flex;gap:8px;margin-top:8px">
@@ -3754,6 +3759,12 @@
           const adresser = (notifyEl.querySelector('[data-mail-input]')?.value || '')
             .split(',').map(t => t.trim()).filter(Boolean);
           gem.disabled = true; gem.textContent = 'Sender…';
+
+          // Navnet er et visningsnavn og flytter ingen post — det gemmes med det
+          // samme. Adressen kræver stadig bekræftelse fra begge postkasser.
+          const navnFelt = (notifyEl.querySelector('[data-navn-input]')?.value || '').trim();
+          if (navnFelt) await api.setContactName(navnFelt);
+
           const res = await api.requestNotificationEmailChange(adresser);
 
           // Første adresse: der er ingen at bekræfte fra, så den er gemt med det samme.
