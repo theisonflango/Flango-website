@@ -3739,6 +3739,8 @@
         <div class="fsp-page-title">Godkendte maskiner</div>
         <div class="fsp-page-desc">Maskiner huset har godkendt, og hvem de gælder for. En godkendelse ophører kun, når nogen fjerner den — eller når den udløber.</div>
 
+        <div data-notify-emails style="margin-bottom:18px"></div>
+
         <div data-approval-requests style="margin-bottom:18px"></div>
 
         <div data-personalise style="margin-bottom:18px"></div>
@@ -3752,6 +3754,7 @@
     wire(container, ctx) {
       pageAlign(container);
       const api = window.__flangoDeviceApproval;
+      const notifyEl = container.querySelector('[data-notify-emails]');
       const reqEl = container.querySelector('[data-approval-requests]');
       const persEl = container.querySelector('[data-personalise]');
       const listEl = container.querySelector('[data-machines-list]');
@@ -3867,6 +3870,53 @@
         else { btn.disabled = false; btn.textContent = 'Fjern'; }
       });
 
+      // Hvem får besked. Institutionens eget valg — ikke leverandørens felt.
+      // Serveren kræver en betroet session for at ændre den: den, der kan
+      // omdirigere godkendelsesbeskeder, kan omgå hele modellen.
+      async function loadEmails() {
+        const mails = await api.getNotificationEmails();
+        if (mails === null) { notifyEl.innerHTML = ''; return; }
+        const vist = mails.length ? mails.join(', ') : 'Ingen valgt';
+        notifyEl.innerHTML = `
+          <div class="fsp-page-desc" style="margin-bottom:8px;opacity:.7">Hvem får besked</div>
+          <div class="fsp-device-row">
+            <div class="fsp-device-emoji">\u2709\uFE0F</div>
+            <div class="fsp-device-left">
+              <div class="fsp-device-title">${vist}</div>
+              <div class="fsp-device-meta">Hertil sendes besked, når en medarbejder beder om adgang på en ny maskine. Koden sendes aldrig med.</div>
+            </div>
+            <button class="fsp-btn fsp-btn-ghost" data-action="rediger-mail" style="padding:8px 16px;font-size:12px">Skift</button>
+          </div>
+          <div data-mail-form style="display:none;margin-top:10px">
+            <input type="text" data-mail-input value="${mails.join(', ')}" placeholder="leder@institution.dk, kontor@institution.dk"
+                   style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:14px">
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="fsp-btn" data-action="gem-mail" style="padding:8px 16px;font-size:12px">Gem</button>
+              <button class="fsp-btn fsp-btn-ghost" data-action="fortryd-mail" style="padding:8px 16px;font-size:12px">Fortryd</button>
+            </div>
+            <div data-mail-fejl style="margin-top:8px;font-size:13px;color:#e85a6f"></div>
+          </div>`;
+      }
+
+      notifyEl.addEventListener('click', async (e) => {
+        const form = notifyEl.querySelector('[data-mail-form]');
+        if (e.target.closest('[data-action="rediger-mail"]')) { form.style.display = ''; notifyEl.querySelector('[data-mail-input]')?.focus(); return; }
+        if (e.target.closest('[data-action="fortryd-mail"]')) { form.style.display = 'none'; return; }
+        const gem = e.target.closest('[data-action="gem-mail"]');
+        if (!gem) return;
+        const fejlEl = notifyEl.querySelector('[data-mail-fejl]');
+        const adresser = (notifyEl.querySelector('[data-mail-input]')?.value || '')
+          .split(',').map(t => t.trim()).filter(Boolean);
+        gem.disabled = true; gem.textContent = 'Gemmer…';
+        const res = await api.setNotificationEmails(adresser);
+        if (res?.success) { await loadEmails(); }
+        else {
+          fejlEl.textContent = res?.error || 'Kunne ikke gemmes.';
+          gem.disabled = false; gem.textContent = 'Gem';
+        }
+      });
+
+      loadEmails();
       loadRequests();
       loadMachines();
     }
