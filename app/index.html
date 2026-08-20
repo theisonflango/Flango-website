@@ -376,7 +376,7 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-BHmOuV5k.js"></script>
+  <script type="module" crossorigin src="/app/assets/main-CtToKMlj.js"></script>
   <link rel="stylesheet" crossorigin href="/app/assets/main-KAF1GpK1.css">
 </head>
 <body>
@@ -480,21 +480,6 @@
         </form>
     </div>
 
-    <!-- MFA: Enrollment (scan QR-kode) -->
-    <div id="screen-mfa-enroll" class="login-container" style="display: none;">
-        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
-        <div class="lock-icon">🔐</div>
-        <h1>Aktiver totrinsgodkendelse</h1>
-        <p class="login-subtitle">Scan QR-koden med din authenticator-app (Google Authenticator, Microsoft Authenticator o.l.) og indtast den 6-cifrede kode.</p>
-        <div id="mfa-qr-container" style="text-align: center; margin: 16px 0;">
-            <img id="mfa-qr-image" alt="QR-kode" style="width: 200px; height: 200px; border-radius: 12px; background: #fff;">
-        </div>
-        <p id="mfa-secret-display" style="font-size: 12px; color: #888; text-align: center; word-break: break-all;"></p>
-        <label for="mfa-enroll-code">6-cifret kode fra app</label>
-        <input type="text" id="mfa-enroll-code" class="input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-        <button id="mfa-enroll-btn">Aktiver</button>
-        <p id="mfa-enroll-error" class="login-error"></p>
-    </div>
 
     <!-- Adgang: bed om adgang på denne enhed (for den uden authenticator) -->
     <div id="screen-device-request" class="login-container" style="display: none;">
@@ -513,17 +498,6 @@
         <p id="device-request-error" class="login-error"></p>
     </div>
 
-    <!-- MFA: Challenge (indtast kode) -->
-    <div id="screen-mfa-challenge" class="login-container" style="display: none;">
-        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
-        <div class="lock-icon">🔐</div>
-        <h1>Totrinsgodkendelse</h1>
-        <p class="login-subtitle">Indtast den 6-cifrede kode fra din authenticator-app.</p>
-        <label for="mfa-challenge-code">6-cifret kode</label>
-        <input type="text" id="mfa-challenge-code" class="input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-        <button id="mfa-challenge-btn">Bekræft</button>
-        <p id="mfa-challenge-error" class="login-error"></p>
-    </div>
 
     <!-- Tilstand 2: Admin er logget ind (Kontrolrum) -->
     <div id="screen-admin-login" class="login-container" style="display: none;">
