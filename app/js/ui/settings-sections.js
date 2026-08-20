@@ -3928,11 +3928,16 @@
             const til = (res.sent_to || []).join(', ');
             notifyEl.querySelector('[data-mail-form]').innerHTML = `
               <div style="padding:12px 14px;border-radius:10px;background:rgba(244,162,97,0.12);border:1px solid rgba(244,162,97,0.3)">
-                <div style="font-size:14px;line-height:1.5">Vi har sendt en kode til <strong>${til}</strong>.
-                Adressen er <strong>ikke</strong> ændret endnu — indtast koden for at bekræfte.</div>
+                <div style="font-size:14px;line-height:1.5">Adressen er <strong>ikke</strong> ændret endnu.
+                Vi har sendt en kode til hver af de to adresser — den ene bekræfter, at skiftet er
+                i orden, den anden at posten kommer frem til den nye.</div>
+                <label style="display:block;margin-top:12px;font-size:12px;color:var(--fsp-txt3)">Kode sendt til ${til}</label>
                 <input type="text" data-bekraeft-kode placeholder="000000" maxlength="6" inputmode="numeric"
-                       style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:16px;letter-spacing:4px;text-align:center">
-                <button class="fsp-btn" data-action="bekraeft-mail" style="width:100%;margin-top:8px;padding:10px;font-size:13px">Bekræft skift</button>
+                       style="width:100%;margin-top:4px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:16px;letter-spacing:4px;text-align:center">
+                <label style="display:block;margin-top:10px;font-size:12px;color:var(--fsp-txt3)">Kode sendt til ${(res.sent_to_new || []).join(', ')}</label>
+                <input type="text" data-bekraeft-ny-kode placeholder="000000" maxlength="6" inputmode="numeric"
+                       style="width:100%;margin-top:4px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:16px;letter-spacing:4px;text-align:center">
+                <button class="fsp-btn" data-action="bekraeft-mail" style="width:100%;margin-top:10px;padding:10px;font-size:13px">Bekræft skift</button>
                 <div data-mail-fejl style="margin-top:8px;font-size:13px;color:#e85a6f"></div>
               </div>`;
             return;
@@ -3945,9 +3950,10 @@
         const bekraeft = e.target.closest('[data-action="bekraeft-mail"]');
         if (!bekraeft) return;
         const kode = notifyEl.querySelector('[data-bekraeft-kode]')?.value || '';
+        const nyKode = notifyEl.querySelector('[data-bekraeft-ny-kode]')?.value || '';
         const fejl2 = notifyEl.querySelector('[data-mail-fejl]');
         bekraeft.disabled = true; bekraeft.textContent = 'Bekræfter…';
-        const res2 = await api.confirmNotificationEmailChange(kode);
+        const res2 = await api.confirmNotificationEmailChange(kode, nyKode);
         if (res2?.success) { await loadEmails(); return; }
         fejl2.textContent = res2?.error || 'Kunne ikke bekræftes.';
         bekraeft.disabled = false; bekraeft.textContent = 'Bekræft skift';
