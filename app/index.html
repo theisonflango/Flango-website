@@ -376,7 +376,7 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-ByF-uyOM.js"></script>
+  <script type="module" crossorigin src="/app/assets/main-BRQPY7sp.js"></script>
   <link rel="stylesheet" crossorigin href="/app/assets/main-KAF1GpK1.css">
 </head>
 <body>
@@ -485,16 +485,17 @@
     <div id="screen-device-request" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
         <div class="lock-icon">🔑</div>
-        <h1>Du mangler adgang her</h1>
-        <p class="login-subtitle" id="device-request-intro">Din konto er i orden — men du er ikke godkendt til at bruge Flango på denne enhed endnu. Bed om adgang, så kan en kollega give dig en kode.</p>
-        <button id="device-request-btn">Bed om adgang</button>
+        <h1>Denne enhed er ikke godkendt til dig</h1>
+        <p class="login-subtitle" id="device-request-intro">Du er logget ind som <strong id="device-request-who">dig</strong>. Flango godkendes for én medarbejder ad gangen på hver enhed, og den her er ikke godkendt til dig endnu.</p>
+        <p class="login-subtitle" id="device-request-how">Trykker du nedenfor, sender Flango en 6-cifret kode til den, der godkender adgang hos jer. Spørg vedkommende om koden og tast den her.</p>
+        <button id="device-request-btn">Send kode</button>
         <div id="device-request-step2" style="display:none">
-            <p class="login-subtitle" style="margin-top:18px">Din anmodning er sendt, og koden er gået til den, der godkender adgang hos jer — typisk din leder. Spørg vedkommende om koden. Den siges til dig personligt og gælder i 30 minutter.</p>
-            <label for="device-request-code">Kode fra din kollega</label>
+            <p class="login-subtitle" style="margin-top:18px">Koden er sendt til den, der godkender adgang hos jer. Spørg vedkommende om de seks cifre — koden siges til dig og skal ikke sendes videre. Den gælder i 30 minutter.</p>
+            <label for="device-request-code">6-cifret kode</label>
             <input type="text" id="device-request-code" class="input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
             <button id="device-request-redeem-btn">Få adgang</button>
         </div>
-        <button type="button" id="device-request-back-btn" class="secondary-action">Log ind som en anden</button>
+        <button type="button" id="device-request-back-btn" class="secondary-action">Log ud</button>
         <p id="device-request-error" class="login-error"></p>
     </div>
 
