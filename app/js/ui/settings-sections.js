@@ -3742,7 +3742,7 @@
             <div class="fsp-device-emoji">\u2709\uFE0F</div>
             <div class="fsp-device-left">
               <div class="fsp-device-title">${vist}</div>
-              <div class="fsp-device-meta">Hertil sendes besked, når en medarbejder beder om adgang. Koden sendes aldrig med.</div>
+              <div class="fsp-device-meta">Hertil sendes koden, når en medarbejder beder om adgang. Sig den til personen selv — send den aldrig videre.</div>
             </div>
             <button class="fsp-btn fsp-btn-ghost" data-action="rediger-mail" style="padding:8px 16px;font-size:12px">Skift</button>
           </div>
