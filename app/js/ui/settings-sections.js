@@ -3727,6 +3727,151 @@
     }
   };
 
+  // ── Godkendte maskiner (enhedsgodkendelse: anmodninger + husets maskiner) ──
+  //
+  // Uden en liste er en godkendelse usynlig, og så er halvdelen af problemet i
+  // behold. Her ses hvad huset stoler på, hvem det gælder for, og hvornår det
+  // udløber — og herfra udstedes koden til en kollega, der står ved en maskine,
+  // huset ikke har godkendt endnu.
+  sections['Godkendte maskiner'] = {
+    render(ctx) {
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Godkendte maskiner</div>
+        <div class="fsp-page-desc">Maskiner huset har godkendt, og hvem de gælder for. En godkendelse ophører kun, når nogen fjerner den — eller når den udløber.</div>
+
+        <div data-approval-requests style="margin-bottom:18px"></div>
+
+        <div data-personalise style="margin-bottom:18px"></div>
+
+        <div class="fsp-page-desc" style="margin-bottom:8px;opacity:.7">Husets maskiner</div>
+        <div data-machines-list style="min-height:60px">
+          <div style="text-align:center;padding:24px;color:var(--fsp-txt3);font-size:13px">Indlæser…</div>
+        </div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      const api = window.__flangoDeviceApproval;
+      const reqEl = container.querySelector('[data-approval-requests]');
+      const persEl = container.querySelector('[data-personalise]');
+      const listEl = container.querySelector('[data-machines-list]');
+      const tomt = (t) => `<div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">${t}</div>`;
+
+      if (!api) {
+        listEl.innerHTML = tomt('Enhedstjenesten er ikke tilgængelig.');
+        return;
+      }
+
+      const dato = (v) => v ? new Date(v).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+      const dageTil = (v) => v ? Math.round((new Date(v) - Date.now()) / 86400000) : null;
+
+      async function loadRequests() {
+        const reqs = await api.listApprovalRequests();
+        if (!reqs.length) { reqEl.innerHTML = ''; return; }
+        reqEl.innerHTML = `
+          <div class="fsp-page-desc" style="margin-bottom:8px;opacity:.7">Venter på godkendelse</div>
+          ${reqs.map(r => `
+            <div class="fsp-device-row" data-request-id="${r.id}">
+              <div class="fsp-device-emoji">⏳</div>
+              <div class="fsp-device-left">
+                <div class="fsp-device-title">${r.requested_by_name || 'Ukendt'} — ${r.device_name || 'ukendt maskine'}</div>
+                <div class="fsp-device-meta">Bad om adgang ${new Date(r.requested_at).toLocaleString('da-DK', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</div>
+              </div>
+              <button class="fsp-btn" data-action="issue" style="padding:8px 16px;font-size:12px">Udsted kode</button>
+            </div>
+            <div data-code-for="${r.id}"></div>
+          `).join('')}`;
+      }
+
+      // Koden vises kun her, kun én gang, og med den regel der bærer
+      // sikkerheden: den gives til personen — ikke sendt i en besked.
+      reqEl.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-action="issue"]');
+        if (!btn) return;
+        const id = btn.closest('[data-request-id]')?.dataset.requestId;
+        if (!id) return;
+        btn.disabled = true; btn.textContent = 'Udsteder…';
+        const res = await api.issueApprovalCode(id);
+        const slot = reqEl.querySelector(`[data-code-for="${id}"]`);
+        if (!res.success) {
+          if (slot) slot.innerHTML = `<div style="padding:10px 14px;color:#e85a6f;font-size:13px">${res.error || 'Kunne ikke udstede koden.'}</div>`;
+          btn.disabled = false; btn.textContent = 'Udsted kode';
+          return;
+        }
+        btn.style.display = 'none';
+        if (slot) slot.innerHTML = `
+          <div style="margin:0 0 14px;padding:16px;border-radius:12px;background:rgba(93,202,122,0.08);border:1px solid rgba(93,202,122,0.2)">
+            <div style="font-size:34px;letter-spacing:8px;font-weight:700;text-align:center;color:var(--fsp-txt1)">${res.code}</div>
+            <div style="text-align:center;font-size:12px;color:var(--fsp-txt3);margin-top:8px">Gyldig i 10 minutter</div>
+            <div style="margin-top:12px;font-size:13px;color:var(--fsp-txt2);line-height:1.5">
+              <strong>Sig koden til personen selv</strong> — ansigt til ansigt, eller ring op på et nummer du kender.
+              Send den ikke som mail eller besked, og udlever den aldrig på et opkald, du ikke selv har foretaget.
+            </div>
+          </div>`;
+      });
+
+      async function loadMachines() {
+        const maskiner = await api.listTrustedDevices();
+        const mit = api.getDeviceId ? api.getDeviceId() : null;
+
+        // Arvet godkendelse på DENNE maskine kan gøres personlig uden kode:
+        // maskinen er allerede husets, og brugeren er allerede logget ind på den.
+        const arvet = maskiner.find(m => m.device_id === mit && !m.user_id && !m.revoked_at);
+        persEl.innerHTML = arvet ? `
+          <div class="fsp-device-row">
+            <div class="fsp-device-emoji">⬆️</div>
+            <div class="fsp-device-left">
+              <div class="fsp-device-title">Gør denne maskine til din egen</div>
+              <div class="fsp-device-meta">Godkendelsen her gælder hele huset og udløber ${dato(arvet.expires_at)}. Knyt den til dig — ingen kode nødvendig.</div>
+            </div>
+            <button class="fsp-btn" data-action="personalise" style="padding:8px 16px;font-size:12px">Knyt til mig</button>
+          </div>` : '';
+
+        if (!maskiner.length) { listEl.innerHTML = tomt('Ingen godkendte maskiner.'); return; }
+
+        listEl.innerHTML = maskiner.map(m => {
+          const dage = dageTil(m.expires_at);
+          const snart = dage !== null && dage <= 14 && !m.revoked_at;
+          const person = m.person_name || 'Hele huset (arvet)';
+          const kilde = { mfa: 'via totrinsgodkendelse', migration: 'fra migrering', tap: 'via kode', self: 'selv godkendt', superadmin: 'af support', pairing: 'parret' }[m.approval_source] || m.approval_source;
+          return `<div class="fsp-device-row" data-device-row="${m.id}" ${m.revoked_at ? 'style="opacity:.45"' : ''}>
+            <div class="fsp-device-emoji">${m.device_id === mit ? '⭐' : '💻'}</div>
+            <div class="fsp-device-left">
+              <div class="fsp-device-title">${m.device_name || 'Ukendt enhed'}${m.device_id === mit ? ' — denne maskine' : ''}</div>
+              <div class="fsp-device-meta">${person} · ${kilde}${m.pin_profiler ? ' · ' + m.pin_profiler + ' hurtig-PIN' : ''}</div>
+              <div class="fsp-device-meta" ${snart ? 'style="color:#f4a261"' : ''}>${m.revoked_at ? 'Tilbagekaldt ' + dato(m.revoked_at) : 'Udløber ' + dato(m.expires_at) + (snart ? ' — om ' + dage + ' dage' : '')}</div>
+            </div>
+            ${m.revoked_at ? '' : `<button class="fsp-btn fsp-btn-ghost" data-action="revoke-device" style="padding:8px 16px;font-size:12px;color:#e85a6f;border-color:rgba(232,90,111,0.2)">Fjern</button>`}
+          </div>`;
+        }).join('');
+      }
+
+      persEl.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-action="personalise"]');
+        if (!btn) return;
+        btn.disabled = true; btn.textContent = '…';
+        const res = await api.personaliseInheritedDevice();
+        if (res.success) { await loadMachines(); }
+        else { btn.disabled = false; btn.textContent = 'Knyt til mig'; }
+      });
+
+      listEl.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-action="revoke-device"]');
+        if (!btn) return;
+        const id = btn.closest('[data-device-row]')?.dataset.deviceRow;
+        if (!id) return;
+        if (!confirm('Fjern husets godkendelse af denne maskine? Den, der bruger den, skal bede om adgang igen.')) return;
+        btn.disabled = true; btn.textContent = 'Fjerner…';
+        const res = await api.revokeTrustedDevice(id);
+        if (res.success) await loadMachines();
+        else { btn.disabled = false; btn.textContent = 'Fjern'; }
+      });
+
+      loadRequests();
+      loadMachines();
+    }
+  };
+
   // ── Saldoliste ved låsning (localStorage toggle — no dirty-tracking) ──
   sections['Saldoliste ved låsning'] = {
     render(ctx) {

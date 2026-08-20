@@ -376,7 +376,7 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-DpZZl27Z.js"></script>
+  <script type="module" crossorigin src="/app/assets/main-DtM1tC-9.js"></script>
   <link rel="stylesheet" crossorigin href="/app/assets/main-KAF1GpK1.css">
 </head>
 <body>
@@ -494,6 +494,23 @@
         <input type="text" id="mfa-enroll-code" class="input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
         <button id="mfa-enroll-btn">Aktiver</button>
         <p id="mfa-enroll-error" class="login-error"></p>
+    </div>
+
+    <!-- Enhedsgodkendelse: anmod om adgang (for den uden authenticator) -->
+    <div id="screen-device-request" class="login-container" style="display: none;">
+        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
+        <div class="lock-icon">🖥️</div>
+        <h1>Denne maskine skal godkendes</h1>
+        <p class="login-subtitle" id="device-request-intro">Maskinen her er ikke godkendt til dig endnu. Bed om adgang, og fÃ¥ koden af en kollega, der sidder ved en maskine, huset allerede har godkendt.</p>
+        <button id="device-request-btn">Anmod om adgang</button>
+        <div id="device-request-step2" style="display:none">
+            <p class="login-subtitle" style="margin-top:18px">Din anmodning er sendt. Bed din leder — eller en kollega ved en godkendt maskine — om at åbne Flango, gå til <strong>Indstillinger → Godkendte maskiner</strong> og udstede koden. Koden skal siges til dig personligt.</p>
+            <label for="device-request-code">6-cifret kode</label>
+            <input type="text" id="device-request-code" class="input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+            <button id="device-request-redeem-btn">Godkend maskine</button>
+        </div>
+        <button type="button" id="device-request-back-btn" class="secondary-action">Log ind som en anden</button>
+        <p id="device-request-error" class="login-error"></p>
     </div>
 
     <!-- MFA: Challenge (indtast kode) -->
@@ -1901,8 +1918,8 @@
     <audio id="audio-preview" preload="auto"></audio>
 
     <script src="js/core/feature-modules.js?v=2"></script>
-    <script src="js/ui/settings-panel.js?v=9"></script>
-    <script src="js/ui/settings-sections.js?v=46"></script>
+    <script src="js/ui/settings-panel.js?v=10"></script>
+    <script src="js/ui/settings-sections.js?v=47"></script>
     <script src="js/ui/admin-portal-preview-host.js?v=14"></script>
     <script src="js/ui/admin-parent-page.js?v=2"></script>
     <script src="js/ui/admin-portal-v2.js?v=6"></script>
