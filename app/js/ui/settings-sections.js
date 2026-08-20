@@ -3903,17 +3903,45 @@
         if (e.target.closest('[data-action="rediger-mail"]')) { form.style.display = ''; notifyEl.querySelector('[data-mail-input]')?.focus(); return; }
         if (e.target.closest('[data-action="fortryd-mail"]')) { form.style.display = 'none'; return; }
         const gem = e.target.closest('[data-action="gem-mail"]');
-        if (!gem) return;
-        const fejlEl = notifyEl.querySelector('[data-mail-fejl]');
-        const adresser = (notifyEl.querySelector('[data-mail-input]')?.value || '')
-          .split(',').map(t => t.trim()).filter(Boolean);
-        gem.disabled = true; gem.textContent = 'Gemmer…';
-        const res = await api.setNotificationEmails(adresser);
-        if (res?.success) { await loadEmails(); }
-        else {
+        if (gem) {
+          const fejlEl = notifyEl.querySelector('[data-mail-fejl]');
+          const adresser = (notifyEl.querySelector('[data-mail-input]')?.value || '')
+            .split(',').map(t => t.trim()).filter(Boolean);
+          gem.disabled = true; gem.textContent = 'Sender…';
+          const res = await api.requestNotificationEmailChange(adresser);
+
+          // Første adresse: der er ingen at bekræfte fra, så den er gemt med det samme.
+          if (res?.success && res.first_time) { await loadEmails(); return; }
+
+          if (res?.success && res.pending) {
+            // Intet er ændret endnu. Koden er sendt til den NUVÆRENDE adresse —
+            // det er dét, der forhindrer, at en session alene kan flytte beskederne.
+            const til = (res.sent_to || []).join(', ');
+            notifyEl.querySelector('[data-mail-form]').innerHTML = `
+              <div style="padding:12px 14px;border-radius:10px;background:rgba(244,162,97,0.12);border:1px solid rgba(244,162,97,0.3)">
+                <div style="font-size:14px;line-height:1.5">Vi har sendt en kode til <strong>${til}</strong>.
+                Adressen er <strong>ikke</strong> ændret endnu — indtast koden for at bekræfte.</div>
+                <input type="text" data-bekraeft-kode placeholder="000000" maxlength="6" inputmode="numeric"
+                       style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:16px;letter-spacing:4px;text-align:center">
+                <button class="fsp-btn" data-action="bekraeft-mail" style="width:100%;margin-top:8px;padding:10px;font-size:13px">Bekræft skift</button>
+                <div data-mail-fejl style="margin-top:8px;font-size:13px;color:#e85a6f"></div>
+              </div>`;
+            return;
+          }
           fejlEl.textContent = res?.error || 'Kunne ikke gemmes.';
           gem.disabled = false; gem.textContent = 'Gem';
+          return;
         }
+
+        const bekraeft = e.target.closest('[data-action="bekraeft-mail"]');
+        if (!bekraeft) return;
+        const kode = notifyEl.querySelector('[data-bekraeft-kode]')?.value || '';
+        const fejl2 = notifyEl.querySelector('[data-mail-fejl]');
+        bekraeft.disabled = true; bekraeft.textContent = 'Bekræfter…';
+        const res2 = await api.confirmNotificationEmailChange(kode);
+        if (res2?.success) { await loadEmails(); return; }
+        fejl2.textContent = res2?.error || 'Kunne ikke bekræftes.';
+        bekraeft.disabled = false; bekraeft.textContent = 'Bekræft skift';
       });
 
       loadEmails();
