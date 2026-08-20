@@ -3622,22 +3622,9 @@
   // afsnit på samme side, med en overskrift der siger hvad den er.
   sections['Adgang til Flango'] = {
     render(ctx) {
-      // Politikken er superadmin-only. Den vises derfor som en oplysning, ikke som
-      // en indstilling — tre grånede radioknapper er en kontakt, der lader som om.
-      const politik = {
-        off: 'Totrinsgodkendelse er ikke påkrævet her.',
-        new_device: 'Totrinsgodkendelse kræves, første gang en medarbejder bruger en ny enhed.',
-        always: 'Totrinsgodkendelse kræves ved hvert login.',
-      }[(ctx.institutionData || {}).admin_mfa_policy || 'off'];
-
       return `<div class="fsp-page">
         <div class="fsp-page-title">Adgang til Flango</div>
         <div class="fsp-page-desc">Hvem der må bruge Flango, og på hvilke enheder. Adgang gives til én medarbejder på én enhed ad gangen, og ophører kun når nogen fjerner den — eller når den udløber.</div>
-
-        <div style="margin-bottom:18px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.5;color:var(--fsp-txt2)">
-          ${politik} Indstillingen styres af Flango-support — en institution skal ikke kunne
-          slå kravet fra på egen hånd. Skal den ændres, så kontakt os.
-        </div>
 
         <div data-notify-emails style="margin-bottom:18px"></div>
 
