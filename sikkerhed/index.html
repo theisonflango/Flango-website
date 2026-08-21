@@ -150,9 +150,9 @@
         <div class="detail">Certificeret betalingspartner håndterer al kortdata</div>
       </div>
       <div class="status-card">
-        <div class="label">Multifaktor</div>
-        <div class="value">2FA på admin</div>
-        <div class="detail">Personalets enheder verificeres ved første login</div>
+        <div class="label">Enhedsgodkendelse</div>
+        <div class="value">Godkendt enhed pr. medarbejder</div>
+        <div class="detail">En ny enhed tages i brug med en engangskode, der udleveres personligt</div>
       </div>
       <div class="status-card">
         <div class="label">Institutionsisolation</div>
@@ -186,8 +186,8 @@
       <h2 class="section-heading">Adgangskontrol</h2>
       <p>Flango bruger rollebaseret adgangsstyring. De forskellige typer brugere har hver især præcis den adgang de behøver — og ikke mere.</p>
       <ul>
-        <li><strong>Personale (admin)</strong> logger ind med e-mail, stærk adgangskode og to-faktor på nye enheder. Fuld adgang til egen institution.</li>
-        <li><strong>Børn</strong> identificeres ved fornavn eller kontonummer i café-appen. PIN-koder bruges til bekræftelse og lagres aldrig i klartekst.</li>
+        <li><strong>Personale (admin)</strong> logger ind med e-mail og stærk adgangskode fra en enhed, institutionen har godkendt til netop den medarbejder — en ny enhed tages i brug med en engangskode, der udleveres personligt. Fuld adgang til egen institution.</li>
+        <li><strong>Børn</strong> identificeres ved fornavn eller kontonummer i café-appen. Barnets PIN er en pædagogisk rollemarkering, ikke en adgangskontrol — køb kræver den ikke.</li>
         <li><strong>Forældre</strong> logger ind via forældreportalen og ser kun data for egne børn.</li>
         <li><strong>Kommunalt tilsyn</strong> kan efter aftale tildeles read-only-konto til konfiguration og driftsstatus — uden adgang til børnedata.</li>
         <li><strong>Support og leverandør</strong> har drifts- og fejlsøgningsadgang under multifaktor. Alle handlinger logges.</li>
@@ -223,19 +223,29 @@
 
     <section class="about-section">
       <h2 class="section-heading">Underbehandlere</h2>
-      <p>Et begrænset antal underbehandlere indgår i driften — for hosting, betaling, e-mail-levering, valgfrit Google-login og bot-beskyttelse. Alle har:</p>
+      <p>Syv underbehandlere indgår i driften — for hosting, betaling, e-mail-levering, push-beskeder og valgfrit Apple- eller Google-login, AI-genererede billeder samt bot-beskyttelse. Alle har:</p>
       <ul>
-        <li>Underskrevet databehandleraftale i overensstemmelse med GDPR art. 28</li>
+        <li>Databehandleraftale efter GDPR art. 28 — enten underskrevet eller indgået som en del af leverandørens standardvilkår</li>
         <li>Primær drift i EU eller EU-godkendte overførselsmekanismer</li>
         <li>Kontraktlig pligt til at underrette ved sikkerhedshændelser</li>
       </ul>
+      <p>Den fulde liste med navn, formål og grundlag pr. leverandør indgår i databehandleraftalen.</p>
+    </section>
+
+    <hr class="divider" aria-hidden="true" />
+
+    <section class="about-section">
+      <h2 class="section-heading">Brug af AI</h2>
+      <p>Flango bruger AI til at generere billeder. Produktikoner i caféens menu laves ud fra varens navn og — hvis personalet vælger det — et foto af madvaren. Derudover kan institutionen vælge at tilbyde en stiliseret AI-avatar som privatlivsvenligt alternativ til et rigtigt profilfoto.</p>
+      <p>Behandlingen sker hos Microsoft Azure OpenAI på EU-ressourcer, hvor både processering og lagring forbliver i EU. Der trænes ikke på det, der sendes ind eller kommer ud. Azure gemmer som standard en stikprøve af input og output i op til 30 dage til misbrugskontrol — i EU og kun tilgængeligt for autoriserede Microsoft-reviewere.</p>
+      <p><strong>AI-avataren er slået fra som udgangspunkt.</strong> Den kræver både, at institutionen aktiverer funktionen, og at forældremyndighedsindehaveren giver samtykke for det enkelte barn. Uden begge dele genereres der intet.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
 
     <section class="about-section">
       <h2 class="section-heading">Brud-håndtering</h2>
-      <p>Flango har en etableret beredskabsproces ved sikkerhedshændelser. Den dataansvarlige institution underrettes <strong>uden unødig forsinkelse og senest 24 timer</strong> efter konstatering af et bekræftet eller mistænkt databrud — strammere end GDPR's 72-timers minimum.</p>
+      <p>Flango har en etableret beredskabsproces ved sikkerhedshændelser. Den dataansvarlige institution underrettes <strong>uden unødig forsinkelse og senest 24 timer</strong> efter konstatering af et bekræftet eller mistænkt databrud. Institutionen har derefter selv op til 72 timer til at anmelde hændelsen til Datatilsynet, jf. databeskyttelsesforordningens artikel 33 — de 24 timer er sat, så der er tid til den vurdering.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
