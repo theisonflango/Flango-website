@@ -704,7 +704,7 @@
     const childName = getChildName();
     // Vis kun typer institutionen har aktiveret
     const ppInstTypes = Array.isArray(featureFlags?.profile_picture_types) ? featureFlags.profile_picture_types : ['upload', 'camera'];
-    const showAula = isAdminPreview() || ppInstTypes.indexOf('upload') !== -1;
+    const showAula = isAdminPreview() || ppInstTypes.indexOf('upload') !== -1 || ppInstTypes.indexOf('aula') !== -1;
     const showCamera = isAdminPreview() || ppInstTypes.indexOf('camera') !== -1;
     const aiMasterOn = featureFlags?.profile_pictures_ai_enabled !== false;
     // Én AI-avatar-udbyder: Microsoft Azure (EU). ai_provider_openai er det legacy-
@@ -727,8 +727,8 @@
           ${showAula ? `<label style="display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;cursor:pointer;">
             <input type="checkbox" id="welcome-aula" style="margin-top:3px;width:18px;height:18px;cursor:pointer;">
             <div style="flex:1;">
-              <div style="font-weight:600;font-size:14px;color:#111;">Aula-profilbillede</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div>
+              <div style="font-weight:600;font-size:14px;color:#111;">Foto fra institutionen</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">Institutionen kan bruge et foto af dit barn — uploadet af personalet eller hentet fra Aula — som profilbillede i caféen.</div>
             </div>
           </label>` : ''}
           ${showCamera ? `<label style="display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;cursor:pointer;">
@@ -3361,7 +3361,7 @@
     const ppInstTypes = Array.isArray(featureFlags?.profile_picture_types) ? featureFlags.profile_picture_types : ['upload', 'camera', 'library'];
     // inst* = institutionens valg (det forælderen møder). show* = om rækken
     // RENDERES — i admin-preview altid, så chippen har et anker at sidde på.
-    const instAula = ppInstTypes.indexOf('upload') !== -1;
+    const instAula = ppInstTypes.indexOf('upload') !== -1 || ppInstTypes.indexOf('aula') !== -1;
     const instCamera = ppInstTypes.indexOf('camera') !== -1;
     // De to avatar-flag er uafhængige (personale-drevet vs. forælder-drevet).
     // Samtykke-toggle'en skal derfor vises hvis MINDST ét af dem er tændt —
@@ -3524,7 +3524,7 @@
           <div id="pp-type-toggles" style="${allOptedOut ? 'opacity:0.4;pointer-events:none' : ''}">
             ${showAula ? `<div data-sub="pp_aula" class="setting-row${isHelpingParent() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isHelpingParent() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
-                <div class="setting-info"><div class="setting-label">Aula-profilbillede${isHelpingParent() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Institutionen kan bruge dit barns eksisterende Aula-foto som profilbillede i caféen.</div></div>
+                <div class="setting-info"><div class="setting-label">Foto fra institutionen${isHelpingParent() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Institutionen kan bruge et foto af dit barn — uploadet af personalet eller hentet fra Aula — som profilbillede i caféen.</div></div>
                 <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''} ${isHelpingParent() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               ${adminSimLockedHint()}
@@ -3586,8 +3586,8 @@
     const types = [
       {
         key: 'profile_picture_aula',
-        label: 'Aula-profilbillede',
-        desc: 'Institutionen må bruge dit barns eksisterende Aula-foto som profilbillede i caféen.',
+        label: 'Foto fra institutionen',
+        desc: 'Institutionen må bruge et foto af dit barn — uploadet af personalet eller hentet fra Aula — som profilbillede i caféen.',
       },
       {
         key: 'profile_picture_camera',
@@ -6071,11 +6071,11 @@
         const cfg = ct.confirmTexts?.ai_staff_on;
         proceed = cfg ? await showConfirmModal(cfg) : confirm('Må klubben også lave avataren?');
       } else {
-        const label = kind === 'aula' ? 'Aula-profilbillede'
+        const label = kind === 'aula' ? 'Foto fra institutionen'
           : kind === 'camera' ? 'Kamera-foto'
           : 'Forælder-upload';
         const body = kind === 'aula'
-          ? 'Institutionen må bruge dit barns eksisterende Aula-foto som profilbillede i caféen.\n\nSamtykket registreres nu med tidspunkt og version.'
+          ? 'Institutionen må bruge et foto af dit barn — uploadet af personalet eller hentet fra Aula — som profilbillede i caféen.\n\nSamtykket registreres nu med tidspunkt og version.'
           : kind === 'camera'
             ? 'Personalet må tage et foto af dit barn med caféens enhed og bruge det som profilbillede.\n\nSamtykket registreres nu med tidspunkt og version.'
             : 'Du kan selv uploade et profilbillede af dit barn fra denne portal. Alle uploads gennemgås af institutionen før aktivering.\n\nSamtykket registreres nu med tidspunkt og version.';

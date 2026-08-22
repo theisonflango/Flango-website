@@ -2558,6 +2558,7 @@
       const parentUploadOn = inst.parent_can_upload_pictures !== false;
       const defMode = inst.default_profile_picture_mode || 'initials';
       const hasUpload = types.includes('upload');
+      const hasAula = types.includes('aula');
       const hasCamera = types.includes('camera');
       const hasLibrary = types.includes('library');
       return `<div class="fsp-page" style="max-width:720px">
@@ -2570,8 +2571,12 @@
         <div data-expand-target="pp-body" class="${enabled ? '' : 'fsp-off'}">
           <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">Tilg\u00e6ngelige typer</div>
           <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
-            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDCC1</span><div><div class="fsp-row-title">Upload</div><div class="fsp-row-desc">Admin uploader billeder via caf\u00E9-appen (filer kan stamme fra Aula eller anden kilde)</div></div></div>
+            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDCC1</span><div><div class="fsp-row-title">Manuel upload</div><div class="fsp-row-desc">Personalet uploader en billedfil af barnet via caf\u00E9-appen</div></div></div>
             <div class="fsp-toggle${hasUpload ? ' on' : ''}" data-pp-type="upload"></div>
+          </div></div>
+          <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
+            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDCE5</span><div><div class="fsp-row-title">Aula-import</div><div class="fsp-row-desc">Hent barnets foto fra Aula (bulk-import) og brug som profilbillede</div></div></div>
+            <div class="fsp-toggle${hasAula ? ' on' : ''}" data-pp-type="aula"></div>
           </div></div>
           <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
             <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDCF7</span><div><div class="fsp-row-title">Kamera</div><div class="fsp-row-desc">Tag foto med enhedens kamera</div></div></div>
