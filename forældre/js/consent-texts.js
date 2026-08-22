@@ -142,6 +142,14 @@ Andre billed-typer du har samtykket til, påvirkes ikke.`,
         confirm: 'Trække samtykke tilbage',
         cancel: 'Annullér',
       },
+      upload_off: {
+        title: 'Trække samtykke tilbage?',
+        body: `Billeder personalet har uploadet af dit barn i café-appen slettes fra Flango. Personalet kan ikke længere uploade nye.
+
+Andre billed-typer du har samtykket til, påvirkes ikke.`,
+        confirm: 'Trække samtykke tilbage',
+        cancel: 'Annullér',
+      },
       camera_off: {
         title: 'Trække samtykke tilbage?',
         body: `Eksisterende kamera-fotos af dit barn slettes fra Flango. Personalet kan ikke længere tage nye fotos.

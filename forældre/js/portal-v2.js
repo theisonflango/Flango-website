@@ -704,7 +704,8 @@
     const childName = getChildName();
     // Vis kun typer institutionen har aktiveret
     const ppInstTypes = Array.isArray(featureFlags?.profile_picture_types) ? featureFlags.profile_picture_types : ['upload', 'camera'];
-    const showAula = isAdminPreview() || ppInstTypes.indexOf('upload') !== -1 || ppInstTypes.indexOf('aula') !== -1;
+    const showUpload = isAdminPreview() || ppInstTypes.indexOf('upload') !== -1;
+    const showAula = isAdminPreview() || ppInstTypes.indexOf('aula') !== -1;
     const showCamera = isAdminPreview() || ppInstTypes.indexOf('camera') !== -1;
     const aiMasterOn = featureFlags?.profile_pictures_ai_enabled !== false;
     // Én AI-avatar-udbyder: Microsoft Azure (EU). ai_provider_openai er det legacy-
@@ -724,11 +725,18 @@
         </div>
         <div style="padding:20px 26px;">
           <div style="font-size:12px;color:#6b7280;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">Vælg hvilke typer du vil tillade</div>
+          ${showUpload ? `<label style="display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;cursor:pointer;">
+            <input type="checkbox" id="welcome-upload" style="margin-top:3px;width:18px;height:18px;cursor:pointer;">
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:14px;color:#111;">Foto uploadet i caféen</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">Personalet kan uploade en billedfil af dit barn i café-appen og bruge den som profilbillede.</div>
+            </div>
+          </label>` : ''}
           ${showAula ? `<label style="display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;cursor:pointer;">
             <input type="checkbox" id="welcome-aula" style="margin-top:3px;width:18px;height:18px;cursor:pointer;">
             <div style="flex:1;">
-              <div style="font-weight:600;font-size:14px;color:#111;">Foto fra institutionen</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">Institutionen kan bruge et foto af dit barn — uploadet af personalet eller hentet fra Aula — som profilbillede i caféen.</div>
+              <div style="font-weight:600;font-size:14px;color:#111;">Foto hentet fra Aula</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;line-height:1.4;">Personalet kan hente dit barns foto fra Aula og bruge det som profilbillede i caféen.</div>
             </div>
           </label>` : ''}
           ${showCamera ? `<label style="display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;cursor:pointer;">
@@ -772,6 +780,7 @@
     // Aktivér-knap: kald give_consent for hver checked
     overlay.querySelector('#welcome-confirm').onclick = async () => {
       const selected = [];
+      if (overlay.querySelector('#welcome-upload')?.checked) selected.push({ type: 'profile_picture_upload', version: CURRENT_CONSENT_VERSION });
       if (overlay.querySelector('#welcome-aula')?.checked) selected.push({ type: 'profile_picture_aula', version: CURRENT_CONSENT_VERSION });
       if (overlay.querySelector('#welcome-camera')?.checked) selected.push({ type: 'profile_picture_camera', version: CURRENT_CONSENT_VERSION });
       if (overlay.querySelector('#welcome-ai-openai')?.checked) selected.push({ type: 'profile_picture_ai_openai', version: ct.PARENT_AI_AVATAR_VERSION || CURRENT_CONSENT_VERSION });
@@ -3347,6 +3356,7 @@
     // andre sektioner. En ekstra flag-tjek her skjulte kortet HELT i admin-
     // preview'et, så chippen forsvandt sammen med det.
     const optOutAula = childData?.profile_picture_opt_out_aula || false;
+    const optOutUpload = childData?.profile_picture_opt_out_upload || false;
     const optOutCamera = childData?.profile_picture_opt_out_camera || false;
     const optOutParentUpload = childData?.profile_picture_opt_out_parent_upload || false;
     // Per-provider AI-state læses fra consentHistory (cache flag dækker begge providers samlet)
@@ -3361,7 +3371,8 @@
     const ppInstTypes = Array.isArray(featureFlags?.profile_picture_types) ? featureFlags.profile_picture_types : ['upload', 'camera', 'library'];
     // inst* = institutionens valg (det forælderen møder). show* = om rækken
     // RENDERES — i admin-preview altid, så chippen har et anker at sidde på.
-    const instAula = ppInstTypes.indexOf('upload') !== -1 || ppInstTypes.indexOf('aula') !== -1;
+    const instUpload = ppInstTypes.indexOf('upload') !== -1;
+    const instAula = ppInstTypes.indexOf('aula') !== -1;
     const instCamera = ppInstTypes.indexOf('camera') !== -1;
     // De to avatar-flag er uafhængige (personale-drevet vs. forælder-drevet).
     // Samtykke-toggle'en skal derfor vises hvis MINDST ét af dem er tændt —
@@ -3374,6 +3385,7 @@
     const optOutOpenai = !hasOpenaiConsent;
     // Forælder-upload: institutions-flag fra featureFlags (parent_can_upload_pictures default true)
     const instParentUpload = featureFlags?.parent_can_upload_pictures !== false;
+    const showUpload = subOn(instUpload);
     const showAula = subOn(instAula);
     const showCamera = subOn(instCamera);
     const showAi = subOn(instAi);
@@ -3382,6 +3394,7 @@
     // Regnes på institutionens VIRKELIGE valg — ikke på preview-visningen, som
     // altid viser alle fire rækker.
     const allOptedOut = (instAula ? optOutAula : true)
+      && (instUpload ? optOutUpload : true)
       && (instCamera ? optOutCamera : true)
       && (instParentUpload ? optOutParentUpload : true)
       && (instAi ? optOutOpenai : true);
@@ -3522,9 +3535,16 @@
           </div>
 
           <div id="pp-type-toggles" style="${allOptedOut ? 'opacity:0.4;pointer-events:none' : ''}">
+            ${showUpload ? `<div data-sub="pp_upload" class="setting-row${isHelpingParent() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isHelpingParent() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
+                <div class="setting-info"><div class="setting-label">Foto uploadet i caféen${isHelpingParent() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Personalet kan uploade en billedfil af dit barn i café-appen og bruge den som profilbillede.</div></div>
+                <label class="toggle"><input type="checkbox" id="pp-consent-upload" ${!optOutUpload ? 'checked' : ''} ${isHelpingParent() ? 'disabled' : ''}><span class="toggle-track"></span></label>
+              </div>
+              ${adminSimLockedHint()}
+            </div>` : ''}
             ${showAula ? `<div data-sub="pp_aula" class="setting-row${isHelpingParent() ? ' consent-locked-sim' : ''}" style="flex-direction:column;align-items:stretch" ${isHelpingParent() ? 'title="Kun forælder kan ændre dette samtykke (admin-visning)"' : ''}>
               <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s3)">
-                <div class="setting-info"><div class="setting-label">Foto fra institutionen${isHelpingParent() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Institutionen kan bruge et foto af dit barn — uploadet af personalet eller hentet fra Aula — som profilbillede i caféen.</div></div>
+                <div class="setting-info"><div class="setting-label">Foto hentet fra Aula${isHelpingParent() ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="setting-desc">Personalet kan hente dit barns foto fra Aula og bruge det som profilbillede i caféen.</div></div>
                 <label class="toggle"><input type="checkbox" id="pp-consent-aula" ${!optOutAula ? 'checked' : ''} ${isHelpingParent() ? 'disabled' : ''}><span class="toggle-track"></span></label>
               </div>
               ${adminSimLockedHint()}
@@ -3585,9 +3605,14 @@
     const showParentUpload = featureFlags?.parent_can_upload_pictures !== false;
     const types = [
       {
+        key: 'profile_picture_upload',
+        label: 'Foto uploadet i caféen',
+        desc: 'Personalet må uploade en billedfil af dit barn i café-appen og bruge den som profilbillede.',
+      },
+      {
         key: 'profile_picture_aula',
-        label: 'Foto fra institutionen',
-        desc: 'Institutionen må bruge et foto af dit barn — uploadet af personalet eller hentet fra Aula — som profilbillede i caféen.',
+        label: 'Foto hentet fra Aula',
+        desc: 'Personalet må hente dit barns foto fra Aula og bruge det som profilbillede i caféen.',
       },
       {
         key: 'profile_picture_camera',
@@ -5036,6 +5061,8 @@
 
     if (ppMaster) ppMaster.addEventListener('change', (e) => handleMasterToggle(e));
     if (ppAula) ppAula.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_aula', 'aula'));
+    const ppUpload = document.getElementById('pp-consent-upload');
+    if (ppUpload) ppUpload.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_upload', 'upload'));
     if (ppCamera) ppCamera.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_camera', 'camera'));
     if (ppAi) ppAi.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_ai_openai', 'ai'));
     const ppAiStaff = document.getElementById('pp-consent-ai-staff');
@@ -6071,11 +6098,14 @@
         const cfg = ct.confirmTexts?.ai_staff_on;
         proceed = cfg ? await showConfirmModal(cfg) : confirm('Må klubben også lave avataren?');
       } else {
-        const label = kind === 'aula' ? 'Foto fra institutionen'
+        const label = kind === 'aula' ? 'Foto hentet fra Aula'
+          : kind === 'upload' ? 'Foto uploadet i caféen'
           : kind === 'camera' ? 'Kamera-foto'
           : 'Forælder-upload';
         const body = kind === 'aula'
-          ? 'Institutionen må bruge et foto af dit barn — uploadet af personalet eller hentet fra Aula — som profilbillede i caféen.\n\nSamtykket registreres nu med tidspunkt og version.'
+          ? 'Personalet må hente dit barns foto fra Aula og bruge det som profilbillede i caféen.\n\nSamtykket registreres nu med tidspunkt og version.'
+          : kind === 'upload'
+          ? 'Personalet må uploade en billedfil af dit barn i café-appen og bruge den som profilbillede.\n\nSamtykket registreres nu med tidspunkt og version.'
           : kind === 'camera'
             ? 'Personalet må tage et foto af dit barn med caféens enhed og bruge det som profilbillede.\n\nSamtykket registreres nu med tidspunkt og version.'
             : 'Du kan selv uploade et profilbillede af dit barn fra denne portal. Alle uploads gennemgås af institutionen før aktivering.\n\nSamtykket registreres nu med tidspunkt og version.';
@@ -6092,6 +6122,7 @@
       const popupKey = kind === 'ai' ? 'ai_off'
         : kind === 'ai_staff' ? 'ai_staff_off'
         : kind === 'aula' ? 'aula_off'
+        : kind === 'upload' ? 'upload_off'
         : kind === 'parent_upload' ? 'parent_upload_off'
         : 'camera_off';
       const cfg = ct.confirmTexts?.[popupKey];
