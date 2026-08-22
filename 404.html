@@ -16,6 +16,11 @@
       if (path.indexOf('/ugeplan-next/') === 0 && path !== '/ugeplan-next/') {
         window.location.replace('/ugeplan-next/?p=' + encodeURIComponent(path));
       }
+
+      // Kommunens flade (rammestyring + tilsyn) — client-side routes under /kommune/
+      if (path.indexOf('/kommune/') === 0 && path !== '/kommune/') {
+        window.location.replace('/kommune/?p=' + encodeURIComponent(path));
+      }
     </script>
   </head>
   <body>
