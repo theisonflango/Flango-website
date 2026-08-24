@@ -17,7 +17,15 @@
     <title>Flango 3.2</title>
     <link rel="icon" type="image/png" href="Icons/webp/Assets/FlangoFruitLogo.webp">
     
-    <script>if(!['localhost','127.0.0.1'].includes(location.hostname)&&!location.hostname.includes('tauri')){var s=document.createElement('script');s.src='https://challenges.cloudflare.com/turnstile/v0/api.js';s.async=s.defer=true;document.head.appendChild(s)}</script>
+    <!-- Turnstile-loader. Bootstrap-kode kan ikke importere, så reglen står både her og
+         som TURNSTILE_ENABLED i js/core/config-and-supabase.js. Dén er kilden; denne er
+         dens bootstrap-tvilling. Ændres den ene, skal den anden med.
+         PROTOKOLLEN bærer testen: tauri: og capacitor: falder fra her, mens lokal
+         udvikling og Androids https://localhost fanges af værtsnavnet. At teste på
+         værtsnavn ALENE — som her indtil 24-08-2026 — slukker værnet lydløst i enhver
+         skal, fordi både tauri://localhost og capacitor://localhost har hostname
+         'localhost'. Begrundelsen for kun-web står ved TURNSTILE_ENABLED. -->
+    <script>if(/^https?:$/.test(location.protocol)&&!['localhost','127.0.0.1'].includes(location.hostname)&&!location.hostname.startsWith('192.168.')&&!location.hostname.includes('tauri')){var s=document.createElement('script');s.src='https://challenges.cloudflare.com/turnstile/v0/api.js';s.async=s.defer=true;document.head.appendChild(s)}</script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- PlanViews fonte er layoutkritiske: fallback ændrer linjebrud og kan skjule
@@ -376,7 +384,7 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/app/assets/main-B-uNCKh5.js"></script>
+  <script type="module" crossorigin src="/app/assets/main-DhMYPF43.js"></script>
   <link rel="stylesheet" crossorigin href="/app/assets/main-BmKwP4le.css">
 </head>
 <body>
