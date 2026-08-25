@@ -4,14 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Flango Ugeplan</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Fredoka:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600&family=Nunito:wght@600;700;800;900&family=Caveat:wght@500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <script type="module" crossorigin src="/ugeplan/assets/main-D_LpPFGl.js"></script>
-    <link rel="stylesheet" crossorigin href="/ugeplan/assets/main-wZ4BRUqO.css">
+    <!-- Ugeplanens EGET mærke, ikke Flangos frugt: siden her er ugeplanen, og en fane
+         skal kunne kendes fra caféens og portalens. Renderet fra assets/ugeplan-logo.svg,
+         så alle størrelser er skarpe — se tools/byg-ikoner.sh. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/ugeplan/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/ugeplan/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/ugeplan/icons/apple-touch-icon.png" />
+    <!-- Skrifterne bundles lokalt, se src/theme/fonts.css. Der hentes intet fra
+         fonts.googleapis.com: en app uden net skal ikke rendere i systemskrift, og
+         bruger-IP skal ikke til Google. -->
+    <script type="module" crossorigin src="/ugeplan/assets/main-DzUFB3lE.js"></script>
+    <link rel="stylesheet" crossorigin href="/ugeplan/assets/main-CS09hGk9.css">
   </head>
   <body>
     <div id="root"></div>
