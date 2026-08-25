@@ -861,8 +861,9 @@
       toast('Download-modulet er ikke indlæst', true);
       return;
     }
-    window.__flangoDownloadFile(name, content, 'text/csv').then(function (ok) {
-      toast(ok ? 'CSV gemt' : 'Kunne ikke gemme CSV', !ok);
+    window.__flangoDownloadFile(name, content, 'text/csv').then(function (status) {
+      if (status === 'completed') toast('CSV gemt');
+      if (status === 'failed') toast('Kunne ikke gemme CSV', true);
     });
   }
 

@@ -1799,10 +1799,8 @@
     //   btnId = header-element til live-toggle + reorder
     _build(ctx) {
       const inst = ctx.institutionData || {};
-      const isTauri = !!window.__TAURI_INTERNALS__;
       const MAP = window.__flangoToolbarItems || [];
       const items = MAP
-        .filter(m => !m.tauriOnly || isTauri)
         .map(m => {
           const on = inst[m.dbCol] !== false;
           const requiresMet = !m.requiresCol || inst[m.requiresCol] === true;
@@ -2303,7 +2301,7 @@
                 <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin:16px 0 8px">Oprettelse</div>
                 <div class="fsp-pm-detail">Oprettelse af jeres Stripe Connect-konto sker via en enkel, selvbetjent onboarding. I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetalingskonto.</div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-                  <button class="fsp-btn fsp-btn-ghost" data-action="stripe-download-guide" data-href="${guideUrl}" style="padding:10px 20px;font-size:13px">\uD83D\uDCE5 Download onboarding-guide</button>
+                  <button class="fsp-btn fsp-btn-ghost" data-action="stripe-open-guide" data-href="${guideUrl}" style="padding:10px 20px;font-size:13px">\uD83D\uDCD6 Åbn onboarding-guide</button>
                 </div>
                 <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin:16px 0 8px">Stripe onboarding-link</div>
                 <div style="font-size:12px;color:var(--fsp-txt3);margin-bottom:10px">Linket kan udl\u00f8be \u2013 gener\u00e9r et nyt hvis n\u00f8dvendigt.</div>
@@ -2424,10 +2422,18 @@
       const S = window.__flangoStripe || {};
       const instId = window.getInstitutionId?.();
 
-      // Download onboarding guide
-      container.querySelector('[data-action="stripe-download-guide"]')?.addEventListener('click', (e) => {
+      // Open onboarding guide
+      container.querySelector('[data-action="stripe-open-guide"]')?.addEventListener('click', async (e) => {
         const url = e.currentTarget.dataset.href;
-        if (url) window.open(url, '_blank');
+        if (!url) return;
+        try {
+          await window.FlangoPlatform.openExternal(url);
+        } catch (err) {
+          console.error('[stripe-guide] Kunne ikke åbne onboarding-guiden:', err);
+          const message = 'Kunne ikke åbne onboarding-guiden. Prøv igen.';
+          if (typeof window.__flangoShowAlert === 'function') window.__flangoShowAlert(message);
+          else alert(message);
+        }
       });
 
       // Opret / Fortsæt onboarding
@@ -2436,9 +2442,8 @@
         const status = ctx.institutionData?.stripe_account_status || 'not_configured';
         const hasMode = !!ctx.institutionData?.stripe_mode;
         if ((status === 'not_configured' || !hasMode) && S.openModeModal) {
-          await S.openModeModal({ mode: ctx.institutionData?.stripe_mode }, instId, async () => {
-            await S.startOnboarding(instId);
-          });
+          await S.openModeModal({ mode: ctx.institutionData?.stripe_mode }, instId,
+            (beforeOpen) => S.startOnboarding(instId, beforeOpen));
         } else {
           await S.startOnboarding(instId);
         }
@@ -2453,15 +2458,14 @@
       // Mode-skift (test ↔ live) rydder eksisterende account_id i shell.js' save-handler,
       // så en frisk Stripe-konto oprettes på den valgte platform.
       container.querySelector('[data-action="stripe-change-mode"]')?.addEventListener('click', async () => {
-        if (!S.openModeModal || !instId) return;
+        if (!S.openModeModal || !S.startOnboarding || !instId) return;
         const ok = await window.customConfirm?.(
           'Vil du skifte Stripe-mode?',
           `Hvis du skifter mellem Test og Live, oprettes en ny Stripe-konto på den valgte platform. Din nuværende konto (${ctx.institutionData?.stripe_mode === 'live' ? 'Live' : 'Test'}) efterlades i Stripe og kan slettes manuelt via dashboard.stripe.com.`
         ) ?? confirm('Skift Stripe-mode? En ny konto oprettes på den valgte platform.');
         if (!ok) return;
-        await S.openModeModal({ mode: ctx.institutionData?.stripe_mode }, instId, async () => {
-          if (S.startOnboarding) await S.startOnboarding(instId);
-        });
+        await S.openModeModal({ mode: ctx.institutionData?.stripe_mode }, instId,
+          (beforeOpen) => S.startOnboarding(instId, beforeOpen));
       });
 
       // Nulstil opsætning — rydder lokal kobling til Stripe (account_id, status, fejl),
@@ -3895,7 +3899,7 @@
   // ── Udseende (Klart is only active theme; Aurora/Unstoppable disabled) ──
   sections['Udseende'] = {
     render(ctx) {
-      const isTauri = typeof window !== 'undefined' && window.__TAURI_INTERNALS__;
+      const fullscreen = window.FlangoPlatform?.fullscreen;
       const themes = [
         { id: 'klart', name: 'Klart', desc: 'Rent og roligt design med bløde pastelfarver', bg: 'linear-gradient(135deg, #f8f6f0, #ebe7df)', accent: '#e8734a', accent2: '#f4a261', card: '#ffffff', sidebar: '#f0ede7', txt: '#2d2a25', active: true },
         { id: 'flango-unstoppable', name: 'Flango Unstoppable', desc: 'Fedt og energisk med lilla accenter og gul kurv', bg: 'linear-gradient(135deg, #1a1d27, #252830)', accent: '#e8734a', accent2: '#f4a261', card: '#2a2d36', sidebar: '#1e2028', txt: '#e4e6eb', disabled: true },
@@ -3904,7 +3908,7 @@
       return `<div class="fsp-page">
         <div class="fsp-page-title">Udseende</div>
         <div class="fsp-page-desc">Vælg tema for caféen.</div>
-        ${isTauri ? `<div class="fsp-block" style="margin-bottom:24px">
+        ${fullscreen?.showControls ? `<div class="fsp-block" style="margin-bottom:24px">
           <button class="fsp-btn fsp-btn-ghost" data-action="toggle-fullscreen" style="width:100%;display:flex;justify-content:center;align-items:center;gap:10px;padding:16px;font-size:15px;font-weight:600">
             <span data-fs-icon>⛶</span>
             <span data-fs-label>Skift til fuldskærm</span>
@@ -3943,11 +3947,11 @@
 
       // Fuldskærm-toggle (kun desktop)
       const fsBtn = container.querySelector('[data-action="toggle-fullscreen"]');
-      const tauriWin = window.__flangoTauriWindow;
-      if (fsBtn && tauriWin) {
+      const fullscreen = window.FlangoPlatform?.fullscreen;
+      if (fsBtn && fullscreen?.showControls) {
         const updateLabel = async () => {
           try {
-            const isFs = await tauriWin.isFullscreen();
+            const isFs = await fullscreen.isFullscreen();
             const labelEl = container.querySelector('[data-fs-label]');
             const iconEl = container.querySelector('[data-fs-icon]');
             if (labelEl) labelEl.textContent = isFs ? 'Afslut fuldskærm' : 'Skift til fuldskærm';
@@ -3957,15 +3961,13 @@
         updateLabel();
         fsBtn.addEventListener('click', async () => {
           try {
-            if (window.__flangoToggleFullscreen) {
-              // Sæt label ud fra den RETURNEREDE state (kendt hensigt). At re-query'e
-              // OS'et midt i fullscreen-overgangen giver gammel værdi (macOS race).
-              const isFs = await window.__flangoToggleFullscreen();
-              const labelEl = container.querySelector('[data-fs-label]');
-              const iconEl = container.querySelector('[data-fs-icon]');
-              if (labelEl) labelEl.textContent = isFs ? 'Afslut fuldskærm' : 'Skift til fuldskærm';
-              if (iconEl) iconEl.textContent = isFs ? '⊡' : '⛶';
-            }
+            // Sæt label ud fra den RETURNEREDE state (kendt hensigt). At re-query'e
+            // OS'et midt i fullscreen-overgangen giver gammel værdi (macOS race).
+            const isFs = await fullscreen.toggleFullscreen();
+            const labelEl = container.querySelector('[data-fs-label]');
+            const iconEl = container.querySelector('[data-fs-icon]');
+            if (labelEl) labelEl.textContent = isFs ? 'Afslut fuldskærm' : 'Skift til fuldskærm';
+            if (iconEl) iconEl.textContent = isFs ? '⊡' : '⛶';
           } catch {}
         });
       }
@@ -4029,25 +4031,23 @@
   // ── Opdateringer (platform-bevidst) ──
   sections['Opdateringer'] = {
     render(ctx) {
-      const isTauri = typeof window !== 'undefined' && window.__TAURI_INTERNALS__;
-      const versionInfo = window.__flangoVersionCheck?.getVersionInfo?.();
-      const version = versionInfo?.localVersion || window.FLANGO_VERSION || '?';
-      const platformLabel = isTauri ? 'Desktop-app' : 'Webapp';
+      const updates = window.FlangoPlatform?.updates;
+      const delivery = updates?.delivery || 'web';
+      const version = updates?.builtinVersion || '?';
+      const platformLabel = updates?.label || 'Webapp';
+      const isWeb = delivery === 'web';
+      const isLive = delivery === 'live';
 
-      let buttonsHtml;
-      if (isTauri) {
-        // Desktop: kun "Tjek for opdateringer" — ingen "Genindlæs app"
-        buttonsHtml = `<button class="fsp-btn fsp-btn-primary" data-action="check-update-tauri" style="width:100%;display:flex;justify-content:center;padding:14px">Tjek for opdateringer</button>`;
-      } else {
-        // Webapp: begge knapper
-        buttonsHtml = `<div style="display:flex;gap:10px">
+      const updateButton = `<button class="fsp-btn fsp-btn-primary" data-action="check-platform-update" style="${isWeb ? 'flex:1;' : 'width:100%;'}display:flex;justify-content:center;padding:14px">Søg efter opdatering</button>`;
+      const buttonsHtml = isWeb
+        ? `<div style="display:flex;gap:10px">
           <button class="fsp-btn fsp-btn-ghost" data-action="reload" style="flex:1;display:flex;justify-content:center;padding:14px;align-items:center;gap:8px">\uD83D\uDD04 Genindl\u00e6s app</button>
-          <button class="fsp-btn fsp-btn-primary" data-action="check-update" style="flex:1;display:flex;justify-content:center;padding:14px">Tjek for opdateringer</button>
-        </div>`;
-      }
+          ${updateButton}
+        </div>`
+        : updateButton;
 
       let downloadSection = '';
-      if (!isTauri) {
+      if (isWeb) {
         downloadSection = `<div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.06)">
           <div style="font-size:15px;font-weight:600;color:var(--fsp-txt);margin-bottom:6px">\uD83D\uDCBB Desktop-app</div>
           <div style="font-size:13px;color:var(--fsp-txt3);margin-bottom:16px;line-height:1.5">
@@ -4064,22 +4064,45 @@
         <div class="fsp-block" style="margin-bottom:24px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
             <div style="font-size:13px;color:var(--fsp-txt3)">Version</div>
-            <div style="font-size:15px;font-weight:600;color:var(--fsp-txt);font-family:monospace">v${version}</div>
+            <div style="font-size:15px;font-weight:600;color:var(--fsp-txt);font-family:monospace" data-update-version>v${version}</div>
           </div>
-          <div style="font-size:12px;color:var(--fsp-txt3);margin-bottom:14px">${platformLabel}</div>
+          <div style="font-size:12px;color:var(--fsp-txt3);margin-bottom:14px" data-update-platform>${platformLabel}</div>
           <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(93,202,122,0.08);border:1px solid rgba(93,202,122,0.15);border-radius:10px">
             <span style="color:#5dca7a;font-size:14px">\u2713</span>
-            <span style="font-size:13px;color:#5dca7a;font-weight:500" data-status="version-status">Du k\u00f8rer den nyeste version</span>
+            <span style="font-size:13px;color:#5dca7a;font-weight:500" data-status="version-status">${isLive ? 'Aktiv bundle kontrolleres...' : 'Du k\u00f8rer den nyeste version'}</span>
           </div>
         </div>
         ${buttonsHtml}
-        ${isTauri ? '<div style="font-size:12px;color:var(--fsp-txt3);margin-top:10px;text-align:center">Opdateringer vises automatisk ved programstart</div>' : ''}
+        ${delivery === 'desktop' ? '<div style="font-size:12px;color:var(--fsp-txt3);margin-top:10px;text-align:center">Opdateringer vises automatisk ved programstart</div>' : ''}
+        ${isLive ? '<div style="font-size:12px;color:var(--fsp-txt3);margin-top:10px;text-align:center">Live-opdateringer hentes ved genoptagelse og aktiveres, når appen har været i baggrunden</div>' : ''}
         ${downloadSection}
       </div>`;
     },
     wire(container, ctx) {
       pageAlign(container);
-      const isTauri = typeof window !== 'undefined' && window.__TAURI_INTERNALS__;
+      const updates = window.FlangoPlatform?.updates;
+      const delivery = updates?.delivery || 'web';
+      const statusEl = container.querySelector('[data-status="version-status"]');
+      const versionEl = container.querySelector('[data-update-version]');
+      const platformEl = container.querySelector('[data-update-platform]');
+
+      const setStatus = (text, color = '#5dca7a') => {
+        if (!statusEl) return;
+        statusEl.textContent = text;
+        statusEl.style.color = color;
+      };
+
+      updates?.getVersionInfo?.().then(info => {
+        if (versionEl && info.activeVersion) versionEl.textContent = `v${info.activeVersion}`;
+        if (platformEl && info.nativeVersion && delivery === 'live') {
+          platformEl.textContent = `${updates.label} · App Store-binær v${info.nativeVersion}`;
+        }
+        if (info.pendingVersion) {
+          setStatus(`v${info.pendingVersion} er klar til næste genåbning`, '#f59e0b');
+        } else {
+          setStatus('Du kører den nyeste aktive version');
+        }
+      }).catch(() => setStatus('Kunne ikke læse versionsoplysninger', '#e85a6f'));
 
       // Webapp: Genindlæs app
       container.querySelector('[data-action="reload"]')?.addEventListener('click', () => {
@@ -4092,54 +4115,106 @@
         location.href = location.href.split('#')[0] + '?_=' + Date.now();
       });
 
-      // Webapp: Tjek for opdateringer (web version-check)
-      container.querySelector('[data-action="check-update"]')?.addEventListener('click', async () => {
-        const btn = container.querySelector('[data-action="check-update"]');
-        const statusEl = container.querySelector('[data-status="version-status"]');
-        if (btn) { btn.textContent = 'Tjekker...'; btn.disabled = true; }
-        try {
-          if (window.__flangoVersionCheck?.checkForUpdates) {
-            await window.__flangoVersionCheck.checkForUpdates();
-          }
-          if (statusEl) statusEl.textContent = 'Tjek gennemf\u00f8rt \u2014 du k\u00f8rer den nyeste version';
-        } catch (e) {
-          if (statusEl) { statusEl.textContent = 'Kunne ikke tjekke for opdateringer'; statusEl.style.color = '#e85a6f'; }
+      // Ét UI-kaldsted for web, desktop og iOS. Platformen ejer både pluginvalg
+      // og betydningen af resultatet; sektionen viser kun normaliseret status.
+      let pendingUpdate = null;
+      const updateBtn = container.querySelector('[data-action="check-platform-update"]');
+      if (typeof MutationObserver === 'function' && updates?.dismissUpdate) {
+        const releaseObserver = new MutationObserver(() => {
+          if (updateBtn?.isConnected) return;
+          releaseObserver.disconnect();
+          if (pendingUpdate) void updates.dismissUpdate(pendingUpdate);
+          pendingUpdate = null;
+        });
+        releaseObserver.observe(document.body, { childList: true, subtree: true });
+      }
+      const observeUpdateResult = result => {
+        if (!updateBtn) return;
+        if (result.status === 'available' && delivery === 'live') {
+          setStatus(`Ny live-version fundet: v${result.version} — henter...`, '#f59e0b');
+        } else if (result.status === 'queued') {
+          setStatus(`v${result.version} er klar til næste genåbning`, '#f59e0b');
+          updateBtn.textContent = 'Søg efter opdatering';
+          updateBtn.disabled = false;
+        } else if (result.status === 'up-to-date') {
+          setStatus('Du kører den nyeste version');
+          updateBtn.textContent = 'Søg efter opdatering';
+          updateBtn.disabled = false;
+        } else if (result.status === 'blocked') {
+          setStatus('Opdateringen kræver en nyere App Store-version', '#e85a6f');
+          updateBtn.textContent = 'Søg efter opdatering';
+          updateBtn.disabled = false;
+        } else if (result.status === 'failed') {
+          setStatus('Opdateringstjek eller download fejlede', '#e85a6f');
+          updateBtn.textContent = 'Prøv igen';
+          updateBtn.disabled = false;
         }
-        if (btn) { btn.textContent = 'Tjek for opdateringer'; btn.disabled = false; }
-      });
+      };
+      updateBtn?.addEventListener('click', async () => {
+        if (!updates) {
+          setStatus('Opdateringskanalen er ikke tilgængelig', '#e85a6f');
+          return;
+        }
 
-      // Desktop: state-drevet knap \u2014 f\u00f8rst "Tjek", hvis ny version fundet bliver
-      // den "Opdater nu" \u2192 installerer (download + genstart). Giver en bevidst
-      // opdater-vej fra settings i stedet for kun fuldsk\u00e6rms-prompten ved opstart.
-      let _pendingTauriUpdate = null;
-      const tauriUpdBtn = container.querySelector('[data-action="check-update-tauri"]');
-      tauriUpdBtn?.addEventListener('click', async () => {
-        const statusEl = container.querySelector('[data-status="version-status"]');
-        if (_pendingTauriUpdate) {
-          tauriUpdBtn.disabled = true; tauriUpdBtn.textContent = 'Opdaterer...';
+        if (pendingUpdate && updates.manualInstall) {
+          updateBtn.disabled = true;
+          updateBtn.textContent = 'Opdaterer...';
+          const updateToInstall = pendingUpdate;
+          pendingUpdate = null;
           try {
-            if (window.__flangoTauriInstall) await window.__flangoTauriInstall(_pendingTauriUpdate);
+            await updates.installUpdate(updateToInstall, progress => {
+              const percent = Math.max(0, Math.min(100, Math.round(progress.percent)));
+              setStatus(progress.phase === 'relaunch' ? 'Genstarter...' : `Opdaterer... ${percent}%`, '#f59e0b');
+            });
           } catch (e) {
-            if (statusEl) { statusEl.textContent = 'Opdatering fejlede'; statusEl.style.color = '#e85a6f'; }
-            tauriUpdBtn.disabled = false; tauriUpdBtn.textContent = 'Pr\u00f8v igen';
+            setStatus('Opdatering fejlede', '#e85a6f');
+            updateBtn.disabled = false;
+            updateBtn.textContent = 'Prøv igen';
           }
           return;
         }
-        tauriUpdBtn.textContent = 'Tjekker...'; tauriUpdBtn.disabled = true;
+
+        updateBtn.textContent = 'Tjekker...';
+        updateBtn.disabled = true;
         try {
-          const update = window.__flangoTauriCheckUpdate ? await window.__flangoTauriCheckUpdate() : null;
-          if (update) {
-            _pendingTauriUpdate = update;
-            if (statusEl) { statusEl.textContent = `Ny version tilg\u00e6ngelig: v${update.version}`; statusEl.style.color = '#f59e0b'; }
-            tauriUpdBtn.textContent = `\u2b07 Opdater nu \u2014 v${update.version}`; tauriUpdBtn.disabled = false;
+          const result = await updates.checkUpdate(observeUpdateResult);
+          if (result.status === 'available') {
+            // Viewet kan være blevet lukket, mens det native check kørte.
+            // Slip handle'et med det samme i stedet for at gemme det i et
+            // afkoblet kaldsted, som ikke længere kan rydde op.
+            if (!updateBtn.isConnected) {
+              await updates.dismissUpdate?.(result);
+              return;
+            }
+            setStatus(`Ny version tilgængelig: v${result.version}`, '#f59e0b');
+            if (updates.manualInstall) {
+              pendingUpdate = result;
+              updateBtn.textContent = `\u2b07 Opdater nu \u2014 v${result.version}`;
+              updateBtn.disabled = false;
+              return;
+            }
+            if (delivery === 'live') {
+              return; // Live-downloaden afsluttes af observerens terminale event.
+            }
+          } else if (result.status === 'queued') {
+            setStatus(`v${result.version} er klar til næste genåbning`, '#f59e0b');
+          } else if (result.status === 'checking') {
+            setStatus('Søger og henter i baggrunden...', '#f59e0b');
+            return; // Undgå parallelle native checks, mens eventforløbet kører.
+          } else if (result.status === 'unavailable') {
+            setStatus('Live-update-kanalen er ikke aktiveret i denne binær', '#e85a6f');
+          } else if (result.status === 'blocked') {
+            setStatus('Opdateringen kræver en nyere App Store-version', '#e85a6f');
+          } else if (result.status === 'failed') {
+            setStatus('Opdateringstjek eller download fejlede', '#e85a6f');
           } else {
-            if (statusEl) statusEl.textContent = 'Du k\u00f8rer den nyeste version';
-            tauriUpdBtn.textContent = 'Tjek for opdateringer'; tauriUpdBtn.disabled = false;
+            setStatus('Du kører den nyeste version');
           }
         } catch (e) {
-          if (statusEl) { statusEl.textContent = 'Kunne ikke tjekke for opdateringer'; statusEl.style.color = '#e85a6f'; }
-          tauriUpdBtn.textContent = 'Tjek for opdateringer'; tauriUpdBtn.disabled = false;
+          setStatus('Kunne ikke tjekke for opdateringer', '#e85a6f');
         }
+        updateBtn.textContent = 'Søg efter opdatering';
+        updateBtn.disabled = false;
       });
 
       // Webapp: Desktop downloads

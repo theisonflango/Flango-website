@@ -35,11 +35,13 @@
   let chromeEl = null;        // enheds-kontakten, monteret i skallens admin-bjælke
 
   function getPortalOrigin() {
-    // tauri://localhost har OGSÅ hostname 'localhost' — desktop-appen skal på
-    // prod-portalen, ikke dev-serveren. Kun ægte web-dev rammer localhost:3001.
-    const isTauri = !!window.__TAURI_INTERNALS__;
+    // Native skaller har også hostname localhost; kun ægte webudvikling må
+    // pege på dev-portalen.
     const h = window.location.hostname;
-    return (!isTauri && (h === 'localhost' || h === '127.0.0.1'))
+    const isLocalWeb = window.FlangoPlatform.name === 'web'
+      && window.location.protocol.startsWith('http')
+      && (h === 'localhost' || h === '127.0.0.1');
+    return isLocalWeb
       ? 'http://localhost:3001'
       : 'https://flango.dk';
   }
