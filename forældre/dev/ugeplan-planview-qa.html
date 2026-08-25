@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Forældreportal · PlanView QA</title>
+    <style>
+      html, body { min-height: 100%; margin: 0; }
+      /* Samme fjendtlige værtsarv som portal-demoen. */
+      body { background: #eee7dc; font-family: system-ui, sans-serif; line-height: 1.5; }
+      *, *::before, *::after { box-sizing: content-box; font-family: inherit; }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 18px; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap" data-portal-planview-qa="loading">
+      <div id="ugeplan"></div>
+    </main>
+
+    <!-- Den samme rå IIFE-kopi som portal-v2.js loader i produktion. -->
+    <script src="../js/vendor/planview.js?v=qa"></script>
+    <script>
+      (async function () {
+        var schedule = {
+          'Caféen': [
+            { activity: 'Red Curry', staff: 'Theis' },
+            { activity: 'Perfekte Pizzaer', staff: 'Peter' },
+            { activity: 'Fish & Chips', staff: 'Kristian' },
+            { activity: 'Tempura Pokebowl', staff: 'Anne' },
+            { activity: 'Restegilde', staff: 'Kalle' }
+          ],
+          'Krea': [
+            { activity: 'Betonfigurer', staff: 'Anne' },
+            { activity: 'Betonfigurer', staff: 'Anne' },
+            { closed: true },
+            { closed: true },
+            { activity: 'Betonfigurer', staff: 'Anne' }
+          ],
+          'Gamer': [
+            { activity: 'Frit Spil', staff: 'Morten', time: '13:00 – 14:30' },
+            { activity: 'VR – Townsmen', staff: 'Kasper' },
+            { activity: 'VR – Star Wars', staff: 'Kasper' },
+            { activity: 'VR – Job Simulator', staff: 'Kasper' },
+            { activity: 'LOL Masterclass', staff: 'Kasper' }
+          ],
+          'Musik': [
+            { closed: true },
+            { activity: 'Band', staff: 'Theis' },
+            { activity: 'Karaoke', staff: 'Theis' },
+            { closed: true },
+            { activity: 'Ukulele Træning', staff: 'Theis' }
+          ],
+          'Salen & Bordtennis': [
+            { activity: 'Bordtennis', staff: 'Kasper & Morten' },
+            { activity: 'Bordtennis', staff: 'Georg' },
+            { activity: 'Rekorder', staff: 'Peter' },
+            { activity: 'Hockey', staff: 'Theis' },
+            { activity: 'Sværdkamp', staff: 'Morten' }
+          ],
+          'Kaningården': [
+            { activity: 'Pasning', staff: 'John' },
+            { activity: 'Pasning', staff: 'John' },
+            { closed: true },
+            { activity: 'Pasning', staff: 'John' },
+            { activity: 'Pasning', staff: 'John' }
+          ],
+          'Rollespil': [
+            { closed: true },
+            { activity: 'Bordrollespil', staff: 'Morten' },
+            { activity: 'Byg og hyg', staff: 'Morten' },
+            { closed: true },
+            { closed: true }
+          ],
+          'Diverse': [
+            { activity: 'Flyver/krydser', staff: 'Anders' },
+            { closed: true },
+            { activity: 'Børnemøde og teater', staff: 'Kristian & Morten' },
+            { activity: 'Flyver/krydser', staff: 'Morten' },
+            { closed: true }
+          ],
+          'Ude': [
+            { activity: 'Åben', staff: 'Morten' },
+            { activity: 'Fodbold', staff: 'Georg' },
+            { activity: 'Tennis/basketball', staff: 'Kasper' },
+            { activity: 'Bål', staff: 'Anders' },
+            { activity: 'Skolens boldbane', staff: 'Morten' }
+          ]
+        };
+        var workshops = Object.keys(schedule).map(function (name, index) {
+          return {
+            slug: name,
+            name: name,
+            color: ['#d4501f', '#bf4a6c', '#4c6ba6', '#e08a15', '#2b8873'][index % 5],
+            icon: ['cup', 'palette', 'controller', 'note', 'paddle'][index % 5]
+          };
+        });
+        var snapshot = {
+          schedule_data: schedule,
+          hidden_workshops: [],
+          workshops: workshops,
+          institution: 'Stampen',
+          note: { text: 'Hav en dejlig uge!', style: 'banner' },
+          qr_msg: 'Ugeplan og cafésaldo i Flangos forældreportal',
+          design: 'nordicMeadow'
+        };
+
+        if (!window.FlangoPlanView) throw new Error('Portalens PlanView-bundle blev ikke indlæst');
+        await window.FlangoPlanView.preparePlanViewFonts?.();
+        var handle = window.FlangoPlanView.mountPortal(
+          document.querySelector('#ugeplan'),
+          snapshot,
+          { weekNum: 14, year: 2026, view: 'week' }
+        );
+        await document.fonts?.ready;
+        await new Promise(function (resolve) {
+          requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+        });
+        document.querySelector('[data-portal-planview-qa]').dataset.portalPlanviewQa = 'ready';
+        window.__nordicPortalQa = { handle: handle, snapshot: snapshot };
+        window.__nordicPortalQaReady = true;
+      }());
+    </script>
+  </body>
+</html>
