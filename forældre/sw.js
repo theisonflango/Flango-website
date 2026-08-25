@@ -12,7 +12,7 @@
  * cache-buster-bumpet i index.html er den eneste version der skal vedligeholdes.
  */
 
-const CACHE = 'flango-portal-v11';
+const CACHE = 'flango-portal-v12';
 
 // Version-stabile skal-filer (uden ?v=N) — seedet ved install for offline-brug.
 // supabase-js er nu selvhostet og kan derfor precaches (det kunne den cross-origin
@@ -35,7 +35,7 @@ const SHELL = [
   // Ugeplanens skema-renderer. SKAL være i shell'en: uden den viser Ugeplan-sektionen
   // kun tekst-reserven offline. PDF-delen (planview-pdf.js) er BEVIDST ikke med —
   // den fylder mere end resten af portalen og hentes kun når nogen trykker Hent.
-  './js/vendor/planview.js?v=7',
+  './js/vendor/planview.js?v=8',
   './assets/flango-logo.webp',
   './assets/flango-lockup-tagline.webp',
   './assets/icons/icon-192.png',
