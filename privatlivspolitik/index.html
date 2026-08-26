@@ -165,12 +165,12 @@
 
     <section>
       <h1 class="page-title">Privatlivspolitik</h1>
-      <p class="page-intro">Denne side giver et overblik over hvordan Flango behandler personoplysninger i forbindelse med cafédrift, skærmtidsstyring og forældreportal i danske institutioner.</p>
-      <p class="page-meta">Gældende fra 13. juni 2026 · Version 2.1</p>
+      <p class="page-intro">Denne side giver et overblik over hvordan Flango behandler personoplysninger i forbindelse med cafédrift, skærmtidsstyring, ugeplan og forældreportal i danske institutioner.</p>
+      <p class="page-meta">Gældende fra 26. august 2026 · Version 2.2</p>
     </section>
 
     <div class="callout">
-      <strong>Kort version:</strong> Flango behandler kun de oplysninger der er nødvendige for at drive institutionens café og skærmtidsstyring. Alle data opbevares i EU. Vi sælger aldrig data og deler kun med de underbehandlere der er nødvendige for driften. Børn, forældre og personale har fuld ret til indsigt, berigtigelse og sletning.
+      <strong>Kort version:</strong> Flango behandler kun de oplysninger der er nødvendige for at drive institutionens café, skærmtid og ugeplan. Alle data opbevares i EU. Vi sælger aldrig data og deler kun med de underbehandlere der er nødvendige for driften. Børn, forældre og personale har fuld ret til indsigt, berigtigelse og sletning.
     </div>
 
     <hr class="divider" aria-hidden="true" />
@@ -206,6 +206,11 @@
       <h3>Personale</h3>
       <p>Login-oplysninger, rolle, institutions-tilknytning og handlingslog (sporbarhed).</p>
 
+      <h3>Ugeplan</h3>
+      <p>Ugeplanen er et arbejdsredskab for institutionens personale — også som app til iPhone og iPad. Huset har <strong>ét fælles login</strong>: én e-mailadresse og ét kodeord, som personalet deler. Der oprettes ikke en konto pr. medarbejder.</p>
+      <p>Der behandles login-oplysningerne, de <strong>navne på personalet</strong> institutionen selv skriver ind for at vise hvem der står for hvilket værksted, og <strong>ugens plan</strong>: værksteder, aktiviteter, tidspunkter og eventuelle noter. Vælger man at få beskeder på en telefon eller tablet, gemmes desuden enhedens <strong>notifikations-id</strong> — et teknisk id fra styresystemets leverandør, som gør det muligt at sende en besked til netop den enhed. Det kan slås fra igen på enheden, og id'et slettes, når man gør det.</p>
+      <p>Planen sendes kun videre, når personalet aktivt vælger det, og kun til de kanaler institutionen selv har slået til — forældreportalen, caféens skærm eller en opslagstavle. <strong>Ugeplanen indeholder ingen oplysninger om børn.</strong></p>
+
       <div class="callout-orange callout">
         <strong>Hvad vi IKKE behandler:</strong> Flango behandler ikke CPR-numre, helbredsoplysninger, religiøs overbevisning, etnisk oprindelse, biometriske data eller andre særligt følsomme personoplysninger (GDPR artikel 9). Allergen-indstillinger er forældrerapporterede præferencer — ikke medicinske data.
       </div>
@@ -232,7 +237,7 @@
 
     <section class="about-section">
       <h2 class="section-heading">5. Underbehandlere</h2>
-      <p>Et begrænset antal underbehandlere indgår i driften — for hosting/database, betaling, e-mail-levering, valgfrit Google-login og bot-beskyttelse. Alle har:</p>
+      <p>Et begrænset antal underbehandlere indgår i driften — for hosting/database, betaling, e-mail-levering, notifikationer til mobilenheder, valgfrit Google-login og bot-beskyttelse. Alle har:</p>
       <ul>
         <li>Underskrevet databehandleraftale i overensstemmelse med GDPR art. 28</li>
         <li>Primær drift i EU eller EU-godkendte overførselsmekanismer</li>
@@ -248,12 +253,15 @@
       <p>Flango anvender industri-standard sikkerhedsforanstaltninger:</p>
       <ul>
         <li>Kryptering både ved overførsel og i hvile</li>
-        <li>Multifaktor-autentifikation for personalet — login fra en ny browser eller enhed verificeres</li>
+        <li>Multifaktor-autentifikation for personalet i caféen, super-admin og på kommunefladen — login fra en ny browser eller enhed verificeres</li>
         <li>Streng adskillelse af institutionsdata på databaseniveau</li>
         <li>Kodeord og PIN-koder lagres aldrig i klartekst</li>
         <li>Daglige automatiske backups</li>
         <li>Append-only audit-log over alle væsentlige handlinger</li>
       </ul>
+      <p><strong>Ugeplanen har en enklere adgangsmodel.</strong> Huset deler ét login uden multifaktor. Det er et bevidst valg, og det er truffet ud fra hvad ugeplanen indeholder: personalets navne — i praksis fornavne — og ugens plan over værksteder og aktiviteter. Det er indhold, institutionen selv udgiver: til forældrene, på caféens skærm og på opslagstavlen. <strong>Ugeplanen indeholder ingen oplysninger om børn.</strong></p>
+      <p>Adgangen er ikke af den grund ubeskyttet. Kodeord tjekkes mod kendte lækkede kodeord og har et minimumskrav til længde, gentagne loginforsøg begrænses, og institutionernes data er adskilt i databasen — ét login når kun ét hus. De to uigenkaldelige handlinger, skift af husets adgangskode og skift af admin-koden, kræver institutionens admin-kode, som ikke er den samme som logind-koden. Et kodeskifte lukker samtidig alle åbne sessioner, så en medarbejder der stopper kan afskæres.</p>
+      <p>Afvejningen gælder det, ugeplanen indeholder i dag. <strong>Kommer den til at rumme oplysninger om enkelte børn, holder den ikke længere</strong>, og adgangsmodellen skal laves om.</p>
       <p>Læs mere på <a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;">Sikkerhed og databeskyttelse</a>.</p>
     </section>
 
@@ -347,7 +355,7 @@
       <ul>
         <li><a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>Sikkerhed</strong></a> — overblik over kryptering, adgangskontrol og infrastruktur</li>
       </ul>
-      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 21. juli 2026 · Version 2.1</p>
+      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 26. august 2026 · Version 2.2</p>
     </section>
 
     <footer>
