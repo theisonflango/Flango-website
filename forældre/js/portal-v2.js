@@ -3773,8 +3773,17 @@
     const instSession = rules.max_session_minutes ?? '—';
     // ∞ = ingen personlig grænse (klubbens regler gælder) — samme betydning som i Købsgrænser.
     // "—" bruges KUN til read-only felter hvor tallet er ukendt.
-    const personalDaily = po.max_daily_minutes ?? null;
-    const personalSession = po.max_session_minutes ?? null;
+    //
+    // Vis den grænse, der FAKTISK gælder. En gemt grænse kan ligge over klubbens: forælderen satte
+    // 45, og klubben sænkede bagefter sin egen til 30. Serveren regner allerede med det mindste af
+    // de to (reset_institution_balances: LEAST(klubbens, forælderens)), så et højere tal på skærmen
+    // lover barnet tid, det aldrig får — og stepperens klamp fik første klik til at «springe» ned
+    // til klubbens tal i stedet for ét trin. Klampes her, er begge dele væk: tallet er sandt, og
+    // knapperne opfører sig som knapper.
+    const clampToClub = (personal, club) =>
+      personal == null ? null : (typeof club === 'number' ? Math.min(personal, club) : personal);
+    const personalDaily = clampToClub(po.max_daily_minutes ?? null, rules.default_balance_minutes);
+    const personalSession = clampToClub(po.max_session_minutes ?? null, rules.max_session_minutes);
     const consent = po.extra_time_consent ?? true;
     const showRemaining = feat.show_remaining !== false;
     const showUsage = feat.show_usage !== false;
