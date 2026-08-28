@@ -14,8 +14,8 @@
 (function () {
   var LINKS = [
     { href: '/',               label: 'Forside' },
-    { href: '/cafe/',          label: 'Café' },
-    { href: '/skaermtid/',     label: 'Skærmtid' },
+    { href: '/om-cafe/',       label: 'Café' },
+    { href: '/om-skaermtid/',  label: 'Skærmtid' },
     { href: '/ugeplan/',       label: 'Ugeplan' },
     { href: '/til-foraeldre/', label: 'Forældreportal' },
     { href: '/ugeplan/faellesskabet', label: 'Fællesskabet' }
@@ -25,8 +25,10 @@
    * "Log ind" den sides eget login. Uden for produktsiderne findes der ikke ét
    * rigtigt svar, så knappen siger eksplicit hvor den fører hen. */
   var LOGINS = {
-    '/cafe/':          { href: '/app',              label: 'Log ind' },
-    '/skaermtid/':     { href: '/skaermtid/login/', label: 'Log ind' },
+    // MIDLERTIDIG: caféen ligger stadig på /app — flyt til '/cafe' når
+    // cafe-prod er deployet. Peger på hvor appen faktisk er, ikke hvor den skal hen.
+    '/om-cafe/':       { href: '/app',              label: 'Log ind' },
+    '/om-skaermtid/':  { href: '/skaermtid/',       label: 'Log ind' },
     // Længere match end '/ugeplan/', så fællesskabets egen indgang vinder på den sti.
     '/ugeplan/faellesskabet': { href: '/ugeplan/faellesskabet/deltag', label: 'Log ind' },
     '/ugeplan/':       { href: '/ugeplan/log-ind',  label: 'Log ind' },
@@ -48,7 +50,7 @@
     return path;
   }
 
-  /* Længste match vinder, så /skaermtid/login/ markerer Skærmtid — ikke Forside. */
+  /* Længste match vinder, så /om-skaermtid/ markerer Skærmtid — ikke Forside. */
   function laengsteMatch(stier) {
     var path = nuvaerendeSti();
     var best = null;
@@ -98,7 +100,7 @@
           mobile +
           '<span class="flango-mobile-section">Log ind</span>' +
           '<a href="/forældre/">Forældreportal</a>' +
-          '<a href="/skaermtid/login/">Skærmtid (personale)</a>' +
+          '<a href="/skaermtid/">Skærmtid (personale)</a>' +
           '<a href="/ugeplan/log-ind">Ugeplan (personale)</a>' +
           '<a href="/ugeplan/faellesskabet/deltag">Fællesskabet</a>' +
           '<a href="/app">Café-app (personale)</a>' +
