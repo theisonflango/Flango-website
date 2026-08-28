@@ -25,9 +25,7 @@
    * "Log ind" den sides eget login. Uden for produktsiderne findes der ikke ét
    * rigtigt svar, så knappen siger eksplicit hvor den fører hen. */
   var LOGINS = {
-    // MIDLERTIDIG: caféen ligger stadig på /app — flyt til '/cafe' når
-    // cafe-prod er deployet. Peger på hvor appen faktisk er, ikke hvor den skal hen.
-    '/om-cafe/':       { href: '/app',              label: 'Log ind' },
+    '/om-cafe/':       { href: '/cafe',             label: 'Log ind' },
     '/om-skaermtid/':  { href: '/skaermtid/',       label: 'Log ind' },
     // Længere match end '/ugeplan/', så fællesskabets egen indgang vinder på den sti.
     '/ugeplan/faellesskabet': { href: '/ugeplan/faellesskabet/deltag', label: 'Log ind' },
@@ -103,7 +101,7 @@
           '<a href="/skaermtid/">Skærmtid (personale)</a>' +
           '<a href="/ugeplan/log-ind">Ugeplan (personale)</a>' +
           '<a href="/ugeplan/faellesskabet/deltag">Fællesskabet</a>' +
-          '<a href="/app">Café-app (personale)</a>' +
+          '<a href="/cafe">Café-app (personale)</a>' +
         '</div>' +
       '</nav>';
   }
