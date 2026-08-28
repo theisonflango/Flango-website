@@ -1,0 +1,4611 @@
+/**
+ * Flango Settings Sections — Content renderers for all sidebar items.
+ * Each section has a render(ctx) → HTML string, and wire(container, ctx) for events.
+ * Exposes window.FlangoSettingsSections.render(key, ctx) and .wire(key, container, ctx)
+ */
+
+(function () {
+  'use strict';
+
+  // Section renderers keyed by sidebar label
+  const sections = {};
+
+  // ── Shared SVG fragments ──
+  const chevronUp = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 6.5L5 3.5 8 6.5"/></svg>';
+  const chevronDown = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 3.5L5 6.5 8 3.5"/></svg>';
+
+  // ── Shared wiring helpers ──
+
+  /** Set content alignItems to flex-start (for page-style sections) */
+  function pageAlign(container) {
+    container.style.alignItems = 'flex-start';
+  }
+
+  /** Wire all fsp-toggle elements with data-field to dirty-tracking */
+  function wireToggles(container, ctx) {
+    container.querySelectorAll('.fsp-toggle[data-field]').forEach(toggle => {
+      toggle.addEventListener('click', () => {
+        toggle.classList.toggle('on');
+        const on = toggle.classList.contains('on');
+        // data-invert: knappen viser en POSITIV betydning ("gælder for") men kolonnen
+        // er negativ (fx balance_limit_exempt_*). Skriv den inverterede værdi.
+        ctx.markDirty(toggle.dataset.field, toggle.hasAttribute('data-invert') ? !on : on);
+      });
+    });
+  }
+
+  // ─── Mapping: data-field → module_key (for felter wireToggles ikke kender) ───
+  const FIELD_MODULE_OVERRIDES = {
+    // AI provider toggles bruger data-ai-provider, ikke data-field
+  };
+  const AI_PROVIDER_MODULE = {
+    openai: 'profile_pic_ai_openai',
+  };
+
+  /**
+   * Lås alle toggles der er låst af superadmin.
+   * Kører EFTER wireToggles/wireRadios — disabler og tilføjer 🔒-ikon.
+   */
+  function applyFeatureLocks(container, ctx) {
+    const FM = window.FeatureModules;
+    const flags = ctx.featureFlags;
+    if (!FM || !flags) return;
+
+    // Lås toggle hvis superadmin har låst modulet
+    function applyFlag(toggle, moduleKey) {
+      if (!FM.isModuleLocked(flags, moduleKey)) return;
+      const flag = FM.getModuleFlag(flags, moduleKey);
+      {
+        const reason = flag.lock_reason || (window.FeatureModules?.DEFAULT_LOCK_REASON || 'Låst af Flango');
+        toggle.classList.add('superadmin-locked');
+        toggle.style.opacity = '0.5';
+        toggle.style.pointerEvents = 'none';
+        // Fjern click handlers ved at erstatte elementet
+        const clone = toggle.cloneNode(true);
+        clone.style.opacity = '0.5';
+        clone.style.pointerEvents = 'none';
+        toggle.replaceWith(clone);
+        // Tilføj 🔒 + årsag som synlig tekst-blok
+        const row = clone.closest('.fsp-row, .fsp-role, .fsp-main-toggle, [style*="display:flex"]');
+        if (row && !row.parentElement?.querySelector('.fsp-lock-reason')) {
+          const lockBlock = document.createElement('div');
+          lockBlock.className = 'fsp-lock-reason';
+          lockBlock.style.cssText = 'display:flex;align-items:center;gap:6px;margin-top:6px;padding:6px 10px;border-radius:6px;background:rgba(217,119,6,0.1);border:1px solid rgba(217,119,6,0.2);font-size:12px;color:#d97706;';
+          lockBlock.innerHTML = `<span style="font-size:14px">🔒</span><span>${reason}</span>`;
+          row.after(lockBlock);
+        }
+      }
+    }
+
+    // 1. Standard data-field toggles
+    container.querySelectorAll('.fsp-toggle[data-field]').forEach(toggle => {
+      const field = toggle.dataset.field;
+      const moduleKey = FM.FIELD_TO_MODULE?.[field];
+      if (moduleKey) applyFlag(toggle, moduleKey);
+    });
+
+    // 2. AI provider toggles (data-ai-provider)
+    container.querySelectorAll('[data-ai-provider]').forEach(toggle => {
+      const provider = toggle.dataset.aiProvider;
+      const moduleKey = AI_PROVIDER_MODULE[provider];
+      if (moduleKey) applyFlag(toggle, moduleKey);
+    });
+
+    // 3. Radio buttons (data-field)
+    container.querySelectorAll('.fsp-radio[data-field]').forEach(radio => {
+      const field = radio.dataset.field;
+      const moduleKey = FM.FIELD_TO_MODULE?.[field];
+      if (moduleKey && FM.isModuleLocked(flags, moduleKey)) {
+        radio.style.opacity = '0.5';
+        radio.style.pointerEvents = 'none';
+        const clone = radio.cloneNode(true);
+        clone.style.opacity = '0.5';
+        clone.style.pointerEvents = 'none';
+        radio.replaceWith(clone);
+      }
+    });
+  }
+
+  /** Wire all fsp-radio elements with data-field + data-value */
+  function wireRadios(container, ctx) {
+    container.querySelectorAll('.fsp-radio[data-field]').forEach(radio => {
+      radio.addEventListener('click', () => {
+        const field = radio.dataset.field;
+        // Deselect siblings with same field
+        container.querySelectorAll(`.fsp-radio[data-field="${field}"]`).forEach(r => r.classList.remove('on'));
+        radio.classList.add('on');
+        // Coerce boolean-strenge til ægte boolean, så de skrives korrekt til
+        // boolean-kolonner (fx cafe_events_as_products). Andre værdier passerer uændret.
+        const raw = radio.dataset.value;
+        const value = raw === 'true' ? true : raw === 'false' ? false : raw;
+        ctx.markDirty(field, value);
+      });
+    });
+  }
+
+  /** Wire all number inputs with data-field to dirty-tracking */
+  function wireNumberInputs(container, ctx) {
+    container.querySelectorAll('input[type="number"][data-field]').forEach(input => {
+      input.addEventListener('change', () => {
+        const val = parseInt(input.value) || 0;
+        ctx.markDirty(input.dataset.field, val);
+      });
+    });
+  }
+
+  /** Wire step buttons (data-step-target + data-step) */
+  function wireStepButtons(container) {
+    container.querySelectorAll('[data-step-target]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = container.querySelector(`input[data-field="${btn.dataset.stepTarget}"]`);
+        if (!target) return;
+        const delta = parseInt(btn.dataset.step) || 0;
+        const allowNeg = btn.dataset.allowNegative === 'true';
+        const newVal = allowNeg ? (parseInt(target.value) || 0) + delta : Math.max(0, (parseInt(target.value) || 0) + delta);
+        target.value = newVal;
+        target.dispatchEvent(new Event('change'));
+      });
+    });
+  }
+
+  // wireSaveButton removed — auto-save via markDirty/saveField
+
+  // ═══════════════════════════════════════════════════
+  // HOVEDMENU
+  // ═══════════════════════════════════════════════════
+
+  // ── Produkter & Indbetalinger (big-card launcher) ──
+  sections['Produkter & Indbetalinger'] = {
+    render(ctx) {
+      const cards = [
+        { l: 'Produktoversigt', c: '#e8734a', d: 'Opret & rediger produkter' },
+        { l: 'Brugerpanel', c: '#5dca7a', d: 'Indbetal penge og administrer brugere' }
+      ];
+      return `<div class="fsp-big-cards">${cards.map(card =>
+        `<div class="fsp-big-card" data-card="${card.l}">
+          <div class="fsp-big-card-label">${card.l}</div>
+          <div class="fsp-big-card-icon" style="background:${card.c}22">${ctx.bigIc(card.l, card.c)}</div>
+          <div class="fsp-big-card-desc">${card.d}</div>
+        </div>`
+      ).join('')}</div>`;
+    },
+    wire(container, ctx) {
+      container.querySelectorAll('.fsp-big-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const label = card.dataset.card;
+          window.FlangoSettings.close();
+          if (label === 'Produktoversigt') {
+            // Tilbage fra produktoversigt fører tilbage til den nye Indstillinger (hvor man kom fra).
+            window.openSugarPolicyModal?.(() => window.FlangoSettings?.open?.());
+          } else if (label === 'Brugerpanel') {
+            window.openUserAdminPanel?.();
+          }
+        });
+      });
+    }
+  };
+
+  // ── Tilmelding / Arrangementer — state & helpers ──
+
+  const _tilm = {
+    filter: 'active',
+    events: [],
+    openEventId: null,
+    eventDetail: null,
+    eventRegs: [],
+    usersCache: null,
+    modalsInjected: false,
+  };
+
+  function esc(val) {
+    if (val == null) return '';
+    return String(val).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  }
+
+  /** Get the event management bridge, waiting up to 2s if module hasn't loaded yet */
+  async function _getMgmt() {
+    let mgmt = window.__flangoEventMgmt;
+    if (mgmt) return mgmt;
+    for (let i = 0; i < 20; i++) {
+      await new Promise(r => setTimeout(r, 100));
+      mgmt = window.__flangoEventMgmt;
+      if (mgmt) return mgmt;
+    }
+    return null;
+  }
+
+  const _arrColors = ['#5dca7a', '#5ba0d8', '#c77ddb', '#e8734a', '#f4a261', '#e85a6f'];
+  const _avatarColors = ['#e8734a', '#5ba0d8', '#5dca7a', '#c77ddb', '#f4a261', '#e85a6f', '#60a5fa', '#a78bfa'];
+
+  function _initials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    return parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : name.substring(0, 2).toUpperCase();
+  }
+
+  function _daysUntil(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    return Math.ceil((d - now) / 86400000);
+  }
+
+  function _formatClasses(arr) {
+    if (!arr || arr.length === 0) return 'Alle';
+    const sorted = [...arr].sort((a, b) => a - b);
+    if (sorted.length === 1) return sorted[0] + '. kl.';
+    return sorted[0] + '.\u2013' + sorted[sorted.length - 1] + '. kl.';
+  }
+
+  function _fmtDate(dateStr) {
+    if (!dateStr) return '\u2014';
+    const d = new Date(dateStr + 'T00:00:00');
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}/${month}/${d.getFullYear()}`;
+  }
+
+  function _formatPrice(p) {
+    const n = parseFloat(p);
+    if (!n || n === 0) return 'Gratis';
+    return n.toFixed(2).replace('.', ',') + ' kr.';
+  }
+
+  function _formatSaldo(b) {
+    const n = parseFloat(b) || 0;
+    return n.toFixed(2).replace('.', ',') + ' kr.';
+  }
+
+  function _gradeLabel(g) {
+    if (g === null || g === undefined) return '\u2014';
+    return g + '. kl.';
+  }
+
+  // ── Tilmelding / Arrangementer (event list + inline detail + modals + settings) ──
+  sections['Tilmelding'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      const eventsOn = !!inst.cafe_events_enabled;
+      const daysAhead = inst.cafe_events_days_ahead ?? 7;
+      // Visningstilstand: produktkort (default) vs. banner øverst. Gemmes i den
+      // eksisterende boolean cafe_events_as_products (true=produkter, false=banner).
+      const asProducts = inst.cafe_events_as_products !== false;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title" style="margin-bottom:28px">Arrangementer</div>
+        <div class="fsp-arr-tabs">
+          <div class="fsp-arr-tab${_tilm.filter === 'active' ? ' active' : ''}" data-tab-filter="active">Kommende<span class="fsp-arr-badge">0</span></div>
+          <div class="fsp-arr-tab${_tilm.filter !== 'active' ? ' active' : ''}" data-tab-filter="past">Afsluttede / Aflyste<span class="fsp-arr-badge">0</span></div>
+        </div>
+        <div class="fsp-arr-create" data-action="open-slide">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+          Opret arrangement
+        </div>
+        <div data-events-list>
+          <div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">Indl\u00e6ser arrangementer\u2026</div>
+        </div>
+        <div class="fsp-section" style="margin-top:28px">
+          <div class="fsp-collapse-btn" data-action="toggle-event-settings">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+            <span>Visningsindstillinger</span>
+          </div>
+          <div class="fsp-collapse-body" data-collapse="event-settings">
+            <div class="fsp-collapse-body-inner">
+              <div class="fsp-arr-setting" style="flex-direction:column;align-items:stretch">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+                  <div><div class="fsp-row-title">Vis kommende arrangementer i caf\u00e9en</div><div class="fsp-row-desc">Viser en liste over kommende begivenheder p\u00e5 caf\u00e9-sk\u00e6rmen, s\u00e5 b\u00f8rnene kan se og tilmelde sig arrangementer. Vises kun for b\u00f8rn med matchende klassetrin.</div></div>
+                  <div class="fsp-toggle${eventsOn ? ' on' : ''}" data-field="cafe_events_enabled" data-expand="ev-display-body"></div>
+                </div>
+                <div class="fsp-expand${eventsOn ? ' open' : ''}" data-expand-target="ev-display-body" style="max-height:${eventsOn ? '400px' : '0'}">
+                  <div style="padding-top:16px">
+                    <div style="font-size:13px;color:var(--fsp-txt3);margin-bottom:16px;line-height:1.5">V\u00e6lg hvordan kommende arrangementer skal vises i caf\u00e9en.</div>
+                    <div class="fsp-sub" data-ev-display="products">
+                      <div><div class="fsp-sub-title">Vis arrangementer som produkter</div><div class="fsp-sub-hint">Tydeligt \u2013 vises som produktkort i caf\u00e9en</div></div>
+                      <div class="fsp-radio${asProducts ? ' on' : ''}" data-field="cafe_events_as_products" data-value="true"></div>
+                    </div>
+                    <div class="fsp-sub" data-ev-display="strip">
+                      <div><div class="fsp-sub-title">Vis arrangementer over produkterne</div><div class="fsp-sub-hint">Diskret \u2013 vises som banner \u00f8verst</div></div>
+                      <div class="fsp-radio${asProducts ? '' : ' on'}" data-field="cafe_events_as_products" data-value="false"></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px">
+                      <label style="font-size:13px;font-weight:500;color:var(--fsp-txt);white-space:nowrap">Vis events indenfor</label>
+                      <div class="fsp-num-wrap" style="width:64px">
+                        <input type="number" data-field="cafe_events_days_ahead" value="${daysAhead}" min="1" max="90" style="padding:7px 10px;font-size:14px;font-weight:500;text-align:center">
+                      </div>
+                      <span style="font-size:13px;color:var(--fsp-txt3)">dage</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    },
+
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+      wireNumberInputs(container, ctx);
+      wireStepButtons(container);
+      wireRadios(container, ctx);
+
+      // Reset state on section load
+      _tilm.openEventId = null;
+      _tilm.usersCache = null;
+
+      // Collapse toggle for settings
+      const settingsToggle = container.querySelector('[data-action="toggle-event-settings"]');
+      const settingsBody = container.querySelector('[data-collapse="event-settings"]');
+      settingsToggle?.addEventListener('click', () => {
+        settingsToggle.classList.toggle('open');
+        settingsBody?.classList.toggle('open');
+      });
+
+      // Expand/collapse for display options under toggle
+      container.querySelectorAll('[data-expand]').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+          const target = container.querySelector(`[data-expand-target="${toggle.dataset.expand}"]`);
+          if (target) {
+            const isOpen = toggle.classList.contains('on');
+            target.classList.toggle('open', isOpen);
+            target.style.maxHeight = isOpen ? '400px' : '0';
+          }
+        });
+      });
+
+      // Tab switching
+      container.querySelectorAll('[data-tab-filter]').forEach(tab => {
+        tab.addEventListener('click', () => {
+          const f = tab.dataset.tabFilter;
+          if (f === _tilm.filter) return;
+          _tilm.filter = f;
+          _tilm.openEventId = null;
+          container.querySelectorAll('.fsp-arr-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          _tilmLoadEvents(container, ctx);
+        });
+      });
+
+      // Inject modal containers once into .fsp-right
+      if (!_tilm.modalsInjected) {
+        const right = ctx.overlay?.querySelector('.fsp-right') || ctx.overlay;
+        if (right) {
+          const up = document.createElement('div');
+          up.className = 'fsp-up-overlay';
+          up.dataset.modal = 'user-picker';
+          up.addEventListener('click', e => { if (e.target === up) up.classList.remove('open'); });
+          right.appendChild(up);
+
+          const pay = document.createElement('div');
+          pay.className = 'fsp-pay-overlay';
+          pay.dataset.modal = 'pay-confirm';
+          pay.addEventListener('click', e => { if (e.target === pay) pay.classList.remove('open'); });
+          right.appendChild(pay);
+
+          const reg = document.createElement('div');
+          reg.className = 'fsp-reg-overlay';
+          reg.dataset.modal = 'reg-confirm';
+          reg.addEventListener('click', e => { if (e.target === reg) reg.classList.remove('open'); });
+          right.appendChild(reg);
+
+          const rm = document.createElement('div');
+          rm.className = 'fsp-rm-overlay';
+          rm.dataset.modal = 'rm-confirm';
+          rm.addEventListener('click', e => { if (e.target === rm) rm.classList.remove('open'); });
+          right.appendChild(rm);
+
+          const ce = document.createElement('div');
+          ce.className = 'fsp-rm-overlay';
+          ce.dataset.modal = 'cancel-event';
+          ce.addEventListener('click', e => { if (e.target === ce) ce.classList.remove('open'); });
+          right.appendChild(ce);
+
+          const de = document.createElement('div');
+          de.className = 'fsp-rm-overlay';
+          de.dataset.modal = 'delete-event';
+          de.addEventListener('click', e => { if (e.target === de) de.classList.remove('open'); });
+          right.appendChild(de);
+
+          _tilm.modalsInjected = true;
+        }
+      }
+
+      // Open slide panel for creating event
+      container.querySelector('[data-action="open-slide"]')?.addEventListener('click', () => {
+        _tilmOpenSlide(ctx, null, container);
+      });
+
+      // Event delegation on events list
+      const listEl = container.querySelector('[data-events-list]');
+      listEl?.addEventListener('click', (e) => {
+        // Papirkurv-knap på kort (afsluttede/aflyste) → slet, uden at toggle detalje
+        const trashBtn = e.target.closest('[data-action="trash-event"]');
+        if (trashBtn) { e.stopPropagation(); _tilmDeleteEvent(trashBtn.dataset.eventId, container, ctx); return; }
+        const card = e.target.closest('[data-event-id]');
+        if (!card) return;
+        // Don't toggle if clicking action buttons inside detail
+        if (e.target.closest('.fsp-arr-actions') || e.target.closest('.fsp-arr-table') || e.target.closest('.fsp-arr-detail')) return;
+        _tilmToggleEvent(card.dataset.eventId, container, ctx);
+      });
+
+      // Load events
+      _tilmLoadEvents(container, ctx);
+    }
+  };
+
+  // ── Load events list ──
+  async function _tilmLoadEvents(container, ctx) {
+    const listEl = container.querySelector('[data-events-list]');
+    if (!listEl) return;
+    const instId = window.getInstitutionId?.();
+    if (!instId) {
+      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">Ingen forbindelse til database.</div>';
+      return;
+    }
+    const client = window.__flangoSupabaseClient;
+    if (!client) {
+      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">Ingen forbindelse til database.</div>';
+      return;
+    }
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      let allEvents = [];
+
+      if (_tilm.filter === 'active') {
+        const { data, error } = await client
+          .from('club_events').select('*')
+          .eq('institution_id', instId).eq('status', 'active')
+          .gte('event_date', today)
+          .order('event_date', { ascending: true }).order('start_time', { ascending: true });
+        if (error) throw error;
+        allEvents = data || [];
+      } else {
+        // Past + cancelled
+        const [r1, r2] = await Promise.all([
+          client.from('club_events').select('*')
+            .eq('institution_id', instId).or(`and(status.eq.active,event_date.lte.${today}),status.eq.archived`)
+            .order('event_date', { ascending: false }),
+          client.from('club_events').select('*')
+            .eq('institution_id', instId).eq('status', 'cancelled')
+            .order('event_date', { ascending: false }),
+        ]);
+        allEvents = [...(r1.data || []), ...(r2.data || [])];
+      }
+
+      // Fetch registration counts
+      if (allEvents.length > 0) {
+        const ids = allEvents.map(e => e.id);
+        const { data: regCounts } = await client
+          .from('event_registrations').select('event_id')
+          .in('event_id', ids).eq('registration_status', 'registered');
+        const countMap = {};
+        (regCounts || []).forEach(r => { countMap[r.event_id] = (countMap[r.event_id] || 0) + 1; });
+        allEvents.forEach(e => { e._registeredCount = countMap[e.id] || 0; });
+      }
+
+      _tilm.events = allEvents;
+
+      // Update badge counts
+      const badges = container.querySelectorAll('.fsp-arr-tab .fsp-arr-badge');
+      if (_tilm.filter === 'active') {
+        if (badges[0]) badges[0].textContent = allEvents.length;
+      } else {
+        if (badges[1]) badges[1].textContent = allEvents.length;
+      }
+
+      if (allEvents.length === 0) {
+        const msg = _tilm.filter === 'active' ? 'Ingen kommende arrangementer.' : 'Ingen afsluttede eller aflyste arrangementer.';
+        listEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">${msg}</div>`;
+        return;
+      }
+
+      const sectionTitle = _tilm.filter === 'active' ? 'Kommende arrangementer' : 'Afsluttede / Aflyste';
+      const chevronSvg = '<svg class="fsp-arr-card-chevron" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>';
+
+      listEl.innerHTML = `<div class="fsp-arr-section-title">${sectionTitle}</div>` +
+        allEvents.map((ev, i) => {
+          const d = new Date(ev.event_date + 'T00:00:00');
+          const dateStr = d.toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'short' });
+          const t1 = (ev.start_time || '').slice(0, 5);
+          const t2 = ev.end_time ? ev.end_time.slice(0, 5) : '';
+          const timeStr = t1 + (t2 ? ' \u2013 ' + t2 : '');
+          const cnt = ev._registeredCount || 0;
+          const capStr = ev.capacity ? `${cnt} / ${ev.capacity}` : `${cnt}`;
+          const color = _arrColors[i % _arrColors.length];
+          const isOpen = ev.id === _tilm.openEventId;
+          return `<div class="fsp-arr-card${isOpen ? ' fsp-arr-card-open' : ''}" data-event-id="${ev.id}">
+            <div class="fsp-arr-card-dot" style="background:${color}"></div>
+            <div class="fsp-arr-card-info"><div class="fsp-arr-card-name">${esc(ev.title)}</div><div class="fsp-arr-card-meta">${esc(dateStr)} \u00b7 ${esc(timeStr)}</div></div>
+            <div class="fsp-arr-card-count">${esc(capStr)}</div>
+            ${_tilm.filter !== 'active' ? `<button class="fsp-arr-card-trash" data-action="trash-event" data-event-id="${ev.id}" title="Slet permanent" aria-label="Slet arrangement"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6 4V2.5h4V4M5 4l.6 9.5h4.8L11 4M6.5 6.5v4.5M9.5 6.5v4.5"/></svg></button>` : ''}
+            ${chevronSvg}
+          </div>
+          <div class="fsp-arr-detail${isOpen ? ' open' : ''}" data-detail-for="${ev.id}"><div class="fsp-arr-detail-inner"></div></div>`;
+        }).join('');
+
+      // If an event was open, re-expand it
+      if (_tilm.openEventId) {
+        _tilmRenderDetail(_tilm.openEventId, container, ctx);
+      }
+    } catch (e) {
+      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">Kunne ikke hente arrangementer.</div>';
+    }
+  }
+
+  // ── Toggle event detail (expand/collapse) ──
+  async function _tilmToggleEvent(eventId, container, ctx) {
+    const prevId = _tilm.openEventId;
+
+    // Collapse current
+    if (prevId) {
+      const prevCard = container.querySelector(`.fsp-arr-card[data-event-id="${prevId}"]`);
+      const prevDetail = container.querySelector(`[data-detail-for="${prevId}"]`);
+      prevCard?.classList.remove('fsp-arr-card-open');
+      prevDetail?.classList.remove('open');
+      _tilm.openEventId = null;
+    }
+
+    // If same event, just toggle off
+    if (eventId === prevId) return;
+
+    // Invalidate users cache for fresh enrolled status
+    _tilm.usersCache = null;
+
+    // Expand new
+    _tilm.openEventId = eventId;
+    const card = container.querySelector(`.fsp-arr-card[data-event-id="${eventId}"]`);
+    const detail = container.querySelector(`[data-detail-for="${eventId}"]`);
+    card?.classList.add('fsp-arr-card-open');
+
+    // Fetch detail via direct Supabase (bridge may not be loaded yet)
+    const client = window.__flangoSupabaseClient;
+    if (!client) return;
+    const inner = detail?.querySelector('.fsp-arr-detail-inner');
+    if (inner) inner.innerHTML = '<div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">Indl\u00e6ser\u2026</div>';
+    detail?.classList.add('open');
+
+    try {
+      const [evRes, regRes] = await Promise.all([
+        client.from('club_events').select('*').eq('id', eventId).single(),
+        client.from('event_registrations')
+          .select('*, users!event_registrations_user_id_fkey(id, name, last_name, number, grade_level, balance, role, is_test_user)')
+          .eq('event_id', eventId).order('registered_at', { ascending: true }),
+      ]);
+      if (evRes.error) throw evRes.error;
+      const event = evRes.data;
+      const registrations = regRes.data || [];
+      _tilm.eventDetail = event;
+      _tilm.eventRegs = (registrations || []).filter(r => r.registration_status === 'registered');
+      _tilmRenderDetail(eventId, container, ctx);
+    } catch (e) {
+      if (inner) inner.innerHTML = '<div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">Kunne ikke hente detaljer.</div>';
+    }
+
+    // Scroll into view
+    setTimeout(() => detail?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  }
+
+  // ── Render detail content ──
+  function _tilmRenderDetail(eventId, container, ctx) {
+    const detail = container.querySelector(`[data-detail-for="${eventId}"]`);
+    const inner = detail?.querySelector('.fsp-arr-detail-inner');
+    if (!inner) return;
+    const ev = _tilm.eventDetail;
+    const regs = _tilm.eventRegs;
+    if (!ev) return;
+
+    const dateStr = _fmtDate(ev.event_date);
+    const t1 = (ev.start_time || '').slice(0, 5);
+    const t2 = (ev.end_time || '').slice(0, 5);
+    const timeStr = t1 + (t2 ? '\u2013' + t2 : '');
+    const days = _daysUntil(ev.event_date);
+    const daysStr = days === 0 ? 'I dag' : days === 1 ? 'I morgen' : days + ' dage';
+    const classStr = _formatClasses(ev.allowed_classes);
+    const priceStr = _formatPrice(ev.price);
+    const regCount = regs.length;
+    const capStr = ev.capacity ? `${regCount} / ${ev.capacity}` : `${regCount}`;
+    const paidRegs = regs.filter(r => r.payment_status === 'paid' || r.payment_status === 'not_required');
+    const paidCount = paidRegs.length;
+    const paidTotal = paidRegs.reduce((s, r) => s + (parseFloat(r.price_at_signup) || 0), 0);
+    const isPast = _tilm.filter !== 'active';
+
+    inner.innerHTML = `
+      ${ev.description ? `<div class="fsp-arr-detail-desc">${esc(ev.description)}</div>` : ''}
+      <div class="fsp-arr-meta-grid">
+        <div class="fsp-arr-meta-pill"><div class="fsp-arr-meta-pill-label">Dato</div><div class="fsp-arr-meta-pill-val">${esc(dateStr)}</div></div>
+        <div class="fsp-arr-meta-pill"><div class="fsp-arr-meta-pill-label">Tidspunkt</div><div class="fsp-arr-meta-pill-val">${esc(timeStr)}</div></div>
+        <div class="fsp-arr-meta-pill"><div class="fsp-arr-meta-pill-label">Dage til start</div><div class="fsp-arr-meta-pill-val">${esc(daysStr)}</div></div>
+        <div class="fsp-arr-meta-pill"><div class="fsp-arr-meta-pill-label">Klasser</div><div class="fsp-arr-meta-pill-val">${esc(classStr)}</div></div>
+        <div class="fsp-arr-meta-pill"><div class="fsp-arr-meta-pill-label">Pris</div><div class="fsp-arr-meta-pill-val">${esc(priceStr)}</div></div>
+      </div>
+      <div class="fsp-arr-stats">
+        <div class="fsp-arr-stat"><div class="fsp-arr-stat-label">Tilmeldte</div><div class="fsp-arr-stat-val" data-stat="enrolled">${esc(capStr)}</div></div>
+        <div class="fsp-arr-stat"><div class="fsp-arr-stat-label">Betalt</div><div class="fsp-arr-stat-val" data-stat="paid">${paidCount} / ${regCount}</div><div class="fsp-arr-stat-sub" data-stat="paid-total">${_formatSaldo(paidTotal)}</div></div>
+      </div>
+      ${!isPast ? `<div class="fsp-arr-actions">
+        <button class="fsp-btn fsp-btn-primary" style="padding:9px 18px;font-size:13px" data-action="register-user">Tilmeld bruger</button>
+        <button class="fsp-btn fsp-btn-ghost" style="padding:9px 18px;font-size:13px" data-action="edit-event">Rediger</button>
+        <button class="fsp-btn" style="padding:9px 18px;font-size:13px;background:none;border:1px solid rgba(232,90,111,0.25);color:#e85a6f" data-action="cancel-event">Aflys arrangement</button>
+      </div>` : ''}
+      <div class="fsp-arr-users-title">Tilmeldte brugere</div>
+      <table class="fsp-arr-table"><thead><tr><th>Navn</th><th>Nr.</th><th>Kl.</th><th>Saldo</th><th>Betaling</th>${!isPast ? '<th>Handlinger</th><th></th>' : ''}</tr></thead>
+      <tbody data-reg-tbody></tbody></table>`;
+
+    // Render table rows
+    const tbody = inner.querySelector('[data-reg-tbody]');
+    if (tbody) {
+      tbody.innerHTML = regs.length === 0
+        ? `<tr><td colspan="${isPast ? 5 : 7}" style="text-align:center;padding:16px;color:var(--fsp-txt3)">Ingen tilmeldte endnu.</td></tr>`
+        : regs.map(r => _tilmRegRow(r, ev, isPast)).join('');
+    }
+
+    // Wire action buttons
+    inner.querySelector('[data-action="register-user"]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _tilmOpenUserPicker(eventId, container, ctx);
+    });
+    inner.querySelector('[data-action="edit-event"]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _tilmOpenSlide(ctx, eventId, container);
+    });
+    inner.querySelector('[data-action="cancel-event"]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _tilmCancelEvent(eventId, container, ctx);
+    });
+
+    // Wire table buttons via delegation
+    tbody?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      e.stopPropagation();
+      const regId = btn.dataset.regId;
+      const userId = btn.dataset.userId;
+      const action = btn.dataset.action;
+      if (action === 'pay-balance') _tilmOpenPayConfirm(regId, container, ctx);
+      else if (action === 'pay-other') _tilmOpenRegConfirm(regId, container, ctx);
+      else if (action === 'remove-reg') _tilmRemoveUser(eventId, userId, container, ctx);
+    });
+  }
+
+  // ── Render single registration row ──
+  function _tilmRegRow(r, ev, isPast) {
+    const u = r.users || {};
+    const name = esc((window.__flangoUserName && window.__flangoUserName(u)) || u.name || 'Ukendt');
+    const num = esc(u.number || '\u2014');
+    const grade = _gradeLabel(u.grade_level);
+    const saldo = _formatSaldo(u.balance);
+    const price = parseFloat(ev.price) || 0;
+    const isPaid = r.payment_status === 'paid' || r.payment_status === 'not_required';
+    const badgeClass = isPaid ? 'paid' : 'unpaid';
+    const badgeText = r.payment_status === 'not_required' ? 'Gratis' : r.payment_status === 'paid' ? 'Betalt' : r.payment_status === 'refunded' ? 'Refunderet' : 'Afventer';
+    const showPayBtns = !isPast && !isPaid && price > 0 && r.payment_status !== 'refunded';
+    return `<tr data-reg-row="${r.id}">
+      <td style="color:var(--fsp-txt);font-weight:500">${name}</td>
+      <td>${num}</td>
+      <td>${esc(grade)}</td>
+      <td>${esc(saldo)}</td>
+      <td><span class="fsp-arr-pay-badge ${badgeClass}" data-pay-badge="${r.id}">${badgeText}</span></td>
+      ${!isPast ? `<td>${showPayBtns ? `<button class="fsp-arr-table-btn" data-action="pay-other" data-reg-id="${r.id}">Registrer Betaling</button> <button class="fsp-arr-table-btn accent" data-action="pay-balance" data-reg-id="${r.id}">Betal</button>` : ''}</td>
+      <td><button class="fsp-arr-table-rm" data-action="remove-reg" data-user-id="${u.id}" data-reg-id="${r.id}">\u00d7</button></td>` : ''}
+    </tr>`;
+  }
+
+  // ── 24-timers tidsvælger (custom popover, locale-uafhængig) ──
+  let _timePickEl = null;
+  let _timePickCleanup = null;
+  function _closeTimePicker() {
+    if (_timePickCleanup) { _timePickCleanup(); _timePickCleanup = null; }
+    if (_timePickEl) { _timePickEl.remove(); _timePickEl = null; }
+  }
+  function _openTimePicker(input, anchorBtn) {
+    if (_timePickEl) { _closeTimePicker(); return; } // toggle
+    if (!input) return;
+    const parts = (input.value || '').split(':');
+    const curH = parseInt(parts[0], 10);
+    const curM = parseInt(parts[1], 10);
+
+    const pop = document.createElement('div');
+    pop.className = 'fsp-timepick';
+    pop.innerHTML = `<div class="fsp-timepick-col"><div class="fsp-timepick-hd">Timer</div><div class="fsp-timepick-list" data-tp="h"></div></div><div class="fsp-timepick-col"><div class="fsp-timepick-hd">Min.</div><div class="fsp-timepick-list" data-tp="m"></div></div>`;
+    const hList = pop.querySelector('[data-tp="h"]');
+    const mList = pop.querySelector('[data-tp="m"]');
+    for (let h = 0; h < 24; h++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'fsp-timepick-opt' + (h === curH ? ' sel' : '');
+      b.textContent = String(h).padStart(2, '0');
+      b.dataset.h = h;
+      hList.appendChild(b);
+    }
+    for (let m = 0; m < 60; m++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'fsp-timepick-opt' + (m === curM ? ' sel' : '');
+      b.textContent = String(m).padStart(2, '0');
+      b.dataset.m = m;
+      mList.appendChild(b);
+    }
+    document.body.appendChild(pop);
+    _timePickEl = pop;
+
+    // Positionér fixed under feltet; vend opad hvis der ikke er plads
+    const r = (anchorBtn.closest('.fsp-dt-field') || anchorBtn).getBoundingClientRect();
+    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + 'px';
+    let top = r.bottom + 6;
+    if (top + pop.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - 6 - pop.offsetHeight);
+    pop.style.top = top + 'px';
+    hList.querySelector('.sel')?.scrollIntoView({ block: 'center' });
+    mList.querySelector('.sel')?.scrollIntoView({ block: 'center' });
+
+    const apply = () => {
+      const hSel = hList.querySelector('.sel')?.dataset.h;
+      const mSel = mList.querySelector('.sel')?.dataset.m;
+      const h = hSel != null ? hSel : (isNaN(curH) ? 0 : curH);
+      const m = mSel != null ? mSel : (isNaN(curM) ? 0 : curM);
+      input.value = String(parseInt(h, 10) || 0).padStart(2, '0') + ':' + String(parseInt(m, 10) || 0).padStart(2, '0');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.classList.remove('fsp-input-error');
+    };
+    pop.addEventListener('click', (e) => {
+      const hb = e.target.closest('[data-h]');
+      const mb = e.target.closest('[data-m]');
+      if (hb) { hList.querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); hb.classList.add('sel'); apply(); }
+      else if (mb) { mList.querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); mb.classList.add('sel'); apply(); _closeTimePicker(); }
+    });
+
+    const onDocDown = (e) => { if (!pop.contains(e.target) && !anchorBtn.contains(e.target) && e.target !== anchorBtn) _closeTimePicker(); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); _closeTimePicker(); } };
+    const onScroll = (e) => { if (_timePickEl && !_timePickEl.contains(e.target)) _closeTimePicker(); };
+    setTimeout(() => document.addEventListener('mousedown', onDocDown, true), 0);
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('scroll', onScroll, true);
+    _timePickCleanup = () => {
+      document.removeEventListener('mousedown', onDocDown, true);
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }
+
+  // ── Slide panel (create / edit) ──
+  function _tilmOpenSlide(ctx, editEventId, container) {
+    const overlay = ctx.overlay;
+    const slideOverlay = overlay?.querySelector('#fsp-slide-overlay');
+    const slidePanel = overlay?.querySelector('#fsp-slide-panel');
+    if (!slideOverlay || !slidePanel) return;
+
+    const isEdit = !!editEventId;
+    const ev = isEdit ? _tilm.eventDetail : null;
+    const today = new Date().toISOString().split('T')[0];
+
+    const title = isEdit ? 'Rediger arrangement' : 'Opret arrangement';
+    const submitLabel = isEdit ? 'Gem \u00e6ndringer' : 'Opret arrangement';
+    const submitAction = isEdit ? 'save-event' : 'create-event';
+
+    slidePanel.innerHTML = `
+      <div class="fsp-slide-hdr"><h2>${title}</h2><button class="fsp-slide-close" data-action="close-slide"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>
+      <div class="fsp-slide-body">
+        <div class="fsp-form-group"><div class="fsp-form-label">Titel</div><input class="fsp-input" type="text" placeholder="f.eks. FIFA-turnering" data-event-title value="${isEdit ? esc(ev?.title || '') : ''}"></div>
+        <div class="fsp-form-group"><div class="fsp-form-label">Beskrivelse</div><textarea class="fsp-input" placeholder="Beskriv arrangementet..." data-event-desc>${isEdit ? esc(ev?.description || '') : ''}</textarea></div>
+        <div class="fsp-form-row">
+          <div class="fsp-form-group"><div class="fsp-form-label">Pris</div><div class="fsp-num-wrap"><input type="number" placeholder="0 kr" data-event-price value="${isEdit ? (ev?.price || '') : ''}"><div class="fsp-num-btns"><button class="fsp-num-btn" data-sp="price" data-sd="5">${chevronUp}</button><button class="fsp-num-btn" data-sp="price" data-sd="-5">${chevronDown}</button></div></div></div>
+          <div class="fsp-form-group"><div class="fsp-form-label">Kapacitet</div><div class="fsp-num-wrap"><input type="number" placeholder="f.eks. 20" data-event-cap value="${isEdit ? (ev?.capacity || '') : ''}"><div class="fsp-num-btns"><button class="fsp-num-btn" data-sp="cap" data-sd="1">${chevronUp}</button><button class="fsp-num-btn" data-sp="cap" data-sd="-1">${chevronDown}</button></div></div></div>
+        </div>
+        <div class="fsp-form-group"><div class="fsp-form-label">Start</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.event_date || today) : today}" data-event-start-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="text" inputmode="numeric" maxlength="5" placeholder="tt:mm" value="${isEdit ? (ev?.start_time || '14:00').slice(0, 5) : '14:00'}" data-event-start-time data-time-input class="fsp-time-text"><button type="button" class="fsp-dt-picker-btn" data-time-picker-btn aria-label="Vælg tid"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
+        <div class="fsp-form-group"><div class="fsp-form-label">Slut</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.end_date || ev?.event_date || today) : today}" data-event-end-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="text" inputmode="numeric" maxlength="5" placeholder="tt:mm" value="${isEdit ? (ev?.end_time || '16:00').slice(0, 5) : '16:00'}" data-event-end-time data-time-input class="fsp-time-text"><button type="button" class="fsp-dt-picker-btn" data-time-picker-btn aria-label="Vælg tid"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
+        <div class="fsp-form-group"><div class="fsp-form-label">M\u00e5lgruppe</div><div style="display:flex;flex-wrap:wrap;gap:6px" data-event-chips></div><div class="fsp-form-hint">Ingen valgt = alle klassetrin kan se arrangementet</div></div>
+        <div class="fsp-form-group">
+          <div class="arr-prompt-setting-row">
+            <div>
+              <div class="fsp-form-label" style="margin-bottom:2px">Vis tilmeldings-prompt efter k\u00f8b</div>
+              <div class="fsp-form-hint" style="margin-top:0">N\u00e5r sl\u00e5et til vises arrangementet som et modal efter hvert k\u00f8b, indtil barnet er tilmeldt. Anbefalet: kun \u00e9t arrangement ad gangen.</div>
+            </div>
+            <div class="fsp-toggle${isEdit && ev?.prompt_after_purchase ? ' on' : ''}" data-event-prompt></div>
+          </div>
+        </div>
+        <div class="fsp-form-group">
+          <div class="fsp-form-label">Plakat (PDF, valgfri)</div>
+          <input type="file" accept="application/pdf,.pdf" data-event-poster-file style="display:none">
+          <div class="arr-poster-row">
+            <button type="button" class="fsp-btn fsp-btn-ghost" data-action="choose-poster">V\u00e6lg PDF\u2026</button>
+            <span class="arr-poster-status" data-poster-status>${isEdit && ev?.poster_path ? 'Plakat uploadet' : 'Ingen plakat'}</span>
+            <button type="button" class="arr-poster-remove" data-action="remove-poster" style="${isEdit && ev?.poster_path ? '' : 'display:none'}">Fjern</button>
+          </div>
+          <div class="fsp-form-hint">Vises i fuld st\u00f8rrelse i tilmeldings-prompten. Uden plakat vises titel + beskrivelse som stor tekst.</div>
+        </div>
+        <div class="fsp-form-group">
+          <div class="fsp-form-label">Arrangement-ikon (valgfri)</div>
+          <input type="file" accept="image/*,application/pdf,.pdf" data-event-icon-file style="display:none">
+          <div class="arr-icon-row">
+            <div class="arr-icon-preview" data-icon-preview></div>
+            <div class="arr-icon-ctrls">
+              <button type="button" class="fsp-btn fsp-btn-ghost" data-action="choose-icon">V\u00e6lg billede/PDF\u2026</button>
+              <button type="button" class="arr-poster-remove" data-action="remove-icon" style="${isEdit && ev?.icon_path ? '' : 'display:none'}">Fjern</button>
+            </div>
+          </div>
+          <div class="fsp-form-hint">Vises p\u00e5 kortet i \u201cVis arrangementer som produkter\u201d. Billedet fylder hele kortet.</div>
+        </div>
+      </div>
+      <div class="fsp-slide-footer">${isEdit ? '<button class="fsp-btn" style="margin-right:auto;background:none;border:1px solid rgba(232,90,111,0.3);color:#e85a6f" data-action="delete-event-slide">Slet</button>' : ''}<button class="fsp-btn fsp-btn-ghost" data-action="close-slide">Annuller</button><button class="fsp-btn fsp-btn-primary" data-action="${submitAction}">${submitLabel}</button></div>`;
+
+    // Build grade chips
+    const chipsEl = slidePanel.querySelector('[data-event-chips]');
+    const activeGrades = isEdit && ev?.allowed_classes ? ev.allowed_classes : [];
+    for (let i = 0; i <= 9; i++) {
+      const chip = document.createElement('div');
+      chip.className = 'fsp-chip' + (activeGrades.includes(i) ? ' on' : '');
+      chip.textContent = i + '. kl';
+      chip.dataset.grade = i;
+      chip.addEventListener('click', () => chip.classList.toggle('on'));
+      chipsEl.appendChild(chip);
+    }
+
+    // Sync end date when start date changes
+    const startDateInput = slidePanel.querySelector('[data-event-start-date]');
+    const endDateInput = slidePanel.querySelector('[data-event-end-date]');
+    startDateInput?.addEventListener('change', () => {
+      if (endDateInput) endDateInput.value = startDateInput.value;
+    });
+
+    // Date picker buttons → trigger native picker (kun dato; tid er tt:mm-tekstfelt)
+    slidePanel.querySelectorAll('.fsp-dt-picker-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = btn.parentElement.querySelector('input');
+        if (input?.showPicker) input.showPicker();
+        else input?.focus();
+      });
+    });
+
+    // 24-timers tid (tt:mm) — locale-uafhængig; native <input type=time> følger
+    // browserens sprog (navigator.language) og viser am/pm i fx en-US.
+    const normalizeTime = (raw) => {
+      raw = (raw || '').trim();
+      if (!raw) return null;
+      let h, m;
+      if (raw.includes(':')) {
+        const [hp, mp] = raw.split(':');
+        h = parseInt(hp, 10); m = parseInt(mp || '0', 10);
+      } else {
+        const d = raw.replace(/\D/g, '');
+        if (!d) return null;
+        if (d.length <= 2) { h = parseInt(d, 10); m = 0; }
+        else { h = parseInt(d.slice(0, d.length - 2), 10); m = parseInt(d.slice(-2), 10); }
+      }
+      if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+      return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    };
+    slidePanel.querySelectorAll('[data-time-input]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const digits = inp.value.replace(/\D/g, '').slice(0, 4);
+        inp.value = digits.length > 2 ? digits.slice(0, 2) + ':' + digits.slice(2) : digits;
+        inp.classList.remove('fsp-input-error');
+      });
+      inp.addEventListener('blur', () => {
+        const norm = normalizeTime(inp.value);
+        if (norm) { inp.value = norm; inp.classList.remove('fsp-input-error'); }
+        else if (inp.value.trim()) { inp.classList.add('fsp-input-error'); }
+      });
+    });
+
+    // Klokke-knap → custom 24-timers vælger (timer/minutter)
+    slidePanel.querySelectorAll('[data-time-picker-btn]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _openTimePicker(btn.parentElement.querySelector('[data-time-input]'), btn);
+      });
+    });
+
+    // Step buttons
+    slidePanel.querySelectorAll('[data-sp]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = slidePanel.querySelector(`[data-event-${btn.dataset.sp}]`);
+        if (input) input.value = Math.max(0, (parseInt(input.value) || 0) + parseInt(btn.dataset.sd));
+      });
+    });
+
+    // Tilmeldings-prompt toggle
+    const promptToggle = slidePanel.querySelector('[data-event-prompt]');
+    promptToggle?.addEventListener('click', () => promptToggle.classList.toggle('on'));
+
+    // Plakat (PDF) — vælg/fjern; valget gemmes i closure og anvendes ved submit
+    let posterFile = null;
+    let posterRemove = false;
+    const posterInput = slidePanel.querySelector('[data-event-poster-file]');
+    const posterStatus = slidePanel.querySelector('[data-poster-status]');
+    const posterRemoveBtn = slidePanel.querySelector('[data-action="remove-poster"]');
+    slidePanel.querySelector('[data-action="choose-poster"]')?.addEventListener('click', () => posterInput?.click());
+    posterInput?.addEventListener('change', () => {
+      const f = posterInput.files?.[0];
+      if (!f) return;
+      if (f.type !== 'application/pdf') { alert('Kun PDF er tilladt.'); posterInput.value = ''; return; }
+      posterFile = f;
+      posterRemove = false;
+      if (posterStatus) posterStatus.textContent = f.name;
+      if (posterRemoveBtn) posterRemoveBtn.style.display = '';
+    });
+    posterRemoveBtn?.addEventListener('click', () => {
+      posterFile = null;
+      posterRemove = true;
+      if (posterInput) posterInput.value = '';
+      if (posterStatus) posterStatus.textContent = 'Plakat fjernes ved gem';
+      posterRemoveBtn.style.display = 'none';
+    });
+
+    // Arrangement-ikon — billede/PDF renderes til PNG ved valg; valget anvendes ved submit
+    let iconBlob = null;
+    let iconRemove = false;
+    const iconInput = slidePanel.querySelector('[data-event-icon-file]');
+    const iconPreview = slidePanel.querySelector('[data-icon-preview]');
+    const iconRemoveBtn = slidePanel.querySelector('[data-action="remove-icon"]');
+    const setIconPreview = (url) => {
+      if (!iconPreview) return;
+      iconPreview.innerHTML = url ? `<img src="${url}" alt="">` : '<span class="arr-icon-placeholder">🎉</span>';
+    };
+    setIconPreview(null);
+    if (isEdit && ev?.icon_path) {
+      window.__flangoEventMgmt?.getEventMediaSignedUrl?.(ev.icon_path).then(url => { if (url && !iconBlob && !iconRemove) setIconPreview(url); });
+    }
+    slidePanel.querySelector('[data-action="choose-icon"]')?.addEventListener('click', () => iconInput?.click());
+    iconInput?.addEventListener('change', async () => {
+      const f = iconInput.files?.[0];
+      if (!f) return;
+      const okType = f.type.startsWith('image/') || f.type === 'application/pdf';
+      if (!okType) { alert('Vælg et billede eller en PDF.'); iconInput.value = ''; return; }
+      const mgmt = window.__flangoEventMgmt;
+      try {
+        iconBlob = await mgmt.renderEventIconBlob(f);
+        iconRemove = false;
+        setIconPreview(URL.createObjectURL(iconBlob));
+        if (iconRemoveBtn) iconRemoveBtn.style.display = '';
+      } catch (e) {
+        alert(e?.message || 'Kunne ikke behandle filen.');
+        iconInput.value = '';
+      }
+    });
+    iconRemoveBtn?.addEventListener('click', () => {
+      iconBlob = null;
+      iconRemove = true;
+      if (iconInput) iconInput.value = '';
+      setIconPreview(null);
+      iconRemoveBtn.style.display = 'none';
+    });
+
+    // Close slide
+    const closeSlide = () => { _closeTimePicker(); slideOverlay.classList.remove('open'); slidePanel.classList.remove('open'); };
+    slidePanel.querySelectorAll('[data-action="close-slide"]').forEach(btn => btn.addEventListener('click', closeSlide));
+    slideOverlay.onclick = closeSlide;
+
+    // Slet-knap (kun ved redigering) → bekræft + slet permanent
+    slidePanel.querySelector('[data-action="delete-event-slide"]')?.addEventListener('click', () => {
+      _tilmDeleteEvent(editEventId, container, ctx);
+    });
+
+    // Submit: create or update
+    slidePanel.querySelector(`[data-action="${submitAction}"]`)?.addEventListener('click', async () => {
+      const mgmt = window.__flangoEventMgmt;
+      if (!mgmt) return;
+      const instId = window.getInstitutionId?.();
+
+      const titleVal = slidePanel.querySelector('[data-event-title]')?.value?.trim();
+      if (!titleVal) { alert('Titel er p\u00e5kr\u00e6vet.'); return; }
+
+      const chips = slidePanel.querySelectorAll('[data-event-chips] .fsp-chip.on');
+      const grades = Array.from(chips).map(c => parseInt(c.dataset.grade)).filter(n => !isNaN(n));
+
+      const startNorm = normalizeTime(slidePanel.querySelector('[data-event-start-time]')?.value);
+      if (!startNorm) { alert('Ugyldigt starttidspunkt. Brug formatet tt:mm (00:00–23:59).'); return; }
+      const endRaw = slidePanel.querySelector('[data-event-end-time]')?.value?.trim();
+      const endNorm = endRaw ? normalizeTime(endRaw) : null;
+      if (endRaw && !endNorm) { alert('Ugyldigt sluttidspunkt. Brug formatet tt:mm (00:00–23:59).'); return; }
+
+      const eventData = {
+        title: titleVal,
+        description: slidePanel.querySelector('[data-event-desc]')?.value?.trim() || null,
+        price: parseFloat(slidePanel.querySelector('[data-event-price]')?.value) || 0,
+        capacity: parseInt(slidePanel.querySelector('[data-event-cap]')?.value) || null,
+        event_date: slidePanel.querySelector('[data-event-start-date]')?.value || null,
+        start_time: startNorm,
+        end_time: endNorm,
+        allowed_classes: grades.length > 0 ? grades : null,
+        prompt_after_purchase: !!promptToggle?.classList.contains('on'),
+      };
+
+      const submitBtn = slidePanel.querySelector(`[data-action="${submitAction}"]`);
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Gemmer…'; }
+      try {
+        let targetEventId = editEventId;
+        if (isEdit) {
+          const { error } = await mgmt.updateEvent(editEventId, eventData);
+          if (error) throw error;
+        } else {
+          eventData.institution_id = instId;
+          const admin = window.__flangoCurrentAdmin;
+          eventData.created_by = admin?.id || null;
+          const { data: created, error } = await mgmt.createEvent(eventData);
+          if (error) throw error;
+          targetEventId = created?.id;
+        }
+
+        // Plakat: upload ny PDF eller fjern eksisterende (via edge function)
+        if (targetEventId && posterFile) {
+          const up = await mgmt.uploadEventPoster(targetEventId, posterFile);
+          if (!up?.success) throw new Error(up?.error || 'Plakat-upload fejlede');
+        } else if (targetEventId && posterRemove) {
+          const rm = await mgmt.removeEventPoster(targetEventId);
+          if (!rm?.success) throw new Error(rm?.error || 'Kunne ikke fjerne plakat');
+        }
+
+        // Ikon: upload ny PNG (renderet ved valg) eller fjern eksisterende
+        if (targetEventId && iconBlob) {
+          const up = await mgmt.uploadEventIcon(targetEventId, iconBlob);
+          if (!up?.success) throw new Error(up?.error || 'Ikon-upload fejlede');
+        } else if (targetEventId && iconRemove) {
+          const rm = await mgmt.removeEventIcon(targetEventId);
+          if (!rm?.success) throw new Error(rm?.error || 'Kunne ikke fjerne ikon');
+        }
+
+        // Invalidér prompt- + event-cachen så ændringer (incl. ikon) slår igennem
+        window.__flangoInvalidateArrangementPromptCache?.(instId);
+        window.__flangoInvalidateCafeEventsCache?.();
+
+        closeSlide();
+        if (isEdit && _tilm.openEventId === editEventId) {
+          // Re-fetch and re-render detail
+          const { event, registrations } = await mgmt.fetchEventDetail(editEventId);
+          _tilm.eventDetail = event;
+          _tilm.eventRegs = (registrations || []).filter(r => r.registration_status === 'registered');
+          _tilmRenderDetail(editEventId, container, ctx);
+          // Also update the card title/meta in the list
+          _tilmLoadEvents(container, ctx);
+        } else {
+          _tilmLoadEvents(container, ctx);
+        }
+      } catch (err) {
+        alert('Fejl: ' + (err?.message || err));
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel; }
+      }
+    });
+
+    slideOverlay.classList.add('open');
+    slidePanel.classList.add('open');
+  }
+
+  // ── User picker modal ──
+  async function _tilmOpenUserPicker(eventId, container, ctx) {
+    const right = ctx.overlay?.querySelector('.fsp-right') || ctx.overlay;
+    const overlay = right?.querySelector('.fsp-up-overlay');
+    if (!overlay) return;
+
+    const ev = _tilm.eventDetail;
+    if (!ev) return;
+
+    // Fetch users if not cached
+    if (!_tilm.usersCache) {
+      const client = window.__flangoSupabaseClient;
+      const instId = window.getInstitutionId?.();
+      if (!client || !instId) return;
+      const { data } = await client
+        .from('users')
+        .select('id, name, last_name, number, grade_level, balance, role, is_test_user')
+        .eq('institution_id', instId)
+        .neq('role', 'admin')
+        .order('name', { ascending: true });
+      _tilm.usersCache = data || [];
+    }
+
+    const enrolledIds = new Set(_tilm.eventRegs.map(r => (r.users || {}).id).filter(Boolean));
+    const allowedClasses = ev.allowed_classes || [];
+    let activeFilter = allowedClasses.length > 0 ? 'matching' : 'all';
+    let searchQuery = '';
+
+    function filterUsers() {
+      let users = _tilm.usersCache || [];
+      if (activeFilter === 'matching' && allowedClasses.length > 0) {
+        users = users.filter(u => u.grade_level !== null && allowedClasses.includes(u.grade_level));
+      } else if (activeFilter !== 'all' && activeFilter !== 'matching') {
+        const grade = parseInt(activeFilter);
+        if (!isNaN(grade)) users = users.filter(u => u.grade_level === grade);
+      }
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        users = users.filter(u => (u.name || '').toLowerCase().includes(q) || (u.number || '').includes(q));
+      }
+      return users;
+    }
+
+    function renderList() {
+      const users = filterUsers();
+      const listEl = overlay.querySelector('.fsp-up-list');
+      if (!listEl) return;
+      let firstAvailable = true;
+      listEl.innerHTML = users.length === 0
+        ? '<div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">Ingen brugere fundet.</div>'
+        : users.map((u, i) => {
+          const isEnrolled = enrolledIds.has(u.id);
+          const bal = parseFloat(u.balance) || 0;
+          const col = _avatarColors[i % _avatarColors.length];
+          const isHighlight = !isEnrolled && searchQuery && firstAvailable;
+          if (isHighlight) firstAvailable = false;
+          return `<div class="fsp-up-user${isEnrolled ? ' enrolled' : ''}${isHighlight ? ' fsp-up-user-highlight' : ''}" data-user-id="${u.id}">
+            <div class="fsp-up-avatar" style="background:${col}22;color:${col}">${_initials(u.name)}</div>
+            <div class="fsp-up-user-info">
+              <div class="fsp-up-user-name">${esc((window.__flangoUserName && window.__flangoUserName(u)) || u.name)}${isEnrolled ? ' <span class="fsp-up-enrolled-badge">\u2713 Tilmeldt</span>' : ''}</div>
+              <div class="fsp-up-user-meta">Nr. ${esc(u.number || '')} \u00b7 ${esc(_gradeLabel(u.grade_level))}</div>
+            </div>
+            <div class="fsp-up-user-saldo ${bal >= 0 ? 'pos' : 'neg'}">${_formatSaldo(bal)}</div>
+          </div>`;
+        }).join('');
+
+      const footer = overlay.querySelector('.fsp-up-footer');
+      if (footer) {
+        const shown = users.length;
+        let filterInfo = '';
+        if (activeFilter === 'matching' && allowedClasses.length > 0) {
+          filterInfo = ' (filtreret efter ' + allowedClasses.sort((a, b) => a - b).map(g => g + '. kl.').join(', ') + ')';
+        }
+        footer.textContent = `${shown} brugere${filterInfo}`;
+      }
+    }
+
+    // Build filter tabs
+    let filtersHtml = '';
+    if (allowedClasses.length > 0) {
+      filtersHtml += `<button class="fsp-up-filter active" data-up-filter="matching">Matchende klasser</button>`;
+      allowedClasses.sort((a, b) => a - b).forEach(g => {
+        filtersHtml += `<button class="fsp-up-filter" data-up-filter="${g}">${g}. kl.</button>`;
+      });
+    }
+    filtersHtml += `<button class="fsp-up-filter${allowedClasses.length === 0 ? ' active' : ''}" data-up-filter="all">Vis alle</button>`;
+
+    overlay.innerHTML = `<div class="fsp-up-modal">
+      <div class="fsp-up-hdr">
+        <div class="fsp-up-hdr-top"><h3 style="font-size:16px;font-weight:600;color:#f0ece6;margin:0">Tilmeld bruger</h3><button class="fsp-up-close" data-action="close-picker">\u00d7</button></div>
+        <div class="fsp-up-hdr-event">${esc(ev.title)}</div>
+      </div>
+      <div class="fsp-up-filters">${filtersHtml}</div>
+      <div class="fsp-up-search"><div class="fsp-up-search-wrap"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--fsp-txt3)" stroke-width="1.4" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg><input type="text" placeholder="S\u00f8g efter navn eller nummer\u2026" data-up-search></div></div>
+      <div class="fsp-up-list"></div>
+      <div class="fsp-up-footer"></div>
+      <div class="fsp-up-warn"><div class="fsp-up-warn-text" data-warn-text></div><div class="fsp-up-warn-btns"><button class="fsp-btn fsp-btn-ghost" style="padding:8px 18px;font-size:13px" data-action="warn-cancel">Annuller</button><button class="fsp-btn" style="padding:8px 18px;font-size:13px;background:#f4a261;color:#fff" data-action="warn-confirm">Tilmeld alligevel</button></div></div>
+    </div>`;
+
+    // Wire close
+    overlay.querySelector('[data-action="close-picker"]')?.addEventListener('click', () => overlay.classList.remove('open'));
+
+    // Wire filters
+    overlay.querySelectorAll('.fsp-up-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        overlay.querySelectorAll('.fsp-up-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeFilter = btn.dataset.upFilter;
+        renderList();
+      });
+    });
+
+    // Wire search
+    const searchInput = overlay.querySelector('[data-up-search]');
+    searchInput?.addEventListener('input', () => {
+      searchQuery = searchInput.value;
+      renderList();
+    });
+
+    // Enter key → enroll highlighted (first non-enrolled) user
+    searchInput?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const highlighted = overlay.querySelector('.fsp-up-user.fsp-up-user-highlight');
+      if (highlighted) highlighted.click();
+    });
+
+    // Wire user click (enroll)
+    let pendingUser = null;
+    overlay.querySelector('.fsp-up-list')?.addEventListener('click', (e) => {
+      const row = e.target.closest('.fsp-up-user');
+      if (!row || row.classList.contains('enrolled')) return;
+      const userId = row.dataset.userId;
+      const user = (_tilm.usersCache || []).find(u => u.id === userId);
+      if (!user) return;
+
+      const mgmt = window.__flangoEventMgmt;
+      if (!mgmt) return;
+      const { match, reason } = mgmt.checkClassMatch(user.grade_level, ev.allowed_classes);
+      if (!match) {
+        // Show warning
+        pendingUser = user;
+        const warnText = overlay.querySelector('[data-warn-text]');
+        if (warnText) warnText.innerHTML = `<strong>${esc(user.name)}</strong> ${esc(reason)}. Vil du tilmelde alligevel?`;
+        overlay.querySelector('.fsp-up-warn')?.classList.add('open');
+        return;
+      }
+      doEnroll(user, false);
+    });
+
+    // Wire warning buttons
+    overlay.querySelector('[data-action="warn-cancel"]')?.addEventListener('click', () => {
+      overlay.querySelector('.fsp-up-warn')?.classList.remove('open');
+      pendingUser = null;
+    });
+    overlay.querySelector('[data-action="warn-confirm"]')?.addEventListener('click', () => {
+      overlay.querySelector('.fsp-up-warn')?.classList.remove('open');
+      if (pendingUser) doEnroll(pendingUser, true);
+      pendingUser = null;
+    });
+
+    async function doEnroll(user, adminOverride) {
+      const mgmt = window.__flangoEventMgmt;
+      if (!mgmt) return;
+      const result = await mgmt.registerUserForEvent(eventId, user.id, adminOverride);
+      if (!result?.success) {
+        alert('Fejl ved tilmelding: ' + (result?.error || 'Ukendt fejl'));
+        return;
+      }
+      // Invalidate cache and re-render detail
+      _tilm.usersCache = null;
+      try { window.__flangoInvalidateCafeEventsCache?.(user.id); } catch (_) { /* ignore */ }
+      overlay.classList.remove('open');
+      // Re-fetch detail
+      const { event, registrations } = await mgmt.fetchEventDetail(eventId);
+      _tilm.eventDetail = event;
+      _tilm.eventRegs = (registrations || []).filter(r => r.registration_status === 'registered');
+      _tilmRenderDetail(eventId, container, ctx);
+      // Update card count
+      const card = container.querySelector(`.fsp-arr-card[data-event-id="${eventId}"] .fsp-arr-card-count`);
+      if (card) card.textContent = ev.capacity ? `${_tilm.eventRegs.length} / ${ev.capacity}` : `${_tilm.eventRegs.length}`;
+    }
+
+    renderList();
+    overlay.classList.add('open');
+
+    // Autofocus search
+    setTimeout(() => searchInput?.focus(), 100);
+  }
+
+  // ── Pay with balance confirmation ──
+  function _tilmOpenPayConfirm(regId, container, ctx) {
+    const right = ctx.overlay?.querySelector('.fsp-right') || ctx.overlay;
+    const overlay = right?.querySelector('.fsp-pay-overlay');
+    if (!overlay) return;
+
+    const reg = _tilm.eventRegs.find(r => r.id === regId);
+    if (!reg) return;
+    const u = reg.users || {};
+    const price = parseFloat(reg.price_at_signup) || parseFloat(_tilm.eventDetail?.price) || 0;
+    const bal = parseFloat(u.balance) || 0;
+    const remaining = bal - price;
+
+    overlay.innerHTML = `<div class="fsp-pay-modal">
+      <div class="fsp-pay-title">\uD83D\uDED2 Betal med caf\u00e9konto</div>
+      <div class="fsp-pay-detail">
+        <strong>${esc(u.name)}</strong> betaler <strong>${_formatPrice(price)}</strong> for tilmelding.
+        <div class="fsp-pay-result">Der vil efter betaling v\u00e6re <strong>${_formatSaldo(remaining)}</strong> tilbage p\u00e5 saldoen.</div>
+      </div>
+      <div class="fsp-pay-btns">
+        <button class="fsp-btn fsp-btn-ghost" style="padding:10px 20px;font-size:13px" data-action="pay-cancel">Annuller</button>
+        <button class="fsp-btn fsp-btn-primary" style="padding:10px 20px;font-size:13px" data-action="pay-confirm">Tilmeld og betal</button>
+      </div>
+    </div>`;
+
+    overlay.querySelector('[data-action="pay-cancel"]')?.addEventListener('click', () => overlay.classList.remove('open'));
+    overlay.querySelector('[data-action="pay-confirm"]')?.addEventListener('click', async () => {
+      const mgmt = window.__flangoEventMgmt;
+      if (!mgmt) return;
+      const result = await mgmt.payRegistration(regId, 'balance');
+      if (!result?.success) { alert('Fejl: ' + (result?.error || 'Ukendt fejl')); return; }
+      overlay.classList.remove('open');
+      _tilmInlinePayUpdate(regId, container);
+      // Show balance toast
+      window.__flangoShowBalanceToast?.({
+        userId: u.id, userName: u.name,
+        delta: -price, newBalance: remaining,
+      });
+    });
+
+    overlay.classList.add('open');
+  }
+
+  // ── Register external payment confirmation ──
+  function _tilmOpenRegConfirm(regId, container, ctx) {
+    const right = ctx.overlay?.querySelector('.fsp-right') || ctx.overlay;
+    const overlay = right?.querySelector('.fsp-reg-overlay');
+    if (!overlay) return;
+
+    const reg = _tilm.eventRegs.find(r => r.id === regId);
+    if (!reg) return;
+    const u = reg.users || {};
+    const price = parseFloat(reg.price_at_signup) || parseFloat(_tilm.eventDetail?.price) || 0;
+
+    overlay.innerHTML = `<div class="fsp-reg-modal">
+      <div class="fsp-pay-title">\uD83D\uDCCB Registrer betaling</div>
+      <div style="font-size:13px;color:var(--fsp-txt2);line-height:1.6;margin-bottom:20px">Er du sikker p\u00e5, at <strong style="color:var(--fsp-txt)">${esc(u.name)}</strong> har betalt <strong style="color:var(--fsp-txt)">${_formatPrice(price)}</strong>?</div>
+      <div class="fsp-pay-btns">
+        <button class="fsp-btn fsp-btn-ghost" style="padding:10px 20px;font-size:13px" data-action="reg-cancel">Annuller</button>
+        <button class="fsp-btn fsp-btn-primary" style="padding:10px 20px;font-size:13px" data-action="reg-confirm">Registrer som betalt</button>
+      </div>
+    </div>`;
+
+    overlay.querySelector('[data-action="reg-cancel"]')?.addEventListener('click', () => overlay.classList.remove('open'));
+    overlay.querySelector('[data-action="reg-confirm"]')?.addEventListener('click', async () => {
+      const mgmt = window.__flangoEventMgmt;
+      if (!mgmt) return;
+      const result = await mgmt.payRegistration(regId, 'other');
+      if (!result?.success) { alert('Fejl: ' + (result?.error || 'Ukendt fejl')); return; }
+      overlay.classList.remove('open');
+      _tilmInlinePayUpdate(regId, container);
+    });
+
+    overlay.classList.add('open');
+  }
+
+  // ── Inline update after payment ──
+  function _tilmInlinePayUpdate(regId, container) {
+    // Update local state
+    const reg = _tilm.eventRegs.find(r => r.id === regId);
+    if (reg) reg.payment_status = 'paid';
+
+    // Update badge in table
+    const badge = container.querySelector(`[data-pay-badge="${regId}"]`);
+    if (badge) {
+      badge.className = 'fsp-arr-pay-badge paid';
+      badge.textContent = 'Betalt';
+    }
+
+    // Hide pay buttons in that row
+    const row = container.querySelector(`[data-reg-row="${regId}"]`);
+    if (row) {
+      row.querySelectorAll('[data-action="pay-balance"], [data-action="pay-other"]').forEach(btn => btn.remove());
+    }
+
+    // Update paid stat
+    const paidRegs = _tilm.eventRegs.filter(r => r.payment_status === 'paid' || r.payment_status === 'not_required');
+    const paidEl = container.querySelector('[data-stat="paid"]');
+    if (paidEl) paidEl.textContent = `${paidRegs.length} / ${_tilm.eventRegs.length}`;
+    const paidTotal = paidRegs.reduce((s, r) => s + (parseFloat(r.price_at_signup) || 0), 0);
+    const totalEl = container.querySelector('[data-stat="paid-total"]');
+    if (totalEl) totalEl.textContent = _formatSaldo(paidTotal);
+  }
+
+  // ── Remove user from event ──
+  function _tilmRemoveUser(eventId, userId, container, ctx) {
+    const right = ctx.overlay?.querySelector('.fsp-right') || ctx.overlay;
+    const overlay = right?.querySelector('.fsp-rm-overlay');
+    if (!overlay) return;
+
+    const reg = _tilm.eventRegs.find(r => (r.users || {}).id === userId);
+    if (!reg) return;
+    const u = reg.users || {};
+    const hasPaid = reg.payment_status === 'paid';
+    const price = parseFloat(reg.price_at_signup) || parseFloat(_tilm.eventDetail?.price) || 0;
+
+    let detail = `<strong>${esc(u.name)}</strong> vil blive frameldt fra arrangementet.`;
+    if (hasPaid && price > 0) {
+      detail += `<div class="fsp-pay-result"><strong>${_formatPrice(price)}</strong> refunderes automatisk til saldoen.</div>`;
+    }
+
+    overlay.innerHTML = `<div class="fsp-rm-modal">
+      <div class="fsp-pay-title">\u274C Frameld bruger</div>
+      <div class="fsp-pay-detail">${detail}</div>
+      <div class="fsp-pay-btns">
+        <button class="fsp-btn fsp-btn-ghost" style="padding:10px 20px;font-size:13px" data-action="rm-cancel">Annuller</button>
+        <button class="fsp-btn" style="padding:10px 20px;font-size:13px;background:#e85a6f;color:#fff" data-action="rm-confirm">Frameld</button>
+      </div>
+    </div>`;
+
+    overlay.querySelector('[data-action="rm-cancel"]')?.addEventListener('click', () => overlay.classList.remove('open'));
+    overlay.querySelector('[data-action="rm-confirm"]')?.addEventListener('click', async () => {
+      const mgmt = window.__flangoEventMgmt;
+      if (!mgmt) return;
+      const result = await mgmt.cancelRegistration(eventId, userId);
+      if (!result?.success) { alert('Fejl: ' + (result?.error || 'Ukendt fejl')); return; }
+      overlay.classList.remove('open');
+
+      // Show refund toast if applicable (best-effort — må ALDRIG blokere re-render nedenfor)
+      try {
+        if (result.refunded && result.refund_amount) {
+          const refundAmt = parseFloat(result.refund_amount);
+          const newBal = (parseFloat(u.balance) || 0) + refundAmt;
+          window.__flangoShowBalanceToast?.({
+            userId: u.id, userName: u.name,
+            delta: refundAmt, newBalance: newBal,
+          });
+        }
+      } catch (toastErr) {
+        console.warn('[tilmelding] balance-toast fejl (ignoreret):', toastErr);
+      }
+
+      // Invalidér café-strippens cache så framelding slår igennem i POS'en (ellers
+      // viser strippen barnet som tilmeldt indtil cachen udløber → "kræver refresh").
+      try { window.__flangoInvalidateCafeEventsCache?.(userId); } catch (_) { /* ignore */ }
+
+      // Invalidate cache, re-fetch and re-render
+      _tilm.usersCache = null;
+      const client = window.__flangoSupabaseClient;
+      if (client) {
+        const [evRes, regRes] = await Promise.all([
+          client.from('club_events').select('*').eq('id', eventId).single(),
+          client.from('event_registrations')
+            .select('*, users!event_registrations_user_id_fkey(id, name, last_name, number, grade_level, balance, role, is_test_user)')
+            .eq('event_id', eventId).order('registered_at', { ascending: true }),
+        ]);
+        _tilm.eventDetail = evRes.data;
+        _tilm.eventRegs = (regRes.data || []).filter(r => r.registration_status === 'registered');
+      }
+      _tilmRenderDetail(eventId, container, ctx);
+
+      // Update card count
+      const cardCount = container.querySelector(`.fsp-arr-card[data-event-id="${eventId}"] .fsp-arr-card-count`);
+      const ev = _tilm.eventDetail;
+      if (cardCount && ev) cardCount.textContent = ev.capacity ? `${_tilm.eventRegs.length} / ${ev.capacity}` : `${_tilm.eventRegs.length}`;
+    });
+
+    overlay.classList.add('open');
+  }
+
+  // ── Cancel event with mass refund ──
+  function _tilmCancelEvent(eventId, container, ctx) {
+    const right = ctx.overlay?.querySelector('.fsp-right') || ctx.overlay;
+    const overlay = right?.querySelector('[data-modal="cancel-event"]');
+    if (!overlay) return;
+
+    const ev = _tilm.eventDetail;
+    const regs = _tilm.eventRegs;
+    const regCount = regs.length;
+    const paidRegs = regs.filter(r => r.payment_status === 'paid');
+    const paidTotal = paidRegs.reduce((s, r) => s + (parseFloat(r.price_at_signup) || 0), 0);
+
+    let detail = `<strong>${esc(ev?.title || 'Dette arrangement')}</strong> vil blive aflyst.`;
+    if (regCount > 0) {
+      detail += `<div style="margin-top:8px">${regCount} tilmeldte vil blive frameldt.`;
+      if (paidRegs.length > 0) {
+        detail += `<br>${paidRegs.length} betalte tilmeldinger refunderes (i alt <strong style="color:#5dca7a">${paidTotal.toFixed(2).replace('.', ',')} kr.</strong>).`;
+      }
+      detail += '</div>';
+    }
+
+    overlay.innerHTML = `<div class="fsp-rm-modal">
+      <div class="fsp-pay-title">\uD83D\uDEAB Aflys arrangement</div>
+      <div class="fsp-pay-detail">${detail}</div>
+      <div class="fsp-pay-btns">
+        <button class="fsp-btn fsp-btn-ghost" style="padding:10px 20px;font-size:13px" data-action="ce-cancel">Annuller</button>
+        <button class="fsp-btn" style="padding:10px 20px;font-size:13px;background:#e85a6f;color:#fff" data-action="ce-confirm">Aflys arrangement</button>
+      </div>
+    </div>`;
+
+    overlay.querySelector('[data-action="ce-cancel"]')?.addEventListener('click', () => overlay.classList.remove('open'));
+    overlay.querySelector('[data-action="ce-confirm"]')?.addEventListener('click', async () => {
+      const mgmt = window.__flangoEventMgmt;
+      if (!mgmt) return;
+      const result = await mgmt.cancelEventWithRefunds(eventId);
+      if (!result?.success) { alert('Fejl: ' + (result?.error || 'Ukendt fejl')); return; }
+      overlay.classList.remove('open');
+      _tilm.openEventId = null;
+      _tilmLoadEvents(container, ctx);
+    });
+
+    overlay.classList.add('open');
+  }
+
+  // ── Slet arrangement permanent (fra rediger-slide eller papirkurv-ikon) ──
+  function _tilmDeleteEvent(eventId, container, ctx) {
+    const mgmt = window.__flangoEventMgmt;
+    if (!mgmt) return;
+    const right = ctx.overlay?.querySelector('.fsp-right') || ctx.overlay;
+    const overlay = right?.querySelector('[data-modal="delete-event"]');
+    if (!overlay) return;
+
+    const closeSlide = () => {
+      ctx.overlay?.querySelector('#fsp-slide-overlay')?.classList.remove('open');
+      ctx.overlay?.querySelector('#fsp-slide-panel')?.classList.remove('open');
+    };
+
+    (async () => {
+      const { event, registrations } = await mgmt.fetchEventDetail(eventId);
+      if (!event) { alert('Arrangement ikke fundet.'); return; }
+      const regs = registrations || [];
+      const activeRegs = regs.filter(r => r.registration_status === 'registered');
+      const startDt = new Date(event.event_date + 'T' + (event.start_time || '00:00').slice(0, 5));
+      const isUpcoming = event.status === 'active' && startDt > new Date();
+      const activePaid = activeRegs.filter(r => r.payment_status === 'paid');
+
+      let detail = `<strong>${esc(event.title)}</strong> slettes permanent og kan ikke gendannes.`;
+      if (activeRegs.length > 0) {
+        detail += `<div style="margin-top:8px">${activeRegs.length} tilmelding${activeRegs.length === 1 ? '' : 'er'} og hele arrangementets historik fjernes.</div>`;
+      }
+      if (isUpcoming && activePaid.length > 0) {
+        const paidTotal = activePaid.reduce((s, r) => s + (parseFloat(r.price_at_signup) || 0), 0);
+        detail += `<div style="margin-top:8px;color:#e85a6f"><strong>OBS:</strong> ${activePaid.length} betalt${activePaid.length === 1 ? '' : 'e'} tilmelding${activePaid.length === 1 ? '' : 'er'} (${paidTotal.toFixed(2).replace('.', ',')} kr.) refunderes IKKE ved sletning. Brug “Aflys arrangement” først, hvis pengene skal tilbage.</div>`;
+      }
+
+      overlay.innerHTML = `<div class="fsp-rm-modal">
+        <div class="fsp-pay-title">🗑️ Slet arrangement</div>
+        <div class="fsp-pay-detail">${detail}</div>
+        <div class="fsp-pay-btns">
+          <button class="fsp-btn fsp-btn-ghost" style="padding:10px 20px;font-size:13px" data-action="de-cancel">Annuller</button>
+          <button class="fsp-btn" style="padding:10px 20px;font-size:13px;background:#e85a6f;color:#fff" data-action="de-confirm">Slet permanent</button>
+        </div>
+      </div>`;
+
+      overlay.querySelector('[data-action="de-cancel"]')?.addEventListener('click', () => overlay.classList.remove('open'));
+      overlay.querySelector('[data-action="de-confirm"]')?.addEventListener('click', async () => {
+        const btn = overlay.querySelector('[data-action="de-confirm"]');
+        if (btn) { btn.disabled = true; btn.textContent = 'Sletter…'; }
+        const { error } = await mgmt.deleteEvent(eventId, event.poster_path, event.icon_path);
+        if (error) {
+          alert('Fejl: ' + (error.message || error));
+          if (btn) { btn.disabled = false; btn.textContent = 'Slet permanent'; }
+          return;
+        }
+        overlay.classList.remove('open');
+        closeSlide();
+        if (_tilm.openEventId === eventId) { _tilm.openEventId = null; _tilm.eventDetail = null; }
+        window.__flangoInvalidateArrangementPromptCache?.(window.getInstitutionId?.());
+        _tilmLoadEvents(container, ctx);
+      });
+
+      overlay.classList.add('open');
+    })();
+  }
+
+  // ── Restaurant Mode (settings section) ──
+  sections['Restaurant Mode'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      const enabled = !!inst.restaurant_mode_enabled;
+      const kitchenOn = inst.toolbar_kitchen !== false;
+      const tableOn = !!inst.restaurant_table_numbers_enabled;
+      const tableCount = inst.restaurant_table_count ?? 8;
+      const deviceOn = !!localStorage.getItem('flango_device_restaurant_mode');
+      const rmSounds = [
+        { v: '', label: 'Ingen lyd' },
+        { v: 'sounds/Accept/accepter-1.mp3', label: 'Accept\u00e9r 1' },
+        { v: 'sounds/Accept/accepter-2.mp3', label: 'Accept\u00e9r 2' },
+        { v: 'sounds/Accept/accepter-3.mp3', label: 'Accept\u00e9r 3' },
+        { v: 'sounds/Accept/accepter-4.mp3', label: 'Accept\u00e9r 4' },
+        { v: 'sounds/Accept/accepter-5.mp3', label: 'Accept\u00e9r 5' },
+        { v: 'sounds/Accept/accepter-6.mp3', label: 'Accept\u00e9r 6' },
+        { v: 'sounds/Accept/accepter-7.mp3', label: 'Accept\u00e9r 7' },
+        { v: 'sounds/Add Item/Add1.mp3', label: 'Tilf\u00f8j 1' },
+        { v: 'sounds/Add Item/Add2.mp3', label: 'Tilf\u00f8j 2' },
+        { v: 'sounds/Login/Login1.mp3', label: 'Login 1' },
+        { v: 'sounds/Login/Login2.mp3', label: 'Login 2' },
+      ];
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Restaurant Mode</div>
+        <div class="fsp-page-desc">Restaurant Mode sender caf\u00e9-k\u00f8b til en k\u00f8kkensk\u00e6rm der viser ordrer i realtid. For hvert salg kan tjeneren tilf\u00f8je bordnummer, varianter, og besked til k\u00f8kkenet.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Aktiv\u00e9r Restaurant Mode</div><div class="fsp-main-desc">G\u00f8r restaurant mode tilg\u00e6ngelig for alle enheder p\u00e5 denne institution.</div></div>
+          <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="restaurant_mode_enabled" data-expand="rm-body"></div>
+        </div>
+        <div class="fsp-body${enabled ? ' open' : ''}" data-expand-target="rm-body">
+          <div class="fsp-section"><div class="fsp-block">
+            <div class="fsp-row"><div style="flex:1"><div class="fsp-row-title">Vis køkkenskærm-genvej i toolbar</div><div class="fsp-row-desc">Tip: hold knappen inde for at åbne køkkenskærmen.</div></div><div class="fsp-toggle${kitchenOn ? ' on' : ''}" data-field="toolbar_kitchen" data-rm-kitchen></div></div>
+          </div></div>
+          <div class="fsp-section" style="margin-bottom:20px">
+            <button type="button" data-action="open-kitchen-fullscreen" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 24px;border:none;border-radius:12px;background:var(--fsp-accent-g);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s;letter-spacing:-0.2px;font-family:inherit">
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v10"/><path d="M2.5 3v3c0 1 .7 1.7 1.5 1.7S5.5 7 5.5 6V3"/><path d="M11 3v5.5c0 .5.2.8.5 1h1c.3-.2.5-.5.5-1V4.5C13 3.5 12.2 3 11 3z"/><path d="M11.5 9.5V13"/></svg>
+              Vis K\u00f8kkensk\u00e6rm
+            </button>
+          </div>
+          <div class="fsp-section"><div class="fsp-device-row">
+            <div class="fsp-device-emoji">\uD83C\uDF7D\uFE0F</div>
+            <div class="fsp-device-left"><div class="fsp-device-title">Denne enhed skal sende ordrer til k\u00f8kkenet</div></div>
+            <div class="fsp-toggle${deviceOn ? ' on' : ''}" data-action="toggle-device-rm"></div>
+          </div></div>
+          <div class="fsp-section"><div class="fsp-block">
+            <div class="fsp-row"><div style="flex:1"><div class="fsp-row-title">Vis bordnummer-knapper ved k\u00f8bsbekr\u00e6ftelse</div><div class="fsp-row-desc">Vises p\u00e5 tjenerens enhed, s\u00e5 hvert k\u00f8b kan knyttes til et bord.</div></div><div class="fsp-toggle${tableOn ? ' on' : ''}" data-field="restaurant_table_numbers_enabled"></div></div>
+            <div class="fsp-num-row"><label>Antal borde:</label><div class="fsp-num-wrap" style="width:120px"><input type="number" data-rm-local="restaurant_table_count" value="${tableCount}" style="padding:8px 12px;font-size:13px"><div class="fsp-num-btns"><button class="fsp-num-btn" data-step-target="restaurant_table_count" data-step="1">${chevronUp}</button><button class="fsp-num-btn" data-step-target="restaurant_table_count" data-step="-1">${chevronDown}</button></div></div><button class="fsp-mini-save" data-save-for="restaurant_table_count" disabled style="padding:6px 18px;border:none;border-radius:8px;background:#4b5563;color:#fff;font-size:13px;font-weight:600;cursor:default;margin-left:10px;white-space:nowrap;opacity:0.5;transition:all 0.15s;">Gem</button></div>
+          </div></div>
+          <div class="fsp-section"><div class="fsp-block">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><span style="font-size:16px">\uD83D\uDD14</span><div class="fsp-row-title">Lyd ved ny ordre</div><button class="fsp-rm-play" data-action="play-new-order" style="margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 13,8 5,13"/></svg></button></div>
+            <div class="fsp-rm-sound" data-sound-group="new_order" style="display:flex;flex-wrap:wrap;gap:6px">
+              ${rmSounds.map(s => `<div class="fsp-rm-schip${(inst.restaurant_sound === s.v || (!inst.restaurant_sound && !s.v)) ? ' on' : ''}" data-sound-value="${s.v}">${s.label}</div>`).join('')}
+            </div>
+            <div style="text-align:center;margin-top:12px"><button class="fsp-mini-save" data-save-for="restaurant_sound" disabled style="padding:8px 28px;border:none;border-radius:8px;background:#4b5563;color:#fff;font-size:13px;font-weight:600;cursor:default;opacity:0.5;transition:all 0.15s;">Gem lyd</button></div>
+          </div></div>
+          <div class="fsp-section"><div class="fsp-block">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><span style="font-size:16px">\u2705</span><div class="fsp-row-title">Lyd ved godkendt servering</div><button class="fsp-rm-play" data-action="play-served" style="margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 13,8 5,13"/></svg></button></div>
+            <div class="fsp-rm-sound" data-sound-group="served" style="display:flex;flex-wrap:wrap;gap:6px">
+              ${rmSounds.map(s => `<div class="fsp-rm-schip${(inst.restaurant_serve_sound === s.v || (!inst.restaurant_serve_sound && !s.v)) ? ' on' : ''}" data-sound-value="${s.v}">${s.label}</div>`).join('')}
+            </div>
+            <div style="text-align:center;margin-top:12px"><button class="fsp-mini-save" data-save-for="restaurant_serve_sound" disabled style="padding:8px 28px;border:none;border-radius:8px;background:#4b5563;color:#fff;font-size:13px;font-weight:600;cursor:default;opacity:0.5;transition:all 0.15s;">Gem lyd</button></div>
+          </div></div>
+        </div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+      wireNumberInputs(container, ctx);
+      wireStepButtons(container);
+      // "Vis Køkkenskærm" button → toggle fullscreen kitchen overlay (lazy-load module if needed)
+      // Køkkenskærm-genvej-toggle: wireToggles gemmer toolbar_kitchen; spejl live til den faktiske header-knap.
+      const _rmKitchenTog = container.querySelector('[data-rm-kitchen]');
+      if (_rmKitchenTog) _rmKitchenTog.addEventListener('click', () => {
+        const b = document.getElementById('kitchen-btn');
+        if (b) b.style.display = _rmKitchenTog.classList.contains('on') ? '' : 'none';
+      });
+      container.querySelector('[data-action="open-kitchen-fullscreen"]')?.addEventListener('click', () => {
+        if (typeof window.__flangoToggleKitchenFullscreen === 'function') {
+          window.__flangoToggleKitchenFullscreen();
+        } else {
+          import('../restaurant/kitchen-fullscreen.js')
+            .then(() => window.__flangoToggleKitchenFullscreen?.())
+            .catch(err => console.error('[restaurant] Failed to load kitchen-fullscreen module', err));
+        }
+      });
+      // Sound chip radio-style selection (local dirty + mini Gem-knap)
+      container.querySelectorAll('.fsp-rm-sound').forEach(group => {
+        const field = group.dataset.soundGroup === 'new_order' ? 'restaurant_sound' : 'restaurant_serve_sound';
+        let savedValue = ctx.institutionData?.[field] || '';
+        const saveBtn = container.querySelector(`[data-save-for="${field}"]`);
+
+        function updateSaveBtnState() {
+          if (!saveBtn) return;
+          const active = group.querySelector('.fsp-rm-schip.on');
+          const currentVal = active?.dataset.soundValue ?? '';
+          const changed = currentVal !== savedValue;
+          saveBtn.disabled = !changed;
+          saveBtn.style.background = changed ? '#059669' : '#4b5563';
+          saveBtn.style.opacity = changed ? '1' : '0.5';
+          saveBtn.style.cursor = changed ? 'pointer' : 'default';
+        }
+
+        // Two visual states:
+        // .on (filled/highlight) = currently previewing / clicked
+        // outline = saved in DB
+        // Mark the saved chip with outline on load
+        group.querySelectorAll('.fsp-rm-schip').forEach(chip => {
+          if (chip.dataset.soundValue === savedValue || (!savedValue && !chip.dataset.soundValue)) {
+            chip.style.outline = '2px solid #059669';
+            chip.style.outlineOffset = '1px';
+          }
+          chip.addEventListener('click', () => {
+            // Move .on (highlight) to clicked chip
+            group.querySelectorAll('.fsp-rm-schip').forEach(c => c.classList.remove('on'));
+            chip.classList.add('on');
+            updateSaveBtnState();
+          });
+        });
+
+        if (saveBtn) {
+          updateSaveBtnState(); // Set initial state
+          saveBtn.addEventListener('click', () => {
+            if (saveBtn.disabled) return;
+            const active = group.querySelector('.fsp-rm-schip.on');
+            const val = active?.dataset.soundValue ?? '';
+            ctx.saveField(field, val);
+            savedValue = val;
+            // Move outline (saved indicator) to the newly saved chip
+            group.querySelectorAll('.fsp-rm-schip').forEach(c => {
+              c.style.outline = '';
+              c.style.outlineOffset = '';
+            });
+            if (active) {
+              active.style.outline = '2px solid #059669';
+              active.style.outlineOffset = '1px';
+            }
+            // Flash "Gemt!" feedback
+            const origText = saveBtn.textContent;
+            saveBtn.textContent = '✓ Gemt!';
+            saveBtn.style.background = '#059669';
+            saveBtn.style.opacity = '1';
+            setTimeout(() => {
+              saveBtn.textContent = origText;
+              saveBtn.style.background = '#4b5563';
+              saveBtn.style.opacity = '0.5';
+            }, 1200);
+            saveBtn.disabled = true;
+            saveBtn.style.background = '#4b5563';
+            saveBtn.style.opacity = '0.5';
+            saveBtn.style.cursor = 'default';
+          });
+        }
+      });
+
+      // Antal borde: local dirty + mini Gem-knap
+      const tableInput = container.querySelector('[data-rm-local="restaurant_table_count"]');
+      const tableSaveBtn = container.querySelector('[data-save-for="restaurant_table_count"]');
+      if (tableInput && tableSaveBtn) {
+        let savedTableCount = ctx.institutionData?.restaurant_table_count ?? 8;
+        const updateTableSaveState = () => {
+          const current = parseInt(tableInput.value) || 8;
+          const changed = current !== savedTableCount;
+          tableSaveBtn.disabled = !changed;
+          tableSaveBtn.style.opacity = changed ? '1' : '0.5';
+          tableSaveBtn.style.background = changed ? '#059669' : '#4b5563';
+          tableSaveBtn.style.cursor = changed ? 'pointer' : 'default';
+        };
+        tableInput.addEventListener('change', updateTableSaveState);
+        tableInput.addEventListener('input', updateTableSaveState);
+        tableSaveBtn.addEventListener('click', () => {
+          if (tableSaveBtn.disabled) return;
+          const val = parseInt(tableInput.value) || 8;
+          ctx.saveField('restaurant_table_count', val);
+          savedTableCount = val;
+          tableSaveBtn.disabled = true;
+          const origText = tableSaveBtn.textContent;
+          tableSaveBtn.textContent = '✓ Gemt!';
+          tableSaveBtn.style.background = '#059669';
+          tableSaveBtn.style.opacity = '1';
+          tableSaveBtn.style.cursor = 'default';
+          setTimeout(() => {
+            tableSaveBtn.textContent = origText;
+            tableSaveBtn.style.opacity = '0.5'; tableSaveBtn.style.background = '#4b5563';
+          }, 1200);
+        });
+        // Step buttons for table count
+        container.querySelectorAll('[data-step-target="restaurant_table_count"]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            tableInput.value = Math.max(1, (parseInt(tableInput.value) || 0) + parseInt(btn.dataset.step));
+            updateTableSaveState();
+          });
+        });
+      }
+      // Expand/collapse + update sidebar dot
+      const mainToggle = container.querySelector('[data-expand="rm-body"]');
+      mainToggle?.addEventListener('click', () => {
+        const isOn = mainToggle.classList.contains('on');
+        const target = container.querySelector('[data-expand-target="rm-body"]');
+        if (target) target.classList.toggle('open', isOn);
+        ctx.setRmActive(isOn);
+        // Update green dot in sidebar — find the Restaurant Mode sidebar item
+        const sidebarItems = ctx.overlay?.querySelectorAll('.fsp-si');
+        sidebarItems?.forEach(si => {
+          if (si.textContent.includes('Restaurant')) {
+            const existingDot = si.querySelector('.fsp-si-dot');
+            if (isOn && !existingDot) {
+              const dot = document.createElement('div');
+              dot.className = 'fsp-si-dot';
+              si.appendChild(dot);
+            } else if (!isOn && existingDot) {
+              existingDot.remove();
+            }
+          }
+        });
+      });
+      // Play sound preview
+      container.querySelector('[data-action="play-new-order"]')?.addEventListener('click', () => {
+        const active = container.querySelector('[data-sound-group="new_order"] .fsp-rm-schip.on');
+        const val = active?.dataset.soundValue;
+        if (val) new Audio(val).play().catch(() => {});
+      });
+      container.querySelector('[data-action="play-served"]')?.addEventListener('click', () => {
+        const active = container.querySelector('[data-sound-group="served"] .fsp-rm-schip.on');
+        const val = active?.dataset.soundValue;
+        if (val) new Audio(val).play().catch(() => {});
+      });
+      // Device toggle (localStorage, not dirty-tracked)
+      container.querySelector('[data-action="toggle-device-rm"]')?.addEventListener('click', function () {
+        this.classList.toggle('on');
+        if (this.classList.contains('on')) {
+          localStorage.setItem('flango_device_restaurant_mode', 'true');
+        } else {
+          localStorage.removeItem('flango_device_restaurant_mode');
+        }
+      });
+    }
+  };
+
+  // Note: Historik is a TRIGGER — handled in settings-panel.js, not here.
+
+  // ═══════════════════════════════════════════════════
+  // INSTITUTIONENS PRÆFERENCER
+  // ═══════════════════════════════════════════════════
+
+  // ── Toolbar (NEW FEATURE — drag-drop + preview) ──
+  sections['Toolbar'] = {
+    _items: null,
+    // Byg items fra den KANONISKE kilde (window.__flangoToolbarItems = TOOLBAR_MAPPING
+    // i shell.js), s\u00e5 labels, ikoner og kolonner ALTID matcher den rigtige header.
+    //   key   = orderKey (persisteret i toolbar_order \u2014 r\u00f8r ikke)
+    //   dbCol = den faktiske boolean-kolonne (toggle l\u00e6ser+skriver SAMME kolonne)
+    //   btnId = header-element til live-toggle + reorder
+    _build(ctx) {
+      const inst = ctx.institutionData || {};
+      const MAP = window.__flangoToolbarItems || [];
+      const items = MAP
+        .map(m => {
+          const on = inst[m.dbCol] !== false;
+          const requiresMet = !m.requiresCol || inst[m.requiresCol] === true;
+          return {
+            key: m.orderKey,
+            dbCol: m.dbCol,
+            btnId: m.btnId,
+            e: m.icon,
+            n: m.label,
+            d: m.desc,
+            requiresCol: m.requiresCol || null,
+            note: m.requiresCol === 'restaurant_mode_enabled' ? 'Kr\u00e6ver Restaurant Mode' : null,
+            on,
+            requiresMet,
+            alwaysOn: !!m.alwaysOn,
+            shown: on && requiresMet, // \u00e6gte header-synlighed \u2192 preview matcher headeren
+            iconHtml: this._iconHtml(m.btnId, m.icon),
+          };
+        });
+      // Anvend gemt r\u00e6kkef\u00f8lge (toolbar_order)
+      const ord = inst.toolbar_order;
+      if (ord) {
+        const order = typeof ord === 'string' ? JSON.parse(ord) : ord;
+        if (Array.isArray(order) && order.length > 0) {
+          const orderMap = {};
+          order.forEach((k, idx) => { orderMap[k] = idx; });
+          items.sort((a, b) => (orderMap[a.key] ?? 999) - (orderMap[b.key] ?? 999));
+        }
+      }
+      return items;
+    },
+    _getItems(ctx) {
+      if (!this._items) this._items = this._build(ctx);
+      return this._items;
+    },
+    // FORH\u00C5NDSVISNING: kun aktiverede ikoner vises (.vis) \u2014 en tro kopi af header-
+    // r\u00e6kkef\u00f8lgen. Draggable, s\u00e5 man kan omplacere direkte i forh\u00e5ndsvisningen.
+    // Clone the real header button icon (SVG/img) so the list + preview match the cafe
+    // header EXACTLY; fallback to emoji if the button is missing or is emoji/text
+    // (e.g. the dynamic shift-timer pill).
+    _iconHtml(btnId, emoji) {
+      const el = btnId && document.getElementById(btnId);
+      const html = el && el.innerHTML && el.innerHTML.trim();
+      return (html && /<svg|<img/i.test(html)) ? html : (emoji || '');
+    },
+    _previewIconsHtml(items) {
+      return items.filter(it => it.shown).map(it =>
+        `<div class="fsp-tb-preview-icon vis" data-tb-key="${it.key}" title="${it.n}">${it.iconHtml}</div>`
+      ).join('');
+    },
+    _listHtml(items) {
+      return items.map(it => {
+        const reqLocked = it.requiresCol && !it.requiresMet; // fx Køkkenskærm når Restaurant Mode er slået fra
+        let noteHtml = '';
+        if (reqLocked) noteHtml = `<div class="fsp-tb-item-note"><a href="#" data-action="open-rm" class="fsp-tb-note-link">${it.note || 'Kræver Restaurant Mode'} →</a></div>`;
+        else if (it.alwaysOn) noteHtml = `<div class="fsp-tb-item-note">Altid synlig — kan flyttes, ikke skjules</div>`;
+        // alwaysOn (⚙️/➕): låst-tændt toggle uden data-tb-toggle (ikke en funktionel toggle), men stadig flytbar.
+        const toggleOn = it.alwaysOn || it.on;
+        const toggleLocked = it.alwaysOn || reqLocked;
+        const toggleAttr = it.alwaysOn ? '' : ` data-tb-toggle="${it.dbCol}"`;
+        return `<div class="fsp-tb-item" data-tb-key="${it.key}">
+        <div class="fsp-tb-item-drag" data-tb-handle><span></span><span></span><span></span></div>
+        <div class="fsp-tb-item-emoji">${it.iconHtml}</div>
+        <div class="fsp-tb-item-info">
+          <div class="fsp-tb-item-name">${it.n}</div>
+          <div class="fsp-tb-item-desc">${it.d}</div>
+          ${noteHtml}
+        </div>
+        <div class="fsp-toggle${toggleOn ? ' on' : ''}${toggleLocked ? ' locked' : ''}"${toggleAttr}></div>
+      </div>`;
+      }).join('');
+    },
+    render(ctx) {
+      this._items = null; // Reset cache so order is re-read from DB
+      const items = this._getItems(ctx);
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Toolbar</div>
+        <div class="fsp-page-desc">V\u00e6lg hvilke genvejsknapper der vises som ikoner i toolbaren over indk\u00f8bskurven. Tr\u00e6k i forh\u00e5ndsvisningen eller listen for at \u00e6ndre r\u00e6kkef\u00f8lgen.</div>
+        <div class="fsp-tb-preview" data-tb-preview>
+          <div class="fsp-tb-preview-label">Forh\u00e5ndsvisning</div>
+          <div class="fsp-tb-preview-icons" data-tb-preview-icons>${this._previewIconsHtml(items)}</div>
+        </div>
+        <div data-tb-items>
+          ${this._listHtml(items)}
+        </div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      const self = this;
+      const listEl = () => container.querySelector('[data-tb-items]');
+      const previewIconsEl = () => container.querySelector('[data-tb-preview-icons]');
+
+      // Live: move the actual header buttons (same insertBefore-gear logic as applyToolbarOrder).
+      function applyLiveOrder() {
+        const headerActions = document.querySelector('.header-actions');
+        if (!headerActions) return;
+        // appendChild i items-rækkefølge (⚙️/➕ er nu flytbare, ikke et fast anker — samme som applyToolbarOrder).
+        self._getItems(ctx).forEach(it => {
+          if (!it.btnId) return;
+          const btn = document.getElementById(it.btnId);
+          if (btn) headerActions.appendChild(btn);
+        });
+      }
+      function persistOrder() {
+        ctx.markDirty('toolbar_order', self._getItems(ctx).map(x => x.key));
+        applyLiveOrder();
+      }
+      function renderListDom() { const l = listEl(); if (l) { l.innerHTML = self._listHtml(self._getItems(ctx)); mountList(); } }
+      function renderPreviewDom() { const p = previewIconsEl(); if (p) { p.innerHTML = self._previewIconsHtml(self._getItems(ctx)); mountPreview(); } }
+
+      function setToggle(dbCol, isOn) {
+        const inst = ctx.institutionData || {};
+        const it = self._getItems(ctx).find(x => x.dbCol === dbCol);
+        if (!it || it.alwaysOn) return; // alwaysOn (⚙️/➕) kan ikke skjules
+        const requiresMet = !it.requiresCol || inst[it.requiresCol] === true;
+        if (it.requiresCol && !requiresMet) return; // låst: kan ikke slås til uden kravet (fx Køkkenskærm uden Restaurant Mode)
+        it.on = isOn;
+        it.shown = isOn && requiresMet;
+        ctx.markDirty(dbCol, isOn); // auto-save to the SAME column the header reads
+        // shift_timer is gated by a runtime global (clerk-login + pill creation read it).
+        if (dbCol === 'shift_timer_enabled' && window.__flangoInstitutionSettings) {
+          window.__flangoInstitutionSettings.shiftTimerEnabled = isOn;
+        }
+        // Live header visibility gated by the SAME requiresCol as applyToolbarSettings (live == reload).
+        if (it.btnId) {
+          const btn = document.getElementById(it.btnId);
+          if (btn) btn.style.display = it.shown ? '' : 'none';
+        }
+        renderListDom();
+        renderPreviewDom();
+      }
+
+      // List drag: new full order = the DOM order.
+      function reorderFromList(newKeys) {
+        const items = self._getItems(ctx);
+        const byKey = {}; items.forEach(it => { byKey[it.key] = it; });
+        const next = newKeys.map(k => byKey[k]).filter(Boolean);
+        items.forEach(it => { if (!newKeys.includes(it.key)) next.push(it); });
+        self._items = next;
+        persistOrder();
+        renderPreviewDom(); // list already moved by Sortable; refresh the preview
+      }
+      // Preview drag: only the shown icons move; hidden items keep their slots.
+      function reorderFromPreview(newShownKeys) {
+        const items = self._getItems(ctx);
+        const byKey = {}; items.forEach(it => { byKey[it.key] = it; });
+        let ei = 0;
+        const next = items.map(it => it.shown ? byKey[newShownKeys[ei++]] : it).filter(Boolean);
+        self._items = next;
+        persistOrder();
+        renderListDom(); // preview already moved by Sortable; refresh the list
+      }
+
+      // SortableJS with forceFallback = pointer-based drag → robust in WKWebView/Tauri
+      // (native HTML5 drag-and-drop is unreliable there).
+      function mountList() {
+        if (self._sortList) { try { self._sortList.destroy(); } catch (e) {} self._sortList = null; }
+        const l = listEl();
+        if (!l || !window.Sortable) return;
+        self._sortList = window.Sortable.create(l, {
+          animation: 150, forceFallback: true, handle: '[data-tb-handle]', draggable: '.fsp-tb-item',
+          onEnd: () => reorderFromList(Array.from(l.querySelectorAll('.fsp-tb-item')).map(el => el.dataset.tbKey)),
+        });
+      }
+      function mountPreview() {
+        if (self._sortPreview) { try { self._sortPreview.destroy(); } catch (e) {} self._sortPreview = null; }
+        const p = previewIconsEl();
+        if (!p || !window.Sortable) return;
+        self._sortPreview = window.Sortable.create(p, {
+          animation: 150, forceFallback: true, draggable: '.fsp-tb-preview-icon',
+          onEnd: () => reorderFromPreview(Array.from(p.querySelectorAll('.fsp-tb-preview-icon')).map(el => el.dataset.tbKey)),
+        });
+      }
+
+      // Toggles (delegated — survive re-render).
+      container.addEventListener('click', (e) => {
+        const rm = e.target.closest('[data-action="open-rm"]');
+        if (rm) { e.preventDefault(); window.FlangoSettings?.openTo?.('Hovedmenu', 'Restaurant Mode'); return; }
+        const t = e.target.closest('[data-tb-toggle]');
+        if (!t || !container.contains(t)) return;
+        setToggle(t.dataset.tbToggle, !t.classList.contains('on'));
+      });
+
+      mountList();
+      mountPreview();
+    }
+  };
+
+  // ── Beløbsgrænse (settings section with dirty-tracking) ──
+  sections['Beløbsgrænse'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      const spendOn = !!inst.spending_limit_enabled;
+      const spendAmt = inst.spending_limit_amount ?? 20;
+      const spendReg = inst.spending_limit_applies_to_regular_users !== false;
+      const spendAdm = !!inst.spending_limit_applies_to_admins;
+      const spendTest = !!inst.spending_limit_applies_to_test_users;
+      const balOn = inst.balance_limit_enabled !== false;
+      const balAmt = inst.balance_limit_amount ?? 0;
+      const balAdm = !!inst.balance_limit_exempt_admins;
+      const balTest = !!inst.balance_limit_exempt_test_users;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Bel\u00f8bsgr\u00e6nse</div>
+        <div class="fsp-page-desc">S\u00e6t gr\u00e6nser for dagligt forbrug og minimum saldo for at beskytte mod overforbrug.</div>
+
+        <div class="fsp-section"><div class="fsp-block" style="margin-bottom:0">
+          <div class="fsp-row" style="margin-bottom:16px">
+            <div style="flex:1"><div class="fsp-row-title">Daglig forbrugsgr\u00e6nse</div><div class="fsp-row-desc">Begr\u00e6ns hvor meget der kan bruges per dag.</div></div>
+            <div class="fsp-toggle${spendOn ? ' on' : ''}" data-field="spending_limit_enabled" data-expand="spend-body"></div>
+          </div>
+          <div class="fsp-expand${spendOn ? ' open' : ''}" data-expand-target="spend-body">
+            <div style="padding-top:12px;border-top:1px solid rgba(255,255,255,0.04)">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+                <label style="font-size:13px;font-weight:500;color:var(--fsp-txt2);white-space:nowrap">Maksimalt forbrug per dag:</label>
+                <div class="fsp-num-wrap" style="width:130px">
+                  <input type="number" data-field="spending_limit_amount" value="${spendAmt}" style="padding:8px 12px;font-size:13px">
+                  <div class="fsp-num-btns">
+                    <button class="fsp-num-btn" data-step-target="spending_limit_amount" data-step="5">${chevronUp}</button>
+                    <button class="fsp-num-btn" data-step-target="spending_limit_amount" data-step="-5">${chevronDown}</button>
+                  </div>
+                </div>
+                <span style="font-size:13px;color:var(--fsp-txt3)">kr</span>
+              </div>
+              <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">G\u00e6lder for</div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC67</div><div><div class="fsp-role-name">Almindelige brugere (b\u00f8rn)</div></div></div><div class="fsp-toggle${spendReg ? ' on' : ''}" data-field="spending_limit_applies_to_regular_users"></div></div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC68\u200D\uD83C\uDFEB</div><div><div class="fsp-role-name">Admins (voksne)</div></div></div><div class="fsp-toggle${spendAdm ? ' on' : ''}" data-field="spending_limit_applies_to_admins"></div></div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83E\uDDEA</div><div><div class="fsp-role-name">Testbrugere</div></div></div><div class="fsp-toggle${spendTest ? ' on' : ''}" data-field="spending_limit_applies_to_test_users"></div></div>
+            </div>
+          </div>
+        </div></div>
+
+        <div class="fsp-section"><div class="fsp-block" style="margin-bottom:0">
+          <div class="fsp-row" style="margin-bottom:16px">
+            <div style="flex:1"><div class="fsp-row-title">Saldogr\u00e6nse</div><div class="fsp-row-desc">K\u00f8b blokeres hvis saldo kommer under den angivne gr\u00e6nse.</div></div>
+            <div class="fsp-toggle${balOn ? ' on' : ''}" data-field="balance_limit_enabled" data-expand="bal-body"></div>
+          </div>
+          <div class="fsp-expand${balOn ? ' open' : ''}" data-expand-target="bal-body">
+            <div style="padding-top:12px;border-top:1px solid rgba(255,255,255,0.04)">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+                <label style="font-size:13px;font-weight:500;color:var(--fsp-txt2);white-space:nowrap">Saldo m\u00e5 ikke komme under:</label>
+                <div class="fsp-num-wrap" style="width:130px">
+                  <input type="number" data-field="balance_limit_amount" value="${balAmt}" style="padding:8px 12px;font-size:13px">
+                  <div class="fsp-num-btns">
+                    <button class="fsp-num-btn" data-step-target="balance_limit_amount" data-step="5" data-allow-negative="true">${chevronUp}</button>
+                    <button class="fsp-num-btn" data-step-target="balance_limit_amount" data-step="-5" data-allow-negative="true">${chevronDown}</button>
+                  </div>
+                </div>
+                <span style="font-size:13px;color:var(--fsp-txt3)">kr</span>
+              </div>
+              <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">G\u00e6lder for</div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC67</div><div><div class="fsp-role-name">Almindelige brugere (b\u00f8rn)</div></div></div><div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);padding:4px 11px;border-radius:999px;background:rgba(255,255,255,0.05);white-space:nowrap" title="B\u00f8rn er altid omfattet af bel\u00f8bsgr\u00E6nsen \u2014 kan ikke fritages">Altid</div></div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC68\u200D\uD83C\uDFEB</div><div><div class="fsp-role-name">Admins (voksne)</div></div></div><div class="fsp-toggle${!balAdm ? ' on' : ''}" data-field="balance_limit_exempt_admins" data-invert></div></div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83E\uDDEA</div><div><div class="fsp-role-name">Testbrugere</div></div></div><div class="fsp-toggle${!balTest ? ' on' : ''}" data-field="balance_limit_exempt_test_users" data-invert></div></div>
+            </div>
+          </div>
+        </div></div>
+
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+      wireNumberInputs(container, ctx);
+      wireStepButtons(container);
+      // Expand/collapse toggles
+      container.querySelectorAll('[data-expand]').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+          const target = container.querySelector(`[data-expand-target="${toggle.dataset.expand}"]`);
+          if (target) target.classList.toggle('open', toggle.classList.contains('on'));
+        });
+      });
+    }
+  };
+
+  // ── Sukkerpolitik (settings section with dirty-tracking) ──
+  sections['Sukkerpolitik'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      const enabled = !!inst.sugar_policy_enabled;
+      const perEnabled = !!inst.sugar_policy_max_per_product_enabled;
+      const totEnabled = !!inst.sugar_policy_max_unhealthy_enabled;
+      const perAmt = inst.sugar_policy_max_per_product_per_day ?? 1;
+      const totAmt = inst.sugar_policy_max_unhealthy_per_day ?? 1;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Sukkerpolitik</div>
+        <div class="fsp-page-desc">Hvis klubben tilbyder mindre sunde produkter kan disse begr\u00e6nses, hvis produkterne markeres som \u2018usunde\u2019 i produktoversigten. Alternativt kan du s\u00e6tte k\u00f8bsgr\u00e6nser for de enkelte produkter, i produktoversigten.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Aktiv\u00e9r sukkerpolitik</div><div class="fsp-main-desc">Begr\u00e6ns k\u00f8b af produkter markeret som usunde.</div></div>
+          <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="sugar_policy_enabled"></div>
+        </div>
+        <div data-body="sp-body" class="${enabled ? '' : 'fsp-off'}">
+          <div class="fsp-section"><div class="fsp-block">
+            <div class="fsp-row" style="margin-bottom:14px">
+              <div style="flex:1"><div class="fsp-row-title">Begr\u00e6ns antal af hvert usundt produkt per dag</div><div class="fsp-row-desc">Begr\u00e6ns k\u00f8b til maks antal af hvert usundt produkt per dag.</div></div>
+              <div class="fsp-toggle${perEnabled ? ' on' : ''}" data-field="sugar_policy_max_per_product_enabled"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.04)">
+              <label style="font-size:13px;font-weight:500;color:var(--fsp-txt2);white-space:nowrap">Maks per produkt:</label>
+              <div class="fsp-num-wrap" style="width:100px">
+                <input type="number" data-field="sugar_policy_max_per_product_per_day" value="${perAmt}" style="padding:8px 12px;font-size:13px">
+                <div class="fsp-num-btns">
+                  <button class="fsp-num-btn" data-step-target="sugar_policy_max_per_product_per_day" data-step="1">${chevronUp}</button>
+                  <button class="fsp-num-btn" data-step-target="sugar_policy_max_per_product_per_day" data-step="-1">${chevronDown}</button>
+                </div>
+              </div>
+              <span style="font-size:13px;color:var(--fsp-txt3)">stk.</span>
+            </div>
+          </div></div>
+          <div class="fsp-section"><div class="fsp-block">
+            <div class="fsp-row" style="margin-bottom:14px">
+              <div style="flex:1"><div class="fsp-row-title">Maks antal usunde produkter per dag</div><div class="fsp-row-desc">Hvis der p\u00e5 samme dag tilbydes flere produkter markeret som usunde, m\u00e5 barnet prioritere hvilket produkt de vil bruge deres kvote p\u00e5.</div></div>
+              <div class="fsp-toggle${totEnabled ? ' on' : ''}" data-field="sugar_policy_max_unhealthy_enabled"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.04)">
+              <label style="font-size:13px;font-weight:500;color:var(--fsp-txt2);white-space:nowrap">Maks i alt per dag:</label>
+              <div class="fsp-num-wrap" style="width:100px">
+                <input type="number" data-field="sugar_policy_max_unhealthy_per_day" value="${totAmt}" style="padding:8px 12px;font-size:13px">
+                <div class="fsp-num-btns">
+                  <button class="fsp-num-btn" data-step-target="sugar_policy_max_unhealthy_per_day" data-step="1">${chevronUp}</button>
+                  <button class="fsp-num-btn" data-step-target="sugar_policy_max_unhealthy_per_day" data-step="-1">${chevronDown}</button>
+                </div>
+              </div>
+              <span style="font-size:13px;color:var(--fsp-txt3)">stk.</span>
+            </div>
+          </div></div>
+        </div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+      wireNumberInputs(container, ctx);
+      wireStepButtons(container);
+      // Main toggle grey-out
+      const mainToggle = container.querySelector('[data-field="sugar_policy_enabled"]');
+      const body = container.querySelector('[data-body="sp-body"]');
+      if (mainToggle && body) {
+        mainToggle.addEventListener('click', () => {
+          body.classList.toggle('fsp-off', !mainToggle.classList.contains('on'));
+        });
+      }
+    }
+  };
+
+  // ═══════════════════════════════════════════════════
+  // ADMINISTRATION
+  // ═══════════════════════════════════════════════════
+
+  // ── Forældreportal (big-card launcher) ──
+  sections['Forældreportal'] = {
+    render(ctx) {
+      const gearIcon = '<svg width="84" height="84" viewBox="0 0 16 16" fill="none" stroke="{COLOR}" stroke-width="0.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2"/><path d="M8 3v1M8 12v1M12.5 5.5l-.9.5M4.4 10l-.9.5M12.5 10.5l-.9-.5M4.4 6l-.9-.5M11 3.8l-.5.9M5.5 11.3l-.5.9M11 12.2l-.5-.9M5.5 4.7l-.5-.9"/></svg>';
+      const monitorIcon = '<svg width="84" height="84" viewBox="0 0 16 16" fill="none" stroke="{COLOR}" stroke-width="0.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="11" height="7.5" rx="1.5"/><path d="M6 13h4"/><path d="M8 10.5v2.5"/></svg>';
+      const cards = [
+        { l: 'Indstillinger', c: '#c77ddb', d: 'Tilpas for\u00e6ldreportalen. V\u00e6lg hvilke funktioner der skal v\u00e6re tilg\u00e6ngelige for for\u00e6ldre. Vises med et opdigtet eksempel-barn \u2014 ingen families data.', icon: gearIcon },
+        // "Simulator" inviterer til "jeg kigger bare" \u2014 og det er pr\u00e6cis d\u00e9t
+        // fladen IKKE er: der sker \u00e6gte \u00e6ndringer for en \u00e6gte familie. Navnet
+        // l\u00e6ses hver gang og er derfor den billigste beskyttelse der findes (\u00a73c).
+        { l: 'Hj\u00e6lp', c: '#5ba0d8', d: 'S\u00e6t en families indstillinger p\u00e5 for\u00e6lderens vegne \u2014 til dem der ikke selv kan bruge appen. \u00c6ndringer registreres p\u00e5 dig.', icon: monitorIcon }
+      ];
+      return `<div class="fsp-big-cards">${cards.map(card =>
+        `<div class="fsp-big-card" data-card="${card.l}">
+          <div class="fsp-big-card-label">${card.l === 'Indstillinger' ? 'For\u00e6ldreportal Indstillinger' : 'Hj\u00e6lp en for\u00e6lder'}</div>
+          <div class="fsp-big-card-icon" style="background:${card.c}22">${card.icon.replace('{COLOR}', card.c)}</div>
+          <div class="fsp-big-card-desc">${card.d}</div>
+        </div>`
+      ).join('')}</div>`;
+    },
+    wire(container, ctx) {
+      container.querySelectorAll('.fsp-big-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const label = card.dataset.card;
+          window.FlangoSettings.close();
+          if (label === 'Indstillinger') {
+            window.openAdminPortalV2?.();
+          } else if (label === 'Hjælp') {
+            window.openParentPortalAsAdmin?.();
+          }
+        });
+      });
+    }
+  };
+
+  // ── Betalingsmetoder (info cards with toggle + expandable details) ──
+  // Status → fsp-pm-badge-* color class
+  function _stripeStatusBadgeClass(status) {
+    if (status === 'enabled') return 'fsp-pm-badge-green';
+    if (status === 'onboarding' || status === 'pending' || status === 'in_progress') return 'fsp-pm-badge-orange';
+    return 'fsp-pm-badge-gray';
+  }
+
+  function _parsePaymentSettings(raw) {
+    if (!raw) return {};
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+    } catch { return {}; }
+  }
+
+  // Non-stripe methods (stripe_connect is rendered separately with live status)
+  const _pmMethods = [
+    { id: 'mobilepay_api', hasFeePolicy: true, t: 'MobilePay API', badges: [['Automatisk saldo-opdatering','green'],['Kr\u00e6ver ops\u00e6tning','orange']], d: 'For\u00e6ldre indbetaler via MobilePay. Saldo opdateres automatisk.', detail: 'Denne l\u00f8sning foruds\u00e6tter, at institutionen (eller kommunen) har en MobilePay API-aftale. N\u00e5r en for\u00e6lder indbetaler via MobilePay, registreres betalingen automatisk i Flango, og barnets saldo opdateres uden manuelt arbejde.', configLabel: 'Konfigurer MobilePay API' },
+    { id: 'mobilepay_csv', hasFeePolicy: false, t: 'MobilePay CSV', badges: [['Semi-automatisk','orange']], d: 'Sekret\u00e6r/leder uploader en MobilePay-oversigt. Nye betalinger registreres automatisk i Flango.', detail: 'Typisk logger skolens sekret\u00e6r eller SFO-leder ind i MobilePay-portalen, downloader en oversigt over indbetalinger (CSV) og uploader den i Flango. Flango registrerer automatisk alle nye betalinger p\u00e5 de relevante b\u00f8rn.<br><br>Det anbefales at g\u00f8re dette i et fast interval, som meldes ud til for\u00e6ldrene, fx: <em>\u2018Indbetalinger opdateres hver dag inden kl. 13:00\u2019</em> eller <em>\u2018hver mandag inden kl. 13:00\u2019</em>.', configLabel: '\u00c5bn CSV-import' },
+    { id: 'mobilepay_qr', hasFeePolicy: false, t: 'MobilePay QR', badges: [['Manuel','gray']], d: 'For\u00e6ldre scanner en QR-kode. Personalet registrerer indbetalingen manuelt i Flango.', detail: 'Denne metode foruds\u00e6tter, at institutionen har en MobilePay-aftale, og at klubben er logget ind p\u00e5 den mobil, som modtager indbetalinger. Institutionens QR-kode vises i for\u00e6ldreportalen og evt. i Aula. N\u00e5r for\u00e6ldre sender penge, skal personalet manuelt registrere indbetalingen p\u00e5 det enkelte barn i Flango (fx via \u2018Opdater saldo\u2019 i brugerpanelet).' },
+    { id: 'mobilepay_qr_screenshot', hasFeePolicy: false, t: 'MobilePay QR + Screenshot', badges: [['N\u00f8dl\u00f8sning','red']], d: 'For\u00e6ldre sender et sk\u00e6rmbillede som betalingsbevis. Personalet registrerer manuelt i Flango.', detail: 'Denne metode er til institutioner, hvor MobilePay-aftalen administreres eksternt (fx hos skolens sekret\u00e6r). Personalet kan derfor ikke se, n\u00e5r en for\u00e6lder har indbetalt. For\u00e6ldre skal sende et sk\u00e6rmbillede af betalingen som dokumentation til klubbens mobil, hvorefter personalet registrerer indbetalingen manuelt.<br><br><strong style="color:var(--fsp-accent)">Anbefales kun, hvis ingen andre l\u00f8sninger er mulige.</strong>' },
+    { id: 'cash', hasFeePolicy: false, t: 'Kontant', badges: [['Offline','gray'],['N\u00f8dl\u00f8sning','red']], d: 'Personalet tager imod kontanter og registrerer indbetalingen manuelt i Flango.', detail: 'Kontant indbetaling kr\u00e6ver ingen teknisk ops\u00e6tning og medf\u00f8rer ingen transaktionsomkostninger. De fleste for\u00e6ldre foretr\u00e6kker digitale indbetalinger, men kontant kan bruges som en alternativ eller n\u00f8dl\u00f8sning for familier, der ikke \u00f8nsker digitale betalinger.' }
+  ];
+
+  // Save payment settings JSONB atomically (preserves other keys)
+  async function _savePaymentSettings(ctx, mutator) {
+    const inst = ctx.institutionData || {};
+    const current = _parsePaymentSettings(inst.parent_portal_payment);
+    const next = mutator({ ...current });
+    // Also preserve per-method fee_policy in sync with admin_fee_payer for backward-compat
+    const fee = next.admin_fee_payer === 'parent' ? 'parent' : 'institution';
+    _pmMethods.forEach(m => {
+      if (!m.hasFeePolicy) return;
+      next[m.id] = { ...(next[m.id] || {}), fee_policy: fee };
+    });
+    if (next.stripe_connect) next.stripe_connect = { ...next.stripe_connect, fee_policy: fee };
+    await ctx.saveField('parent_portal_payment', next);
+  }
+
+  function _updatePaymentWarnings(container) {
+    const box = container.querySelector('[data-pm-warnings]');
+    if (!box) return;
+    const on = (id) => !!container.querySelector(`[data-pm-toggle="${id}"]`)?.classList.contains('on');
+    const stripe = on('stripe_connect');
+    const mpApi = on('mobilepay_api');
+    const csv = on('mobilepay_csv');
+    const qr = on('mobilepay_qr');
+    const qrs = on('mobilepay_qr_screenshot');
+    const warnings = [];
+    if (stripe && mpApi) warnings.push('V\u00e6lg \u00e9n automatisk metode som prim\u00e6r for at undg\u00e5 forvirring for for\u00e6ldre.');
+    if (csv && (qr || qrs)) warnings.push('Risiko for dobbeltregistrering. Brug CSV som prim\u00e6r og behold QR kun som n\u00f8dl\u00f8sning.');
+    if (qrs) warnings.push('N\u00f8dl\u00f8sning: kan give ekstra administration.');
+    box.innerHTML = warnings.map(w => `<div class="fsp-pm-warning">${w}</div>`).join('');
+    box.style.display = warnings.length ? '' : 'none';
+  }
+
+  sections['Betalingsmetoder'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      const settings = _parsePaymentSettings(inst.parent_portal_payment);
+      const adminFeePayer = settings.admin_fee_payer === 'parent' ? 'parent' : 'institution';
+
+      // Stripe live state
+      const stripeEnabled = inst.stripe_enabled === true || settings.stripe_connect?.enabled === true;
+      const stripeStatus = inst.stripe_account_status || settings.stripe_connect?.status || 'not_configured';
+      const stripeMode = inst.stripe_mode || settings.stripe_connect?.mode || null;
+      const stripeError = inst.stripe_last_error || null;
+      const stripeUpdatedAt = inst.stripe_updated_at || null;
+
+      const S = window.__flangoStripe || {};
+      const statusText = S.statusText ? S.statusText(stripeStatus) : 'Ikke konfigureret';
+      const statusBadgeClass = _stripeStatusBadgeClass(stripeStatus);
+      const onboardingBtnText = S.onboardingButtonText ? S.onboardingButtonText(stripeStatus) : 'Start ops\u00e6tning';
+      const onboardingDone = stripeStatus === 'enabled';
+      const guideUrl = S.supabaseUrl ? `${S.supabaseUrl}/storage/v1/object/public/docs/stripe-onboarding-guide.pdf` : '';
+
+      return `<div class="fsp-page" style="max-width:780px">
+        <div class="fsp-page-title">Betalingsmetoder</div>
+        <div class="fsp-page-desc">Kommuner og institutioner har forskellige aftaler med betalingsudbydere. Her kan I v\u00e6lge de metoder, der passer bedst til jeres institution. Kontakt skolens sekret\u00e6r eller kommunens \u00f8konomiafdeling, hvis I er i tvivl om, hvilke aftaler I har adgang til.</div>
+        <div data-pm-warnings style="display:none;margin-bottom:16px"></div>
+        <div style="margin-bottom:24px">
+          <div class="fsp-collapse-btn" data-action="toggle-admin-cost">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+            <span>Administrationsomkostning ved indbetaling</span>
+          </div>
+          <div class="fsp-collapse-body" data-collapse="admin-cost">
+            <div class="fsp-collapse-body-inner">
+              <div style="font-size:12px;color:var(--fsp-txt3);margin-bottom:14px;line-height:1.5">I v\u00e6lger selv, hvem der betaler administrationsomkostningen.</div>
+              <div class="fsp-role" style="margin-bottom:6px"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83C\uDFEB</div><div><div class="fsp-role-name">Institutionen betaler administrationsomkostningen</div></div></div><div class="fsp-toggle${adminFeePayer === 'institution' ? ' on' : ''}" data-cost="inst"></div></div>
+              <div class="fsp-role"><div class="fsp-role-left"><div class="fsp-role-emoji">\uD83D\uDC6A</div><div><div class="fsp-role-name">For\u00e6ldre betaler administrationsomkostningen</div></div></div><div class="fsp-toggle${adminFeePayer === 'parent' ? ' on' : ''}" data-cost="parent"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="fsp-pm-card">
+          <div class="fsp-pm-card-hdr" data-action="toggle-pm-expand">
+            <div class="fsp-pm-card-left">
+              <div class="fsp-pm-card-title-row"><span class="fsp-pm-card-title">Stripe Connect</span><span class="fsp-pm-badge fsp-pm-badge-green">Anbefalet</span><span class="fsp-pm-badge fsp-pm-badge-green">Automatisk saldo-opdatering</span><span class="fsp-pm-badge fsp-pm-badge-blue">Hurtig ops\u00e6tning</span></div>
+              <div class="fsp-pm-card-desc">Med Stripe Connect kan I hurtigt komme i gang med automatisk indbetaling. Betalingen sendes direkte til institutionens bankkonto, og barnets Flango-saldo opdateres automatisk.</div>
+            </div>
+            <div class="fsp-toggle${stripeEnabled ? ' on' : ''}" data-pm-toggle="stripe_connect"></div>
+          </div>
+          <div class="fsp-pm-card-expand"><div class="fsp-pm-card-body"><div class="fsp-pm-card-body-inner">
+            <div class="fsp-pm-detail">For\u00e6ldre indbetaler via Flango for\u00e6ldreportalen eller via personlig QR-kode. Barnets saldo opdateres automatisk. Mindre administration \u2013 mere tid til n\u00e6rv\u00e6r.</div>
+            <div class="fsp-collapse-btn" data-action="toggle-stripe-details" style="margin-bottom:12px;padding:10px 14px">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+              <span style="color:var(--fsp-accent);font-size:12px">Vis detaljer</span>
+            </div>
+            <div class="fsp-collapse-body" data-collapse="stripe-details">
+              <div class="fsp-collapse-body-inner">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;padding:12px 16px;margin-bottom:8px;font-size:12px;color:var(--fsp-txt3);line-height:1.5">
+                  <strong style="color:var(--fsp-txt)">Administrationsomkostning:</strong> 1,5 % + 1,80 kr pr. indbetaling
+                </div>
+                <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin:16px 0 8px">Oprettelse</div>
+                <div class="fsp-pm-detail">Oprettelse af jeres Stripe Connect-konto sker via en enkel, selvbetjent onboarding. I skal blot oplyse institutionens virksomhedsoplysninger (CVR/EAN) og udbetalingskonto.</div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+                  <button class="fsp-btn fsp-btn-ghost" data-action="stripe-open-guide" data-href="${guideUrl}" style="padding:10px 20px;font-size:13px">\uD83D\uDCD6 Åbn onboarding-guide</button>
+                </div>
+                <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin:16px 0 8px">Stripe onboarding-link</div>
+                <div style="font-size:12px;color:var(--fsp-txt3);margin-bottom:10px">Linket kan udl\u00f8be \u2013 gener\u00e9r et nyt hvis n\u00f8dvendigt.</div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+                  <button class="fsp-btn fsp-btn-ghost" id="generate-onboarding-link-btn" data-action="stripe-generate-link" style="padding:10px 20px;font-size:13px">\uD83D\uDD17 Gener\u00e9r onboarding-link</button>
+                  <button class="fsp-btn fsp-btn-ghost" id="copy-onboarding-link-btn" data-action="stripe-copy-link" style="padding:10px 20px;font-size:13px;display:none">\uD83D\uDCCB Kopi\u00e9r link</button>
+                </div>
+                <input type="text" id="onboarding-link-input" readonly placeholder="Klik 'Gener\u00e9r onboarding-link' for at oprette et link" style="width:100%;padding:8px 10px;border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:12px;background:rgba(255,255,255,0.02);color:var(--fsp-txt);display:none">
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;margin-top:14px;font-size:12px;color:var(--fsp-txt3)">
+              <span style="display:flex;align-items:center;gap:6px"><strong style="color:var(--fsp-txt)">Stripe status:</strong></span>
+              <span class="fsp-pm-badge ${statusBadgeClass}">${statusText}</span>
+              ${stripeMode ? `<span>Mode: <strong style="color:var(--fsp-txt)">${stripeMode === 'live' ? 'Live' : 'Test'}</strong></span>` : ''}
+              ${stripeUpdatedAt ? `<span style="font-size:11px;opacity:0.7">Opdateret ${new Date(stripeUpdatedAt).toLocaleString('da-DK')}</span>` : ''}
+            </div>
+            ${stripeError ? `<div style="margin-top:8px;padding:10px 14px;background:rgba(232,90,111,0.08);border:1px solid rgba(232,90,111,0.2);border-radius:10px;font-size:12px;color:#e85a6f"><strong>Fejl:</strong> ${stripeError}</div>` : ''}
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+              <button class="fsp-btn ${onboardingDone ? 'fsp-btn-ghost' : 'fsp-btn-primary'}" id="stripe-onboarding-btn" data-action="stripe-onboard" ${onboardingDone ? 'disabled style="opacity:0.6;cursor:default;padding:10px 20px;font-size:13px"' : 'style="padding:10px 20px;font-size:13px"'}>${onboardingDone ? '\u2713 Ops\u00e6tning fuldf\u00f8rt' : onboardingBtnText}</button>
+              <button class="fsp-btn fsp-btn-ghost" id="stripe-status-sync-btn" data-action="stripe-sync" style="padding:10px 20px;font-size:13px">\uD83D\uDD04 Opdater status</button>
+              ${stripeMode ? `<button class="fsp-btn fsp-btn-ghost" id="stripe-change-mode-btn" data-action="stripe-change-mode" style="padding:10px 20px;font-size:13px" title="Skift mellem Test og Live mode">\u2699 Skift mode (${stripeMode === 'live' ? 'Live' : 'Test'})</button>` : ''}
+              ${inst.stripe_account_id ? `<button class="fsp-btn fsp-btn-ghost" id="stripe-reset-btn" data-action="stripe-reset" style="padding:10px 20px;font-size:13px;color:#e85a6f;border-color:rgba(232,90,111,0.3)" title="Nulstil Stripe-ops\u00e6tningen og start forfra">\u21BA Nulstil ops\u00e6tning</button>` : ''}
+            </div>
+          </div></div></div>
+        </div>
+        ${_pmMethods.map(m => {
+          const on = settings[m.id]?.enabled === true;
+          return `<div class="fsp-pm-card">
+          <div class="fsp-pm-card-hdr" data-action="toggle-pm-expand">
+            <div class="fsp-pm-card-left">
+              <div class="fsp-pm-card-title-row">
+                <span class="fsp-pm-card-title">${m.t}</span>
+                ${m.badges.map(b => `<span class="fsp-pm-badge fsp-pm-badge-${b[1]}">${b[0]}</span>`).join('')}
+              </div>
+              <div class="fsp-pm-card-desc">${m.d}</div>
+            </div>
+            <div class="fsp-toggle${on ? ' on' : ''}" data-pm-toggle="${m.id}"></div>
+          </div>
+          <div class="fsp-pm-card-expand"><div class="fsp-pm-card-body"><div class="fsp-pm-card-body-inner">
+            <div class="fsp-pm-detail">${m.detail}</div>
+            ${m.configLabel ? `<button class="fsp-btn fsp-btn-ghost" data-pm-config="${m.id}" style="margin-top:12px;padding:10px 20px;font-size:13px;${on ? '' : 'display:none'}">${m.configLabel}</button>` : ''}
+          </div></div></div>
+        </div>`;
+        }).join('')}
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+
+      // Register reloader so shell.js Stripe helpers re-render this section
+      window.__flangoReloadPaymentMethodsView = () => window.FlangoSettings?.reloadCurrent?.();
+
+      // Initial warnings pass
+      _updatePaymentWarnings(container);
+
+      // Toggle admin cost collapse
+      const costBtn = container.querySelector('[data-action="toggle-admin-cost"]');
+      const costBody = container.querySelector('[data-collapse="admin-cost"]');
+      costBtn?.addEventListener('click', () => { costBtn.classList.toggle('open'); costBody?.classList.toggle('open'); });
+
+      // Admin-fee-payer toggles (mutually exclusive) → persist to JSONB
+      container.querySelectorAll('[data-cost]').forEach(t => {
+        t.addEventListener('click', async () => {
+          const val = t.dataset.cost === 'parent' ? 'parent' : 'institution';
+          const instT = container.querySelector('[data-cost="inst"]');
+          const parT = container.querySelector('[data-cost="parent"]');
+          if (val === 'institution') { instT?.classList.add('on'); parT?.classList.remove('on'); }
+          else { parT?.classList.add('on'); instT?.classList.remove('on'); }
+          await _savePaymentSettings(ctx, s => { s.admin_fee_payer = val; return s; });
+        });
+      });
+
+      // Expand/collapse cards on header click (ignore clicks on toggles)
+      container.querySelectorAll('[data-action="toggle-pm-expand"]').forEach(hdr => {
+        hdr.addEventListener('click', (e) => {
+          if (e.target.closest('[data-pm-toggle], [data-cost]')) return;
+          const expand = hdr.parentElement.querySelector('.fsp-pm-card-expand');
+          expand?.classList.toggle('open');
+        });
+      });
+
+      // Payment method enable-toggles → persist to JSONB (+ stripe_enabled column for Stripe)
+      container.querySelectorAll('[data-pm-toggle]').forEach(t => {
+        t.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          t.classList.toggle('on');
+          const enabled = t.classList.contains('on');
+          const id = t.dataset.pmToggle;
+
+          // Show/hide per-method config button
+          const card = t.closest('.fsp-pm-card');
+          const cfg = card?.querySelector(`[data-pm-config="${id}"]`);
+          if (cfg) cfg.style.display = enabled ? '' : 'none';
+
+          // Sidebar visibility sync for MobilePay CSV
+          if (id === 'mobilepay_csv') ctx.setMpCsvOn?.(enabled);
+
+          _updatePaymentWarnings(container);
+
+          // Persist JSONB
+          await _savePaymentSettings(ctx, s => {
+            s[id] = { ...(s[id] || {}), enabled };
+            return s;
+          });
+
+          // Mirror to top-level stripe_enabled column
+          if (id === 'stripe_connect') {
+            await ctx.saveField('stripe_enabled', enabled);
+          }
+        });
+      });
+
+      // Stripe details sub-collapse
+      const stripeBtn = container.querySelector('[data-action="toggle-stripe-details"]');
+      const stripeBody = container.querySelector('[data-collapse="stripe-details"]');
+      stripeBtn?.addEventListener('click', () => { stripeBtn.classList.toggle('open'); stripeBody?.classList.toggle('open'); });
+
+      const S = window.__flangoStripe || {};
+      const instId = window.getInstitutionId?.();
+
+      // Open onboarding guide
+      container.querySelector('[data-action="stripe-open-guide"]')?.addEventListener('click', async (e) => {
+        const url = e.currentTarget.dataset.href;
+        if (!url) return;
+        try {
+          await window.FlangoPlatform.openExternal(url);
+        } catch (err) {
+          console.error('[stripe-guide] Kunne ikke åbne onboarding-guiden:', err);
+          const message = 'Kunne ikke åbne onboarding-guiden. Prøv igen.';
+          if (typeof window.__flangoShowAlert === 'function') window.__flangoShowAlert(message);
+          else alert(message);
+        }
+      });
+
+      // Opret / Fortsæt onboarding
+      container.querySelector('[data-action="stripe-onboard"]')?.addEventListener('click', async () => {
+        if (!S.startOnboarding || !instId) return;
+        const status = ctx.institutionData?.stripe_account_status || 'not_configured';
+        const hasMode = !!ctx.institutionData?.stripe_mode;
+        if ((status === 'not_configured' || !hasMode) && S.openModeModal) {
+          await S.openModeModal({ mode: ctx.institutionData?.stripe_mode }, instId,
+            (beforeOpen) => S.startOnboarding(instId, beforeOpen));
+        } else {
+          await S.startOnboarding(instId);
+        }
+      });
+
+      // Opdater status
+      container.querySelector('[data-action="stripe-sync"]')?.addEventListener('click', async () => {
+        if (S.syncStatus && instId) await S.syncStatus(instId);
+      });
+
+      // Skift mode — gen-åbner mode-modal selv efter første konfiguration.
+      // Mode-skift (test ↔ live) rydder eksisterende account_id i shell.js' save-handler,
+      // så en frisk Stripe-konto oprettes på den valgte platform.
+      container.querySelector('[data-action="stripe-change-mode"]')?.addEventListener('click', async () => {
+        if (!S.openModeModal || !S.startOnboarding || !instId) return;
+        const ok = await window.customConfirm?.(
+          'Vil du skifte Stripe-mode?',
+          `Hvis du skifter mellem Test og Live, oprettes en ny Stripe-konto på den valgte platform. Din nuværende konto (${ctx.institutionData?.stripe_mode === 'live' ? 'Live' : 'Test'}) efterlades i Stripe og kan slettes manuelt via dashboard.stripe.com.`
+        ) ?? confirm('Skift Stripe-mode? En ny konto oprettes på den valgte platform.');
+        if (!ok) return;
+        await S.openModeModal({ mode: ctx.institutionData?.stripe_mode }, instId,
+          (beforeOpen) => S.startOnboarding(instId, beforeOpen));
+      });
+
+      // Nulstil opsætning — rydder lokal kobling til Stripe (account_id, status, fejl),
+      // beholder mode. Den eksisterende konto efterlades hos Stripe og kan slettes manuelt
+      // via dashboard.stripe.com hvis institutionen ønsker det. Stærkere advarsel hvis
+      // onboarding allerede er fuldført (mulige modtagne betalinger på den gamle konto).
+      container.querySelector('[data-action="stripe-reset"]')?.addEventListener('click', async () => {
+        if (!instId) return;
+        const wasEnabled = ctx.institutionData?.stripe_account_status === 'enabled';
+        const accountIdShort = (ctx.institutionData?.stripe_account_id || '').slice(0, 15);
+        const baseMsg = `Dette rydder Flangos kobling til din nuværende Stripe-konto (${accountIdShort}…). Næste gang du klikker "Fortsæt opsætning" oprettes en ny konto fra bunden.\n\nDen gamle konto efterlades hos Stripe (harmløst — koster intet og påvirker ikke ny onboarding). Hvis I ønsker den fysisk slettet, kan I kontakte Flango-support.`;
+        const dangerMsg = wasEnabled
+          ? `\n\n⚠ ADVARSEL: Din nuværende opsætning er fuldført (enabled). Hvis kontoen har modtaget betalinger, vil de blive utilgængelige via Flango efter nulstilling — du skal håndtere dem direkte hos Stripe.`
+          : '';
+        const ok = confirm(`Nulstil Stripe-opsætning?\n\n${baseMsg}${dangerMsg}\n\nFortsæt?`);
+        if (!ok) return;
+
+        try {
+          const sb = window.__flangoSupabaseClient;
+          if (!sb) throw new Error('Supabase client ikke tilgængelig');
+          const { error: resetError } = await sb
+            .from('institutions')
+            .update({
+              stripe_account_id: null,
+              stripe_account_status: 'not_configured',
+              stripe_last_error: null,
+              stripe_updated_at: new Date().toISOString(),
+            })
+            .eq('id', instId);
+          if (resetError) throw resetError;
+
+          // Refresh local context og re-render section
+          if (ctx.institutionData) {
+            ctx.institutionData.stripe_account_id = null;
+            ctx.institutionData.stripe_account_status = 'not_configured';
+            ctx.institutionData.stripe_last_error = null;
+          }
+          (window.__flangoReloadPaymentMethodsView || window.openPaymentMethodsModal)?.();
+          if (typeof window.showCustomAlert === 'function') {
+            window.showCustomAlert('Nulstillet', 'Stripe-opsætningen er nulstillet. Klik "Fortsæt opsætning" for at starte forfra.');
+          }
+        } catch (err) {
+          console.error('[stripe-reset] Error:', err);
+          const msg = err?.message || 'Ukendt fejl';
+          if (typeof window.showCustomAlert === 'function') {
+            window.showCustomAlert('Fejl', 'Kunne ikke nulstille opsætningen: ' + msg);
+          } else {
+            alert('Fejl ved nulstilling: ' + msg);
+          }
+        }
+      });
+
+      // Generér onboarding-link (helper looks up IDs: generate-onboarding-link-btn, copy-onboarding-link-btn, onboarding-link-input)
+      container.querySelector('[data-action="stripe-generate-link"]')?.addEventListener('click', async () => {
+        if (S.generateLink && instId) await S.generateLink(instId);
+      });
+
+      // Kopiér link
+      container.querySelector('[data-action="stripe-copy-link"]')?.addEventListener('click', async () => {
+        const input = container.querySelector('#onboarding-link-input');
+        if (input?.value && S.copyToClipboard) {
+          await S.copyToClipboard(input.value);
+          S.showToast?.('Link kopieret', 'success');
+        }
+      });
+
+      // Per-method config buttons (CSV import, MobilePay API placeholder)
+      container.querySelectorAll('[data-pm-config]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.pmConfig;
+          if (id === 'mobilepay_csv') {
+            window.FlangoSettings?.close?.();
+            window.openMobilePayImportModal?.();
+          } else if (id === 'mobilepay_api') {
+            if (typeof window.showCustomAlert === 'function') {
+              window.showCustomAlert('Info', 'MobilePay API konfiguration kommer snart.');
+            } else {
+              alert('MobilePay API konfiguration kommer snart.');
+            }
+          }
+        });
+      });
+    }
+  };
+
+  // ── Profilbilleder (settings section — matches mockup exactly) ──
+  sections['Profilbilleder'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      const enabled = !!inst.profile_pictures_enabled;
+      const types = inst.profile_picture_types || [];
+      const aiOn = !!inst.profile_pictures_ai_enabled;
+      const adminAiOn = !!inst.admin_ai_avatar_enabled;
+      const parentUploadOn = inst.parent_can_upload_pictures !== false;
+      const defMode = inst.default_profile_picture_mode || 'initials';
+      const hasUpload = types.includes('upload');
+      const hasAula = types.includes('aula');
+      const hasCamera = types.includes('camera');
+      const hasLibrary = types.includes('library');
+      return `<div class="fsp-page" style="max-width:720px">
+        <div class="fsp-page-title">Profilbilleder</div>
+        <div class="fsp-page-desc">Profilbilleder vises ved brugervalg i caf\u00e9en s\u00e5 ekspedienten kan bekr\u00e6fte identiteten. Hver type profilbillede skal godkendes af for\u00e6ldre via for\u00e6ldreportalen.</div>
+        <div class="fsp-main-toggle" style="margin-bottom:20px">
+          <div style="flex:1"><div class="fsp-main-title">Profilbilleder er sl\u00e5et til</div></div>
+          <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="profile_pictures_enabled" data-expand="pp-body"></div>
+        </div>
+        <div data-expand-target="pp-body" class="${enabled ? '' : 'fsp-off'}">
+          <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">Tilg\u00e6ngelige typer</div>
+          <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
+            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDCC1</span><div><div class="fsp-row-title">Manuel upload</div><div class="fsp-row-desc">Personalet uploader en billedfil af barnet via caf\u00E9-appen</div></div></div>
+            <div class="fsp-toggle${hasUpload ? ' on' : ''}" data-pp-type="upload"></div>
+          </div></div>
+          <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
+            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDCE5</span><div><div class="fsp-row-title">Aula-import</div><div class="fsp-row-desc">Hent barnets foto fra Aula (bulk-import) og brug som profilbillede</div></div></div>
+            <div class="fsp-toggle${hasAula ? ' on' : ''}" data-pp-type="aula"></div>
+          </div></div>
+          <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
+            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDCF7</span><div><div class="fsp-row-title">Kamera</div><div class="fsp-row-desc">Tag foto med enhedens kamera</div></div></div>
+            <div class="fsp-toggle${hasCamera ? ' on' : ''}" data-pp-type="camera"></div>
+          </div></div>
+          <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
+            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83C\uDFA8</span><div><div class="fsp-row-title">Bibliotek</div><div class="fsp-row-desc">V\u00e6lg avatar-figur fra eksisterende bibliotek</div></div></div>
+            <div class="fsp-toggle${hasLibrary ? ' on' : ''}" data-pp-type="library"></div>
+          </div></div>
+          <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
+            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDC6A</span><div><div class="fsp-row-title">For\u00e6lder-upload</div><div class="fsp-row-desc">For\u00e6ldre uploader selv via portalen \u2014 hvert billede skal godkendes af admin</div></div></div>
+            <div class="fsp-toggle${parentUploadOn ? ' on' : ''}" data-field="parent_can_upload_pictures"></div>
+          </div></div>
+          <div class="fsp-block" style="margin-bottom:10px">
+            <div class="fsp-row" style="margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83E\uDD16</span><div><div class="fsp-row-title">AI-Avatar</div><div class="fsp-row-desc">Generer Pixar-stil avatar fra foto</div></div></div>
+              <div class="fsp-toggle${aiOn ? ' on' : ''}" data-field="profile_pictures_ai_enabled" data-expand="ai-body"></div>
+            </div>
+            <div class="fsp-expand${aiOn ? ' open' : ''}" data-expand-target="ai-body" style="max-height:${aiOn ? '400px' : '0'}">
+              <div style="padding-top:14px;border-top:1px solid rgba(255,255,255,0.04)">
+                <div class="fsp-pm-detail">Aktiverer AI-genererede avatarer baseret p\u00e5 barnets foto. Fotoet sendes til den valgte udbyder og slettes straks efter. Flango sender faktura til institutionen p\u00e5 100,- kr. hvorefter I kan generere 300\u2013400 avatars.</div>
+                <div class="fsp-pm-detail" style="margin-top:8px">Sl\u00e5r I den <strong>fra</strong>: eksisterende avatarer slettes IKKE \u2014 de bliver st\u00e5ende som profilbilleder. Personalet kan blot ikke lave nye. For\u00e6ldrenes samtykke best\u00e5r, og har I for\u00e6lder-AI sl\u00e5et til i Portal-indstillinger, kan for\u00e6lderen fortsat selv lave avataren. Skal en avatar v\u00e6k, sletter I billedet \u2014 eller for\u00e6lderen tr\u00e6kker sit samtykke.</div>
+                <div class="fsp-role"><div class="fsp-role-left"><div><div class="fsp-role-name">Microsoft Azure OpenAI</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">EU</div></div></div><div class="fsp-toggle${inst.ai_provider_openai !== false ? ' on' : ''}" data-ai-provider="openai"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="fsp-block" style="margin-bottom:10px">
+            <div class="fsp-row">
+              <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDC68\u200D\uD83D\uDCBC</span><div><div class="fsp-row-title">Admin AI-Avatar</div><div class="fsp-row-desc">Till\u00e5d admins at oprette AI-avatar af sig selv. Hver admin skal aktivere det individuelt med samtykke i \"Rediger admin\"-modalen.</div></div></div>
+              <div class="fsp-toggle${adminAiOn ? ' on' : ''}" data-field="admin_ai_avatar_enabled"></div>
+            </div>
+          </div>
+          ${parentUploadOn ? `
+          <div style="margin:28px 0 16px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05)">
+            <button class="fsp-btn fsp-btn-ghost" data-action="parent-review" style="width:100%;display:flex;justify-content:center;align-items:center;padding:14px 24px;font-size:14px;gap:10px">\uD83D\uDCF7 For\u00E6lder-uploads til godkendelse<span data-parent-review-count style="display:none;background:rgba(245,158,11,0.18);color:#f59e0b;font-weight:700;font-size:12px;min-width:22px;height:22px;border-radius:11px;padding:0 6px;align-items:center;justify-content:center;display:none"></span></button>
+            <div style="font-size:11px;color:var(--fsp-txt3);margin-top:6px;text-align:center">Gennemg\u00e5 og godkend/afvis profilbilleder uploadet af for\u00E6ldre</div>
+          </div>
+          ` : ''}
+          <div style="margin:${parentUploadOn ? '16px' : '28px'} 0 28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05)">
+            <button class="fsp-btn fsp-btn-ghost" data-action="aula-import" style="width:100%;display:flex;justify-content:center;padding:14px 24px;font-size:14px;gap:10px">\uD83D\uDCE5 Bulk-upload af profilbilleder</button>
+            <div style="font-size:11px;color:var(--fsp-txt3);margin-top:6px;text-align:center">Upload flere billeder samlet \u2014 filnavn-matching mod fornavn+initial+klassetrin (kompatibelt med Aulas eksport-konvention)</div>
+          </div>
+        </div>
+        <div style="margin-top:8px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.05)">
+          <div class="fsp-main-toggle" style="margin-bottom:16px">
+            <div style="flex:1"><div class="fsp-main-title">Standard profilbillede</div><div class="fsp-main-desc">Vises for brugere der ikke har f\u00e5et tildelt et profilbillede.</div></div>
+            <div class="fsp-toggle on" data-action="toggle-dp"></div>
+          </div>
+          <div data-dp-options>
+            <div class="fsp-sub" data-dp-click="initials">
+              <div style="display:flex;align-items:center;gap:8px"><span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(232,115,74,0.15);font-size:11px;font-weight:700;color:var(--fsp-accent)">AB</span><div><div class="fsp-sub-title">Initialer</div><div class="fsp-sub-hint">Viser brugerens initialer i en cirkel</div></div></div>
+              <div class="fsp-radio${defMode === 'initials' ? ' on' : ''}" data-field="default_profile_picture_mode" data-value="initials"></div>
+            </div>
+            <div class="fsp-sub" data-dp-click="image">
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">\uD83D\uDC64</span><div><div class="fsp-sub-title">Anonym bruger-ikon</div><div class="fsp-sub-hint">Viser et generisk bruger-ikon</div></div></div>
+              <div class="fsp-radio${defMode === 'image' ? ' on' : ''}" data-field="default_profile_picture_mode" data-value="image"></div>
+            </div>
+            <div class="fsp-sub" data-dp-click="custom">
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">\uD83D\uDDBC\uFE0F</span><div><div class="fsp-sub-title">Brugerdefineret billede</div><div class="fsp-sub-hint">\u00c9t f\u00e6lles billede for alle uden profilbillede</div></div></div>
+              <div class="fsp-radio${defMode === 'custom' ? ' on' : ''}" data-field="default_profile_picture_mode" data-value="custom"></div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+      // Main toggle grey-out
+      container.querySelector('[data-expand="pp-body"]')?.addEventListener('click', function () {
+        const target = container.querySelector('[data-expand-target="pp-body"]');
+        if (target) target.classList.toggle('fsp-off', !this.classList.contains('on'));
+      });
+      // AI-Avatar expand
+      container.querySelector('[data-expand="ai-body"]')?.addEventListener('click', function () {
+        const target = container.querySelector('[data-expand-target="ai-body"]');
+        if (target) {
+          const isOpen = this.classList.contains('on');
+          target.classList.toggle('open', isOpen);
+          target.style.maxHeight = isOpen ? '400px' : '0';
+        }
+      });
+      // AI provider toggle (Microsoft Azure OpenAI / EU)
+      container.querySelectorAll('[data-ai-provider]').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+          toggle.classList.toggle('on');
+          ctx.markDirty('ai_provider_' + toggle.dataset.aiProvider, toggle.classList.contains('on'));
+        });
+      });
+      // Default picture toggle grey-out
+      container.querySelector('[data-action="toggle-dp"]')?.addEventListener('click', function () {
+        this.classList.toggle('on');
+        container.querySelector('[data-dp-options]')?.classList.toggle('fsp-off', !this.classList.contains('on'));
+      });
+      // Default picture radio clicks (on the sub row, not just the radio dot)
+      container.querySelectorAll('[data-dp-click]').forEach(sub => {
+        sub.addEventListener('click', () => {
+          container.querySelectorAll('.fsp-radio[data-field="default_profile_picture_mode"]').forEach(r => r.classList.remove('on'));
+          sub.querySelector('.fsp-radio')?.classList.add('on');
+          ctx.markDirty('default_profile_picture_mode', sub.dataset.dpClick);
+        });
+      });
+      // Profile picture types array toggle
+      container.querySelectorAll('[data-pp-type]').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+          toggle.classList.toggle('on');
+          const types = [];
+          container.querySelectorAll('[data-pp-type]').forEach(t => {
+            if (t.classList.contains('on')) types.push(t.dataset.ppType);
+          });
+          ctx.markDirty('profile_picture_types', types);
+        });
+      });
+      // Aula import
+      container.querySelector('[data-action="aula-import"]')?.addEventListener('click', () => {
+        window.FlangoSettings.close();
+        window.__flangoOpenAulaImport?.();
+      });
+
+      // Forælder-uploads til godkendelse — luk settings og åbn review-modal
+      const reviewBtn = container.querySelector('[data-action="parent-review"]');
+      if (reviewBtn) {
+        // Sync count fra header-badge
+        const headerBtn = document.getElementById('parent-upload-review-btn');
+        const headerBadge = document.getElementById('parent-upload-badge');
+        const countEl = reviewBtn.querySelector('[data-parent-review-count]');
+        if (headerBtn && headerBadge && countEl) {
+          const visible = headerBtn.style.display !== 'none';
+          const count = visible ? (headerBadge.textContent || '0') : '0';
+          if (visible && Number(count) > 0) {
+            countEl.textContent = count;
+            countEl.style.display = 'inline-flex';
+          }
+        }
+        reviewBtn.addEventListener('click', () => {
+          window.FlangoSettings.openTo('Administration', 'Godkendelser');
+        });
+      }
+    }
+  };
+
+  // ── Godkendelser (settings section) — samlet kø: forælder-uploads + AI-avatarer ──
+  // Køen rendres af domain/parent-upload-review.js (samme testede approve/afvis-
+  // logik som før), re-parentet ind i denne sektion via [data-approvals-list].
+  sections['Godkendelser'] = {
+    render() {
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Godkendelser</div>
+        <div class="fsp-page-desc">Billeder fra forældre — almindelige uploads og AI-avatarer — der afventer jeres godkendelse. Godkend for at gøre billedet til barnets aktive profilbillede, eller afvis med en begrundelse som forælderen kan se i portalen.</div>
+        <div class="fsp-section"><div id="approvals-list" data-approvals-list style="display:flex;flex-direction:column;gap:14px;">
+          <div style="text-align:center;padding:24px;color:#78716c;">Henter …</div>
+        </div></div>
+      </div>`;
+    },
+    wire(container) {
+      pageAlign(container);
+      if (typeof window.__flangoRenderApprovalsInto === 'function') window.__flangoRenderApprovalsInto();
+    }
+  };
+
+  // ── Produktikoner – Deling (settings section) ──
+  sections['Produktikoner – Deling'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      const shareOn = !!inst.icon_sharing_enabled;
+      const useOn = !!inst.icon_use_shared_enabled;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Produktikoner \u2013 Deling</div>
+        <div class="fsp-page-desc">V\u00e6lg om jeres ikoner skal v\u00e6re tilg\u00e6ngelige for andre institutioner, og om I vil kunne se andres delte ikoner.</div>
+        <div class="fsp-section"><div class="fsp-block">
+          <div class="fsp-row">
+            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83E\uDD1D</span><div><div class="fsp-row-title">Del jeres ikoner</div><div class="fsp-row-desc">Andre institutioner kan bruge jeres ikoner</div></div></div>
+            <div class="fsp-toggle${shareOn ? ' on' : ''}" data-field="icon_sharing_enabled"></div>
+          </div>
+        </div></div>
+        <div class="fsp-section"><div class="fsp-block">
+          <div class="fsp-row">
+            <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83C\uDFA8</span><div><div class="fsp-row-title">Brug andres ikoner</div><div class="fsp-row-desc">Se og brug ikoner delt af andre institutioner</div></div></div>
+            <div class="fsp-toggle${useOn ? ' on' : ''}" data-field="icon_use_shared_enabled"></div>
+          </div>
+        </div></div>
+        <button class="fsp-btn fsp-btn-ghost" data-action="show-icons" style="width:100%;display:flex;justify-content:center;padding:14px 24px;font-size:14px;gap:10px;margin-top:8px">\uD83C\uDFA8 Vis jeres ikoner</button>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+      // "Vis jeres ikoner" → luk indstillinger + åbn ikon-administrations-modalen
+      // (samme som den ældre shell.js-knap; wire() manglede handleren → død knap).
+      container.querySelector('[data-action="show-icons"]')?.addEventListener('click', () => {
+        window.FlangoSettings?.close?.();
+        const modal = document.getElementById('icon-management-modal');
+        if (modal) {
+          modal.style.display = 'flex';
+          if (typeof window.__flangoLoadIconManagementGrid === 'function') {
+            window.__flangoLoadIconManagementGrid();
+          }
+        }
+      });
+    }
+  };
+
+  // ── MobilePay CSV Import (action section) ──
+  sections['MobilePay CSV Import'] = {
+    render(ctx) {
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">MobilePay CSV Import</div>
+        <div class="fsp-page-desc">Import\u00e9r indbetalinger fra MobilePay CSV-eksport og s\u00e6t dem p\u00e5 b\u00f8rnenes saldo.</div>
+        <div class="fsp-block">
+          <div class="fsp-row" style="flex-direction:column;align-items:stretch;gap:16px">
+            <div>
+              <div class="fsp-row-title">Upload CSV-fil</div>
+              <div class="fsp-row-desc">V\u00e6lg en CSV-fil eksporteret fra MobilePay. Filen matches automatisk med brugere baseret p\u00e5 betalingsreference.</div>
+            </div>
+            <button class="fsp-btn fsp-btn-primary" data-action="upload-csv" style="align-self:flex-start;display:flex;align-items:center;gap:8px">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 10V2.5M5 5l3-3 3 3"/><rect x="2" y="10" width="12" height="4" rx="1.5"/></svg>
+              Upload CSV
+            </button>
+          </div>
+        </div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      container.querySelector('[data-action="upload-csv"]')?.addEventListener('click', () => {
+        window.FlangoSettings.close();
+        window.openMobilePayImportModal?.();
+      });
+    }
+  };
+
+  // ── Opret/Opdater brugere auto. (action section) ──
+  sections['Opret/Opdater brugere auto.'] = {
+    render(ctx) {
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Opret/Opdater brugere automatisk</div>
+        <div class="fsp-page-desc">Masse-import af brugere fra en liste. Upload en fil med brugerdata for at oprette nye brugere eller opdatere eksisterende.</div>
+        <div class="fsp-block">
+          <div class="fsp-row" style="flex-direction:column;align-items:stretch;gap:16px">
+            <div>
+              <div class="fsp-row-title">Upload brugerliste</div>
+              <div class="fsp-row-desc">V\u00e6lg en fil med brugerdata (CSV eller Excel). Eksisterende brugere opdateres, nye oprettes automatisk.</div>
+            </div>
+            <button class="fsp-btn fsp-btn-primary" data-action="auto-import" style="align-self:flex-start;display:flex;align-items:center;gap:8px">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 8a6 6 0 0110.5-4M14 8a6 6 0 01-10.5 4"/><path d="M12 1.5V4.5h-3"/><path d="M4 14.5V11.5h3"/></svg>
+              Start import
+            </button>
+          </div>
+        </div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      container.querySelector('[data-action="auto-import"]')?.addEventListener('click', () => {
+        window.FlangoSettings.close();
+        window.__flangoOpenAutoImportModal?.();
+      });
+    }
+  };
+
+  // ═══════════════════════════════════════════════════
+  // DATASIKKERHED
+  // ═══════════════════════════════════════════════════
+
+  // ── Totrinsgodkendelse (MFA) (settings section) ──
+  // Totrinsgodkendelse (MFA) havde sit eget menupunkt indtil 20-08-2026. Det er
+  // fjernet, ikke flyttet: institutionen kan ikke længere ændre politikken (den er
+  // superadmin-only), og det eneste den KUNNE ændre dér var en kontakt for
+  // forældre-MFA, som ingen kode nogensinde læste. Politikken vises nu som én
+  // linje i "Adgang til Flango", hvor den hører hjemme.
+  sections['Brugernavne'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      const enabled = !!inst.last_name_enabled;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Brugernavne</div>
+        <div class="fsp-page-desc">Vælg om børnenes <strong>efternavn</strong> skal gemmes og vises sammen med fornavnet. Slået fra vises og gemmes kun fornavn — standard for nye institutioner, da efternavn er en ekstra personoplysning.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Vis efternavn</div><div class="fsp-main-desc">Fornavn + efternavn i café, forældreportal og ved oprettelse/import. Fra = kun fornavn.</div></div>
+          <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="last_name_enabled"></div>
+        </div>
+        <div class="fsp-main-toggle" style="margin-top:10px">
+          <div style="flex:1"><div class="fsp-main-title">Kun forbogstav</div><div class="fsp-main-desc">Vis efternavnet som forbogstav i caféen — fx "Emma B." — en let måde at skelne børn med ens fornavn. Gælder kun, når efternavn er slået til ovenfor.</div></div>
+          <div class="fsp-toggle${inst.last_name_initial_only ? ' on' : ''}" data-field="last_name_initial_only"></div>
+        </div>
+        <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Ændringen slår igennem med det samme. Eksisterende navne påvirkes ikke — efternavne kan tilføjes pr. barn under rediger bruger, ved oprettelse eller via auto-import.</div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+    }
+  };
+
+  sections['Brugernummer'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      // Default true: nummer vises medmindre eksplicit slået fra.
+      const shown = inst.account_number_enabled !== false;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Brugernummer</div>
+        <div class="fsp-page-desc">Vælg om børnenes <strong>brugernummer</strong> skal vises i caféens kundevælger. Slået fra identificeres børn på navn — kombinér evt. med "Kun forbogstav" under Brugernavne, hvis flere børn deler fornavn. Nummeret tildeles og gemmes fortsat internt, så import og data er upåvirket.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Vis brugernummer</div><div class="fsp-main-desc">Til = nummer-kolonne i kundevælgeren. Fra = kun navn (og evt. profilbillede).</div></div>
+          <div class="fsp-toggle${shown ? ' on' : ''}" data-field="account_number_enabled"></div>
+        </div>
+        <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Ændringen slår igennem ved næste åbning af kundevælgeren. Selve numrene slettes ikke — de skjules blot og kan vises igen.</div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+    }
+  };
+
+  sections['Beskeder'] = {
+    render() {
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Beskeder</div>
+        <div class="fsp-page-desc">Modtag beskeder fra forældre direkte i Flango og/eller på e-mail. Beskeder vises i indbakken nedenfor og som en notifikation over kassen.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Modtag beskeder i Flango</div><div class="fsp-main-desc">Åbner "Til institutionen" i forældreportalen. Beskeder samles i indbakken herunder.</div></div>
+          <div class="fsp-toggle" data-msg-toggle="inbox"></div>
+        </div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Send også til e-mail</div><div class="fsp-main-desc">Videresend hver forældrebesked til en eller flere e-mails.</div></div>
+          <div class="fsp-toggle" data-msg-toggle="email"></div>
+        </div>
+        <div data-msg-email-wrap style="display:none;margin:6px 0 4px">
+          <div class="fsp-form-label" style="margin-bottom:6px">Modtager-e-mails (én pr. linje)</div>
+          <textarea data-msg-emails class="input-field input" rows="3" placeholder="kontor@skole.dk" style="width:100%;resize:vertical"></textarea>
+          <button data-msg-emails-save class="fsp-btn" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:var(--fsp-accent,#5ba0d8);color:#fff;border:none;font-weight:600;font-size:13px;cursor:pointer">Gem e-mails</button>
+        </div>
+        <div data-msg-inbox-wrap style="padding-top:20px;border-top:1px solid rgba(255,255,255,0.05);margin-top:16px">
+          <div class="fsp-form-label" style="margin-bottom:10px;display:flex;align-items:center;gap:8px">📥 Indbakke <span data-msg-unread></span></div>
+          <div data-msg-inbox><div style="font-size:13px;color:var(--fsp-txt3)">Henter…</div></div>
+        </div>
+      </div>`;
+    },
+    wire(container) {
+      pageAlign(container);
+      const client = window.__flangoSupabaseClient;
+      const instId = window.getInstitutionId && window.getInstitutionId();
+      const isAdmin = window.__flangoCurrentClerkProfile?.role === 'admin';
+      const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      if (!client || !instId) return;
+
+      const inboxToggle = container.querySelector('[data-msg-toggle="inbox"]');
+      const emailToggle = container.querySelector('[data-msg-toggle="email"]');
+      const emailWrap = container.querySelector('[data-msg-email-wrap]');
+      const emailsTa = container.querySelector('[data-msg-emails]');
+      const emailsSave = container.querySelector('[data-msg-emails-save]');
+      const inboxEl = container.querySelector('[data-msg-inbox]');
+      const inboxWrap = container.querySelector('[data-msg-inbox-wrap]');
+      const unreadEl = container.querySelector('[data-msg-unread]');
+
+      async function saveCol(col, val) {
+        try { await client.from('institutions').update({ [col]: val }).eq('id', instId); }
+        catch (e) { console.error('[Beskeder] save', col, e); if (window.showToast) window.showToast('Kunne ikke gemme', 'error'); }
+      }
+
+      // ── Config: hent frisk + hydrér + wire ──
+      (async () => {
+        try {
+          const { data } = await client.from('institutions')
+            .select('parent_messages_enabled, feedback_email_enabled, feedback_emails')
+            .eq('id', instId).single();
+          const cfg = data || {};
+          inboxToggle && inboxToggle.classList.toggle('on', cfg.parent_messages_enabled === true);
+          const emailOn = cfg.feedback_email_enabled === true;
+          emailToggle && emailToggle.classList.toggle('on', emailOn);
+          if (emailWrap) emailWrap.style.display = emailOn ? '' : 'none';
+          if (emailsTa) emailsTa.value = Array.isArray(cfg.feedback_emails) ? cfg.feedback_emails.join('\n') : '';
+        } catch (e) { console.error('[Beskeder] config-hent', e); }
+      })();
+
+      inboxToggle && inboxToggle.addEventListener('click', () => {
+        const on = !inboxToggle.classList.contains('on');
+        inboxToggle.classList.toggle('on', on);
+        saveCol('parent_messages_enabled', on);
+      });
+      emailToggle && emailToggle.addEventListener('click', () => {
+        const on = !emailToggle.classList.contains('on');
+        emailToggle.classList.toggle('on', on);
+        if (emailWrap) emailWrap.style.display = on ? '' : 'none';
+        saveCol('feedback_email_enabled', on);
+      });
+      emailsSave && emailsSave.addEventListener('click', async () => {
+        const arr = (emailsTa && emailsTa.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+        await saveCol('feedback_emails', arr);
+        if (window.showToast) window.showToast('E-mails gemt', 'success');
+      });
+
+      // ── Indbakke (kun admin) ──
+      if (!isAdmin) { if (inboxWrap) inboxWrap.style.display = 'none'; return; }
+      const btnStyle = 'width:26px;height:26px;border-radius:7px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:var(--fsp-txt);cursor:pointer;font-size:13px;line-height:1;flex-shrink:0';
+      async function loadInbox() {
+        inboxEl.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Henter…</div>';
+        try {
+          const { data, error } = await client.from('parent_messages')
+            .select('id, sender_name, sender_email, content, created_at, read_at')
+            .eq('institution_id', instId).order('created_at', { ascending: false }).limit(100);
+          if (error) throw error;
+          const rows = data || [];
+          const unread = rows.filter(r => !r.read_at).length;
+          if (unreadEl) unreadEl.innerHTML = unread ? `<span style="background:#e85a6f;color:#fff;font-size:11px;padding:1px 8px;border-radius:10px;font-weight:700">${unread} ny${unread > 1 ? 'e' : ''}</span>` : '';
+          if (!rows.length) { inboxEl.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Ingen beskeder endnu.</div>'; return; }
+          inboxEl.innerHTML = rows.map(m => {
+            let when = ''; try { when = new Date(m.created_at).toLocaleString('da-DK'); } catch (_) { /* noop */ }
+            const meta = [m.sender_name, m.sender_email, when].filter(Boolean).map(esc).join(' · ');
+            const isUnread = !m.read_at;
+            return `<div style="padding:12px 14px;margin-bottom:8px;border-radius:10px;background:var(--fsp-bg2);border:1px solid ${isUnread ? 'rgba(232,90,111,0.4)' : 'rgba(255,255,255,0.06)'}">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+                <div style="font-size:13px;color:var(--fsp-txt);white-space:pre-wrap;flex:1">${esc(m.content)}</div>
+                <div style="display:flex;gap:6px">
+                  ${isUnread ? `<button data-msg-read="${esc(m.id)}" title="Markér som læst" style="${btnStyle}">✓</button>` : ''}
+                  <button data-msg-del="${esc(m.id)}" title="Slet" style="${btnStyle}">🗑</button>
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--fsp-txt3);margin-top:6px">${isUnread ? '<span style="color:#e85a6f">● </span>' : ''}${meta}</div>
+            </div>`;
+          }).join('');
+          inboxEl.querySelectorAll('[data-msg-read]').forEach(b => b.addEventListener('click', async () => {
+            b.disabled = true;
+            await client.from('parent_messages').update({ read_at: new Date().toISOString() }).eq('id', b.dataset.msgRead);
+            loadInbox();
+          }));
+          inboxEl.querySelectorAll('[data-msg-del]').forEach(b => b.addEventListener('click', async () => {
+            b.disabled = true;
+            await client.from('parent_messages').delete().eq('id', b.dataset.msgDel);
+            loadInbox();
+          }));
+        } catch (e) {
+          console.error('[Beskeder] indbakke', e);
+          inboxEl.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Kunne ikke hente beskeder.</div>';
+        }
+      }
+      loadInbox();
+    }
+  };
+
+  // ─── Ugeplan ────────────────────────────────────────────────────────────────
+  // Sektionen har to halvdele der IKKE må blandes sammen: hvad ugeplan-appen sender
+  // (skrivebeskyttet — det styres af pædagogen i et andet program), og hvordan caféen
+  // viser det (café'ens eget). Bland dem, og man kommer til at love brugeren noget her
+  // som først kan indfries et andet sted.
+  sections['Ugeplan'] = {
+    // `arg` er panelets ctx ved normale kald; sektionen genkalder selv med 'failed', når
+    // ventetiden på ugeplan-modulet løb ud.
+    render(arg) {
+      const api = window.__flangoUgeplan;
+      const payload = api?.data();
+      const cfg = api?.config() || {};
+      const shared = api?.weeks() || [];
+
+      // "Endnu ikke hentet", "kunne ikke hentes" og "ikke koblet" er TRE forskellige ting.
+      // Blander man dem, påstår panelet at institutionen ikke har en ugeplan, hver gang man
+      // er hurtigere end netværket — en usandhed brugeren ikke kan gennemskue.
+      if (!api || !payload) {
+        const gaveUp = arg === 'failed';
+        return `<div class="fsp-page">
+          <div class="fsp-page-title">Ugeplan</div>
+          <div class="fsp-page-desc">Vis institutionens ugeplan på café-skærmen — som fuldskærm man åbner med <strong>mellemrum</strong> fra forsiden, og som pauseskærm der selv kommer frem når disken står stille.</div>
+          <div class="fsp-section"><div class="fsp-block">
+            <div class="fsp-row-desc">${gaveUp ? 'Kunne ikke hente ugeplanen.' : 'Henter ugeplanen …'}</div>
+            ${gaveUp ? '<button type="button" class="fsp-btn fsp-btn-ghost" data-ug-retry style="margin-top:14px">Prøv igen</button>' : ''}
+          </div></div>
+        </div>`;
+      }
+
+      if (payload.linked === false) {
+        return `<div class="fsp-page">
+          <div class="fsp-page-title">Ugeplan</div>
+          <div class="fsp-page-desc">Vis institutionens ugeplan på café-skærmen — som fuldskærm man åbner med <strong>mellemrum</strong>, og som pauseskærm der selv kommer frem når disken står stille.</div>
+          <div class="fsp-section"><div class="fsp-block">
+            <div class="fsp-row-title">Ugeplanen er ikke sat op for denne institution</div>
+            <div class="fsp-row-desc" style="margin-top:6px">Institutionen er ikke koblet til et ugeplan-hus. Kontakt Flango for at få den koblet — derefter dukker indstillingerne op her.</div>
+          </div></div>
+        </div>`;
+      }
+
+      const sharingOn = payload.sharing?.enabled === true;
+      const chosen = new Set(cfg.weeks || shared.map((w) => api.weekKey(w.week, w.year)));
+      const filterStale = !!cfg.weeks?.length && !shared.some((w) => chosen.has(api.weekKey(w.week, w.year)));
+
+      // Husets komponenter, ikke egne: .fsp-block er kortet, .fsp-sub er en valgmulighed med
+      // prikken som SØSKENDE (.fsp-radio er en 20px cirkel — lægger man tekst ind i den,
+      // flyder rækkerne oven i hinanden), .fsp-chip er et valg-chip, .fsp-num-row en talrække.
+      const label = (t) => `<div class="ugs-label">${t}</div>`;
+      const choice = (field, value, title, hint, cur) =>
+        `<div class="fsp-sub" data-ug-field="${field}" data-ug-value="${value}">
+          <div><div class="fsp-sub-title">${title}</div>${hint ? `<div class="fsp-sub-hint">${hint}</div>` : ''}</div>
+          <div class="fsp-radio${cur === value ? ' on' : ''}"></div>
+        </div>`;
+      // Flueben i selve chippen. Uden det kan man ikke se tændt fra slukket, når ALLE er
+      // tændt — der er intet at sammenligne med, og farven alene aflæses som "knap", ikke
+      // som "valgt".
+      const chip = (w) => {
+        const key = api.weekKey(w.week, w.year);
+        const on = chosen.has(key);
+        const mark = on
+          ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2 4.8 8.5 9.5 3.5"/></svg>'
+          : '<span class="ugs-chip-dot"></span>';
+        return `<div class="fsp-chip ugs-week${on ? ' on' : ''}" data-week-key="${key}" role="checkbox" aria-checked="${on}">${mark}Uge ${w.week}</div>`;
+      };
+      const valgte = shared.filter((w) => chosen.has(api.weekKey(w.week, w.year))).length;
+      const num = (field, val, step, min, max, title) =>
+        `<div class="fsp-num-row">
+          <label style="flex:1">${title}</label>
+          <div class="fsp-num-wrap" style="width:112px"><input type="number" data-ug-num="${field}" data-min="${min}" data-max="${max}" value="${val}" style="padding:8px 12px;font-size:13px">
+            <div class="fsp-num-btns"><button class="fsp-num-btn" data-ug-step="${field}" data-delta="${step}">${chevronUp}</button><button class="fsp-num-btn" data-ug-step="${field}" data-delta="-${step}">${chevronDown}</button></div>
+          </div>
+          <span style="font-size:13px;color:var(--fsp-txt3)">sek</span>
+        </div>`;
+      const toggle = (key, title, desc, on, first = false) =>
+        `<div class="fsp-row" style="margin-top:${first ? 0 : 16}px">
+          <div style="flex:1"><div class="fsp-row-title">${title}</div><div class="fsp-row-desc">${desc}</div></div>
+          <div class="fsp-toggle${on ? ' on' : ''}" ${key.startsWith('data-') ? key : `data-ug-toggle="${key}"`}></div>
+        </div>`;
+
+      // Kun ÉT lag nedtoning: ugeplanens README advarer mod ganget opacity.
+      const dim = sharingOn && cfg.enabled ? '' : ' ugs-dim';
+
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Ugeplan</div>
+        <div class="fsp-page-desc">Vis institutionens ugeplan på café-skærmen — som fuldskærm man åbner med <strong>mellemrum</strong> fra forsiden, og som pauseskærm der selv kommer frem når disken står stille.</div>
+
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Ugeplan i caféen</div><div class="fsp-main-desc">Slår både knappen i toolbaren og pauseskærmen fra.</div></div>
+          <div class="fsp-toggle${cfg.enabled ? ' on' : ''}" data-ug-toggle="enabled"></div>
+        </div>
+
+        <div class="fsp-section"><div class="fsp-block">
+          ${label('Det ugeplanen sender')}
+          <div class="ugs-facts">
+            <div><span>Deling til caféen</span><b class="${sharingOn ? 'ugs-yes' : 'ugs-no'}">${sharingOn ? 'Til' : 'Fra'}</b></div>
+            <div><span>Omfang</span><b>${payload.sharing?.scope === 'multi' ? 'Flere uger' : 'Kun aktuel uge'}</b></div>
+            <div><span>Uger der sendes</span><b>${shared.length ? shared.map((w) => 'Uge ' + w.week).join(', ') : 'Ingen'}</b></div>
+            <div><span>Personalenavne</span><b>Følger med</b></div>
+            <div><span>Institution</span><b>${payload.institution || '—'}</b></div>
+          </div>
+          <div class="fsp-row-desc" style="margin-top:16px">Disse styres i Ugeplan-appen — caféen kan kun vælge inden for det, der bliver sendt.</div>
+          ${sharingOn ? '' : '<div class="fsp-row-desc" style="margin-top:8px;color:var(--fsp-txt2)">Slå <strong>Flango Café</strong> til under <strong>Del</strong> i ugeplanen, så bliver resten aktivt her.</div>'}
+          <button type="button" class="fsp-btn fsp-btn-ghost" data-ug-open-app style="margin-top:16px">Rediger ugeplan</button>
+        </div></div>
+
+        <div class="fsp-section${dim}"><div class="fsp-block">
+          ${label('Sådan vises den')}
+          <div class="fsp-row-desc" style="margin-bottom:10px">Hvad skærmen skifter imellem.</div>
+          ${choice('views', 'week', 'Ugevisning', 'Hele ugen som plakat', cfg.views)}
+          ${choice('views', 'day', 'Dagsvisning', 'Én dag ad gangen, større skrift', cfg.views)}
+          ${choice('views', 'both', 'Begge på skift', 'Ugen først, så dagen', cfg.views)}
+          ${num('weekSeconds', cfg.weekSeconds, 5, 5, 120, 'Ugevisning vises i')}
+          ${cfg.views === 'week' ? '' : num('daySeconds', cfg.daySeconds, 5, 5, 120, 'Dagsvisning vises i')}
+        </div></div>
+
+        ${cfg.views === 'week' ? '' : `<div class="fsp-section${dim}"><div class="fsp-block">
+          ${label('Dagsvisning viser')}
+          ${choice('dayScope', 'today', 'Én dag pr. uge', 'I dag, hvis ugen er i gang — ellers ugens mandag', cfg.dayScope)}
+          ${choice('dayScope', 'all', 'Alle ugens dage', 'Fem dias pr. uge, mandag til fredag', cfg.dayScope)}
+        </div></div>`}
+
+        <div class="fsp-section${dim}"><div class="fsp-block">
+          ${label('Uger i diasset')}
+          <div class="fsp-row-desc" style="margin-bottom:12px">Tryk for at vælge til og fra. Fjerner pædagogen en uge, forsvinder den også her.</div>
+          <div class="ugs-chips">${shared.map(chip).join('') || '<span class="fsp-row-desc">Ingen uger sendes endnu.</span>'}</div>
+          ${shared.length ? `<div class="fsp-row-desc" style="margin-top:12px">${valgte === shared.length ? `Alle ${shared.length} uger vises` : `${valgte} af ${shared.length} uger vises`}</div>` : ''}
+          ${filterStale ? '<div class="fsp-row-desc" style="margin-top:10px;color:var(--fsp-txt2)">De valgte uger deles ikke længere — viser alle delte uger.</div>' : ''}
+        </div></div>
+
+        <div class="fsp-section${dim}"><div class="fsp-block">
+          ${label('På skærmen')}
+          ${toggle('autoAdvance', 'Skift automatisk', 'Fra = du bladrer selv med piletasterne.', cfg.autoAdvance, true)}
+          ${toggle('showStaff', 'Vis personalenavne', 'Skjuler navnene på DENNE skærm. Ændrer ikke hvad ugeplanen sender.', cfg.showStaff)}
+          ${toggle('showEvents', 'Vis kommende arrangementer', 'Plakater indgår i diasset. Kun mens caféen er åben — ikke på den låste skærm.', cfg.showEvents)}
+          ${cfg.showEvents ? num('eventSeconds', cfg.eventSeconds, 5, 5, 120, 'Hver plakat vises i') : ''}
+
+          ${toggle('showSkaermtid', 'Vis spillerummets kø', 'Hvem der spiller, hvem der venter og hvornår. Springes over, når ingen spiller. Kræver at huset har Skærmtid.', cfg.showSkaermtid)}
+          ${cfg.showSkaermtid ? num('skaermtidSeconds', cfg.skaermtidSeconds, 5, 5, 120, 'Tavlen vises i') : ''}
+
+          ${toggle('customSlideEnabled', 'Vis egne billeder', 'Opslag eller plakater, der ikke hører til et arrangement.', cfg.customSlideEnabled)}
+          ${cfg.customSlideEnabled ? `
+            <div class="ugs-images">
+              ${(cfg.customSlides || []).map((s, i) => `
+                <div class="ugs-image-card" data-ug-image-id="${s.id}">
+                  <div class="ugs-image-thumb" data-ug-thumb-index="${i}"></div>
+                  <button type="button" class="ugs-image-x" data-ug-remove-image="${s.id}" aria-label="Fjern billede ${i + 1}">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                  </button>
+                </div>`).join('')}
+              <button type="button" class="ugs-image-add" data-ug-pick-image>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                <span>${(cfg.customSlides || []).length ? 'Tilføj' : 'Vælg billeder …'}</span>
+              </button>
+              <input type="file" accept="image/*,application/pdf" multiple hidden data-ug-image-input>
+            </div>
+            <div class="fsp-row-desc" style="margin-top:10px">Billeder eller PDF. Første side bruges; de gemmes som PNG og vises i den rækkefølge de ligger her.</div>
+            ${(cfg.customSlides || []).length ? num('customSlideSeconds', cfg.customSlideSeconds, 5, 5, 120, 'Hvert billede vises i') : ''}
+          ` : ''}
+        </div></div>
+
+        <div class="fsp-section${dim}"><div class="fsp-block">
+          ${label('Pauseskærm')}
+          ${toggle('data-ug-device-screensaver', 'Pauseskærm på denne skærm', 'Gemmes kun på denne enhed — disk-tabletten og vægskærmen kan være forskellige.', api.screensaverOnDevice(), true)}
+          ${num('screensaverIdleSeconds', cfg.screensaverIdleSeconds, 30, 30, 1800, 'Kommer frem efter')}
+          <div class="fsp-row-desc" style="margin-top:16px">Caféen logger ud efter 30 minutters inaktivitet. Er ugeplanen slået til, bliver den stående på skærmen bagefter.</div>
+        </div></div>
+
+        <div class="fsp-section${dim}"><div class="fsp-block">
+          ${label('Forhåndsvisning')}
+          <div class="fsp-row-desc" style="margin-bottom:14px">Tryk på et dias for at se det i fuld skærm.</div>
+          <div class="ugs-previews"></div>
+        </div></div>
+      </div>`;
+    },
+
+    wire(container) {
+      pageAlign(container);
+      const api = window.__flangoUgeplan;
+
+      const rerender = (state) => {
+        container.innerHTML = sections['Ugeplan'].render(state);
+        sections['Ugeplan'].wire(container);
+      };
+
+      // Modulet indlæses dovent ved opstart, så panelet kan nå at åbne først. Vent på det
+      // løfte app-main lægger frem — dette script er en IIFE og kan ikke selv importere.
+      //
+      // Ventetiden må kun bruges ÉN gang: uden flaget ville en fejlet hentning betyde, at
+      // hver rerender straks planlagde en ny på et allerede opfyldt løfte — en microtask-
+      // løkke der låser fanen. Anden gang siger vi det ærligt og tilbyder et nyt forsøg.
+      const retryBtn = container.querySelector('[data-ug-retry]');
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+          container.dataset.ugAwaited = '';
+          window.__flangoReloadUgeplanSettings?.();
+          rerender();
+        });
+        return;
+      }
+
+      // Ugeplan-modulet indlæses dovent under opstart, og panelet kan åbnes før det er nået
+      // så langt — så hverken modulet, dets løfte eller admin-profilen er nødvendigvis der
+      // endnu. Vent derfor på det eneste der er entydigt: at der ER data.
+      //
+      // Med setTimeout, ikke med et løfte: en tidligere udgave ventede på
+      // __flangoUgeplanReady, og når det var opfyldt uden data, planlagde hver rerender
+      // straks den næste som microtask — en løkke der låste fanen.
+      if (!api || !api.data()) {
+        if (container.dataset.ugAwaited === '1') return rerender('failed');
+        container.dataset.ugAwaited = '1';
+        const deadline = Date.now() + 15000;
+        const poll = () => {
+          if (!container.isConnected) return;
+          if (window.__flangoUgeplan?.data()) return rerender();
+          if (Date.now() > deadline) return rerender('failed');
+          setTimeout(poll, 300);
+        };
+        poll();
+        return;
+      }
+      container.dataset.ugAwaited = '';
+
+      // Indstillingerne bor i én JSONB. Fletningen sker serverside (set_cafe_ugeplan), så to
+      // café-skærme ikke kan overskrive hinandens felter — samme fælde som parent_portal_payment.
+      const save = (patch) => api.save(patch).then(rerender).catch((e) => console.error('[ugeplan-settings]', e));
+
+      container.querySelectorAll('[data-ug-toggle]').forEach((el) => {
+        el.addEventListener('click', () => save({ [el.dataset.ugToggle]: !el.classList.contains('on') }));
+      });
+      container.querySelectorAll('[data-ug-field]').forEach((el) => {
+        el.addEventListener('click', () => save({ [el.dataset.ugField]: el.dataset.ugValue }));
+      });
+      container.querySelectorAll('input[data-ug-num]').forEach((input) => {
+        input.addEventListener('change', () => {
+          const min = Number(input.dataset.min), max = Number(input.dataset.max);
+          save({ [input.dataset.ugNum]: Math.min(max, Math.max(min, parseInt(input.value, 10) || min)) });
+        });
+      });
+      container.querySelectorAll('[data-ug-step]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const input = container.querySelector(`input[data-ug-num="${btn.dataset.ugStep}"]`);
+          if (!input) return;
+          input.value = (parseInt(input.value, 10) || 0) + Number(btn.dataset.delta);
+          input.dispatchEvent(new Event('change'));
+        });
+      });
+
+      // Ugevalget er et FILTER over det delte sæt — aldrig en kilde til uger. Fravælger man
+      // alle, gemmes null (= alle delte) frem for en tom liste der ville sortlægge skærmen.
+      container.querySelectorAll('[data-week-key]').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          const all = api.weeks().map((w) => api.weekKey(w.week, w.year));
+          const cfg = api.config();
+          const cur = new Set(cfg.weeks?.length ? cfg.weeks : all);
+          const key = chip.dataset.weekKey;
+          cur.has(key) ? cur.delete(key) : cur.add(key);
+          const next = all.filter((k) => cur.has(k));
+          save({ weeks: next.length && next.length < all.length ? next : null });
+        });
+      });
+
+      container.querySelector('[data-ug-device-screensaver]')?.addEventListener('click', (e) => {
+        const on = !e.currentTarget.classList.contains('on');
+        api.setScreensaverOnDevice(on);
+        e.currentTarget.classList.toggle('on', on);
+      });
+
+      container.querySelector('[data-ug-open-app]')?.addEventListener('click', () => {
+        window.__flangoOpenUgeplanApp?.();
+      });
+
+      // Egne billeder: tilføj (flere ad gangen), se, fjern.
+      const fileInput = container.querySelector('[data-ug-image-input]');
+      const addBtn = container.querySelector('[data-ug-pick-image]');
+      addBtn?.addEventListener('click', () => fileInput?.click());
+      fileInput?.addEventListener('change', async () => {
+        const files = [...(fileInput.files || [])];
+        if (!files.length) return;
+        const label = addBtn?.querySelector('span');
+        if (addBtn) { addBtn.disabled = true; if (label) label.textContent = files.length > 1 ? `Uploader 0/${files.length}` : 'Uploader …'; }
+        try {
+          await api.uploadImages(files);
+          rerender();
+        } catch (e) {
+          console.error('[ugeplan-settings] upload fejlede:', e);
+          if (addBtn) { addBtn.disabled = false; if (label) label.textContent = 'Prøv igen'; }
+          window.showAlert?.('Billedet kunne ikke gemmes. ' + (e?.message || ''));
+        }
+      });
+      container.querySelectorAll('[data-ug-remove-image]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          try {
+            await api.removeImage(btn.dataset.ugRemoveImage);
+            rerender();
+          } catch (e) {
+            console.error('[ugeplan-settings] kunne ikke fjerne billedet:', e);
+            btn.disabled = false;
+          }
+        });
+      });
+      // Miniaturerne viser DE rigtige billeder, ikke ikoner — så man kan se hvad der ryger op.
+      const thumbs = [...container.querySelectorAll('[data-ug-thumb-index]')];
+      if (thumbs.length) {
+        api.imageUrls?.().then((urls) => {
+          thumbs.forEach((el, i) => {
+            if (urls[i] && el.isConnected) el.innerHTML = `<img src="${urls[i]}" alt="Billede ${i + 1}">`;
+          });
+        }).catch(() => {});
+      }
+
+      // Previews: de rigtige dias i lille format, samme renderer som fuldskærm.
+      const host = container.querySelector('.ugs-previews');
+      if (!host) return;
+      const slides = api.slides();
+      if (!slides.length) {
+        host.innerHTML = '<div class="fsp-row-desc">Ingen dias at vise endnu.</div>';
+        return;
+      }
+      const MAX = 8;
+      slides.slice(0, MAX).forEach((slide, i) => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'ugs-preview';
+        const isEvent = slide.source === 'arrangementer';
+        const label = isEvent ? (slide.title || 'Arrangement')
+          : slide.kind === 'day' ? 'Uge ' + slide.week + ' · ' + ['Man', 'Tir', 'Ons', 'Tor', 'Fre'][slide.dayIndex]
+          : 'Uge ' + slide.week;
+        // Dagsvisningen går ikke gennem FitPoster (kun plakaten gør), så den skaleres i CSS.
+        card.innerHTML = `<div class="ugs-preview-stage${slide.kind === 'day' ? ' is-day' : ''}"></div><div class="ugs-preview-label">${label}</div>`;
+        card.addEventListener('click', () => api.open({ mode: 'manual', startKey: slide.key }));
+        host.appendChild(card);
+        if (isEvent) {
+          const img = document.createElement('img');
+          img.src = slide.imageUrl;
+          img.alt = slide.title || 'Arrangement';
+          img.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#f4f1ea';
+          card.querySelector('.ugs-preview-stage').appendChild(img);
+        } else {
+          api.mountPreview(card.querySelector('.ugs-preview-stage'), slide).catch(() => {});
+        }
+        void i;
+      });
+      if (slides.length > MAX) {
+        const more = document.createElement('div');
+        more.className = 'fsp-row-desc';
+        more.style.alignSelf = 'center';
+        more.textContent = `+${slides.length - MAX} flere`;
+        host.appendChild(more);
+      }
+    }
+  };
+
+  sections['Ekspedient-login'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      // Default true: PIN kræves medmindre eksplicit slået fra.
+      const required = inst.clerk_pin_required !== false;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Ekspedient-login</div>
+        <div class="fsp-page-desc">Vælg om børn skal indtaste deres personlige <strong>PIN</strong> for at logge på som ekspedient. PIN'en er en symbolsk markering af, at barnet tager rollen på sig — den er <strong>ikke</strong> en sikkerhedskode: køb kræver den ikke, og ansvaret ligger altid hos den voksne, der har låst caféen op.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Kræv PIN ved ekspedient-login</div><div class="fsp-main-desc">Til = barnet indtaster sin PIN. Fra = barnet vælger blot sig selv og går i gang.</div></div>
+          <div class="fsp-toggle${required ? ' on' : ''}" data-field="clerk_pin_required"></div>
+        </div>
+        <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Ændringen slår igennem med det samme. Slår du PIN fra, fjernes blot login-trinnet — børnenes koder bevares og kan slås til igen.</div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      wireToggles(container, ctx);
+    }
+  };
+
+  sections['Auto-sletning af inaktive'] = {
+    render(ctx) {
+      const inst = ctx.institutionData || {};
+      const months = inst.auto_delete_inactive_months || 12;
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Papirkurv & auto-arkivering</div>
+        <div class="fsp-page-desc">B\u00f8rn der ikke har brugt caf\u00e9en l\u00e6nge flyttes automatisk til papirkurven \u2014 skjult fra resten af programmet, men altid med fortrydelsesret.</div>
+
+        <div style="margin-top:16px;padding:16px 18px;background:rgba(91,160,216,0.07);border:1px solid rgba(91,160,216,0.22);border-radius:14px;line-height:1.55;font-size:13px;color:var(--fsp-txt2,#ccc)">
+          <div style="font-weight:700;color:var(--fsp-txt,#eee);margin-bottom:10px;font-size:13.5px">S\u00e5dan virker det</div>
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">1</span><div>B\u00f8rn der ikke har brugt caf\u00e9en i <strong>${months} m\u00e5neder</strong> flyttes automatisk i papirkurven. Aktivitet som ekspedient t\u00e6ller ogs\u00e5 med \u2014 s\u00e5 b\u00f8rn der hj\u00e6lper til, ryger aldrig ud ved en fejl.</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">2</span><div>I f\u00e5r <strong>besked</strong> n\u00e5r nogen ryger i papirkurven \u2014 og igen ~4 uger f\u00f8r de slettes permanent. Beskeden vises i toppen af appen og ved login, men kun n\u00e5r der er noget nyt.</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(91,160,216,0.25);color:#5ba0d8;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center">3</span><div>I papirkurven kan barnet <strong>gendannes med saldo i 6 m\u00e5neder</strong>. For\u00e6ldre f\u00e5r besked ~4 uger f\u00f8r, og f\u00f8rst derefter slettes barnet permanent.</div></div>
+        </div>
+
+        <div style="margin-top:20px">
+          <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">INAKTIVITETSPERIODE</div>
+          ${[
+            { m: 6, h: 'Anbefalet for aktive institutioner' },
+            { m: 12, h: 'Standard bevaringsperiode' },
+            { m: 24, h: 'L\u00e6ngere bevaringsperiode' }
+          ].map(opt => `<div class="fsp-sub">
+            <div><div class="fsp-sub-title">${opt.m} m\u00e5neder</div><div class="fsp-sub-hint">${opt.h}</div></div>
+            <div class="fsp-radio${months === opt.m ? ' on' : ''}" data-field="auto_delete_inactive_months" data-value="${opt.m}"></div>
+          </div>`).join('')}
+          <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Auto-arkivering kan <strong>ikke sl\u00e5s fra</strong> \u2014 det sikrer at gamle, ubrugte profiler ikke ligger for evigt. I v\u00e6lger kun, hvor l\u00e6nge der g\u00e5r f\u00f8rst.</div>
+        </div>
+
+        <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:22px;padding-top:18px">
+          <div class="fsp-main-title" style="display:flex;align-items:center;gap:8px">\ud83d\uddd1\ufe0f Papirkurv <span data-archived-count style="display:none;background:#5ba0d8;color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px"></span></div>
+          <div class="fsp-main-desc" style="margin-bottom:12px">Inaktive b\u00f8rn \u2014 skjult fra caf\u00e9en, men med saldo og historik bevaret. <strong>Gendan</strong> bringer barnet tilbage. Slettes permanent 6 m\u00e5neder efter de blev lagt her.</div>
+          <div data-archived-bulk style="display:none;margin-bottom:12px"></div>
+          <div data-archived-list style="min-height:40px">
+            <div style="text-align:center;padding:18px;color:var(--fsp-txt3);font-size:13px">Indl\u00e6ser\u2026</div>
+          </div>
+        </div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      // Inaktivitetsperiode-radios (parseInt, da feltet er numerisk)
+      container.querySelectorAll('.fsp-radio[data-field="auto_delete_inactive_months"]').forEach(radio => {
+        radio.addEventListener('click', () => {
+          const field = radio.dataset.field;
+          container.querySelectorAll(`.fsp-radio[data-field="${field}"]`).forEach(r => r.classList.remove('on'));
+          radio.classList.add('on');
+          ctx.markDirty(field, parseInt(radio.dataset.value));
+        });
+      });
+
+      // \u2500\u2500 Papirkurv (async) \u2500\u2500
+      const client = window.__flangoSupabaseClient;
+      const archivedEl = container.querySelector('[data-archived-list]');
+      const archivedBulkEl = container.querySelector('[data-archived-bulk]');
+      const archivedCountEl = container.querySelector('[data-archived-count]');
+
+      const displayName = (u) => {
+        try { return (window.__flangoUserName ? window.__flangoUserName(u) : null) || u.name || 'Ukendt'; }
+        catch { return u.name || 'Ukendt'; }
+      };
+      const krFmt = (n) => `${Math.round(Number(n) || 0)} kr`;
+      const dkDate = (iso) => { if (!iso) return 'aldrig'; try { return new Date(iso).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return 'aldrig'; } };
+      const daysUntil = (iso) => { try { return Math.round((new Date(iso).getTime() - Date.now()) / 86400000); } catch { return null; } };
+      const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+      function emptyBox(text) {
+        return `<div style="text-align:center;padding:18px;color:var(--fsp-txt3);font-size:13px">${text}</div>`;
+      }
+      function rowShell(inner) {
+        return `<div class="fsp-device-row" style="align-items:flex-start;gap:10px">${inner}</div>`;
+      }
+      // Sum-opdeling: skylder (abs af negative saldi) + tilgodehavende (positive)
+      function balanceSplit(rows) {
+        let owed = 0, credit = 0;
+        for (const r of rows) { const b = Number(r.balance) || 0; if (b < 0) owed += -b; else credit += b; }
+        return { owed, credit };
+      }
+
+      function selectedArchivedIds() {
+        return Array.from(archivedEl.querySelectorAll('input[data-ar-check]:checked')).map(c => c.dataset.arCheck);
+      }
+      function updateArchivedSelectionUI() {
+        const ids = selectedArchivedIds();
+        if (archivedBulkEl) {
+          if (ids.length) {
+            archivedBulkEl.style.display = '';
+            archivedBulkEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:rgba(91,160,216,0.07);border:1px solid rgba(91,160,216,0.2);border-radius:10px">`
+              + `<span style="font-size:12px;font-weight:600;color:var(--fsp-txt2,#ccc);margin-right:4px">${ids.length} markeret:</span>`
+              + `<button class="fsp-btn" data-ar-bulk="restore" style="padding:6px 12px;font-size:12px;background:rgba(91,160,216,0.12);color:#5ba0d8;border:1px solid rgba(91,160,216,0.3)">Gendan valgte</button>`
+              + `</div>`;
+          } else {
+            archivedBulkEl.style.display = 'none';
+            archivedBulkEl.innerHTML = '';
+          }
+        }
+        const master = archivedEl.querySelector('input[data-ar-check-all]');
+        if (master) {
+          const boxes = archivedEl.querySelectorAll('input[data-ar-check]');
+          master.checked = boxes.length > 0 && ids.length === boxes.length;
+          master.indeterminate = ids.length > 0 && ids.length < boxes.length;
+        }
+      }
+
+      function checkboxCell(attr, id) {
+        return `<label style="flex-shrink:0;padding-top:2px;cursor:pointer"><input type="checkbox" ${attr}="${esc(id)}" style="width:17px;height:17px;cursor:pointer;accent-color:#5ba0d8"></label>`;
+      }
+      function selectAllRow(attr, label) {
+        return `<label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;font-size:12px;color:var(--fsp-txt3)"><input type="checkbox" ${attr} style="width:16px;height:16px;cursor:pointer;accent-color:#5ba0d8">${label}</label>`;
+      }
+
+      async function loadArchived() {
+        if (!client) { archivedEl.innerHTML = emptyBox('Ikke tilg\u00e6ngelig.'); return; }
+        try {
+          const { data, error } = await client.rpc('get_archived_users');
+          if (error) throw error;
+          const rows = Array.isArray(data) ? data : [];
+          if (archivedCountEl) {
+            if (rows.length > 0) { archivedCountEl.textContent = String(rows.length); archivedCountEl.style.display = ''; }
+            else { archivedCountEl.style.display = 'none'; }
+          }
+          if (!rows.length) {
+            archivedEl.innerHTML = emptyBox('Papirkurven er tom. \ud83d\udc4d');
+            updateArchivedSelectionUI();
+            return;
+          }
+          const listHtml = rows.map(u => {
+            const neg = Number(u.balance) < 0;
+            const days = daysUntil(u.purge_at);
+            const soon = days != null && days <= 28;
+            const purgeTxt = days == null ? `Slettes permanent (${dkDate(u.purge_at)})`
+              : (days <= 0 ? 'Slettes permanent ved n\u00e6ste k\u00f8rsel'
+              : `Forsvinder permanent om ${days} dage (${dkDate(u.purge_at)})`);
+            const purgeLine = `<span style="color:${soon ? '#e85a6f' : 'var(--fsp-txt3)'}${soon ? ';font-weight:600' : ''}">${soon ? '\u23f3 ' : ''}${purgeTxt}</span>`;
+            return rowShell(
+              checkboxCell('data-ar-check', u.id)
+              + `<div class="fsp-device-left" style="flex:1;min-width:0">
+                <div class="fsp-device-title">${esc(displayName(u))} <span style="color:var(--fsp-txt3);font-weight:500">#${esc(u.number || '')}</span></div>
+                <div class="fsp-device-meta">Saldo: <strong style="color:${neg ? '#e85a6f' : 'inherit'}">${krFmt(u.balance)}</strong> \u00b7 Lagt i papirkurv ${dkDate(u.archived_at)}</div>
+                <div class="fsp-device-meta" style="margin-top:3px">${purgeLine}</div>
+              </div>
+              <div style="flex-shrink:0;display:flex;flex-direction:column;gap:6px">
+                <button class="fsp-btn" data-ar-row="restore" data-id="${esc(u.id)}" style="padding:8px 16px;font-size:12px;background:rgba(91,160,216,0.12);color:#5ba0d8;border:1px solid rgba(91,160,216,0.3)">Gendan</button>
+                <button class="fsp-btn" data-ar-row="purge" data-id="${esc(u.id)}" data-name="${esc(displayName(u))}" title="Slet permanent nu \u2014 kan IKKE fortrydes" style="padding:8px 16px;font-size:12px;background:rgba(232,90,111,0.08);color:#e85a6f;border:1px solid rgba(232,90,111,0.25)">Slet permanent</button>
+              </div>`);
+          }).join('');
+          const split = balanceSplit(rows);
+          const econHtml = `<div style="font-size:12px;color:var(--fsp-txt2,#ccc);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 14px;margin-bottom:12px;line-height:1.5">Hvis disse slettes permanent: <span style="color:#e85a6f;font-weight:600">afskrives ${esc(krFmt(split.owed))} g\u00e6ld</span> \u00b7 <span style="color:#5dca7a;font-weight:600">${esc(krFmt(split.credit))} doneres</span></div>`;
+          archivedEl.innerHTML = econHtml + selectAllRow('data-ar-check-all', 'Mark\u00e9r alle') + listHtml;
+          updateArchivedSelectionUI();
+        } catch (e) {
+          console.warn('[papirkurv] kunne ikke hente papirkurv:', e);
+          archivedEl.innerHTML = emptyBox('Kunne ikke hente listen.');
+        }
+      }
+
+      // \u2500\u2500 Handlinger \u2500\u2500
+      async function runRestore(ids, btns) {
+        if (!client || !ids.length) return;
+        btns.forEach(b => { if (b) b.disabled = true; });
+        try {
+          const { data, error } = await client.rpc('restore_archived_users', { p_user_ids: ids });
+          if (error) throw error;
+          await loadArchived();
+          window.__flangoRefreshUsers?.();
+          window.__flangoRefreshAutoDeleteWarning?.();
+          const n = (data && typeof data.restored === 'number') ? data.restored : ids.length;
+          window.showCustomAlert?.('Gendannet', n === 1
+            ? 'Barnet er gendannet med saldo og historik og vises igen i caf\u00e9en.'
+            : `<strong>${n}</strong> b\u00f8rn er gendannet med saldo og historik og vises igen i caf\u00e9en.`);
+        } catch (e) {
+          console.warn('[papirkurv] restore fejl:', e);
+          btns.forEach(b => { if (b) b.disabled = false; });
+          window.showCustomAlert?.('Fejl', 'Kunne ikke gendanne. Pr\u00f8v igen.');
+        }
+      }
+      // Permanent sletning NU fra papirkurven \u2014 kraftig bekr\u00e6ftelse, kan ikke fortrydes.
+      async function runPurgeNow(ids, name, btns) {
+        if (!client || !ids.length) return;
+        const who = ids.length === 1
+          ? `<strong>${esc(name || 'dette barn')}</strong>`
+          : `<strong>${ids.length} b\u00f8rn</strong>`;
+        const ok = await (window.showCustomAlert?.(
+          'Slet permanent?',
+          `<p>${who} slettes <strong>permanent og med det samme</strong>.</p>
+           <p style="margin-top:8px;color:#e85a6f;font-weight:600">Dette kan IKKE fortrydes \u2014 saldo og historik forsvinder for altid.</p>
+           <p style="margin-top:8px;font-size:0.9em;color:#888">Vil du i stedet bare lade det ligge i papirkurven, s\u00e5 slettes det automatisk efter 6 m\u00e5neder og kan gendannes indtil da.</p>`,
+          'confirm'));
+        if (!ok) return;
+        btns.forEach(b => { if (b) b.disabled = true; });
+        try {
+          const { data, error } = await client.rpc('purge_users_now', { p_user_ids: ids });
+          if (error) throw error;
+          await loadArchived();
+          window.__flangoRefreshAutoDeleteWarning?.();
+          const n = (data && typeof data.purged === 'number') ? data.purged : ids.length;
+          window.showCustomAlert?.('Slettet permanent', `${n === 1 ? 'Barnet er' : `<strong>${n}</strong> b\u00f8rn er`} slettet permanent.`);
+        } catch (e) {
+          console.warn('[papirkurv] purge_now fejl:', e);
+          btns.forEach(b => { if (b) b.disabled = false; });
+          window.showCustomAlert?.('Fejl', 'Kunne ikke slette. Pr\u00f8v igen.');
+        }
+      }
+
+      // \u2500\u2500 Event-delegation: papirkurv \u2500\u2500
+      archivedEl.addEventListener('change', (ev) => {
+        const all = ev.target.closest('input[data-ar-check-all]');
+        if (all) {
+          archivedEl.querySelectorAll('input[data-ar-check]').forEach(c => { c.checked = all.checked; });
+        }
+        if (all || ev.target.closest('input[data-ar-check]')) updateArchivedSelectionUI();
+      });
+      archivedEl.addEventListener('click', (ev) => {
+        const rowBtn = ev.target.closest('[data-ar-row]');
+        if (!rowBtn) return;
+        const action = rowBtn.dataset.arRow;
+        if (action === 'purge') runPurgeNow([rowBtn.dataset.id], rowBtn.dataset.name, [rowBtn]);
+        else runRestore([rowBtn.dataset.id], [rowBtn]);
+      });
+      archivedBulkEl.addEventListener('click', (ev) => {
+        const bulkBtn = ev.target.closest('[data-ar-bulk]');
+        if (!bulkBtn) return;
+        const ids = selectedArchivedIds();
+        if (!ids.length) return;
+        runRestore(ids, [bulkBtn]);
+      });
+
+      loadArchived();
+    }
+  };
+
+  // ── Mine enheder (async action section) ──
+  // "Mine enheder" havde sit eget menupunkt og sin egen liste — over device_tokens,
+  // altså "Husk mig"/hurtig-PIN. Ved siden af "Adgang til Flango", der viser
+  // trusted_devices. To lister fra to tabeller, begge svar på "hvor må jeg bruge
+  // Flango", i samme menu. Ingen kunne se forskel. Listen ligger nu som et eget
+  // afsnit på samme side, med en overskrift der siger hvad den er.
+  sections['Adgang til Flango'] = {
+    render(ctx) {
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Adgang til Flango</div>
+        <div class="fsp-page-desc">Hvem der må bruge Flango, og på hvilke enheder. Adgang gives til én medarbejder på én enhed ad gangen, og ophører kun når nogen fjerner den — eller når den udløber.</div>
+
+        <div data-notify-emails style="margin-bottom:18px"></div>
+
+        <div data-approval-requests style="margin-bottom:18px"></div>
+
+        <div class="fsp-page-desc" style="margin-bottom:8px;opacity:.7">Hvem har adgang</div>
+        <div data-machines-list style="min-height:60px">
+          <div style="text-align:center;padding:24px;color:var(--fsp-txt3);font-size:13px">Indlæser…</div>
+        </div>
+
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      const api = window.__flangoDeviceApproval;
+      const notifyEl = container.querySelector('[data-notify-emails]');
+      const reqEl = container.querySelector('[data-approval-requests]');
+      const listEl = container.querySelector('[data-machines-list]');
+      const tomt = (t) => `<div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">${t}</div>`;
+
+      if (!api) {
+        listEl.innerHTML = tomt('Enhedstjenesten er ikke tilgængelig.');
+        return;
+      }
+
+      const dato = (v) => v ? new Date(v).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+      const dageTil = (v) => v ? Math.round((new Date(v) - Date.now()) / 86400000) : null;
+
+      const kodeStatus = (r) => {
+        if (!r.code_expires_at) return 'Ingen kode sendt';
+        if (new Date(r.code_expires_at) < new Date()) return 'Koden er udløbet — bed om adgang igen';
+        const kl = new Date(r.code_expires_at).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
+        return `Kode sendt på mail · gælder til kl. ${kl}`;
+      };
+
+      async function loadRequests() {
+        const reqs = await api.listApprovalRequests();
+        if (!reqs.length) { reqEl.innerHTML = ''; return; }
+        reqEl.innerHTML = `
+          <div class="fsp-page-desc" style="margin-bottom:8px;opacity:.7">Venter på din godkendelse</div>
+          ${reqs.map(r => `
+            <div class="fsp-device-row" data-request-id="${r.id}">
+              <div class="fsp-device-emoji">⏳</div>
+              <div class="fsp-device-left">
+                <div class="fsp-device-title">${r.requested_by_name || 'En medarbejder'} beder om adgang</div>
+                <div class="fsp-device-meta">På ${r.device_name || 'en ukendt enhed'} · ${new Date(r.requested_at).toLocaleString('da-DK', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</div>
+                <div class="fsp-device-meta" style="opacity:.85">${kodeStatus(r)}</div>
+              </div>
+            </div>
+          `).join('')}`;
+      }
+
+      // Ingen knap til at lave en kode her. Koden fødes ved anmodningen og sendes til
+      // institutionens adresse — én vej ind, ikke to. Kommer beskeden ikke frem, er
+      // vejen at bede om adgang igen, ikke at omgå kanalen fra en skærm.
+
+      async function loadMachines() {
+        const maskiner = await api.listTrustedDevices();
+        const mit = api.getDeviceId ? api.getDeviceId() : null;
+
+        if (!maskiner.length) { listEl.innerHTML = tomt('Ingen har adgang endnu.'); return; }
+
+        listEl.innerHTML = maskiner.map(m => {
+          const dage = dageTil(m.expires_at);
+          const snart = dage !== null && dage <= 14 && !m.revoked_at;
+          const person = m.person_name || 'Hele huset (arvet ordning)';
+          const kilde = { mfa: 'givet via totrinsgodkendelse', migration: 'arvet fra husets ordning', tap: 'givet af en kollega', self: 'godkendt af sig selv', superadmin: 'givet af Flango-support', pairing: 'parret' }[m.approval_source] || m.approval_source;
+          return `<div class="fsp-device-row" data-device-row="${m.id}" ${m.revoked_at ? 'style="opacity:.45"' : ''}>
+            <div class="fsp-device-emoji">${m.device_id === mit ? '⭐' : '💻'}</div>
+            <div class="fsp-device-left">
+              <div class="fsp-device-title">${person}${m.device_id === mit ? ' — her' : ''}</div>
+              <div class="fsp-device-meta">På ${m.device_name || 'ukendt enhed'} · ${kilde}${m.pin_profiler ? ' · ' + m.pin_profiler + ' hurtig-PIN' : ''}</div>
+              <div class="fsp-device-meta" ${snart ? 'style="color:#f4a261"' : ''}>${m.revoked_at ? 'Tilbagekaldt ' + dato(m.revoked_at) : 'Udløber ' + dato(m.expires_at) + (snart ? ' — om ' + dage + ' dage' : '')}</div>
+            </div>
+            ${m.revoked_at ? '' : `<button class="fsp-btn fsp-btn-ghost" data-action="revoke-device" style="padding:8px 16px;font-size:12px;color:#e85a6f;border-color:rgba(232,90,111,0.2)">Fjern</button>`}
+          </div>`;
+        }).join('');
+      }
+
+      listEl.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-action="revoke-device"]');
+        if (!btn) return;
+        const id = btn.closest('[data-device-row]')?.dataset.deviceRow;
+        if (!id) return;
+        if (!confirm('Fjern denne adgang? Personen skal bede om adgang igen for at bruge Flango på enheden.')) return;
+        btn.disabled = true; btn.textContent = 'Fjerner…';
+        const res = await api.revokeTrustedDevice(id);
+        if (res.success) await loadMachines();
+        else { btn.disabled = false; btn.textContent = 'Fjern'; }
+      });
+
+      // Hvem får besked. Institutionens eget valg — ikke leverandørens felt.
+      // Serveren kræver en betroet session for at ændre den: den, der kan
+      // omdirigere godkendelsesbeskeder, kan omgå hele modellen.
+      async function loadEmails() {
+        const data = await api.getNotificationEmails();
+        if (data === null) { notifyEl.innerHTML = ''; return; }
+        const mails = data.emails || [];
+        const navn = data.name || '';
+        const vist = mails.length ? mails.join(', ') : 'Ingen valgt';
+        notifyEl.innerHTML = `
+          <div class="fsp-page-desc" style="margin-bottom:8px;opacity:.7">Hvem får besked</div>
+          <div class="fsp-device-row">
+            <div class="fsp-device-emoji">\u2709\uFE0F</div>
+            <div class="fsp-device-left">
+              <div class="fsp-device-title">${navn ? navn + ' · ' : ''}${vist}</div>
+              <div class="fsp-device-meta">Hertil sendes koden, når en medarbejder beder om adgang. Sig den til personen selv — send den aldrig videre.</div>
+              <div class="fsp-device-meta" style="opacity:.85">Navnet er det, medarbejderen får at vide, hun skal spørge: <strong>${navn || 'ikke valgt'}</strong></div>
+            </div>
+            <button class="fsp-btn fsp-btn-ghost" data-action="rediger-mail" style="padding:8px 16px;font-size:12px">Skift</button>
+          </div>
+          <div data-mail-form style="display:none;margin-top:10px">
+            <input type="text" data-navn-input value="${navn}" placeholder="Navn — fx Mette eller Kontoret"
+                   style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:14px;margin-bottom:8px">
+            <input type="text" data-mail-input value="${mails.join(', ')}" placeholder="leder@institution.dk, kontor@institution.dk"
+                   style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:14px">
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="fsp-btn" data-action="gem-mail" style="padding:8px 16px;font-size:12px">Gem</button>
+              <button class="fsp-btn fsp-btn-ghost" data-action="fortryd-mail" style="padding:8px 16px;font-size:12px">Fortryd</button>
+            </div>
+            <div data-mail-fejl style="margin-top:8px;font-size:13px;color:#e85a6f"></div>
+          </div>`;
+      }
+
+      notifyEl.addEventListener('click', async (e) => {
+        const form = notifyEl.querySelector('[data-mail-form]');
+        if (e.target.closest('[data-action="rediger-mail"]')) { form.style.display = ''; notifyEl.querySelector('[data-mail-input]')?.focus(); return; }
+        if (e.target.closest('[data-action="fortryd-mail"]')) { form.style.display = 'none'; return; }
+        const gem = e.target.closest('[data-action="gem-mail"]');
+        if (gem) {
+          const fejlEl = notifyEl.querySelector('[data-mail-fejl]');
+          const adresser = (notifyEl.querySelector('[data-mail-input]')?.value || '')
+            .split(',').map(t => t.trim()).filter(Boolean);
+          gem.disabled = true; gem.textContent = 'Sender…';
+
+          // Navnet er et visningsnavn og flytter ingen post — det gemmes med det
+          // samme. Adressen kræver stadig bekræftelse fra begge postkasser.
+          const navnFelt = (notifyEl.querySelector('[data-navn-input]')?.value || '').trim();
+          if (navnFelt) await api.setContactName(navnFelt);
+
+          const res = await api.requestNotificationEmailChange(adresser);
+
+          // Første adresse: der er ingen at bekræfte fra, så den er gemt med det samme.
+          if (res?.success && res.first_time) { await loadEmails(); return; }
+
+          if (res?.success && res.pending) {
+            // Intet er ændret endnu. Koden er sendt til den NUVÆRENDE adresse —
+            // det er dét, der forhindrer, at en session alene kan flytte beskederne.
+            const til = (res.sent_to || []).join(', ');
+            notifyEl.querySelector('[data-mail-form]').innerHTML = `
+              <div style="padding:12px 14px;border-radius:10px;background:rgba(244,162,97,0.12);border:1px solid rgba(244,162,97,0.3)">
+                <div style="font-size:14px;line-height:1.5">Adressen er <strong>ikke</strong> ændret endnu.
+                Vi har sendt en kode til hver af de to adresser — den ene bekræfter, at skiftet er
+                i orden, den anden at posten kommer frem til den nye.</div>
+                <label style="display:block;margin-top:12px;font-size:12px;color:var(--fsp-txt3)">Kode sendt til ${til}</label>
+                <input type="text" data-bekraeft-kode placeholder="000000" maxlength="6" inputmode="numeric"
+                       style="width:100%;margin-top:4px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:16px;letter-spacing:4px;text-align:center">
+                <label style="display:block;margin-top:10px;font-size:12px;color:var(--fsp-txt3)">Kode sendt til ${(res.sent_to_new || []).join(', ')}</label>
+                <input type="text" data-bekraeft-ny-kode placeholder="000000" maxlength="6" inputmode="numeric"
+                       style="width:100%;margin-top:4px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:16px;letter-spacing:4px;text-align:center">
+                <button class="fsp-btn" data-action="bekraeft-mail" style="width:100%;margin-top:10px;padding:10px;font-size:13px">Bekræft skift</button>
+                <div data-mail-fejl style="margin-top:8px;font-size:13px;color:#e85a6f"></div>
+              </div>`;
+            return;
+          }
+          fejlEl.textContent = res?.error || 'Kunne ikke gemmes.';
+          gem.disabled = false; gem.textContent = 'Gem';
+          return;
+        }
+
+        const bekraeft = e.target.closest('[data-action="bekraeft-mail"]');
+        if (!bekraeft) return;
+        const kode = notifyEl.querySelector('[data-bekraeft-kode]')?.value || '';
+        const nyKode = notifyEl.querySelector('[data-bekraeft-ny-kode]')?.value || '';
+        const fejl2 = notifyEl.querySelector('[data-mail-fejl]');
+        bekraeft.disabled = true; bekraeft.textContent = 'Bekræfter…';
+        const res2 = await api.confirmNotificationEmailChange(kode, nyKode);
+        if (res2?.success) { await loadEmails(); return; }
+        fejl2.textContent = res2?.error || 'Kunne ikke bekræftes.';
+        bekraeft.disabled = false; bekraeft.textContent = 'Bekræft skift';
+      });
+
+      loadEmails();
+      loadRequests();
+      loadMachines();
+    }
+  };
+
+  // ── Saldoliste ved låsning (localStorage toggle — no dirty-tracking) ──
+  sections['Saldoliste ved låsning'] = {
+    render(ctx) {
+      const instId = window.getInstitutionId?.() || window.__flangoInstitutionId || '';
+      const key = `flango_balance_download_on_lock_${instId}`;
+      const enabled = localStorage.getItem(key) !== 'false';
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Saldoliste ved l\u00e5sning</div>
+        <div class="fsp-page-desc">Download en komplet saldoliste (CSV) automatisk n\u00e5r caf\u00e9en l\u00e5ses. Nyttig til daglig afstemning.</div>
+        <div class="fsp-main-toggle">
+          <div style="flex:1"><div class="fsp-main-title">Download saldoliste ved l\u00e5sning</div><div class="fsp-main-desc">Genererer automatisk en CSV-fil med alle brugere og deres saldo.</div></div>
+          <div class="fsp-toggle${enabled ? ' on' : ''}" data-action="toggle-balance-lock"></div>
+        </div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      const toggle = container.querySelector('[data-action="toggle-balance-lock"]');
+      toggle?.addEventListener('click', () => {
+        toggle.classList.toggle('on');
+        const instId = window.getInstitutionId?.() || window.__flangoInstitutionId || '';
+        const key = `flango_balance_download_on_lock_${instId}`;
+        localStorage.setItem(key, toggle.classList.contains('on'));
+      });
+    }
+  };
+
+  // ── Anmod om nulstilling (destructive action section) ──
+  sections['Anmod om nulstilling'] = {
+    render(ctx) {
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Anmod om nulstilling</div>
+        <div class="fsp-collapse-btn" data-action="toggle-reset" style="border-color:rgba(232,90,111,0.2);background:rgba(232,90,111,0.04)">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#e85a6f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+          <span style="color:#e85a6f">Anmod om nulstilling af system</span>
+        </div>
+        <div class="fsp-collapse-body" data-collapse="reset-body">
+          <div class="fsp-collapse-body-inner">
+            <div style="background:rgba(232,90,111,0.06);border:1px solid rgba(232,90,111,0.15);border-radius:12px;padding:18px 20px">
+              <div style="font-size:13px;color:var(--fsp-txt2);margin-bottom:14px;line-height:1.6">Ved nulstilling slettes al caf\u00e9data permanent: brugere, salg, produkter, arrangementer og statistik. Din admin-konto og institutionen bevares. Anmodningen sendes til Flango-teamet, som behandler den manuelt.</div>
+              <div style="font-size:12px;font-weight:500;color:var(--fsp-txt2);margin-bottom:6px">Beskriv kort hvorfor (valgfrit)</div>
+              <textarea class="fsp-input" placeholder="Beskriv kort hvorfor (valgfrit)" data-reset-reason style="min-height:80px;margin-bottom:14px;background:rgba(255,255,255,0.03);border-color:rgba(232,90,111,0.15)"></textarea>
+              <div style="display:flex;gap:10px;justify-content:flex-end">
+                <button class="fsp-btn fsp-btn-ghost" data-action="cancel-reset">Annuller</button>
+                <button class="fsp-btn" data-action="open-reset" style="background:#e85a6f;color:#fff;padding:11px 28px">Send anmodning</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      const toggleBtn = container.querySelector('[data-action="toggle-reset"]');
+      const body = container.querySelector('[data-collapse="reset-body"]');
+      toggleBtn?.addEventListener('click', () => {
+        toggleBtn.classList.toggle('open');
+        body?.classList.toggle('open');
+      });
+      container.querySelector('[data-action="cancel-reset"]')?.addEventListener('click', () => {
+        toggleBtn?.classList.remove('open');
+        body?.classList.remove('open');
+      });
+      container.querySelector('[data-action="open-reset"]')?.addEventListener('click', () => {
+        window.FlangoSettings.close();
+        window.openResetRequestDialog?.();
+      });
+    }
+  };
+
+  // ═══════════════════════════════════════════════════
+  // DIVERSE
+  // ═══════════════════════════════════════════════════
+
+  // ── Udseende (Klart is only active theme; Aurora/Unstoppable disabled) ──
+  sections['Udseende'] = {
+    render(ctx) {
+      const fullscreen = window.FlangoPlatform?.fullscreen;
+      const themes = [
+        { id: 'klart', name: 'Klart', desc: 'Rent og roligt design med bløde pastelfarver', bg: 'linear-gradient(135deg, #f8f6f0, #ebe7df)', accent: '#e8734a', accent2: '#f4a261', card: '#ffffff', sidebar: '#f0ede7', txt: '#2d2a25', active: true },
+        { id: 'flango-unstoppable', name: 'Flango Unstoppable', desc: 'Fedt og energisk med lilla accenter og gul kurv', bg: 'linear-gradient(135deg, #1a1d27, #252830)', accent: '#e8734a', accent2: '#f4a261', card: '#2a2d36', sidebar: '#1e2028', txt: '#e4e6eb', disabled: true },
+        { id: 'aurora', name: 'Aurora', desc: 'Mørkt tema med neon-cyan og magenta accenter', bg: 'linear-gradient(135deg, #0f1923, #162233)', accent: '#5ba0d8', accent2: '#7bb8e0', card: '#1a2a3a', sidebar: '#0d1620', txt: '#c8d6e5', disabled: true }
+      ];
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Udseende</div>
+        <div class="fsp-page-desc">Vælg tema for caféen.</div>
+        ${fullscreen?.showControls ? `<div class="fsp-block" style="margin-bottom:24px">
+          <button class="fsp-btn fsp-btn-ghost" data-action="toggle-fullscreen" style="width:100%;display:flex;justify-content:center;align-items:center;gap:10px;padding:16px;font-size:15px;font-weight:600">
+            <span data-fs-icon>⛶</span>
+            <span data-fs-label>Skift til fuldskærm</span>
+          </button>
+        </div>` : ''}
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+          ${themes.map(t => `<div class="fsp-theme-card${t.active ? ' active' : ''}${t.disabled ? ' fsp-theme-disabled' : ''}" data-theme="${t.id}"${t.disabled ? ' style="opacity:0.5;pointer-events:none;position:relative"' : ''}>
+            <div class="fsp-theme-preview" style="background:${t.bg};display:flex;gap:6px;overflow:hidden">
+              <div style="width:28%;background:${t.sidebar};border-radius:6px;padding:6px">
+                <div style="height:5px;width:70%;border-radius:2px;background:${t.accent};margin-bottom:4px"></div>
+                <div style="height:4px;width:90%;border-radius:2px;background:${t.txt};opacity:0.12;margin-bottom:3px"></div>
+                <div style="height:4px;width:60%;border-radius:2px;background:${t.txt};opacity:0.08;margin-bottom:3px"></div>
+                <div style="height:4px;width:75%;border-radius:2px;background:${t.txt};opacity:0.08"></div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:4px;padding:4px 0">
+                <div style="display:flex;gap:4px;flex:1">
+                  <div style="flex:1;border-radius:5px;background:${t.card};border:1px solid ${t.txt}12"></div>
+                  <div style="flex:1;border-radius:5px;background:${t.accent};opacity:0.8"></div>
+                  <div style="flex:1;border-radius:5px;background:${t.card};border:1px solid ${t.txt}12"></div>
+                </div>
+                <div style="display:flex;gap:4px;flex:1">
+                  <div style="flex:1;border-radius:5px;background:${t.card};border:1px solid ${t.txt}12"></div>
+                  <div style="flex:1;border-radius:5px;background:${t.accent2};opacity:0.6"></div>
+                  <div style="flex:1;border-radius:5px;background:${t.card};border:1px solid ${t.txt}12"></div>
+                </div>
+              </div>
+            </div>
+            <div class="fsp-theme-name">${t.name}${t.disabled ? ' <span style="display:inline-block;background:#f59e0b;color:#000;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle">Under Ombygning</span>' : ''}</div>
+            <div class="fsp-theme-desc">${t.desc}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+
+      // Fuldskærm-toggle (kun desktop)
+      const fsBtn = container.querySelector('[data-action="toggle-fullscreen"]');
+      const fullscreen = window.FlangoPlatform?.fullscreen;
+      if (fsBtn && fullscreen?.showControls) {
+        const updateLabel = async () => {
+          try {
+            const isFs = await fullscreen.isFullscreen();
+            const labelEl = container.querySelector('[data-fs-label]');
+            const iconEl = container.querySelector('[data-fs-icon]');
+            if (labelEl) labelEl.textContent = isFs ? 'Afslut fuldskærm' : 'Skift til fuldskærm';
+            if (iconEl) iconEl.textContent = isFs ? '⊡' : '⛶';
+          } catch {}
+        };
+        updateLabel();
+        fsBtn.addEventListener('click', async () => {
+          try {
+            // Sæt label ud fra den RETURNEREDE state (kendt hensigt). At re-query'e
+            // OS'et midt i fullscreen-overgangen giver gammel værdi (macOS race).
+            const isFs = await fullscreen.toggleFullscreen();
+            const labelEl = container.querySelector('[data-fs-label]');
+            const iconEl = container.querySelector('[data-fs-icon]');
+            if (labelEl) labelEl.textContent = isFs ? 'Afslut fuldskærm' : 'Skift til fuldskærm';
+            if (iconEl) iconEl.textContent = isFs ? '⊡' : '⛶';
+          } catch {}
+        });
+      }
+    }
+  };
+
+  // Note: Dagens Sortiment, Min Flango, Log ud are TRIGGERS — not rendered here.
+
+  // ── Hjælp (read-only searchable accordion) ──
+  sections['Hjælp'] = {
+    render(ctx) {
+      const topics = [
+        { t: 'Om Flango', b: 'Flango er et digitalt caf\u00e9system til SFO og klub, som hj\u00e6lper b\u00e5de b\u00f8rn og voksne med at holde styr p\u00e5 saldoer, salg, indbetalinger og statistik.' },
+        { t: 'Tastatur genveje', b: 'TAB/+ \u00e5bner brugervælger. Piletaster navigerer. ENTER vælger. ESC lukker vinduer. SPACE gennemf\u00f8rer k\u00f8b. BACKSPACE/-/0 fjerner fra kurv. R/I \u00e5bner Rediger. H \u00e5bner Historik.' },
+        { t: 'Historik', b: 'I Historik kan du se alle tidligere salg og indbetalinger. Filtr\u00e9r p\u00e5 datoer, se hvem der har k\u00f8bt hvad, og ret salg s\u00e5 saldo og historik altid passer.' },
+        { t: 'Indbetaling', b: 'V\u00e6lg barnet, v\u00e6lg bel\u00f8b, registr\u00e9r betalingsmetode (MobilePay/kontant), og gem. Saldoen opdateres med det samme.' },
+        { t: 'Rediger Bruger', b: 'Justér stamdata: navn, kontonummer, PIN-kode, start-/korrektionssaldo. Du kan ogs\u00e5 lukke brugere der ikke l\u00e6ngere g\u00e5r i institutionen.' },
+        { t: 'Feedback', b: 'Brug feedback-menuen til at melde fejl, \u00f8nske nye funktioner, eller dele gode id\u00e9er fra b\u00f8rn og kolleger.' },
+        { t: 'Admin vs Bruger', b: 'Admin (p\u00e6dagog) kan \u00e5bne/lukke caf\u00e9, se historik, \u00e6ndre saldoer og regler. Bruger/ekspedient (barn) kan betjene kassen og gennemf\u00f8re k\u00f8b.' },
+        { t: 'For\u00e6ldreportal', b: 'For\u00e6ldre kan se barnets saldo, overblik over k\u00f8b, og evt. f\u00e5 saldo-advarsler pr. e-mail. Adgang via kode eller link.' },
+        { t: 'Institutionens Regler', b: 'Beskriv jeres rammer for caf\u00e9en: dagligt max-k\u00f8b, sukkerregler, \u00e5bningstider, ekspedient-regler.' },
+        { t: 'Log Ud vs L\u00e5s Caf\u00e9', b: 'Log ud: afslutter session, kr\u00e6ver nyt login. L\u00e5s caf\u00e9: midlertidig pause, kan \u00e5bnes igen uden login.' },
+        { t: 'Kontakt & Support', b: 'Kontakt den lokale Flango-ansvarlige, send feedback via appen, eller brug den aftalte kontaktmetode.' }
+      ];
+      return `<div class="fsp-page" style="max-width:720px">
+        <div class="fsp-page-title">Hj\u00e6lp til Flango</div>
+        <div class="fsp-page-desc">Her finder du information om alle Flango's funktioner.</div>
+        <div class="fsp-help-search-wrap">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--fsp-txt3)" stroke-width="1.4" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>
+          <input class="fsp-help-search" placeholder="S\u00f8g i manualen..." data-help-search>
+        </div>
+        ${topics.map(topic => `<div class="fsp-help-item" data-help-title="${topic.t.toLowerCase()}" data-help-body="${topic.b.toLowerCase()}">
+          <div class="fsp-help-hdr" data-action="toggle-help">
+            <div class="fsp-help-hdr-title">${topic.t}</div>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg>
+          </div>
+          <div class="fsp-help-body"><div class="fsp-help-body-inner">${topic.b}</div></div>
+        </div>`).join('')}
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      // Toggle accordion items
+      container.querySelectorAll('[data-action="toggle-help"]').forEach(hdr => {
+        hdr.addEventListener('click', () => {
+          hdr.closest('.fsp-help-item')?.classList.toggle('open');
+        });
+      });
+      // Search filter
+      container.querySelector('[data-help-search]')?.addEventListener('input', function () {
+        const q = this.value.toLowerCase();
+        container.querySelectorAll('.fsp-help-item').forEach(item => {
+          const title = item.dataset.helpTitle || '';
+          const body = item.dataset.helpBody || '';
+          item.style.display = (!q || title.includes(q) || body.includes(q)) ? '' : 'none';
+        });
+      });
+    }
+  };
+
+  // ── Opdateringer (platform-bevidst) ──
+  sections['Opdateringer'] = {
+    render(ctx) {
+      const updates = window.FlangoPlatform?.updates;
+      const delivery = updates?.delivery || 'web';
+      const version = updates?.builtinVersion || '?';
+      const platformLabel = updates?.label || 'Webapp';
+      const isWeb = delivery === 'web';
+      const isLive = delivery === 'live';
+
+      const updateButton = `<button class="fsp-btn fsp-btn-primary" data-action="check-platform-update" style="${isWeb ? 'flex:1;' : 'width:100%;'}display:flex;justify-content:center;padding:14px">Søg efter opdatering</button>`;
+      const buttonsHtml = isWeb
+        ? `<div style="display:flex;gap:10px">
+          <button class="fsp-btn fsp-btn-ghost" data-action="reload" style="flex:1;display:flex;justify-content:center;padding:14px;align-items:center;gap:8px">\uD83D\uDD04 Genindl\u00e6s app</button>
+          ${updateButton}
+        </div>`
+        : updateButton;
+
+      let downloadSection = '';
+      if (isWeb) {
+        downloadSection = `<div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.06)">
+          <div style="font-size:15px;font-weight:600;color:var(--fsp-txt);margin-bottom:6px">\uD83D\uDCBB Desktop-app</div>
+          <div style="font-size:13px;color:var(--fsp-txt3);margin-bottom:16px;line-height:1.5">
+            Download Flango som desktop-app. Undg\u00e5r browser-problemer med kodeord, cache og fuldsk\u00e6rm.
+          </div>
+          <div data-desktop-downloads>
+            <div style="text-align:center;color:var(--fsp-txt3);font-size:13px;padding:16px">Henter versioner...</div>
+          </div>
+        </div>`;
+      }
+
+      return `<div class="fsp-page" style="max-width:720px">
+        <div class="fsp-page-title">Opdateringer</div>
+        <div class="fsp-block" style="margin-bottom:24px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-size:13px;color:var(--fsp-txt3)">Version</div>
+            <div style="font-size:15px;font-weight:600;color:var(--fsp-txt);font-family:monospace" data-update-version>v${version}</div>
+          </div>
+          <div style="font-size:12px;color:var(--fsp-txt3);margin-bottom:14px" data-update-platform>${platformLabel}</div>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(93,202,122,0.08);border:1px solid rgba(93,202,122,0.15);border-radius:10px">
+            <span style="color:#5dca7a;font-size:14px">\u2713</span>
+            <span style="font-size:13px;color:#5dca7a;font-weight:500" data-status="version-status">${isLive ? 'Aktiv bundle kontrolleres...' : 'Du k\u00f8rer den nyeste version'}</span>
+          </div>
+        </div>
+        ${buttonsHtml}
+        ${delivery === 'desktop' ? '<div style="font-size:12px;color:var(--fsp-txt3);margin-top:10px;text-align:center">Opdateringer vises automatisk ved programstart</div>' : ''}
+        ${isLive ? '<div style="font-size:12px;color:var(--fsp-txt3);margin-top:10px;text-align:center">Live-opdateringer hentes ved genoptagelse og aktiveres, når appen har været i baggrunden</div>' : ''}
+        ${downloadSection}
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      const updates = window.FlangoPlatform?.updates;
+      const delivery = updates?.delivery || 'web';
+      const statusEl = container.querySelector('[data-status="version-status"]');
+      const versionEl = container.querySelector('[data-update-version]');
+      const platformEl = container.querySelector('[data-update-platform]');
+
+      const setStatus = (text, color = '#5dca7a') => {
+        if (!statusEl) return;
+        statusEl.textContent = text;
+        statusEl.style.color = color;
+      };
+
+      updates?.getVersionInfo?.().then(info => {
+        if (versionEl && info.activeVersion) versionEl.textContent = `v${info.activeVersion}`;
+        if (platformEl && info.nativeVersion && delivery === 'live') {
+          platformEl.textContent = `${updates.label} · App Store-binær v${info.nativeVersion}`;
+        }
+        if (info.pendingVersion) {
+          setStatus(`v${info.pendingVersion} er klar til næste genåbning`, '#f59e0b');
+        } else {
+          setStatus('Du kører den nyeste aktive version');
+        }
+      }).catch(() => setStatus('Kunne ikke læse versionsoplysninger', '#e85a6f'));
+
+      // Webapp: Genindlæs app
+      container.querySelector('[data-action="reload"]')?.addEventListener('click', () => {
+        if ('caches' in window) {
+          caches.keys().then(names => names.forEach(name => caches.delete(name)));
+        }
+        window.__flangoInstitutionCache = null;
+        window.__flangoAiFeatureFlags = null;
+        if (window.PortalData?.invalidateFeatureFlagsCache) window.PortalData.invalidateFeatureFlagsCache();
+        location.href = location.href.split('#')[0] + '?_=' + Date.now();
+      });
+
+      // Ét UI-kaldsted for web, desktop og iOS. Platformen ejer både pluginvalg
+      // og betydningen af resultatet; sektionen viser kun normaliseret status.
+      let pendingUpdate = null;
+      const updateBtn = container.querySelector('[data-action="check-platform-update"]');
+      if (typeof MutationObserver === 'function' && updates?.dismissUpdate) {
+        const releaseObserver = new MutationObserver(() => {
+          if (updateBtn?.isConnected) return;
+          releaseObserver.disconnect();
+          if (pendingUpdate) void updates.dismissUpdate(pendingUpdate);
+          pendingUpdate = null;
+        });
+        releaseObserver.observe(document.body, { childList: true, subtree: true });
+      }
+      const observeUpdateResult = result => {
+        if (!updateBtn) return;
+        if (result.status === 'available' && delivery === 'live') {
+          setStatus(`Ny live-version fundet: v${result.version} — henter...`, '#f59e0b');
+        } else if (result.status === 'queued') {
+          setStatus(`v${result.version} er klar til næste genåbning`, '#f59e0b');
+          updateBtn.textContent = 'Søg efter opdatering';
+          updateBtn.disabled = false;
+        } else if (result.status === 'up-to-date') {
+          setStatus('Du kører den nyeste version');
+          updateBtn.textContent = 'Søg efter opdatering';
+          updateBtn.disabled = false;
+        } else if (result.status === 'blocked') {
+          setStatus('Opdateringen kræver en nyere App Store-version', '#e85a6f');
+          updateBtn.textContent = 'Søg efter opdatering';
+          updateBtn.disabled = false;
+        } else if (result.status === 'failed') {
+          setStatus('Opdateringstjek eller download fejlede', '#e85a6f');
+          updateBtn.textContent = 'Prøv igen';
+          updateBtn.disabled = false;
+        }
+      };
+      updateBtn?.addEventListener('click', async () => {
+        if (!updates) {
+          setStatus('Opdateringskanalen er ikke tilgængelig', '#e85a6f');
+          return;
+        }
+
+        if (pendingUpdate && updates.manualInstall) {
+          updateBtn.disabled = true;
+          updateBtn.textContent = 'Opdaterer...';
+          const updateToInstall = pendingUpdate;
+          pendingUpdate = null;
+          try {
+            await updates.installUpdate(updateToInstall, progress => {
+              const percent = Math.max(0, Math.min(100, Math.round(progress.percent)));
+              setStatus(progress.phase === 'relaunch' ? 'Genstarter...' : `Opdaterer... ${percent}%`, '#f59e0b');
+            });
+          } catch (e) {
+            setStatus('Opdatering fejlede', '#e85a6f');
+            updateBtn.disabled = false;
+            updateBtn.textContent = 'Prøv igen';
+          }
+          return;
+        }
+
+        updateBtn.textContent = 'Tjekker...';
+        updateBtn.disabled = true;
+        try {
+          const result = await updates.checkUpdate(observeUpdateResult);
+          if (result.status === 'available') {
+            // Viewet kan være blevet lukket, mens det native check kørte.
+            // Slip handle'et med det samme i stedet for at gemme det i et
+            // afkoblet kaldsted, som ikke længere kan rydde op.
+            if (!updateBtn.isConnected) {
+              await updates.dismissUpdate?.(result);
+              return;
+            }
+            setStatus(`Ny version tilgængelig: v${result.version}`, '#f59e0b');
+            if (updates.manualInstall) {
+              pendingUpdate = result;
+              updateBtn.textContent = `\u2b07 Opdater nu \u2014 v${result.version}`;
+              updateBtn.disabled = false;
+              return;
+            }
+            if (delivery === 'live') {
+              return; // Live-downloaden afsluttes af observerens terminale event.
+            }
+          } else if (result.status === 'queued') {
+            setStatus(`v${result.version} er klar til næste genåbning`, '#f59e0b');
+          } else if (result.status === 'checking') {
+            setStatus('Søger og henter i baggrunden...', '#f59e0b');
+            return; // Undgå parallelle native checks, mens eventforløbet kører.
+          } else if (result.status === 'unavailable') {
+            setStatus('Live-update-kanalen er ikke aktiveret i denne binær', '#e85a6f');
+          } else if (result.status === 'blocked') {
+            setStatus('Opdateringen kræver en nyere App Store-version', '#e85a6f');
+          } else if (result.status === 'failed') {
+            setStatus('Opdateringstjek eller download fejlede', '#e85a6f');
+          } else {
+            setStatus('Du kører den nyeste version');
+          }
+        } catch (e) {
+          setStatus('Kunne ikke tjekke for opdateringer', '#e85a6f');
+        }
+        updateBtn.textContent = 'Søg efter opdatering';
+        updateBtn.disabled = false;
+      });
+
+      // Webapp: Desktop downloads
+      const dlContainer = container.querySelector('[data-desktop-downloads]');
+      if (dlContainer) {
+        fetch('https://flango.dk/desktop/versions.json?_=' + Date.now())
+          .then(r => r.ok ? r.json() : Promise.reject())
+          .then(data => {
+            const latest = data.latest;
+            const previous = data.previous;
+            let html = '';
+
+            if (latest) {
+              const macArm = latest.macos_arm64 || latest.macos;       // Apple Silicon (back-compat: 'macos' = arm)
+              const macX64 = latest.macos_x64;                          // Intel (valgfri \u2014 vises kun hvis til stede)
+              const macBtns = macX64
+                ? `<a href="${macArm}" class="fsp-btn fsp-btn-primary" style="flex:1;min-width:140px;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                    \uD83C\uDF4E macOS (Apple Silicon)
+                  </a>
+                  <a href="${macX64}" class="fsp-btn fsp-btn-primary" style="flex:1;min-width:140px;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                    \uD83C\uDF4E macOS (Intel)
+                  </a>`
+                : `<a href="${macArm}" class="fsp-btn fsp-btn-primary" style="flex:1;min-width:140px;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                    \uD83C\uDF4E macOS (.dmg)
+                  </a>`;
+              html += `<div style="margin-bottom:16px">
+                <div style="font-size:12px;font-weight:600;color:var(--fsp-txt2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">
+                  Nyeste version \u2014 v${latest.version}
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                  <a href="${latest.windows}" class="fsp-btn fsp-btn-primary" style="flex:1;min-width:140px;display:flex;justify-content:center;align-items:center;padding:14px;gap:8px;text-decoration:none" download>
+                    \uD83E\uDE9F Windows (.exe)
+                  </a>
+                  ${macBtns}
+                </div>
+                ${macX64 ? `<div style="font-size:11px;color:var(--fsp-txt3);margin-top:8px">De fleste nyere Mac er Apple Silicon (M1 og senere). V\u00E6lg Intel kun til \u00E6ldre Mac.</div>` : ''}
+              </div>`;
+            }
+
+            if (previous) {
+              html += `<div>
+                <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">
+                  Forrige version \u2014 v${previous.version}
+                </div>
+                <div style="display:flex;gap:10px">
+                  <a href="${previous.windows}" class="fsp-btn fsp-btn-ghost" style="flex:1;display:flex;justify-content:center;align-items:center;padding:12px;gap:8px;text-decoration:none;font-size:13px" download>
+                    \uD83E\uDE9F Windows
+                  </a>
+                  <a href="${previous.macos}" class="fsp-btn fsp-btn-ghost" style="flex:1;display:flex;justify-content:center;align-items:center;padding:12px;gap:8px;text-decoration:none;font-size:13px" download>
+                    \uD83C\uDF4E macOS
+                  </a>
+                </div>
+              </div>`;
+            }
+
+            dlContainer.innerHTML = html;
+          })
+          .catch(() => {
+            dlContainer.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Kunne ikke hente versioner. Download manuelt fra flango.dk/desktop/</div>';
+          });
+      }
+    }
+  };
+
+  // ── Feedback (standalone — send button, moved from logout modal) ──
+  sections['Feedback'] = {
+    render(ctx) {
+      return `<div class="fsp-page" style="max-width:720px">
+        <div class="fsp-page-title">Feedback</div>
+        <div class="fsp-page-desc">Del dine tanker med Flango-teamet. Foresl\u00e5 forbedringer, rapport\u00e9r fejl, eller del gode id\u00e9er fra b\u00f8rn og kolleger.</div>
+        <div class="fsp-form-group">
+          <div class="fsp-form-label">Hvad drejer det sig om?</div>
+          <div class="fsp-feedback-chips" data-fb-chips></div>
+        </div>
+        <div class="fsp-form-group">
+          <div class="fsp-form-label">Din besked</div>
+          <textarea class="fsp-input" data-fb-message placeholder="Beskriv dit forslag, den fejl du oplevede, eller hvad du ellers har p\u00e5 hjerte..." style="min-height:120px"></textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:40px">
+          <button class="fsp-btn fsp-btn-primary" data-action="send-feedback" style="padding:12px 36px;display:flex;align-items:center;gap:8px">\uD83D\uDCE8 Send feedback</button>
+        </div>
+        <div data-fb-inbox-wrap style="display:none;padding-top:24px;border-top:1px solid rgba(255,255,255,0.05);margin-bottom:8px">
+          <div class="fsp-form-label" style="margin-bottom:10px">📥 Modtagne beskeder</div>
+          <div data-fb-inbox></div>
+        </div>
+        <div style="padding-top:24px;border-top:1px solid rgba(255,255,255,0.05)">
+          <div class="fsp-collapse-btn" data-action="toggle-bug">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+            <span style="display:flex;align-items:center;gap:8px">\uD83D\uDC1B Fejlrapport <span class="fsp-pm-badge fsp-pm-badge-gray">Developer feature</span></span>
+          </div>
+          <div class="fsp-collapse-body" data-collapse="bug-body">
+            <div class="fsp-collapse-body-inner">
+              <div style="font-size:12px;color:var(--fsp-txt3);margin-bottom:14px;line-height:1.5">Genererer en teknisk rapport med system-info, konsol-log og seneste handlinger. Kan deles med Flango-teamet ved fejls\u00f8gning.</div>
+              <div class="fsp-form-group" style="margin-bottom:14px">
+                <div class="fsp-form-label">Beskriv kort hvad der skete (valgfrit)</div>
+                <textarea class="fsp-input" data-bug-desc placeholder="f.eks. Kurven blev tom efter jeg trykkede gennemf\u00f8r..." style="min-height:64px"></textarea>
+              </div>
+              <button class="fsp-btn fsp-btn-ghost" data-action="download-bug-report" style="width:100%;display:flex;justify-content:center;padding:14px;gap:8px">\uD83D\uDC1B Download fejlrapport</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      // Build feedback type chips
+      const chipsEl = container.querySelector('[data-fb-chips]');
+      ['\uD83D\uDCA1 Forslag', '\uD83D\uDC1B Fejl', '\u2753 Sp\u00f8rgsm\u00e5l', '\uD83D\uDCAC Andet'].forEach((t, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'fsp-chip' + (i === 0 ? ' on' : '');
+        chip.textContent = t;
+        chip.addEventListener('click', () => {
+          chipsEl.querySelectorAll('.fsp-chip').forEach(c => c.classList.remove('on'));
+          chip.classList.add('on');
+        });
+        chipsEl.appendChild(chip);
+      });
+
+      // Send feedback
+      container.querySelector('[data-action="send-feedback"]')?.addEventListener('click', async function () {
+        const message = container.querySelector('[data-fb-message]')?.value?.trim();
+        const type = chipsEl.querySelector('.fsp-chip.on')?.textContent?.trim() || '';
+        if (!message) return;
+        this.textContent = 'Sender...';
+        this.disabled = true;
+        try {
+          const client = window.__flangoSupabaseClient;
+          if (!client) throw new Error('Ingen forbindelse');
+          const clerk = window.__flangoCurrentClerkProfile || null;
+          const { error } = await client.from('feedback').insert({
+            content: message,
+            type: type || null,
+            source: 'settings-panel',
+            institution_id: window.getInstitutionId?.() || null,
+            user_id: clerk?.id || null,
+            user_name: clerk?.name || null,
+            user_role: clerk?.role || null
+          });
+          if (error) throw error;
+          container.querySelector('[data-fb-message]').value = '';
+          this.textContent = '\u2713 Sendt!';
+          setTimeout(() => { this.textContent = '\uD83D\uDCE8 Send feedback'; this.disabled = false; }, 2000);
+        } catch (e) {
+          this.textContent = 'Fejl ved afsendelse';
+          setTimeout(() => { this.textContent = '\uD83D\uDCE8 Send feedback'; this.disabled = false; }, 2000);
+        }
+      });
+
+      // Bug report collapse
+      const bugToggle = container.querySelector('[data-action="toggle-bug"]');
+      const bugBody = container.querySelector('[data-collapse="bug-body"]');
+      bugToggle?.addEventListener('click', () => {
+        bugToggle.classList.toggle('open');
+        bugBody?.classList.toggle('open');
+      });
+
+      // Download bug report
+      container.querySelector('[data-action="download-bug-report"]')?.addEventListener('click', () => {
+        window.FLANGO_DEBUG?.showBugReportPrompt?.();
+      });
+
+      // Admin-indbakke: vis modtagne feedback-beskeder for denne institution (kun admins).
+      // RLS ("Admins can view all feedback") tillader SELECT; vi filtrerer på institution.
+      (async () => {
+        const isAdmin = window.__flangoCurrentClerkProfile?.role === 'admin';
+        const wrap = container.querySelector('[data-fb-inbox-wrap]');
+        const inbox = container.querySelector('[data-fb-inbox]');
+        if (!isAdmin || !wrap || !inbox) return;
+        wrap.style.display = '';
+        inbox.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Henter…</div>';
+        const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const client = window.__flangoSupabaseClient;
+        const instId = window.getInstitutionId?.();
+        if (!client || !instId) { inbox.innerHTML = ''; return; }
+        try {
+          const { data, error } = await client.from('feedback')
+            .select('content, user_name, type, created_at')
+            .eq('institution_id', instId)
+            .order('created_at', { ascending: false })
+            .limit(50);
+          if (error) throw error;
+          if (!data || !data.length) { inbox.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Ingen modtagne beskeder endnu.</div>'; return; }
+          inbox.innerHTML = data.map(f => {
+            let when = ''; try { when = new Date(f.created_at).toLocaleString('da-DK'); } catch {}
+            const meta = [f.user_name, f.type, when].filter(Boolean).map(esc).join(' · ');
+            return `<div style="padding:12px 14px;margin-bottom:8px;border-radius:10px;background:var(--fsp-bg2);border:1px solid rgba(255,255,255,0.06)">
+              <div style="font-size:13px;color:var(--fsp-txt);white-space:pre-wrap">${esc(f.content)}</div>
+              <div style="font-size:11px;color:var(--fsp-txt3);margin-top:6px">${meta}</div>
+            </div>`;
+          }).join('');
+        } catch (e) {
+          inbox.innerHTML = '<div style="font-size:13px;color:var(--fsp-txt3)">Kunne ikke hente beskeder.</div>';
+        }
+      })();
+    }
+  };
+
+  // ── Lydindstillinger (standalone — live save to SoundManager/localStorage) ──
+
+  // ÉN kilde til lyd-valg. Dropdown'en genereres HERFRA, og wire() slår filstien op i
+  // samme map — så de to kan ikke drive fra hinanden. Før var det to håndholdte lister:
+  // 5 valg uden fil (som slog lyden tavst FRA når de blev valgt) og 9 rigtige lydfiler
+  // der slet ikke kunne vælges. Tilføj/fjern en lyd ÉT sted: her.
+  const SOUND_FILE_MAP = {
+    'Ingen lyd': '',
+    'Add 1': 'sounds/Add%20Item/Add1.mp3',
+    'Add 2': 'sounds/Add%20Item/Add2.mp3',
+    'Slet': 'sounds/Delete%20Item/Slet.mp3',
+    'Slet 1': 'sounds/Delete%20Item/Slet1.mp3',
+    'Slet 2': 'sounds/Delete%20Item/Slet2.mp3',
+    'Slet 3': 'sounds/Delete%20Item/Slet3.mp3',
+    'Slet 4': 'sounds/Delete%20Item/Slet4.mp3',
+    'Accept 1': 'sounds/Accept/accepter-1.mp3',
+    'Accept 2': 'sounds/Accept/accepter-2.mp3',
+    'Accept 3': 'sounds/Accept/accepter-3.mp3',
+    'Accept 4': 'sounds/Accept/accepter-4.mp3',
+    'Accept 5': 'sounds/Accept/accepter-5.mp3',
+    'Accept 6': 'sounds/Accept/accepter-6.mp3',
+    'Accept 7': 'sounds/Accept/accepter-7.mp3',
+    'Fejl 1': 'sounds/Error/Fejl1.mp3',
+    'Fejl 2': 'sounds/Error/Fejl2.mp3',
+    'Fejl 3': 'sounds/Error/Fejl3.mp3',
+    'Login 1': 'sounds/Login/Login1.mp3',
+    'Login 2': 'sounds/Login/Login2.mp3'
+  };
+
+  // Entydig sti-sammenligning (tåler %20 vs mellemrum). Den gamle substring-match ville
+  // med de nu synlige valg markere både "Slet" og "Slet 1" som valgt for samme fil.
+  function sndPathEq(a, b) {
+    const norm = (p) => { try { return decodeURIComponent(p || '').toLowerCase(); } catch { return (p || '').toLowerCase(); } };
+    return norm(a) === norm(b);
+  }
+
+  sections['Lydindstillinger'] = {
+    render(ctx) {
+      const sm = window.__flangoSoundManager;
+      const muted = sm?.isGlobalMuted?.() || false;
+      const masterVol = Math.round((sm?.getMasterVolume?.() ?? 1) * 100);
+      const sndRows = [
+        { key: 'addItem', label: 'Tilf\u00f8j vare', emoji: '\uD83D\uDED2' },
+        { key: 'removeItem', label: 'Fjern vare', emoji: '\u274C' },
+        { key: 'purchase', label: 'Gennemf\u00f8r k\u00f8b', emoji: '\u2705' },
+        { key: 'error', label: 'Fejl', emoji: '\u26A0\uFE0F' }
+      ];
+      const sounds = Object.keys(SOUND_FILE_MAP);
+      return `<div class="fsp-page" style="max-width:720px">
+        <div class="fsp-page-title">Lydindstillinger</div>
+        <div class="fsp-page-desc">V\u00e6lg lyde og juster lydstyrke for caf\u00e9systemet.</div>
+        <div class="fsp-block" style="margin-bottom:24px">
+          <div class="fsp-row" style="margin-bottom:14px">
+            <div style="flex:1"><div class="fsp-row-title">\uD83D\uDD07 Mute alle lyde</div></div>
+            <div class="fsp-toggle${muted ? ' on' : ''}" data-action="snd-mute"></div>
+          </div>
+          <div style="padding-top:14px;border-top:1px solid rgba(255,255,255,0.04)">
+            <div style="font-size:13px;font-weight:500;color:var(--fsp-txt);margin-bottom:8px">Master volume</div>
+            <div class="fsp-snd-slider-wrap">
+              <span style="font-size:14px">\uD83D\uDD08</span>
+              <input type="range" min="0" max="100" value="${masterVol}" data-action="snd-master">
+              <span class="fsp-snd-val" data-val="snd-master">${masterVol}%</span>
+              <span style="font-size:14px">\uD83D\uDD0A</span>
+            </div>
+          </div>
+        </div>
+        <div data-snd-body class="${muted ? 'fsp-off' : ''}">
+          <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">V\u00e6lg lyde</div>
+          ${sndRows.map(r => {
+            const vol = Math.round((sm?.getSoundVolume?.(r.key) ?? 1) * 100);
+            const currentFile = sm?.getSoundFile?.(r.key) || '';
+            return `<div class="fsp-snd-row">
+              <div class="fsp-snd-row-top">
+                <span style="font-size:15px">${r.emoji}</span>
+                <div class="fsp-snd-row-label">${r.label}</div>
+                <select class="fsp-snd-select" data-snd-key="${r.key}">${sounds.map(s => `<option${sndPathEq(SOUND_FILE_MAP[s], currentFile) ? ' selected' : ''}>${s}</option>`).join('')}</select>
+                <button class="fsp-snd-play" title="Afspil" data-play="${r.key}"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg></button>
+              </div>
+              <div class="fsp-snd-slider-wrap">
+                <span style="font-size:12px;color:var(--fsp-txt3)">Volume</span>
+                <input type="range" min="0" max="100" value="${vol}" data-snd-vol="${r.key}">
+                <span class="fsp-snd-val" data-val="snd-${r.key}">${vol}%</span>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="fsp-save-row" style="margin-top:24px"><button class="fsp-save-btn" data-action="snd-save" style="padding:12px 36px">Gem indstillinger</button></div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      const sm = window.__flangoSoundManager || {};
+
+      // Helper: mark sound save button as dirty
+      function markSndDirty() {
+        const btn = container.querySelector('[data-action="snd-save"]');
+        if (btn) btn.classList.add('dirty');
+      }
+
+      // Mute toggle
+      container.querySelector('[data-action="snd-mute"]')?.addEventListener('click', function () {
+        this.classList.toggle('on');
+        sm.setGlobalMute?.(this.classList.contains('on'));
+        container.querySelector('[data-snd-body]')?.classList.toggle('fsp-off', this.classList.contains('on'));
+        markSndDirty();
+      });
+
+      // Master volume
+      container.querySelector('[data-action="snd-master"]')?.addEventListener('input', function () {
+        sm.setMasterVolume?.(parseInt(this.value) / 100);
+        const label = container.querySelector('[data-val="snd-master"]');
+        if (label) label.textContent = this.value + '%';
+        markSndDirty();
+      });
+
+      // Per-sound volume
+      container.querySelectorAll('[data-snd-vol]').forEach(slider => {
+        slider.addEventListener('input', function () {
+          sm.setSoundVolume?.(this.dataset.sndVol, parseInt(this.value) / 100);
+          const label = container.querySelector(`[data-val="snd-${this.dataset.sndVol}"]`);
+          if (label) label.textContent = this.value + '%';
+          markSndDirty();
+        });
+      });
+
+      // Dropdown change → update SoundManager file mapping (samme kilde som render)
+      container.querySelectorAll('.fsp-snd-select[data-snd-key]').forEach(sel => {
+        sel.addEventListener('change', () => {
+          const filePath = SOUND_FILE_MAP[sel.value] || '';
+          sm.setSoundFile?.(sel.dataset.sndKey, filePath);
+          markSndDirty();
+        });
+      });
+
+      // Play buttons — preview the selected sound file directly
+      container.querySelectorAll('[data-play]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.play;
+          const sel = container.querySelector(`.fsp-snd-select[data-snd-key="${key}"]`);
+          const filePath = SOUND_FILE_MAP[sel?.value] || sm.getSoundFile?.(key);
+          if (!filePath) return;
+          const audio = new Audio(filePath);
+          const vol = (sm.getMasterVolume?.() ?? 1) * (sm.getSoundVolume?.(key) ?? 1);
+          audio.volume = Math.min(1, vol);
+          audio.play().catch(() => {});
+        });
+      });
+
+      // Save button (saves to localStorage via SoundManager — already persisted on each change)
+      container.querySelector('[data-action="snd-save"]')?.addEventListener('click', function () {
+        this.textContent = 'Gemt!';
+        this.classList.remove('dirty');
+        setTimeout(() => { this.textContent = 'Gem indstillinger'; }, 1500);
+      });
+    }
+  };
+
+  // ═══════════════════════════════════════════════════
+  // HELPERS
+  // ═══════════════════════════════════════════════════
+
+  function placeholder(label, desc, ctx) {
+    const color = findColor(label);
+    return `<div class="fsp-ph">
+      <div class="fsp-ph-ring">${ctx.ic(label, color)}</div>
+      <div class="fsp-ph-title">${label}</div>
+      <div class="fsp-ph-desc">${desc}</div>
+    </div>`;
+  }
+
+  function findColor(label) {
+    for (const tab of (window.FlangoSettings?.T || [])) {
+      for (const it of tab.items) {
+        if (it.l === label) return it.c;
+      }
+    }
+    return '#e8734a';
+  }
+
+  // ── Public API ──
+  window.FlangoSettingsSections = {
+    render(key, ctx) {
+      const section = sections[key];
+      if (!section) return null;
+      return section.render(ctx);
+    },
+    wire(key, container, ctx) {
+      const section = sections[key];
+      if (section?.wire) section.wire(container, ctx);
+    },
+    applyFeatureLocks,
+  };
+
+})();

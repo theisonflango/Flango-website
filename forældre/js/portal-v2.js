@@ -3428,7 +3428,7 @@
         let imgUrl = pic.signed_url || '';
         if ((pic.picture_type === 'library' || pic.picture_type === 'icon') && imgUrl && !imgUrl.startsWith('http')) {
           const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-          const cafeBase = isLocal ? 'http://127.0.0.1:3000/' : 'https://flango.dk/app/';
+          const cafeBase = isLocal ? 'http://127.0.0.1:3000/' : 'https://flango.dk/cafe/';
           imgUrl = cafeBase + imgUrl;
         }
         // Status-overlay-badge på thumbnail
