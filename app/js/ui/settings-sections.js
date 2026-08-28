@@ -3158,6 +3158,9 @@
           ${toggle('showEvents', 'Vis kommende arrangementer', 'Plakater indgår i diasset. Kun mens caféen er åben — ikke på den låste skærm.', cfg.showEvents)}
           ${cfg.showEvents ? num('eventSeconds', cfg.eventSeconds, 5, 5, 120, 'Hver plakat vises i') : ''}
 
+          ${toggle('showSkaermtid', 'Vis spillerummets kø', 'Hvem der spiller, hvem der venter og hvornår. Springes over, når ingen spiller. Kræver at huset har Skærmtid.', cfg.showSkaermtid)}
+          ${cfg.showSkaermtid ? num('skaermtidSeconds', cfg.skaermtidSeconds, 5, 5, 120, 'Tavlen vises i') : ''}
+
           ${toggle('customSlideEnabled', 'Vis egne billeder', 'Opslag eller plakater, der ikke hører til et arrangement.', cfg.customSlideEnabled)}
           ${cfg.customSlideEnabled ? `
             <div class="ugs-images">
