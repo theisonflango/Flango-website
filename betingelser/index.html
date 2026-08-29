@@ -85,7 +85,7 @@
 
     <section class="about-section">
       <h2 class="section-heading">1. Aftalen og parterne</h2>
-      <p>Aftalen indgås mellem institutionen og <strong>Theison</strong>, CVR-nr. 34360642, Kokkedal ("Flango"). Den, der opretter huset, bekræfter at handle på institutionens vegne. Aftalen gælder fra oprettelsen, og til huset slettes.</p>
+      <p>Aftalen indgås mellem institutionen og <strong>Theison</strong>, CVR-nr. 34360642, Kokkedal ("Flango"). Den, der opretter huset, bekræfter at handle på institutionens vegne. Aftalen gælder fra oprettelsen, og indtil huset slettes.</p>
     </section>
 
     <section class="about-section">
@@ -128,7 +128,7 @@
         <li><strong>Brud.</strong> Bliver vi bekendt med et brud på persondatasikkerheden, der vedrører husets oplysninger, underretter vi den bekræftede e-mailadresse uden unødig forsinkelse.</li>
         <li><strong>Bistand.</strong> Indsigt, berigtigelse, eksport og sletning er selvbetjening i værktøjet; derudover yder vi rimelig bistand til institutionens forpligtelser efter artikel 32-36.</li>
         <li><strong>Tilbagelevering og sletning.</strong> Under <em>Indstillinger → Adgang &amp; koder</em> kan institutionen når som helst hente en fuld kopi af husets indhold (eksport) og slette huset. Sletning fjerner huset, alle data og alle logins med det samme; kopier i krypterede, tekniske sikkerhedskopier udfases derefter automatisk i et tidsbegrænset retention-vindue (se <a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;">flango.dk/sikkerhed</a>).</li>
-        <li><strong>Overførsler.</strong> Al primær behandling sker i EU. Der overføres ikke oplysninger til tredjelande som led i Ugeplanens drift.</li>
+        <li><strong>Overførsler.</strong> Al primær behandling sker i EU. Der overføres ikke personoplysninger til tredjelande som led i Ugeplanens drift; robot-tjekkets tekniske trafik besvares af Cloudflares europæiske datacentre for brugere i EU.</li>
         <li><strong>Dokumentation.</strong> Institutionen kan skrive til os for den dokumentation, der er rimeligt nødvendig for at påvise, at forpligtelserne her overholdes.</li>
       </ul>
 
@@ -136,7 +136,7 @@
         <tr><th>Under-databehandler</th><th>Behandling</th><th>Hvor</th></tr>
         <tr><td>Supabase</td><td>Database, login og drift af Ugeplanen (hostet hos AWS)</td><td>EU — Irland (eu-west-1)</td></tr>
         <tr><td>Mailjet (Sinch)</td><td>Bekræftelses-, gendannelses- og driftsmails</td><td>EU</td></tr>
-        <tr><td>Cloudflare</td><td>Robot-tjek (Turnstile) ved oprettelse — ser IP-adresse og browser-signaler, ingen kontooplysninger</td><td>EU-behandling; globalt netværk</td></tr>
+        <tr><td>Cloudflare</td><td>Robot-tjek (Turnstile) ved oprettelse — ser IP-adresse og browser-signaler, ingen kontooplysninger</td><td>Globalt edge-netværk — brugere i EU besvares i EU</td></tr>
       </table>
     </section>
 
@@ -153,12 +153,12 @@
 
     <section class="about-section">
       <h2 class="section-heading">8. Ansvar</h2>
-      <p>Ugeplanen stilles gratis til rådighed. Flango er ansvarlig efter dansk rets almindelige regler, men hæfter ikke for indirekte tab, driftstab eller tab af data, som institutionen kunne have undgået ved at bruge eksporten. Intet i dette punkt begrænser ansvar, der ikke gyldigt kan fraskrives.</p>
+      <p>Ugeplanen stilles gratis til rådighed. Flango er ansvarlig efter dansk rets almindelige regler, men hæfter ikke for indirekte tab og driftstab. For tab af data gælder, at institutionen til enhver tid selv kan tage en fuld kopi med eksporten — hold den ved lige, hvis planerne er vigtige for jer. Intet i dette punkt begrænser ansvar, der ikke gyldigt kan fraskrives.</p>
     </section>
 
     <section class="about-section">
       <h2 class="section-heading">9. Ændringer og ophør</h2>
-      <p>Vi kan ændre betingelserne med 30 dages varsel pr. e-mail til husets bekræftede adresse; fortsat brug efter varslet er accept. Institutionen kan til enhver tid opsige aftalen ved at eksportere og slette huset — begge dele er selvbetjening og kræver admin-koden.</p>
+      <p>Vi kan ændre betingelserne med 30 dages varsel pr. e-mail til husets bekræftede adresse; fortsat brug efter varslet er accept. Institutionen kan til enhver tid opsige aftalen ved at slette huset — hent eventuelt eksporten først. Begge dele er selvbetjening og kræver admin-koden.</p>
     </section>
 
     <section class="about-section">
