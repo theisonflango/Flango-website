@@ -12,9 +12,10 @@
         window.location.replace('/ugeplan/?p=' + encodeURIComponent(path));
       }
 
-      // Ugeplan v5-remaken kører på sidestien indtil den afløser /ugeplan/
-      if (path.indexOf('/ugeplan-next/') === 0 && path !== '/ugeplan-next/') {
-        window.location.replace('/ugeplan-next/?p=' + encodeURIComponent(path));
+      // /ugeplan-next/ var v5-remakens sidesti indtil cutoveret 29-07-2026.
+      // Dybe links dertil sendes til den rigtige ugeplan med ruten bevaret.
+      if (path.indexOf('/ugeplan-next/') === 0) {
+        window.location.replace('/ugeplan/?p=' + encodeURIComponent(path.replace('/ugeplan-next/', '/ugeplan/')));
       }
 
       // Kommunens flade (rammestyring + tilsyn) — client-side routes under /kommune/
