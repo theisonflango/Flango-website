@@ -159,45 +159,18 @@
     footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
   </style>
 </head>
-<body class="has-flango-nav">
-  <nav class="flango-nav" role="navigation" aria-label="Hovednavigation">
-    <div class="flango-nav-inner">
-      <a href="/" class="flango-nav-logo" aria-label="Flango forside"><img src="/shared/logos/flango-fruit.webp" alt="" class="flango-nav-logo-icon">flango<span>.</span></a>
-      <ul class="flango-nav-links">
-        <li><a href="/#priser">Priser</a></li>
-        <li><a href="/om-flango/">Om Flango</a></li>
-        <li><a href="/#kontakt">Kontakt</a></li>
-      </ul>
-      <div class="flango-nav-right">
-        <a href="/forældre/" class="flango-nav-portal">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-          Forældreportal
-        </a>
-      </div>
-      <button class="flango-burger" aria-label="Åbn menu" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
-    </div>
-    <div class="flango-mobile-menu" id="flangoMobileMenu" role="dialog" aria-label="Mobilmenu">
-      <a href="/">Forside</a>
-      <a href="/#priser">Priser</a>
-      <a href="/om-flango/">Om Flango</a>
-      <a href="/#kontakt">Kontakt</a>
-      <span class="flango-mobile-section">Log ind</span>
-      <a href="/forældre/">Forældreportal</a>
-      <a href="/app">Café-app (personale)</a>
-    </div>
-  </nav>
+<body>
+  <div class="flango-nav-mount"></div>
   <main class="page">
 
     <section>
       <h1 class="page-title">Privatlivspolitik</h1>
-      <p class="page-intro">Denne side giver et overblik over hvordan Flango behandler personoplysninger i forbindelse med cafédrift, skærmtidsstyring og forældreportal i danske institutioner.</p>
-      <p class="page-meta">Gældende fra 13. juni 2026 · Version 2.1</p>
+      <p class="page-intro">Denne side giver et overblik over hvordan Flango behandler personoplysninger i forbindelse med cafédrift, skærmtidsstyring, ugeplan og forældreportal i danske institutioner.</p>
+      <p class="page-meta">Gældende fra 29. august 2026 · Version 2.4</p>
     </section>
 
     <div class="callout">
-      <strong>Kort version:</strong> Flango behandler kun de oplysninger der er nødvendige for at drive institutionens café og skærmtidsstyring. Alle data opbevares i EU. Vi sælger aldrig data og deler kun med de underbehandlere der er nødvendige for driften. Børn, forældre og personale har fuld ret til indsigt, berigtigelse og sletning.
+      <strong>Kort version:</strong> Flango behandler kun de oplysninger der er nødvendige for at drive institutionens café, skærmtid og ugeplan. Alle data opbevares i EU. Vi sælger aldrig data og deler kun med de underbehandlere der er nødvendige for driften. Børn, forældre og personale har fuld ret til indsigt, berigtigelse og sletning.
     </div>
 
     <hr class="divider" aria-hidden="true" />
@@ -224,14 +197,19 @@
       <h2 class="section-heading">2. Hvilke kategorier af persondata behandler vi</h2>
       <p>Flango er designet til at anvende så få personoplysninger som muligt. På et overordnet niveau behandles:</p>
 
-      <h3>Børn (elever i institutionen)</h3>
-      <p>Identifikationsdata (fornavn, kontonummer, klassetrin), saldo og købshistorik, kostpræferencer og allergener (forældrerapporteret), skærmtidsdata samt gamification-data.</p>
+      <h3>Børn i institutionen</h3>
+      <p>Identifikationsdata (navn, kontonummer, klassetrin), saldo og købshistorik, kostpræferencer og allergener (forældrerapporteret), skærmtidsdata samt gamification-data.</p>
 
       <h3>Forældre</h3>
       <p>Login-oplysninger (e-mail og krypteret kodeord eller valgfrit Google-login), tilknytning til egne børn, betalingshistorik (uden kortdata) og personlige indstillinger.</p>
 
       <h3>Personale</h3>
       <p>Login-oplysninger, rolle, institutions-tilknytning og handlingslog (sporbarhed).</p>
+
+      <h3>Ugeplan</h3>
+      <p>Ugeplanen er et arbejdsredskab for institutionens personale — også som app til iPhone og iPad. Huset har <strong>ét fælles login</strong>: én e-mailadresse og ét kodeord, som personalet deler. Der oprettes ikke en konto pr. medarbejder.</p>
+      <p>Der behandles login-oplysningerne, de <strong>navne på personalet</strong> institutionen selv skriver ind for at vise hvem der står for hvilket værksted, og <strong>ugens plan</strong>: værksteder, aktiviteter, tidspunkter og eventuelle noter. Ved selvbetjent oprettelse behandles desuden den ansvarliges <strong>arbejds-e-mail</strong> (bekræftelse og gendannelse), et valgfrit telefonnummer og et eventuelt samtykketidspunkt for nyhedsmail. Vælger man at få beskeder på en telefon eller tablet, gemmes desuden enhedens <strong>notifikations-id</strong> — et teknisk id fra styresystemets leverandør, som gør det muligt at sende en besked til netop den enhed. Det kan slås fra igen på enheden, og id'et slettes, når man gør det.</p>
+      <p>Planen sendes kun videre, når personalet aktivt vælger det, og kun til de kanaler institutionen selv har slået til — forældreportalen, caféens skærm eller en opslagstavle. <strong>Ugeplanen indeholder ingen oplysninger om børn.</strong></p>
 
       <div class="callout-orange callout">
         <strong>Hvad vi IKKE behandler:</strong> Flango behandler ikke CPR-numre, helbredsoplysninger, religiøs overbevisning, etnisk oprindelse, biometriske data eller andre særligt følsomme personoplysninger (GDPR artikel 9). Allergen-indstillinger er forældrerapporterede præferencer — ikke medicinske data.
@@ -242,7 +220,7 @@
 
     <section class="about-section">
       <h2 class="section-heading">3. Formål og retsgrundlag</h2>
-      <p>Behandlingen sker primært på grundlag af kontrakt og opgave i samfundets interesse (GDPR art. 6(1)(b) og (e)). Forældreportalen omfatter desuden behandling baseret på samtykke (art. 6(1)(a)) hvor det er relevant — fx ved profilbilleder og notifikationer. Allergen- og kostfunktioner kan derudover være baseret på legitim eller vital interesse (art. 6(1)(d) og (f)).</p>
+      <p>Behandlingen sker primært på grundlag af kontrakt og opgave i samfundets interesse (GDPR art. 6(1)(b) og (e)). Forældreportalen omfatter desuden behandling baseret på samtykke (art. 6(1)(a)) hvor det er relevant — fx ved profilbilleder og notifikationer. <strong>Et samtykke kan altid trækkes tilbage</strong> (art. 7, stk. 3); se §7. Allergen- og kostfunktioner kan derudover være baseret på legitim eller vital interesse (art. 6(1)(d) og (f)).</p>
       <p>Den fulde matrice over formål, retsgrundlag og opbevaringsperioder fremgår af databehandleraftalen og den fulde version af privatlivspolitikken.</p>
     </section>
 
@@ -259,7 +237,7 @@
 
     <section class="about-section">
       <h2 class="section-heading">5. Underbehandlere</h2>
-      <p>Et begrænset antal underbehandlere indgår i driften — for hosting/database, betaling, e-mail-levering, valgfrit Google-login og bot-beskyttelse. Alle har:</p>
+      <p>Et begrænset antal underbehandlere indgår i driften — for hosting/database, betaling, e-mail-levering, notifikationer til mobilenheder, valgfrit Google-login og bot-beskyttelse. Alle har:</p>
       <ul>
         <li>Underskrevet databehandleraftale i overensstemmelse med GDPR art. 28</li>
         <li>Primær drift i EU eller EU-godkendte overførselsmekanismer</li>
@@ -275,12 +253,15 @@
       <p>Flango anvender industri-standard sikkerhedsforanstaltninger:</p>
       <ul>
         <li>Kryptering både ved overførsel og i hvile</li>
-        <li>Multifaktor-autentifikation for personalet — login fra en ny browser eller enhed verificeres</li>
+        <li>Multifaktor-autentifikation for personalet i caféen, super-admin og på kommunefladen — login fra en ny browser eller enhed verificeres</li>
         <li>Streng adskillelse af institutionsdata på databaseniveau</li>
         <li>Kodeord og PIN-koder lagres aldrig i klartekst</li>
         <li>Daglige automatiske backups</li>
         <li>Append-only audit-log over alle væsentlige handlinger</li>
       </ul>
+      <p><strong>Ugeplanen har en enklere adgangsmodel.</strong> Huset deler ét login uden multifaktor. Det er et bevidst valg, og det er truffet ud fra hvad ugeplanen indeholder: personalets navne — i praksis fornavne — og ugens plan over værksteder og aktiviteter. Det er indhold, institutionen selv udgiver: til forældrene, på caféens skærm og på opslagstavlen. <strong>Ugeplanen indeholder ingen oplysninger om børn.</strong></p>
+      <p>Adgangen er ikke af den grund ubeskyttet. Kodeord tjekkes mod kendte lækkede kodeord og har et minimumskrav til længde, gentagne loginforsøg begrænses, og institutionernes data er adskilt i databasen — ét login når kun ét hus. De uigenkaldelige handlinger — skift af husets adgangskode, skift af admin-koden og sletning af huset — kræver institutionens admin-kode, som ikke er den samme som logind-koden; det samme gør fuld eksport af husets indhold. Et kodeskifte lukker samtidig alle åbne sessioner, så en medarbejder der stopper kan afskæres. Institutionen kan når som helst hente en fuld kopi af husets indhold og slette huset selv under <em>Indstillinger → Adgang &amp; koder</em> — sletningen fjerner hus, data og alle logins med det samme.</p>
+      <p>Afvejningen gælder det, ugeplanen indeholder i dag. <strong>Kommer den til at rumme oplysninger om enkelte børn, holder den ikke længere</strong>, og adgangsmodellen skal laves om.</p>
       <p>Læs mere på <a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;">Sikkerhed og databeskyttelse</a>.</p>
     </section>
 
@@ -298,11 +279,13 @@
           <tr><td>Begrænsning (art. 18)</td><td>Begrænse behandlingen af dine data.</td></tr>
           <tr><td>Dataportabilitet (art. 20)</td><td>Få udleveret dine data i et maskinlæsbart format.</td></tr>
           <tr><td>Indsigelse (art. 21)</td><td>Gøre indsigelse mod behandling baseret på legitim interesse.</td></tr>
+          <tr><td>Tilbagekaldelse af samtykke (art. 7)</td><td>Trække et samtykke tilbage når som helst — fx til profilbillede eller notifikationer. Det påvirker ikke lovligheden af den behandling, der skete inden tilbagekaldelsen.</td></tr>
+          <tr><td>Klage (art. 77)</td><td>Klage til <a href="https://www.datatilsynet.dk" rel="noopener" target="_blank">Datatilsynet</a>, hvis du mener, at behandlingen af dine oplysninger er i strid med reglerne. Carl Jacobsens Vej 35, 2500 Valby · dt@datatilsynet.dk</td></tr>
         </tbody>
       </table>
 
       <div class="callout-blue callout">
-        <strong>Sådan udøver du dine rettigheder:</strong> Kontakt den institution eller kommune der anvender Flango — de er dataansvarlige. De kan kontakte Flango for teknisk assistance. Du kan også skrive direkte til <a href="mailto:kontakt@flango.dk">kontakt@flango.dk</a>.
+        <strong>Sådan udøver du dine rettigheder:</strong> Kontakt den institution eller kommune der anvender Flango — de er dataansvarlige. De kan kontakte Flango for teknisk assistance. Du kan også skrive direkte til <a href="mailto:kontakt@flango.dk">kontakt@flango.dk</a>. Er du utilfreds med behandlingen, kan du klage til <a href="https://www.datatilsynet.dk" rel="noopener" target="_blank">Datatilsynet</a>.
       </div>
     </section>
 
@@ -311,7 +294,7 @@
     <section class="about-section">
       <h2 class="section-heading">8. Opbevaringsperiode og sletning</h2>
       <p>Persondata opbevares kun så længe formålet kræver det. Inaktive børneprofiler ryddes automatisk op i to trin: profilen <strong>arkiveres</strong> først (skjules fra caféen, men kan gendannes) efter en periode uden aktivitet, som institutionen selv vælger (6, 12 eller 24 måneder), og slettes derefter permanent. Personalet varsles før arkivering, og forældre får besked pr. e-mail før den permanente sletning. Sletning kan altid anmodes før tid.</p>
-      <p>Forældrekonti uden tilknyttede børn slettes automatisk efter en periode med inaktivitet, med varsel pr. e-mail før sletning.</p>
+      <p>Forældrekonti uden tilknyttede børn slettes automatisk efter en periode med inaktivitet, med varsel pr. e-mail før sletning. Vil du selv slette din forælderkonto, kan du gøre det i appen under Profil → Slet konto — se <a href="/slet-konto/">sådan sletter du din konto</a> for hvad der slettes, og hvad der bevares.</p>
       <p>Historiske transaktionsdata kan bevares som anonyme regnskabsdata efter den personhenførbare kobling er fjernet — så institutionen kan opretholde en samlet salgsstatistik og overholde bogføringsloven.</p>
       <p>De konkrete opbevaringsperioder fremgår af databehandleraftalen og den fulde version af privatlivspolitikken.</p>
     </section>
@@ -323,7 +306,7 @@
       <p>Flango behandler primært børns personoplysninger. Vi er særligt opmærksomme på:</p>
       <ul>
         <li>Vi indsamler kun oplysninger der er strengt nødvendige for cafédrift og skærmtidsstyring.</li>
-        <li>Børn identificeres ved fornavn og kontonummer — ikke ved CPR-nummer eller fuldt navn.</li>
+        <li>Børn identificeres som standard ved fornavn og kontonummer — aldrig ved CPR-nummer. Institutionen kan vælge også at bruge efternavn.</li>
         <li>Forældre har fuld indsigt og kontrol via forældreportalen.</li>
         <li>Gamification-data (levels, badges) er baseret på simple tællere — ikke profilering eller automatiseret beslutningstagning.</li>
         <li>Allergen-indstillinger er forældrerapporterede præferencer til fødevaresikkerhed, ikke medicinske diagnoser.</li>
@@ -374,7 +357,7 @@
       <ul>
         <li><a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>Sikkerhed</strong></a> — overblik over kryptering, adgangskontrol og infrastruktur</li>
       </ul>
-      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 13. juni 2026 · Version 2.1</p>
+      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 29. august 2026 · Version 2.4</p>
     </section>
 
     <footer>
