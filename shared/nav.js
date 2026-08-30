@@ -15,9 +15,9 @@
   var LINKS = [
     { href: '/',               label: 'Forside' },
     { href: '/om-cafe/',       label: 'Café' },
-    { href: '/om-skaermtid/',  label: 'Skærmtid' },
+    { href: '/om-skærmtid/',   label: 'Skærmtid' },
     { href: '/ugeplan/',       label: 'Ugeplan' },
-    { href: '/til-foraeldre/', label: 'Forældreportal' },
+    { href: '/om-forældre/',   label: 'Forældreportal' },
     { href: '/ugeplan/faellesskabet', label: 'Fællesskabet' }
   ];
 
@@ -26,11 +26,11 @@
    * rigtigt svar, så knappen siger eksplicit hvor den fører hen. */
   var LOGINS = {
     '/om-cafe/':       { href: '/cafe',             label: 'Log ind' },
-    '/om-skaermtid/':  { href: '/skaermtid/',       label: 'Log ind' },
+    '/om-skærmtid/':   { href: '/skærmtid/',        label: 'Log ind' },
     // Længere match end '/ugeplan/', så fællesskabets egen indgang vinder på den sti.
     '/ugeplan/faellesskabet': { href: '/ugeplan/faellesskabet/deltag', label: 'Log ind' },
     '/ugeplan/':       { href: '/ugeplan/log-ind',  label: 'Log ind' },
-    '/til-foraeldre/': { href: '/forældre/',        label: 'Log ind' }
+    '/om-forældre/':   { href: '/forældre/',        label: 'Log ind' }
   };
   var LOGIN_STANDARD = { href: '/forældre/', label: 'Forældre login' };
 
@@ -98,7 +98,7 @@
           mobile +
           '<span class="flango-mobile-section">Log ind</span>' +
           '<a href="/forældre/">Forældreportal</a>' +
-          '<a href="/skaermtid/">Skærmtid (personale)</a>' +
+          '<a href="/skærmtid/">Skærmtid (personale)</a>' +
           '<a href="/ugeplan/log-ind">Ugeplan (personale)</a>' +
           '<a href="/ugeplan/faellesskabet/deltag">Fællesskabet</a>' +
           '<a href="/cafe">Café-app (personale)</a>' +
