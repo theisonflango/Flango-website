@@ -29,7 +29,7 @@
     '/om-skærmtid/':   { href: '/skærmtid/',        label: 'Log ind' },
     // Længere match end '/ugeplan/', så fællesskabets egen indgang vinder på den sti.
     '/ugeplan/faellesskabet': { href: '/ugeplan/faellesskabet/deltag', label: 'Log ind' },
-    '/ugeplan/':       { href: '/ugeplan/log-ind',  label: 'Log ind' },
+    '/ugeplan/':       { href: '/ugeplan/login',  label: 'Log ind' },
     '/om-forældre/':   { href: '/forældre/',        label: 'Log ind' }
   };
   var LOGIN_STANDARD = { href: '/forældre/', label: 'Forældre login' };
@@ -99,7 +99,7 @@
           '<span class="flango-mobile-section">Log ind</span>' +
           '<a href="/forældre/">Forældreportal</a>' +
           '<a href="/skærmtid/">Skærmtid (personale)</a>' +
-          '<a href="/ugeplan/log-ind">Ugeplan (personale)</a>' +
+          '<a href="/ugeplan/login">Ugeplan (personale)</a>' +
           '<a href="/ugeplan/faellesskabet/deltag">Fællesskabet</a>' +
           '<a href="/cafe">Café-app (personale)</a>' +
         '</div>' +
