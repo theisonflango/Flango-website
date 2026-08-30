@@ -1,0 +1,1 @@
+document.addEventListener("wheel",e=>{e.ctrlKey&&e.preventDefault()},{passive:!1});document.addEventListener("gesturestart",e=>{e.preventDefault()});document.addEventListener("gesturechange",e=>{e.preventDefault()});document.addEventListener("gestureend",e=>{e.preventDefault()});

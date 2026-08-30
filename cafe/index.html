@@ -384,18 +384,17 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/cafe/assets/main-BUE1nUMA.js"></script>
-  <link rel="modulepreload" crossorigin href="/cafe/assets/platform-CTI6xEjg.js">
-  <link rel="modulepreload" crossorigin href="/cafe/assets/cafe-client-compatibility-BI2ciM9R.js">
-  <link rel="stylesheet" crossorigin href="/cafe/assets/main-C5mZjSev.css">
+  <script type="module" crossorigin src="/cafe/assets/main-DDfuDY-Q.js"></script>
+  <link rel="modulepreload" crossorigin href="/cafe/assets/platform-D_FNypic.js">
+  <link rel="modulepreload" crossorigin href="/cafe/assets/cafe-client-compatibility-DGMENlDC.js">
+  <link rel="stylesheet" crossorigin href="/cafe/assets/main-CW0jOrpm.css">
 </head>
 <body>
 
     <!-- State 1: Fuldt login (email + kodeord) — ny enhed eller ingen registrerede admins -->
     <div id="screen-full-login" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
-        <div class="lock-icon">🔒</div>
-        <h1>Log ind med e-mail</h1>
+        <h1><span class="inline-icon">🔒</span> Log ind med e-mail</h1>
         <p id="full-login-notice" class="login-notice"></p>
         <form id="form-full-login" onsubmit="return false;" autocomplete="on">
             <label for="login-email-input">E-mail</label>
@@ -419,8 +418,7 @@
     <!-- State 2: Admin-picker + PIN (hurtig unlock — enhed har registrerede admins) -->
     <div id="screen-device-unlock" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
-        <div class="lock-icon">🔑</div>
-        <h1>Vælg din profil</h1>
+        <h1><span class="inline-icon">🔑</span> Vælg din profil</h1>
         <p id="device-unlock-notice" class="login-notice"></p>
         <form id="form-device-unlock" onsubmit="return false;" autocomplete="off">
             <label for="device-admin-select">Hvem er du?</label>
@@ -439,9 +437,8 @@
     <!-- State 3: Husk enhed modal (efter fuldt login) -->
     <div id="screen-remember-device" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
-        <div class="lock-icon">📱</div>
         <p id="remember-device-notice" class="login-success"></p>
-        <h1>Vil du huske denne enhed?</h1>
+        <h1><span class="inline-icon">📱</span> Vil du huske denne enhed?</h1>
         <p class="login-subtitle">Du kan fremover logge ind med en hurtig 4-cifret PIN-kode.</p>
         <form id="form-remember-device" onsubmit="return false;" autocomplete="off">
             <label for="remember-pin-input">Vælg PIN-kode</label>
@@ -459,8 +456,7 @@
     <!-- State 4: PIN locked (3 fejlede forsøg — kræver fuldt login) -->
     <div id="screen-pin-locked" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
-        <div class="lock-icon">🚫</div>
-        <h1>For mange forsøg</h1>
+        <h1><span class="inline-icon">🚫</span> For mange forsøg</h1>
         <p id="pin-locked-message" class="login-subtitle"></p>
         <form id="form-locked-login" onsubmit="return false;" autocomplete="on">
             <label for="locked-email-input">E-mail</label>
@@ -473,12 +469,10 @@
             <p id="locked-login-error" class="login-error"></p>
         </form>
     </div>
-
     <!-- Tvunget kodeordsskift (efter login med svagt kodeord) -->
     <div id="screen-force-password" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
-        <div class="lock-icon">🔐</div>
-        <h1>Skift din adgangskode</h1>
+        <h1><span class="inline-icon">🔐</span> Skift din adgangskode</h1>
         <p class="login-subtitle">Din adgangskode skal opdateres. Vælg en ny adgangskode med mindst 10 tegn (bogstaver + tal).</p>
         <form id="form-force-password" onsubmit="return false;" autocomplete="off">
             <label for="force-pw-new">Ny adgangskode</label>
@@ -494,8 +488,7 @@
     <!-- Adgang: bed om adgang på denne enhed (for den uden authenticator) -->
     <div id="screen-device-request" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
-        <div class="lock-icon">🔑</div>
-        <h1 id="device-request-greeting">Hej.</h1>
+        <h1><span class="inline-icon">🔑</span> <span id="device-request-greeting">Hej.</span></h1>
         <p class="login-subtitle fit-one-line" id="device-request-status">Din konto er ikke bekræftet på denne enhed eller browser endnu.</p>
         <p class="login-subtitle" id="device-request-how">Tryk på “Send kode” for at sende din bekræftelseskode til <strong id="device-request-contact">din kontaktperson</strong>.</p>
         <button id="device-request-btn">Send kode</button>
@@ -513,8 +506,7 @@
     <!-- Tilstand 2: Admin er logget ind (Kontrolrum) -->
     <div id="screen-admin-login" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
-        <div class="lock-icon">🔓</div>
-        <h1 id="admin-welcome-text"></h1>
+        <h1><span class="inline-icon">🔓</span> <span id="admin-welcome-text"></span></h1>
         <div id="device-expiry-notice" style="display:none;margin:0 0 14px;padding:12px 16px;border-radius:10px;background:rgba(244,162,97,0.12);border:1px solid rgba(244,162,97,0.3);color:#2d2a25;font-size:14px;line-height:1.5;text-align:left">
             <span id="device-expiry-text"></span>
             <button type="button" id="device-renew-btn" style="margin-top:10px;width:100%;padding:10px;font-size:14px">Forny nu</button>
@@ -529,6 +521,10 @@
     <!-- Tilstand 3: Café-UI (eksisterende app) -->
     <div id="main-app" class="screen-hidden">
         <div class="sidebar-main-header">
+            <div class="mobile-pos-brand" aria-hidden="true">
+                <img src="Icons/webp/Assets/FlangoFruitLogo.webp" alt="">
+                <span>Café</span>
+            </div>
             <button id="restaurant-mode-badge" style="display:none; border:none; cursor:pointer; background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-size:12px; font-weight:700; padding:6px 14px; border-radius:20px; white-space:nowrap;" title="Restaurant Mode indstillinger">🍽️ Restaurant Mode er aktiv!</button>
             <div class="header-actions">
                 <button id="logged-in-user-avatar-container" class="header-action-btn" title="Min Flango"></button>
@@ -548,6 +544,19 @@
                 <button id="toolbar-gear-btn" class="header-action-btn" title="Indstillinger"><img src="Icons/webp/Function/Gear2.webp" alt="Indstillinger"></button>
                 <button id="logout-btn" class="header-action-btn" title="Log ud"><svg viewBox="0 0 16 16" fill="none" stroke="#e85a6f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Log ud"><path d="M9.5 14H4.5a1.5 1.5 0 01-1.5-1.5v-9A1.5 1.5 0 014.5 2h5"/><path d="M7 8h7M12 5.5L14.5 8 12 10.5"/></svg></button>
                 <button id="flango-logo-button" class="header-action-btn" title="Hjælp"><img src="Icons/webp/Assets/FlangoFruitLogo.webp" alt="Flango Logo"></button>
+                <button id="mobile-header-overflow-btn" class="mobile-header-overflow-btn" type="button" aria-label="Flere handlinger" aria-expanded="false" aria-controls="mobile-header-overflow-menu">
+                    <i class="ph ph-dots-three-vertical" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div id="mobile-header-overflow-menu" class="mobile-header-overflow-menu" hidden>
+                <button type="button" data-mobile-action-target="toolbar-history-btn"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i><span>Historik</span></button>
+                <button type="button" data-mobile-action-target="calculator-mode-toggle"><i class="ph ph-calculator" aria-hidden="true"></i><span>Lommeregner</span></button>
+                <button type="button" data-mobile-action-target="toolbar-products-btn"><i class="ph ph-squares-four" aria-hidden="true"></i><span>Produktoversigt</span></button>
+                <button type="button" data-mobile-action-target="toolbar-new-product-btn"><i class="ph ph-plus-square" aria-hidden="true"></i><span>Nyt produkt</span></button>
+                <button type="button" data-mobile-action-target="toolbar-user-panel-btn"><i class="ph ph-users" aria-hidden="true"></i><span>Brugere</span></button>
+                <button type="button" data-mobile-action-target="toolbar-ugeplan-btn"><i class="ph ph-calendar-blank" aria-hidden="true"></i><span>Ugeplan</span></button>
+                <button type="button" data-mobile-action-target="toolbar-gear-btn"><i class="ph ph-gear" aria-hidden="true"></i><span>Indstillinger</span></button>
+                <button type="button" data-mobile-action-target="logout-btn"><i class="ph ph-sign-out" aria-hidden="true"></i><span>Log ud</span></button>
             </div>
         </div>
         <div id="user-session-banner" class="user-session-banner">
@@ -558,6 +567,9 @@
             <div id="cafe-event-strip"></div>
             <div id="product-reorder-hint" class="product-reorder-hint">
                 Træk produkterne for at ændre rækkefølgen.
+            </div>
+            <div id="customer-rules-status" class="customer-rules-status" role="status" aria-live="polite" hidden>
+                Henter kundens købsregler…
             </div>
             <div id="products"></div> <!-- Vare-knapperne vises her -->
         </div>
@@ -641,15 +653,14 @@
         <div id="sidebar">
             <div id="toolbar-gear-menu" class="toolbar-gear-menu" style="display:none;"></div>
             <div class="sidebar-header">
-                <h2>Indkøbskurv</h2>
+                <h2><span class="sidebar-title-full">Indkøbskurv</span><span class="sidebar-title-mobile">Kurv</span></h2>
                 <img src="Icons/webp/Function/Kurv.webp" alt="Indkøbskurv" class="sidebar-header-icon">
             </div>
             <div id="current-order">
                 <ul id="order-list"></ul>
             </div>
-            <div id="cart-scroll-hint" class="cart-scroll-hint" hidden aria-hidden="true">
-                <span>Flere varer</span>
-                <i class="ph ph-caret-down" aria-hidden="true"></i>
+            <div id="cart-scrollbar" class="cart-scrollbar" hidden aria-hidden="true">
+                <span class="cart-scrollbar-thumb"></span>
             </div>
 
             <!-- Selected User Info Box - Shows selected customer details -->
@@ -977,6 +988,26 @@
     <div id="sugar-policy-modal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 100vw; width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; margin: 0; display: flex; flex-direction: column;">
             <div class="modal-header product-overview-header" style="flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding-top: 15px;">
+                <div class="product-overview-mobile-topbar">
+                    <h2>Produktoversigt</h2>
+                    <div class="product-overview-mobile-actions" aria-label="Handlinger for produktoversigten">
+                        <button type="button" id="product-overview-mobile-save" class="product-overview-mobile-icon-btn is-save" aria-label="Gem ændringer" title="Gem ændringer">
+                            <i class="ph ph-check" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" id="product-overview-mobile-create" class="product-overview-mobile-icon-btn is-create" aria-label="Opret nyt produkt" title="Opret nyt produkt">
+                            <i class="ph ph-plus" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" id="product-overview-mobile-filter" class="product-overview-mobile-icon-btn is-filter" aria-label="Filtrer og sortér" title="Filtrer og sortér" aria-expanded="false" aria-controls="product-overview-mobile-filter-menu">
+                            <i class="ph ph-sliders-horizontal" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" id="product-overview-mobile-close" class="product-overview-mobile-icon-btn is-close" aria-label="Luk produktoversigten" title="Luk produktoversigten">
+                            <i class="ph ph-x" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" id="product-overview-mobile-more" class="product-overview-mobile-icon-btn is-more" aria-label="Flere handlinger" title="Flere handlinger" aria-expanded="false" aria-controls="product-overview-mobile-more-menu">
+                            <i class="ph ph-dots-three" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
                 <button id="back-to-preferences-sugar-policy-btn" class="product-overview-back" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 15px; white-space: nowrap;"><i class="ph ph-arrow-left" aria-hidden="true"></i> Tilbage</button>
                 <div class="product-overview-search" style="position: relative; width: 280px; flex-shrink: 0; margin: -4px 0;">
                     <i class="ph ph-magnifying-glass" aria-hidden="true" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 17px; color: #777; pointer-events: none;"></i>
@@ -998,12 +1029,37 @@
                 <h2 class="product-overview-title" style="margin: 0; flex: 1; text-align: center;">Produktoversigt <span id="product-overview-subtitle" style="font-size: 14px; font-weight: 500; color: var(--text-secondary, #888);"></span></h2>
                 <button id="add-product-from-rules-btn" class="product-overview-create" style="padding: 14px 32px; background: #2196F3; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 16px; white-space: nowrap; margin: -6px 0;">+ Nyt produkt</button>
                 <span class="close-btn">&times;</span>
+                <div id="product-overview-mobile-filter-menu" class="product-overview-mobile-popover product-overview-mobile-filter-menu" hidden>
+                    <label for="product-rules-mobile-sort-control">
+                        <span>Sortér efter</span>
+                        <select id="product-rules-mobile-sort-control" aria-label="Sortér produktoversigten på mobil">
+                            <option value="in_assortment:desc">Sortiment først</option>
+                            <option value="name:asc">Navn A–Å</option>
+                            <option value="name:desc">Navn Å–A</option>
+                            <option value="price:asc">Laveste pris</option>
+                            <option value="price:desc">Højeste pris</option>
+                            <option value="limit:asc">Laveste grænse</option>
+                            <option value="created_at:desc">Nyeste først</option>
+                        </select>
+                    </label>
+                    <button type="button" id="product-overview-mobile-inactive" class="product-overview-mobile-menu-row" role="switch" aria-checked="false">
+                        <span>Vis deaktiverede</span>
+                        <i class="ph ph-eye" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <div id="product-overview-mobile-more-menu" class="product-overview-mobile-popover product-overview-mobile-more-menu" hidden>
+                    <button type="button" id="product-overview-mobile-icons" class="product-overview-mobile-menu-row">
+                        <span>Ikonbibliotek</span>
+                        <i class="ph ph-images" aria-hidden="true"></i>
+                    </button>
+                </div>
             </div>
             <div class="modal-user-list" style="padding: 0 15px; flex: 1; overflow: hidden; display: flex; flex-direction: column;">
                 <!-- Product Rules Table -->
                 <div class="settings-section" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; margin: 0; padding: 0;">
                     <div class="product-rules-scroll-hint">Stryg sidelæns for at se alle felter →</div>
                     <div id="product-rules-table-container" style="overflow-x: auto; flex: 1; overflow-y: auto;">
+                        <div id="product-rules-mobile-layout" class="product-rules-mobile-layout" hidden></div>
                         <div id="product-rules-ipad-layout" class="product-rules-ipad-layout" hidden></div>
                         <table id="product-rules-table" class="product-rules-table" style="width: 100%; border-collapse: collapse;">
                             <thead style="position: sticky; top: 0; z-index: 10;">
