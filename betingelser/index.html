@@ -1,203 +1,25 @@
 <!DOCTYPE html>
+<!-- Viderestilling. Ugeplanens betingelser boede her 29.-31. aug 2026, men hvert
+     Flango-produkt har sine egne politik-sider: ugeplanens bor under /ugeplan/
+     (kilden er apps/ugeplan/next/public/betingelser/ og deployes med appen).
+     Café og skærmtid kører på skriftlige aftaler med kommunen og har ingen
+     selvbetjenings-betingelser — får de det en dag, kan denne side genbruges. -->
 <html lang="da">
 <head>
   <meta charset="UTF-8" />
   <title>Betingelser – Flango</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Betingelser for selvbetjent brug af Flango Ugeplan – aftalen, jeres data, databehandlervilkår, e-mails, ansvar og ophør." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/shared/nav.css" />
+  <meta name="robots" content="noindex" />
+  <meta http-equiv="refresh" content="0; url=/ugeplan/betingelser/" />
+  <link rel="canonical" href="https://flango.dk/ugeplan/betingelser/" />
   <style>
-    :root {
-      --bg: #f5f5fb;
-      --bg-soft: #ffffff;
-      --accent: #ff7a3c;
-      --accent-dark: #e0521f;
-      --text-main: #111827;
-      --text-muted: #4b5563;
-      --border-soft: #e5e7eb;
-      --radius-lg: 18px;
-      --green: #059669;
-      --blue: #2563eb;
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body { margin: 0; font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: radial-gradient(circle at top, #ffe8d6 0, #f5f5fb 38%, #f9fafb 100%); color: var(--text-main); }
-    a { color: inherit; text-decoration: none; }
-    .page { min-height: 100vh; max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 36px; }
-
-    .page-title { margin: 0; font-size: clamp(24px,4vw,30px); font-family: 'Baloo 2', cursive; }
-    .page-intro { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); max-width: 65ch; line-height: 1.55; }
-    .page-meta { font-size: 13px; color: #9ca3af; margin: 4px 0 0; }
-    .section-heading { margin: 0 0 16px; font-size: 20px; font-family: 'Baloo 2', cursive; }
-    .about-section { max-width: 65ch; }
-    .about-section p { margin: 0 0 12px; font-size: 15px; color: var(--text-muted); line-height: 1.55; }
-    .about-section p:last-child { margin-bottom: 0; }
-    .about-section ul { margin: 12px 0 0; padding-left: 1.25em; font-size: 15px; color: var(--text-muted); line-height: 1.55; list-style: none; }
-    .about-section li { margin-bottom: 8px; position: relative; padding-left: 4px; }
-    .about-section li::before { content: ''; position: absolute; left: -16px; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-    .about-section strong { color: var(--text-main); }
-
-    .rights-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
-    .rights-table th { text-align: left; padding: 10px 14px; background: #111827; color: #fff; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
-    .rights-table th:first-child { border-radius: 8px 0 0 0; }
-    .rights-table th:last-child { border-radius: 0 8px 0 0; }
-    .rights-table td { padding: 10px 14px; border-bottom: 1px solid var(--border-soft); vertical-align: top; color: var(--text-muted); }
-    .rights-table tr:nth-child(even) td { background: #fafafa; }
-    .rights-table td:first-child { font-weight: 700; color: var(--text-main); white-space: nowrap; }
-
-    .callout { background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border-left: 4px solid var(--green); border-radius: 0 10px 10px 0; padding: 16px 20px; margin: 8px 0; font-size: 14px; color: var(--text-muted); line-height: 1.55; }
-    .callout strong { color: var(--text-main); }
-    .callout a { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
-    .callout-orange { background: linear-gradient(135deg, #fffbeb 0%, #fef9e7 100%); border-left-color: var(--accent); }
-
-    .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
-    @media (max-width: 500px) { .role-grid { grid-template-columns: 1fr; } }
-    .role-card { background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: 12px; padding: 20px; }
-    .role-card .role-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px; }
-    .role-card .role-name { font-size: 17px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
-    .role-card .role-detail { font-size: 13px; color: var(--text-muted); line-height: 1.45; }
-
-    .contact-box { background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: 12px; padding: 20px 24px; margin: 16px 0; }
-    .contact-box p { margin: 0 0 4px; font-size: 14px; color: var(--text-muted); }
-    .contact-box strong { color: var(--text-main); }
-    .contact-box a { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
-
-    footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-soft); font-size: 12px; color: #9ca3af; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-    footer a { color: #9ca3af; text-decoration: underline; text-underline-offset: 3px; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: radial-gradient(circle at top, #ffe8d6 0, #f5f5fb 38%, #f9fafb 100%); color: #111827; }
+    p { font-size: 15px; padding: 0 16px; text-align: center; line-height: 1.6; }
+    a { color: #2563eb; text-decoration: underline; text-underline-offset: 3px; }
   </style>
 </head>
 <body>
-  <div class="flango-nav-mount"></div>
-  <main class="page">
-
-    <section>
-      <h1 class="page-title">Betingelser</h1>
-      <p class="page-intro">Betingelserne gælder, når en institution selv opretter sig og bruger <strong>Flango Ugeplan</strong> på flango.dk/ugeplan. Har institutionen (eller dens kommune) en særskilt skriftlig aftale med Theison — for eksempel en databehandleraftale for flere Flango-moduler — går den aftale forud.</p>
-      <p class="page-meta">Gældende fra 29. august 2026 · Version 1.0</p>
-    </section>
-
-    <div class="callout">
-      <strong>Kort version:</strong> Ugeplanen er gratis at bruge — uden slutdato og uden prøveperiode. Institutionen ejer sine data; Flango behandler dem kun for at levere værktøjet, og alt ligger i EU. I kan hente en fuld kopi og slette huset selv, når som helst. Vi sender kun nyheds-e-mail, hvis I selv har sagt ja.
-    </div>
-
-    <section class="about-section">
-      <h2 class="section-heading">1. Aftalen og parterne</h2>
-      <p>Aftalen indgås mellem institutionen og <strong>Theison</strong>, CVR-nr. 34360642, Kokkedal ("Flango"). Den, der opretter huset, bekræfter at handle på institutionens vegne. Aftalen gælder fra oprettelsen, og indtil huset slettes.</p>
-    </section>
-
-    <section class="about-section">
-      <h2 class="section-heading">2. Det, I får</h2>
-      <p>Flango Ugeplan er et værktøj til at planlægge ugens værksteder og dele planen med forældre og opslagstavle. Det er <strong>gratis — uden slutdato og uden prøveperiode</strong>. Værktøjet udvikles løbende og leveres, som det er og forefindes; vi tilstræber stabil drift, men garanterer ikke en bestemt oppetid.</p>
-      <p>Skulle Flango en dag ophøre med at udbyde Ugeplanen, varsler vi mindst 90 dage i forvejen, og eksporten (punkt 5) står åben i hele varslet.</p>
-    </section>
-
-    <section class="about-section">
-      <h2 class="section-heading">3. Kontoen og koderne</h2>
-      <p>Huset har ét fælles login, som personalet deler, og en særskilt <strong>admin-kode</strong>, der kræves ved de uigenkaldelige handlinger: skift af husets adgangskode, skift af admin-koden, fuld eksport og sletning af huset. Institutionen vælger selv begge koder og er ansvarlig for at opbevare dem forsvarligt og for al aktivitet på husets login. Et kodeskifte lukker alle åbne sessioner, så en medarbejder, der stopper, kan afskæres.</p>
-      <p>Glemte koder gendannes med et engangslink til husets bekræftede e-mailadresse — hold den derfor opdateret under <em>Indstillinger → Adgang &amp; koder</em>, fx når den ansvarlige skifter job.</p>
-    </section>
-
-    <section class="about-section">
-      <h2 class="section-heading">4. Jeres data — rollerne</h2>
-      <div class="role-grid">
-        <div class="role-card">
-          <div class="role-label">Dataansvarlig</div>
-          <div class="role-name">Institutionen</div>
-          <div class="role-detail">Ejer husets oplysninger og bestemmer formålet: at planlægge og dele ugens aktiviteter.</div>
-        </div>
-        <div class="role-card">
-          <div class="role-label">Databehandler</div>
-          <div class="role-name">Theison (Flango)</div>
-          <div class="role-detail">Behandler kun oplysningerne for at levere Ugeplanen — efter instruksen i punkt 5.</div>
-        </div>
-      </div>
-      <p>Ugeplanen indeholder <strong>ingen børne- eller forældredata</strong>. Den behandler personalenavne, værkstedstilknytninger og aktivitetstekster — og ved oprettelsen den ansvarliges arbejds-e-mail, et valgfrit telefonnummer og et eventuelt samtykketidspunkt for nyhedsmail.</p>
-    </section>
-
-    <section class="about-section">
-      <h2 class="section-heading">5. Databehandlervilkår</h2>
-      <p>Dette punkt udgør parternes databehandleraftale efter databeskyttelsesforordningens artikel 28 for selvbetjent brug af Ugeplanen.</p>
-      <ul>
-        <li><strong>Instruks.</strong> Flango behandler kun oplysningerne for at levere, drifte, fejlrette og sikre Ugeplanen — og efter institutionens dokumenterede instruks, som disse betingelser og husets egne valg i værktøjet udgør. Vi bruger aldrig oplysningerne til egne formål og sælger dem aldrig.</li>
-        <li><strong>Fortrolighed.</strong> Personer, der er autoriseret til at behandle oplysningerne, er underlagt fortrolighed.</li>
-        <li><strong>Sikkerhed.</strong> Kryptering under transport og i hvile, adgangsstyring på række-niveau i databasen, hashede koder og løbende sikkerhedskopiering. Overblik: <a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;">flango.dk/sikkerhed</a>.</li>
-        <li><strong>Under-databehandlere.</strong> Se tabellen nedenfor. Skifter eller tilføjer vi en under-databehandler, varsler vi pr. e-mail til husets bekræftede adresse, inden ændringen får virkning; gør institutionen indsigelse, kan huset eksporteres og slettes, inden ændringen træder i kraft.</li>
-        <li><strong>Brud.</strong> Bliver vi bekendt med et brud på persondatasikkerheden, der vedrører husets oplysninger, underretter vi den bekræftede e-mailadresse uden unødig forsinkelse.</li>
-        <li><strong>Bistand.</strong> Indsigt, berigtigelse, eksport og sletning er selvbetjening i værktøjet; derudover yder vi rimelig bistand til institutionens forpligtelser efter artikel 32-36.</li>
-        <li><strong>Tilbagelevering og sletning.</strong> Under <em>Indstillinger → Adgang &amp; koder</em> kan institutionen når som helst hente en fuld kopi af husets indhold (eksport) og slette huset. Sletning fjerner huset, alle data og alle logins med det samme; kopier i krypterede, tekniske sikkerhedskopier udfases derefter automatisk i et tidsbegrænset retention-vindue (se <a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;">flango.dk/sikkerhed</a>).</li>
-        <li><strong>Overførsler.</strong> Al primær behandling sker i EU. Der overføres ikke personoplysninger til tredjelande som led i Ugeplanens drift; robot-tjekkets tekniske trafik besvares af Cloudflares europæiske datacentre for brugere i EU.</li>
-        <li><strong>Dokumentation.</strong> Institutionen kan skrive til os for den dokumentation, der er rimeligt nødvendig for at påvise, at forpligtelserne her overholdes.</li>
-      </ul>
-
-      <table class="rights-table">
-        <tr><th>Under-databehandler</th><th>Behandling</th><th>Hvor</th></tr>
-        <tr><td>Supabase</td><td>Database, login og drift af Ugeplanen (hostet hos AWS)</td><td>EU — Irland (eu-west-1)</td></tr>
-        <tr><td>Mailjet (Sinch)</td><td>Bekræftelses-, gendannelses- og driftsmails</td><td>EU</td></tr>
-        <tr><td>Cloudflare</td><td>Robot-tjek (Turnstile) ved oprettelse — ser IP-adresse og browser-signaler, ingen kontooplysninger</td><td>Globalt edge-netværk — brugere i EU besvares i EU</td></tr>
-      </table>
-    </section>
-
-    <section class="about-section">
-      <h2 class="section-heading">6. E-mails fra os</h2>
-      <p><strong>Driftsbeskeder er ikke reklame.</strong> Beskeder om nedbrud, sikkerhed, brud og ændringer af disse betingelser sender vi altid til husets bekræftede adresse — de kan ikke fravælges, for det er beskeder, huset har brug for.</p>
-      <p><strong>Nyheds-e-mail kræver samtykke.</strong> E-mail om nye funktioner og Flangos øvrige moduler sender vi kun, hvis der er sagt ja ved oprettelsen eller senere. Samtykket er frivilligt, betinger ikke brugen af Ugeplanen og kan altid trækkes tilbage via linket i mailen eller ved at skrive til os.</p>
-    </section>
-
-    <section class="about-section">
-      <h2 class="section-heading">7. Acceptabel brug</h2>
-      <p>Ugeplanen må bruges til institutionens egen planlægning og deling. Den må ikke bruges til at behandle oplysninger om børn eller forældre, til at krænke andres rettigheder eller til forsøg på at omgå sikkerheden. Ved misbrug kan vi suspendere eller lukke huset; medmindre hensynet til sikkerheden forhindrer det, varsler vi først, så indholdet kan eksporteres.</p>
-    </section>
-
-    <section class="about-section">
-      <h2 class="section-heading">8. Ansvar</h2>
-      <p>Ugeplanen stilles gratis til rådighed. Flango er ansvarlig efter dansk rets almindelige regler, men hæfter ikke for indirekte tab og driftstab. For tab af data gælder, at institutionen til enhver tid selv kan tage en fuld kopi med eksporten — hold den ved lige, hvis planerne er vigtige for jer. Intet i dette punkt begrænser ansvar, der ikke gyldigt kan fraskrives.</p>
-    </section>
-
-    <section class="about-section">
-      <h2 class="section-heading">9. Ændringer og ophør</h2>
-      <p>Vi kan ændre betingelserne med 30 dages varsel pr. e-mail til husets bekræftede adresse; fortsat brug efter varslet er accept. Institutionen kan til enhver tid opsige aftalen ved at slette huset — hent eventuelt eksporten først. Begge dele er selvbetjening og kræver admin-koden.</p>
-    </section>
-
-    <section class="about-section">
-      <h2 class="section-heading">10. Lovvalg</h2>
-      <p>Aftalen er underlagt dansk ret. Tvister afgøres ved de danske domstole.</p>
-    </section>
-
-    <section class="about-section">
-      <h2 class="section-heading">Kontakt</h2>
-      <div class="contact-box">
-        <p><strong>Theison</strong> · CVR 34360642 · Kokkedal</p>
-        <p>E-mail: <a href="mailto:kontakt@flango.dk">kontakt@flango.dk</a></p>
-      </div>
-    </section>
-
-    <section class="about-section">
-      <h2 class="section-heading">Relaterede sider</h2>
-      <ul>
-        <li><a href="/privatlivspolitik/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>Privatlivspolitik</strong></a> — kategorier af persondata, formål, opbevaring og rettigheder</li>
-        <li><a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>Sikkerhed</strong></a> — kryptering, adgangskontrol og infrastruktur</li>
-        <li><a href="/gdpr/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>GDPR og databeskyttelse</strong></a> — roller og ansvar på tværs af Flango</li>
-      </ul>
-      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 29. august 2026 · Version 1.0</p>
-    </section>
-
-    <footer>
-      <div>© <span id="year"></span> Flango</div>
-      <div>
-        <a href="/om-ugeplan/">Ugeplan</a> ·
-        <a href="/om-flango/">Om Flango</a> ·
-        <a href="/sikkerhed/">Sikkerhed</a> ·
-        <a href="/privatlivspolitik/">Privatlivspolitik</a> ·
-        <a href="/#kontakt">Kontakt</a>
-      </div>
-    </footer>
-  </main>
-  <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
-  </script>
-  <script src="/shared/nav.js"></script>
+  <p>Betingelserne for Flango Ugeplan er flyttet til<br /><a href="/ugeplan/betingelser/">flango.dk/ugeplan/betingelser</a> — du sendes derhen nu.</p>
+  <script>location.replace('/ugeplan/betingelser/');</script>
 </body>
 </html>
