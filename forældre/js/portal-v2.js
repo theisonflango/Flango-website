@@ -96,6 +96,18 @@
   // spærret SERVER-side (create-topup / vipps-create-payment / create-event-payment
   // afviser is_demo=true — UI-skjul alene er ikke nok).
   const DEMO_EMAIL = 'demo@flango.dk';
+
+  /**
+   * library/icon-billeder er café-appens egne filer, og databasen gemmer stien
+   * app-relativt ('Icons/webp/...'). Uden en basis opløses den mod /forældre/ og
+   * rammer 404. Basen står KUN her — den flyttede fra /app/ til /cafe/ 29-08-2026,
+   * og to kopier ville betyde at kun den ene blev rettet.
+   */
+  function cafeBilledeUrl(sti) {
+    if (!sti || sti.startsWith('http')) return sti;
+    const lokal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    return (lokal ? 'http://127.0.0.1:3000/' : 'https://flango.dk/cafe/') + sti;
+  }
   const DEMO_PASSWORD = 'FlangoDemo2026';
   function isDemo() { return featureFlags?.is_demo === true; }
   // Blokér handlinger der ikke giver mening / har rigtige bivirkninger i demoen
@@ -624,7 +636,13 @@
       // backend-svar ikke sender visible_sections).
       visibleSections = childData?.visible_sections || {};
 
-      screentimeData = (featureFlags.skaermtid_enabled === true) ? screentime : null;
+      // Slice 1: institutionsflaget er kun UI-konfiguration. Selve readet er
+      // først godkendt, når serveradapteren har verificeret parent grant,
+      // produktret, Portal-kapabilitet og barnets Skærmtidsmedlemskab.
+      screentimeData = (
+        featureFlags.skaermtid_enabled === true &&
+        screentime?.enabled === true
+      ) ? screentime : null;
 
       // Snapshot til næste koldstart (kun native; api'et krypterer og ejer nøglen).
       // Admin-flows gemmes aldrig — de er ikke forælderens egne data.
@@ -1730,7 +1748,7 @@
     // Determine which sections are visible based on feature flags
     // parent_portal_events = portal-flag (cafe_events_enabled er for POS-viewet i café-appen)
     const showEvents = secOn('events');
-    const showScreentime = featureFlags.skaermtid_enabled === true || isAdminPreview();
+    const showScreentime = screentimeData?.enabled === true || isAdminPreview();
     // Ugeplan vises kun når institutionen aktivt har slået den til (default fra).
     const showUgeplan = featureFlags.parent_portal_ugeplan === true || isAdminPreview();
     // Skærmtid-underflag: institutionen kan slå "Godkend spil" og "Spilletids-
@@ -1988,8 +2006,10 @@
     if (!children.length) return '';
     const active = children.find(c => c.child_id === selectedChild?.child_id) || children[0];
     // Rigtigt profilbillede hvis barnet har et — ellers intet billede (ingen random emoji)
+    // Serveren har allerede signeret storage-stier og sat billedet til null ved
+    // fravalg; her mangler kun café-basen på library/icon.
     const avatarOf = c => c.profile_picture_url
-      ? `<img class="child-dd-avatar" src="${esc(c.profile_picture_url)}" alt="">` : '';
+      ? `<img class="child-dd-avatar" src="${esc(cafeBilledeUrl(c.profile_picture_url))}" alt="">` : '';
     const rows = children.map(c => {
       const isActive = c.child_id === active.child_id;
       const bal = c.balance != null ? `<span class="child-dd-bal">${formatKr(c.balance)} kr</span>` : '';
@@ -3426,10 +3446,8 @@
           : (pic.picture_type || '');
         // Library/icon paths are relative to cafe app — prefix with appropriate base URL
         let imgUrl = pic.signed_url || '';
-        if ((pic.picture_type === 'library' || pic.picture_type === 'icon') && imgUrl && !imgUrl.startsWith('http')) {
-          const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-          const cafeBase = isLocal ? 'http://127.0.0.1:3000/' : 'https://flango.dk/cafe/';
-          imgUrl = cafeBase + imgUrl;
+        if (pic.picture_type === 'library' || pic.picture_type === 'icon') {
+          imgUrl = cafeBilledeUrl(imgUrl);
         }
         // Status-overlay-badge på thumbnail
         let statusBadge = '';
@@ -3758,7 +3776,13 @@
     // get-parent-skaermtid svarer NESTED (rules.*, parent_override.*, features.*).
     // Portalen læste tidligere flade stier (st.institution_daily_limit, st.max_daily_minutes …),
     // som ikke findes i svaret — derfor viste hele sektionen "—".
-    const st = screentimeData || childData?.screentime || {};
+    // Et rigtigt Portal-read må aldrig falde tilbage til get-parent-view's
+    // legacykopi, hvis den typede Skærmtidsadapter har afvist scopet. Det
+    // fabrikerede admin-preview har intet medlemskab og bruger fortsat sit
+    // serverbyggede eksempel.
+    const st = isAdminPreview()
+      ? (childData?.screentime || screentimeData || {})
+      : (screentimeData || {});
     const feat = st.features || {};
     const rules = st.rules || {};
     const po = st.parent_override || {};
@@ -3861,7 +3885,9 @@
     // under `skaermtid_game_catalog` — uden den sidste kilde byggede serveren en
     // liste som ingen læste, og preview'et viste «Ingen spil tilgængelige» mens
     // den rigtige portal viste dem fint.
-    const games = screentimeData?.games || childData?.games || childData?.skaermtid_game_catalog || [];
+    const games = isAdminPreview()
+      ? (childData?.games || childData?.skaermtid_game_catalog || screentimeData?.games || [])
+      : (screentimeData?.games || []);
     let gamesHTML = '';
     if (games.length === 0) {
       gamesHTML = `<div class="empty-state"><div class="empty-state-icon">${icon('gamepad-2', 40)}</div><div class="empty-state-text">Ingen spil tilgængelige</div></div>`;
@@ -3900,14 +3926,16 @@
     // Søjlerne har altid været tomme: feltnavnene nedenfor er get-parent-VIEW's form
     // ({device_type, device_name, minutes, date}), men opslaget skete på screentimeData,
     // som er get-parent-SKAERMTID's svar — der hedder listen `history` og datoen `start`.
-    // Begge kilder accepteres nu. childData.skaermtid_sessions er allerede forbrugt tid
-    // (mapSession bruger balance_deducted), og history.minutes er det efter samme fix.
-    const sessions = childData?.skaermtid_sessions
-      || screentimeData?.history
-      || screentimeData?.sessions
-      || screentimeData?.usage_history
-      || screentimeData?.skaermtid_sessions
-      || [];
+    // Det rigtige parent-flow accepterer kun den typede adapters historik;
+    // ellers kunne en afvisning omgås via get-parent-view's legacykopi.
+    // Admin-preview må fortsat bruge sine rent fabrikerede eksempeldata.
+    const sessions = isAdminPreview()
+      ? (childData?.skaermtid_sessions || screentimeData?.history || [])
+      : (screentimeData?.history
+        || screentimeData?.sessions
+        || screentimeData?.usage_history
+        || screentimeData?.skaermtid_sessions
+        || []);
     const instDaily = screentimeData?.institution_daily_limit ?? screentimeData?.default_balance_minutes ?? null;
 
     // Group sessions by date (last 7 days)
