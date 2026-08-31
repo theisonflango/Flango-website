@@ -85,11 +85,11 @@
     <section>
       <h1 class="page-title">Privatlivspolitik</h1>
       <p class="page-intro">Sådan behandler Flango personoplysninger, når en institution bruger <strong>Flango Ugeplan</strong> — planlægningsværktøjet på flango.dk/ugeplan, også som app til iPhone og iPad. Café, skærmtid og forældreportal har deres egen politik på <a href="/privatlivspolitik/">flango.dk/privatlivspolitik</a>.</p>
-      <p class="page-meta">Gældende fra 31. august 2026 · Version 1.0</p>
+      <p class="page-meta">Gældende fra 31. august 2026 · Version 1.1</p>
     </section>
 
     <div class="callout">
-      <strong>Kort version:</strong> Ugeplanen indeholder <strong>ingen oplysninger om børn eller forældre</strong>. Den behandler personalets navne og ugens plan — indhold, institutionen selv udgiver til forældre, skærm og opslagstavle. Alt ligger i EU, vi sælger aldrig data, og institutionen kan når som helst hente en fuld kopi og slette huset selv.
+      <strong>Kort version:</strong> Ugeplanen er lavet til personale og aktivitetsplanlægning, ikke til registrering af børn eller forældre. Fritekst kan dog teknisk indeholde det, en bruger skriver, og må derfor ikke bruges til oplysninger om konkrete børn, CPR-numre eller helbredsforhold. Den primære database ligger i Irland; valgfri push går gennem Apple eller Google. Vi sælger aldrig data, og huset kan når som helst eksporteres og slettes.
     </div>
 
     <section class="about-section">
@@ -97,8 +97,8 @@
       <div class="role-grid">
         <div class="role-card">
           <div class="role-label">Dataansvarlig</div>
-          <div class="role-name">Institutionen</div>
-          <div class="role-detail">Ejer husets oplysninger og bestemmer formålet: at planlægge og dele ugens aktiviteter.</div>
+          <div class="role-name">Institutionens juridiske ejer</div>
+          <div class="role-detail">Bestemmer formålet med husets oplysninger. For en kommunal institution er det normalt kommunen.</div>
         </div>
         <div class="role-card">
           <div class="role-label">Databehandler</div>
@@ -106,16 +106,24 @@
           <div class="role-detail">Behandler kun oplysningerne for at levere Ugeplanen — efter databehandlervilkårene i betingelsernes punkt 5.</div>
         </div>
       </div>
-      <p>Databehandleraftalen for selvbetjent brug er en del af <a href="/ugeplan/betingelser/">betingelserne</a> (punkt 5). Har institutionen eller dens kommune en særskilt skriftlig aftale med Theison, går den aftale forud.</p>
+      <p>Institutionens medarbejdere bruger Ugeplanen på vegne af den dataansvarlige. Databehandleraftalen for selvbetjent brug er en del af <a href="/ugeplan/betingelser/">betingelserne</a> (punkt 5). Har institutionen eller dens kommune en særskilt skriftlig aftale med Theison, går den aftale forud.</p>
+      <p>Hvis der gives frivilligt samtykke til nyheds-e-mail om Flango, er Theison selvstændig dataansvarlig for e-mailadressen og samtykkedokumentationen til netop det markedsføringsformål. Samtykket kan altid trækkes tilbage.</p>
     </section>
 
     <section class="about-section">
       <h2 class="section-heading">2. Hvilke oplysninger behandles</h2>
-      <p>Huset har <strong>ét fælles login</strong>: én e-mailadresse og ét kodeord, som personalet deler. Der oprettes ikke en konto pr. medarbejder.</p>
-      <p>Der behandles login-oplysningerne, de <strong>navne på personalet</strong>, institutionen selv skriver ind for at vise hvem der står for hvilket værksted, og <strong>ugens plan</strong>: værksteder, aktiviteter, tidspunkter og eventuelle noter. Ved selvbetjent oprettelse behandles desuden den ansvarliges <strong>arbejds-e-mail</strong> (bekræftelse og gendannelse), et valgfrit telefonnummer og et eventuelt samtykketidspunkt for nyhedsmail. Vælger man at få beskeder på en telefon eller tablet, gemmes desuden enhedens <strong>notifikations-id</strong> — et teknisk id fra styresystemets leverandør, som gør det muligt at sende en besked til netop den enhed. Det kan slås fra igen på enheden, og id'et slettes, når man gør det.</p>
+      <p>Den almindelige selvbetjente opsætning har <strong>ét fælles login</strong>: én e-mailadresse og ét kodeord, som personalet deler. Den tekniske model understøtter også personlige logins, hvis en institution får dem koblet på.</p>
+      <p>Ugeplanen behandler følgende kategorier:</p>
+      <ul>
+        <li><strong>Hus og kontakt:</strong> institutionsnavn, institutionstype, postnummer, teknisk login-id, gendannelses-e-mail og bekræftelsestidspunkt, valgfrit telefonnummer samt eventuelt samtykketidspunkt for nyheds-e-mail.</li>
+        <li><strong>Personale og plan:</strong> profilnavne, roller og værkstedstilknytninger, værksteder, aktiviteter, tidspunkter, noter, lukkeuger, katalogbidrag, gemte versioner og delingsvalg.</li>
+        <li><strong>Kollegabeskeder:</strong> afsenderens valgte profilnavn, beskedtekst på højst 500 tegn, uge, år og tidspunkt. Beskedteksten sendes ikke gennem push-leverandøren; den hentes fra Flangos database efter åbning af appen.</li>
+        <li><strong>Push, hvis det vælges:</strong> teknisk enhedstoken, platform (iOS/Android), den profil enheden står på og profilens valgte beskedkategorier. Apple eller Google modtager kun tokenet og en systemgenereret pushtekst, fx ugenummer — aldrig kollegabeskeden eller anden brugerskrevet fritekst.</li>
+        <li><strong>Drift og sikkerhed:</strong> før-/efterindhold i planens ændringshistorik, valgt profilnavn, teknisk klient- og bruger-id, notifikationsresultater samt IP-adresse og tidspunkt ved selvbetjent oprettelse. Adgangskode og admin-kode opbevares som hash; gendannelseslinks gemmes kun som hash sammen med e-mail, formål og tidsstempler.</li>
+      </ul>
       <p>Planen sendes kun videre, når personalet aktivt vælger det, og kun til de kanaler institutionen selv har slået til — forældreportalen, caféens skærm eller en opslagstavle.</p>
       <div class="callout-orange callout">
-        <strong>Hvad vi IKKE behandler:</strong> Ugeplanen indeholder ingen oplysninger om børn eller forældre. Flango behandler heller ikke CPR-numre, helbredsoplysninger eller andre særligt følsomme personoplysninger (GDPR artikel 9).
+        <strong>Ikke beregnet til børne- eller følsomme oplysninger:</strong> Ugeplanen har ingen strukturerede felter til børn eller forældre og må ikke bruges til CPR-numre, helbredsoplysninger, individuelle børnesager eller andre særlige kategorier efter GDPR artikel 9. Fritekstfelter kan teknisk behandle det, en bruger skriver. Hvis nogen alligevel skriver sådanne oplysninger, bør de slettes straks; de er omfattet af behandlingen, indtil de er slettet eller den automatiske frist udløber.
       </div>
     </section>
 
@@ -127,33 +135,43 @@
 
     <section class="about-section">
       <h2 class="section-heading">4. Hvor data ligger</h2>
-      <p>Al primær behandling sker i <strong>EU</strong>. Der overføres ikke personoplysninger til tredjelande som led i Ugeplanens drift; robot-tjekkets tekniske trafik besvares af Cloudflares europæiske datacentre for brugere i EU.</p>
+      <p>Primær database, login og applikationsdrift ligger i <strong>AWS eu-west-1 i Irland</strong>. Leverandørsupport, e-mail, robotværn og valgfri push kan indebære behandling eller adgang uden for EU/EØS. Sådanne overførsler sker under leverandørernes databehandlervilkår og relevante EU-standardkontraktbestemmelser; en gyldig tilstrækkelighedsafgørelse kan anvendes, hvor den dækker modtageren.</p>
       <table class="rights-table">
         <tr><th>Under-databehandler</th><th>Behandling</th><th>Hvor</th></tr>
-        <tr><td>Supabase</td><td>Database, login og drift af Ugeplanen (hostet hos AWS)</td><td>EU — Irland (eu-west-1)</td></tr>
-        <tr><td>Mailjet (Sinch)</td><td>Bekræftelses-, gendannelses- og driftsmails</td><td>EU</td></tr>
-        <tr><td>Cloudflare</td><td>Robot-tjek (Turnstile) ved oprettelse — ser IP-adresse og browser-signaler, ingen kontooplysninger</td><td>Globalt edge-netværk — brugere i EU besvares i EU</td></tr>
+        <tr><td>Supabase, Inc.</td><td>Database, login, Edge Functions og drift af Ugeplanen (hostet hos AWS)</td><td>Primær lagring i Irland; mulig supportadgang fra Singapore/USA under SCC</td></tr>
+        <tr><td>Mailjet SAS (Sinch)</td><td>Bekræftelses-, gendannelses- og driftsmails</td><td>Primær behandling i EU; støttefunktioner kan indebære USA under SCC og eventuelt DPF</td></tr>
+        <tr><td>Cloudflare, Inc.</td><td>Robot-tjek (Turnstile) ved oprettelse — teknisk kontroltoken, IP-adresse og browsersignaler</td><td>Globalt anycast-netværk; DPA og SCC, eventuelt DPF</td></tr>
+        <tr><td>Apple Inc.</td><td>Valgfri push til iPhone/iPad via APNs: teknisk enhedstoken og systemgenereret tekst uden brugerskrevet indhold</td><td>Irland/USA; Apples vilkår og SCC</td></tr>
+        <tr><td>Google Ireland Limited / Google LLC</td><td>Valgfri push til Android via Firebase Cloud Messaging: teknisk enhedstoken og systemgenereret tekst uden brugerskrevet indhold; Firebase Analytics bruges ikke</td><td>Global Google-infrastruktur, herunder USA; Google Cloud/Firebase-vilkår og SCC, eventuelt DPF</td></tr>
       </table>
       <p>Skifter eller tilføjer vi en under-databehandler, varsler vi pr. e-mail til husets bekræftede adresse, inden ændringen får virkning — se betingelsernes punkt 5.</p>
     </section>
 
     <section class="about-section">
       <h2 class="section-heading">5. Sikkerhed og adgangsmodellen</h2>
-      <p><strong>Ugeplanen har en enklere adgangsmodel end Flangos øvrige moduler.</strong> Huset deler ét login uden multifaktor. Det er et bevidst valg, og det er truffet ud fra hvad ugeplanen indeholder: personalets navne — i praksis fornavne — og ugens plan over værksteder og aktiviteter. Det er indhold, institutionen selv udgiver: til forældrene, på caféens skærm og på opslagstavlen.</p>
+      <p><strong>Ugeplanen har en enklere adgangsmodel end Flangos øvrige moduler.</strong> Den almindelige opsætning deler ét login uden multifaktor. Profilvælgeren er en etiket, ikke sikker identifikation af den enkelte medarbejder. Derfor må ændringshistorik og afsendernavn ikke bruges som bevis for, hvem der faktisk udførte en handling.</p>
       <p>Adgangen er ikke af den grund ubeskyttet. Kodeord tjekkes mod kendte lækkede kodeord og har et minimumskrav til længde, gentagne loginforsøg begrænses, og institutionernes data er adskilt i databasen — ét login når kun ét hus. De uigenkaldelige handlinger — skift af husets adgangskode, skift af admin-koden og sletning af huset — kræver institutionens admin-kode, som ikke er den samme som logind-koden; det samme gør fuld eksport af husets indhold. Et kodeskifte lukker samtidig alle åbne sessioner, så en medarbejder der stopper kan afskæres.</p>
-      <p>Afvejningen gælder det, ugeplanen indeholder i dag. <strong>Kommer den til at rumme oplysninger om enkelte børn, holder den ikke længere</strong>, og adgangsmodellen skal laves om.</p>
+      <p>Adgangsmodellen er afgrænset til planlægning og almindelige personaleoplysninger. Den er ikke beregnet til fortrolige enkeltsager om børn, forældre eller medarbejdere.</p>
       <p>Kryptering, adgangskontrol og infrastruktur på tværs af Flango: <a href="/sikkerhed/">flango.dk/sikkerhed</a>.</p>
     </section>
 
     <section class="about-section">
       <h2 class="section-heading">6. Opbevaring, eksport og sletning</h2>
-      <p>Oplysningerne opbevares, så længe huset findes. Under <em>Indstillinger → Adgang &amp; koder</em> kan institutionen når som helst hente en fuld kopi af husets indhold (eksport) og slette huset. Sletning fjerner huset, alle data og alle logins med det samme; kopier i krypterede, tekniske sikkerhedskopier udfases derefter automatisk i et tidsbegrænset retention-vindue (se <a href="/sikkerhed/">flango.dk/sikkerhed</a>).</p>
+      <p>Husets grunddata, planer, versioner, kontakt- og gendannelsesposter opbevares, så længe huset findes. Følgende kortere frister håndhæves i databasen:</p>
+      <ul>
+        <li>Kollegabeskeder og notifikationslog slettes automatisk efter <strong>90 dage</strong>.</li>
+        <li>Planens drifts- og fortrydhistorik slettes automatisk efter <strong>12 måneder</strong>.</li>
+        <li>Et push-token slettes, når beskeder slås fra i Ugeplan-appen, når Apple/Google melder tokenet ugyldigt, eller når huset slettes. At slå notifikationer fra alene i telefonens systemindstillinger sletter ikke nødvendigvis Flangos tokenrække.</li>
+        <li>IP-rækker fra selvbetjent oprettelse bruges kun til grænsen på oprettelsesforsøg. Rækker ældre end ét døgn ryddes, næste gang oprettelseskontrollen kører; der er ikke et særskilt tidsstyret slettejob for dem.</li>
+      </ul>
+      <p>Under <em>Indstillinger → Adgang &amp; koder</em> kan institutionen når som helst hente en fuld kopi af husets indhold (eksport) og slette huset. Sletning fjerner huset, dets data og tilknyttede logins med det samme; kopier i krypterede, tekniske sikkerhedskopier udfases derefter automatisk i et tidsbegrænset retention-vindue (se <a href="/sikkerhed/">flango.dk/sikkerhed</a>).</p>
       <p>Trin for trin, og hvad der sker med jeres data: <a href="/ugeplan/slet-konto/">Slet huset</a>.</p>
     </section>
 
     <section class="about-section">
       <h2 class="section-heading">7. Dine rettigheder</h2>
-      <p>De registrerede i Ugeplanen er personalet — og ved oprettelsen den ansvarlige, der skrev sin arbejds-e-mail. Rettighederne efter GDPR (indsigt, berigtigelse, sletning, begrænsning, indsigelse og dataportabilitet) udøves over for institutionen, som er dataansvarlig. I praksis er det meste selvbetjening: huset kan selv rette og slette personalenavne direkte i værktøjet og hente en fuld kopi med eksporten.</p>
+      <p>De registrerede i Ugeplanen er personalet og de kontaktpersoner, hvis arbejds-e-mail eller telefonnummer er registreret. Rettighederne efter GDPR (indsigt, berigtigelse, sletning, begrænsning, indsigelse og, hvor den gælder, dataportabilitet) udøves over for den juridiske enhed, der driver institutionen — for kommunale institutioner normalt kommunen. I praksis kan huset selv rette og slette personalenavne og hente en fuld kopi med eksporten.</p>
+      <p>For et frivilligt nyheds-e-mail-samtykke kan du også kontakte Theison direkte, fordi Theison er dataansvarlig for dette særskilte formål.</p>
       <p>Institutionen kan kontakte Flango for teknisk bistand på <a href="mailto:kontakt@flango.dk">kontakt@flango.dk</a>. Mener du, at behandlingen er i strid med reglerne, kan du klage til <a href="https://www.datatilsynet.dk" rel="noopener" target="_blank">Datatilsynet</a> — Carl Jacobsens Vej 35, 2500 Valby · dt@datatilsynet.dk.</p>
     </section>
 
@@ -183,7 +201,7 @@
         <li><a href="/sikkerhed/"><strong>Sikkerhed</strong></a> — kryptering, adgangskontrol og infrastruktur</li>
         <li><a href="/privatlivspolitik/"><strong>Privatlivspolitik for café, skærmtid og forældreportal</strong></a> — Flangos øvrige moduler</li>
       </ul>
-      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 31. august 2026 · Version 1.0</p>
+      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 31. august 2026 · Version 1.1</p>
     </section>
 
     <footer>

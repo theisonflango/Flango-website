@@ -81,16 +81,16 @@
     <section>
       <h1 class="page-title">Betingelser</h1>
       <p class="page-intro">Betingelserne gælder, når en institution selv opretter sig og bruger <strong>Flango Ugeplan</strong> på flango.dk/ugeplan. Har institutionen (eller dens kommune) en særskilt skriftlig aftale med Theison — for eksempel en databehandleraftale for flere Flango-moduler — går den aftale forud.</p>
-      <p class="page-meta">Gældende fra 29. august 2026 · Version 1.0</p>
+      <p class="page-meta">Varslet 31. august 2026 · Gældende fra 30. september 2026 · Version 1.1</p>
     </section>
 
     <div class="callout">
-      <strong>Kort version:</strong> Ugeplanen er gratis at bruge — uden slutdato og uden prøveperiode. Institutionen ejer sine data; Flango behandler dem kun for at levere værktøjet, og alt ligger i EU. I kan hente en fuld kopi og slette huset selv, når som helst. Vi sender kun nyheds-e-mail, hvis I selv har sagt ja.
+      <strong>Kort version:</strong> Ugeplanen er gratis at bruge — uden slutdato og uden prøveperiode. Institutionen eller den juridiske enhed bag den bestemmer over husets data, og Flango behandler dem for at levere værktøjet. Den primære database ligger i Irland; e-mail, robotværn og valgfri push bruger de leverandører og overførselsgrundlag, der står nedenfor. I kan hente en fuld kopi og slette huset selv når som helst. Vi sender kun nyheds-e-mail, hvis I selv har sagt ja.
     </div>
 
     <section class="about-section">
       <h2 class="section-heading">1. Aftalen og parterne</h2>
-      <p>Aftalen indgås mellem institutionen og <strong>Theison</strong>, CVR-nr. 34360642, Kokkedal ("Flango"). Den, der opretter huset, bekræfter at handle på institutionens vegne. Aftalen gælder fra oprettelsen, og indtil huset slettes.</p>
+      <p>Aftalen indgås mellem den juridiske enhed, der driver institutionen, og <strong>Theison</strong>, CVR-nr. 34360642, Kokkedal ("Flango"). For en kommunal institution er aftaleparten normalt kommunen. Den, der opretter huset, bekræfter at være bemyndiget til at handle på aftalepartens vegne. Aftalen gælder fra oprettelsen, og indtil huset slettes.</p>
     </section>
 
     <section class="about-section">
@@ -110,8 +110,8 @@
       <div class="role-grid">
         <div class="role-card">
           <div class="role-label">Dataansvarlig</div>
-          <div class="role-name">Institutionen</div>
-          <div class="role-detail">Ejer husets oplysninger og bestemmer formålet: at planlægge og dele ugens aktiviteter.</div>
+          <div class="role-name">Institutionens juridiske ejer</div>
+          <div class="role-detail">Bestemmer formålet med husets oplysninger. For en kommunal institution er det normalt kommunen.</div>
         </div>
         <div class="role-card">
           <div class="role-label">Databehandler</div>
@@ -119,7 +119,8 @@
           <div class="role-detail">Behandler kun oplysningerne for at levere Ugeplanen — efter instruksen i punkt 5.</div>
         </div>
       </div>
-      <p>Ugeplanen indeholder <strong>ingen børne- eller forældredata</strong>. Den behandler personalenavne, værkstedstilknytninger og aktivitetstekster — og ved oprettelsen den ansvarliges arbejds-e-mail, et valgfrit telefonnummer og et eventuelt samtykketidspunkt for nyhedsmail.</p>
+      <p>Ugeplanen er ikke beregnet til at registrere børn eller forældre og har ingen strukturerede felter til dem. Den behandler blandt andet institutions- og kontaktoplysninger, personalets profilnavne og værkstedstilknytninger, ugeplaner, noter, versioner og delingsvalg. Kollegabeskeder er fritekst; derfor skal institutionen sikre, at medarbejderne ikke skriver CPR-numre, helbredsoplysninger eller oplysninger om konkrete børn og forældre i dem eller i andre fritekstfelter. Skrives sådanne oplysninger alligevel, bliver de teknisk behandlet, indtil teksten slettes eller den automatiske frist udløber.</p>
+      <p>Ved valgfri push behandles et teknisk enhedstoken, platform, den valgte personaleprofil og profilens notifikationsvalg. Der behandles desuden tekniske driftsoplysninger, herunder ændringshistorik, afsendelsesresultater og IP-adresse ved selvbetjent oprettelse. Et frivilligt samtykke til nyheds-e-mail bruger Theison som selvstændig dataansvarlig alene til det formål.</p>
     </section>
 
     <section class="about-section">
@@ -133,15 +134,17 @@
         <li><strong>Brud.</strong> Bliver vi bekendt med et brud på persondatasikkerheden, der vedrører husets oplysninger, underretter vi den bekræftede e-mailadresse uden unødig forsinkelse.</li>
         <li><strong>Bistand.</strong> Indsigt, berigtigelse, eksport og sletning er selvbetjening i værktøjet; derudover yder vi rimelig bistand til institutionens forpligtelser efter artikel 32-36.</li>
         <li><strong>Tilbagelevering og sletning.</strong> Under <em>Indstillinger → Adgang &amp; koder</em> kan institutionen når som helst hente en fuld kopi af husets indhold (eksport) og slette huset. Sletning fjerner huset, alle data og alle logins med det samme; kopier i krypterede, tekniske sikkerhedskopier udfases derefter automatisk i et tidsbegrænset retention-vindue (se <a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;">flango.dk/sikkerhed</a>).</li>
-        <li><strong>Overførsler.</strong> Al primær behandling sker i EU. Der overføres ikke personoplysninger til tredjelande som led i Ugeplanens drift; robot-tjekkets tekniske trafik besvares af Cloudflares europæiske datacentre for brugere i EU.</li>
+        <li><strong>Overførsler.</strong> Primær database, login og applikationsdrift ligger i AWS-regionen eu-west-1 i Irland. Supabase-support, Mailjets støttefunktioner, Cloudflares globale netværk og valgfri push via Apple eller Google kan medføre behandling eller adgang fra tredjelande. Overførslerne er omfattet af leverandørernes databehandlervilkår og relevante EU-standardkontraktbestemmelser; hvor en gyldig tilstrækkelighedsafgørelse kan anvendes, kan den indgå som supplerende grundlag.</li>
         <li><strong>Dokumentation.</strong> Institutionen kan skrive til os for den dokumentation, der er rimeligt nødvendig for at påvise, at forpligtelserne her overholdes.</li>
       </ul>
 
       <table class="rights-table">
         <tr><th>Under-databehandler</th><th>Behandling</th><th>Hvor</th></tr>
-        <tr><td>Supabase</td><td>Database, login og drift af Ugeplanen (hostet hos AWS)</td><td>EU — Irland (eu-west-1)</td></tr>
-        <tr><td>Mailjet (Sinch)</td><td>Bekræftelses-, gendannelses- og driftsmails</td><td>EU</td></tr>
-        <tr><td>Cloudflare</td><td>Robot-tjek (Turnstile) ved oprettelse — ser IP-adresse og browser-signaler, ingen kontooplysninger</td><td>Globalt edge-netværk — brugere i EU besvares i EU</td></tr>
+        <tr><td>Supabase, Inc.</td><td>Database, login, Edge Functions og drift af Ugeplanen (hostet hos AWS)</td><td>Primær lagring i Irland (eu-west-1); mulig supportadgang fra Singapore/USA under SCC</td></tr>
+        <tr><td>Mailjet SAS (Sinch)</td><td>Bekræftelses-, gendannelses- og driftsmails</td><td>Primær behandling i EU; støttefunktioner kan indebære USA under SCC og eventuelt DPF</td></tr>
+        <tr><td>Cloudflare, Inc.</td><td>Robot-tjek (Turnstile) ved oprettelse — teknisk kontroltoken, IP-adresse og browsersignaler</td><td>Globalt anycast-netværk; DPA og SCC, eventuelt DPF</td></tr>
+        <tr><td>Apple Inc.</td><td>Valgfri push til iPhone/iPad via APNs: teknisk enhedstoken og systemgenereret tekst uden brugerskrevet indhold</td><td>Irland/USA; Apples vilkår og SCC</td></tr>
+        <tr><td>Google Ireland Limited / Google LLC</td><td>Valgfri push til Android via Firebase Cloud Messaging: teknisk enhedstoken og systemgenereret tekst uden brugerskrevet indhold; Firebase Analytics bruges ikke</td><td>Global Google-infrastruktur, herunder USA; Google Cloud/Firebase-vilkår og SCC, eventuelt DPF</td></tr>
       </table>
     </section>
 
@@ -187,7 +190,7 @@
         <li><a href="/sikkerhed/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>Sikkerhed</strong></a> — kryptering, adgangskontrol og infrastruktur</li>
         <li><a href="/gdpr/" style="color: var(--blue); text-decoration: underline; text-underline-offset: 3px;"><strong>GDPR og databeskyttelse</strong></a> — roller og ansvar på tværs af Flango</li>
       </ul>
-      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 29. august 2026 · Version 1.0</p>
+      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Varslet: 31. august 2026 · Gældende fra 30. september 2026 · Version 1.1</p>
     </section>
 
     <footer>
