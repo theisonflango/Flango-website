@@ -1,0 +1,1 @@
+import{W as n}from"./EditorScreen-Bmc478Qr.js";import"./main-BPce9qNt.js";class t extends n{async canOpenUrl(e){return{value:!0}}async openUrl(e){return window.open(e.url,"_blank"),{completed:!0}}}export{t as AppLauncherWeb};
