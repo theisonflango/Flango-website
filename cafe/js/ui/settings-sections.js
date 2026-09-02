@@ -187,6 +187,27 @@
 
   // ── Tilmelding / Arrangementer — state & helpers ──
 
+  // Saldoen ejes af cafe.wallets — public.users.balance er en projektion, som
+  // klienten ikke læser. Saldi hentes i ét kald og lægges på de hentede rækker.
+  async function _tilmFetchWalletBalances() {
+    const client = window.__flangoSupabaseClient;
+    const instId = window.getInstitutionId?.();
+    if (!client || !instId) return new Map();
+    const { data, error } = await client.rpc('get_cafe_wallet_balances_all', { p_institution_id: instId });
+    if (error) throw error;
+    return new Map((data || []).map(r => [r.id, Number(r.balance) || 0]));
+  }
+  async function _tilmWithWalletBalances(rows) {
+    const balances = await _tilmFetchWalletBalances();
+    (rows || []).forEach(u => { if (u) u.balance = balances.get(u.id) ?? 0; });
+    return rows || [];
+  }
+  async function _tilmRegsWithWalletBalances(regs) {
+    const balances = await _tilmFetchWalletBalances();
+    (regs || []).forEach(r => { if (r?.users) r.users.balance = balances.get(r.users.id) ?? 0; });
+    return regs || [];
+  }
+
   const _tilm = {
     filter: 'active',
     events: [],
@@ -567,12 +588,12 @@
       const [evRes, regRes] = await Promise.all([
         client.from('club_events').select('*').eq('id', eventId).single(),
         client.from('event_registrations')
-          .select('*, users!event_registrations_user_id_fkey(id, name, last_name, number, grade_level, balance, role, is_test_user)')
+          .select('*, users!event_registrations_user_id_fkey(id, name, last_name, number, grade_level, role, is_test_user)')
           .eq('event_id', eventId).order('registered_at', { ascending: true }),
       ]);
       if (evRes.error) throw evRes.error;
       const event = evRes.data;
-      const registrations = regRes.data || [];
+      const registrations = await _tilmRegsWithWalletBalances(regRes.data || []);
       _tilm.eventDetail = event;
       _tilm.eventRegs = (registrations || []).filter(r => r.registration_status === 'registered');
       _tilmRenderDetail(eventId, container, ctx);
@@ -1088,7 +1109,7 @@
         .eq('institution_id', instId)
         .neq('role', 'admin')
         .order('name', { ascending: true });
-      _tilm.usersCache = data || [];
+      _tilm.usersCache = await _tilmWithWalletBalances(data || []);
     }
 
     const enrolledIds = new Set(_tilm.eventRegs.map(r => (r.users || {}).id).filter(Boolean));
@@ -1421,11 +1442,11 @@
         const [evRes, regRes] = await Promise.all([
           client.from('club_events').select('*').eq('id', eventId).single(),
           client.from('event_registrations')
-            .select('*, users!event_registrations_user_id_fkey(id, name, last_name, number, grade_level, balance, role, is_test_user)')
+            .select('*, users!event_registrations_user_id_fkey(id, name, last_name, number, grade_level, role, is_test_user)')
             .eq('event_id', eventId).order('registered_at', { ascending: true }),
         ]);
         _tilm.eventDetail = evRes.data;
-        _tilm.eventRegs = (regRes.data || []).filter(r => r.registration_status === 'registered');
+        _tilm.eventRegs = (await _tilmRegsWithWalletBalances(regRes.data || [])).filter(r => r.registration_status === 'registered');
       }
       _tilmRenderDetail(eventId, container, ctx);
 
