@@ -202,7 +202,29 @@
     (rows || []).forEach(u => { if (u) u.balance = balances.get(u.id) ?? 0; });
     return rows || [];
   }
+  async function _tilmEnsureTypedUsers() {
+    if (_tilm.usersCache) return _tilm.usersCache;
+
+    const loadedUsers = Array.isArray(window.__flangoAllUsers)
+      ? window.__flangoAllUsers.filter(u => u?.cafe_membership_id)
+      : [];
+    if (loadedUsers.length > 0) {
+      _tilm.usersCache = await _tilmWithWalletBalances(loadedUsers);
+      return _tilm.usersCache;
+    }
+
+    const client = window.__flangoSupabaseClient;
+    const instId = window.getInstitutionId?.();
+    if (!client || !instId) return [];
+    const { data, error } = await client.rpc('get_cafe_users_typed', { p_institution_id: instId });
+    if (error) throw error;
+    _tilm.usersCache = await _tilmWithWalletBalances(data || []);
+    return _tilm.usersCache;
+  }
   async function _tilmRegsWithWalletBalances(regs) {
+    const users = await _tilmEnsureTypedUsers();
+    const usersByMembership = new Map(users.map(u => [u.cafe_membership_id, u]));
+    (regs || []).forEach(r => { r.users = usersByMembership.get(r.cafe_membership_id) || null; });
     const balances = await _tilmFetchWalletBalances();
     (regs || []).forEach(r => { if (r?.users) r.users.balance = balances.get(r.users.id) ?? 0; });
     return regs || [];
@@ -588,7 +610,7 @@
       const [evRes, regRes] = await Promise.all([
         client.from('club_events').select('*').eq('id', eventId).single(),
         client.from('event_registrations')
-          .select('*, users!event_registrations_user_id_fkey(id, name, last_name, number, grade_level, role, is_test_user)')
+          .select('*')
           .eq('event_id', eventId).order('registered_at', { ascending: true }),
       ]);
       if (evRes.error) throw evRes.error;
@@ -1100,16 +1122,7 @@
 
     // Fetch users if not cached
     if (!_tilm.usersCache) {
-      const client = window.__flangoSupabaseClient;
-      const instId = window.getInstitutionId?.();
-      if (!client || !instId) return;
-      const { data } = await client
-        .from('users')
-        .select('id, name, last_name, number, grade_level, role, is_test_user')
-        .eq('institution_id', instId)
-        .neq('role', 'admin')
-        .order('name', { ascending: true });
-      _tilm.usersCache = await _tilmWithWalletBalances(data || []);
+      await _tilmEnsureTypedUsers();
     }
 
     const enrolledIds = new Set(_tilm.eventRegs.map(r => (r.users || {}).id).filter(Boolean));
@@ -1118,7 +1131,7 @@
     let searchQuery = '';
 
     function filterUsers() {
-      let users = _tilm.usersCache || [];
+      let users = (_tilm.usersCache || []).filter(u => u.role !== 'admin');
       if (activeFilter === 'matching' && allowedClasses.length > 0) {
         users = users.filter(u => u.grade_level !== null && allowedClasses.includes(u.grade_level));
       } else if (activeFilter !== 'all' && activeFilter !== 'matching') {
@@ -1442,7 +1455,7 @@
         const [evRes, regRes] = await Promise.all([
           client.from('club_events').select('*').eq('id', eventId).single(),
           client.from('event_registrations')
-            .select('*, users!event_registrations_user_id_fkey(id, name, last_name, number, grade_level, role, is_test_user)')
+            .select('*')
             .eq('event_id', eventId).order('registered_at', { ascending: true }),
         ]);
         _tilm.eventDetail = evRes.data;
