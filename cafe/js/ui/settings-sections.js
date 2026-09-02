@@ -1105,7 +1105,7 @@
       if (!client || !instId) return;
       const { data } = await client
         .from('users')
-        .select('id, name, last_name, number, grade_level, balance, role, is_test_user')
+        .select('id, name, last_name, number, grade_level, role, is_test_user')
         .eq('institution_id', instId)
         .neq('role', 'admin')
         .order('name', { ascending: true });
