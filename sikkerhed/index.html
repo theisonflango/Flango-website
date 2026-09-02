@@ -238,8 +238,8 @@
     <section class="about-section">
       <h2 class="section-heading">Brug af AI</h2>
       <p>Flango bruger AI til at generere billeder. Produktikoner i caféens menu laves ud fra varens navn og — hvis personalet vælger det — et foto af madvaren. Derudover kan institutionen vælge at tilbyde en stiliseret AI-avatar som privatlivsvenligt alternativ til et rigtigt profilfoto.</p>
-      <p>Behandlingen sker hos Microsoft Azure OpenAI på EU-ressourcer, hvor både processering og lagring forbliver i EU. Der trænes ikke på det, der sendes ind eller kommer ud. Azure gemmer som standard en stikprøve af input og output i op til 30 dage til misbrugskontrol — i EU og kun tilgængeligt for autoriserede Microsoft-reviewere.</p>
-      <p><strong>AI-avataren er slået fra som udgangspunkt.</strong> Den kræver både, at institutionen aktiverer funktionen, og at forældremyndighedsindehaveren giver samtykke for det enkelte barn. Uden begge dele genereres der intet.</p>
+      <p>Behandlingen sker hos Microsoft Azure OpenAI i en EU-ressource, hvor data i hvile ligger i EU (Sverige). Produktikoner genereres med Global Standard-inferens, som kan behandle input uden for EU; input er varenavne og eventuelle madfotos uden personoplysninger, og en teknisk ansigtsspærre afviser fotos med ansigter, før noget sendes. Avatarer, der bygger på et barns foto, behandles i Azures EU Data Zone med processering og lagring i EU. Der trænes ikke på det, der sendes ind eller kommer ud. Azure gemmer som standard en stikprøve af input og output i op til 30 dage til misbrugskontrol — i EU og kun tilgængeligt for autoriserede Microsoft-reviewere.</p>
+      <p><strong>AI-avataren er slået fra som udgangspunkt.</strong> Den er blokeret på platformniveau, indtil den dataansvarlige tillader den, og kræver derefter, at institutionen aktiverer funktionen, og at forældremyndighedsindehaveren giver samtykke for det enkelte barn. Uden alle tre genereres der intet.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
