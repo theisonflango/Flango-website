@@ -384,10 +384,11 @@
             color: #856404;
         }
     </style>
-  <script type="module" crossorigin src="/cafe/assets/main-CFZb75OH.js"></script>
-  <link rel="modulepreload" crossorigin href="/cafe/assets/platform-BMVduvzW.js">
-  <link rel="modulepreload" crossorigin href="/cafe/assets/cafe-client-compatibility-B8AgC_7o.js">
-  <link rel="stylesheet" crossorigin href="/cafe/assets/main-Bhnk9UYn.css">
+    <script src="js/ui/icons.js?v=3"></script>
+  <script type="module" crossorigin src="/cafe/assets/main-DB-8uy3u.js"></script>
+  <link rel="modulepreload" crossorigin href="/cafe/assets/platform-DcD9ajzk.js">
+  <link rel="modulepreload" crossorigin href="/cafe/assets/cafe-client-compatibility-DCY2GzC-.js">
+  <link rel="stylesheet" crossorigin href="/cafe/assets/main-C5sSMQo1.css">
 </head>
 <body>
 
@@ -528,22 +529,21 @@
             <button id="restaurant-mode-badge" style="display:none; border:none; cursor:pointer; background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; font-size:12px; font-weight:700; padding:6px 14px; border-radius:20px; white-space:nowrap;" title="Restaurant Mode indstillinger">🍽️ Restaurant Mode er aktiv!</button>
             <div class="header-actions">
                 <button id="logged-in-user-avatar-container" class="header-action-btn" title="Min Flango"></button>
-                <button id="toolbar-history-btn" class="header-action-btn" title="Historik"><svg viewBox="0 0 16 16" fill="#c77ddb" stroke="none" role="img" aria-label="Historik"><rect x="2.5" y="7.5" width="3" height="6" rx="0.8"/><rect x="6.5" y="3.5" width="3" height="10" rx="0.8"/><rect x="10.5" y="9.5" width="3" height="4" rx="0.8"/></svg></button>
-                <button id="toolbar-ugeplan-btn" class="header-action-btn" title="Ugeplan (mellemrum)" style="display:none;"><svg viewBox="0 0 16 16" fill="none" stroke="#7aa87a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Ugeplan"><rect x="1.8" y="3" width="12.4" height="10.5" rx="1.6"/><path d="M1.8 6.4h12.4M5.2 1.8v2.4M10.8 1.8v2.4"/><path d="M4.4 9h2M7.2 9h2M10 9h1.6M4.4 11.2h2M7.2 11.2h2"/></svg></button>
-                <button id="calculator-mode-toggle" class="header-action-btn calculator-toggle" title="Lommeregner-mode (frie beløb)" aria-label="Toggle lommeregner-mode" aria-pressed="false">🧮</button>
-                <button id="kitchen-btn" class="header-action-btn" title="Køkkenskærm" style="display:none;">🍽️</button>
-                <button id="toolbar-db-history-btn" class="header-action-btn" title="DB-Historik" style="display: none;"><img src="Icons/webp/Function/Gear2.webp" alt="DB-Historik"></button>
-                <button id="auto-delete-warning-btn" class="header-action-btn" title="Papirkurv — nyt at se" style="display:none;position:relative;"><svg viewBox="0 0 16 16" fill="none" stroke="#e85a6f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Papirkurv-notifikation"><path d="M8 2.5L14.5 13.5H1.5L8 2.5Z"/><path d="M8 6.5v3.2"/><circle cx="8" cy="11.6" r="0.5" fill="#e85a6f" stroke="none"/></svg><span id="auto-delete-warning-badge" style="position:absolute;top:-4px;right:-4px;background:#e85a6f;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
-                <button id="deletion-requests-btn" class="header-action-btn" title="Sletningsanmodninger" style="display:none;position:relative;">🗑️<span id="deletion-badge" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
-                <button id="parent-upload-review-btn" class="header-action-btn" title="Billeder til godkendelse" style="display:none;position:relative;">📷<span id="parent-upload-badge" style="position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
-                <button id="toolbar-products-btn" class="header-action-btn" title="Produktoversigt" style="display:none;"><svg viewBox="0 0 16 16" fill="none" stroke="#e8734a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Produktoversigt"><rect x="3" y="3" width="4.5" height="4.5" rx="1"/><rect x="9.5" y="3" width="4.5" height="4.5" rx="1"/><rect x="3" y="9.5" width="4.5" height="4.5" rx="1"/><rect x="9.5" y="9.5" width="4.5" height="4.5" rx="1"/></svg></button>
-                <button id="toolbar-new-product-btn" class="header-action-btn" title="Opret nyt produkt" style="display:none;"><svg viewBox="0 0 16 16" fill="none" stroke="#5dca7a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Opret nyt produkt"><rect x="2.5" y="2.5" width="11" height="11" rx="3"/><path d="M8 5.3v5.4M5.3 8h5.4"/></svg></button>
-                <button id="toolbar-deposit-btn" class="header-action-btn" title="Indbetaling" style="display:none;"><img src="Icons/webp/Function/Coin.webp" alt="Indbetaling"></button>
-                <button id="toolbar-user-panel-btn" class="header-action-btn" title="Brugerpanel" style="display:none;"><svg viewBox="0 0 16 16" fill="none" stroke="#5dca7a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Brugerpanel"><circle cx="6" cy="5.5" r="2.5"/><path d="M1.5 14c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5"/><path d="M11 7h4M13 5v4"/></svg></button>
-                <button id="toolbar-fullscreen-btn" class="header-action-btn" title="Fuldskærm" style="display:none;">⛶</button>
-                <button id="toolbar-gear-btn" class="header-action-btn" title="Indstillinger"><img src="Icons/webp/Function/Gear2.webp" alt="Indstillinger"></button>
-                <button id="logout-btn" class="header-action-btn" title="Log ud"><svg viewBox="0 0 16 16" fill="none" stroke="#e85a6f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Log ud"><path d="M9.5 14H4.5a1.5 1.5 0 01-1.5-1.5v-9A1.5 1.5 0 014.5 2h5"/><path d="M7 8h7M12 5.5L14.5 8 12 10.5"/></svg></button>
-                <button id="flango-logo-button" class="header-action-btn" title="Hjælp"><img src="Icons/webp/Assets/FlangoFruitLogo.webp" alt="Flango Logo"></button>
+                <button id="toolbar-history-btn" class="header-action-btn" title="Historik"><span class="flango-icon-slot" data-icon="chart"></span></button>
+                <button id="toolbar-ugeplan-btn" class="header-action-btn" title="Ugeplan (mellemrum)" style="display:none;"><span class="flango-icon-slot" data-icon="calendar"></span></button>
+                <button id="calculator-mode-toggle" class="header-action-btn calculator-toggle" title="Lommeregner-mode (frie beløb)" aria-label="Toggle lommeregner-mode" aria-pressed="false"><span class="flango-icon-slot" data-icon="calculator"></span></button>
+                <button id="kitchen-btn" class="header-action-btn" title="Køkkenskærm" style="display:none;"><span class="flango-icon-slot" data-icon="utensils"></span></button>
+                <button id="toolbar-db-history-btn" class="header-action-btn" title="DB-Historik" style="display: none;"><span class="flango-icon-slot" data-icon="db_history"></span></button>
+                <button id="auto-delete-warning-btn" class="header-action-btn" title="Papirkurv — nyt at se" style="display:none;position:relative;"><span class="flango-icon-slot" data-icon="warning"></span><span id="auto-delete-warning-badge" style="position:absolute;top:-4px;right:-4px;background:#e85a6f;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
+                <button id="deletion-requests-btn" class="header-action-btn" title="Sletningsanmodninger" style="display:none;position:relative;"><span class="flango-icon-slot" data-icon="trash"></span><span id="deletion-badge" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
+                <button id="parent-upload-review-btn" class="header-action-btn" title="Billeder til godkendelse" style="display:none;position:relative;"><span class="flango-icon-slot" data-icon="camera"></span><span id="parent-upload-badge" style="position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;">0</span></button>
+                <button id="toolbar-products-btn" class="header-action-btn" title="Produktoversigt" style="display:none;"><span class="flango-icon-slot" data-icon="grid"></span></button>
+                <button id="toolbar-new-product-btn" class="header-action-btn" title="Opret nyt produkt" style="display:none;"><span class="flango-icon-slot" data-icon="plus_circle"></span></button>
+                <button id="toolbar-user-panel-btn" class="header-action-btn" title="Brugerpanel" style="display:none;"><span class="flango-icon-slot" data-icon="users"></span></button>
+                <button id="toolbar-fullscreen-btn" class="header-action-btn" title="Fuldskærm" style="display:none;"><span class="flango-icon-slot" data-icon="fullscreen"></span></button>
+                <button id="toolbar-gear-btn" class="header-action-btn" title="Indstillinger"><span class="flango-icon-slot" data-icon="settings"></span></button>
+                <button id="logout-btn" class="header-action-btn" title="Log ud"><span class="flango-icon-slot" data-icon="logout"></span></button>
+                <button id="flango-logo-button" class="header-action-btn" title="Hjælp"><span class="flango-icon-slot" data-icon="help"></span></button>
                 <button id="mobile-header-overflow-btn" class="mobile-header-overflow-btn" type="button" aria-label="Flere handlinger" aria-expanded="false" aria-controls="mobile-header-overflow-menu">
                     <i class="ph ph-dots-three-vertical" aria-hidden="true"></i>
                 </button>
@@ -1982,7 +1982,7 @@
 
     <script src="js/core/feature-modules.js?v=3"></script>
     <script src="js/ui/settings-panel.js?v=13"></script>
-    <script src="js/ui/settings-sections.js?v=67"></script>
+    <script src="js/ui/settings-sections.js?v=69"></script>
     <script src="js/ui/admin-portal-preview-host.js?v=15"></script>
     <script src="js/ui/admin-parent-page.js?v=3"></script>
     <script src="js/ui/admin-portal-v2.js?v=6"></script>

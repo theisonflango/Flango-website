@@ -1842,7 +1842,6 @@
             key: m.orderKey,
             dbCol: m.dbCol,
             btnId: m.btnId,
-            e: m.icon,
             n: m.label,
             d: m.desc,
             requiresCol: m.requiresCol || null,
@@ -1851,7 +1850,7 @@
             requiresMet,
             alwaysOn: !!m.alwaysOn,
             shown: on && requiresMet, // \u00e6gte header-synlighed \u2192 preview matcher headeren
-            iconHtml: this._iconHtml(m.btnId, m.icon),
+            iconHtml: window.flangoIcon(m.iconKey),
           };
         });
       // Anvend gemt r\u00e6kkef\u00f8lge (toolbar_order)
@@ -1872,14 +1871,6 @@
     },
     // FORH\u00C5NDSVISNING: kun aktiverede ikoner vises (.vis) \u2014 en tro kopi af header-
     // r\u00e6kkef\u00f8lgen. Draggable, s\u00e5 man kan omplacere direkte i forh\u00e5ndsvisningen.
-    // Clone the real header button icon (SVG/img) so the list + preview match the cafe
-    // header EXACTLY; fallback to emoji if the button is missing or is emoji/text
-    // (e.g. the dynamic shift-timer pill).
-    _iconHtml(btnId, emoji) {
-      const el = btnId && document.getElementById(btnId);
-      const html = el && el.innerHTML && el.innerHTML.trim();
-      return (html && /<svg|<img/i.test(html)) ? html : (emoji || '');
-    },
     _previewIconsHtml(items) {
       return items.filter(it => it.shown).map(it =>
         `<div class="fsp-tb-preview-icon vis" data-tb-key="${it.key}" title="${it.n}">${it.iconHtml}</div>`
