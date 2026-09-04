@@ -777,21 +777,6 @@
       });
     },
 
-    /** Create Stripe payment for event */
-    async createEventPayment(childId, eventId) {
-      return invokeFunction('create-event-payment', {
-        child_id: childId,
-        event_id: eventId,
-      });
-    },
-
-    /** Confirm event payment */
-    async confirmEventPayment(sessionId) {
-      return invokeFunction('confirm-event-payment', {
-        session_id: sessionId,
-      });
-    },
-
     // ─── Screentime ───
 
     /** Get screentime data for a child */

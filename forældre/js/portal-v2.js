@@ -93,7 +93,7 @@
   // ─── Demo-/gæsteflow ───
   // "Prøv portalen" logger ind på en RLS-isoleret demo-institution med fiktive børn.
   // Creds er OFFENTLIGE by design: sandkasse uden rigtige data, og rigtig betaling er
-  // spærret SERVER-side (create-topup / vipps-create-payment / create-event-payment
+  // spærret SERVER-side (create-topup / vipps-create-payment
   // afviser is_demo=true — UI-skjul alene er ikke nok).
   const DEMO_EMAIL = 'demo@flango.dk';
 
