@@ -1,1 +1,0 @@
-import{W as n}from"./EditorScreen-ecipgU3R.js";import"./main-BF_PO_MK.js";class t extends n{async canOpenUrl(e){return{value:!0}}async openUrl(e){return window.open(e.url,"_blank"),{completed:!0}}}export{t as AppLauncherWeb};
