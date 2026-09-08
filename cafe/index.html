@@ -385,10 +385,12 @@
         }
     </style>
     <script src="js/ui/icons.js?v=3"></script>
-  <script type="module" crossorigin src="/cafe/assets/main-CSWxYmaY.js"></script>
-  <link rel="modulepreload" crossorigin href="/cafe/assets/platform-CQ-udCuZ.js">
-  <link rel="modulepreload" crossorigin href="/cafe/assets/cafe-client-compatibility-By1ZpDul.js">
-  <link rel="stylesheet" crossorigin href="/cafe/assets/main-C5sSMQo1.css">
+  <script type="module" crossorigin src="/cafe/assets/main-hNNYb3H1.js"></script>
+  <link rel="modulepreload" crossorigin href="/cafe/assets/modulepreload-polyfill-B5Qt9EMX.js">
+  <link rel="modulepreload" crossorigin href="/cafe/assets/platform-rhTTu4hy.js">
+  <link rel="modulepreload" crossorigin href="/cafe/assets/backend-config-D_9xaUNr.js">
+  <link rel="modulepreload" crossorigin href="/cafe/assets/cafe-client-compatibility-CkVVLZxz.js">
+  <link rel="stylesheet" crossorigin href="/cafe/assets/main-jMsmkH3r.css">
 </head>
 <body>
 
@@ -410,7 +412,8 @@
                 </div>
             </label>
             <div id="turnstile-full-login" style="margin: 12px 0;"></div>
-            <button type="button" id="full-login-btn">Log ind med e-mail</button>
+            <button type="button" id="full-login-btn">Log ind</button>
+            <button type="button" id="full-login-forgot-btn" class="secondary-action">Glemt kodeord?</button>
             <button type="button" id="full-login-back-btn" class="secondary-action" style="display: none;">← Tilbage til PIN-login</button>
             <p id="full-login-error" class="login-error"></p>
         </form>
@@ -466,23 +469,34 @@
             <input type="password" id="locked-password-input" class="input" placeholder="Kodeord" autocomplete="current-password">
             <div id="turnstile-locked-login" style="margin: 12px 0;"></div>
             <button type="button" id="locked-login-btn">Log ind</button>
+            <button type="button" id="locked-forgot-btn" class="secondary-action">Glemt kodeord?</button>
             <button type="button" id="locked-back-btn" class="secondary-action">Tilbage til profiler</button>
             <p id="locked-login-error" class="login-error"></p>
         </form>
     </div>
-    <!-- Tvunget kodeordsskift (efter login med svagt kodeord) -->
-    <div id="screen-force-password" class="login-container" style="display: none;">
+    <!-- Glemt kodeord — linket går ALTID til medarbejderens egen postkasse (ADR-005 § 2.10) -->
+    <div id="screen-forgot-password" class="login-container" style="display: none;">
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
-        <h1><span class="inline-icon">🔐</span> Skift din adgangskode</h1>
-        <p class="login-subtitle">Din adgangskode skal opdateres. Vælg en ny adgangskode med mindst 10 tegn (bogstaver + tal).</p>
-        <form id="form-force-password" onsubmit="return false;" autocomplete="off">
-            <label for="force-pw-new">Ny adgangskode</label>
-            <input type="password" id="force-pw-new" class="input" placeholder="Min. 10 tegn, bogstaver + tal" autocomplete="new-password" maxlength="32">
-            <label for="force-pw-confirm">Gentag adgangskode</label>
-            <input type="password" id="force-pw-confirm" class="input" placeholder="Gentag" autocomplete="new-password" maxlength="32">
-            <button type="button" id="force-pw-btn">Gem ny adgangskode</button>
-            <p id="force-pw-error" class="login-error"></p>
+        <h1><span class="inline-icon">✉️</span> Glemt kodeord</h1>
+        <p class="login-subtitle">Skriv den e-mail, du logger ind med. Vi sender et link, så du kan vælge et nyt kodeord. Linket går altid til din egen postkasse.</p>
+        <form id="form-forgot-password" onsubmit="return false;" autocomplete="on">
+            <label for="forgot-email-input">E-mail</label>
+            <input type="email" id="forgot-email-input" class="input" placeholder="din@email.dk" autocomplete="email" inputmode="email" spellcheck="false" autocapitalize="none">
+            <button type="button" id="forgot-send-btn">Send link</button>
+            <button type="button" id="forgot-back-btn" class="secondary-action">← Tilbage til login</button>
+            <p id="forgot-notice" class="login-notice"></p>
+            <p id="forgot-error" class="login-error"></p>
         </form>
+    </div>
+
+    <!-- Vælg institution — kun når personen har café-adgang flere steder -->
+    <div id="screen-institution-picker" class="login-container" style="display: none;">
+        <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
+        <h1><span class="inline-icon">🏠</span> Hvilken café?</h1>
+        <p class="login-subtitle">Du har adgang flere steder. Vælg den café, du står i nu.</p>
+        <div id="institution-picker-list" class="login-options"></div>
+        <button type="button" id="institution-picker-back-btn" class="secondary-action">Log ud</button>
+        <p id="institution-picker-error" class="login-error"></p>
     </div>
 
 
@@ -491,10 +505,10 @@
         <img class="login-logo" src="Icons/webp/Assets/flango-logo.webp" alt="Flango Logo">
         <h1><span class="inline-icon">🔑</span> <span id="device-request-greeting">Hej.</span></h1>
         <p class="login-subtitle fit-one-line" id="device-request-status">Din konto er ikke bekræftet på denne enhed eller browser endnu.</p>
-        <p class="login-subtitle" id="device-request-how">Tryk på “Send kode” for at sende din bekræftelseskode til <strong id="device-request-contact">din kontaktperson</strong>.</p>
+        <p class="login-subtitle" id="device-request-how">Tryk på “Send kode” for at sende din bekræftelseskode.</p>
         <button id="device-request-btn">Send kode</button>
         <div id="device-request-step2" style="display:none">
-            <p class="login-subtitle" style="margin-top:18px">Spørg om de seks cifre og tast dem her. Koden gælder i 30 minutter.</p>
+            <p class="login-subtitle" id="device-request-step2-hint" style="margin-top:18px">Spørg om de seks cifre og tast dem her. Koden gælder i 30 minutter.</p>
             <label for="device-request-code">Bekræftelseskode</label>
             <input type="text" id="device-request-code" class="input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
             <button id="device-request-redeem-btn">Bekræft</button>
@@ -1981,8 +1995,8 @@
     <audio id="audio-preview" preload="auto"></audio>
 
     <script src="js/core/feature-modules.js?v=3"></script>
-    <script src="js/ui/settings-panel.js?v=13"></script>
-    <script src="js/ui/settings-sections.js?v=69"></script>
+    <script src="js/ui/settings-panel.js?v=15"></script>
+    <script src="js/ui/settings-sections.js?v=73"></script>
     <script src="js/ui/admin-portal-preview-host.js?v=15"></script>
     <script src="js/ui/admin-parent-page.js?v=3"></script>
     <script src="js/ui/admin-portal-v2.js?v=6"></script>

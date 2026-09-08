@@ -78,25 +78,16 @@
   let baselineSnapshot = {};
 
   async function saveField(key, value) {
-    const instId = window.getInstitutionId?.();
-    if (!instId) return;
-
-    const client = window.__flangoSupabaseClient;
-    if (!client) return;
+    const settings = window.__flangoCafeSettings;
+    if (!settings) return;
 
     try {
-      const { error } = await client
-        .from('institutions')
-        .update({ [key]: value })
-        .eq('id', instId);
+      // Caféens indstillinger ejes af cafe.institution_settings (ADR-005 § 2.3) og
+      // skrives gennem cafe_set_settings. Serveren håndhæver kommunerammen og rollen.
+      const updated = await settings.saveFields({ [key]: value });
 
-      if (error) throw error;
-
-      // Update local state
       baselineSnapshot[key] = value;
-      if (institutionData) institutionData[key] = value;
-      const cachedInst = window.__flangoGetInstitutionById?.(instId);
-      if (cachedInst) cachedInst[key] = value;
+      if (institutionData) Object.assign(institutionData, updated);
 
       // Special-case: restaurant_mode_enabled → update header
       if (key === 'restaurant_mode_enabled') {
@@ -108,31 +99,23 @@
       }
     } catch (e) {
       console.error(`[FlangoSettings] Save error for ${key}:`, e);
+      window.alert('Indstillingen blev ikke gemt: ' + (e.message || 'Ukendt fejl'));
+      renderContent();
     }
   }
 
   // Batch save multiple fields at once (for mini Gem-knap sections)
   async function saveFields(updates) {
-    const instId = window.getInstitutionId?.();
-    if (!instId) return;
-
-    const client = window.__flangoSupabaseClient;
-    if (!client) return;
+    const settings = window.__flangoCafeSettings;
+    if (!settings) return;
 
     try {
-      const { error } = await client
-        .from('institutions')
-        .update(updates)
-        .eq('id', instId);
-
-      if (error) throw error;
+      const updated = await settings.saveFields(updates);
 
       for (const [key, value] of Object.entries(updates)) {
         baselineSnapshot[key] = value;
-        if (institutionData) institutionData[key] = value;
+        if (institutionData) Object.assign(institutionData, updated);
       }
-      const cachedInst = window.__flangoGetInstitutionById?.(instId);
-      if (cachedInst) Object.assign(cachedInst, updates);
 
       if ('restaurant_mode_enabled' in updates) {
         rmActive = !!updates.restaurant_mode_enabled;
@@ -143,12 +126,14 @@
       }
     } catch (e) {
       console.error('[FlangoSettings] Batch save error:', e);
+      window.alert('Indstillingerne blev ikke gemt: ' + (e.message || 'Ukendt fejl'));
+      renderContent();
     }
   }
 
   // Backward compat: markDirty now auto-saves (used by wireToggles etc.)
   function markDirty(key, value) {
-    saveField(key, value);
+    return saveField(key, value);
   }
 
   // ── SVG helpers ──
@@ -185,33 +170,20 @@
     try {
       const instId = window.getInstitutionId?.();
       if (instId) {
-        // Hent frisk institutions-data fra DB (ikke cache) så ændringer fra super-admin vises
-        const client = window.__flangoSupabaseClient;
-        if (client) {
-          const { data: freshInst } = await client.from('institutions').select('*').eq('id', instId).single();
-          if (freshInst) {
-            institutionData = freshInst;
-            // Opdater også in-memory cache
-            if (window.__flangoGetAllInstitutions) {
-              const allInst = window.__flangoGetAllInstitutions();
-              const idx = allInst.findIndex(i => String(i.id) === String(instId));
-              if (idx >= 0) Object.assign(allInst[idx], freshInst);
-            }
-          } else {
-            institutionData = window.__flangoGetInstitutionById?.(instId);
+        // Hent indstillingerne friske, så en ændring fra super-admin (fx en låst
+        // funktion) er synlig, når panelet åbnes — ikke først ved næste login.
+        const settings = window.__flangoCafeSettings;
+        if (settings) {
+          try {
+            institutionData = { ...(await settings.load(instId)) };
+          } catch (e) {
+            console.warn('[FlangoSettings] Kunne ikke hente friske indstillinger:', e?.message || e);
+            institutionData = { ...settings.get() };
           }
-        } else {
-          institutionData = window.__flangoGetInstitutionById?.(instId);
         }
         if (institutionData) {
           rmActive = !!institutionData.restaurant_mode_enabled;
-          // Check mpCsvOn from payment config
-          const paymentConfig = institutionData.parent_portal_payment;
-          if (paymentConfig && typeof paymentConfig === 'object') {
-            mpCsvOn = !!paymentConfig.mobilepay_csv;
-          } else {
-            mpCsvOn = false;
-          }
+          mpCsvOn = true; // CSV-import er en personalehandling, ikke en forældrebetalingskontakt.
           // Build baseline snapshot of all settings fields
           baselineSnapshot = Object.assign({}, institutionData);
         }
