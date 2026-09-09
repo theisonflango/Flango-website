@@ -34,45 +34,39 @@
   function pushPlugin() {
     return (isNativeApp() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) || null;
   }
-  var pushListenersReady = null;
-  var pendingPushRegistration = null;
+  var pushListenersReady = false;
   function ensurePushListeners() {
     var p = pushPlugin();
-    if (!p) return;
-    if (pushListenersReady) return pushListenersReady;
-    pushListenersReady = Promise.all([p.addListener('registration', async function (t) {
+    if (!p || pushListenersReady) return;
+    pushListenersReady = true;
+    p.addListener('registration', async function (t) {
       try {
         var token = t && t.value;
         if (!token) return;
         localStorage.setItem(PUSH_TOKEN_KEY, token);
-        var result = await window.portalSupabase.rpc('portal_register_push_token', {
-          p_token: token,
-          p_platform: window.Capacitor.getPlatform(),
-        });
-        if (result.error) throw result.error;
-        pendingPushRegistration?.resolve();
-      } catch (e) {
-        pendingPushRegistration?.reject(e);
-        console.warn('[Portal] push-token-registrering fejlede:', e && e.message);
-      }
-    }), p.addListener('registrationError', function (e) {
-      pendingPushRegistration?.reject(new Error(e?.error || 'Enheden kunne ikke tilmeldes push.'));
+        var user = (await window.portalSupabase.auth.getUser()).data.user;
+        if (!user) return;
+        await window.portalSupabase.from('parent_push_tokens').upsert(
+          { auth_user_id: user.id, token: token, platform: window.Capacitor.getPlatform(), last_seen_at: new Date().toISOString() },
+          { onConflict: 'auth_user_id,token' }
+        );
+      } catch (e) { console.warn('[Portal] push-token-registrering fejlede:', e && e.message); }
+    });
+    p.addListener('registrationError', function (e) {
       console.warn('[Portal] push-registrering afvist:', JSON.stringify(e));
-    })]);
-    return pushListenersReady;
+    });
   }
   async function removeThisDevicePushToken() {
     var token = localStorage.getItem(PUSH_TOKEN_KEY);
-    if (!token) { localStorage.removeItem(PUSH_ENABLED_KEY); return; }
-    var result = await window.portalSupabase.rpc('portal_unregister_push_token', { p_token: token });
-    if (result.error) throw result.error;
-    localStorage.removeItem(PUSH_TOKEN_KEY);
     localStorage.removeItem(PUSH_ENABLED_KEY);
+    if (!token) return;
+    localStorage.removeItem(PUSH_TOKEN_KEY);
+    try { await window.portalSupabase.from('parent_push_tokens').delete().eq('token', token); } catch (e) { /* best effort */ }
   }
   // Genregistrér ved appstart (APNs-tokens roterer) — prompter aldrig; kun hvis allerede slået til
   if (isNativeApp() && localStorage.getItem(PUSH_ENABLED_KEY) === '1') {
-    setTimeout(async function () {
-      try { await ensurePushListeners(); await pushPlugin()?.register(); } catch (e) { console.warn('[Portal] push-genregistrering fejlede:', e?.message); }
+    setTimeout(function () {
+      try { ensurePushListeners(); pushPlugin() && pushPlugin().register(); } catch (e) { /* ignore */ }
     }, 2000);
   }
 
@@ -411,24 +405,14 @@
     async enablePushOnThisDevice() {
       var p = pushPlugin();
       if (!p) throw new Error('Push kræver appen');
-      await ensurePushListeners();
+      ensurePushListeners();
       var perm = await p.requestPermissions();
       if (!perm || perm.receive !== 'granted') {
         var err = new Error('Tilladelse afvist');
         err.code = 'denied';
         throw err;
       }
-      if (pendingPushRegistration) throw new Error('Push-tilmelding er allerede i gang.');
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          pendingPushRegistration = null;
-          reject(new Error('Push-tilmelding tog for lang tid. Prøv igen.'));
-        }, 15000);
-        const finish = (fn) => (value) => { clearTimeout(timeout); pendingPushRegistration = null; fn(value); };
-        const rejectRegistration = finish(reject);
-        pendingPushRegistration = { resolve: finish(resolve), reject: rejectRegistration };
-        Promise.resolve().then(() => p.register()).catch(rejectRegistration);
-      });
+      await p.register();
       localStorage.setItem(PUSH_ENABLED_KEY, '1');
     },
     async disablePushOnThisDevice() { await removeThisDevicePushToken(); },
@@ -625,6 +609,16 @@
     },
 
     // ─── Profile Picture Consent ───
+
+    /** Save granular profile picture consent for a child */
+    async saveProfilePictureConsent(childId, optOutAula, optOutCamera, optOutAi) {
+      return rpcCall('save_profile_picture_consent', {
+        p_child_id: childId,
+        p_opt_out_aula: optOutAula,
+        p_opt_out_camera: optOutCamera,
+        p_opt_out_ai: optOutAi,
+      });
+    },
 
     /** Set active profile picture or delete one from library */
     async manageProfilePicture(childId, action, pictureId) {

@@ -77,45 +77,23 @@
   // ── Auto-save: gem enkelt felt direkte til DB ──
   let baselineSnapshot = {};
 
-  async function saveField(key, value) {
-    const settings = window.__flangoCafeSettings;
-    if (!settings) return;
-
-    try {
-      // Caféens indstillinger ejes af cafe.institution_settings (ADR-005 § 2.3) og
-      // skrives gennem cafe_set_settings. Serveren håndhæver kommunerammen og rollen.
-      const updated = await settings.saveFields({ [key]: value });
-
-      baselineSnapshot[key] = value;
-      if (institutionData) Object.assign(institutionData, updated);
-
-      // Special-case: restaurant_mode_enabled → update header
-      if (key === 'restaurant_mode_enabled') {
-        rmActive = !!value;
-        const badge = document.getElementById('restaurant-mode-badge');
-        if (badge) badge.style.display = rmActive ? '' : 'none';
-        const kitchenBtn = document.getElementById('kitchen-btn');
-        if (kitchenBtn) kitchenBtn.style.display = rmActive ? '' : 'none';
-      }
-    } catch (e) {
-      console.error(`[FlangoSettings] Save error for ${key}:`, e);
-      window.alert('Indstillingen blev ikke gemt: ' + (e.message || 'Ukendt fejl'));
-      renderContent();
-    }
-  }
-
-  // Batch save multiple fields at once (for mini Gem-knap sections)
+  // Caféens indstillinger ejes af cafe.institution_settings (ADR-005 § 2.3) og skrives gennem
+  // cafe_set_settings, som håndhæver kommunerammen og rollen. Serveren fletter og returnerer
+  // HELE rækken — spejlet opdateres derfra, ikke fra det vi sendte, så patch-former (fx
+  // toolbar_patch, der fletter ind i toolbar-JSONB'en) ikke lander i spejlet som deres egen
+  // nøgle. Objektet muteres frem for at blive udskiftet, fordi wire()-lukninger holder det.
+  // Returnerer true/false, og en afvist skrivning SKAL være synlig — ellers flipper en toggle
+  // i UI'et uden at noget blev gemt, og springer tilbage ved næste reload.
   async function saveFields(updates) {
     const settings = window.__flangoCafeSettings;
-    if (!settings) return;
+    if (!settings) return false;
 
     try {
-      const updated = await settings.saveFields(updates);
+      const fresh = await settings.save(updates);
 
-      for (const [key, value] of Object.entries(updates)) {
-        baselineSnapshot[key] = value;
-        if (institutionData) Object.assign(institutionData, updated);
-      }
+      if (institutionData) Object.assign(institutionData, fresh);
+      else institutionData = { ...fresh };
+      Object.assign(baselineSnapshot, fresh);
 
       if ('restaurant_mode_enabled' in updates) {
         rmActive = !!updates.restaurant_mode_enabled;
@@ -124,11 +102,16 @@
         const kitchenBtn = document.getElementById('kitchen-btn');
         if (kitchenBtn) kitchenBtn.style.display = rmActive ? '' : 'none';
       }
+      return true;
     } catch (e) {
-      console.error('[FlangoSettings] Batch save error:', e);
-      window.alert('Indstillingerne blev ikke gemt: ' + (e.message || 'Ukendt fejl'));
-      renderContent();
+      console.error('[FlangoSettings] Kunne ikke gemme:', updates, e);
+      window.showToast?.('Kunne ikke gemme ændringen', 'error');
+      return false;
     }
+  }
+
+  async function saveField(key, value) {
+    return saveFields({ [key]: value });
   }
 
   // Backward compat: markDirty now auto-saves (used by wireToggles etc.)
@@ -183,7 +166,13 @@
         }
         if (institutionData) {
           rmActive = !!institutionData.restaurant_mode_enabled;
-          mpCsvOn = true; // CSV-import er en personalehandling, ikke en forældrebetalingskontakt.
+          // Check mpCsvOn from payment config
+          const paymentConfig = institutionData.parent_portal_payment;
+          if (paymentConfig && typeof paymentConfig === 'object') {
+            mpCsvOn = !!paymentConfig.mobilepay_csv;
+          } else {
+            mpCsvOn = false;
+          }
           // Build baseline snapshot of all settings fields
           baselineSnapshot = Object.assign({}, institutionData);
         }

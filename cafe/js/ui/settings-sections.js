@@ -80,7 +80,7 @@
     // 1. Standard data-field toggles
     container.querySelectorAll('.fsp-toggle[data-field]').forEach(toggle => {
       const field = toggle.dataset.field;
-      const moduleKey = FM.FIELD_TO_MODULE?.[field.split('.').at(-1)];
+      const moduleKey = FM.FIELD_TO_MODULE?.[field];
       if (moduleKey) applyFlag(toggle, moduleKey);
     });
 
@@ -94,7 +94,7 @@
     // 3. Radio buttons (data-field)
     container.querySelectorAll('.fsp-radio[data-field]').forEach(radio => {
       const field = radio.dataset.field;
-      const moduleKey = FM.FIELD_TO_MODULE?.[field.split('.').at(-1)];
+      const moduleKey = FM.FIELD_TO_MODULE?.[field];
       if (moduleKey && FM.isModuleLocked(flags, moduleKey)) {
         radio.style.opacity = '0.5';
         radio.style.pointerEvents = 'none';
@@ -1060,8 +1060,8 @@
           if (error) throw error;
         } else {
           eventData.institution_id = instId;
-          eventData.created_by_person_id = window.__flangoCurrentAdminProfile?.person_id;
-          if (!eventData.created_by_person_id) throw new Error('Personaleprofilen mangler. Log ind igen.');
+          const admin = window.__flangoCurrentAdmin;
+          eventData.created_by = admin?.id || null;
           const { data: created, error } = await mgmt.createEvent(eventData);
           if (error) throw error;
           targetEventId = created?.id;
@@ -1582,7 +1582,7 @@
     render(ctx) {
       const inst = ctx.institutionData || {};
       const enabled = !!inst.restaurant_mode_enabled;
-      const kitchenOn = inst.toolbar?.kitchen !== false;
+      const kitchenOn = window.__flangoToolbarStore.flagByKey(inst, 'kitchen');
       const tableOn = !!inst.restaurant_table_numbers_enabled;
       const tableCount = inst.restaurant_table_count ?? 8;
       const deviceOn = !!localStorage.getItem('flango_device_restaurant_mode');
@@ -1609,7 +1609,7 @@
         </div>
         <div class="fsp-body${enabled ? ' open' : ''}" data-expand-target="rm-body">
           <div class="fsp-section"><div class="fsp-block">
-            <div class="fsp-row"><div style="flex:1"><div class="fsp-row-title">Vis køkkenskærm-genvej i toolbar</div><div class="fsp-row-desc">Tip: hold knappen inde for at åbne køkkenskærmen.</div></div><div class="fsp-toggle${kitchenOn ? ' on' : ''}" data-field="toolbar.kitchen" data-rm-kitchen></div></div>
+            <div class="fsp-row"><div style="flex:1"><div class="fsp-row-title">Vis køkkenskærm-genvej i toolbar</div><div class="fsp-row-desc">Tip: hold knappen inde for at åbne køkkenskærmen.</div></div><div class="fsp-toggle${kitchenOn ? ' on' : ''}" data-rm-kitchen></div></div>
           </div></div>
           <div class="fsp-section" style="margin-bottom:20px">
             <button type="button" data-action="open-kitchen-fullscreen" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 24px;border:none;border-radius:12px;background:var(--fsp-accent-g);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s;letter-spacing:-0.2px;font-family:inherit">
@@ -1648,13 +1648,18 @@
       wireToggles(container, ctx);
       wireNumberInputs(container, ctx);
       wireStepButtons(container);
-      // "Vis Køkkenskærm" button → toggle fullscreen kitchen overlay (lazy-load module if needed)
-      // Køkkenskærm-genvej-toggle: wireToggles gemmer toolbar_kitchen; spejl live til den faktiske header-knap.
+      // Køkkenskærm-genvejen er en TOOLBAR-genvej, ikke en egen kolonne — den går derfor
+      // gennem toolbar-lageret og ikke gennem wireToggles' data-field (som betyder "kolonne").
       const _rmKitchenTog = container.querySelector('[data-rm-kitchen]');
-      if (_rmKitchenTog) _rmKitchenTog.addEventListener('click', () => {
+      if (_rmKitchenTog) _rmKitchenTog.addEventListener('click', async () => {
+        const store = window.__flangoToolbarStore;
+        const on = !_rmKitchenTog.classList.contains('on');
+        if (!(await ctx.saveFields(store.flagPatch(store.item('kitchen'), on)))) return;
+        _rmKitchenTog.classList.toggle('on', on);
         const b = document.getElementById('kitchen-btn');
-        if (b) b.style.display = _rmKitchenTog.classList.contains('on') ? '' : 'none';
+        if (b) b.style.display = on ? '' : 'none';
       });
+      // "Vis Køkkenskærm" button → toggle fullscreen kitchen overlay (lazy-load module if needed)
       container.querySelector('[data-action="open-kitchen-fullscreen"]')?.addEventListener('click', () => {
         if (typeof window.__flangoToggleKitchenFullscreen === 'function') {
           window.__flangoToggleKitchenFullscreen();
@@ -1827,20 +1832,23 @@
   sections['Toolbar'] = {
     _items: null,
     // Byg items fra den KANONISKE kilde (window.__flangoToolbarItems = TOOLBAR_MAPPING
-    // i shell.js), s\u00e5 labels, ikoner og kolonner ALTID matcher den rigtige header.
-    //   key   = orderKey (persisteret i toolbar_order \u2014 r\u00f8r ikke)
-    //   settingPath = den faktiske boolean-kolonne (toggle l\u00e6ser+skriver SAMME kolonne)
+    // i toolbar-items.js), så labels, ikoner og lagring ALTID matcher den rigtige header.
+    // Både tilstand og rækkefølge læses/skrives gennem __flangoToolbarStore — samme
+    // adgangslag som headeren bruger, så de to ikke kan komme til at læse hver sit sted.
+    //   key   = orderKey (persisteret i settings.toolbar.order — rør ikke)
+    //   m     = selve mapping-elementet (det tilstand slås op på ved læsning og skrivning)
     //   btnId = header-element til live-toggle + reorder
     _build(ctx) {
       const inst = ctx.institutionData || {};
+      const store = window.__flangoToolbarStore;
       const MAP = window.__flangoToolbarItems || [];
       const items = MAP
         .map(m => {
-          const on = window.__flangoCafeSettings.readField(inst, m.settingPath) !== false;
+          const on = store.flag(inst, m);
           const requiresMet = !m.requiresCol || inst[m.requiresCol] === true;
           return {
             key: m.orderKey,
-            settingPath: m.settingPath,
+            m,
             btnId: m.btnId,
             n: m.label,
             d: m.desc,
@@ -1853,15 +1861,12 @@
             iconHtml: window.flangoIcon(m.iconKey),
           };
         });
-      // Anvend gemt r\u00e6kkef\u00f8lge (toolbar_order)
-      const ord = inst.toolbar?.order;
-      if (ord) {
-        const order = typeof ord === 'string' ? JSON.parse(ord) : ord;
-        if (Array.isArray(order) && order.length > 0) {
-          const orderMap = {};
-          order.forEach((k, idx) => { orderMap[k] = idx; });
-          items.sort((a, b) => (orderMap[a.key] ?? 999) - (orderMap[b.key] ?? 999));
-        }
+      // Anvend gemt rækkefølge
+      const order = store.order(inst);
+      if (order.length) {
+        const orderMap = {};
+        order.forEach((k, idx) => { orderMap[k] = idx; });
+        items.sort((a, b) => (orderMap[a.key] ?? 999) - (orderMap[b.key] ?? 999));
       }
       return items;
     },
@@ -1885,7 +1890,7 @@
         // alwaysOn (⚙️/➕): låst-tændt toggle uden data-tb-toggle (ikke en funktionel toggle), men stadig flytbar.
         const toggleOn = it.alwaysOn || it.on;
         const toggleLocked = it.alwaysOn || reqLocked;
-        const toggleAttr = it.alwaysOn ? '' : ` data-tb-toggle="${it.settingPath}"`;
+        const toggleAttr = it.alwaysOn ? '' : ` data-tb-toggle="${it.key}"`;
         return `<div class="fsp-tb-item" data-tb-key="${it.key}">
         <div class="fsp-tb-item-drag" data-tb-handle><span></span><span></span><span></span></div>
         <div class="fsp-tb-item-emoji">${it.iconHtml}</div>
@@ -1931,23 +1936,23 @@
         });
       }
       function persistOrder() {
-        ctx.markDirty('toolbar.order', self._getItems(ctx).map(x => x.key));
+        ctx.saveFields(window.__flangoToolbarStore.orderPatch(self._getItems(ctx).map(x => x.key)));
         applyLiveOrder();
       }
       function renderListDom() { const l = listEl(); if (l) { l.innerHTML = self._listHtml(self._getItems(ctx)); mountList(); } }
       function renderPreviewDom() { const p = previewIconsEl(); if (p) { p.innerHTML = self._previewIconsHtml(self._getItems(ctx)); mountPreview(); } }
 
-      function setToggle(settingPath, isOn) {
+      function setToggle(orderKey, isOn) {
         const inst = ctx.institutionData || {};
-        const it = self._getItems(ctx).find(x => x.settingPath === settingPath);
+        const it = self._getItems(ctx).find(x => x.key === orderKey);
         if (!it || it.alwaysOn) return; // alwaysOn (⚙️/➕) kan ikke skjules
         const requiresMet = !it.requiresCol || inst[it.requiresCol] === true;
         if (it.requiresCol && !requiresMet) return; // låst: kan ikke slås til uden kravet (fx Køkkenskærm uden Restaurant Mode)
         it.on = isOn;
         it.shown = isOn && requiresMet;
-        ctx.markDirty(settingPath, isOn); // auto-save to the SAME column the header reads
+        ctx.saveFields(window.__flangoToolbarStore.flagPatch(it.m, isOn)); // samme adgangslag som headeren læser
         // shift_timer is gated by a runtime global (clerk-login + pill creation read it).
-        if (settingPath === 'shift_timer_enabled' && window.__flangoInstitutionSettings) {
+        if (it.m.key === 'shift_timer' && window.__flangoInstitutionSettings) {
           window.__flangoInstitutionSettings.shiftTimerEnabled = isOn;
         }
         // Live header visibility gated by the SAME requiresCol as applyToolbarSettings (live == reload).
@@ -2218,11 +2223,37 @@
     return 'fsp-pm-badge-gray';
   }
 
+  function _parsePaymentSettings(raw) {
+    if (!raw) return {};
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+    } catch { return {}; }
+  }
+
   // Non-stripe methods (stripe_connect is rendered separately with live status)
   const _pmMethods = [
+    { id: 'mobilepay_api', hasFeePolicy: true, t: 'MobilePay API', badges: [['Automatisk saldo-opdatering','green'],['Kr\u00e6ver ops\u00e6tning','orange']], d: 'For\u00e6ldre indbetaler via MobilePay. Saldo opdateres automatisk.', detail: 'Denne l\u00f8sning foruds\u00e6tter, at institutionen (eller kommunen) har en MobilePay API-aftale. N\u00e5r en for\u00e6lder indbetaler via MobilePay, registreres betalingen automatisk i Flango, og barnets saldo opdateres uden manuelt arbejde.', configLabel: 'Konfigurer MobilePay API' },
+    { id: 'mobilepay_csv', hasFeePolicy: false, t: 'MobilePay CSV', badges: [['Semi-automatisk','orange']], d: 'Sekret\u00e6r/leder uploader en MobilePay-oversigt. Nye betalinger registreres automatisk i Flango.', detail: 'Typisk logger skolens sekret\u00e6r eller SFO-leder ind i MobilePay-portalen, downloader en oversigt over indbetalinger (CSV) og uploader den i Flango. Flango registrerer automatisk alle nye betalinger p\u00e5 de relevante b\u00f8rn.<br><br>Det anbefales at g\u00f8re dette i et fast interval, som meldes ud til for\u00e6ldrene, fx: <em>\u2018Indbetalinger opdateres hver dag inden kl. 13:00\u2019</em> eller <em>\u2018hver mandag inden kl. 13:00\u2019</em>.', configLabel: '\u00c5bn CSV-import' },
     { id: 'mobilepay_qr', hasFeePolicy: false, t: 'MobilePay QR', badges: [['Manuel','gray']], d: 'For\u00e6ldre scanner en QR-kode. Personalet registrerer indbetalingen manuelt i Flango.', detail: 'Denne metode foruds\u00e6tter, at institutionen har en MobilePay-aftale, og at klubben er logget ind p\u00e5 den mobil, som modtager indbetalinger. Institutionens QR-kode vises i for\u00e6ldreportalen og evt. i Aula. N\u00e5r for\u00e6ldre sender penge, skal personalet manuelt registrere indbetalingen p\u00e5 det enkelte barn i Flango (fx via \u2018Opdater saldo\u2019 i brugerpanelet).' },
+    { id: 'mobilepay_qr_screenshot', hasFeePolicy: false, t: 'MobilePay QR + Screenshot', badges: [['N\u00f8dl\u00f8sning','red']], d: 'For\u00e6ldre sender et sk\u00e6rmbillede som betalingsbevis. Personalet registrerer manuelt i Flango.', detail: 'Denne metode er til institutioner, hvor MobilePay-aftalen administreres eksternt (fx hos skolens sekret\u00e6r). Personalet kan derfor ikke se, n\u00e5r en for\u00e6lder har indbetalt. For\u00e6ldre skal sende et sk\u00e6rmbillede af betalingen som dokumentation til klubbens mobil, hvorefter personalet registrerer indbetalingen manuelt.<br><br><strong style="color:var(--fsp-accent)">Anbefales kun, hvis ingen andre l\u00f8sninger er mulige.</strong>' },
     { id: 'cash', hasFeePolicy: false, t: 'Kontant', badges: [['Offline','gray'],['N\u00f8dl\u00f8sning','red']], d: 'Personalet tager imod kontanter og registrerer indbetalingen manuelt i Flango.', detail: 'Kontant indbetaling kr\u00e6ver ingen teknisk ops\u00e6tning og medf\u00f8rer ingen transaktionsomkostninger. De fleste for\u00e6ldre foretr\u00e6kker digitale indbetalinger, men kontant kan bruges som en alternativ eller n\u00f8dl\u00f8sning for familier, der ikke \u00f8nsker digitale betalinger.' }
   ];
+
+  // Save payment settings JSONB atomically (preserves other keys)
+  async function _savePaymentSettings(ctx, mutator) {
+    const inst = ctx.institutionData || {};
+    const current = _parsePaymentSettings(inst.parent_portal_payment);
+    const next = mutator({ ...current });
+    // Also preserve per-method fee_policy in sync with admin_fee_payer for backward-compat
+    const fee = next.admin_fee_payer === 'parent' ? 'parent' : 'institution';
+    _pmMethods.forEach(m => {
+      if (!m.hasFeePolicy) return;
+      next[m.id] = { ...(next[m.id] || {}), fee_policy: fee };
+    });
+    if (next.stripe_connect) next.stripe_connect = { ...next.stripe_connect, fee_policy: fee };
+    await ctx.saveField('parent_portal_payment', next);
+  }
 
   function _updatePaymentWarnings(container) {
     const box = container.querySelector('[data-pm-warnings]');
@@ -2244,18 +2275,15 @@
   sections['Betalingsmetoder'] = {
     render(ctx) {
       const inst = ctx.institutionData || {};
-      const settings = {
-        mobilepay_qr: { enabled: inst.topup_qr_enabled === true },
-        cash: { enabled: inst.topup_cash_enabled === true },
-      };
-      const adminFeePayer = inst.portal?.admin_fee_payer;
+      const settings = _parsePaymentSettings(inst.parent_portal_payment);
+      const adminFeePayer = settings.admin_fee_payer === 'parent' ? 'parent' : 'institution';
 
       // Stripe live state
-      const stripeEnabled = inst.payment_accounts?.stripe?.enabled === true;
-      const stripeStatus = inst.payment_accounts?.stripe?.status || 'not_configured';
-      const stripeMode = inst.payment_accounts?.stripe?.mode || null;
-      const stripeError = inst.payment_accounts?.stripe?.last_error || null;
-      const stripeUpdatedAt = inst.payment_accounts?.stripe?.updated_at || null;
+      const stripeEnabled = inst.stripe_enabled === true || settings.stripe_connect?.enabled === true;
+      const stripeStatus = inst.stripe_account_status || settings.stripe_connect?.status || 'not_configured';
+      const stripeMode = inst.stripe_mode || settings.stripe_connect?.mode || null;
+      const stripeError = inst.stripe_last_error || null;
+      const stripeUpdatedAt = inst.stripe_updated_at || null;
 
       const S = window.__flangoStripe || {};
       const statusText = S.statusText ? S.statusText(stripeStatus) : 'Ikke konfigureret';
@@ -2325,7 +2353,7 @@
               <button class="fsp-btn ${onboardingDone ? 'fsp-btn-ghost' : 'fsp-btn-primary'}" id="stripe-onboarding-btn" data-action="stripe-onboard" ${onboardingDone ? 'disabled style="opacity:0.6;cursor:default;padding:10px 20px;font-size:13px"' : 'style="padding:10px 20px;font-size:13px"'}>${onboardingDone ? '\u2713 Ops\u00e6tning fuldf\u00f8rt' : onboardingBtnText}</button>
               <button class="fsp-btn fsp-btn-ghost" id="stripe-status-sync-btn" data-action="stripe-sync" style="padding:10px 20px;font-size:13px">\uD83D\uDD04 Opdater status</button>
               ${stripeMode ? `<button class="fsp-btn fsp-btn-ghost" id="stripe-change-mode-btn" data-action="stripe-change-mode" style="padding:10px 20px;font-size:13px" title="Skift mellem Test og Live mode">\u2699 Skift mode (${stripeMode === 'live' ? 'Live' : 'Test'})</button>` : ''}
-              ${inst.payment_accounts?.stripe?.account_ref ? `<button class="fsp-btn fsp-btn-ghost" id="stripe-reset-btn" data-action="stripe-reset" style="padding:10px 20px;font-size:13px;color:#e85a6f;border-color:rgba(232,90,111,0.3)" title="Nulstil Stripe-ops\u00e6tningen og start forfra">\u21BA Nulstil ops\u00e6tning</button>` : ''}
+              ${inst.stripe_account_id ? `<button class="fsp-btn fsp-btn-ghost" id="stripe-reset-btn" data-action="stripe-reset" style="padding:10px 20px;font-size:13px;color:#e85a6f;border-color:rgba(232,90,111,0.3)" title="Nulstil Stripe-ops\u00e6tningen og start forfra">\u21BA Nulstil ops\u00e6tning</button>` : ''}
             </div>
           </div></div></div>
         </div>
@@ -2372,7 +2400,7 @@
           const parT = container.querySelector('[data-cost="parent"]');
           if (val === 'institution') { instT?.classList.add('on'); parT?.classList.remove('on'); }
           else { parT?.classList.add('on'); instT?.classList.remove('on'); }
-          await ctx.saveField('portal.admin_fee_payer', val);
+          await _savePaymentSettings(ctx, s => { s.admin_fee_payer = val; return s; });
         });
       });
 
@@ -2403,16 +2431,15 @@
 
           _updatePaymentWarnings(container);
 
-          try {
-            if (id === 'stripe_connect') {
-              const updated = await window.__flangoCafeSettings.savePaymentAccount('stripe', { enabled });
-              Object.assign(ctx.institutionData, updated);
-            } else {
-              await ctx.saveField(id === 'cash' ? 'topup_cash_enabled' : 'topup_qr_enabled', enabled);
-            }
-          } catch (error) {
-            t.classList.toggle('on', !enabled);
-            alert('Betalingsmetoden blev ikke gemt: ' + error.message);
+          // Persist JSONB
+          await _savePaymentSettings(ctx, s => {
+            s[id] = { ...(s[id] || {}), enabled };
+            return s;
+          });
+
+          // Mirror to top-level stripe_enabled column
+          if (id === 'stripe_connect') {
+            await ctx.saveField('stripe_enabled', enabled);
           }
         });
       });
@@ -2442,10 +2469,10 @@
       // Opret / Fortsæt onboarding
       container.querySelector('[data-action="stripe-onboard"]')?.addEventListener('click', async () => {
         if (!S.startOnboarding || !instId) return;
-        const status = ctx.institutionData?.payment_accounts?.stripe?.status || 'not_configured';
-        const hasMode = !!ctx.institutionData?.payment_accounts?.stripe?.mode;
+        const status = ctx.institutionData?.stripe_account_status || 'not_configured';
+        const hasMode = !!ctx.institutionData?.stripe_mode;
         if ((status === 'not_configured' || !hasMode) && S.openModeModal) {
-          await S.openModeModal({ mode: ctx.institutionData?.payment_accounts?.stripe?.mode }, instId,
+          await S.openModeModal({ mode: ctx.institutionData?.stripe_mode }, instId,
             (beforeOpen) => S.startOnboarding(instId, beforeOpen));
         } else {
           await S.startOnboarding(instId);
@@ -2464,10 +2491,10 @@
         if (!S.openModeModal || !S.startOnboarding || !instId) return;
         const ok = await window.customConfirm?.(
           'Vil du skifte Stripe-mode?',
-          `Hvis du skifter mellem Test og Live, oprettes en ny Stripe-konto på den valgte platform. Din nuværende konto (${ctx.institutionData?.payment_accounts?.stripe?.mode === 'live' ? 'Live' : 'Test'}) efterlades i Stripe og kan slettes manuelt via dashboard.stripe.com.`
+          `Hvis du skifter mellem Test og Live, oprettes en ny Stripe-konto på den valgte platform. Din nuværende konto (${ctx.institutionData?.stripe_mode === 'live' ? 'Live' : 'Test'}) efterlades i Stripe og kan slettes manuelt via dashboard.stripe.com.`
         ) ?? confirm('Skift Stripe-mode? En ny konto oprettes på den valgte platform.');
         if (!ok) return;
-        await S.openModeModal({ mode: ctx.institutionData?.payment_accounts?.stripe?.mode }, instId,
+        await S.openModeModal({ mode: ctx.institutionData?.stripe_mode }, instId,
           (beforeOpen) => S.startOnboarding(instId, beforeOpen));
       });
 
@@ -2477,8 +2504,8 @@
       // onboarding allerede er fuldført (mulige modtagne betalinger på den gamle konto).
       container.querySelector('[data-action="stripe-reset"]')?.addEventListener('click', async () => {
         if (!instId) return;
-        const wasEnabled = ctx.institutionData?.payment_accounts?.stripe?.status === 'enabled';
-        const accountIdShort = (ctx.institutionData?.payment_accounts?.stripe?.account_ref || '').slice(0, 15);
+        const wasEnabled = ctx.institutionData?.stripe_account_status === 'enabled';
+        const accountIdShort = (ctx.institutionData?.stripe_account_id || '').slice(0, 15);
         const baseMsg = `Dette rydder Flangos kobling til din nuværende Stripe-konto (${accountIdShort}…). Næste gang du klikker "Fortsæt opsætning" oprettes en ny konto fra bunden.\n\nDen gamle konto efterlades hos Stripe (harmløst — koster intet og påvirker ikke ny onboarding). Hvis I ønsker den fysisk slettet, kan I kontakte Flango-support.`;
         const dangerMsg = wasEnabled
           ? `\n\n⚠ ADVARSEL: Din nuværende opsætning er fuldført (enabled). Hvis kontoen har modtaget betalinger, vil de blive utilgængelige via Flango efter nulstilling — du skal håndtere dem direkte hos Stripe.`
@@ -2497,8 +2524,13 @@
           });
           if (resetError) throw resetError;
 
-          await window.__flangoCafeSettings.load(instId);
-          await (window.__flangoReloadPaymentMethodsView || window.openPaymentMethodsModal)?.();
+          // Refresh local context og re-render section
+          if (ctx.institutionData) {
+            ctx.institutionData.stripe_account_id = null;
+            ctx.institutionData.stripe_account_status = 'not_configured';
+            ctx.institutionData.stripe_last_error = null;
+          }
+          (window.__flangoReloadPaymentMethodsView || window.openPaymentMethodsModal)?.();
           if (typeof window.showCustomAlert === 'function') {
             window.showCustomAlert('Nulstillet', 'Stripe-opsætningen er nulstillet. Klik "Fortsæt opsætning" for at starte forfra.');
           }
@@ -2550,12 +2582,12 @@
   sections['Profilbilleder'] = {
     render(ctx) {
       const inst = ctx.institutionData || {};
-      const enabled = !!inst.media?.profile_pictures_enabled;
-      const types = inst.media?.profile_picture_types || [];
-      const aiOn = !!inst.media?.profile_pictures_ai_enabled;
-      const adminAiOn = !!inst.media?.admin_ai_avatar_enabled;
-      const parentUploadOn = inst.media?.parent_can_upload_pictures !== false;
-      const defMode = inst.media?.default_profile_picture_mode || 'initials';
+      const enabled = !!inst.profile_pictures_enabled;
+      const types = inst.profile_picture_types || [];
+      const aiOn = !!inst.profile_pictures_ai_enabled;
+      const adminAiOn = !!inst.admin_ai_avatar_enabled;
+      const parentUploadOn = inst.parent_can_upload_pictures !== false;
+      const defMode = inst.default_profile_picture_mode || 'initials';
       const hasUpload = types.includes('upload');
       const hasAula = types.includes('aula');
       const hasCamera = types.includes('camera');
@@ -2565,7 +2597,7 @@
         <div class="fsp-page-desc">Profilbilleder vises ved brugervalg i caf\u00e9en s\u00e5 ekspedienten kan bekr\u00e6fte identiteten. Hver type profilbillede skal godkendes af for\u00e6ldre via for\u00e6ldreportalen.</div>
         <div class="fsp-main-toggle" style="margin-bottom:20px">
           <div style="flex:1"><div class="fsp-main-title">Profilbilleder er sl\u00e5et til</div></div>
-          <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="media.profile_pictures_enabled" data-expand="pp-body"></div>
+          <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="profile_pictures_enabled" data-expand="pp-body"></div>
         </div>
         <div data-expand-target="pp-body" class="${enabled ? '' : 'fsp-off'}">
           <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">Tilg\u00e6ngelige typer</div>
@@ -2587,25 +2619,25 @@
           </div></div>
           <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
             <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDC6A</span><div><div class="fsp-row-title">For\u00e6lder-upload</div><div class="fsp-row-desc">For\u00e6ldre uploader selv via portalen \u2014 hvert billede skal godkendes af admin</div></div></div>
-            <div class="fsp-toggle${parentUploadOn ? ' on' : ''}" data-field="media.parent_can_upload_pictures"></div>
+            <div class="fsp-toggle${parentUploadOn ? ' on' : ''}" data-field="parent_can_upload_pictures"></div>
           </div></div>
           <div class="fsp-block" style="margin-bottom:10px">
             <div class="fsp-row" style="margin-bottom:14px">
               <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83E\uDD16</span><div><div class="fsp-row-title">AI-Avatar</div><div class="fsp-row-desc">Generer Pixar-stil avatar fra foto</div></div></div>
-              <div class="fsp-toggle${aiOn ? ' on' : ''}" data-field="media.profile_pictures_ai_enabled" data-expand="ai-body"></div>
+              <div class="fsp-toggle${aiOn ? ' on' : ''}" data-field="profile_pictures_ai_enabled" data-expand="ai-body"></div>
             </div>
             <div class="fsp-expand${aiOn ? ' open' : ''}" data-expand-target="ai-body" style="max-height:${aiOn ? '400px' : '0'}">
               <div style="padding-top:14px;border-top:1px solid rgba(255,255,255,0.04)">
                 <div class="fsp-pm-detail">Aktiverer AI-genererede avatarer baseret p\u00e5 barnets foto. Fotoet sendes til den valgte udbyder og slettes straks efter. Flango sender faktura til institutionen p\u00e5 100,- kr. hvorefter I kan generere 300\u2013400 avatars.</div>
                 <div class="fsp-pm-detail" style="margin-top:8px">Sl\u00e5r I den <strong>fra</strong>: eksisterende avatarer slettes IKKE \u2014 de bliver st\u00e5ende som profilbilleder. Personalet kan blot ikke lave nye. For\u00e6ldrenes samtykke best\u00e5r, og har I for\u00e6lder-AI sl\u00e5et til i Portal-indstillinger, kan for\u00e6lderen fortsat selv lave avataren. Skal en avatar v\u00e6k, sletter I billedet \u2014 eller for\u00e6lderen tr\u00e6kker sit samtykke.</div>
-                <div class="fsp-role"><div class="fsp-role-left"><div><div class="fsp-role-name">Microsoft Azure OpenAI</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">EU</div></div></div><div class="fsp-toggle${inst.media?.ai_provider_openai !== false ? ' on' : ''}" data-ai-provider="openai"></div></div>
+                <div class="fsp-role"><div class="fsp-role-left"><div><div class="fsp-role-name">Microsoft Azure OpenAI</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">EU</div></div></div><div class="fsp-toggle${inst.ai_provider_openai !== false ? ' on' : ''}" data-ai-provider="openai"></div></div>
               </div>
             </div>
           </div>
           <div class="fsp-block" style="margin-bottom:10px">
             <div class="fsp-row">
               <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDC68\u200D\uD83D\uDCBC</span><div><div class="fsp-row-title">Admin AI-Avatar</div><div class="fsp-row-desc">Till\u00e5d admins at oprette AI-avatar af sig selv. Hver admin skal aktivere det individuelt med samtykke i \"Rediger admin\"-modalen.</div></div></div>
-              <div class="fsp-toggle${adminAiOn ? ' on' : ''}" data-field="media.admin_ai_avatar_enabled"></div>
+              <div class="fsp-toggle${adminAiOn ? ' on' : ''}" data-field="admin_ai_avatar_enabled"></div>
             </div>
           </div>
           ${parentUploadOn ? `
@@ -2627,15 +2659,15 @@
           <div data-dp-options>
             <div class="fsp-sub" data-dp-click="initials">
               <div style="display:flex;align-items:center;gap:8px"><span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(232,115,74,0.15);font-size:11px;font-weight:700;color:var(--fsp-accent)">AB</span><div><div class="fsp-sub-title">Initialer</div><div class="fsp-sub-hint">Viser brugerens initialer i en cirkel</div></div></div>
-              <div class="fsp-radio${defMode === 'initials' ? ' on' : ''}" data-field="media.default_profile_picture_mode" data-value="initials"></div>
+              <div class="fsp-radio${defMode === 'initials' ? ' on' : ''}" data-field="default_profile_picture_mode" data-value="initials"></div>
             </div>
             <div class="fsp-sub" data-dp-click="image">
               <div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">\uD83D\uDC64</span><div><div class="fsp-sub-title">Anonym bruger-ikon</div><div class="fsp-sub-hint">Viser et generisk bruger-ikon</div></div></div>
-              <div class="fsp-radio${defMode === 'image' ? ' on' : ''}" data-field="media.default_profile_picture_mode" data-value="image"></div>
+              <div class="fsp-radio${defMode === 'image' ? ' on' : ''}" data-field="default_profile_picture_mode" data-value="image"></div>
             </div>
             <div class="fsp-sub" data-dp-click="custom">
               <div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">\uD83D\uDDBC\uFE0F</span><div><div class="fsp-sub-title">Brugerdefineret billede</div><div class="fsp-sub-hint">\u00c9t f\u00e6lles billede for alle uden profilbillede</div></div></div>
-              <div class="fsp-radio${defMode === 'custom' ? ' on' : ''}" data-field="media.default_profile_picture_mode" data-value="custom"></div>
+              <div class="fsp-radio${defMode === 'custom' ? ' on' : ''}" data-field="default_profile_picture_mode" data-value="custom"></div>
             </div>
           </div>
         </div>
@@ -2662,7 +2694,7 @@
       container.querySelectorAll('[data-ai-provider]').forEach(toggle => {
         toggle.addEventListener('click', () => {
           toggle.classList.toggle('on');
-          ctx.markDirty('media.ai_provider_' + toggle.dataset.aiProvider, toggle.classList.contains('on'));
+          ctx.markDirty('ai_provider_' + toggle.dataset.aiProvider, toggle.classList.contains('on'));
         });
       });
       // Default picture toggle grey-out
@@ -2673,9 +2705,9 @@
       // Default picture radio clicks (on the sub row, not just the radio dot)
       container.querySelectorAll('[data-dp-click]').forEach(sub => {
         sub.addEventListener('click', () => {
-          container.querySelectorAll('.fsp-radio[data-field="media.default_profile_picture_mode"]').forEach(r => r.classList.remove('on'));
+          container.querySelectorAll('.fsp-radio[data-field="default_profile_picture_mode"]').forEach(r => r.classList.remove('on'));
           sub.querySelector('.fsp-radio')?.classList.add('on');
-          ctx.markDirty('media.default_profile_picture_mode', sub.dataset.dpClick);
+          ctx.markDirty('default_profile_picture_mode', sub.dataset.dpClick);
         });
       });
       // Profile picture types array toggle
@@ -2686,7 +2718,7 @@
           container.querySelectorAll('[data-pp-type]').forEach(t => {
             if (t.classList.contains('on')) types.push(t.dataset.ppType);
           });
-          ctx.markDirty('media.profile_picture_types', types);
+          ctx.markDirty('profile_picture_types', types);
         });
       });
       // Aula import
@@ -3388,7 +3420,7 @@
   sections['Auto-sletning af inaktive'] = {
     render(ctx) {
       const inst = ctx.institutionData || {};
-      const months = inst.directory?.auto_delete_inactive_months || 12;
+      const months = inst.auto_delete_inactive_months || 12;
       return `<div class="fsp-page">
         <div class="fsp-page-title">Papirkurv & auto-arkivering</div>
         <div class="fsp-page-desc">B\u00f8rn der ikke har brugt caf\u00e9en l\u00e6nge flyttes automatisk til papirkurven \u2014 skjult fra resten af programmet, men altid med fortrydelsesret.</div>
@@ -3408,7 +3440,7 @@
             { m: 24, h: 'L\u00e6ngere bevaringsperiode' }
           ].map(opt => `<div class="fsp-sub">
             <div><div class="fsp-sub-title">${opt.m} m\u00e5neder</div><div class="fsp-sub-hint">${opt.h}</div></div>
-            <div class="fsp-radio${months === opt.m ? ' on' : ''}" data-field="directory.auto_delete_inactive_months" data-value="${opt.m}"></div>
+            <div class="fsp-radio${months === opt.m ? ' on' : ''}" data-field="auto_delete_inactive_months" data-value="${opt.m}"></div>
           </div>`).join('')}
           <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Auto-arkivering kan <strong>ikke sl\u00e5s fra</strong> \u2014 det sikrer at gamle, ubrugte profiler ikke ligger for evigt. I v\u00e6lger kun, hvor l\u00e6nge der g\u00e5r f\u00f8rst.</div>
         </div>
@@ -3426,7 +3458,7 @@
     wire(container, ctx) {
       pageAlign(container);
       // Inaktivitetsperiode-radios (parseInt, da feltet er numerisk)
-      container.querySelectorAll('.fsp-radio[data-field="directory.auto_delete_inactive_months"]').forEach(radio => {
+      container.querySelectorAll('.fsp-radio[data-field="auto_delete_inactive_months"]').forEach(radio => {
         radio.addEventListener('click', () => {
           const field = radio.dataset.field;
           container.querySelectorAll(`.fsp-radio[data-field="${field}"]`).forEach(r => r.classList.remove('on'));
@@ -3762,15 +3794,28 @@
           gem.disabled = true; gem.textContent = 'Sender…';
 
           // Navnet er et visningsnavn og flytter ingen post — det gemmes med det
-          // samme. Adressen kræver bevis fra både den nuværende og den nye postkasse.
+          // samme. Adressen kræver bekræftelse på den nye postkasse.
           const navnFelt = (notifyEl.querySelector('[data-navn-input]')?.value || '').trim();
           if (navnFelt) await api.setContactName(navnFelt);
 
           const res = await api.requestNotificationEmailChange(adresser);
 
+          // Første adresse: der er ingen at bekræfte fra, så den er gemt med det samme.
+          if (res?.success && res.first_time) { await loadEmails(); return; }
+
           if (res?.success && res.code_sent && res.change_id) {
-            const { showEmailChangeConfirmation } = await import('../core/email-change-flow.js');
-            showEmailChangeConfirmation(form, res, loadEmails);
+            form.dataset.changeId = res.change_id;
+            form.innerHTML = `
+              <div style="padding:12px 14px;border-radius:10px;background:rgba(244,162,97,0.12);border:1px solid rgba(244,162,97,0.3)">
+                <div style="font-size:14px;line-height:1.5">Adressen er <strong>ikke</strong> ændret endnu.
+                Indtast koden, der er sendt til den nye modtageradresse. Koden gælder i 30 minutter.</div>
+                <label style="display:block;margin-top:12px;font-size:12px;color:var(--fsp-txt3)">Kode fra den nye adresse</label>
+                <input type="text" data-bekraeft-kode placeholder="000000" maxlength="6" inputmode="numeric"
+                       style="width:100%;margin-top:4px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:16px;letter-spacing:4px;text-align:center">
+                <button class="fsp-btn" data-action="bekraeft-mail" style="width:100%;margin-top:10px;padding:10px;font-size:13px">Bekræft skift</button>
+                <button class="fsp-btn fsp-btn-ghost" data-action="annuller-mailskift" style="width:100%;margin-top:8px;padding:10px;font-size:13px">Tilbage</button>
+                <div data-mail-fejl style="margin-top:8px;font-size:13px;color:#e85a6f"></div>
+              </div>`;
             return;
           }
           fejlEl.textContent = res?.error || 'Kunne ikke gemmes.';
@@ -3779,7 +3824,15 @@
         }
 
         if (e.target.closest('[data-action="annuller-mailskift"]')) { await loadEmails(); return; }
-
+        const bekraeft = e.target.closest('[data-action="bekraeft-mail"]');
+        if (!bekraeft) return;
+        const kode = notifyEl.querySelector('[data-bekraeft-kode]')?.value || '';
+        const fejl2 = notifyEl.querySelector('[data-mail-fejl]');
+        bekraeft.disabled = true; bekraeft.textContent = 'Bekræfter…';
+        const res2 = await api.confirmNotificationEmailChange(form.dataset.changeId, kode);
+        if (res2?.success) { await loadEmails(); return; }
+        fejl2.textContent = res2?.error || 'Kunne ikke bekræftes.';
+        bekraeft.disabled = false; bekraeft.textContent = 'Bekræft skift';
       });
 
       loadEmails();
