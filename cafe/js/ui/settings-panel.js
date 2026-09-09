@@ -105,9 +105,20 @@
       return true;
     } catch (e) {
       console.error('[FlangoSettings] Kunne ikke gemme:', updates, e);
-      window.showToast?.('Kunne ikke gemme ændringen', 'error');
+      window.showToast?.(gemFejlBesked(e), 'error');
       return false;
     }
+  }
+
+  // Et afslag fra access.authorize er ikke en driftsfejl — det er sessionen, der ikke må
+  // skrive indstillinger (cafe.settings kræver leder, personligt login og godkendt enhed).
+  // Siges det som "kunne ikke gemme", læser personalet det som en knap, der ikke virker.
+  function gemFejlBesked(err) {
+    const kode = String(err?.code || '');
+    if (kode === '42501' || err?.status === 403) {
+      return 'Indstillinger kan kun ændres af en leder med personligt login (e-mail + kodeord)';
+    }
+    return 'Kunne ikke gemme ændringen';
   }
 
   async function saveField(key, value) {

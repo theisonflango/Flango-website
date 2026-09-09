@@ -21,15 +21,28 @@
     container.style.alignItems = 'flex-start';
   }
 
-  /** Wire all fsp-toggle elements with data-field to dirty-tracking */
+  /**
+   * Wire all fsp-toggle elements with data-field to dirty-tracking.
+   *
+   * Serveren afgør, om sessionen må skrive (access.authorize → cafe.settings kræver leder,
+   * personligt login og godkendt enhed). Knappens udseende er derfor ikke sandheden, før
+   * gemmet er kvitteret: bliver skrivningen afvist, og knappen bliver stående i den nye
+   * stilling, står der en løgn på skærmen — den ruller først tilbage ved næste åbning, uden
+   * forklaring. Derfor er svaret det, der bestemmer, hvad knappen viser.
+   */
   function wireToggles(container, ctx) {
     container.querySelectorAll('.fsp-toggle[data-field]').forEach(toggle => {
-      toggle.addEventListener('click', () => {
+      toggle.addEventListener('click', async () => {
+        if (toggle.dataset.saving === '1') return;
+        const before = toggle.classList.contains('on');
         toggle.classList.toggle('on');
         const on = toggle.classList.contains('on');
+        toggle.dataset.saving = '1';
         // data-invert: knappen viser en POSITIV betydning ("gælder for") men kolonnen
         // er negativ (fx balance_limit_exempt_*). Skriv den inverterede værdi.
-        ctx.markDirty(toggle.dataset.field, toggle.hasAttribute('data-invert') ? !on : on);
+        const ok = await ctx.markDirty(toggle.dataset.field, toggle.hasAttribute('data-invert') ? !on : on);
+        delete toggle.dataset.saving;
+        if (ok === false) toggle.classList.toggle('on', before);
       });
     });
   }
@@ -106,29 +119,38 @@
     });
   }
 
-  /** Wire all fsp-radio elements with data-field + data-value */
+  /** Wire all fsp-radio elements with data-field + data-value. Som wireToggles: svaret bestemmer. */
   function wireRadios(container, ctx) {
     container.querySelectorAll('.fsp-radio[data-field]').forEach(radio => {
-      radio.addEventListener('click', () => {
+      radio.addEventListener('click', async () => {
         const field = radio.dataset.field;
+        const group = container.querySelectorAll(`.fsp-radio[data-field="${field}"]`);
+        const before = Array.from(group).find(r => r.classList.contains('on')) || null;
+        if (before === radio) return;
         // Deselect siblings with same field
-        container.querySelectorAll(`.fsp-radio[data-field="${field}"]`).forEach(r => r.classList.remove('on'));
+        group.forEach(r => r.classList.remove('on'));
         radio.classList.add('on');
         // Coerce boolean-strenge til ægte boolean, så de skrives korrekt til
         // boolean-kolonner (fx cafe_events_as_products). Andre værdier passerer uændret.
         const raw = radio.dataset.value;
         const value = raw === 'true' ? true : raw === 'false' ? false : raw;
-        ctx.markDirty(field, value);
+        const ok = await ctx.markDirty(field, value);
+        if (ok === false) {
+          radio.classList.remove('on');
+          if (before) before.classList.add('on');
+        }
       });
     });
   }
 
-  /** Wire all number inputs with data-field to dirty-tracking */
+  /** Wire all number inputs with data-field to dirty-tracking. Som wireToggles: svaret bestemmer. */
   function wireNumberInputs(container, ctx) {
     container.querySelectorAll('input[type="number"][data-field]').forEach(input => {
-      input.addEventListener('change', () => {
+      let gemt = input.value;
+      input.addEventListener('change', async () => {
         const val = parseInt(input.value) || 0;
-        ctx.markDirty(input.dataset.field, val);
+        const ok = await ctx.markDirty(input.dataset.field, val);
+        if (ok === false) input.value = gemt; else gemt = input.value;
       });
     });
   }
