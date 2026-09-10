@@ -145,7 +145,19 @@
   padding: 22px 0 4px;
 }
 
-@media (max-width: 900px) {
+/* Login-knappen navngiver appen ("Log ind på Forældreportal" er den bredeste,
+   ~215 px). Med syv sektionslinks kræver rækken derfor ~1015 px ved fuld
+   afstand — og så ville 1024 px-skærme falde til burger. I stedet strammes
+   afstanden mellem linkene, inden det kommer dertil. */
+@media (max-width: 1200px) {
+  .flango-nav-links { gap: 14px; }
+}
+
+/* Skiftet til burger sker, hvor rækken faktisk holder op med at kunne være der:
+   logo + syv sektionslinks + den bredeste login-knap kræver ~955 px med den
+   strammede afstand ovenfor. Grænsen skal ligge over det — ellers skydes
+   login-knappen ud over kanten og hele siden får vandret scroll. */
+@media (max-width: 980px) {
   .flango-nav-links, .flango-nav-right { display: none; }
   .flango-burger { display: flex; }
 }

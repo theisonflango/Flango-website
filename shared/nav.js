@@ -16,23 +16,31 @@
     { href: '/',               label: 'Forside' },
     { href: '/om-cafe/',       label: 'Café' },
     { href: '/om-skærmtid/',   label: 'Skærmtid' },
-    { href: '/ugeplan/',       label: 'Ugeplan' },
+    { href: '/om-køsystem/',   label: 'Køsystem' },
+    { href: '/om-ugeplan/',    label: 'Ugeplan' },
     { href: '/om-forældre/',   label: 'Forældreportal' },
     { href: '/ugeplan/faellesskabet', label: 'Fællesskabet' }
   ];
 
-  /* Login-knappen følger den side, man står på: er man på et produkts side, er
-   * "Log ind" den sides eget login. Uden for produktsiderne findes der ikke ét
-   * rigtigt svar, så knappen siger eksplicit hvor den fører hen. */
+  /* Sektionslinkene peger på om-siderne, ikke på apperne. Det er pointen: har man
+   * en session, ville et link direkte til appen sende én ind i den, og så kunne
+   * om-siden aldrig ses igen. Vejen ind i en app går altid gennem login-knappen.
+   *
+   * Knappen navngiver appen ("Log ind på Ugeplan"), så den siger hvor den fører
+   * hen — også uden for produktsiderne, hvor der ikke findes ét rigtigt svar. */
   var LOGINS = {
-    '/om-cafe/':       { href: '/cafe',             label: 'Log ind' },
-    '/om-skærmtid/':   { href: '/skærmtid/',        label: 'Log ind' },
+    '/om-cafe/':       { href: '/cafe',            label: 'Log ind på Café' },
+    '/om-skærmtid/':   { href: '/skærmtid/',       label: 'Log ind på Skærmtid' },
+    // ASCII-sti, ikke /køsystem/: ADR-003 holder mappe, skema og slug på ASCII,
+    // fordi ø i et stinavn gemmes NFD på macOS og NFC på Linux.
+    '/om-køsystem/':   { href: '/koesystem/',      label: 'Log ind på Køsystem' },
+    '/om-ugeplan/':    { href: '/ugeplan/login',   label: 'Log ind på Ugeplan' },
     // Længere match end '/ugeplan/', så fællesskabets egen indgang vinder på den sti.
-    '/ugeplan/faellesskabet': { href: '/ugeplan/faellesskabet/deltag', label: 'Log ind' },
-    '/ugeplan/':       { href: '/ugeplan/login',  label: 'Log ind' },
-    '/om-forældre/':   { href: '/forældre/',        label: 'Log ind' }
+    '/ugeplan/faellesskabet': { href: '/ugeplan/faellesskabet/deltag', label: 'Log ind på Fællesskabet' },
+    '/ugeplan/':       { href: '/ugeplan/login',   label: 'Log ind på Ugeplan' },
+    '/om-forældre/':   { href: '/forældre/',       label: 'Log ind på Forældreportal' }
   };
-  var LOGIN_STANDARD = { href: '/forældre/', label: 'Forældre login' };
+  var LOGIN_STANDARD = { href: '/forældre/', label: 'Log ind på Forældreportal' };
 
   var PORTAL_ICON =
     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
@@ -94,6 +102,11 @@
           '<button class="flango-burger" aria-label="Åbn menu" aria-expanded="false" aria-controls="flangoMobileMenu">' +
             '<span></span><span></span><span></span></button>' +
         '</div>' +
+      '</nav>' +
+      /* Mobilmenuen ligger UDEN FOR <nav>. Den er position:fixed, og .flango-nav
+       * har backdrop-filter — et filter gør elementet til containing block for
+       * fixed efterkommere, så menuen ville blive målt mod de 64 px høje bjælke
+       * i stedet for mod viewporten, og kun det første punkt ville være synligt. */
         '<div class="flango-mobile-menu" id="flangoMobileMenu" role="dialog" aria-label="Mobilmenu">' +
           mobile +
           '<span class="flango-mobile-section">Log ind</span>' +
@@ -102,8 +115,7 @@
           '<a href="/ugeplan/login">Ugeplan (personale)</a>' +
           '<a href="/ugeplan/faellesskabet/deltag">Fællesskabet</a>' +
           '<a href="/cafe">Café-app (personale)</a>' +
-        '</div>' +
-      '</nav>';
+        '</div>';
   }
 
   function init(el) {
@@ -134,7 +146,7 @@
     });
     /* Menuen er kun til mobil — skifter man til desktop skal body kunne scrolle igen. */
     window.addEventListener('resize', function () {
-      if (open && window.innerWidth > 900) setOpen(false);
+      if (open && window.innerWidth > 980) setOpen(false);
     });
   }
 
