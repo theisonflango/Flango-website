@@ -3,7 +3,7 @@
 // GitHub Pages sender `max-age=600` på alt, så efter ti minutter genvaliderer browseren hver
 // eneste fil ved næste start (~50 forespørgsler, mest 304'er, men hver koster en tur). Tre slags
 // filer kan aldrig ændre indhold under samme navn og må derfor tages fra cachen uden at spørge:
-//   1. Vites hash-navngivne filer i assets/ (navnet skifter, når indholdet gør),
+//   1. Vites hash-navngivne filer i assets/, inkl. fontene (navnet skifter, når indholdet gør),
 //   2. de rå scripts under js/ med `?v=N` (cache-buster-kontrakten: ny fil = nyt nummer,
 //      håndhævet af .githooks/pre-commit),
 //   3. billederne under Icons/webp/ (statiske i repoet; cachen roteres, når de ændres).
@@ -11,7 +11,7 @@
 // hvad der er nyt. Ved en app-opdatering afregistrerer version-check.js workeren og tømmer alle
 // caches, så dette lag aldrig kan holde en ny udgave tilbage.
 const IMAGE_VERSION = "e12d094412cbd575";
-const BUNDLE_VERSION = "0dae05601e854c3d";
+const BUNDLE_VERSION = "c47267a0e26d53b9";
 const scopePath = new URL(self.registration.scope).pathname;
 const scopeKey = scopePath.replace(/^\/+|\/+$/g, '').replace(/[^a-z0-9_-]+/gi, '-') || 'root';
 const IMAGE_CACHE_PREFIX = `flango-cafe-images-${scopeKey}-`;
@@ -19,8 +19,8 @@ const BUNDLE_CACHE_PREFIX = `flango-cafe-bundle-${scopeKey}-`;
 const IMAGE_CACHE = `${IMAGE_CACHE_PREFIX}${IMAGE_VERSION}`;
 const BUNDLE_CACHE = `${BUNDLE_CACHE_PREFIX}${BUNDLE_VERSION}`;
 const IMAGE_PATH_PREFIX = 'Icons/webp/';
-// Vites filnavne: <navn>-<8 tegn hash>.<js|css>
-const HASHED_ASSET = /^assets\/[^/]+-[A-Za-z0-9_-]{8}\.(?:js|css)$/;
+// Vites filnavne: <navn>-<8 tegn hash>.<js|css|woff2> — fontene er selvhostede (css/fonts.css)
+const HASHED_ASSET = /^assets\/[^/]+-[A-Za-z0-9_-]{8}\.(?:js|css|woff2)$/;
 
 self.addEventListener('install', () => {
     // Der pre-caches bevidst intet: kun det, enheden faktisk bruger, må koste netværk og lagerplads.

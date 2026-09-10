@@ -26,15 +26,11 @@
          skal, fordi både tauri://localhost og capacitor://localhost har hostname
          'localhost'. Begrundelsen for kun-web står ved TURNSTILE_ENABLED. -->
     <script>if(/^https?:$/.test(location.protocol)&&!['localhost','127.0.0.1'].includes(location.hostname)&&!location.hostname.startsWith('192.168.')&&!location.hostname.includes('tauri')){var s=document.createElement('script');s.src='https://challenges.cloudflare.com/turnstile/v0/api.js';s.async=s.defer=true;document.head.appendChild(s)}</script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- PlanViews fonte er layoutkritiske: fallback ændrer linjebrud og kan skjule
-         nederste række. Renderer-bundlen sikrer dem også selv; denne preload gør,
-         at Caféens første fuldskærmsrender allerede har den korrekte geometri. -->
-    <link id="flango-planview-fonts" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600&family=Caveat:wght@500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&family=Nunito:wght@400;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Alle fonte er selvhostede (css/fonts.css, genereret af scripts/fetch-google-fonts.mjs):
+         ingen kald til Google ved indlæsning, filerne ligger i service workerens cache, og
+         PlanViews layoutkritiske fonte har samme akser og vægte som dens kanoniske liste.
+         data-planview-fonts="self-hosted" fortæller renderer-bundlen, at den ikke skal lægge
+         et Google-link oveni (planViewFonts.ts). -->
 
     <!-- CSS -->
     <style>
@@ -385,12 +381,12 @@
         }
     </style>
     <script src="js/ui/icons.js?v=3"></script>
-  <script type="module" crossorigin src="/cafe/assets/main-vcs2W4wc.js"></script>
+  <script type="module" crossorigin src="/cafe/assets/main-IQiZPrpg.js"></script>
   <link rel="modulepreload" crossorigin href="/cafe/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/cafe/assets/platform-1lbURIPL.js">
+  <link rel="modulepreload" crossorigin href="/cafe/assets/platform-DSCX_eRO.js">
   <link rel="modulepreload" crossorigin href="/cafe/assets/backend-config-D_9xaUNr.js">
-  <link rel="modulepreload" crossorigin href="/cafe/assets/cafe-client-compatibility-D5KKFUeg.js">
-  <link rel="stylesheet" crossorigin href="/cafe/assets/main-jMsmkH3r.css">
+  <link rel="modulepreload" crossorigin href="/cafe/assets/cafe-client-compatibility-Cv6SySP7.js">
+  <link rel="stylesheet" crossorigin href="/cafe/assets/main-DQzgZjYK.css">
 </head>
 <body>
 
@@ -1999,7 +1995,7 @@
     <script src="js/ui/settings-sections.js?v=74"></script>
     <script src="js/ui/admin-portal-preview-host.js?v=15"></script>
     <script src="js/ui/admin-parent-page.js?v=3"></script>
-    <script src="js/ui/admin-portal-v2.js?v=6"></script>
+    <script src="js/ui/admin-portal-v2.js?v=7"></script>
     <script src="js/ui/cookie-banner.js?v=1"></script>
 
 </body>

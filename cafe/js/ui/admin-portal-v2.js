@@ -35,23 +35,6 @@
   var institutionSettings = null;
   var featureFlags = null;
 
-  function ensureGoogleFonts() {
-    if (document.querySelector('link[href*="Plus+Jakarta+Sans"]')) return;
-    var pre1 = document.createElement('link');
-    pre1.rel = 'preconnect';
-    pre1.href = 'https://fonts.googleapis.com';
-    var pre2 = document.createElement('link');
-    pre2.rel = 'preconnect';
-    pre2.href = 'https://fonts.gstatic.com';
-    pre2.crossOrigin = 'anonymous';
-    var link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap';
-    document.head.appendChild(pre1);
-    document.head.appendChild(pre2);
-    document.head.appendChild(link);
-  }
-
   function esc(s) {
     var el = document.createElement('span');
     el.textContent = s === null || s === undefined ? '' : String(s);
@@ -157,7 +140,6 @@
 
   async function openAdminPortalV2(options) {
     if (overlayEl) return;
-    ensureGoogleFonts();
 
     try {
       if (typeof PortalData !== 'undefined') {
