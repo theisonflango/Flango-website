@@ -10,8 +10,15 @@
 // index.html, version.json, lyde og alt cross-origin røres ikke: det er dem, der fortæller,
 // hvad der er nyt. Ved en app-opdatering afregistrerer version-check.js workeren og tømmer alle
 // caches, så dette lag aldrig kan holde en ny udgave tilbage.
-const IMAGE_VERSION = "e12d094412cbd575";
-const BUNDLE_VERSION = "c47267a0e26d53b9";
+//
+// Cachenavnene begynder med appversionen, og den FORRIGE generation beholdes: GitHub Pages
+// lader browseren holde index.html i ti minutter, så lige efter en udgivelse kan en enhed
+// stadig åbne den gamle index, som peger på gamle hash-navne. Slettede vi den gamle cache ved
+// aktivering, ville de navne hverken findes i cachen eller på serveren, og siden stod uden CSS
+// og JS, til index'ens ti minutter var gået. Målt 10/9-2026 — det skete.
+const IMAGE_VERSION = "3.0.304-e12d094412cbd575";
+const BUNDLE_VERSION = "3.0.304-c8421a0a5ca39aef";
+const GENERATIONS_TO_KEEP = 2;
 const scopePath = new URL(self.registration.scope).pathname;
 const scopeKey = scopePath.replace(/^\/+|\/+$/g, '').replace(/[^a-z0-9_-]+/gi, '-') || 'root';
 const IMAGE_CACHE_PREFIX = `flango-cafe-images-${scopeKey}-`;
@@ -27,14 +34,27 @@ self.addEventListener('install', () => {
     self.skipWaiting();
 });
 
+/** Appversionen forrest i cachenavnet, som sorterbart tal — nyeste generation først. */
+function generationRank(name, prefix) {
+    const m = name.slice(prefix.length).match(/^(\d+)\.(\d+)\.(\d+)/);
+    return m ? (Number(m[1]) * 1e6 + Number(m[2]) * 1e3 + Number(m[3])) : -1;
+}
+
+/** Behold den aktuelle og den forrige generation under et præfiks; slet resten. */
+async function pruneGenerations(names, prefix, current) {
+    const ours = names.filter((name) => name.startsWith(prefix));
+    const keep = new Set([current, ...ours
+        .filter((name) => name !== current)
+        .sort((a, b) => generationRank(b, prefix) - generationRank(a, prefix))
+        .slice(0, GENERATIONS_TO_KEEP - 1)]);
+    await Promise.all(ours.filter((name) => !keep.has(name)).map((name) => caches.delete(name)));
+}
+
 self.addEventListener('activate', (event) => {
     event.waitUntil((async () => {
         const names = await caches.keys();
-        await Promise.all(names
-            .filter((name) =>
-                (name.startsWith(IMAGE_CACHE_PREFIX) && name !== IMAGE_CACHE)
-                || (name.startsWith(BUNDLE_CACHE_PREFIX) && name !== BUNDLE_CACHE))
-            .map((name) => caches.delete(name)));
+        await pruneGenerations(names, IMAGE_CACHE_PREFIX, IMAGE_CACHE);
+        await pruneGenerations(names, BUNDLE_CACHE_PREFIX, BUNDLE_CACHE);
         await self.clients.claim();
     })());
 });
@@ -61,12 +81,14 @@ self.addEventListener('fetch', (event) => {
     if (!cacheName) return;
 
     event.respondWith((async () => {
-        const cache = await caches.open(cacheName);
-        const cached = await cache.match(event.request);
+        // Opslag på tværs af generationerne (en gammel index kan bede om gamle navne);
+        // nyt indhold lægges altid i den aktuelle generation.
+        const cached = await caches.match(event.request);
         if (cached) return cached;
 
         const response = await fetch(event.request);
         if (response.ok && response.type === 'basic') {
+            const cache = await caches.open(cacheName);
             await cache.put(event.request, response.clone());
         }
         return response;
