@@ -24,8 +24,8 @@
   /**
    * Wire all fsp-toggle elements with data-field to dirty-tracking.
    *
-   * Serveren afgør, om sessionen må skrive (access.authorize → cafe.settings kræver leder,
-   * personligt login og godkendt enhed). Knappens udseende er derfor ikke sandheden, før
+   * Serveren afgør, om sessionen må skrive (access.authorize: de fleste indstillinger kræver
+   * personligt login; sukkerpolitikken må også hurtig-PIN). Knappens udseende er derfor ikke sandheden, før
    * gemmet er kvitteret: bliver skrivningen afvist, og knappen bliver stående i den nye
    * stilling, står der en løgn på skærmen — den ruller først tilbage ved næste åbning, uden
    * forklaring. Derfor er svaret det, der bestemmer, hvad knappen viser.

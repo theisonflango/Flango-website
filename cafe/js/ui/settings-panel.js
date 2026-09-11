@@ -111,12 +111,15 @@
   }
 
   // Et afslag fra access.authorize er ikke en driftsfejl — det er sessionen, der ikke må
-  // skrive indstillinger (cafe.settings kræver leder, personligt login og godkendt enhed).
+  // skrive netop denne indstilling. Rollen er aldrig årsagen (alt personale må); de fleste
+  // indstillinger kræver personligt login, mens sukkerpolitikken også må ændres med hurtig-PIN.
   // Siges det som "kunne ikke gemme", læser personalet det som en knap, der ikke virker.
   function gemFejlBesked(err) {
     const kode = String(err?.code || '');
     if (kode === '42501' || err?.status === 403) {
-      return 'Indstillinger kan kun ændres af en leder med personligt login (e-mail + kodeord)';
+      return window.__flangoAccess?.isPersonalLogin?.() === false
+        ? 'Log ind med e-mail og kodeord for at ændre denne indstilling — hurtig-PIN rækker ikke'
+        : 'Du har ikke adgang til at ændre denne indstilling';
     }
     return 'Kunne ikke gemme ændringen';
   }
