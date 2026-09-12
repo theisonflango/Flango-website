@@ -1082,8 +1082,10 @@
           if (error) throw error;
         } else {
           eventData.institution_id = instId;
-          const admin = window.__flangoCurrentAdmin;
-          eventData.created_by = admin?.id || null;
+          // Kolonnen hedder created_by_person_id og peger på access.persons; den gamle
+          // created_by findes ikke. Globalen hed også __flangoCurrentAdmin uden "Profile"
+          // og blev aldrig sat, så feltet var null i forvejen.
+          eventData.created_by_person_id = window.__flangoCurrentAdminProfile?.person_id || null;
           const { data: created, error } = await mgmt.createEvent(eventData);
           if (error) throw error;
           targetEventId = created?.id;
