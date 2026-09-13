@@ -71,7 +71,6 @@
   let at = 0;   // active tab
   let ai = 0;   // active sidebar item
   let rmActive = false;
-  let mpCsvOn = false;
   let institutionData = null;
 
   // ── Auto-save: gem enkelt felt direkte til DB ──
@@ -128,6 +127,25 @@
     return saveFields({ [key]: value });
   }
 
+  // Betalingskontiene har deres eget RPC (kun enabled og mode må sættes herfra), men skal
+  // fejle lige så synligt som en indstilling: ellers står en toggle tændt uden en konto bag.
+  async function savePaymentAccount(provider, patch) {
+    const settings = window.__flangoCafeSettings;
+    if (!settings) return false;
+    try {
+      const account = await settings.setPaymentAccount(provider, patch);
+      const accounts = { ...(institutionData?.payment_accounts || {}), [provider]: account };
+      if (institutionData) institutionData.payment_accounts = accounts;
+      else institutionData = { payment_accounts: accounts };
+      baselineSnapshot.payment_accounts = accounts;
+      return true;
+    } catch (e) {
+      console.error('[FlangoSettings] Kunne ikke gemme betalingskontoen:', provider, patch, e);
+      window.showToast?.('Kunne ikke gemme ændringen', 'error');
+      return false;
+    }
+  }
+
   // Backward compat: markDirty now auto-saves (used by wireToggles etc.)
   function markDirty(key, value) {
     return saveField(key, value);
@@ -180,13 +198,6 @@
         }
         if (institutionData) {
           rmActive = !!institutionData.restaurant_mode_enabled;
-          // Check mpCsvOn from payment config
-          const paymentConfig = institutionData.parent_portal_payment;
-          if (paymentConfig && typeof paymentConfig === 'object') {
-            mpCsvOn = !!paymentConfig.mobilepay_csv;
-          } else {
-            mpCsvOn = false;
-          }
           // Build baseline snapshot of all settings fields
           baselineSnapshot = Object.assign({}, institutionData);
         }
@@ -282,9 +293,6 @@
       const iconColor = j === ai ? '#fff' : it.c;
       d.innerHTML = `<div class="fsp-si-icon" style="background:${iconBg}">${ic(it.l, iconColor)}</div><div class="fsp-si-text">${it.l}</div>${extra}`;
 
-      // Hide MobilePay CSV when mpCsvOn is false
-      if (at === 2 && j === 4 && !mpCsvOn) d.style.display = 'none';
-
       d.addEventListener('click', () => {
         // Check if this is a trigger item
         const triggerFn = TRIGGERS[it.l];
@@ -316,11 +324,10 @@
     // Delegate to settings-sections.js if available
     if (window.FlangoSettingsSections?.render) {
       const ctx = {
-        at, ai, rmActive, mpCsvOn, institutionData,
+        at, ai, rmActive, institutionData,
         ic, bigIc, overlay,
-        markDirty, saveField, saveFields, baselineSnapshot,
+        markDirty, saveField, saveFields, savePaymentAccount, baselineSnapshot,
         setRmActive: (val) => { rmActive = val; },
-        setMpCsvOn: (val) => { mpCsvOn = val; },
         featureFlags: window.__flangoFeatureFlags || null,
       };
       const html = window.FlangoSettingsSections.render(sectionKey, ctx);
@@ -466,6 +473,6 @@
   }
 
   // ── Public API ──
-  window.FlangoSettings = { open, close, openTo, reloadCurrent, T, icons, ic, bigIc, tabIcons, extLinkSvg, markDirty, saveField, saveFields };
+  window.FlangoSettings = { open, close, openTo, reloadCurrent, T, icons, ic, bigIc, tabIcons, extLinkSvg, markDirty, saveField, saveFields, savePaymentAccount };
 
 })();

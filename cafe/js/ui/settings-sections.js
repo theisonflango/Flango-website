@@ -54,6 +54,19 @@
   const AI_PROVIDER_MODULE = {
     openai: 'profile_pic_ai_openai',
   };
+  // data-ai-provider bærer udbyderen, ikke adressen. Slås den op her frem for at blive
+  // sat sammen, står begge adresser som literaler — det er dem maskinkontrollen læser.
+  const AI_PROVIDER_FIELD = {
+    openai: 'media.ai_provider_openai',
+    flux: 'media.ai_provider_flux',
+  };
+
+  // Superadmins låse er nøglet på kolonnenavnet (feature_modules.target_column), mens
+  // data-field er adressen. Uden kolonne-delen rammer opslaget forbi, og en låst toggle
+  // ser åben ud — databasen afviser den stadig, men først når nogen har klikket.
+  function _moduleForField(FM, field) {
+    return FM.FIELD_TO_MODULE?.[String(field).split('.').pop()];
+  }
 
   /**
    * Lås alle toggles der er låst af superadmin.
@@ -92,8 +105,7 @@
 
     // 1. Standard data-field toggles
     container.querySelectorAll('.fsp-toggle[data-field]').forEach(toggle => {
-      const field = toggle.dataset.field;
-      const moduleKey = FM.FIELD_TO_MODULE?.[field];
+      const moduleKey = _moduleForField(FM, toggle.dataset.field);
       if (moduleKey) applyFlag(toggle, moduleKey);
     });
 
@@ -106,8 +118,7 @@
 
     // 3. Radio buttons (data-field)
     container.querySelectorAll('.fsp-radio[data-field]').forEach(radio => {
-      const field = radio.dataset.field;
-      const moduleKey = FM.FIELD_TO_MODULE?.[field];
+      const moduleKey = _moduleForField(FM, radio.dataset.field);
       if (moduleKey && FM.isModuleLocked(flags, moduleKey)) {
         radio.style.opacity = '0.5';
         radio.style.pointerEvents = 'none';
@@ -2247,51 +2258,24 @@
     return 'fsp-pm-badge-gray';
   }
 
-  function _parsePaymentSettings(raw) {
-    if (!raw) return {};
-    try {
-      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
-    } catch { return {}; }
-  }
-
-  // Non-stripe methods (stripe_connect is rendered separately with live status)
+  // Hvor hver betalingsmetode bor efter ADR-005. Stripe og MobilePay API er konti i
+  // cafe.payment_accounts og skrives med deres eget RPC (kun enabled og mode); QR og
+  // kontant er caféens egne kolonner. Det gamle parent_portal_payment-jsonb findes ikke
+  // længere, og de to kort det alene bar — CSV og QR+screenshot — havde ingen læser og
+  // fulgte ikke med. Feltet her ER adressen: står den forkert, afviser serveren gemmet.
+  // Målt mod prod 2026-09-09.
   const _pmMethods = [
-    { id: 'mobilepay_api', hasFeePolicy: true, t: 'MobilePay API', badges: [['Automatisk saldo-opdatering','green'],['Kr\u00e6ver ops\u00e6tning','orange']], d: 'For\u00e6ldre indbetaler via MobilePay. Saldo opdateres automatisk.', detail: 'Denne l\u00f8sning foruds\u00e6tter, at institutionen (eller kommunen) har en MobilePay API-aftale. N\u00e5r en for\u00e6lder indbetaler via MobilePay, registreres betalingen automatisk i Flango, og barnets saldo opdateres uden manuelt arbejde.', configLabel: 'Konfigurer MobilePay API' },
-    { id: 'mobilepay_csv', hasFeePolicy: false, t: 'MobilePay CSV', badges: [['Semi-automatisk','orange']], d: 'Sekret\u00e6r/leder uploader en MobilePay-oversigt. Nye betalinger registreres automatisk i Flango.', detail: 'Typisk logger skolens sekret\u00e6r eller SFO-leder ind i MobilePay-portalen, downloader en oversigt over indbetalinger (CSV) og uploader den i Flango. Flango registrerer automatisk alle nye betalinger p\u00e5 de relevante b\u00f8rn.<br><br>Det anbefales at g\u00f8re dette i et fast interval, som meldes ud til for\u00e6ldrene, fx: <em>\u2018Indbetalinger opdateres hver dag inden kl. 13:00\u2019</em> eller <em>\u2018hver mandag inden kl. 13:00\u2019</em>.', configLabel: '\u00c5bn CSV-import' },
-    { id: 'mobilepay_qr', hasFeePolicy: false, t: 'MobilePay QR', badges: [['Manuel','gray']], d: 'For\u00e6ldre scanner en QR-kode. Personalet registrerer indbetalingen manuelt i Flango.', detail: 'Denne metode foruds\u00e6tter, at institutionen har en MobilePay-aftale, og at klubben er logget ind p\u00e5 den mobil, som modtager indbetalinger. Institutionens QR-kode vises i for\u00e6ldreportalen og evt. i Aula. N\u00e5r for\u00e6ldre sender penge, skal personalet manuelt registrere indbetalingen p\u00e5 det enkelte barn i Flango (fx via \u2018Opdater saldo\u2019 i brugerpanelet).' },
-    { id: 'mobilepay_qr_screenshot', hasFeePolicy: false, t: 'MobilePay QR + Screenshot', badges: [['N\u00f8dl\u00f8sning','red']], d: 'For\u00e6ldre sender et sk\u00e6rmbillede som betalingsbevis. Personalet registrerer manuelt i Flango.', detail: 'Denne metode er til institutioner, hvor MobilePay-aftalen administreres eksternt (fx hos skolens sekret\u00e6r). Personalet kan derfor ikke se, n\u00e5r en for\u00e6lder har indbetalt. For\u00e6ldre skal sende et sk\u00e6rmbillede af betalingen som dokumentation til klubbens mobil, hvorefter personalet registrerer indbetalingen manuelt.<br><br><strong style="color:var(--fsp-accent)">Anbefales kun, hvis ingen andre l\u00f8sninger er mulige.</strong>' },
-    { id: 'cash', hasFeePolicy: false, t: 'Kontant', badges: [['Offline','gray'],['N\u00f8dl\u00f8sning','red']], d: 'Personalet tager imod kontanter og registrerer indbetalingen manuelt i Flango.', detail: 'Kontant indbetaling kr\u00e6ver ingen teknisk ops\u00e6tning og medf\u00f8rer ingen transaktionsomkostninger. De fleste for\u00e6ldre foretr\u00e6kker digitale indbetalinger, men kontant kan bruges som en alternativ eller n\u00f8dl\u00f8sning for familier, der ikke \u00f8nsker digitale betalinger.' }
+    { id: 'mobilepay_api', account: 'vipps', t: 'MobilePay API', badges: [['Automatisk saldo-opdatering','green'],['Kr\u00e6ver ops\u00e6tning','orange']], d: 'For\u00e6ldre indbetaler via MobilePay. Saldo opdateres automatisk.', detail: 'Denne l\u00f8sning foruds\u00e6tter, at institutionen (eller kommunen) har en MobilePay API-aftale. N\u00e5r en for\u00e6lder indbetaler via MobilePay, registreres betalingen automatisk i Flango, og barnets saldo opdateres uden manuelt arbejde.', configLabel: 'Konfigurer MobilePay API' },
+    { id: 'mobilepay_qr', field: 'topup_qr_enabled', t: 'MobilePay QR', badges: [['Manuel','gray']], d: 'For\u00e6ldre scanner en QR-kode. Personalet registrerer indbetalingen manuelt i Flango.', detail: 'Denne metode foruds\u00e6tter, at institutionen har en MobilePay-aftale, og at klubben er logget ind p\u00e5 den mobil, som modtager indbetalinger. Institutionens QR-kode vises i for\u00e6ldreportalen og evt. i Aula. N\u00e5r for\u00e6ldre sender penge, skal personalet manuelt registrere indbetalingen p\u00e5 det enkelte barn i Flango (fx via \u2018Opdater saldo\u2019 i brugerpanelet).' },
+    { id: 'cash', field: 'topup_cash_enabled', t: 'Kontant', badges: [['Offline','gray'],['N\u00f8dl\u00f8sning','red']], d: 'Personalet tager imod kontanter og registrerer indbetalingen manuelt i Flango.', detail: 'Kontant indbetaling kr\u00e6ver ingen teknisk ops\u00e6tning og medf\u00f8rer ingen transaktionsomkostninger. De fleste for\u00e6ldre foretr\u00e6kker digitale indbetalinger, men kontant kan bruges som en alternativ eller n\u00f8dl\u00f8sning for familier, der ikke \u00f8nsker digitale betalinger.' }
   ];
-
-  // Save payment settings JSONB atomically (preserves other keys)
-  async function _savePaymentSettings(ctx, mutator) {
-    const inst = ctx.institutionData || {};
-    const current = _parsePaymentSettings(inst.parent_portal_payment);
-    const next = mutator({ ...current });
-    // Also preserve per-method fee_policy in sync with admin_fee_payer for backward-compat
-    const fee = next.admin_fee_payer === 'parent' ? 'parent' : 'institution';
-    _pmMethods.forEach(m => {
-      if (!m.hasFeePolicy) return;
-      next[m.id] = { ...(next[m.id] || {}), fee_policy: fee };
-    });
-    if (next.stripe_connect) next.stripe_connect = { ...next.stripe_connect, fee_policy: fee };
-    await ctx.saveField('parent_portal_payment', next);
-  }
 
   function _updatePaymentWarnings(container) {
     const box = container.querySelector('[data-pm-warnings]');
     if (!box) return;
     const on = (id) => !!container.querySelector(`[data-pm-toggle="${id}"]`)?.classList.contains('on');
-    const stripe = on('stripe_connect');
-    const mpApi = on('mobilepay_api');
-    const csv = on('mobilepay_csv');
-    const qr = on('mobilepay_qr');
-    const qrs = on('mobilepay_qr_screenshot');
     const warnings = [];
-    if (stripe && mpApi) warnings.push('V\u00e6lg \u00e9n automatisk metode som prim\u00e6r for at undg\u00e5 forvirring for for\u00e6ldre.');
-    if (csv && (qr || qrs)) warnings.push('Risiko for dobbeltregistrering. Brug CSV som prim\u00e6r og behold QR kun som n\u00f8dl\u00f8sning.');
-    if (qrs) warnings.push('N\u00f8dl\u00f8sning: kan give ekstra administration.');
+    if (on('stripe_connect') && on('mobilepay_api')) warnings.push('V\u00e6lg \u00e9n automatisk metode som prim\u00e6r for at undg\u00e5 forvirring for for\u00e6ldre.');
     box.innerHTML = warnings.map(w => `<div class="fsp-pm-warning">${w}</div>`).join('');
     box.style.display = warnings.length ? '' : 'none';
   }
@@ -2299,15 +2283,15 @@
   sections['Betalingsmetoder'] = {
     render(ctx) {
       const inst = ctx.institutionData || {};
-      const settings = _parsePaymentSettings(inst.parent_portal_payment);
-      const adminFeePayer = settings.admin_fee_payer === 'parent' ? 'parent' : 'institution';
+      const adminFeePayer = inst.portal?.admin_fee_payer === 'parent' ? 'parent' : 'institution';
 
-      // Stripe live state
-      const stripeEnabled = inst.stripe_enabled === true || settings.stripe_connect?.enabled === true;
-      const stripeStatus = inst.stripe_account_status || settings.stripe_connect?.status || 'not_configured';
-      const stripeMode = inst.stripe_mode || settings.stripe_connect?.mode || null;
-      const stripeError = inst.stripe_last_error || null;
-      const stripeUpdatedAt = inst.stripe_updated_at || null;
+      // Stripe live state — kontoen, ikke en kolonne
+      const stripe = inst.payment_accounts?.stripe || {};
+      const stripeEnabled = stripe.enabled === true;
+      const stripeStatus = stripe.status || 'not_configured';
+      const stripeMode = stripe.mode || null;
+      const stripeError = stripe.last_error || null;
+      const stripeUpdatedAt = stripe.updated_at || null;
 
       const S = window.__flangoStripe || {};
       const statusText = S.statusText ? S.statusText(stripeStatus) : 'Ikke konfigureret';
@@ -2377,12 +2361,12 @@
               <button class="fsp-btn ${onboardingDone ? 'fsp-btn-ghost' : 'fsp-btn-primary'}" id="stripe-onboarding-btn" data-action="stripe-onboard" ${onboardingDone ? 'disabled style="opacity:0.6;cursor:default;padding:10px 20px;font-size:13px"' : 'style="padding:10px 20px;font-size:13px"'}>${onboardingDone ? '\u2713 Ops\u00e6tning fuldf\u00f8rt' : onboardingBtnText}</button>
               <button class="fsp-btn fsp-btn-ghost" id="stripe-status-sync-btn" data-action="stripe-sync" style="padding:10px 20px;font-size:13px">\uD83D\uDD04 Opdater status</button>
               ${stripeMode ? `<button class="fsp-btn fsp-btn-ghost" id="stripe-change-mode-btn" data-action="stripe-change-mode" style="padding:10px 20px;font-size:13px" title="Skift mellem Test og Live mode">\u2699 Skift mode (${stripeMode === 'live' ? 'Live' : 'Test'})</button>` : ''}
-              ${inst.stripe_account_id ? `<button class="fsp-btn fsp-btn-ghost" id="stripe-reset-btn" data-action="stripe-reset" style="padding:10px 20px;font-size:13px;color:#e85a6f;border-color:rgba(232,90,111,0.3)" title="Nulstil Stripe-ops\u00e6tningen og start forfra">\u21BA Nulstil ops\u00e6tning</button>` : ''}
+              ${stripe.account_ref ? `<button class="fsp-btn fsp-btn-ghost" id="stripe-reset-btn" data-action="stripe-reset" style="padding:10px 20px;font-size:13px;color:#e85a6f;border-color:rgba(232,90,111,0.3)" title="Nulstil Stripe-ops\u00e6tningen og start forfra">\u21BA Nulstil ops\u00e6tning</button>` : ''}
             </div>
           </div></div></div>
         </div>
         ${_pmMethods.map(m => {
-          const on = settings[m.id]?.enabled === true;
+          const on = m.account ? inst.payment_accounts?.[m.account]?.enabled === true : inst[m.field] === true;
           return `<div class="fsp-pm-card">
           <div class="fsp-pm-card-hdr" data-action="toggle-pm-expand">
             <div class="fsp-pm-card-left">
@@ -2424,7 +2408,7 @@
           const parT = container.querySelector('[data-cost="parent"]');
           if (val === 'institution') { instT?.classList.add('on'); parT?.classList.remove('on'); }
           else { parT?.classList.add('on'); instT?.classList.remove('on'); }
-          await _savePaymentSettings(ctx, s => { s.admin_fee_payer = val; return s; });
+          await ctx.saveField('portal.admin_fee_payer', val);
         });
       });
 
@@ -2437,33 +2421,32 @@
         });
       });
 
-      // Payment method enable-toggles → persist to JSONB (+ stripe_enabled column for Stripe)
+      // Hver metode skrives dér hvor den bor: kontiene gennem betalings-RPC'en, resten
+      // som caféens egne kolonner. Afviser serveren, ruller toggle'en tilbage — ellers
+      // står den tændt uden at noget blev gemt, og springer tilbage ved næste åbning.
       container.querySelectorAll('[data-pm-toggle]').forEach(t => {
         t.addEventListener('click', async (e) => {
           e.stopPropagation();
           t.classList.toggle('on');
           const enabled = t.classList.contains('on');
           const id = t.dataset.pmToggle;
+          const method = id === 'stripe_connect' ? { account: 'stripe' } : _pmMethods.find(m => m.id === id);
+          if (!method) return;
 
           // Show/hide per-method config button
           const card = t.closest('.fsp-pm-card');
           const cfg = card?.querySelector(`[data-pm-config="${id}"]`);
           if (cfg) cfg.style.display = enabled ? '' : 'none';
 
-          // Sidebar visibility sync for MobilePay CSV
-          if (id === 'mobilepay_csv') ctx.setMpCsvOn?.(enabled);
-
           _updatePaymentWarnings(container);
 
-          // Persist JSONB
-          await _savePaymentSettings(ctx, s => {
-            s[id] = { ...(s[id] || {}), enabled };
-            return s;
-          });
-
-          // Mirror to top-level stripe_enabled column
-          if (id === 'stripe_connect') {
-            await ctx.saveField('stripe_enabled', enabled);
+          const saved = method.account
+            ? await ctx.savePaymentAccount(method.account, { enabled })
+            : await ctx.saveField(method.field, enabled);
+          if (!saved) {
+            t.classList.toggle('on');
+            if (cfg) cfg.style.display = t.classList.contains('on') ? '' : 'none';
+            _updatePaymentWarnings(container);
           }
         });
       });
@@ -2493,10 +2476,10 @@
       // Opret / Fortsæt onboarding
       container.querySelector('[data-action="stripe-onboard"]')?.addEventListener('click', async () => {
         if (!S.startOnboarding || !instId) return;
-        const status = ctx.institutionData?.stripe_account_status || 'not_configured';
-        const hasMode = !!ctx.institutionData?.stripe_mode;
-        if ((status === 'not_configured' || !hasMode) && S.openModeModal) {
-          await S.openModeModal({ mode: ctx.institutionData?.stripe_mode }, instId,
+        const account = ctx.institutionData?.payment_accounts?.stripe || {};
+        const status = account.status || 'not_configured';
+        if ((status === 'not_configured' || !account.mode) && S.openModeModal) {
+          await S.openModeModal({ mode: account.mode }, instId,
             (beforeOpen) => S.startOnboarding(instId, beforeOpen));
         } else {
           await S.startOnboarding(instId);
@@ -2515,10 +2498,10 @@
         if (!S.openModeModal || !S.startOnboarding || !instId) return;
         const ok = await window.customConfirm?.(
           'Vil du skifte Stripe-mode?',
-          `Hvis du skifter mellem Test og Live, oprettes en ny Stripe-konto på den valgte platform. Din nuværende konto (${ctx.institutionData?.stripe_mode === 'live' ? 'Live' : 'Test'}) efterlades i Stripe og kan slettes manuelt via dashboard.stripe.com.`
+          `Hvis du skifter mellem Test og Live, oprettes en ny Stripe-konto på den valgte platform. Din nuværende konto (${ctx.institutionData?.payment_accounts?.stripe?.mode === 'live' ? 'Live' : 'Test'}) efterlades i Stripe og kan slettes manuelt via dashboard.stripe.com.`
         ) ?? confirm('Skift Stripe-mode? En ny konto oprettes på den valgte platform.');
         if (!ok) return;
-        await S.openModeModal({ mode: ctx.institutionData?.stripe_mode }, instId,
+        await S.openModeModal({ mode: ctx.institutionData?.payment_accounts?.stripe?.mode }, instId,
           (beforeOpen) => S.startOnboarding(instId, beforeOpen));
       });
 
@@ -2528,8 +2511,8 @@
       // onboarding allerede er fuldført (mulige modtagne betalinger på den gamle konto).
       container.querySelector('[data-action="stripe-reset"]')?.addEventListener('click', async () => {
         if (!instId) return;
-        const wasEnabled = ctx.institutionData?.stripe_account_status === 'enabled';
-        const accountIdShort = (ctx.institutionData?.stripe_account_id || '').slice(0, 15);
+        const wasEnabled = ctx.institutionData?.payment_accounts?.stripe?.status === 'enabled';
+        const accountIdShort = (ctx.institutionData?.payment_accounts?.stripe?.account_ref || '').slice(0, 15);
         const baseMsg = `Dette rydder Flangos kobling til din nuværende Stripe-konto (${accountIdShort}…). Næste gang du klikker "Fortsæt opsætning" oprettes en ny konto fra bunden.\n\nDen gamle konto efterlades hos Stripe (harmløst — koster intet og påvirker ikke ny onboarding). Hvis I ønsker den fysisk slettet, kan I kontakte Flango-support.`;
         const dangerMsg = wasEnabled
           ? `\n\n⚠ ADVARSEL: Din nuværende opsætning er fuldført (enabled). Hvis kontoen har modtaget betalinger, vil de blive utilgængelige via Flango efter nulstilling — du skal håndtere dem direkte hos Stripe.`
@@ -2548,13 +2531,13 @@
           });
           if (resetError) throw resetError;
 
-          // Refresh local context og re-render section
+          // Serveren har ryddet kontoen — hent indstillingerne friske, så spejlet ikke
+          // er en gætning på hvad RPC'en gjorde.
+          await window.__flangoCafeSettings?.load?.(instId);
           if (ctx.institutionData) {
-            ctx.institutionData.stripe_account_id = null;
-            ctx.institutionData.stripe_account_status = 'not_configured';
-            ctx.institutionData.stripe_last_error = null;
+            Object.assign(ctx.institutionData, window.__flangoCafeSettings?.get?.() || {});
           }
-          (window.__flangoReloadPaymentMethodsView || window.openPaymentMethodsModal)?.();
+          window.__flangoReloadPaymentMethodsView?.();
           if (typeof window.showCustomAlert === 'function') {
             window.showCustomAlert('Nulstillet', 'Stripe-opsætningen er nulstillet. Klik "Fortsæt opsætning" for at starte forfra.');
           }
@@ -2583,19 +2566,14 @@
         }
       });
 
-      // Per-method config buttons (CSV import, MobilePay API placeholder)
+      // Per-method config buttons (MobilePay API placeholder)
       container.querySelectorAll('[data-pm-config]').forEach(btn => {
         btn.addEventListener('click', () => {
-          const id = btn.dataset.pmConfig;
-          if (id === 'mobilepay_csv') {
-            window.FlangoSettings?.close?.();
-            window.openMobilePayImportModal?.();
-          } else if (id === 'mobilepay_api') {
-            if (typeof window.showCustomAlert === 'function') {
-              window.showCustomAlert('Info', 'MobilePay API konfiguration kommer snart.');
-            } else {
-              alert('MobilePay API konfiguration kommer snart.');
-            }
+          if (btn.dataset.pmConfig !== 'mobilepay_api') return;
+          if (typeof window.showCustomAlert === 'function') {
+            window.showCustomAlert('Info', 'MobilePay API konfiguration kommer snart.');
+          } else {
+            alert('MobilePay API konfiguration kommer snart.');
           }
         });
       });
@@ -2605,13 +2583,15 @@
   // ── Profilbilleder (settings section — matches mockup exactly) ──
   sections['Profilbilleder'] = {
     render(ctx) {
-      const inst = ctx.institutionData || {};
-      const enabled = !!inst.profile_pictures_enabled;
-      const types = inst.profile_picture_types || [];
-      const aiOn = !!inst.profile_pictures_ai_enabled;
-      const adminAiOn = !!inst.admin_ai_avatar_enabled;
-      const parentUploadOn = inst.parent_can_upload_pictures !== false;
-      const defMode = inst.default_profile_picture_mode || 'initials';
+      // Billed- og AI-indstillingerne bor i media.institution_settings (ADR-005 § 2.7) —
+      // adressen er med i både data-field og læsningen, ellers svarer feltet undefined.
+      const media = (ctx.institutionData || {}).media || {};
+      const enabled = !!media.profile_pictures_enabled;
+      const types = media.profile_picture_types || [];
+      const aiOn = !!media.profile_pictures_ai_enabled;
+      const adminAiOn = !!media.admin_ai_avatar_enabled;
+      const parentUploadOn = media.parent_can_upload_pictures !== false;
+      const defMode = media.default_profile_picture_mode || 'initials';
       const hasUpload = types.includes('upload');
       const hasAula = types.includes('aula');
       const hasCamera = types.includes('camera');
@@ -2621,7 +2601,7 @@
         <div class="fsp-page-desc">Profilbilleder vises ved brugervalg i caf\u00e9en s\u00e5 ekspedienten kan bekr\u00e6fte identiteten. Hver type profilbillede skal godkendes af for\u00e6ldre via for\u00e6ldreportalen.</div>
         <div class="fsp-main-toggle" style="margin-bottom:20px">
           <div style="flex:1"><div class="fsp-main-title">Profilbilleder er sl\u00e5et til</div></div>
-          <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="profile_pictures_enabled" data-expand="pp-body"></div>
+          <div class="fsp-toggle${enabled ? ' on' : ''}" data-field="media.profile_pictures_enabled" data-expand="pp-body"></div>
         </div>
         <div data-expand-target="pp-body" class="${enabled ? '' : 'fsp-off'}">
           <div style="font-size:12px;font-weight:600;color:var(--fsp-txt3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">Tilg\u00e6ngelige typer</div>
@@ -2643,25 +2623,25 @@
           </div></div>
           <div class="fsp-block" style="margin-bottom:10px"><div class="fsp-row">
             <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDC6A</span><div><div class="fsp-row-title">For\u00e6lder-upload</div><div class="fsp-row-desc">For\u00e6ldre uploader selv via portalen \u2014 hvert billede skal godkendes af admin</div></div></div>
-            <div class="fsp-toggle${parentUploadOn ? ' on' : ''}" data-field="parent_can_upload_pictures"></div>
+            <div class="fsp-toggle${parentUploadOn ? ' on' : ''}" data-field="media.parent_can_upload_pictures"></div>
           </div></div>
           <div class="fsp-block" style="margin-bottom:10px">
             <div class="fsp-row" style="margin-bottom:14px">
               <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83E\uDD16</span><div><div class="fsp-row-title">AI-Avatar</div><div class="fsp-row-desc">Generer Pixar-stil avatar fra foto</div></div></div>
-              <div class="fsp-toggle${aiOn ? ' on' : ''}" data-field="profile_pictures_ai_enabled" data-expand="ai-body"></div>
+              <div class="fsp-toggle${aiOn ? ' on' : ''}" data-field="media.profile_pictures_ai_enabled" data-expand="ai-body"></div>
             </div>
             <div class="fsp-expand${aiOn ? ' open' : ''}" data-expand-target="ai-body" style="max-height:${aiOn ? '400px' : '0'}">
               <div style="padding-top:14px;border-top:1px solid rgba(255,255,255,0.04)">
                 <div class="fsp-pm-detail">Aktiverer AI-genererede avatarer baseret p\u00e5 barnets foto. Fotoet sendes til den valgte udbyder og slettes straks efter. Flango sender faktura til institutionen p\u00e5 100,- kr. hvorefter I kan generere 300\u2013400 avatars.</div>
                 <div class="fsp-pm-detail" style="margin-top:8px">Sl\u00e5r I den <strong>fra</strong>: eksisterende avatarer slettes IKKE \u2014 de bliver st\u00e5ende som profilbilleder. Personalet kan blot ikke lave nye. For\u00e6ldrenes samtykke best\u00e5r, og har I for\u00e6lder-AI sl\u00e5et til i Portal-indstillinger, kan for\u00e6lderen fortsat selv lave avataren. Skal en avatar v\u00e6k, sletter I billedet \u2014 eller for\u00e6lderen tr\u00e6kker sit samtykke.</div>
-                <div class="fsp-role"><div class="fsp-role-left"><div><div class="fsp-role-name">Microsoft Azure OpenAI</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">EU</div></div></div><div class="fsp-toggle${inst.ai_provider_openai !== false ? ' on' : ''}" data-ai-provider="openai"></div></div>
+                <div class="fsp-role"><div class="fsp-role-left"><div><div class="fsp-role-name">Microsoft Azure OpenAI</div><div style="font-size:11px;color:var(--fsp-txt3);margin-top:1px">EU</div></div></div><div class="fsp-toggle${media.ai_provider_openai !== false ? ' on' : ''}" data-ai-provider="openai"></div></div>
               </div>
             </div>
           </div>
           <div class="fsp-block" style="margin-bottom:10px">
             <div class="fsp-row">
               <div style="display:flex;align-items:center;gap:12px;flex:1"><span style="font-size:18px">\uD83D\uDC68\u200D\uD83D\uDCBC</span><div><div class="fsp-row-title">Admin AI-Avatar</div><div class="fsp-row-desc">Till\u00e5d admins at oprette AI-avatar af sig selv. Hver admin skal aktivere det individuelt med samtykke i \"Rediger admin\"-modalen.</div></div></div>
-              <div class="fsp-toggle${adminAiOn ? ' on' : ''}" data-field="admin_ai_avatar_enabled"></div>
+              <div class="fsp-toggle${adminAiOn ? ' on' : ''}" data-field="media.admin_ai_avatar_enabled"></div>
             </div>
           </div>
           ${parentUploadOn ? `
@@ -2683,15 +2663,15 @@
           <div data-dp-options>
             <div class="fsp-sub" data-dp-click="initials">
               <div style="display:flex;align-items:center;gap:8px"><span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(232,115,74,0.15);font-size:11px;font-weight:700;color:var(--fsp-accent)">AB</span><div><div class="fsp-sub-title">Initialer</div><div class="fsp-sub-hint">Viser brugerens initialer i en cirkel</div></div></div>
-              <div class="fsp-radio${defMode === 'initials' ? ' on' : ''}" data-field="default_profile_picture_mode" data-value="initials"></div>
+              <div class="fsp-radio${defMode === 'initials' ? ' on' : ''}" data-field="media.default_profile_picture_mode" data-value="initials"></div>
             </div>
             <div class="fsp-sub" data-dp-click="image">
               <div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">\uD83D\uDC64</span><div><div class="fsp-sub-title">Anonym bruger-ikon</div><div class="fsp-sub-hint">Viser et generisk bruger-ikon</div></div></div>
-              <div class="fsp-radio${defMode === 'image' ? ' on' : ''}" data-field="default_profile_picture_mode" data-value="image"></div>
+              <div class="fsp-radio${defMode === 'image' ? ' on' : ''}" data-field="media.default_profile_picture_mode" data-value="image"></div>
             </div>
             <div class="fsp-sub" data-dp-click="custom">
               <div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">\uD83D\uDDBC\uFE0F</span><div><div class="fsp-sub-title">Brugerdefineret billede</div><div class="fsp-sub-hint">\u00c9t f\u00e6lles billede for alle uden profilbillede</div></div></div>
-              <div class="fsp-radio${defMode === 'custom' ? ' on' : ''}" data-field="default_profile_picture_mode" data-value="custom"></div>
+              <div class="fsp-radio${defMode === 'custom' ? ' on' : ''}" data-field="media.default_profile_picture_mode" data-value="custom"></div>
             </div>
           </div>
         </div>
@@ -2718,7 +2698,8 @@
       container.querySelectorAll('[data-ai-provider]').forEach(toggle => {
         toggle.addEventListener('click', () => {
           toggle.classList.toggle('on');
-          ctx.markDirty('ai_provider_' + toggle.dataset.aiProvider, toggle.classList.contains('on'));
+          const field = AI_PROVIDER_FIELD[toggle.dataset.aiProvider];
+          if (field) ctx.markDirty(field, toggle.classList.contains('on'));
         });
       });
       // Default picture toggle grey-out
@@ -2729,9 +2710,9 @@
       // Default picture radio clicks (on the sub row, not just the radio dot)
       container.querySelectorAll('[data-dp-click]').forEach(sub => {
         sub.addEventListener('click', () => {
-          container.querySelectorAll('.fsp-radio[data-field="default_profile_picture_mode"]').forEach(r => r.classList.remove('on'));
+          container.querySelectorAll('.fsp-radio[data-field="media.default_profile_picture_mode"]').forEach(r => r.classList.remove('on'));
           sub.querySelector('.fsp-radio')?.classList.add('on');
-          ctx.markDirty('default_profile_picture_mode', sub.dataset.dpClick);
+          ctx.markDirty('media.default_profile_picture_mode', sub.dataset.dpClick);
         });
       });
       // Profile picture types array toggle
@@ -2742,7 +2723,7 @@
           container.querySelectorAll('[data-pp-type]').forEach(t => {
             if (t.classList.contains('on')) types.push(t.dataset.ppType);
           });
-          ctx.markDirty('profile_picture_types', types);
+          ctx.markDirty('media.profile_picture_types', types);
         });
       });
       // Aula import
@@ -3444,7 +3425,8 @@
   sections['Auto-sletning af inaktive'] = {
     render(ctx) {
       const inst = ctx.institutionData || {};
-      const months = inst.auto_delete_inactive_months || 12;
+      // Opbevaringsvinduet bor i directory.institution_settings (ADR-005 § 2.2).
+      const months = inst.directory?.auto_delete_inactive_months || 12;
       return `<div class="fsp-page">
         <div class="fsp-page-title">Papirkurv & auto-arkivering</div>
         <div class="fsp-page-desc">B\u00f8rn der ikke har brugt caf\u00e9en l\u00e6nge flyttes automatisk til papirkurven \u2014 skjult fra resten af programmet, men altid med fortrydelsesret.</div>
@@ -3464,7 +3446,7 @@
             { m: 24, h: 'L\u00e6ngere bevaringsperiode' }
           ].map(opt => `<div class="fsp-sub">
             <div><div class="fsp-sub-title">${opt.m} m\u00e5neder</div><div class="fsp-sub-hint">${opt.h}</div></div>
-            <div class="fsp-radio${months === opt.m ? ' on' : ''}" data-field="auto_delete_inactive_months" data-value="${opt.m}"></div>
+            <div class="fsp-radio${months === opt.m ? ' on' : ''}" data-field="directory.auto_delete_inactive_months" data-value="${opt.m}"></div>
           </div>`).join('')}
           <div style="font-size:12px;color:var(--fsp-txt3);margin-top:14px;padding:12px 16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;line-height:1.5">Auto-arkivering kan <strong>ikke sl\u00e5s fra</strong> \u2014 det sikrer at gamle, ubrugte profiler ikke ligger for evigt. I v\u00e6lger kun, hvor l\u00e6nge der g\u00e5r f\u00f8rst.</div>
         </div>
@@ -3482,7 +3464,7 @@
     wire(container, ctx) {
       pageAlign(container);
       // Inaktivitetsperiode-radios (parseInt, da feltet er numerisk)
-      container.querySelectorAll('.fsp-radio[data-field="auto_delete_inactive_months"]').forEach(radio => {
+      container.querySelectorAll('.fsp-radio[data-field="directory.auto_delete_inactive_months"]').forEach(radio => {
         radio.addEventListener('click', () => {
           const field = radio.dataset.field;
           container.querySelectorAll(`.fsp-radio[data-field="${field}"]`).forEach(r => r.classList.remove('on'));
