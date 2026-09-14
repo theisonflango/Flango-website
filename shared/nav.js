@@ -144,9 +144,11 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && open) setOpen(false);
     });
-    /* Menuen er kun til mobil — skifter man til desktop skal body kunne scrolle igen. */
+    /* Menuen hører til burgeren. Forsvinder burgeren — bredere vindue, eller en tablet
+     * der drejes — skal menuen lukke, ellers er body låst uden en knap at lukke med.
+     * Burgerens egen synlighed afgør det, så brudpunkterne kun står i nav.css. */
     window.addEventListener('resize', function () {
-      if (open && window.innerWidth > 980) setOpen(false);
+      if (open && getComputedStyle(burger).display === 'none') setOpen(false);
     });
   }
 
