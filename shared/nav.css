@@ -88,29 +88,27 @@
 }
 .flango-nav-portal:hover { border-color: #FFC07A; color: #B45B10; }
 
-/* Burger (skjult på desktop) */
+/* Burger (skjult på desktop). Ikonet er en SVG i currentColor — se BURGER_ICON i nav.js. */
 .flango-burger {
   display: none;
-  flex-direction: column;
-  gap: 5px;
   width: 28px;
   padding: 4px 0;
   background: none;
   border: none;
+  color: #334155;
   cursor: pointer;
   flex: 0 0 auto;
 }
-.flango-burger span {
-  display: block;
-  height: 2.5px;
-  background: #334155;
-  border-radius: 2px;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+.flango-burger svg { display: block; overflow: visible; }
+.flango-burger path {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-box: fill-box;
   transform-origin: center;
 }
-.flango-burger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
-.flango-burger.active span:nth-child(2) { opacity: 0; transform: scaleX(0); }
-.flango-burger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+/* Åben: yderstregerne mødes i midten (7,5 px = streg + mellemrum) og drejer til et kryds. */
+.flango-burger.active .l1 { transform: translateY(7.5px) rotate(45deg); }
+.flango-burger.active .l2 { opacity: 0; transform: scaleX(0); }
+.flango-burger.active .l3 { transform: translateY(-7.5px) rotate(-45deg); }
 
 /* Mobilmenu */
 .flango-mobile-menu {
@@ -192,9 +190,9 @@
    af skærmhøjden. ,98 lukker hullet mellem reglerne ved brøkdels-viewports. */
 @media (max-width: 599.98px), (max-width: 980px) and (max-height: 599.98px) {
   .flango-nav-links, .flango-nav-right { display: none; }
-  .flango-burger { display: flex; }
+  .flango-burger { display: block; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flango-nav-links a, .flango-nav-portal, .flango-burger span { transition: none; }
+  .flango-nav-links a, .flango-nav-portal, .flango-burger path { transition: none; }
 }
