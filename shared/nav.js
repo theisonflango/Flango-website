@@ -122,6 +122,7 @@
           '<span class="flango-mobile-section">Log ind</span>' +
           '<a href="/forældre/">Forældreportal</a>' +
           '<a href="/skærmtid/">Skærmtid (personale)</a>' +
+          '<a href="/koesystem/">Køsystem (personale)</a>' +
           '<a href="/ugeplan/login">Ugeplan (personale)</a>' +
           '<a href="/ugeplan/faellesskabet/deltag">Fællesskabet</a>' +
           '<a href="/cafe">Café-app (personale)</a>' +
