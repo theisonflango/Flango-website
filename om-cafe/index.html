@@ -57,23 +57,8 @@
       "offers": [
         {
           "@type": "Offer",
-          "name": "Basic",
-          "description": "Simpel café — op til 100 børn",
-          "price": "299",
-          "priceCurrency": "DKK",
-          "priceSpecification": {
-            "@type": "UnitPriceSpecification",
-            "price": "299",
-            "priceCurrency": "DKK",
-            "billingDuration": "P1M",
-            "unitText": "MONTH"
-          },
-          "availability": "https://schema.org/InStock"
-        },
-        {
-          "@type": "Offer",
-          "name": "Pro",
-          "description": "Alt inkluderet — ubegrænset brugere",
+          "name": "Flango",
+          "description": "Alle Flango-apps til én institution — ubegrænset brugere",
           "price": "599",
           "priceCurrency": "DKK",
           "priceSpecification": {
@@ -110,7 +95,7 @@
           "name": "Hvad indebærer oprettelsen?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "I starter altid med 4 ugers gratis prøveperiode — ingen betaling og ingen binding. Hvis I efter prøveperioden vælger at fortsætte, dækker oprettelsen opsætning af Flango til jeres institution, introduktion til personalet og hjælp til at komme i gang. Ved Basic betales 2.500 kr engangs som oprettelsesgebyr; Pro og Kommune har gratis oprettelse."
+            "text": "I starter altid med 4 ugers gratis prøveperiode — ingen betaling og ingen binding. Hvis I efter prøveperioden vælger at fortsætte, dækker oprettelsen opsætning af Flango til jeres institution, introduktion til personalet og hjælp til at komme i gang. Oprettelsen er gratis."
           }
         },
         {
@@ -126,7 +111,7 @@
           "name": "Hvad er skærmtidsstyring?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Flango Skærmtid er et selvstændigt modul til at administrere børns adgang til gaming-stationer i institutionens spillerum. Inkluderet i Pro og Kommune; kan også anvendes som standalone."
+            "text": "Flango Skærmtid er et selvstændigt modul til at administrere børns adgang til gaming-stationer i institutionens spillerum. Det er med i Flango-abonnementet sammen med alle de andre Flango-apps."
           }
         },
         {
@@ -1326,8 +1311,8 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
   <div class="container">
     <div style="text-align:center" class="reveal">
       <div class="section-label" style="justify-content:center">Priser</div>
-      <h2 id="pricing-heading">Enkle planer, ingen overraskelser</h2>
-      <p style="color:var(--slate-500);margin-top:12px;max-width:520px;margin-left:auto;margin-right:auto;font-size:0.95rem">Vælg den plan der passer til jeres institution. Årlig betaling giver rabat.</p>
+      <h2 id="pricing-heading">Én enkel pris</h2>
+      <p style="color:var(--slate-500);margin-top:12px;max-width:520px;margin-left:auto;margin-right:auto;font-size:0.95rem">Flango koster det samme, uanset hvilke apps I bruger — ét abonnement giver adgang til dem alle. Årlig betaling giver rabat.</p>
     </div>
 
     <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:32px 0" class="reveal">
@@ -1339,33 +1324,20 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
       <span style="font-size:0.75rem;font-weight:700;color:var(--sage-600);background:var(--sage-50);padding:3px 10px;border-radius:100px;border:1px solid var(--sage-200)">Spar op til 17%</span>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px" class="pricing-grid reveal">
-      <div style="background:var(--white);border-radius:var(--radius-lg);padding:32px 24px;border:1.5px solid var(--slate-200);display:flex;flex-direction:column;transition:all 0.3s;position:relative" class="p-card" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 10px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-        <div style="font-family:var(--font-display);font-size:1.25rem;margin-bottom:4px">Basic</div>
-        <div style="font-size:0.82rem;color:var(--slate-400);margin-bottom:20px;min-height:2.4em">Simpel café — op til 100 børn</div>
-        <div class="price-display" data-m="299 kr/md" data-y="3.000 kr/år" style="font-family:var(--font-display);font-size:2rem;color:var(--slate-900);margin-bottom:2px">299 kr/md</div>
-        <div class="price-sub-display" data-m="" data-y="250 kr/md" style="font-size:0.8rem;color:var(--slate-400);margin-bottom:4px;min-height:1.4em"></div>
-        <div style="font-size:0.7rem;color:var(--slate-400);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Priser ekskl. moms</div>
-        <div style="font-size:0.78rem;color:var(--slate-400);margin-bottom:20px">Oprettelse: 2.500 kr</div>
-        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;flex:1">
-          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Cafésystem med saldo</div>
-          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Max 100 brugere</div>
-        </div>
-        <a href="#kontakt" style="display:block;text-align:center;padding:12px;border-radius:100px;font-weight:700;font-size:0.88rem;background:var(--slate-50);color:var(--slate-700);border:1.5px solid var(--slate-200);transition:all 0.2s;margin-top:auto" onmouseover="this.style.borderColor='var(--peach-300)';this.style.color='var(--peach-700)'" onmouseout="this.style.borderColor='var(--slate-200)';this.style.color='var(--slate-700)'">Kontakt os</a>
-        <div style="margin-top:10px;font-size:0.72rem;color:var(--slate-400);text-align:center;line-height:1.4">4 ugers gratis prøve · Ingen binding</div>
-      </div>
-
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:760px;margin-left:auto;margin-right:auto" class="pricing-grid reveal">
       <div style="background:var(--white);border-radius:var(--radius-lg);padding:32px 24px;border:2px solid var(--peach-500);display:flex;flex-direction:column;transition:all 0.3s;position:relative;box-shadow:0 8px 30px rgba(217,115,22,0.12)" class="p-card" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 40px rgba(217,115,22,0.18)'" onmouseout="this.style.transform='';this.style.boxShadow='0 8px 30px rgba(217,115,22,0.12)'">
-        <span style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);padding:4px 14px;border-radius:100px;background:var(--peach-600);color:var(--white);font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;box-shadow:0 4px 12px rgba(217,115,22,0.3)">Mest populær</span>
-        <div style="font-family:var(--font-display);font-size:1.25rem;margin-bottom:4px">Pro</div>
-        <div style="font-size:0.82rem;color:var(--slate-400);margin-bottom:20px;min-height:2.4em">Alt inkluderet — ubegrænset brugere</div>
+        <div style="font-family:var(--font-display);font-size:1.25rem;margin-bottom:4px">Flango</div>
+        <div style="font-size:0.82rem;color:var(--slate-400);margin-bottom:20px;min-height:2.4em">Alle Flango-apps til én institution</div>
         <div class="price-display" data-m="599 kr/md" data-y="5.500 kr/år" style="font-family:var(--font-display);font-size:2rem;color:var(--slate-900);margin-bottom:2px">599 kr/md</div>
         <div class="price-sub-display" data-m="" data-y="458 kr/md" style="font-size:0.8rem;color:var(--slate-400);margin-bottom:4px;min-height:1.4em"></div>
         <div style="font-size:0.7rem;color:var(--slate-400);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Priser ekskl. moms</div>
         <div style="font-size:0.78rem;color:var(--slate-400);margin-bottom:20px">Gratis oprettelse</div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;flex:1">
+          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Flango Café</div>
+          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Flango Skærmtid</div>
+          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Flango Køsystem</div>
+          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Flango Ugeplan</div>
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Forældreportal</div>
-          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Skærmtidsstyring</div>
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Ubegrænset brugere</div>
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Fri support</div>
         </div>
@@ -1381,30 +1353,12 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         <div style="font-size:0.7rem;color:var(--slate-400);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Priser ekskl. moms</div>
         <div style="font-size:0.78rem;color:var(--slate-400);margin-bottom:20px">Gratis oprettelse</div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;flex:1">
-          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Alt i Pro</div>
+          <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Alt i Flango</div>
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Op til 5 institutioner</div>
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Fælles administration</div>
         </div>
         <a href="#kontakt" style="display:block;text-align:center;padding:12px;border-radius:100px;font-weight:700;font-size:0.88rem;background:var(--peach-600);color:var(--white);transition:all 0.2s;margin-top:auto" onmouseover="this.style.background='var(--peach-700)'" onmouseout="this.style.background='var(--peach-600)'">Kontakt os</a>
         <div style="margin-top:10px;font-size:0.72rem;color:var(--slate-400);text-align:center;line-height:1.4">4 ugers gratis prøve · Ingen binding</div>
-      </div>
-    </div>
-
-    <!-- Comparison -->
-    <div class="reveal" style="margin-top:56px">
-      <h3 style="font-family:var(--font-display);font-size:1.3rem;margin-bottom:20px;text-align:center">Sammenligning af planer</h3>
-      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-        <table style="width:100%;min-width:520px;border-collapse:collapse;background:var(--white);border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--slate-200);box-shadow:var(--shadow-sm);font-size:0.88rem">
-          <thead><tr style="background:var(--slate-50)"><th style="padding:14px 16px;text-align:left;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600);text-transform:uppercase;letter-spacing:0.04em;width:40%">Funktion</th><th style="padding:14px 16px;text-align:center;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600)">Basic</th><th style="padding:14px 16px;text-align:center;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600)">Pro</th><th style="padding:14px 16px;text-align:center;border-bottom:1px solid var(--slate-100);font-weight:700;font-size:0.82rem;color:var(--slate-600)">Kommune</th></tr></thead>
-          <tbody>
-            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Max brugere</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">100</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">Ubegrænset</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">Ubegrænset</td></tr>
-            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Institutioner</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">1</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">1</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100)">Op til 5</td></tr>
-            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Forældreportal</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--slate-300)">—</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td></tr>
-            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Skærmtidsstyring</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--slate-300)">—</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td></tr>
-            <tr><td style="padding:12px 16px;border-bottom:1px solid var(--slate-100)">Fri support</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--slate-300)">—</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td><td style="padding:12px 16px;text-align:center;border-bottom:1px solid var(--slate-100);color:var(--sage-600);font-weight:700">&#10003;</td></tr>
-            <tr><td style="padding:12px 16px">Oprettelse</td><td style="padding:12px 16px;text-align:center">2.500 kr</td><td style="padding:12px 16px;text-align:center">Gratis</td><td style="padding:12px 16px;text-align:center">Gratis</td></tr>
-          </tbody>
-        </table>
       </div>
     </div>
 
@@ -1523,7 +1477,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         </div>
         <div class="faq-i" style="background:var(--white);border-radius:var(--radius-md);border:1px solid var(--slate-200);overflow:hidden">
           <button onclick="toggleFaq(this)" style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;font-weight:700;font-size:0.92rem;color:var(--slate-800);cursor:pointer;width:100%;text-align:left;background:none;border:none;font-family:var(--font-body)">Hvad indebærer oprettelsen?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.3s"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7">I starter altid med 4 ugers gratis prøveperiode — ingen betaling og ingen binding. Hvis I efter prøveperioden vælger at fortsætte, dækker oprettelsen opsætning af Flango til jeres institution, introduktion til personalet og hjælp til at komme i gang. Ved Basic betales 2.500 kr engangs som oprettelsesgebyr; Pro og Kommune har gratis oprettelse.</div></div>
+          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7">I starter altid med 4 ugers gratis prøveperiode — ingen betaling og ingen binding. Hvis I efter prøveperioden vælger at fortsætte, dækker oprettelsen opsætning af Flango til jeres institution, introduktion til personalet og hjælp til at komme i gang. Oprettelsen er gratis.</div></div>
         </div>
         <div class="faq-i" style="background:var(--white);border-radius:var(--radius-md);border:1px solid var(--slate-200);overflow:hidden">
           <button onclick="toggleFaq(this)" style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;font-weight:700;font-size:0.92rem;color:var(--slate-800);cursor:pointer;width:100%;text-align:left;background:none;border:none;font-family:var(--font-body)">Kræver Flango internet?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.3s"><polyline points="6 9 12 15 18 9"/></svg></button>
@@ -1531,7 +1485,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         </div>
         <div class="faq-i" style="background:var(--white);border-radius:var(--radius-md);border:1px solid var(--slate-200);overflow:hidden">
           <button onclick="toggleFaq(this)" style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;font-weight:700;font-size:0.92rem;color:var(--slate-800);cursor:pointer;width:100%;text-align:left;background:none;border:none;font-family:var(--font-body)">Hvad er skærmtidsstyring?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.3s"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7">Flango Skærmtid er et selvstændigt modul til at administrere børns adgang til gaming-stationer i institutionens spillerum. Inkluderet i Pro og Kommune; kan også anvendes som standalone. Læs mere på <a href="/om-skærmtid/" style="color:var(--peach-700);text-decoration:underline;text-underline-offset:3px;">Flango Skærmtid-siden</a>.</div></div>
+          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7">Flango Skærmtid er et selvstændigt modul til at administrere børns adgang til gaming-stationer i institutionens spillerum. Det er med i Flango-abonnementet sammen med alle de andre Flango-apps. Læs mere på <a href="/om-skærmtid/" style="color:var(--peach-700);text-decoration:underline;text-underline-offset:3px;">Flango Skærmtid-siden</a>.</div></div>
         </div>
         <div class="faq-i" style="background:var(--white);border-radius:var(--radius-md);border:1px solid var(--slate-200);overflow:hidden">
           <button onclick="toggleFaq(this)" style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;font-weight:700;font-size:0.92rem;color:var(--slate-800);cursor:pointer;width:100%;text-align:left;background:none;border:none;font-family:var(--font-body)">Hvordan fungerer opsigelse?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.3s"><polyline points="6 9 12 15 18 9"/></svg></button>

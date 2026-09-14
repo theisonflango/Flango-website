@@ -49,6 +49,16 @@
     '<polyline points="10 17 15 12 10 7"></polyline>' +
     '<line x1="15" y1="12" x2="3" y2="12"></line></svg>';
 
+  /* Burgerens streger er en SVG i currentColor, ikke tre spans med baggrundsfarve. Browsere,
+   * der selv gør sider mørke (Samsung Internet, Chrome på Android i mørk tilstand), gør tekst
+   * og SVG lyse, men lader mørke baggrunde stå. Spans-stregerne forblev derfor mørke på en
+   * mørk header og forsvandt (Theis 14/9; genskabt med Chromiums tvungne mørke tilstand). */
+  var BURGER_ICON =
+    '<svg width="28" height="17.5" viewBox="0 0 28 17.5" fill="none" stroke="currentColor" ' +
+    'stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false">' +
+    '<path class="l1" d="M1.25 1.25h25.5"></path><path class="l2" d="M1.25 8.75h25.5"></path>' +
+    '<path class="l3" d="M1.25 16.25h25.5"></path></svg>';
+
   function nuvaerendeSti() {
     var path = decodeURIComponent(window.location.pathname);
     if (path.slice(-10) === 'index.html') path = path.slice(0, -10);
@@ -100,7 +110,7 @@
             '<a href="' + esc(log.href) + '" class="flango-nav-portal">' + PORTAL_ICON + esc(log.label) + '</a>' +
           '</div>' +
           '<button class="flango-burger" aria-label="Åbn menu" aria-expanded="false" aria-controls="flangoMobileMenu">' +
-            '<span></span><span></span><span></span></button>' +
+            BURGER_ICON + '</button>' +
         '</div>' +
       '</nav>' +
       /* Mobilmenuen ligger UDEN FOR <nav>. Den er position:fixed, og .flango-nav
