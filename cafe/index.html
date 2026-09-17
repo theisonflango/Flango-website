@@ -128,12 +128,12 @@
         }
     </style>
     <script src="js/ui/icons.js?v=3"></script>
-  <script type="module" crossorigin src="/cafe/assets/main-C-YHndxm.js"></script>
+  <script type="module" crossorigin src="/cafe/assets/main-CYdigeVD.js"></script>
   <link rel="modulepreload" crossorigin href="/cafe/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/cafe/assets/platform-Ce38rC8A.js">
+  <link rel="modulepreload" crossorigin href="/cafe/assets/platform-B82djGUq.js">
   <link rel="modulepreload" crossorigin href="/cafe/assets/backend-config-D_9xaUNr.js">
-  <link rel="modulepreload" crossorigin href="/cafe/assets/cafe-client-compatibility-hIE-Jc-5.js">
-  <link rel="stylesheet" crossorigin href="/cafe/assets/main-BH3BDp1u.css">
+  <link rel="modulepreload" crossorigin href="/cafe/assets/cafe-client-compatibility-ComFRu2j.js">
+  <link rel="stylesheet" crossorigin href="/cafe/assets/main-C55HOyZk.css">
 </head>
 <body>
 
@@ -679,6 +679,10 @@
                         <option value="created_at:desc">Nyeste først</option>
                     </select>
                 </label>
+                <div id="product-overview-layout-toggle" class="product-overview-layout-toggle" role="group" aria-label="Visning af produktoversigten" hidden>
+                    <button type="button" data-layout="standard" class="is-active" aria-pressed="true">Standard</button>
+                    <button type="button" data-layout="kolonner" aria-pressed="false">Kolonner</button>
+                </div>
                 <h2 class="product-overview-title" style="margin: 0; flex: 1; text-align: center;">Produktoversigt <span id="product-overview-subtitle" style="font-size: 14px; font-weight: 500; color: var(--text-secondary, #888);"></span></h2>
                 <button id="add-product-from-rules-btn" class="product-overview-create" style="padding: 14px 32px; background: #2196F3; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 16px; white-space: nowrap; margin: -6px 0;">+ Nyt produkt</button>
                 <span class="close-btn">&times;</span>
@@ -713,7 +717,7 @@
                     <div class="product-rules-scroll-hint">Stryg sidelæns for at se alle felter →</div>
                     <div id="product-rules-table-container" style="overflow-x: auto; flex: 1; overflow-y: auto;">
                         <div id="product-rules-mobile-layout" class="product-rules-mobile-layout" hidden></div>
-                        <div id="product-rules-ipad-layout" class="product-rules-ipad-layout" hidden></div>
+                        <div id="product-rules-split-layout" class="product-rules-split-layout" hidden></div>
                         <table id="product-rules-table" class="product-rules-table" style="width: 100%; border-collapse: collapse;">
                             <thead style="position: sticky; top: 0; z-index: 10;">
                                 <tr class="product-rules-header">
