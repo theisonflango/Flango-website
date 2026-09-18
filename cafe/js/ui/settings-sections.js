@@ -2141,6 +2141,84 @@
     }
   };
 
+  sections['Valggruppe'] = {
+    render(ctx) {
+      const max = ctx.institutionData?.choice_group_max_per_day ?? 1;
+      const products = (window.__flangoGetAllProducts?.() || [])
+        .filter(p => p.in_choice_group === true)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'da'));
+      return `<div class="fsp-page">
+        <div class="fsp-page-title">Valggruppe</div>
+        <div class="fsp-page-desc">Produkterne i valggruppen deler én daglig købsgrænse. Med en grænse på 1 vælger kunden ét af produkterne. Grænsen gælder i alt, også ved flere køb samme dag.</div>
+        <div class="fsp-section"><div class="fsp-block">
+          <label class="fsp-row-title" for="choice-group-max">Maks. antal pr. kunde pr. dag</label>
+          <div class="fsp-row-desc">Antal styk i alt fra valggruppen. En ny dagsgrænse begynder ved midnat.</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:14px">
+            <button type="button" class="fsp-btn fsp-btn-ghost" style="padding:10px 16px" data-choice-step="-1" aria-label="Sænk valggruppens dagsgrænse">−</button>
+            <input id="choice-group-max" class="fsp-input" type="number" min="1" step="1" data-field="choice_group_max_per_day" value="${max}" style="width:90px;padding:8px 12px;font-size:16px;text-align:center">
+            <button type="button" class="fsp-btn fsp-btn-ghost" style="padding:10px 16px" data-choice-step="1" aria-label="Hæv valggruppens dagsgrænse">+</button>
+            <span>stk.</span>
+          </div>
+          <div data-choice-save-status role="status" class="fsp-row-desc" style="margin-top:8px"></div>
+        </div></div>
+        <div class="fsp-section"><div class="fsp-block">
+          <div class="fsp-row-title">Produkter i valggruppen (${products.length})</div>
+          ${products.length ? `<ul style="padding-left:20px;margin:12px 0">${products.map(p => `<li style="margin:8px 0">${esc(p.name)}${p.is_enabled === false ? ' <span class="fsp-row-desc">— deaktiveret</span>' : p.is_visible === false ? ' <span class="fsp-row-desc">— ikke i dagens sortiment</span>' : ''}</li>`).join('')}</ul>` : '<p class="fsp-row-desc">Ingen produkter er valgt endnu. Sæt kryds i kolonnen “Valggruppe” i produktoversigten.</p>'}
+          <button type="button" class="fsp-btn fsp-btn-ghost" data-choice-products>Åbn produktoversigt</button>
+        </div></div>
+      </div>`;
+    },
+    wire(container, ctx) {
+      pageAlign(container);
+      const input = container.querySelector('#choice-group-max');
+      const status = container.querySelector('[data-choice-save-status]');
+      const buttons = [...container.querySelectorAll('[data-choice-step]')];
+      let saved = Number(input.value);
+      let saving = false;
+      async function save() {
+        if (saving) return;
+        const value = Number(input.value);
+        if (!Number.isSafeInteger(value) || value < 1 || value > 2147483647) {
+          input.value = saved;
+          status.textContent = 'Skriv et helt antal på mindst 1.';
+          return;
+        }
+        if (value === saved) return;
+        saving = true;
+        input.disabled = true;
+        buttons.forEach(button => { button.disabled = true; });
+        status.textContent = 'Gemmer…';
+        try {
+          const ok = await ctx.markDirty('choice_group_max_per_day', value);
+          if (ok === false) {
+            input.value = saved;
+            status.textContent = 'Ændringen blev ikke gemt.';
+          } else {
+            saved = value;
+            status.textContent = 'Gemt';
+            window.__flangoRefreshProductLocks?.({ force: true });
+          }
+        } finally {
+          saving = false;
+          input.disabled = false;
+          buttons.forEach(button => { button.disabled = button.dataset.choiceStep === '-1' && saved <= 1; });
+        }
+      }
+      input.addEventListener('change', save);
+      buttons.forEach(button => {
+        button.disabled = button.dataset.choiceStep === '-1' && saved <= 1;
+        button.addEventListener('click', () => {
+          input.value = Math.max(1, (Number(input.value) || saved) + Number(button.dataset.choiceStep));
+          save();
+        });
+      });
+      container.querySelector('[data-choice-products]').addEventListener('click', () => {
+        window.FlangoSettings.close();
+        window.openSugarPolicyModal?.(() => window.FlangoSettings.openTo('Institutionens Præferencer', 'Valggruppe'));
+      });
+    }
+  };
+
   // ── Sukkerpolitik (settings section with dirty-tracking) ──
   sections['Sukkerpolitik'] = {
     render(ctx) {

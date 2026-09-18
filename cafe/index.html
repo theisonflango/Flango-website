@@ -131,12 +131,12 @@
         }
     </style>
     <script src="js/ui/icons.js?v=3"></script>
-  <script type="module" crossorigin src="/cafe/assets/main-BA5tzr1S.js"></script>
+  <script type="module" crossorigin src="/cafe/assets/main-Bcla6_e2.js"></script>
   <link rel="modulepreload" crossorigin href="/cafe/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/cafe/assets/platform-CPOiBXZ2.js">
+  <link rel="modulepreload" crossorigin href="/cafe/assets/platform-CopmWmKK.js">
   <link rel="modulepreload" crossorigin href="/cafe/assets/backend-config-D_9xaUNr.js">
-  <link rel="modulepreload" crossorigin href="/cafe/assets/cafe-client-compatibility-F9lOUVUk.js">
-  <link rel="stylesheet" crossorigin href="/cafe/assets/main-BJZtyrYL.css">
+  <link rel="modulepreload" crossorigin href="/cafe/assets/cafe-client-compatibility-regy0O5F.js">
+  <link rel="stylesheet" crossorigin href="/cafe/assets/main-CER7_q8k.css">
 </head>
 <body>
 
@@ -579,13 +579,60 @@
     </div>
 
     <div id="assortment-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header"><h2>Dagens Sortiment</h2><span class="close-btn">&times;</span></div>
-            <div class="modal-user-list">
-                <div id="assortment-settings" class="settings-section">
-                    <h3>Træk for at sortere</h3>
-                    <div id="assortment-list"></div>
+        <div class="modal-content assortment-modal-content">
+            <div class="modal-header assortment-modal-header">
+                <div class="assortment-heading">
+                    <span class="assortment-eyebrow">Caféen i dag</span>
+                    <h2>Dagens sortiment</h2>
+                    <p id="assortment-status" class="assortment-status" aria-live="polite"></p>
                 </div>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="assortment-toolbar">
+                <label class="assortment-search" for="assortment-search">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4L21 21"/></svg>
+                    <span class="assortment-sr-only">Søg efter en vare</span>
+                    <input type="search" id="assortment-search" placeholder="Søg efter en vare" autocomplete="off" spellcheck="false" autocapitalize="off">
+                </label>
+                <div id="assortment-filters" class="assortment-filters" role="group" aria-label="Filtrér varer">
+                    <button type="button" class="assortment-chip" data-filter="alle" aria-pressed="true">Alle <span class="assortment-chip-count"></span></button>
+                    <button type="button" class="assortment-chip" data-filter="taendt" aria-pressed="false">Tændt <span class="assortment-chip-count"></span></button>
+                    <button type="button" class="assortment-chip" data-filter="slukket" aria-pressed="false">Slukket <span class="assortment-chip-count"></span></button>
+                    <button type="button" class="assortment-chip" data-filter="udsolgt" aria-pressed="false">Udsolgt <span class="assortment-chip-count"></span></button>
+                </div>
+                <div class="assortment-toolbar-right">
+                    <label class="assortment-sort" for="assortment-sort" id="assortment-sort-wrap" hidden>
+                        <span>Sortér</span>
+                        <select id="assortment-sort">
+                            <option value="raekke">Rækkefølge i kassen</option>
+                            <option value="navn">Navn A–Å</option>
+                            <option value="pris-op">Pris, laveste først</option>
+                            <option value="pris-ned">Pris, højeste først</option>
+                        </select>
+                    </label>
+                    <div id="assortment-views" class="assortment-views" role="group" aria-label="Visning">
+                        <button type="button" class="assortment-view" data-view="gitter" aria-pressed="true" title="Gitter">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg>
+                            <span>Gitter</span>
+                        </button>
+                        <button type="button" class="assortment-view" data-view="liste" aria-pressed="false" title="Liste">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                            <span>Liste</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="assortment-body">
+                <div id="assortment-grid" class="assortment-grid"></div>
+                <div id="assortment-list" class="assortment-list" hidden></div>
+                <p id="assortment-empty" class="assortment-empty" hidden>Ingen varer matcher. Prøv et andet ord, eller vælg Alle.</p>
+            </div>
+            <div class="assortment-footer">
+                <div class="assortment-hint">
+                    <p><span class="assortment-key is-key" aria-hidden="true">1</span> Tallet er varens plads i kassen. De ti første tændte varer får tastgenvej 1–9 og 0.</p>
+                    <p id="assortment-hint-line"></p>
+                </div>
+                <button type="button" id="assortment-done-btn" class="assortment-done">Færdig</button>
             </div>
         </div>
     </div>
@@ -731,6 +778,7 @@
                                     <th class="sortable-col prt-col" data-sort="limit" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Grænse <span class="sort-indicator"></span></th>
                                     <th class="sortable-col prt-col" data-sort="daily_special" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Dagens ret <span class="sort-indicator"></span></th>
                                     <th class="sortable-col prt-col" data-sort="core_assortment" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Fast sort. <span class="sort-indicator"></span></th>
+                                    <th class="sortable-col prt-col" data-sort="choice_group" id="col-choice-group" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Valggruppe <span class="sort-indicator"></span></th>
                                     <th class="sortable-col prt-col" data-sort="unhealthy" id="col-unhealthy" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Usund <span class="sort-indicator"></span></th>
                                     <th class="sortable-col prt-col" data-sort="active" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Aktiv <span class="sort-indicator"></span></th>
                                     <th class="sortable-col prt-col" data-sort="created_at" style="padding:16px 12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer;border-left:1px solid rgba(0,0,0,0.08);border-right:1px solid rgba(0,0,0,0.08);border-bottom:2px solid rgba(0,0,0,0.12);background:#eef2f7;">Oprettet <span class="sort-indicator"></span></th>
@@ -1606,8 +1654,8 @@
     <audio id="audio-preview" preload="auto"></audio>
 
     <script src="js/core/feature-modules.js?v=3"></script>
-    <script src="js/ui/settings-panel.js?v=18"></script>
-    <script src="js/ui/settings-sections.js?v=77"></script>
+    <script src="js/ui/settings-panel.js?v=19"></script>
+    <script src="js/ui/settings-sections.js?v=78"></script>
     <script src="js/ui/admin-portal-preview-host.js?v=15"></script>
     <script src="js/ui/admin-parent-page.js?v=3"></script>
     <script src="js/ui/admin-portal-v2.js?v=7"></script>
