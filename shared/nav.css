@@ -193,6 +193,52 @@
   .flango-burger { display: block; }
 }
 
+/* ── Apptitel ───────────────────────────────────────────────────────────────
+   Toppen af hver om-side: frugten, »Flango« og appens navn. Ét sted, så de
+   fem sider ikke kan få hver sin størrelse og afstand — det er hele pointen.
+   Siden skriver kun:
+     <h1 class="flango-apptitel">
+       <img src="/shared/logos/flango-fruit.webp" alt="">
+       <span>Flango</span> Café
+     </h1>
+   og nulstiller sin egen hero-padding foroven, så afstanden herunder gælder.
+
+   Appordet arver sidens blækfarve (color: inherit), så der ikke skal sættes
+   en farve pr. side. »Flango« står i #B45B10 — den orange siderne allerede
+   bruger til links. Logoets egen #FF7C00 og menuens #D97316 kommer kun op på
+   2,03 og 2,68 mod køsystemets sandbaggrund; kravet til stor tekst er 3,0.
+   #B45B10 klarer 3,86 dér og 4,35–4,52 på de fire andre.
+
+   Baloo 2 rammer logoets bogstavformer. Siden skal selv hente den — familien
+   står i det Google Fonts-link, siden har i forvejen, med wght@800. */
+.flango-apptitel {
+  margin: clamp(40px, 6vw, 72px) 0 0;
+  /* Ligger titlen i en flex- eller grid-kolonne med align-items: center, krymper
+     den ellers om sit eget indhold og brækker linjen for tidligt på en telefon. */
+  align-self: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  font: 800 clamp(2.4rem, 5.2vw, 4rem)/1.12 'Baloo 2', system-ui, sans-serif;
+  letter-spacing: -0.015em;
+  color: inherit;
+  text-wrap: balance;
+}
+/* Frugten er inline, ikke et flex-element: så bryder lange navne som
+   »Flango Forældreportal« naturligt på en telefon i stedet for at skubbe
+   billedet ned på sin egen linje. em-enheden holder den i takt med skriften. */
+.flango-apptitel img {
+  /* Eksplicit inline-block: om-cafe (og flere sider) har en global
+     `img { display: block }`, og så lagde frugten sig på sin egen linje i
+     venstre kant, mens teksten stod centreret under den. */
+  display: inline-block;
+  width: 0.92em;
+  height: 0.92em;
+  vertical-align: -0.15em;
+  margin-right: 0.2em;
+}
+.flango-apptitel span { color: #B45B10; }
+
 @media (prefers-reduced-motion: reduce) {
   .flango-nav-links a, .flango-nav-portal, .flango-burger path { transition: none; }
 }
