@@ -15,7 +15,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=DM+Serif+Display&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=DM+Serif+Display&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/shared/nav.css" />
 
   <style>
@@ -101,6 +101,9 @@
       html { scroll-behavior: auto; }
       *, *::before, *::after { animation: none !important; transition: none !important; }
     }
+
+    /* Afstanden til menuen ejes af .flango-apptitel i /shared/nav.css. */
+    #hero { padding-top: 0; }
   </style>
 </head>
 <body>
@@ -110,8 +113,10 @@
 <!-- Hero -->
 <section id="hero" class="sec" style="--pt: 88px; --pb: 72px">
   <div style="max-width: 880px; margin: 0 auto; text-align: center; display: flex; flex-direction: column; gap: 22px; align-items: center">
-    <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #0C7D91; font-weight: 600">Gaming i institutioner — uden stopur</div>
-    <h1 class="h1" style="margin: 0; line-height: 1.06; font-weight: 700; letter-spacing: -1.8px; text-wrap: balance">Skab fair og trygge rammer om gaming</h1>
+    <h1 id="hero-heading" class="flango-apptitel">
+          <img src="/shared/logos/flango-fruit.webp" alt=""><span>Flango</span> Skærmtid
+        </h1>
+    <p class="h1" style="margin: 0; line-height: 1.06; font-weight: 700; letter-spacing: -1.8px; text-wrap: balance">Skab fair og trygge rammer om gaming</p>
     <p class="lead" style="margin: 0; line-height: 1.45; color: #3E4A66; max-width: 720px; text-wrap: pretty">Flango holder styr på tiden, køen og spillepladserne — så personalet kan være til stede med børnene.</p>
     <p style="margin: 0; font-size: 16.5px; line-height: 1.65; color: #4A5570; max-width: 680px; text-wrap: pretty">Flango Skærmtid samler institutionens gaming-pc'er og konsoller i ét enkelt system. Børnene logger selv ind, tiden tæller automatisk ned, og personalet får et samlet overblik over hele spillerummet.</p>
     <p style="margin: 0; font-weight: 600; font-size: 16.5px; color: #10162A">Ingen stopure. Ingen håndskrevne kølister. Ingen tvivl om, hvis tur det er.</p>

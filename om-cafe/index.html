@@ -130,7 +130,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="image" href="/shared/images/hero-mockup.png" fetchpriority="high">
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/shared/nav.css">
 <style>
 /* ========================================
@@ -293,7 +293,8 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
 .hero {
   position: relative;
   overflow: hidden;
-  padding: 40px 0 48px;
+  /* Afstanden til menuen ejes af .flango-apptitel i /shared/nav.css. */
+  padding: 0 0 48px;
 }
 .hero .container { max-width: 1240px; }
 
@@ -326,19 +327,6 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
   align-items: center;
   text-align: center;
   gap: 8px;
-}
-
-.hero-brand {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.hero-logo {
-  width: clamp(240px, 28vw, 380px);
-  aspect-ratio: 512 / 240;
-  object-fit: cover;
-  object-position: center 30%;
-  display: block;
 }
 
 .hero-text {
@@ -414,7 +402,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
 .hero-cycle { display: none; }
 
 @media (max-width: 720px) {
-  .hero { padding: 24px 0 24px; }
+  .hero { padding: 0 0 24px; }
   .hero-grid { gap: 20px; }
   .hero-mockup { margin-top: 0; }
 }
@@ -1139,9 +1127,9 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
   <div class="container">
     <div class="hero-grid">
 
-      <div class="hero-brand">
-        <img src="/shared/logos/flango-logo.png" alt="Flango" class="hero-logo">
-      </div>
+      <h1 id="hero-heading" class="flango-apptitel">
+        <img src="/shared/logos/flango-fruit.webp" alt=""><span>Flango</span> Café
+      </h1>
 
       <div class="hero-mockup">
         <img src="/shared/images/hero-mockup.png"
@@ -1150,9 +1138,9 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
       </div>
 
       <div class="hero-text">
-        <h1 id="hero-heading" class="hero-tagline">
+        <p class="hero-tagline">
           Mindre administration. <em>Mere nærvær.</em>
-        </h1>
+        </p>
         <p class="hero-sub">
           Børn betaler med saldo,<br>
           forældre indbetaler i appen,<br>
