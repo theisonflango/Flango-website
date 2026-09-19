@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Forældreportal – Flango</title>
+  <meta name="description" content="Tank op på dit barns cafésaldo, sæt trygge grænser og følg med i hverdagen. Sådan kommer du i gang med Flangos forældreportal." />
+  <meta property="og:title" content="Flango Forældreportal — tæt på dit barns cafédag" />
+  <meta property="og:description" content="Tank op på saldoen, sæt trygge grænser og følg med i hverdagen — enkelt og sikkert, direkte fra din telefon." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://flango.dk/om-forældre/" />
+  <meta property="og:locale" content="da_DK" />
+  <meta name="theme-color" content="#F5960A" />
+  <link rel="icon" type="image/webp" href="/shared/logos/flango-fruit.webp" />
+  <link rel="apple-touch-icon" href="/shared/logos/flango-fruit.webp" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" href="/shared/fonts/plus-jakarta-sans-latin.woff2" crossorigin />
+  <link rel="preload" as="font" type="font/woff2" href="/shared/fonts/instrument-serif-latin.woff2" crossorigin />
+  <link rel="stylesheet" href="/shared/nav.css" />
+
+  <style>
+    /* Selvhostede skrifter — samme filer som designpakken. De fem Plus Jakarta-vægte
+       var byte-identiske i pakken, så de deler én fil her. */
+    @font-face { font-family:'Plus Jakarta Sans'; font-style:normal; font-weight:400; font-display:swap; src:url('/shared/fonts/plus-jakarta-sans-latin.woff2') format('woff2'); }
+    @font-face { font-family:'Plus Jakarta Sans'; font-style:normal; font-weight:500; font-display:swap; src:url('/shared/fonts/plus-jakarta-sans-latin.woff2') format('woff2'); }
+    @font-face { font-family:'Plus Jakarta Sans'; font-style:normal; font-weight:600; font-display:swap; src:url('/shared/fonts/plus-jakarta-sans-latin.woff2') format('woff2'); }
+    @font-face { font-family:'Plus Jakarta Sans'; font-style:normal; font-weight:700; font-display:swap; src:url('/shared/fonts/plus-jakarta-sans-latin.woff2') format('woff2'); }
+    @font-face { font-family:'Plus Jakarta Sans'; font-style:normal; font-weight:800; font-display:swap; src:url('/shared/fonts/plus-jakarta-sans-latin.woff2') format('woff2'); }
+    @font-face { font-family:'Instrument Serif'; font-style:normal; font-weight:400; font-display:swap; src:url('/shared/fonts/instrument-serif-latin.woff2') format('woff2'); }
+    @font-face { font-family:'Instrument Serif'; font-style:italic; font-weight:400; font-display:swap; src:url('/shared/fonts/instrument-serif-italic-latin.woff2') format('woff2'); }
+
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Plus Jakarta Sans', -apple-system, system-ui, sans-serif; color:#1C1917; background:#FAFAF9; line-height:1.5; -webkit-font-smoothing:antialiased; }
+    a { color:inherit; text-decoration:none; }
+    a:hover { color:#C47200; }
+
+    /* Knapper og badges med hover/active-tilstand */
+    .btn-primary { background:#F5960A; color:#fff; transition:opacity .2s, transform .1s; }
+    .btn-primary:hover { opacity:.9; color:#fff; }
+    .btn-primary:active { transform:scale(.97); }
+    .btn-secondary { background:#FFFFFF; border:1.5px solid #D6D3D1; color:#1C1917; transition:background .2s; }
+    .btn-secondary:hover { background:#F0EFED; color:#1C1917; }
+    .store-dark { background:#1C1917; color:#fff; transition:opacity .2s; }
+    .store-dark:hover { opacity:.9; color:#fff; }
+    .store-ghost { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); color:#fff; transition:background .2s; }
+    .store-ghost:hover { background:rgba(255,255,255,.16); color:#fff; }
+
+    /* Sidens egen underoverskrift under den fælles Flango-nav. Logoet gentages ikke —
+       det står allerede i navigationen lige ovenfor. */
+    .page-head { max-width:1080px; margin:0 auto; padding:16px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; }
+    .page-head-title { font-weight:800; font-size:17px; letter-spacing:-.02em; line-height:1.2; }
+    .page-head-sub { font-size:11px; color:#A8A29E; font-weight:500; margin-top:-1px; }
+    .head-btn { height:40px; padding:0 14px; border-radius:12px; font-size:14px; display:inline-flex; align-items:center; white-space:nowrap; }
+
+    .hero-card { width:100%; max-width:380px; background:linear-gradient(135deg, #1C1917 0%, #292524 100%); border-radius:24px; padding:24px; color:#fff; position:relative; overflow:hidden; box-shadow:0 8px 30px rgba(28,25,23,.18); transform:rotate(-1.5deg); }
+
+    @media (max-width: 560px) {
+      .page-head { padding:12px 16px; }
+      .hero-card { transform:none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation:none !important; transition:none !important; }
+      .hero-card { transform:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="flango-nav-mount"></div>
+
+<div style="min-height:100vh; background:#FAFAF9">
+
+  <section style="background:linear-gradient(180deg, #FFF4E6 0%, #FAFAF9 100%); border-bottom:1px solid #F0EFED">
+    <div style="max-width:1080px; margin:0 auto; padding:56px 24px 64px; display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:48px; align-items:center">
+      <div>
+        <div style="display:inline-flex; align-items:center; gap:6px; background:#FFDAA6; color:#C47200; font-size:12px; font-weight:700; padding:5px 12px; border-radius:9999px; letter-spacing:.02em">SFO'ernes cafésystem — til forældre</div>
+        <h1 style="font-family:'Instrument Serif', Georgia, serif; font-weight:400; font-size:clamp(38px, 5vw, 54px); line-height:1.08; letter-spacing:-.01em; margin:18px 0 14px">Tæt på dit barns <em style="color:#C47200">cafédag</em></h1>
+        <p style="font-size:17px; color:#57534E; max-width:44ch; margin:0 0 26px; text-wrap:pretty">Tank op på saldoen, sæt trygge grænser og følg med i hverdagen — enkelt og sikkert, direkte fra din telefon.</p>
+        <div style="display:flex; flex-wrap:wrap; gap:12px">
+          <a class="btn-primary" href="/forældre/?signup=1" style="height:48px; padding:0 26px; border-radius:12px; font-weight:700; font-size:15px; display:inline-flex; align-items:center; box-shadow:0 4px 12px rgba(245,150,10,.3)">Opret konto</a>
+          <a class="btn-secondary" href="/forældre/" style="height:48px; padding:0 26px; border-radius:12px; font-weight:600; font-size:15px; display:inline-flex; align-items:center">Log ind</a>
+        </div>
+        <div style="display:flex; align-items:flex-start; gap:8px; margin-top:20px; font-size:13px; color:#57534E; max-width:46ch">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#C47200" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:2px" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><circle cx="16.5" cy="7.5" r=".5" fill="#C47200"></circle></svg>
+          <span>Du skal bruge en kode fra jeres institution til at tilknytte dit barn — spørg personalet, hvis du ikke har fået den.</span>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:20px">
+        <div class="hero-card">
+          <div style="position:absolute; top:-60px; right:-40px; width:200px; height:200px; background:radial-gradient(circle, rgba(245,150,10,.25) 0%, transparent 70%); pointer-events:none"></div>
+          <div style="position:absolute; bottom:-80px; left:-20px; width:160px; height:160px; background:radial-gradient(circle, rgba(245,150,10,.12) 0%, transparent 70%); pointer-events:none"></div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; position:relative; z-index:1">
+            <div style="font-size:13px; font-weight:500; color:rgba(255,255,255,.6); letter-spacing:.03em; text-transform:uppercase">Saldo</div>
+            <div style="display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:9999px; font-size:12px; font-weight:600; background:rgba(22,163,74,.2); color:#4ade80"><span style="width:6px; height:6px; border-radius:50%; background:currentColor"></span>Alt vel</div>
+          </div>
+          <div style="font-family:'Instrument Serif', Georgia, serif; font-size:48px; font-weight:400; line-height:1.1; margin-top:4px; position:relative; z-index:1">128,50<span style="font-family:'Plus Jakarta Sans', sans-serif; font-size:20px; font-weight:600; color:rgba(255,255,255,.5); margin-left:4px">kr.</span></div>
+          <div style="font-size:14px; color:rgba(255,255,255,.5); margin-top:8px; position:relative; z-index:1">Astrid · 2. klasse</div>
+          <div style="display:flex; gap:8px; margin-top:20px; position:relative; z-index:1">
+            <div style="flex:1; height:44px; border-radius:12px; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center; background:#F5960A; color:#fff">Tank op</div>
+            <div style="flex:1; height:44px; border-radius:12px; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.1); color:rgba(255,255,255,.8); border:1px solid rgba(255,255,255,.15)">Historik</div>
+          </div>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px">
+          <a class="store-dark" href="https://apps.apple.com/dk/app/id6793543486" style="display:inline-flex; align-items:center; gap:9px; padding:8px 14px; border-radius:12px">
+            <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.86-3.08.38-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.38C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.08ZM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25Z"></path></svg>
+            <span style="text-align:left; line-height:1.15"><span style="display:block; font-size:9px; color:rgba(255,255,255,.6)">Hent i</span><span style="display:block; font-size:13px; font-weight:700">App Store</span></span>
+          </a>
+          <a class="store-dark" href="https://play.google.com/store/apps/details?id=dk.flango.foraeldre" style="display:inline-flex; align-items:center; gap:9px; padding:8px 14px; border-radius:12px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 3.5v17c0 .4.44.65.78.44l13.5-8.5a.52.52 0 0 0 0-.88L5.78 3.06A.52.52 0 0 0 5 3.5Z"></path></svg>
+            <span style="text-align:left; line-height:1.15"><span style="display:block; font-size:9px; color:rgba(255,255,255,.6)">Hent i</span><span style="display:block; font-size:13px; font-weight:700">Google Play</span></span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1080px; margin:0 auto; padding:56px 24px 8px">
+    <h2 style="font-family:'Instrument Serif', Georgia, serif; font-weight:400; font-size:32px; margin:0 0 24px; letter-spacing:-.01em">Sådan kommer du i gang</h2>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px">
+      <div style="background:#FFFFFF; border:1px solid #E7E5E4; border-radius:16px; padding:22px; box-shadow:0 1px 3px rgba(28,25,23,.06)">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px">
+          <span style="width:28px; height:28px; border-radius:9999px; background:#F5960A; color:#fff; font-weight:800; font-size:14px; display:inline-flex; align-items:center; justify-content:center">1</span>
+          <span style="font-weight:700; font-size:16px">Få koden</span>
+        </div>
+        <p style="margin:0; font-size:14px; color:#57534E; text-wrap:pretty">Jeres institution giver dig en kode på 8 tegn, der hører til dit barn. Den gælder i 7 dage.</p>
+      </div>
+      <div style="background:#FFFFFF; border:1px solid #E7E5E4; border-radius:16px; padding:22px; box-shadow:0 1px 3px rgba(28,25,23,.06)">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px">
+          <span style="width:28px; height:28px; border-radius:9999px; background:#F5960A; color:#fff; font-weight:800; font-size:14px; display:inline-flex; align-items:center; justify-content:center">2</span>
+          <span style="font-weight:700; font-size:16px">Opret konto</span>
+        </div>
+        <p style="margin:0; font-size:14px; color:#57534E; text-wrap:pretty">Med e-mail eller Google — det tager under et minut.</p>
+      </div>
+      <div style="background:#FFFFFF; border:1px solid #E7E5E4; border-radius:16px; padding:22px; box-shadow:0 1px 3px rgba(28,25,23,.06)">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px">
+          <span style="width:28px; height:28px; border-radius:9999px; background:#F5960A; color:#fff; font-weight:800; font-size:14px; display:inline-flex; align-items:center; justify-content:center">3</span>
+          <span style="font-weight:700; font-size:16px">Tilknyt dit barn</span>
+        </div>
+        <p style="margin:0; font-size:14px; color:#57534E; text-wrap:pretty">Indtast koden i portalen — så er I i gang. Søskende kan tilføjes bagefter.</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1080px; margin:0 auto; padding:48px 24px 16px">
+    <h2 style="font-family:'Instrument Serif', Georgia, serif; font-weight:400; font-size:32px; margin:0 0 24px; letter-spacing:-.01em">Det kan du i portalen</h2>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px">
+      <div style="grid-column:1 / -1; background:#FFF4E6; border:1px solid #FFDAA6; border-radius:16px; padding:24px; display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap">
+        <div style="width:44px; height:44px; border-radius:12px; background:#F5960A; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>
+        </div>
+        <div style="flex:1; min-width:240px">
+          <div style="font-weight:700; font-size:17px; margin-bottom:4px">Tank op på café-saldoen</div>
+          <p style="margin:0; font-size:14px; color:#57534E; max-width:64ch; text-wrap:pretty">Portalens vigtigste job: betal med MobilePay eller kort, og pengene står klar i caféen med det samme. Du kan altid se, hvad der er købt.</p>
+        </div>
+      </div>
+      <div style="background:#FFFFFF; border:1px solid #E7E5E4; border-radius:16px; padding:22px">
+        <div style="width:40px; height:40px; border-radius:12px; background:#EFF6FF; color:#2563EB; display:flex; align-items:center; justify-content:center; margin-bottom:12px">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5H3"></path><path d="M12 19H3"></path><path d="M14 3v4"></path><path d="M16 17v4"></path><path d="M21 12h-9"></path><path d="M21 19h-5"></path><path d="M21 5h-7"></path><path d="M8 10v4"></path><path d="M8 12H3"></path></svg>
+        </div>
+        <div style="font-weight:700; font-size:15px; margin-bottom:4px">Sæt trygge grænser</div>
+        <p style="margin:0; font-size:13px; color:#57534E; text-wrap:pretty">Dagligt beløb, sukkerpolitik og grænser pr. produkt — du bestemmer rammerne.</p>
+      </div>
+      <div style="background:#FFFFFF; border:1px solid #E7E5E4; border-radius:16px; padding:22px">
+        <div style="width:40px; height:40px; border-radius:12px; background:#FFF7ED; color:#EA580C; display:flex; align-items:center; justify-content:center; margin-bottom:12px">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4V2"></path><path d="M5 10v4a7.004 7.004 0 0 0 5.277 6.787c.412.104.802.292 1.102.592L12 22l.621-.621c.3-.3.69-.488 1.102-.592A7.003 7.003 0 0 0 19 14v-4"></path><path d="M12 4C8 4 4.5 6 4 8c-.243.97-.919 1.952-2 3 1.31-.082 1.972-.29 3-1 .54.92.982 1.356 2 2 1.452-.647 1.954-1.098 2.5-2 .595.995 1.151 1.427 2.5 2 1.31-.621 1.862-1.058 2.5-2 .629.977 1.162 1.423 2.5 2 1.209-.548 1.68-.967 2-2 1.032.916 1.683 1.157 3 1-1.297-1.036-1.758-2.03-2-3-.5-2-4-4-8-4Z"></path></svg>
+        </div>
+        <div style="font-weight:700; font-size:15px; margin-bottom:4px">Allergier &amp; kost</div>
+        <p style="margin:0; font-size:13px; color:#57534E; text-wrap:pretty">Markér allergener og kostpræferencer — caféen ser det, når dit barn handler.</p>
+      </div>
+      <div style="background:#FFFFFF; border:1px solid #E7E5E4; border-radius:16px; padding:22px">
+        <div style="width:40px; height:40px; border-radius:12px; background:#F5F3FF; color:#7C3AED; display:flex; align-items:center; justify-content:center; margin-bottom:12px">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" x2="10" y1="11" y2="11"></line><line x1="8" x2="8" y1="9" y2="13"></line><line x1="15" x2="15.01" y1="12" y2="12"></line><line x1="18" x2="18.01" y1="10" y2="10"></line><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"></path></svg>
+        </div>
+        <div style="font-weight:700; font-size:15px; margin-bottom:4px">Skærmtid</div>
+        <p style="margin:0; font-size:13px; color:#57534E; text-wrap:pretty">Følg spilletid, sæt personlige grænser og godkend spil fra kataloget.</p>
+      </div>
+      <div style="background:#FFFFFF; border:1px solid #E7E5E4; border-radius:16px; padding:22px">
+        <div style="width:40px; height:40px; border-radius:12px; background:#DCFCE7; color:#16A34A; display:flex; align-items:center; justify-content:center; margin-bottom:12px">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path><path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M16 14h.01"></path><path d="M8 18h.01"></path><path d="M12 18h.01"></path><path d="M16 18h.01"></path></svg>
+        </div>
+        <div style="font-weight:700; font-size:15px; margin-bottom:4px">Arrangementer</div>
+        <p style="margin:0; font-size:13px; color:#57534E; text-wrap:pretty">Tilmeld og betal direkte fra saldoen. Hos nogle institutioner kan du også se ugeplanen.</p>
+      </div>
+    </div>
+    <p style="margin:16px 0 0; font-size:13px; color:#A8A29E; text-wrap:pretty">Bruger jeres institution kun Flango til skærmtid? Portalen er den samme — du opretter dig og logger ind på præcis samme måde.</p>
+  </section>
+
+  <section style="max-width:1080px; margin:0 auto; padding:40px 24px 64px">
+    <div style="background:linear-gradient(135deg, #1C1917 0%, #292524 100%); border-radius:24px; padding:36px 32px; color:#fff; position:relative; overflow:hidden; display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:28px; align-items:center">
+      <div style="position:absolute; top:-60px; right:-40px; width:220px; height:220px; background:radial-gradient(circle, rgba(245,150,10,.22) 0%, transparent 70%); pointer-events:none"></div>
+      <div style="position:relative; z-index:1">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#F5960A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>
+          <span style="font-family:'Instrument Serif', Georgia, serif; font-size:24px">Jeres data er jeres</span>
+        </div>
+        <p style="margin:0; font-size:14px; color:rgba(255,255,255,.65); max-width:52ch; text-wrap:pretty">Se, download og slet jeres oplysninger når som helst under Privatliv &amp; Rettigheder i portalen. Du kan altid se, hvilke forældre der har adgang til dit barn.</p>
+      </div>
+      <div style="position:relative; z-index:1; display:flex; flex-direction:column; gap:10px; justify-self:end; min-width:220px">
+        <div style="font-size:12px; font-weight:600; color:rgba(255,255,255,.5); letter-spacing:.04em; text-transform:uppercase">Hent appen</div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px">
+          <a class="store-ghost" href="https://apps.apple.com/dk/app/id6793543486" style="display:inline-flex; align-items:center; gap:10px; padding:10px 16px; border-radius:12px">
+            <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.86-3.08.38-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.38C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.08ZM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25Z"></path></svg>
+            <span style="text-align:left; line-height:1.2"><span style="display:block; font-size:10px; color:rgba(255,255,255,.6)">Hent i</span><span style="display:block; font-size:14px; font-weight:700">App Store</span></span>
+          </a>
+          <a class="store-ghost" href="https://play.google.com/store/apps/details?id=dk.flango.foraeldre" style="display:inline-flex; align-items:center; gap:10px; padding:10px 16px; border-radius:12px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 3.5v17c0 .4.44.65.78.44l13.5-8.5a.52.52 0 0 0 0-.88L5.78 3.06A.52.52 0 0 0 5 3.5Z"></path></svg>
+            <span style="text-align:left; line-height:1.2"><span style="display:block; font-size:10px; color:rgba(255,255,255,.6)">Hent i</span><span style="display:block; font-size:14px; font-weight:700">Google Play</span></span>
+          </a>
+        </div>
+        <div style="font-size:11px; color:rgba(255,255,255,.4)">Eller brug portalen direkte i browseren — det er den samme.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer style="border-top:1px solid #E7E5E4; background:#FFFFFF">
+    <div style="max-width:1080px; margin:0 auto; padding:20px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap">
+      <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:#A8A29E">
+        <img src="/shared/logos/flango-fruit.webp" alt="" style="width:22px; height:22px; display:block">
+        <span>Flango — SFO'ernes cafésystem</span>
+      </div>
+      <a href="/forældre/" style="font-size:13px; font-weight:600; color:#C47200">Log ind i portalen →</a>
+    </div>
+  </footer>
+</div>
+
+<script src="/shared/nav.js"></script>
+</body>
+</html>
