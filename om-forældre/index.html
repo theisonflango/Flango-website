@@ -9,6 +9,9 @@
   <meta property="og:description" content="Tank op på saldoen, sæt trygge grænser og følg med i hverdagen — enkelt og sikkert, direkte fra din telefon." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://flango.dk/om-forældre/" />
+  <meta property="og:image" content="https://flango.dk/shared/images/og-flango-1200.webp" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta property="og:locale" content="da_DK" />
   <meta name="theme-color" content="#F5960A" />
   <link rel="icon" type="image/webp" href="/shared/logos/flango-fruit.webp" />
@@ -16,7 +19,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&family=DM+Serif+Display&display=swap" rel="stylesheet" />
   <link rel="preload" as="font" type="font/woff2" href="/shared/fonts/plus-jakarta-sans-latin.woff2" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="/shared/fonts/instrument-serif-latin.woff2" crossorigin />
   <link rel="stylesheet" href="/shared/nav.css" />
@@ -72,11 +75,14 @@
 
 <div style="min-height:100vh; background:#FAFAF9">
 
-  <section style="background:linear-gradient(180deg, #FFF4E6 0%, #FAFAF9 100%); border-bottom:1px solid #F0EFED">
-    <div style="max-width:1080px; margin:0 auto; padding:56px 24px 64px; display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:48px; align-items:center">
+  <!-- flow-root: uden den kollapser apptitlens topmargin ud af sektionen, og
+       gradienten ville starte under menuen med en grå stribe imellem. -->
+  <section style="display:flow-root; background:linear-gradient(180deg, #FFF4E6 0%, #FAFAF9 100%); border-bottom:1px solid #F0EFED">
+    <h1 class="flango-apptitel" style="max-width:1080px; margin-left:auto; margin-right:auto; padding:0 24px"><img src="/shared/logos/flango-fruit.webp" alt=""><span>Flango</span> Forældreportal</h1>
+    <div style="max-width:1080px; margin:0 auto; padding:34px 24px 64px; display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:48px; align-items:center">
       <div>
         <div style="display:inline-flex; align-items:center; gap:6px; background:#FFDAA6; color:#C47200; font-size:12px; font-weight:700; padding:5px 12px; border-radius:9999px; letter-spacing:.02em">SFO'ernes cafésystem — til forældre</div>
-        <h1 style="font-family:'Instrument Serif', Georgia, serif; font-weight:400; font-size:clamp(38px, 5vw, 54px); line-height:1.08; letter-spacing:-.01em; margin:18px 0 14px">Tæt på dit barns <em style="color:#C47200">cafédag</em></h1>
+        <p style="font-family:'Instrument Serif', Georgia, serif; font-weight:400; font-size:clamp(38px, 5vw, 54px); line-height:1.08; letter-spacing:-.01em; margin:18px 0 14px">Tæt på dit barns <em style="color:#C47200">cafédag</em></p>
         <p style="font-size:17px; color:#57534E; max-width:44ch; margin:0 0 26px; text-wrap:pretty">Tank op på saldoen, sæt trygge grænser og følg med i hverdagen — enkelt og sikkert, direkte fra din telefon.</p>
         <div style="display:flex; flex-wrap:wrap; gap:12px">
           <a class="btn-primary" href="/forældre/?signup=1" style="height:48px; padding:0 26px; border-radius:12px; font-weight:700; font-size:15px; display:inline-flex; align-items:center; box-shadow:0 4px 12px rgba(245,150,10,.3)">Opret konto</a>
