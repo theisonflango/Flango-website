@@ -31,9 +31,11 @@
   var LOGINS = {
     '/om-cafe/':       { href: '/cafe',            label: 'Log ind på Café' },
     '/om-skærmtid/':   { href: '/skærmtid/',       label: 'Log ind på Skærmtid' },
-    // ASCII-sti, ikke /køsystem/: ADR-003 holder mappe, skema og slug på ASCII,
-    // fordi ø i et stinavn gemmes NFD på macOS og NFC på Linux.
-    '/om-køsystem/':   { href: '/koesystem/',      label: 'Log ind på Køsystem' },
+    // /køsystem/ med ø, så appen staver produktet som sin egen om-side og som de øvrige par
+    // (/skærmtid/ + /om-skærmtid/, /forældre/ + /om-forældre/). ADR-003's ASCII-regel gælder
+    // mappe, skema og slug — ikke den offentlige sti; kilden hedder stadig apps/koesystem.
+    // Den gamle ASCII-sti viderestiller, så gamle bogmærker holder.
+    '/om-køsystem/':   { href: '/køsystem/',       label: 'Log ind på Køsystem' },
     '/om-ugeplan/':    { href: '/ugeplan/login',   label: 'Log ind på Ugeplan' },
     // Længere match end '/ugeplan/', så fællesskabets egen indgang vinder på den sti.
     '/ugeplan/faellesskabet': { href: '/ugeplan/faellesskabet/deltag', label: 'Log ind på Fællesskabet' },
@@ -122,7 +124,7 @@
           '<span class="flango-mobile-section">Log ind</span>' +
           '<a href="/forældre/">Forældreportal</a>' +
           '<a href="/skærmtid/">Skærmtid (personale)</a>' +
-          '<a href="/koesystem/">Køsystem (personale)</a>' +
+          '<a href="/køsystem/">Køsystem (personale)</a>' +
           '<a href="/ugeplan/login">Ugeplan (personale)</a>' +
           '<a href="/ugeplan/faellesskabet/deltag">Fællesskabet</a>' +
           '<a href="/cafe">Café-app (personale)</a>' +

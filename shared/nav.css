@@ -239,6 +239,45 @@
 }
 .flango-apptitel span { color: #B45B10; }
 
+/* Originalt logo + produktnavn. Slås til pr. side, indtil alle om-sider er
+   godkendt. Plus Jakarta Sans hentes fra sidens eget lokale font-stylesheet. */
+.flango-apptitel--logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.26em;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: clamp(1.5rem, 6.8vw, 4rem);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  color: #252B33;
+}
+.flango-apptitel--logo .flango-apptitel-logo {
+  display: block;
+  position: relative;
+  flex: 0 0 auto;
+  width: 4.5em;
+  aspect-ratio: 433 / 112;
+  overflow: hidden;
+}
+/* PNG'en er 512 × 512; selve logoet ligger i x=52, y=152, w=433, h=112.
+   Vis kun det område, så originalen kan genbruges uden at ændre billedfilen. */
+.flango-apptitel--logo .flango-apptitel-logo img {
+  position: absolute;
+  display: block;
+  width: calc(100% * 512 / 433);
+  max-width: none;
+  height: auto;
+  left: calc(-100% * 52 / 433);
+  top: calc(-100% * 152 / 112);
+  margin: 0;
+}
+.flango-apptitel--logo .flango-apptitel-name {
+  color: inherit;
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .flango-nav-links a, .flango-nav-portal, .flango-burger path { transition: none; }
 }
