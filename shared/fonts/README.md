@@ -43,10 +43,36 @@ Læg blokkene i CSS-filen for **de sider, der bruger familien** — ikke i dem a
 
 ## Dækning
 
-Omlagt: forsiden, `om-flango`, `om-cafe`, `om-skaermtid`, `om-koesystem`, `om-foraeldre`,
-`pris`, `kontakt`, `privatlivspolitik`, `download`, `sikkerhed`, `event`. Ingen af dem rører
+Alle 15 udgivne sider på websitet henter deres skrifter herfra. Ingen af dem rører
 `fonts.googleapis.com`.
 
-Tilbage: `forældre/` (portalens byggede output — udelukket fra website-deployet; rettes i
-`apps/portal/`, ellers overskrives det ved næste portal-deploy) og `om-ugeplan/index.html`
-i arbejdstræet (død rest fra maj, udelukket og udgives ikke).
+De øvrige flader hoster også selv, men med deres **egne** generatorer — rør dem ikke herfra:
+
+| Flade | Hvor | Genereret af |
+|---|---|---|
+| Café | `apps/cafe/css/fonts.css` | `scripts/fetch-google-fonts.mjs cafe` |
+| Skærmtid | `apps/skaermtid/src/fonts.css` | `… skaermtid` |
+| Forældreportal | `apps/portal/css/fonts.css` + `planview-fonts.css` | `… portal` |
+| Ugeplan | fontsource, bundlet | `apps/ugeplan/next/tools/byg-fonts.mjs` |
+
+Portalen har oveni `font-src 'self'` i sin CSP og sætter
+`data-planview-fonts="self-hosted"`, så PlanView-rendereren ikke lægger et Google-link oveni.
+Målt i prod 20-09-2026: nul kald til Google fra `/forældre/`.
+
+## Hvorfor websitets filer ikke er genereret af scriptet
+
+`scripts/fetch-google-fonts.mjs` skriver **én CSS pr. flade**. Det passer til café, skærmtid og
+portalen, som hver er én app med ét sæt skrifter. Websitet er 15 sider med forskellige familier,
+og en side må kun erklære sine egne — se afsnittet ovenfor om hvorfor. Skal filerne her
+regenereres, skal scriptet først kunne skrive flere CSS-filer pr. flade (fx et `pages`-felt i
+`TARGETS`). Indtil da vedligeholdes de i hånden efter opskriften ovenfor.
+
+## Fælde: forældede kopier i work-repoet
+
+`flango-website/forældre/` (12 filer, 13-06-2026) og `flango-website/ugeplan/` (40 filer) er
+**forældede kopier** af de to apps' udgivne output. Begge er udelukket fra website-deployet og
+udgives ikke — deres rigtige kilde er `apps/portal/` og `apps/ugeplan/next/`.
+
+De er en fælde: et `grep` efter `fonts.googleapis` i work-repoet finder dem og får det til at se
+ud, som om portalen stadig henter hos Google. Det gør den ikke. **Aflæs altid prod med `curl`
+eller en browser, ikke work-repoets kopi** (CLAUDE.md § 4).
