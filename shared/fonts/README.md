@@ -41,9 +41,12 @@ Tag `@font-face`-blokkene for `latin` og `latin-ext`, hent deres `woff2` fra
 `fonts.gstatic.com`, læg filerne her, og ret `src` til `/shared/fonts/<navn>.woff2`.
 Læg blokkene i CSS-filen for **de sider, der bruger familien** — ikke i dem alle.
 
-## Ikke omlagt endnu
+## Dækning
 
-Elleve sider henter stadig hos Google: `pris`, `kontakt`, `betingelser`, `forældre`,
-`privatlivspolitik`, `download`, `sikkerhed`, `prov-flango`, `event`,
-`skaermtid/index-ny.html`. (`om-ugeplan/index.html` i arbejdstræet er en død rest fra maj;
-den udgives ikke — se `docs/STATUS.md`.)
+Omlagt: forsiden, `om-flango`, `om-cafe`, `om-skaermtid`, `om-koesystem`, `om-foraeldre`,
+`pris`, `kontakt`, `privatlivspolitik`, `download`, `sikkerhed`, `event`. Ingen af dem rører
+`fonts.googleapis.com`.
+
+Tilbage: `forældre/` (portalens byggede output — udelukket fra website-deployet; rettes i
+`apps/portal/`, ellers overskrives det ved næste portal-deploy) og `om-ugeplan/index.html`
+i arbejdstræet (død rest fra maj, udelukket og udgives ikke).
