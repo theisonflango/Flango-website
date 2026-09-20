@@ -100,21 +100,30 @@
       .btn-mork, .btn-lys, .btn-sand, .btn-kant, .link-fod { transition: none; }
     }
 
-    /* Afstanden til menuen ejes af .flango-apptitel i /shared/nav.css. */
-    .koe-hero { padding-top: 0 !important; }
+    /* Luft mellem det fælles titelbånd og sidens indhold. */
+    .koe-hero { padding-top: 40px !important; }
   </style>
+<link rel="stylesheet" href="/shared/product-title.css">
+<script src="/shared/product-title.js" defer></script>
 </head>
 <body>
 
 <div class="flango-nav-mount"></div>
 
 <!-- ── Hero ────────────────────────────────────────────────────────────── -->
+<section class="flango-product-hero" aria-labelledby="hero-heading">
+  <h1 id="hero-heading" class="flango-product-title" aria-label="Flango Køsystem">
+    <span class="flango-product-fruit" aria-hidden="true"><img src="/shared/logos/flango-logo.png" alt="" width="512" height="512"></span>
+    <span class="flango-product-stack">
+      <span class="flango-product-word" aria-hidden="true"><img src="/shared/logos/flango-logo.png" alt="" width="512" height="512"></span>
+      <span class="flango-product-name">Køsystem<span class="flango-product-baseline" aria-hidden="true"></span></span>
+    </span>
+  </h1>
+</section>
+
 <section class="koe-hero" style="padding: 84px 40px 76px">
   <div class="koe-inder" style="display: flex; flex-direction: column; gap: 56px">
     <div style="max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; align-items: center; text-align: center">
-      <h1 id="hero-heading" class="flango-apptitel">
-          <img src="/shared/logos/flango-fruit.webp" alt=""><span>Flango</span> Køsystem
-        </h1>
       <p class="koe-h1" style="margin: 0; color: #3b2a1e; text-wrap: balance">Papirlisten på døren bliver en iPad</p>
       <p style="margin: 0; font-size: 20px; line-height: 1.45; color: #5d452f; text-wrap: pretty">Børnene skriver sig selv på. Alle kan se, hvornår der er ledigt, hvem der er i gang, og hvornår det bliver deres tur.</p>
       <p style="margin: 0; font-size: 16.5px; line-height: 1.7; color: #7d5f45; text-wrap: pretty">iPad'en hænger på døren til værkstedet. Den fordeler dagens tider, mens dagen går, uden at nogen skal holde styr på en seddel.</p>

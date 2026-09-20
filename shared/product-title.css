@@ -1,0 +1,92 @@
+/* Fælles produkttitel: originalt logo, frugt over begge linjer og mørk top. */
+@font-face {
+  font-family: 'Flango Product';
+  src: url('/shared/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+.flango-product-hero {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 190px;
+  margin: 0;
+  padding: 36px 24px;
+  background: #17232C;
+  color: #FFF8EF;
+}
+.flango-product-hero .flango-product-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: .35em;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  font: 800 clamp(25px, 4.4vw, 52px)/1.06 'Flango Product', system-ui, sans-serif;
+  letter-spacing: -.035em;
+  text-align: left;
+  color: inherit;
+}
+.flango-product-hero .flango-product-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  min-width: 0;
+}
+.flango-product-hero .flango-product-fruit,
+.flango-product-hero .flango-product-word {
+  display: block;
+  position: relative;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.flango-product-hero .flango-product-fruit {
+  height: var(--flango-fruit-height, 1.574em);
+  width: calc(var(--flango-fruit-height, 1.574em) * 87 / 98);
+}
+.flango-product-hero .flango-product-word {
+  width: 2.2em;
+  aspect-ratio: 319 / 93;
+}
+.flango-product-hero .flango-product-fruit img,
+.flango-product-hero .flango-product-word img {
+  display: block;
+  position: absolute;
+  max-width: none;
+  height: auto;
+  margin: 0;
+}
+/* Uændrede pixels fra det originale 512 × 512-logo. */
+.flango-product-hero .flango-product-fruit img {
+  width: calc(100% * 512 / 87);
+  left: calc(-100% * 52 / 87);
+  top: calc(-100% * 152 / 98);
+}
+.flango-product-hero .flango-product-word img {
+  width: calc(100% * 512 / 319);
+  left: calc(-100% * 166 / 319);
+  top: calc(-100% * 171 / 93);
+}
+.flango-product-hero .flango-product-name {
+  display: block;
+  margin-left: var(--flango-product-offset, 0px);
+  color: inherit;
+  white-space: nowrap;
+}
+.flango-product-hero .flango-product-baseline {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  padding: 0;
+  margin: 0;
+  vertical-align: baseline;
+}
+@media (max-width: 600px) {
+  .flango-product-hero { min-height: 150px; padding: 30px 16px; }
+}

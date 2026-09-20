@@ -295,8 +295,8 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
 .hero {
   position: relative;
   overflow: hidden;
-  /* Afstanden til menuen ejes af .flango-apptitel i /shared/nav.css. */
-  padding: 0 0 48px;
+  /* Det fælles titelbånd ligger foran produktbilledet. */
+  padding: 12px 0 48px;
 }
 .hero .container { max-width: 1240px; }
 
@@ -1109,6 +1109,8 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
   top: 0;
 }
 </style>
+<link rel="stylesheet" href="/shared/product-title.css">
+<script src="/shared/product-title.js" defer></script>
 </head>
 <body>
 
@@ -1125,16 +1127,19 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
 <!-- ============================
      HERO
      ============================ -->
+<section class="flango-product-hero" aria-labelledby="hero-heading">
+  <h1 id="hero-heading" class="flango-product-title" aria-label="Flango Cafésystem">
+    <span class="flango-product-fruit" aria-hidden="true"><img src="/shared/logos/flango-logo.png" alt="" width="512" height="512"></span>
+    <span class="flango-product-stack">
+      <span class="flango-product-word" aria-hidden="true"><img src="/shared/logos/flango-logo.png" alt="" width="512" height="512"></span>
+      <span class="flango-product-name">Cafésystem<span class="flango-product-baseline" aria-hidden="true"></span></span>
+    </span>
+  </h1>
+</section>
+
 <section class="hero" aria-labelledby="hero-heading">
   <div class="container">
     <div class="hero-grid">
-
-      <h1 id="hero-heading" class="flango-apptitel flango-apptitel--logo">
-        <picture class="flango-apptitel-logo">
-          <img src="/shared/logos/flango-logo.png" alt="Flango" width="512" height="512">
-        </picture>
-        <span class="flango-apptitel-name">Cafésystem</span>
-      </h1>
 
       <div class="hero-mockup">
         <img src="/shared/images/hero-mockup-1180.webp"

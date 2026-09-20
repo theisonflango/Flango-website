@@ -61,16 +61,25 @@
       .hero-card { transform:none; }
     }
   </style>
+<link rel="stylesheet" href="/shared/product-title.css">
+<script src="/shared/product-title.js" defer></script>
 </head>
 <body>
   <div class="flango-nav-mount"></div>
 
 <div style="min-height:100vh; background:#FAFAF9">
 
-  <!-- flow-root: uden den kollapser apptitlens topmargin ud af sektionen, og
-       gradienten ville starte under menuen med en grå stribe imellem. -->
-  <section style="display:flow-root; background:linear-gradient(180deg, #FFF4E6 0%, #FAFAF9 100%); border-bottom:1px solid #F0EFED">
-    <h1 class="flango-apptitel" style="max-width:1080px; margin-left:auto; margin-right:auto; padding:0 24px"><img src="/shared/logos/flango-fruit.webp" alt=""><span>Flango</span> Forældreportal</h1>
+<section class="flango-product-hero" aria-labelledby="hero-heading">
+  <h1 id="hero-heading" class="flango-product-title" aria-label="Flango Forældreportal">
+    <span class="flango-product-fruit" aria-hidden="true"><img src="/shared/logos/flango-logo.png" alt="" width="512" height="512"></span>
+    <span class="flango-product-stack">
+      <span class="flango-product-word" aria-hidden="true"><img src="/shared/logos/flango-logo.png" alt="" width="512" height="512"></span>
+      <span class="flango-product-name">Forældreportal<span class="flango-product-baseline" aria-hidden="true"></span></span>
+    </span>
+  </h1>
+</section>
+
+  <section style="display:flow-root; padding-top:40px; background:linear-gradient(180deg, #FFF4E6 0%, #FAFAF9 100%); border-bottom:1px solid #F0EFED">
     <div style="max-width:1080px; margin:0 auto; padding:34px 24px 64px; display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:48px; align-items:center">
       <div>
         <div style="display:inline-flex; align-items:center; gap:6px; background:#FFDAA6; color:#C47200; font-size:12px; font-weight:700; padding:5px 12px; border-radius:9999px; letter-spacing:.02em">SFO'ernes cafésystem — til forældre</div>
