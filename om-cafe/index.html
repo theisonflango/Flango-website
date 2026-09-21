@@ -131,7 +131,7 @@
 </script>
 <link rel="preload" as="image" href="/shared/images/hero-mockup-2360.webp"
         imagesrcset="/shared/images/hero-mockup-1180.webp 1180w, /shared/images/hero-mockup-2360.webp 2360w"
-        imagesizes="(min-width: 1240px) 1180px, 92vw" fetchpriority="high">
+        imagesizes="(min-width: 1240px) 873px, (min-width: 721px) calc(75vw - 57px), (min-width: 648px) 750px, calc(125vw - 60px)" fetchpriority="high">
   <link rel="stylesheet" href="/shared/fonts/om-cafe.css" />
 <link rel="stylesheet" href="/shared/nav.css">
 <style>
@@ -293,120 +293,104 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
    HERO
    ======================================== */
 .hero {
-  position: relative;
-  overflow: hidden;
-  /* Det fælles titelbånd ligger foran produktbilledet. */
-  padding: 12px 0 48px;
+  padding: 40px 0 64px;
+  color: #303a35;
 }
 .hero .container { max-width: 1240px; }
 
-.hero::before {
-  content: '';
-  position: absolute;
-  top: -30%; right: -15%;
-  width: 720px; height: 720px;
-  background: radial-gradient(circle, rgba(240, 140, 40, 0.14) 0%, transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-}
-.hero::after {
-  content: '';
-  position: absolute;
-  bottom: -10%; left: -10%;
-  width: 520px; height: 520px;
-  background: radial-gradient(circle, rgba(74, 140, 74, 0.07) 0%, transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-}
-
 .hero-grid {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.4fr) minmax(0, 0.6fr);
   align-items: center;
-  text-align: center;
-  gap: 8px;
+  gap: 28px;
 }
 
-.hero-text {
-  max-width: 720px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 12px;
-}
+.hero-text { min-width: 0; }
 
 .hero-tagline {
   font-family: var(--font-display);
-  font-size: clamp(2rem, 4.2vw, 3.2rem);
-  line-height: 1.1;
-  color: var(--slate-800);
-  margin: 0 0 18px;
-  letter-spacing: -0.01em;
-  font-weight: 400;
-  text-wrap: balance;
-}
-.hero-tagline em {
-  font-style: italic;
-  color: var(--peach-700);
+  font-size: clamp(2.3rem, 4.2vw, 3.2rem);
+  line-height: 1.12;
+  margin: 0 0 28px;
+  letter-spacing: -0.022em;
   font-weight: 400;
 }
 
-.hero-sub {
-  font-size: 1.12rem;
-  color: var(--slate-600);
-  line-height: 1.65;
-  max-width: 620px;
-  margin: 0 auto 28px;
-  text-wrap: balance;
+.hero-points {
+  display: grid;
+  gap: 16px;
+  list-style: none;
 }
+.hero-points li { display: flex; align-items: flex-start; gap: 11px; font-size: 1rem; }
+.hero-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 23px;
+  width: 23px;
+  height: 23px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: #e7eee2;
+  color: #56745e;
+}
+.hero-check svg { width: 14px; height: 14px; }
+.hero-platforms { margin-top: 30px; font-size: 0.9rem; }
+.hero-anywhere { margin-bottom: 4px; font-weight: 600; }
+.hero-devices { color: #687169; }
 
 .hero-buttons {
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
+  margin-top: 24px;
 }
+.hero-trial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 11px 20px;
+  border-radius: 8px;
+  background: var(--peach-600);
+  color: var(--white);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.hero-trial:hover { background: var(--peach-700); }
+.hero-app-store { display: inline-flex; border-radius: 7px; }
+.hero-app-store img { width: 143.6px; height: 48px; }
 
 .hero-mockup {
   position: relative;
+  min-width: 0;
   width: 100%;
-  max-width: 1180px;
-  margin: 0 auto;
+  aspect-ratio: 945 / 564;
+  overflow: hidden;
 }
-.hero-mockup::before {
-  content: '';
-  position: absolute;
-  inset: 14% 8% 6% 8%;
-  background: radial-gradient(ellipse at center,
-              rgba(240, 140, 40, 0.18) 0%,
-              rgba(255, 192, 122, 0.10) 35%,
-              transparent 70%);
-  filter: blur(48px);
-  z-index: 0;
-  pointer-events: none;
-}
+/* Vis motivet uden WebP-filens gennemsigtige yderkant; selve billedet bevares. */
 .hero-mockup img {
-  position: relative;
-  z-index: 1;
-  width: 100%;
+  position: absolute;
+  width: 124.867725%;
+  max-width: none;
   height: auto;
-  display: block;
-  filter: drop-shadow(0 30px 56px rgba(15, 23, 42, 0.18))
-          drop-shadow(0 12px 24px rgba(15, 23, 42, 0.08));
+  aspect-ratio: 1180 / 664;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50.635593%, -48.343373%);
 }
-
-/* Legacy cycle-image (ikke brugt i hero længere — beholdt for kompatibilitet) */
-.hero-cycle { display: none; }
 
 @media (max-width: 720px) {
-  .hero { padding: 0 0 24px; }
-  .hero-grid { gap: 20px; }
-  .hero-mockup { margin-top: 0; }
+  .hero { padding: 28px 0 40px; }
+  .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .hero-tagline { font-size: clamp(2rem, 6vw, 2.8rem); margin-bottom: 24px; }
+  .hero-points li { font-size: 0.9rem; }
+  .hero-platforms { margin-top: 26px; font-size: 0.85rem; }
+  .hero-buttons { gap: 12px; }
+  .hero-trial { min-height: 44px; padding: 10px 16px; font-size: 0.8125rem; }
+  .hero-app-store img { width: 131.63px; height: 44px; }
+  .hero-mockup { max-width: 600px; margin: 0 auto; }
 }
 
 /* ========================================
@@ -1085,34 +1069,36 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
   </h1>
 </section>
 
-<section class="hero" aria-labelledby="hero-heading">
+<section class="hero" aria-labelledby="hero-tagline">
   <div class="container">
     <div class="hero-grid">
+
+      <div class="hero-text">
+        <h2 class="hero-tagline" id="hero-tagline">Designet til<br>danske SFO’er.</h2>
+        <ul class="hero-points">
+          <li><span class="hero-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 9 16 19 6"/></svg></span><span>Forældre indbetaler i appen</span></li>
+          <li><span class="hero-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 9 16 19 6"/></svg></span><span>Ingen klippekort eller regneark</span></li>
+          <li><span class="hero-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 9 16 19 6"/></svg></span><span>Mindre administration,<br>mere nærvær.</span></li>
+        </ul>
+        <div class="hero-platforms">
+          <p class="hero-anywhere">Hvor som helst, når som helst.</p>
+          <p class="hero-devices">Windows · Mac · iPad · Mobil</p>
+        </div>
+        <div class="hero-buttons">
+          <a href="?request=gratis-proeveperiode#kontakt" class="hero-trial">Prøv Gratis</a>
+          <a href="https://apps.apple.com/dk/app/flango-caf%C3%A9/id6807881054" class="hero-app-store" target="_blank" rel="noopener" aria-label="Hent Flango Café i App Store">
+            <img src="/shared/images/app-store-badge-da.svg" width="144" height="48" alt="Hent i App Store">
+          </a>
+        </div>
+      </div>
 
       <div class="hero-mockup">
         <img src="/shared/images/hero-mockup-1180.webp"
              srcset="/shared/images/hero-mockup-1180.webp 1180w, /shared/images/hero-mockup-2360.webp 2360w"
-             sizes="(min-width: 1240px) 1180px, 92vw"
+             sizes="(min-width: 1240px) 873px, (min-width: 721px) calc(75vw - 57px), (min-width: 648px) 750px, calc(125vw - 60px)"
              width="1180" height="664"
              alt="Flango Café-appen på en MacBook ved siden af Forældreportalen på en iPhone"
              fetchpriority="high">
-      </div>
-
-      <div class="hero-text">
-        <p class="hero-tagline">
-          Mindre administration. <em>Mere nærvær.</em>
-        </p>
-        <p class="hero-sub">
-          Børn betaler med saldo,<br>
-          forældre indbetaler i appen,<br>
-          personalet slipper for regnearket.
-        </p>
-        <div class="hero-buttons">
-          <a href="?request=gratis-proeveperiode#kontakt" class="btn btn-primary">
-            Anmod om gratis prøveperiode
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </a>
-        </div>
       </div>
 
     </div>
