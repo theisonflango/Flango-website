@@ -6,10 +6,11 @@ Filerne her udgives på flango.dk. Læg ikke noget her, der ikke må hentes af e
 
 | Fil | Rolle |
 |---|---|
+| `flango-cafe-sfo-v5-1672.webp` · `-836.webp` | Fotoet i “Alle vinder med Flango” på `/om-cafe/#fordele`; `/om-cafe/#cafe-hverdag` peger på samme afsnit. `srcset`, maks. 1092 CSS-px, lazy-loaded. Tabsfri WebP med neutral farvebalance og blond kundeavatar. AI-genererede børn og fiktiv Bøgelund SFO. PNG-master, tidligere versioner og prompt gemmes lokalt i `output/imagegen/flango-cafe-sfo/` i arbejdsrepoet. |
 | `hero-mockup-master.webp` | **Master**, 7680 × 4320, tabsfri. Kilden til hero-varianterne. Intet linker til den — slet den ikke. |
 | `hero-mockup-1180.webp` · `-2360.webp` | Vises på `/om-cafe/` via `srcset`. 1180 dækker 1× og telefoner op til 3×; 2360 dækker 2× på den fulde bredde (siden viser maks 1180 CSS-px). |
 | `born-foraeldre-personale-master.webp` | **Master**, 1536 × 1024, tabsfri. Samme aftale. |
-| `born-foraeldre-personale-600.webp` · `-900.webp` | Vises på `/om-cafe/`, `loading="lazy"`. Billedet er maks 300 CSS-px bredt. |
+| `born-foraeldre-personale-600.webp` · `-900.webp` | Tidligere cirkelgrafik på `/om-cafe/`, erstattet af caféfotoet. Filerne er bevaret. |
 | `og-flango-1200.webp` | Fælles socialt kort, 1200 × 630. Bruges som `og:image` af forsiden og alle om-siderne. |
 | `flango-fruit.webp`, `flango-logo.png` | Mærket. Se `shared/logos/`. |
 

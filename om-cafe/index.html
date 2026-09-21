@@ -483,146 +483,94 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
 
 
 /* ========================================
-   BENEFITS
-   ======================================== */
-/* ========================================
-   BENEFITS
+   BENEFITS — caféfoto og fælles fordele
    ======================================== */
 .benefits {
-  background: var(--white);
-  padding-top: 56px;
+  --benefits-ink: #303a35;
+  --benefits-line: #dbdfd7;
+  background: #fffaf5;
+  color: var(--benefits-ink);
+  padding: 72px 0 80px;
 }
 .benefits-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
-.benefits-header h2 {
-  margin: 0;
+.benefits-header h2 { margin: 0; }
+.benefits-scene {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  scroll-margin-top: 110px;
 }
-.benefits-cycle {
+.benefits-photo img {
   display: block;
-  width: clamp(200px, 26vw, 300px);
+  width: 100%;
   height: auto;
-  margin: 0;
+  aspect-ratio: 1672 / 941;
 }
 .benefits-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 28px;
-  margin-top: 40px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-@media (max-width: 720px) {
-  .benefits-header { gap: 16px; }
-  .benefits-cycle { width: clamp(180px, 50vw, 240px); }
-}
-.benefit-card {
-  background: var(--peach-50);
-  border-radius: var(--radius-lg);
-  padding: 36px 32px;
-  border: 1px solid transparent;
-  transition: all 0.3s var(--ease-out);
-}
-.benefit-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--peach-200);
-}
-.benefit-card:nth-child(2) {
-  background: var(--sky-50);
-}
-.benefit-card:nth-child(2):hover { border-color: var(--sky-100); }
-.benefit-card:nth-child(3) {
-  background: var(--sage-50);
-}
-.benefit-card:nth-child(3):hover { border-color: var(--sage-200); }
-.benefit-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-md);
+.benefit-card { min-width: 0; padding: 32px; }
+.benefit-card--children { background: #e8eee1; }
+.benefit-card--staff { background: #f9e6d9; }
+.benefit-card--parents { background: #e8eef4; }
+.benefit-role {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
-.benefit-card:nth-child(1) .benefit-icon { background: var(--peach-200); color: var(--peach-700); }
-.benefit-card:nth-child(2) .benefit-icon { background: var(--sky-100); color: var(--sky-600); }
-.benefit-card:nth-child(3) .benefit-icon { background: var(--sage-200); color: var(--sage-600); }
+.benefit-role svg { width: 17px; height: 17px; flex: 0 0 17px; }
 .benefit-title {
-  font-family: var(--font-display);
-  font-size: 1.3rem;
-  margin-bottom: 16px;
-  color: var(--slate-800);
+  font-size: clamp(1.5rem, 2.5vw, 1.9rem);
+  line-height: 1.15;
+  margin-bottom: 14px;
 }
-.benefit-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.benefit-description { font-size: 0.95rem; line-height: 1.7; }
+.benefit-extra {
+  margin-top: 20px;
+  padding: 18px 0 0 18px;
+  border-top: 1px solid var(--benefits-line);
+  font-size: 0.875rem;
+  line-height: 1.6;
 }
-.benefit-list li {
-  font-size: 0.9rem;
-  color: var(--slate-600);
-  line-height: 1.5;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-.benefit-list-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-.benefit-card:nth-child(1) .benefit-list-icon { background: var(--peach-200); color: var(--peach-700); }
-.benefit-card:nth-child(2) .benefit-list-icon { background: var(--sky-100); color: var(--sky-600); }
-.benefit-card:nth-child(3) .benefit-list-icon { background: var(--sage-100); color: var(--sage-600); }
-
-/* Foldable extra bullets — styres af én fælles toggle nedenfor */
-.benefit-list li.benefit-li-extra { display: none; }
-.benefit-card.benefit-expanded .benefit-list li.benefit-li-extra { display: flex; }
-
+.benefit-extra[hidden] { display: none; }
+.benefit-extra li + li { margin-top: 12px; }
+.benefits-actions { display: flex; justify-content: center; margin-top: 24px; }
 .benefits-toggle {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 44px;
   padding: 12px 24px;
-  background: var(--white);
-  border: 1.5px solid var(--peach-200);
+  border: 1px solid var(--benefits-line);
   border-radius: 100px;
-  color: var(--peach-700);
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s var(--ease-out);
+  color: #355544;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.2s var(--ease-out);
 }
-.benefits-toggle:hover {
-  border-color: var(--peach-500);
-  background: var(--peach-50);
-  transform: translateY(-1px);
-}
-.benefits-toggle:focus-visible {
-  outline: 2px solid var(--peach-500);
-  outline-offset: 4px;
-}
-.benefits-toggle-icon {
-  transition: transform 0.25s var(--ease-out);
-}
+.benefits-toggle:hover { background: #e8eee1; }
+.benefits-toggle:focus-visible { outline: 2px solid #355544; outline-offset: 4px; }
+.benefits-toggle-icon { transition: transform 0.25s var(--ease-out); }
 .benefits-toggle-text-less { display: none; }
 .benefits-toggle.expanded .benefits-toggle-text-more { display: none; }
 .benefits-toggle.expanded .benefits-toggle-text-less { display: inline; }
 .benefits-toggle.expanded .benefits-toggle-icon { transform: rotate(180deg); }
-
 @media (max-width: 768px) {
   .benefits-grid { grid-template-columns: 1fr; }
+  .benefit-card { padding: 26px 28px; }
+}
+@media (max-width: 640px) {
+  .benefits { padding: 56px 0 64px; }
+  .benefits-header { margin-bottom: 26px; }
+  .benefit-card { padding: 24px; }
 }
 
 /* ========================================
@@ -1172,107 +1120,66 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
 </section>
 
 <!-- ============================
-     BENEFITS (flyttet op fra under social-proof)
+     ALLE VINDER MED FLANGO
      ============================ -->
-<section class="benefits section-pad" id="fordele" aria-labelledby="benefits-heading">
+<section class="benefits" id="fordele" aria-labelledby="benefits-heading">
   <div class="container">
-    <div class="benefits-header reveal">
+    <div class="benefits-header">
       <h2 id="benefits-heading">Alle vinder med Flango</h2>
-      <img src="/shared/images/born-foraeldre-personale-600.webp"
-           srcset="/shared/images/born-foraeldre-personale-600.webp 600w, /shared/images/born-foraeldre-personale-900.webp 900w"
-           sizes="(max-width: 720px) 240px, 300px"
-           width="600" height="400" loading="lazy" decoding="async"
-           alt="Cyklus mellem børn, forældre og personale" class="benefits-cycle">
     </div>
-    <div class="benefits-grid">
-      <div class="benefit-card reveal reveal-delay-1">
-        <div class="benefit-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </div>
-        <div class="benefit-title">For personalet</div>
-        <ul class="benefit-list">
-          <li>
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Erstatter administration med pædagogisk værdi.
-          </li>
-          <li>
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Færre forældrehenvendelser.
-          </li>
-          <li class="benefit-li-extra">
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Opret arrangementer med automatisk tilmelding fra forældreportalen.
-          </li>
-          <li class="benefit-li-extra">
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Automatisk håndhævelse af spilletidsgrænser og spiltilladelser.
-          </li>
-          <li class="benefit-li-extra">
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Fuld historik over salg, saldo og forbrugsmønstre.
-          </li>
-        </ul>
-      </div>
-      <div class="benefit-card reveal reveal-delay-2">
-        <div class="benefit-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        </div>
-        <div class="benefit-title">For forældre</div>
-        <ul class="benefit-list">
-          <li>
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Indsigt og medbestemmelse.
-          </li>
-          <li>
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Individuel tilpasning af fx købsgrænser &amp; kostpolitik.
-          </li>
-          <li class="benefit-li-extra">
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Indbetal nemt via MobilePay eller kort — direkte i portalen.
-          </li>
-          <li class="benefit-li-extra">
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Tilmeld barnet til kommende arrangementer i institutionen.
-          </li>
-          <li class="benefit-li-extra">
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Tilpas digital adfærd: Fx bloker Roblox eller skærmtid om onsdagen.
-          </li>
-        </ul>
-      </div>
-      <div class="benefit-card reveal reveal-delay-3">
-        <div class="benefit-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-        </div>
-        <div class="benefit-title">For børnene</div>
-        <ul class="benefit-list">
-          <li>
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Medansvar i cafédriften.
-          </li>
-          <li>
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Styrker selvværd og oplevelsen af at bidrage til fællesskabet.
-          </li>
-          <li class="benefit-li-extra">
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Samspil og samarbejde på tværs af relationer og årgange.
-          </li>
-          <li class="benefit-li-extra">
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Undgår frustrationer med forsinkede indbetalinger.
-          </li>
-          <li class="benefit-li-extra">
-            <span class="benefit-list-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-            Undgår potentielle kollektive begrænsninger.
-          </li>
-        </ul>
+    <div class="benefits-scene" id="cafe-hverdag">
+      <figure class="benefits-photo">
+        <img src="/shared/images/flango-cafe-sfo-v5-1672.webp"
+             srcset="/shared/images/flango-cafe-sfo-v5-836.webp 836w, /shared/images/flango-cafe-sfo-v5-1672.webp 1672w"
+             sizes="(min-width: 1140px) 1092px, calc(100vw - 48px)"
+             width="1672" height="941" loading="lazy" decoding="async"
+             alt="Børn ekspederer hinanden i en SFO-café med Flango på en bærbar og sortiment og indkøbskurv på et vægmonteret TV.">
+      </figure>
+      <div class="benefits-grid">
+        <article class="benefit-card benefit-card--children">
+          <p class="benefit-role">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            For børnene
+          </p>
+          <h3 class="benefit-title">Stolthed og<br>fællesskab</h3>
+          <p class="benefit-description">Lad børnene få medansvar i caféen og opleve glæden ved at bidrage til fællesskabet.</p>
+          <ul class="benefit-extra" id="benefits-children-extra" hidden>
+            <li>Samspil og samarbejde på tværs af relationer og årgange.</li>
+            <li>Undgår frustrationer med forsinkede indbetalinger.</li>
+            <li>Undgår potentielle kollektive begrænsninger.</li>
+          </ul>
+        </article>
+        <article class="benefit-card benefit-card--staff">
+          <p class="benefit-role">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            For personalet
+          </p>
+          <h3 class="benefit-title">Mere tid<br>til nærvær</h3>
+          <p class="benefit-description">Mindre administration og færre forældrehenvendelser giver mere plads til det pædagogiske arbejde.</p>
+          <ul class="benefit-extra" id="benefits-staff-extra" hidden>
+            <li>Opret arrangementer med automatisk tilmelding fra forældreportalen.</li>
+            <li>Automatisk håndhævelse af spilletidsgrænser og spiltilladelser.</li>
+            <li>Fuld historik over salg, saldo og forbrugsmønstre.</li>
+          </ul>
+        </article>
+        <article class="benefit-card benefit-card--parents">
+          <p class="benefit-role">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            For forældrene
+          </p>
+          <h3 class="benefit-title">Tryghed og<br>overblik</h3>
+          <p class="benefit-description">De kan følge saldoen og tilpasse købsgrænser og kostpolitik til netop deres barn.</p>
+          <ul class="benefit-extra" id="benefits-parents-extra" hidden>
+            <li>Indbetal nemt via MobilePay eller kort — direkte i portalen.</li>
+            <li>Tilmeld barnet til kommende arrangementer i institutionen.</li>
+            <li>Tilpas digital adfærd: Fx bloker Roblox eller skærmtid om onsdagen.</li>
+          </ul>
+        </article>
       </div>
     </div>
-    <div style="text-align:center;margin-top:32px" class="reveal">
-      <button class="benefits-toggle" type="button" aria-expanded="false" onclick="toggleAllBenefits(this)">
-        <span class="benefits-toggle-text-more">Se alle fordele</span>
+    <div class="benefits-actions">
+      <button class="benefits-toggle" type="button" aria-expanded="false" aria-controls="benefits-children-extra benefits-staff-extra benefits-parents-extra" onclick="toggleAllBenefits(this)">
+        <span class="benefits-toggle-text-more">Se flere fordele</span>
         <span class="benefits-toggle-text-less">Se færre fordele</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="benefits-toggle-icon" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
@@ -1601,13 +1508,13 @@ function updatePricing() {
 }
 
 /* ========================================
-   BENEFITS — fælles "Se alle fordele" toggle
+   BENEFITS — fælles "Se flere fordele" toggle
    ======================================== */
 function toggleAllBenefits(btn) {
   const expanded = btn.classList.toggle('expanded');
   btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-  document.querySelectorAll('.benefit-card').forEach(card => {
-    card.classList.toggle('benefit-expanded', expanded);
+  btn.closest('.benefits').querySelectorAll('.benefit-extra').forEach(list => {
+    list.hidden = !expanded;
   });
 }
 
