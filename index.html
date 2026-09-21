@@ -60,14 +60,6 @@
     #karrusel [data-dot] { width:9px; height:9px; border-radius:50%; border:none; padding:0; cursor:pointer; background:#FFD9AD; transition: background .3s; }
     #karrusel [data-dot].aktiv { background:#D97316; }
 
-    /* Prisskifteren */
-    #pris-md, #pris-aar { font-size:0.9rem; font-weight:600; cursor:pointer; color:#6B7A8D; transition: color .2s; }
-    #pris-md.aktiv, #pris-aar.aktiv { color:#1E293B; }
-    #pris-knap { width:52px; height:28px; background:#E2E7EB; border-radius:100px; position:relative; cursor:pointer; border:none; padding:0; transition: background .3s; }
-    #pris-knap.aarlig { background:#F08C28; }
-    #pris-knap-dot { position:absolute; top:3px; left:3px; width:22px; height:22px; background:#fff; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition: transform .3s cubic-bezier(0.16,1,0.3,1); pointer-events:none; }
-    #pris-knap.aarlig #pris-knap-dot { transform: translateX(24px); }
-
     /* ── Responsivt ─────────────────────────────────────────────────────────
        Designet er tegnet til desktop. De faste bredder og to-kolonne-grids
        foldes ud her, så siden også holder på en telefon.                     */
@@ -470,21 +462,14 @@
     <div style="text-align:center">
       <div style="display:inline-flex;align-items:center;gap:8px;font-size:0.8rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#D97316;margin-bottom:16px"><span style="display:block;width:24px;height:2px;background:#FFA347;border-radius:2px"></span>Priser<span style="display:block;width:24px;height:2px;background:#FFA347;border-radius:2px"></span></div>
       <h2 style="font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:2.4rem;line-height:1.2;margin:0">Én enkel pris</h2>
-      <p style="color:#6B7A8D;margin:12px auto 0;max-width:560px;font-size:0.95rem">Flango koster det samme, uanset hvilke værktøjer I bruger. 4 ugers gratis prøve — ingen binding.</p>
-    </div>
-
-    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:32px">
-      <span id="pris-md">Månedlig</span>
-      <button id="pris-knap" aria-label="Skift mellem månedlig og årlig betaling"><span id="pris-knap-dot"></span></button>
-      <span id="pris-aar">Årlig</span>
-      <span style="font-size:0.75rem;font-weight:700;color:#4A8C4A;background:#F2F7F2;padding:3px 10px;border-radius:100px;border:1px solid #C1D7C1">Spar 23 %</span>
+      <p style="color:#6B7A8D;margin:12px auto 0;max-width:560px;font-size:0.95rem">Ét årsabonnement giver adgang til alle Flango-apps — brug én eller dem alle. Oprettelsen er gratis.</p>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:36px;max-width:860px;margin-left:auto;margin-right:auto" class="stak">
       <div style="background:#fff;border-radius:20px;padding:28px 28px;border:2px solid #F08C28;position:relative;box-shadow:0 8px 30px rgba(217,115,22,0.12);display:flex;flex-direction:column">
         <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.2rem;margin-bottom:4px">Flango</div>
         <div style="font-size:0.8rem;color:#9AA5B4;margin-bottom:16px">Alle værktøjer til én institution — brug ét eller dem alle</div>
-        <div style="display:flex;align-items:baseline;gap:10px"><span id="pris-main" style="font-family:'DM Serif Display',Georgia,serif;font-size:1.9rem;color:#0F172A"></span><span id="pris-sub" style="font-size:0.78rem;color:#9AA5B4"></span></div>
+        <div id="pris-main" style="font-family:'DM Serif Display',Georgia,serif;font-size:1.9rem;color:#0F172A">5.500 kr/år</div>
         <div style="font-size:0.78rem;color:#9AA5B4;margin-bottom:18px">Gratis oprettelse · ekskl. moms</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:22px;flex:1" class="stak">
           <div style="font-size:0.85rem;color:#4A5568;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4A8C4A" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Flango Café</div>
@@ -495,8 +480,8 @@
           <div style="font-size:0.85rem;color:#4A5568;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4A8C4A" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Ubegrænset brugere</div>
           <div style="font-size:0.85rem;color:#4A5568;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4A8C4A" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Fri support</div>
         </div>
-        <a href="#kontakt" style="display:block;text-align:center;padding:12px;border-radius:100px;font-weight:700;font-size:0.88rem;background:#D97316;color:#fff;text-decoration:none" class="hv9">Start gratis prøve</a>
-        <div style="margin-top:10px;font-size:0.72rem;color:#9AA5B4;text-align:center">4 ugers gratis prøve · Ingen binding</div>
+        <a href="#kontakt" style="display:block;text-align:center;padding:12px;border-radius:100px;font-weight:700;font-size:0.88rem;background:#D97316;color:#fff;text-decoration:none" class="hv9">Prøv gratis i 4 uger</a>
+        <div style="margin-top:10px;font-size:0.72rem;color:#9AA5B4;text-align:center">4 ugers gratis prøve uden binding</div>
       </div>
 
       <div style="background:#fff;border-radius:20px;padding:28px 28px;border:1.5px solid #E2E7EB;display:flex;flex-direction:column">
@@ -514,7 +499,7 @@
         <div style="margin-top:10px;font-size:0.72rem;color:#9AA5B4;text-align:center">Til kommuner og områdeledelser</div>
       </div>
     </div>
-    <p style="text-align:center;font-size:0.78rem;color:#9AA5B4;margin:20px 0 0">Priser ekskl. moms · Gratis oprettelse · Ingen binding</p>
+    <p style="text-align:center;font-size:0.78rem;color:#9AA5B4;margin:20px 0 0">Priser ekskl. moms · Gratis oprettelse · Årlig betaling</p>
   </div>
 </section>
 
@@ -601,7 +586,7 @@
       </details>
       <details style="background:#fff;border-radius:12px;border:1px solid #E2E7EB;overflow:hidden">
         <summary style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;font-weight:700;font-size:0.92rem;color:#1E293B;cursor:pointer">Hvordan fungerer opsigelse?<span style="color:#9AA5B4">▾</span></summary>
-        <div style="padding:0 20px 18px;font-size:0.88rem;color:#6B7A8D">I opsiger med én måneds varsel til månedens udgang. Årlige abonnementer kan opsiges til udløb. Ingen binding — ingen bøvl.</div>
+        <div style="padding:0 20px 18px;font-size:0.88rem;color:#6B7A8D">I betaler for ét år ad gangen og kan opsige abonnementet til udløbet af den betalte periode. Prøveperioden på 4 uger er gratis og uden binding.</div>
       </details>
     </div>
   </div>
@@ -748,31 +733,6 @@
   tegn();
 })();
 
-/* ── Pris: månedlig / årlig ─────────────────────────────────────────────── */
-(function () {
-  var knap = document.getElementById('pris-knap');
-  var md = document.getElementById('pris-md');
-  var aar = document.getElementById('pris-aar');
-  var main = document.getElementById('pris-main');
-  var sub = document.getElementById('pris-sub');
-  if (!knap || !main) return;
-
-  var aarlig = true;
-
-  function tegn() {
-    knap.classList.toggle('aarlig', aarlig);
-    knap.setAttribute('aria-pressed', String(aarlig));
-    if (md) md.classList.toggle('aktiv', !aarlig);
-    if (aar) aar.classList.toggle('aktiv', aarlig);
-    main.textContent = aarlig ? '5.500 kr/år' : '599 kr/md';
-    if (sub) sub.textContent = aarlig ? 'svarer til 458 kr/md' : '';
-  }
-
-  knap.addEventListener('click', function () { aarlig = !aarlig; tegn(); });
-  if (md) md.addEventListener('click', function () { aarlig = false; tegn(); });
-  if (aar) aar.addEventListener('click', function () { aarlig = true; tegn(); });
-  tegn();
-})();
 </script>
 </body>
 </html>

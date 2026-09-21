@@ -61,14 +61,14 @@
           "@type": "Offer",
           "name": "Flango",
           "description": "Alle Flango-apps til én institution — ubegrænset brugere",
-          "price": "599",
+          "price": "5500",
           "priceCurrency": "DKK",
           "priceSpecification": {
             "@type": "UnitPriceSpecification",
-            "price": "599",
+            "price": "5500",
             "priceCurrency": "DKK",
-            "billingDuration": "P1M",
-            "unitText": "MONTH"
+            "billingDuration": "P1Y",
+            "unitText": "YEAR"
           },
           "availability": "https://schema.org/InStock"
         },
@@ -121,7 +121,7 @@
           "name": "Hvordan fungerer opsigelse?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "I opsiger med én måneds varsel til månedens udgang. Årlige abonnementer kan opsiges til udløb. Ingen binding — ingen bøvl."
+            "text": "I betaler for ét år ad gangen og kan opsige abonnementet til udløbet af den betalte periode. Prøveperioden på 4 uger er gratis og uden binding."
           }
         }
       ]
@@ -1224,24 +1224,14 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
     <div style="text-align:center" class="reveal">
       <div class="section-label" style="justify-content:center">Priser</div>
       <h2 id="pricing-heading">Én enkel pris</h2>
-      <p style="color:var(--slate-500);margin-top:12px;max-width:520px;margin-left:auto;margin-right:auto;font-size:0.95rem">Flango koster det samme, uanset hvilke apps I bruger — ét abonnement giver adgang til dem alle. Årlig betaling giver rabat.</p>
+      <p style="color:var(--slate-500);margin-top:12px;max-width:520px;margin-left:auto;margin-right:auto;font-size:0.95rem">Ét årsabonnement giver adgang til alle Flango-apps — brug én eller dem alle. Oprettelsen er gratis.</p>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:32px 0" class="reveal">
-      <span id="toggleMonthly" onclick="setPricing('monthly')" style="font-size:0.9rem;font-weight:600;color:var(--slate-800);cursor:pointer;transition:color 0.2s">Månedlig</span>
-      <button id="pricingSwitch" type="button" role="switch" aria-checked="false" aria-label="Skift mellem månedlig og årlig betaling" onclick="togglePricing()" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();togglePricing();}" style="width:52px;height:28px;background:var(--slate-200);border-radius:100px;position:relative;cursor:pointer;transition:background 0.3s;border:none;padding:0">
-        <span id="pricingSwitchDot" style="position:absolute;top:3px;left:3px;width:22px;height:22px;background:var(--white);border-radius:50%;transition:transform 0.3s cubic-bezier(0.16,1,0.3,1);box-shadow:0 1px 3px rgba(0,0,0,0.1);pointer-events:none"></span>
-      </button>
-      <span id="toggleYearly" onclick="setPricing('yearly')" style="font-size:0.9rem;font-weight:600;color:var(--slate-500);cursor:pointer;transition:color 0.2s">Årlig</span>
-      <span style="font-size:0.75rem;font-weight:700;color:var(--sage-600);background:var(--sage-50);padding:3px 10px;border-radius:100px;border:1px solid var(--sage-200)">Spar 23 %</span>
-    </div>
-
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:760px;margin-left:auto;margin-right:auto" class="pricing-grid reveal">
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:760px;margin:32px auto 0" class="pricing-grid reveal">
       <div style="background:var(--white);border-radius:var(--radius-lg);padding:32px 24px;border:2px solid var(--peach-500);display:flex;flex-direction:column;transition:all 0.3s;position:relative;box-shadow:0 8px 30px rgba(217,115,22,0.12)" class="p-card" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 40px rgba(217,115,22,0.18)'" onmouseout="this.style.transform='';this.style.boxShadow='0 8px 30px rgba(217,115,22,0.12)'">
         <div style="font-family:var(--font-display);font-size:1.25rem;margin-bottom:4px">Flango</div>
         <div style="font-size:0.82rem;color:var(--slate-400);margin-bottom:20px;min-height:2.4em">Alle Flango-apps til én institution</div>
-        <div class="price-display" data-m="599 kr/md" data-y="5.500 kr/år" style="font-family:var(--font-display);font-size:2rem;color:var(--slate-900);margin-bottom:2px">599 kr/md</div>
-        <div class="price-sub-display" data-m="" data-y="458 kr/md" style="font-size:0.8rem;color:var(--slate-400);margin-bottom:4px;min-height:1.4em"></div>
+        <div class="price-display" style="font-family:var(--font-display);font-size:2rem;color:var(--slate-900);margin-bottom:2px">5.500 kr/år</div>
         <div style="font-size:0.7rem;color:var(--slate-400);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Priser ekskl. moms</div>
         <div style="font-size:0.78rem;color:var(--slate-400);margin-bottom:20px">Gratis oprettelse</div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;flex:1">
@@ -1253,15 +1243,14 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Ubegrænset brugere</div>
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Fri support</div>
         </div>
-        <a href="?request=gratis-proeveperiode#kontakt" style="display:block;text-align:center;padding:12px;border-radius:100px;font-weight:700;font-size:0.88rem;background:var(--peach-600);color:var(--white);transition:all 0.2s;margin-top:auto" onmouseover="this.style.background='var(--peach-700)'" onmouseout="this.style.background='var(--peach-600)'">Start gratis prøve</a>
-        <div style="margin-top:10px;font-size:0.72rem;color:var(--slate-400);text-align:center;line-height:1.4">4 ugers gratis prøve · Ingen binding</div>
+        <a href="?request=gratis-proeveperiode#kontakt" style="display:block;text-align:center;padding:12px;border-radius:100px;font-weight:700;font-size:0.88rem;background:var(--peach-600);color:var(--white);transition:all 0.2s;margin-top:auto" onmouseover="this.style.background='var(--peach-700)'" onmouseout="this.style.background='var(--peach-600)'">Prøv gratis i 4 uger</a>
+        <div style="margin-top:10px;font-size:0.72rem;color:var(--slate-400);text-align:center;line-height:1.4">4 ugers gratis prøve uden binding</div>
       </div>
 
       <div style="background:var(--white);border-radius:var(--radius-lg);padding:32px 24px;border:1.5px solid var(--slate-200);display:flex;flex-direction:column;transition:all 0.3s;position:relative" class="p-card" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 10px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
         <div style="font-family:var(--font-display);font-size:1.25rem;margin-bottom:4px">Kommune</div>
         <div style="font-size:0.82rem;color:var(--slate-400);margin-bottom:20px;min-height:2.4em">Op til 5 institutioner samlet</div>
-        <div class="price-display" data-m="9.000 kr/år" data-y="9.000 kr/år" style="font-family:var(--font-display);font-size:2rem;color:var(--slate-900);margin-bottom:2px">9.000 kr/år</div>
-        <div class="price-sub-display" data-m="" data-y="" style="font-size:0.8rem;color:var(--slate-400);margin-bottom:4px;min-height:1.4em"></div>
+        <div class="price-display" style="font-family:var(--font-display);font-size:2rem;color:var(--slate-900);margin-bottom:2px">9.000 kr/år</div>
         <div style="font-size:0.7rem;color:var(--slate-400);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Priser ekskl. moms</div>
         <div style="font-size:0.78rem;color:var(--slate-400);margin-bottom:20px">Gratis oprettelse</div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;flex:1">
@@ -1270,7 +1259,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
           <div style="font-size:0.85rem;color:var(--slate-600);display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sage-600)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Fælles administration</div>
         </div>
         <a href="#kontakt" style="display:block;text-align:center;padding:12px;border-radius:100px;font-weight:700;font-size:0.88rem;background:var(--peach-600);color:var(--white);transition:all 0.2s;margin-top:auto" onmouseover="this.style.background='var(--peach-700)'" onmouseout="this.style.background='var(--peach-600)'">Kontakt os</a>
-        <div style="margin-top:10px;font-size:0.72rem;color:var(--slate-400);text-align:center;line-height:1.4">4 ugers gratis prøve · Ingen binding</div>
+        <div style="margin-top:10px;font-size:0.72rem;color:var(--slate-400);text-align:center;line-height:1.4">4 ugers gratis prøve uden binding</div>
       </div>
     </div>
 
@@ -1401,7 +1390,7 @@ h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
         </div>
         <div class="faq-i" style="background:var(--white);border-radius:var(--radius-md);border:1px solid var(--slate-200);overflow:hidden">
           <button onclick="toggleFaq(this)" style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;font-weight:700;font-size:0.92rem;color:var(--slate-800);cursor:pointer;width:100%;text-align:left;background:none;border:none;font-family:var(--font-body)">Hvordan fungerer opsigelse?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.3s"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7">I opsiger med én måneds varsel til månedens udgang. Årlige abonnementer kan opsiges til udløb. Ingen binding — ingen bøvl.</div></div>
+          <div class="faq-a" style="max-height:0;overflow:hidden;transition:max-height 0.3s cubic-bezier(0.16,1,0.3,1)"><div style="padding:0 20px 18px;font-size:0.88rem;color:var(--slate-500);line-height:1.7">I betaler for ét år ad gangen og kan opsige abonnementet til udløbet af den betalte periode. Prøveperioden på 4 uger er gratis og uden binding.</div></div>
         </div>
       </div>
     </div>
@@ -1469,43 +1458,6 @@ const observer = new IntersectionObserver((entries) => {
 }, { threshold: 0.12 });
 
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-/* ========================================
-   PRICING TOGGLE
-   ======================================== */
-let isYearly = false;
-function togglePricing() {
-  isYearly = !isYearly;
-  updatePricing();
-}
-function setPricing(mode) {
-  isYearly = mode === 'yearly';
-  updatePricing();
-}
-function updatePricing() {
-  const sw = document.getElementById('pricingSwitch');
-  const dot = document.getElementById('pricingSwitchDot');
-  const mLabel = document.getElementById('toggleMonthly');
-  const yLabel = document.getElementById('toggleYearly');
-  sw.setAttribute('aria-checked', isYearly ? 'true' : 'false');
-  if (isYearly) {
-    sw.style.background = 'var(--peach-500)';
-    dot.style.transform = 'translateX(24px)';
-    mLabel.style.color = 'var(--slate-500)';
-    yLabel.style.color = 'var(--slate-800)';
-  } else {
-    sw.style.background = 'var(--slate-200)';
-    dot.style.transform = '';
-    mLabel.style.color = 'var(--slate-800)';
-    yLabel.style.color = 'var(--slate-500)';
-  }
-  document.querySelectorAll('.price-display').forEach(el => {
-    el.textContent = isYearly ? el.dataset.y : el.dataset.m;
-  });
-  document.querySelectorAll('.price-sub-display').forEach(el => {
-    el.textContent = (isYearly ? el.dataset.y : el.dataset.m) || '';
-  });
-}
 
 /* ========================================
    BENEFITS — fælles "Se flere fordele" toggle
