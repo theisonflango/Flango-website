@@ -16,8 +16,8 @@
 // stadig åbne den gamle index, som peger på gamle hash-navne. Slettede vi den gamle cache ved
 // aktivering, ville de navne hverken findes i cachen eller på serveren, og siden stod uden CSS
 // og JS, til index'ens ti minutter var gået. Målt 10/9-2026 — det skete.
-const IMAGE_VERSION = "3.0.333-b9965c0bfbf93412";
-const BUNDLE_VERSION = "3.0.333-59db6bc22a703b94";
+const IMAGE_VERSION = "3.0.334-b9965c0bfbf93412";
+const BUNDLE_VERSION = "3.0.334-cd0c5be00268fa41";
 const GENERATIONS_TO_KEEP = 2;
 const scopePath = new URL(self.registration.scope).pathname;
 const scopeKey = scopePath.replace(/^\/+|\/+$/g, '').replace(/[^a-z0-9_-]+/gi, '-') || 'root';
