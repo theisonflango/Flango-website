@@ -2180,7 +2180,7 @@
     if (!planviewReady._p) {
       planviewReady._p = new Promise((resolve, reject) => {
         const el = document.createElement('script');
-        el.src = './js/vendor/planview.js?v=e5c806882fe2';
+        el.src = './js/vendor/planview.js?v=2817831faa56';
         el.onload = resolve;
         el.onerror = () => { planviewReady._p = null; reject(new Error('planview')); };
         document.head.appendChild(el);
@@ -2200,6 +2200,8 @@
       workshops: (ugeplanData && ugeplanData.workshops) || [],
       note: week.note || null,
       institution: (ugeplanData && ugeplanData.institution) || null,
+      // Husets egen titel (27/9). En PlanView uden titel-understøttelse ser bort fra den.
+      title: (ugeplanData && ugeplanData.title) || null,
       ...(ugeplanData && ugeplanData.design ? { design: ugeplanData.design } : {}),
     };
   }
