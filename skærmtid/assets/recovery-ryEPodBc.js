@@ -1,4 +1,4 @@
-import{P as S,o as k,d as h,l as E,s as L}from"./staffAuth-D-n9BAJ1.js";const G=`
+import{P as S,o as k,d as h,l as E,s as L}from"./staffAuth-CyjvqriQ.js";const G=`
 .fa-reset{max-width:420px;margin:48px auto;padding:32px 28px;border-radius:20px;background:#fff;
   box-shadow:0 18px 50px rgba(45,42,37,.12);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#2d2a25}
 .fa-reset h1{font-size:22px;margin:0 0 6px}
