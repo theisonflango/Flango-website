@@ -86,8 +86,8 @@
   ];
   const DEFAULT_TOPUP_AMOUNT = 100;
 
-  // Version af privatlivspolitikken der gemmes i parent_consents.consent_version
-  // ved nye samtykker. Bumpes naar privatlivspolitikken opdateres.
+  // Version til registrering af samtykker i parent_consents.consent_version.
+  // Særskilte AI-samtykker har egne versioner; dette er ikke hjemmesidens dokumentversion.
   const CURRENT_CONSENT_VERSION = 'v1.0';
 
   // ─── Demo-/gæsteflow ───
@@ -1296,15 +1296,15 @@
     const adEnabled = adInst.auto_delete_inactive_enabled !== false;
     const adMonths = adInst.auto_delete_inactive_months || 12;
     const retentionLine = adEnabled
-      ? `Inaktive profiler arkiveres og slettes automatisk efter <strong>${adMonths} måneders</strong> inaktivitet (${esc(instName)}s valg). Profilen arkiveres først og kan gendannes; du varsles pr. e-mail før den endelige sletning og kan altid bede om sletning før tid.`
+      ? `Inaktive profiler arkiveres efter <strong>${adMonths} måneders</strong> inaktivitet (${esc(instName)}s valg). Profilen kan derefter gendannes i seks måneder, før den slettes; du varsles pr. e-mail før den endelige sletning og kan altid bede om sletning før tid.`
       : `${esc(instName)} har ikke slået automatisk sletning til — inaktive profiler slettes kun på din eller institutionens anmodning.`;
     return `
       <p style="margin:0 0 10px"><strong>Hvad er Flango?</strong><br>Flango er det cafésystem som ${esc(instName)} bruger til cafédriften. Dit barn handler i caféen med en forudbetalt cafékonto — du fylder kontoen op, og barnet bruger saldoen til mad og drikke i caféen.</p>
       <p style="margin:0 0 10px"><strong>Hvilke data har vi?</strong><br>Barnets navn og kontonummer i caféen, saldo og købshistorik, eventuelle kostindstillinger du har sat (allergener, sukkerpolitik) og forbrugsgrænser du har valgt.</p>
       <p style="margin:0 0 10px"><strong>Hvem har adgang?</strong><br>Du som forælder (via denne portal), institutionens personale (via caféappen) og Flango som databehandler (teknisk drift). Kommunen er dataansvarlig.</p>
-      <p style="margin:0 0 10px"><strong>Hvor opbevares data?</strong><br>Alle data opbevares i EU. Al kommunikation er krypteret. Data sælges aldrig og deles kun med de nødvendige under-databehandlere (hosting, betaling, e-mail m.fl.).</p>
-      <p style="margin:0 0 10px"><strong>Hvor længe opbevares data?</strong><br>${retentionLine} Salgsbilag bevares i 5 år som anonymiserede rækker (lovkrav fra bogføringsloven) — beløb og datoer bevares uden barnets navn. Systemlogs opbevares i 24 måneder og anonymiseres derefter.</p>
-      <p style="margin:0"><strong>Dine rettigheder</strong><br>Som forælder har du ret til indsigt, berigtigelse, sletning, dataportabilitet og indsigelse — alt tilgængeligt via "Privatliv & Rettigheder" i portalen.</p>`;
+      <p style="margin:0 0 10px"><strong>Hvor opbevares data?</strong><br>Den primære database og fillagring ligger hos Supabase i Irland. Trafikken til Flangos backend er krypteret. Login, push, robotværn og andre leverandørflows kan indebære behandling eller adgang uden for EU; se privatlivsoverblikket. Data sælges ikke.</p>
+      <p style="margin:0 0 10px"><strong>Hvor længe opbevares data?</strong><br>${retentionLine} Det nødvendige regnskabsspor bevares efter institutionens regler, typisk i fem år, og kan efter sletning af barnet være pseudonymiseret. Direkte identifikatorer fjernes fra hændelsesloggen efter 24 måneder og fra revisionssporet efter fem år; resterende kontrolspor kan fortsat være personoplysninger.</p>
+      <p style="margin:0"><strong>Dine rettigheder</strong><br>Du kan se oplysninger, hente en kopi og anmode om rettelse eller sletning via "Privatliv & Rettigheder". Institutionen eller kommunen behandler din anmodning og vurderer betingelserne for rettighederne, herunder indsigelse og dataportabilitet.</p>`;
   }
 
   function renderTermsContent(childName) {
@@ -1314,7 +1314,7 @@
         <ul style="margin:0;padding-left:20px;list-style:disc">
           <li>Barnets navn og saldo vises på caféskærmen ved køb</li>
           <li>Historik for køb, indbetalinger og tilmeldinger opbevares</li>
-          <li>Alle data opbevares krypteret i EU (Irland) hos Supabase</li>
+          <li>Den primære database ligger hos Supabase i Irland; enkelte leverandørflows kan indebære behandling eller adgang uden for EU</li>
           <li>Du kan til enhver tid se, eksportere og anmode om sletning af data via "Privatliv & Rettigheder" i portalen</li>
         </ul>
       </div>
@@ -1329,7 +1329,7 @@
       </details>
       <a href="https://flango.dk/privatlivspolitik/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;color:var(--info);font-weight:600;text-decoration:none;margin-bottom:var(--s4);font-size:13px;">
         ${icon('external-link', 16)}
-        Læs den fulde privatlivspolitik
+        Læs Flangos generelle privatlivsoverblik
       </a>`;
   }
 
@@ -3162,7 +3162,7 @@
           </div>
           <a href="https://flango.dk/privatlivspolitik/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:var(--s3);color:var(--info);font-weight:600;text-decoration:none">
             ${icon('external-link', 16)}
-            Læs den fulde privatlivspolitik
+            Læs Flangos generelle privatlivsoverblik
           </a>
         </div></div></div>
       </div>`;
@@ -3273,10 +3273,10 @@
               <span>
                 <strong>Hvad der sker ved sletning:</strong><br>
                 &bull; Institutionens personale modtager din anmodning<br>
-                &bull; Personalet behandler anmodningen inden for 30 dage (jf. GDPR)<br>
+                &bull; Institutionen svarer uden unødig forsinkelse og senest inden for én måned. Kræver sagen mere tid, får du en begrundelse inden for samme frist<br>
                 &bull; Barnets profil og personoplysninger fjernes (navn, saldo, indstillinger)<br>
-                &bull; Salgsbilag og hændelser bevares anonymt — beløb og datoer beholdes af bogføringshensyn (lovkrav), men barnets navn fjernes<br>
-                &bull; Audit-log bevares i 24 måneder af compliance-hensyn<br>
+                &bull; Det nødvendige regnskabs- og kontrolspor kan bevares pseudonymiseret — direkte identifikatorer fjernes, men sporene kan fortsat være personoplysninger<br>
+                &bull; Direkte identifikatorer fjernes fra hændelsesloggen efter 24 måneder og fra revisionssporet efter fem år<br>
                 &bull; Sletningen kan ikke fortrydes<br>
                 &bull; Eventuel restsaldo kan ikke refunderes${hasTransferPair() ? ' — men du kan <span data-qa-scroll="section-transfer" data-qa-tab="tab-profile" style="color:var(--flango);cursor:pointer;text-decoration:underline">overføre den til et af dine andre børn</span> først' : ''}
               </span>
@@ -3769,7 +3769,7 @@
 
           ${withdrawnRowsHtml}
 
-          <div style="font-size:11px;color:var(--ink-muted);margin-top:var(--s4);line-height:1.5;padding-top:var(--s2);border-top:1px solid var(--border)">Aktuel version af privatlivspolitik: <strong>${esc(CURRENT_CONSENT_VERSION)}</strong>. Nye samtykker registreres mod denne version.</div>
+          <div style="font-size:11px;color:var(--ink-muted);margin-top:var(--s4);line-height:1.5;padding-top:var(--s2);border-top:1px solid var(--border)">Version ved registrering af nye samtykker: <strong>${esc(CURRENT_CONSENT_VERSION)}</strong>. Nye samtykker registreres mod denne version.</div>
         </div></div></div>
       </div>`;
   }
@@ -6617,9 +6617,9 @@
             receiptHtml = `<br><br><strong>Hvad blev der gjort?</strong>` +
               `<br>• Barnets profil og personoplysninger er fjernet` +
               (sumAnon > 0
-                ? `<br>• ${sumAnon} historiske rækker er anonymiseret (beløb og datoer bevares af bogføringshensyn — barnets navn er fjernet)`
+                ? `<br>• ${sumAnon} historiske rækker har fået fjernet direkte identifikatorer (et pseudonymiseret regnskabs- og kontrolspor kan fortsat bestå)`
                 : '') +
-              `<br>• Audit-loggen bevares i 24 mdr af compliance-hensyn`;
+              `<br>• Direkte identifikatorer fjernes fra hændelsesloggen efter 24 måneder og fra revisionssporet efter fem år`;
           }
           statusHtml = `<div class="hint-box green" style="border-color:var(--positive)">${hintIcon('check')}<span><strong>Sletning gennemført</strong><br>Dato: ${date}${receiptHtml}</span></div>`;
         } else if (result.status === 'rejected') {
