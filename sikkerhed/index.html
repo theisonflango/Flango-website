@@ -135,8 +135,8 @@
     <div class="status-grid">
       <div class="status-card">
         <div class="label">Hosting</div>
-        <div class="value">EU</div>
-        <div class="detail">Al databehandling og lagring i EU</div>
+        <div class="value">Irland (EU)</div>
+        <div class="detail">Primær database og fillagring i EU</div>
       </div>
       <div class="status-card">
         <div class="label">Kryptering</div>
@@ -161,7 +161,7 @@
       <div class="status-card">
         <div class="label">Audit-log</div>
         <div class="value">Append-only</div>
-        <div class="detail">Alle handlinger logges med tidspunkt og ansvarlig</div>
+        <div class="detail">Væsentlige handlinger i Flango registreres</div>
       </div>
     </div>
 
@@ -171,10 +171,10 @@
       <h2 class="section-heading">Principper</h2>
       <ul>
         <li><strong>Dataminimering:</strong> Vi indsamler kun de oplysninger der er nødvendige for cafédrift og skærmtidsstyring.</li>
-        <li><strong>EU-hosting:</strong> Al databehandling og lagring foregår i EU på en managed cloud-platform.</li>
-        <li><strong>Kryptering:</strong> Data krypteres både ved overførsel og i hvile med industri-standard kryptering. Kodeord hashes og lagres aldrig i klartekst. Børnenes ekspedient-PIN er derimod læsbar med vilje: den er en symbolsk kvittering ved kassen, ikke en adgangskontrol — køb kræver den ikke, og personalet skal kunne hjælpe et barn der har glemt den.</li>
+        <li><strong>EU-hosting:</strong> Den primære database og fillagring ligger hos Supabase i Irland. Nogle funktioner bruger leverandører, der kan behandle eller tilgå oplysninger uden for EU; det gælder blandt andet login, push, robotværn, AI-produktbilleder og support.</li>
+        <li><strong>Kryptering:</strong> Trafik til Flangos backend er krypteret, og database og fillagring er krypteret i hvile. Gaming-PC’ernes indbyrdes overførsel af spilfiler på husets lokale net bruger TCP uden TLS; kommunens IT skal vurdere netværksopsætningen. Kodeord hashes og lagres aldrig i klartekst. Børnenes ekspedient-PIN er derimod læsbar med vilje: den er en symbolsk kvittering ved kassen, ikke en adgangskontrol — køb kræver den ikke, og personalet skal kunne hjælpe et barn der har glemt den.</li>
         <li><strong>Adgang efter behov:</strong> Rollebaseret adgangsstyring — hver bruger har kun adgang til de funktioner og data deres rolle kræver.</li>
-        <li><strong>Sporbarhed:</strong> Alle væsentlige handlinger logges, så det altid kan dokumenteres hvilken admin der havde ansvaret for en given transaktion.</li>
+        <li><strong>Sporbarhed:</strong> Væsentlige handlinger i Flango registreres med tidspunkt og aktør. Logning er ikke fuldstændig: almindelige læseopslag, operatørens direkte databaseforespørgsler og visse konfigurationsændringer i super-admin indgår ikke i det varige applikationsspor.</li>
         <li><strong>Ingen kortdata hos Flango:</strong> Forældrebetalinger håndteres af en certificeret betalingspartner — Flango ser aldrig kortnumre eller bankoplysninger.</li>
       </ul>
     </section>
@@ -189,7 +189,7 @@
         <li><strong>Børn</strong> identificeres ved fornavn eller kontonummer i café-appen. Barnets PIN er en pædagogisk rollemarkering, ikke en adgangskontrol — køb kræver den ikke.</li>
         <li><strong>Forældre</strong> logger ind via forældreportalen og ser kun data for egne børn.</li>
         <li><strong>Kommunalt tilsyn</strong> kan efter aftale tildeles read-only-konto til konfiguration og driftsstatus — uden adgang til børnedata.</li>
-        <li><strong>Support og leverandør</strong> har drifts- og fejlsøgningsadgang under multifaktor. Alle handlinger logges.</li>
+        <li><strong>Support og leverandør</strong> har personlig driftsadgang. Super-admin kræver authenticator-kode og personligt godkendt enhed. Væsentlige handlinger gennem Flango logges med de begrænsninger, der er nævnt ovenfor.</li>
       </ul>
       <p>Inaktive sessioner udløber automatisk.</p>
     </section>
@@ -198,7 +198,7 @@
 
     <section class="about-section">
       <h2 class="section-heading">Institutionsisolation</h2>
-      <p>Flere institutioner kan bruge Flango på samme platform — men dataene er strengt adskilt på databaseniveau. Det er teknisk umuligt for én institution at tilgå data fra en anden, og forældre ser kun data for børn der eksplicit er tilknyttet deres konto.</p>
+      <p>Institutionernes data er adskilt i databasen. Adgangen afgøres på serveren ud fra brugerens institution og rettigheder; forældre gives adgang til de børn, der er tilknyttet deres konto. Enhedskrav og MFA er endnu ikke systematisk efterprøvet på alle direkte læseveje efter omlægningen af datamodellen.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
@@ -222,11 +222,11 @@
 
     <section class="about-section">
       <h2 class="section-heading">Underbehandlere</h2>
-      <p>Syv underbehandlere indgår i driften — for hosting, betaling, e-mail-levering, push-beskeder og valgfrit Apple- eller Google-login, AI-genererede billeder samt bot-beskyttelse. Alle har:</p>
+      <p>Leverandørerne afhænger af de valgte funktioner: hosting, betaling, udgående systemmail, push, Apple- eller Google-login, AI-billeder og robotværn. GitHub hoster de offentlige sider og webapps og leverer PC-opdateringer; Cloudflare Turnstile beskytter også browserlogin til caféen, kommunens flade og super-admin. For hver leverandør skal følgende være dokumenteret:</p>
       <ul>
-        <li>Databehandleraftale efter GDPR art. 28 — enten underskrevet eller indgået som en del af leverandørens standardvilkår</li>
-        <li>Primær drift i EU eller EU-godkendte overførselsmekanismer</li>
-        <li>Kontraktlig pligt til at underrette ved sikkerhedshændelser</li>
+        <li>Rolle og aftalegrundlag, herunder databehandleraftale efter GDPR art. 28, hvor leverandøren er underdatabehandler</li>
+        <li>Datalokationer og grundlag for eventuelle overførsler eller adgang uden for EU</li>
+        <li>Vilkår for sikkerhed og underretning ved hændelser</li>
       </ul>
       <p>Den fulde liste med navn, formål og grundlag pr. leverandør indgår i databehandleraftalen.</p>
     </section>
@@ -236,7 +236,7 @@
     <section class="about-section">
       <h2 class="section-heading">Brug af AI</h2>
       <p>Flango bruger AI til at generere billeder. Produktikoner i caféens menu laves ud fra varens navn og — hvis personalet vælger det — et foto af madvaren. Derudover kan institutionen vælge at tilbyde en stiliseret AI-avatar som privatlivsvenligt alternativ til et rigtigt profilfoto.</p>
-      <p>Behandlingen sker hos Microsoft Azure OpenAI i en EU-ressource, hvor data i hvile ligger i EU (Sverige). Produktikoner genereres med Global Standard-inferens, som kan behandle input uden for EU; input er varenavne og eventuelle madfotos uden personoplysninger, og en teknisk ansigtsspærre afviser fotos med ansigter, før noget sendes. Avatarer, der bygger på et barns foto, behandles i Azures EU Data Zone med processering og lagring i EU. Der trænes ikke på det, der sendes ind eller kommer ud. Azure gemmer som standard en stikprøve af input og output i op til 30 dage til misbrugskontrol — i EU og kun tilgængeligt for autoriserede Microsoft-reviewere.</p>
+      <p>Behandlingen sker hos Microsoft Azure OpenAI i en EU-ressource, hvor data i hvile ligger i EU (Sverige). Produktikoner genereres med Global Standard-inferens, som kan behandle input uden for EU; input er varenavne og eventuelle madfotos uden personoplysninger, og en teknisk ansigtsspærre afviser fotos med ansigter, før noget sendes. Avatarer, der bygger på et barns foto, behandles i Azures EU Data Zone med processering og lagring i EU. Der trænes ikke på det, der sendes ind eller kommer ud. Microsoft kan udvælge og midlertidigt gemme input og output, der flagges eller indgår i et muligt misbrugsmønster. Automatisk kontrol medfører ikke i sig selv lagring. Udvalgt materiale fra EU Data Zone kan gennemgås af autoriserede Microsoft-medarbejdere i EØS. Flango har ikke fået godkendt fravalg af denne kontrol.</p>
       <p><strong>AI-avataren er slået fra som udgangspunkt.</strong> Den er blokeret på platformniveau, indtil den dataansvarlige tillader den, og kræver derefter, at institutionen aktiverer funktionen, og at forældremyndighedsindehaveren giver samtykke for det enkelte barn. Uden alle tre genereres der intet.</p>
     </section>
 
@@ -244,7 +244,7 @@
 
     <section class="about-section">
       <h2 class="section-heading">Brud-håndtering</h2>
-      <p>Flango har en etableret beredskabsproces ved sikkerhedshændelser. Den dataansvarlige institution underrettes <strong>uden unødig forsinkelse og senest 24 timer</strong> efter konstatering af et bekræftet eller mistænkt databrud. Institutionen har derefter selv op til 72 timer til at anmelde hændelsen til Datatilsynet, jf. databeskyttelsesforordningens artikel 33 — de 24 timer er sat, så der er tid til den vurdering.</p>
+      <p>Flango har en etableret beredskabsproces ved sikkerhedshændelser. Institutionen eller kommunen underrettes <strong>uden unødig forsinkelse og om muligt senest 24 timer</strong> efter Flangos kendskab til et brud. Den første besked afventer ikke en fuld undersøgelse. Den dataansvarlige vurderer, om bruddet skal anmeldes; fristen er som udgangspunkt 72 timer fra den dataansvarliges eget kendskab.</p>
     </section>
 
     <hr class="divider" aria-hidden="true" />
@@ -267,7 +267,7 @@
     <div class="find-full">
       <h3>Søger du den fulde version?</h3>
       <ul>
-        <li><strong>Forældre:</strong> Den fulde privatlivspolitik og sikkerhedsbeskrivelse er tilgængelig i forældreportalen.</li>
+        <li><strong>Forældre:</strong> Kontakt institutionen for informationen om netop dens brug af Flango. Den generelle <a href="/privatlivspolitik/">privatlivspolitik</a> beskriver oplysninger og rettigheder.</li>
         <li><strong>Institutioner og kommuner:</strong> Den fulde dokumentationspakke (privatlivspolitik, systembeskrivelse, DPIA, TIA, beredskabsplan, databehandleraftale og underbehandlerliste) udleveres som del af IT-screeningsprocessen.</li>
         <li><strong>Spørgsmål:</strong> Skriv til <a href="mailto:kontakt@flango.dk">kontakt@flango.dk</a></li>
       </ul>
