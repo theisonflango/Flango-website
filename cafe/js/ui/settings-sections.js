@@ -320,6 +320,13 @@
     return `${day}/${month}/${d.getFullYear()}`;
   }
 
+  // end_date er kun sat, når arrangementet slutter en senere dag: «06/11 – 07/11/2026».
+  function _fmtDateRange(startStr, endStr) {
+    if (!endStr) return _fmtDate(startStr);
+    const start = _fmtDate(startStr);
+    return (startStr.slice(0, 4) === endStr.slice(0, 4) ? start.slice(0, 5) : start) + ' – ' + _fmtDate(endStr);
+  }
+
   function _formatPrice(p) {
     const n = parseFloat(p);
     if (!n || n === 0) return 'Gratis';
@@ -527,10 +534,12 @@
       let allEvents = [];
 
       if (_tilm.filter === 'active') {
+        // Kommende til og med sidste dag: end_date er kun sat (og altid senere end event_date),
+        // når arrangementet varer flere dage.
         const { data, error } = await client
           .from('club_events').select('*')
           .eq('institution_id', instId).eq('status', 'active')
-          .gte('event_date', today)
+          .or(`event_date.gte.${today},end_date.gte.${today}`)
           .order('event_date', { ascending: true }).order('start_time', { ascending: true });
         if (error) throw error;
         allEvents = data || [];
@@ -538,7 +547,7 @@
         // Past + cancelled
         const [r1, r2] = await Promise.all([
           client.from('club_events').select('*')
-            .eq('institution_id', instId).or(`and(status.eq.active,event_date.lte.${today}),status.eq.archived`)
+            .eq('institution_id', instId).or(`and(status.eq.active,or(end_date.lte.${today},and(end_date.is.null,event_date.lte.${today}))),status.eq.archived`)
             .order('event_date', { ascending: false }),
           client.from('club_events').select('*')
             .eq('institution_id', instId).eq('status', 'cancelled')
@@ -583,7 +592,10 @@
           const dateStr = d.toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'short' });
           const t1 = (ev.start_time || '').slice(0, 5);
           const t2 = ev.end_time ? ev.end_time.slice(0, 5) : '';
-          const timeStr = t1 + (t2 ? ' \u2013 ' + t2 : '');
+          // Slutter det en senere dag, st\u00e5r slutdagen foran sluttiden: \u00ab17:00 \u2013 l\u00f8r. 7. nov. 10:00\u00bb.
+          const endDay = ev.end_date ? new Date(ev.end_date + 'T00:00:00').toLocaleDateString('da-DK', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+          const end = [endDay, t2].filter(Boolean).join(' ');
+          const timeStr = t1 + (end ? ' \u2013 ' + end : '');
           const cnt = ev._registeredCount || 0;
           const capStr = ev.capacity ? `${cnt} / ${ev.capacity}` : `${cnt}`;
           const color = _arrColors[i % _arrColors.length];
@@ -670,7 +682,7 @@
     const regs = _tilm.eventRegs;
     if (!ev) return;
 
-    const dateStr = _fmtDate(ev.event_date);
+    const dateStr = _fmtDateRange(ev.event_date, ev.end_date);
     const t1 = (ev.start_time || '').slice(0, 5);
     const t2 = (ev.end_time || '').slice(0, 5);
     const timeStr = t1 + (t2 ? '\u2013' + t2 : '');
@@ -867,7 +879,7 @@
           <div class="fsp-form-group"><div class="fsp-form-label">Kapacitet</div><div class="fsp-num-wrap"><input type="number" placeholder="f.eks. 20" data-event-cap value="${isEdit ? (ev?.capacity || '') : ''}"><div class="fsp-num-btns"><button class="fsp-num-btn" data-sp="cap" data-sd="1">${chevronUp}</button><button class="fsp-num-btn" data-sp="cap" data-sd="-1">${chevronDown}</button></div></div></div>
         </div>
         <div class="fsp-form-group"><div class="fsp-form-label">Start</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.event_date || today) : today}" data-event-start-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="text" inputmode="numeric" maxlength="5" placeholder="tt:mm" value="${isEdit ? (ev?.start_time || '14:00').slice(0, 5) : '14:00'}" data-event-start-time data-time-input class="fsp-time-text"><button type="button" class="fsp-dt-picker-btn" data-time-picker-btn aria-label="Vælg tid"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
-        <div class="fsp-form-group"><div class="fsp-form-label">Slut</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.end_date || ev?.event_date || today) : today}" data-event-end-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="text" inputmode="numeric" maxlength="5" placeholder="tt:mm" value="${isEdit ? (ev?.end_time || '16:00').slice(0, 5) : '16:00'}" data-event-end-time data-time-input class="fsp-time-text"><button type="button" class="fsp-dt-picker-btn" data-time-picker-btn aria-label="Vælg tid"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
+        <div class="fsp-form-group"><div class="fsp-form-label">Slut</div><div class="fsp-dt-block"><div class="fsp-dt-row"><div class="fsp-dt-field"><input type="date" value="${isEdit ? (ev?.end_date || ev?.event_date || today) : today}" data-event-end-date><button type="button" class="fsp-dt-picker-btn" data-dt-trigger="date"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12"/><path d="M5.5 1.5v3M10.5 1.5v3"/></svg></button></div><div class="fsp-dt-field"><input type="text" inputmode="numeric" maxlength="5" placeholder="tt:mm" value="${isEdit ? (ev?.end_time || '').slice(0, 5) : '16:00'}" data-event-end-time data-time-input class="fsp-time-text"><button type="button" class="fsp-dt-picker-btn" data-time-picker-btn aria-label="Vælg tid"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5v4l2.5 2"/></svg></button></div></div></div></div>
         <div class="fsp-form-group"><div class="fsp-form-label">M\u00e5lgruppe</div><div style="display:flex;flex-wrap:wrap;gap:6px" data-event-chips></div><div class="fsp-form-hint">Ingen valgt = alle klassetrin kan se arrangementet</div></div>
         <div class="fsp-form-group">
           <div class="arr-prompt-setting-row">
@@ -915,11 +927,16 @@
       chipsEl.appendChild(chip);
     }
 
-    // Sync end date when start date changes
+    // Flyttes startdatoen, flytter slutdatoen med, så et arrangement over flere dage beholder sin længde.
     const startDateInput = slidePanel.querySelector('[data-event-start-date]');
     const endDateInput = slidePanel.querySelector('[data-event-end-date]');
+    let prevStartDate = startDateInput?.value;
     startDateInput?.addEventListener('change', () => {
-      if (endDateInput) endDateInput.value = startDateInput.value;
+      if (!endDateInput) return;
+      const shift = Date.parse(startDateInput.value) - Date.parse(prevStartDate);
+      const end = Date.parse(endDateInput.value) + shift;
+      endDateInput.value = Number.isFinite(end) ? new Date(end).toISOString().slice(0, 10) : startDateInput.value;
+      prevStartDate = startDateInput.value;
     });
 
     // Date picker buttons → trigger native picker (kun dato; tid er tt:mm-tekstfelt)
@@ -1073,13 +1090,24 @@
       const endNorm = endRaw ? normalizeTime(endRaw) : null;
       if (endRaw && !endNorm) { alert('Ugyldigt sluttidspunkt. Brug formatet tt:mm (00:00–23:59).'); return; }
 
+      // Datoerne er ISO (åååå-mm-dd), så tekst-sammenligning er dato-sammenligning.
+      const startDate = slidePanel.querySelector('[data-event-start-date]')?.value || null;
+      const endDate = slidePanel.querySelector('[data-event-end-date]')?.value || startDate;
+      if (startDate && endDate < startDate) { alert('Slutdatoen ligger før startdatoen.'); return; }
+      if (endDate === startDate && endNorm && endNorm < startNorm) {
+        alert('Sluttiden ligger før starttiden. Slutter arrangementet en anden dag, så ret slutdatoen.');
+        return;
+      }
+
       const eventData = {
         title: titleVal,
         description: slidePanel.querySelector('[data-event-desc]')?.value?.trim() || null,
         price: parseFloat(slidePanel.querySelector('[data-event-price]')?.value) || 0,
         capacity: parseInt(slidePanel.querySelector('[data-event-cap]')?.value) || null,
-        event_date: slidePanel.querySelector('[data-event-start-date]')?.value || null,
+        event_date: startDate,
         start_time: startNorm,
+        // Kun sat, når arrangementet slutter en senere dag; samme dag er altid null (databasens regel).
+        end_date: endDate > startDate ? endDate : null,
         end_time: endNorm,
         allowed_classes: grades.length > 0 ? grades : null,
         prompt_after_purchase: !!promptToggle?.classList.contains('on'),
