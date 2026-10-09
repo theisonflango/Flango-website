@@ -2052,7 +2052,10 @@
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
       const month = months[d.getMonth()];
       const day = d.getDate();
-      const time = ev.start_time ? formatTime(ev.start_time) + (ev.end_time ? '–' + formatTime(ev.end_time) : '') : '';
+      // end_date er kun sat, når arrangementet slutter en senere dag: «17:00 – lør. 7. nov. 10:00».
+      const endDay = ev.end_date ? new Date(ev.end_date + 'T00:00:00').toLocaleDateString('da-DK', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+      const end = endDay ? ' – ' + [endDay, formatTime(ev.end_time)].filter(Boolean).join(' ') : (ev.end_time ? '–' + formatTime(ev.end_time) : '');
+      const time = ev.start_time ? formatTime(ev.start_time) + end : '';
       const price = ev.price > 0 ? `${formatKr(ev.price)} kr` : 'Gratis';
       const meta = [time, price].filter(Boolean).join(' · ');
       const spotsLeft = ev.remaining != null ? ev.remaining : null;
