@@ -2194,9 +2194,11 @@
 
   function ugeplanSnapshot(week) {
     // get-published-ugeplan leverer allerede den form PlanView læser.
-    // design SKAL med: uden det valgte PlanView sin egen standard, og forældrene fik et
-    // andet design end det institutionen havde sat. Faldes der tilbage, er det på PlanViews
-    // default — ikke på et gæt her.
+    // Udseendet SKAL med: uden det valgte PlanView sin egen standard, og forældrene fik et
+    // andet design end det institutionen havde sat. Ugens eget udseende (design, skrift,
+    // kolonne, ikoner) vinder — samme som caféen viser. Et ældre svar uden det har kun husets
+    // design. Faldes der helt tilbage, er det på PlanViews default — ikke på et gæt her.
+    const design = week.design || (ugeplanData && ugeplanData.design);
     return {
       schedule_data: week.schedule_data || {},
       hidden_workshops: week.hidden_workshops || [],
@@ -2205,7 +2207,8 @@
       institution: (ugeplanData && ugeplanData.institution) || null,
       // Husets egen titel (27/9). En PlanView uden titel-understøttelse ser bort fra den.
       title: (ugeplanData && ugeplanData.title) || null,
-      ...(ugeplanData && ugeplanData.design ? { design: ugeplanData.design } : {}),
+      ...(week.appearance ? { appearance: week.appearance } : {}),
+      ...(design ? { design } : {}),
     };
   }
 
