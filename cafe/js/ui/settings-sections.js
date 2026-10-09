@@ -527,7 +527,7 @@
       let allEvents = [];
 
       if (_tilm.filter === 'active') {
-        const { data, error } = await cafeDb
+        const { data, error } = await client
           .from('club_events').select('*')
           .eq('institution_id', instId).eq('status', 'active')
           .gte('event_date', today)
@@ -550,7 +550,7 @@
       // Fetch registration counts
       if (allEvents.length > 0) {
         const ids = allEvents.map(e => e.id);
-        const { data: regCounts } = await cafeDb
+        const { data: regCounts } = await client
           .from('event_registrations').select('event_id')
           .in('event_id', ids).eq('registration_status', 'registered');
         const countMap = {};
@@ -603,6 +603,7 @@
         _tilmRenderDetail(_tilm.openEventId, container, ctx);
       }
     } catch (e) {
+      console.error('[tilmelding] kunne ikke hente arrangementer:', e);
       listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--fsp-txt3);font-size:13px">Kunne ikke hente arrangementer.</div>';
     }
   }
