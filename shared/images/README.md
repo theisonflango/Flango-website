@@ -6,6 +6,8 @@ Filerne her udgives på flango.dk. Læg ikke noget her, der ikke må hentes af e
 
 | Fil | Rolle |
 |---|---|
+| `flango-koesystem-vaerksted-1672.webp` · `-836.webp` | Børn ved værkstedsdøren med Flango Køsystem. Hovedillustration på `/om-køsystem/` og bred Køsystem-præsentation på forsiden. Hele udsnittet bevares; responsiv `srcset`, hero med høj hentningsprioritet og forside med lazy-loading. AI-genererede børn; skærmen er illustreret ud fra appen. PNG-master og prompt: `apps/koesystem/design/presentation/koesystem-vaerksted-2026-10-09-v2.*` i Flango-repoet. |
+| `flango-koesystem-app-ipad-834.webp` | Faktisk app-skærmbillede, 834 × 1112, ved «Sådan virker det» på `/om-køsystem/`. Netværksfri app-forhåndsvisning med fiktive børn: `/dev/preview.html?rolle=doer&koe=2&frys`. Lazy-loaded; kan åbnes i fuld størrelse. JPG-kilde gemt i Flango-repoets `apps/koesystem/design/presentation/koesystem-app-ipad-2026-10-09.jpg`; WebP er tabsfrit kodet fra denne kilde. |
 | `flango-cafe-sfo-v5-1672.webp` · `-836.webp` | Fotoet i “Alle vinder med Flango” på `/om-cafe/#fordele`; `/om-cafe/#cafe-hverdag` peger på samme afsnit. `srcset`, maks. 1092 CSS-px, lazy-loaded. Tabsfri WebP med neutral farvebalance og blond kundeavatar. AI-genererede børn og fiktiv Bøgelund SFO. PNG-master, tidligere versioner og prompt gemmes lokalt i `output/imagegen/flango-cafe-sfo/` i arbejdsrepoet. |
 | `hero-mockup-master.webp` | **Master**, 7680 × 4320, tabsfri. Kilden til hero-varianterne. Intet linker til den — slet den ikke. |
 | `hero-mockup-1180.webp` · `-2360.webp` | Vises på `/om-cafe/` via `srcset`. 1180 dækker 1× og telefoner op til 3×; 2360 dækker 2× på den fulde bredde (siden viser maks 1180 CSS-px). |
