@@ -19,7 +19,7 @@
     { href: '/om-køsystem/',   label: 'Køsystem' },
     { href: '/om-ugeplan/',    label: 'Ugeplan' },
     { href: '/om-forældre/',   label: 'Forældreportal' },
-    { href: '/ugeplan/faellesskabet', label: 'Fællesskabet' }
+    { href: '/om-fællesskabet/',  label: 'Fællesskabet' }
   ];
 
   /* Sektionslinkene peger på om-siderne, ikke på apperne. Det er pointen: har man
@@ -37,8 +37,9 @@
     // Den gamle ASCII-sti viderestiller, så gamle bogmærker holder.
     '/om-køsystem/':   { href: '/køsystem/',       label: 'Log ind på Køsystem' },
     '/om-ugeplan/':    { href: '/ugeplan/login',   label: 'Log ind på Ugeplan' },
-    // Længere match end '/ugeplan/', så fællesskabets egen indgang vinder på den sti.
-    '/ugeplan/faellesskabet': { href: '/ugeplan/faellesskabet/deltag', label: 'Log ind på Fællesskabet' },
+    // Fællesskabet er sin egen app: /fællesskabet/ er fladen (gæst eller login), /om-fællesskabet/
+    // produktsiden — samme par som de øvrige. De gamle stier under /ugeplan/ viderestiller.
+    '/om-fællesskabet/': { href: '/fællesskabet/', label: 'Log ind på Fællesskabet' },
     '/ugeplan/':       { href: '/ugeplan/login',   label: 'Log ind på Ugeplan' },
     '/om-forældre/':   { href: '/forældre/',       label: 'Log ind på Forældreportal' }
   };
@@ -126,7 +127,7 @@
           '<a href="/skærmtid/">Skærmtid (personale)</a>' +
           '<a href="/køsystem/">Køsystem (personale)</a>' +
           '<a href="/ugeplan/login">Ugeplan (personale)</a>' +
-          '<a href="/ugeplan/faellesskabet/deltag">Fællesskabet</a>' +
+          '<a href="/fællesskabet/">Fællesskabet</a>' +
           '<a href="/cafe">Café-app (personale)</a>' +
         '</div>';
   }
