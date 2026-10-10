@@ -58,7 +58,6 @@
   let selectedChild = null;
   let childData = null;       // from get-parent-view
   let products = [];          // from get-products-for-parent
-  let purchaseProfile = null; // from get-purchase-profile
   let allergySettings = null;
   let screentimeData = null;
   let _stSaveTimer = null; // debounce for skærmtid-stepper-gemning
@@ -1927,16 +1926,16 @@
       window.FlangoAdminPreview.onRender(childData?.preview_sections || [], childData?.preview_subcontrols || []);
     }
 
-    // Auto-load purchase profile (always open by default). I eksempel-visningen
-    // slås der ikke op — barnet findes ikke — men sektionen skal heller ikke
-    // efterlades i en spinner der aldrig stopper.
+    // Sektioner, der tegnes åbne (Købsprofil), hentes straks — ad samme vej som en
+    // åbning, så de ikke hentes igen, når de lukkes og åbnes (LAZY_SECTIONS).
+    document.querySelectorAll('.section.open').forEach(loadSectionContent);
+
+    // I eksempel-visningen slås der ikke op — barnet findes ikke — men kortet
+    // skal heller ikke efterlades i en spinner der aldrig stopper.
     if (isExampleChild()) {
-      const pp = document.getElementById('purchase-profile-content');
-      if (pp) pp.innerHTML = '<div class="empty-state" style="padding:var(--s4) 0"><div class="empty-state-text">Her ser forælderen barnets mest købte varer. Ingen data i eksempel-visningen.</div></div>';
       const ek = document.getElementById('ekspedient-content');
       if (ek) ek.innerHTML = '<div class="empty-state" style="padding:var(--s4) 0"><div class="empty-state-text">Her ser forælderen barnets arbejde i caféen og de badges, det har givet. Ingen data i eksempel-visningen.</div></div>';
     } else {
-      loadPurchaseProfile();
       // Afgør selv om kortet skal vises — derfor uden for secOn-grenen.
       if (secOn('ekspedient')) loadEkspedientSection();
     }
@@ -2160,13 +2159,19 @@
     if (!container) return;
     container.innerHTML = '<div style="text-align:center;padding:var(--s4)"><div class="portal-loading-spinner" style="margin:0 auto"></div></div>';
     try {
-      ugeplanData = await API.getPublishedUgeplan(selectedChild.institution_id);
+      const data = await API.getPublishedUgeplan(selectedChild.institution_id);
+      // Tegnet forfra imens (barneskift)? Så hører svaret til en sektion, der er væk, og
+      // ville afmontere den nye sektions skema. Den nye henter selv, når den åbnes.
+      if (!container.isConnected) return;
+      ugeplanData = data;
       ugeplanWeekIdx = pickUgeplanWeekIdx(ugeplanData?.weeks || []);
       renderUgeplanContent(container);
     } catch (err) {
+      if (!container.isConnected) return;
       console.error('[Portal] Ugeplan error:', err);
       ugeplanData = null;
       container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Kunne ikke indlæse ugeplanen</div></div>';
+      return false; // prøv igen ved næste åbning
     }
   }
 
@@ -4823,17 +4828,7 @@
       e.stopPropagation();
       e.stopImmediatePropagation();
 
-      toggleSection(section);
-
-      // Lazy-load purchase profile
-      if (section.id === 'section-profile' && !purchaseProfile) {
-        loadPurchaseProfile();
-      }
-
-      // Lazy-load ugeplan (kun ved første åbning / efter barn-skift)
-      if (section.id === 'section-ugeplan' && !ugeplanData) {
-        loadUgeplan();
-      }
+      toggleSection(section); // åbningen henter selv dovne sektioner (LAZY_SECTIONS)
     }, true); // use capture phase to fire first
 
     // Sidebar child selector — delegated, only bind once
@@ -5341,12 +5336,38 @@
   //  ACTIONS / HANDLERS
   // ═══════════════════════════════════════
 
+  // Sektioner, hvis indhold først hentes, når de åbnes. Opslaget sker i openSection,
+  // som ALLE åbninger går igennem: sektionshovedet, sidebjælken, genvejene og
+  // faneskiftet. 10/10: opslaget for Ugeplan og Købsprofil lå kun i sektionshovedets
+  // klik-handler, så sidebjælkens «Ugeplan» åbnede sektionen med en evig spinner.
+  // Der hentes én gang pr. tegning af sektionen (renderApp tegner forfra = henter
+  // igen); svarer loaderen false (fejl), prøves der igen ved næste åbning.
+  const LAZY_SECTIONS = {
+    'section-ugeplan':        () => loadUgeplan(),
+    'section-profile':        () => loadPurchaseProfile(),
+    'section-linked-parents': () => loadLinkedParents(),
+    'section-delete-child':   () => loadDeletionStatus(),
+  };
+
+  async function loadSectionContent(sectionEl) {
+    const load = LAZY_SECTIONS[sectionEl.id];
+    if (!load || sectionEl.dataset.lazyLoaded) return;
+    sectionEl.dataset.lazyLoaded = '1';
+    if (await load() === false) delete sectionEl.dataset.lazyLoaded;
+  }
+
+  function openSection(sectionEl) {
+    document.querySelectorAll('.section.open').forEach(s => s.classList.remove('open'));
+    sectionEl.classList.add('open');
+    loadSectionContent(sectionEl);
+  }
+
   function toggleSection(sectionEl) {
     if (!sectionEl) return;
     const isOpen = sectionEl.classList.contains('open');
     document.querySelectorAll('.section.open').forEach(s => s.classList.remove('open'));
     if (!isOpen) {
-      sectionEl.classList.add('open');
+      openSection(sectionEl);
       setTimeout(() => sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 260);
     }
   }
@@ -5375,10 +5396,7 @@
     if (openIt === undefined) openIt = true;
     const section = document.getElementById(sectionId);
     if (!section) return;
-    if (openIt) {
-      document.querySelectorAll('.section.open').forEach(s => s.classList.remove('open'));
-      section.classList.add('open');
-    }
+    if (openIt) openSection(section);
     setTimeout(() => {
       section.scrollIntoView({ behavior: 'smooth', block: 'start' });
       section.classList.remove('highlight-flash');
@@ -5402,6 +5420,12 @@
     if (!selectedChild) return;
     const container = document.getElementById('purchase-profile-content');
     if (!container) return;
+    // Eksempel-visningen har intet barn at slå op (samme som loadLinkedParents) — men
+    // sektionen skal heller ikke efterlades i en spinner, der aldrig stopper.
+    if (isExampleChild()) {
+      container.innerHTML = '<div class="empty-state" style="padding:var(--s4) 0"><div class="empty-state-text">Her ser forælderen barnets mest købte varer. Ingen data i eksempel-visningen.</div></div>';
+      return;
+    }
     ppCurrentPeriod = period || ppCurrentPeriod || 'all';
     ppCurrentSort = sortBy || ppCurrentSort || 'antal';
     ppCurrentView = view || ppCurrentView || 'bars';
@@ -5409,11 +5433,12 @@
     try {
       const periodMap = { 'today': 'today', '7': '7', '30': '30', 'all': 'all' };
       const needDaily = ppCurrentView === 'graph';
-      purchaseProfile = await API.getPurchaseProfile(selectedChild.child_id, periodMap[ppCurrentPeriod] || 'all', ppCurrentSort, needDaily);
-      renderPurchaseProfileContent(container, purchaseProfile);
+      const profile = await API.getPurchaseProfile(selectedChild.child_id, periodMap[ppCurrentPeriod] || 'all', ppCurrentSort, needDaily);
+      renderPurchaseProfileContent(container, profile);
     } catch (err) {
       console.error('[Portal] Purchase profile error:', err);
       container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Kunne ikke indlæse købsprofil</div></div>';
+      return false; // prøv igen ved næste åbning
     }
   }
 
@@ -6008,21 +6033,7 @@
     });
     if (confirmAccBtn) confirmAccBtn.addEventListener('click', () => handleDeleteParentAccount());
 
-    // Lazy-load linked parents and deletion status when privacy tab sections open
-    const linkedSection = document.getElementById('section-linked-parents');
-    const deleteSection = document.getElementById('section-delete-child');
-    if (linkedSection) {
-      const obs = new MutationObserver(() => {
-        if (linkedSection.classList.contains('open')) { loadLinkedParents(); obs.disconnect(); }
-      });
-      obs.observe(linkedSection, { attributes: true, attributeFilter: ['class'] });
-    }
-    if (deleteSection) {
-      const obs = new MutationObserver(() => {
-        if (deleteSection.classList.contains('open')) { loadDeletionStatus(); obs.disconnect(); }
-      });
-      obs.observe(deleteSection, { attributes: true, attributeFilter: ['class'] });
-    }
+    // Tilknyttede forældre og sletningsstatus hentes, når sektionen åbnes (LAZY_SECTIONS).
 
     // Samtykke-historik er read-only — kun expand/collapse-knapper
     document.querySelectorAll('.consent-history-btn').forEach(btn => {
