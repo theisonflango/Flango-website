@@ -2188,7 +2188,7 @@
     if (!planviewReady._p) {
       planviewReady._p = new Promise((resolve, reject) => {
         const el = document.createElement('script');
-        el.src = './js/vendor/planview.js?v=8cb7b584de5f';
+        el.src = './js/vendor/planview.js?v=cb95eb24ccbb';
         el.onload = resolve;
         el.onerror = () => { planviewReady._p = null; reject(new Error('planview')); };
         document.head.appendChild(el);
@@ -2212,6 +2212,9 @@
       institution: (ugeplanData && ugeplanData.institution) || null,
       // Husets egen titel (27/9). En PlanView uden titel-understøttelse ser bort fra den.
       title: (ugeplanData && ugeplanData.title) || null,
+      // Husets gemte personalefarver (10/10) — kun for navne i de delte uger. Uden dem tegner
+      // plakaten hvert navn med dets automatiske farve.
+      staff_colors: (ugeplanData && ugeplanData.staff_colors) || null,
       ...(week.appearance ? { appearance: week.appearance } : {}),
       ...(design ? { design } : {}),
     };
