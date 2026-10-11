@@ -2188,7 +2188,7 @@
     if (!planviewReady._p) {
       planviewReady._p = new Promise((resolve, reject) => {
         const el = document.createElement('script');
-        el.src = './js/vendor/planview.js?v=9693fcaa92f7';
+        el.src = './js/vendor/planview.js?v=2cec522b7c06';
         el.onload = resolve;
         el.onerror = () => { planviewReady._p = null; reject(new Error('planview')); };
         document.head.appendChild(el);
