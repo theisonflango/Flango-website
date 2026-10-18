@@ -14,7 +14,7 @@
  * er stadig den eneste version der skal vedligeholdes.
  */
 
-const CACHE = 'flango-portal-v41';
+const CACHE = 'flango-portal-v42';
 
 // Version-stabile skal-filer (uden ?v=N) — seedet ved install for offline-brug.
 // supabase-js er nu selvhostet og kan derfor precaches (det kunne den cross-origin
