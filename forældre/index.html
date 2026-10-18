@@ -95,8 +95,44 @@
     window.__pendingPasswordRecovery = true;
   }
 
+  // ─── Hvor sessionen ligger («Husk mig») ───
+  // Husk mig (standard): localStorage — sessionen overlever at appen/browseren lukkes.
+  // Husk mig fravalgt: sessionStorage — den overlever genindlæsning og betalingsredirect i
+  // samme fane, men ikke at fanen lukkes. Før 18/10 slettede en beforeunload-lytter
+  // nøglen, og den fyrede også ved hver genindlæsning og ved MobilePay/Stripe-redirect.
+  // Valget lægges i fanens sessionStorage FØR login (setRemember), så første skrivning
+  // allerede lander det rigtige sted.
+  window.flangoAuthStorage = (function () {
+    var AUTH_KEY = 'flango-parent-auth';
+    var SESSION_ONLY = 'flango-parent-session-only';
+    function store(kind) { try { return kind === 'session' ? window.sessionStorage : window.localStorage; } catch (_) { return null; } }
+    function get(kind, k) { try { var s = store(kind); return s ? s.getItem(k) : null; } catch (_) { return null; } }
+    function set(kind, k, v) { try { var s = store(kind); if (s) s.setItem(k, v); } catch (_) {} }
+    function del(kind, k) { try { var s = store(kind); if (s) s.removeItem(k); } catch (_) {} }
+    function sessionOnly() { return get('session', SESSION_ONLY) === '1'; }
+    return {
+      // supabase-js' storage-kontrakt
+      getItem: function (k) { var v = get('session', k); return v != null ? v : get('local', k); },
+      setItem: function (k, v) {
+        if (sessionOnly()) { set('session', k, v); del('local', k); }
+        else { set('local', k, v); del('session', k); }
+      },
+      removeItem: function (k) { del('session', k); del('local', k); },
+      setRemember: function (remember) {
+        if (remember) del('session', SESSION_ONLY); else set('session', SESSION_ONLY, '1');
+      },
+      hasSession: function () { return this.getItem(AUTH_KEY) != null; },
+      // Lokal udlogning uden server — samme nøgler som supabase-js selv rydder.
+      forget: function () {
+        var self = this;
+        [AUTH_KEY, AUTH_KEY + '-user', AUTH_KEY + '-code-verifier'].forEach(function (k) { self.removeItem(k); });
+      },
+    };
+  })();
+
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
+      storage: window.flangoAuthStorage,
       storageKey: 'flango-parent-auth',
       persistSession: true,
       autoRefreshToken: true,
@@ -132,12 +168,12 @@
 
 <script src="js/icons.js?v=4"></script>
 <script src="js/portal-image.js?v=1"></script>
-<script src="js/portal-v2-api.js?v=45"></script>
+<script src="js/portal-v2-api.js?v=46"></script>
 <script src="js/consent-texts.js?v=3"></script>
 <script src="js/parent-picture-upload-modal.js?v=3"></script>
 <script src="js/parent-avatar-modal.js?v=3"></script>
 <script src="js/qr.js?v=1"></script>
-<script src="js/portal-v2.js?v=160"></script>
+<script src="js/portal-v2.js?v=161"></script>
 <script>
 // Cookie-banner — portalen bruger lyst tema
 (function() {

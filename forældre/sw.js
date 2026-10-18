@@ -7,12 +7,14 @@
  * Alt mod Supabase / Stripe / Turnstile / Google Fonts (kryds-origin) rører
  * service workeren slet ikke — data, login og betaling går altid live.
  *
- * Bumpes CACHE ved behov; gammel cache ryddes ved activate. portal-v2.js?v=N
- * cachelagres automatisk ved runtime (ingen hårdkodet version her), så
- * cache-buster-bumpet i index.html er den eneste version der skal vedligeholdes.
+ * Bumpes CACHE ved behov; gammel cache ryddes ved activate. Cachen nøgles på STIEN
+ * uden forespørgsel: index.html henter js/portal-v2.js?v=N, og SHELL nedenfor står
+ * uden ?v= — med fuld URL som nøgle ramte precachen aldrig, og hver ny ?v= lagde en
+ * kopi mere (18/10). Nu er der én post pr. fil, og cache-buster-bumpet i index.html
+ * er stadig den eneste version der skal vedligeholdes.
  */
 
-const CACHE = 'flango-portal-v40';
+const CACHE = 'flango-portal-v41';
 
 // Version-stabile skal-filer (uden ?v=N) — seedet ved install for offline-brug.
 // supabase-js er nu selvhostet og kan derfor precaches (det kunne den cross-origin
@@ -33,11 +35,14 @@ const SHELL = [
   './js/consent-texts.js',
   './js/parent-picture-upload-modal.js',
   './js/parent-avatar-modal.js',
+  './js/qr.js',
+  './js/portal-v2.js',
   './js/pwa-install.js',
+  './js/push-softask.js',
   // Ugeplanens skema-renderer. SKAL være i shell'en: uden den viser Ugeplan-sektionen
   // kun tekst-reserven offline. PDF-delen (planview-pdf.js) er BEVIDST ikke med —
   // den fylder mere end resten af portalen og hentes kun når nogen trykker Hent.
-  './js/vendor/planview.js?v=220139bb873c',
+  './js/vendor/planview.js',
   './assets/flango-logo.webp',
   './assets/flango-lockup-tagline.webp',
   './assets/icons/icon-192.png',
@@ -65,6 +70,7 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;                  // skriv-kald røres aldrig
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;   // Supabase/Stripe/Turnstile/fonte → altid live
+  const key = url.origin + url.pathname;             // én post pr. fil, uanset ?v=N / ?vipps_ref=…
 
   // Netværk-først: hent frisk + opdater cache; offline → fald tilbage til cache.
   event.respondWith(
@@ -72,12 +78,12 @@ self.addEventListener('fetch', (event) => {
       .then((res) => {
         if (res && res.ok && res.type === 'basic') {
           const copy = res.clone();
-          caches.open(CACHE).then((cache) => cache.put(req, copy));
+          caches.open(CACHE).then((cache) => cache.put(key, copy));
         }
         return res;
       })
       .catch(() =>
-        caches.match(req).then((cached) =>
+        caches.match(key).then((cached) =>
           cached || (req.mode === 'navigate' ? caches.match('./index.html') : Response.error())
         )
       )

@@ -204,6 +204,7 @@
         console.warn('[Portal] OAuth-callback uden tokens:', params.get('error_description') || url.split('#')[0]);
         return;
       }
+      authEpoch++;
       var result = await window.portalSupabase.auth.setSession({ access_token: access_token, refresh_token: refresh_token });
       if (result.error) {
         console.warn('[Portal] OAuth setSession fejlede:', result.error.message);
@@ -213,6 +214,17 @@
       window.location.reload();
     });
   }
+
+  // ─── Log ud uden at vente på netværket ───
+  // Loft over hvor længe log ud venter på serveren; derefter logges der ud lokalt.
+  var SIGNOUT_NETWORK_MS = 5000;
+  function withinMs(promise, ms) {
+    return Promise.race([promise, new Promise(function (resolve) {
+      setTimeout(function () { resolve({ timedOut: true }); }, ms);
+    })]);
+  }
+  // Tælles op ved hvert login, så et sent log ud-kald aldrig rydder et nyere login.
+  var authEpoch = 0;
 
   // ─── Helper: forny session proaktivt hvis tokenet er ved at udløbe ───
   // Mobil-Safari throttler auto-refresh-timeren når fanen er i baggrunden, så
@@ -319,17 +331,31 @@
 
     /** Sign in with email and password */
     async signIn(email, password) {
+      authEpoch++;
       const { data, error } = await window.portalSupabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       return data;
     },
 
-    /** Sign out — rydder også denne enheds push-token (driftsdata, jf. push-designet) */
+    /** Sign out — rydder også denne enheds push-token (driftsdata, jf. push-designet).
+     *  Log ud er binært og lokalt (husets regel) og kaster aldrig: svarer serveren ikke,
+     *  eller svarer den med en fejl, ryddes sessionen lokalt alligevel. supabase-js lader
+     *  ellers sessionen ligge ved en netværksfejl (18/10, M11). */
     async signOut() {
-      try { await removeThisDevicePushToken(); } catch (e) { /* best effort */ }
+      try { await withinMs(removeThisDevicePushToken(), SIGNOUT_NETWORK_MS); } catch (e) { /* best effort */ }
       try { await clearSnapshotAndKey(); } catch (e) { /* best effort */ }
-      const { error } = await window.portalSupabase.auth.signOut();
-      if (error) throw error;
+      const epoch = authEpoch;
+      const server = window.portalSupabase.auth.signOut()
+        .then(function (r) { return r || {}; }, function (e) { return { error: e }; });
+      const result = await withinMs(server, SIGNOUT_NETWORK_MS);
+      if (result.timedOut || result.error) {
+        console.warn('[PortalAPI] signOut nåede ikke serveren — logger ud lokalt:',
+          result.timedOut ? 'timeout' : (result.error && result.error.message));
+        window.flangoAuthStorage.forget();
+        // Lander det sene kald alligevel, kan en token-fornyelse undervejs have skrevet
+        // sessionen tilbage — ryd igen, medmindre nogen er logget ind siden.
+        if (result.timedOut) server.then(function () { if (authEpoch === epoch) window.flangoAuthStorage.forget(); });
+      }
     },
 
     saveSnapshot: saveSnapshot,
@@ -406,6 +432,7 @@
       });
       var identityToken = result && result.response && result.response.identityToken;
       if (!identityToken) throw new Error('Apple-login blev afbrudt');
+      authEpoch++;
       const { data, error } = await window.portalSupabase.auth.signInWithIdToken({
         provider: 'apple',
         token: identityToken,

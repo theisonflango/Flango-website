@@ -412,17 +412,13 @@
     }
   }
 
-  // supabase-js gemmer sessionen under sb-<ref>-auth-token og SLETTER nøglen ved
-  // logout og ved afvist refresh-token. Nøglens tilstedeværelse adskiller derfor
-  // "offline/kan ikke forny" fra "reelt logget ud".
+  // supabase-js gemmer portalens session under 'flango-parent-auth' (index.html) og
+  // SLETTER nøglen ved logout og ved afvist refresh-token. Nøglens tilstedeværelse
+  // adskiller derfor "offline/kan ikke forny" fra "reelt logget ud". Kig ikke efter
+  // sb-*-auth-token: det er de andre Flango-apps' nøgle på samme origin (og portalens
+  // fra før 4/5), og den gav en udlogget forælder evig genindlæsning (18/10, M10).
   function hasPersistedAuthSession() {
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token', k.length - 11) !== -1) return true;
-      }
-    } catch (_) {}
-    return false;
+    return window.flangoAuthStorage?.hasSession() === true;
   }
 
   function renderOfflineRetry() {
@@ -541,9 +537,17 @@
       // Retrospektiv vilkårsaccept: tjek om nogen børn mangler accept
       const unaccepted = children.filter(c => !c.terms_accepted_at);
       if (unaccepted.length > 0) {
-        await showTermsAcceptFlow(unaccepted);
-        // Refresh children after accept
-        children = await API.getChildren();
+        const terms = await showTermsAcceptFlow(unaccepted);
+        if (terms.logout) { await handleLogout(); return; }
+        // Refresh children after accept. Et barn sprunget over («Ikke nu») vises
+        // ikke i dette besøg; dialogen kommer igen ved næste indlæsning.
+        const fresh = await API.getChildren();
+        if (!fresh || fresh.length === 0) { renderNoChildren(); return; }
+        children = fresh.filter(c => c.terms_accepted_at);
+        if (children.length === 0) {
+          renderTermsPending(fresh.filter(c => !c.terms_accepted_at));
+          return;
+        }
       }
 
       selectedChild = (silent && opts?.preferChildId && children.find(c => c.child_id === opts.preferChildId)) || children[0];
@@ -1024,6 +1028,7 @@
   async function handleAppleAuth(errorElId) {
     const errEl = document.getElementById(errorElId);
     try {
+      window.flangoAuthStorage.setRemember(true); // som Google: huskes altid
       await API.signInWithApple();
       window.location.reload();
     } catch (err) {
@@ -1221,11 +1226,11 @@
     // auth's rate-limiting dækker brute-force-risikoen.
     try {
       try {
-        await API.signIn(email, password);
+        // «Husk mig» afgør, hvor sessionen gemmes — sat FØR login, så den første
+        // skrivning lander rigtigt (se flangoAuthStorage i index.html).
         const rememberMe = document.getElementById('login-remember-me');
-        if (rememberMe && !rememberMe.checked) {
-          window.__flangoForgetOnClose = true;
-        }
+        window.flangoAuthStorage.setRemember(!rememberMe || rememberMe.checked);
+        await API.signIn(email, password);
         currentSession = await API.getSession();
         startInactivityTimeout();
         await loadChildren();
@@ -1254,8 +1259,8 @@
     if (errorEl) errorEl.classList.remove('visible');
     if (btn) { btn.disabled = true; btn.textContent = 'Starter demo …'; }
     try {
+      window.flangoAuthStorage.setRemember(false); // demo-session skal ikke overleve at fanen lukkes
       await API.signIn(DEMO_EMAIL, DEMO_PASSWORD);
-      window.__flangoForgetOnClose = true; // demo-session skal ikke overleve at fanen lukkes
       currentSession = await API.getSession();
       startInactivityTimeout();
       await loadChildren();
@@ -1272,6 +1277,8 @@
     const errorEl = document.getElementById('login-error');
     if (errorEl) errorEl.classList.remove('visible');
     try {
+      // «Husk mig» hører til e-mail-login; Google og Apple huskes som hidtil.
+      window.flangoAuthStorage.setRemember(true);
       await API.signInWithGoogle();
       // Redirect happens automatically — Supabase handles the OAuth flow
     } catch (err) {
@@ -1332,22 +1339,42 @@
       </a>`;
   }
 
+  // Tab og Shift+Tab bliver i dialogen (aria-modal lover, at resten af siden er inert).
+  function keepFocusInside(backdrop, box) {
+    backdrop.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab') return;
+      const items = Array.from(box.querySelectorAll('button, [href], input, summary, [tabindex]:not([tabindex="-1"])'))
+        .filter(el => !el.disabled && el.offsetParent !== null);
+      if (items.length === 0) return;
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+  }
+
   /**
-   * Blokerende vilkårsaccept for børn der mangler accept.
-   * Viser en modal pr. barn. Returnerer når alle er accepteret.
+   * Vilkårsaccept for børn der mangler accept. En dialog pr. barn.
+   * Forælderen kan acceptere, springe barnet over («Ikke nu» — barnet vises ikke,
+   * og dialogen kommer igen næste gang) eller logge ud. Før 18/10 var der ingen
+   * udgang: den, der ikke ville acceptere, kunne hverken logge ud eller slette sin konto.
+   * Returnerer { logout: true } hvis forælderen valgte Log ud.
    */
   async function showTermsAcceptFlow(unacceptedChildren) {
     for (const child of unacceptedChildren) {
-      await new Promise((resolve) => {
+      const choice = await new Promise((resolve) => {
         const backdrop = document.createElement('div');
         backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
         const box = document.createElement('div');
-        box.style.cssText = 'background:#fff;border-radius:16px;padding:28px;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;';
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-modal', 'true');
+        box.setAttribute('aria-labelledby', 'terms-accept-title');
+        box.tabIndex = -1;
+        box.style.cssText = 'background:#fff;border-radius:16px;padding:28px;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;outline:none;';
         box.innerHTML = `
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:var(--s4)">
             <div style="width:44px;height:44px;border-radius:12px;background:var(--flango-light);display:flex;align-items:center;justify-content:center;color:var(--flango)">${icon('shield-check', 22)}</div>
             <div>
-              <div style="font-weight:700;font-size:17px;color:var(--ink)">Vilkår for brug</div>
+              <div id="terms-accept-title" style="font-weight:700;font-size:17px;color:var(--ink)">Vilkår for brug</div>
               <div style="font-size:13px;color:var(--ink-muted)">${esc(child.child_name)}</div>
             </div>
           </div>
@@ -1357,23 +1384,30 @@
             <span style="font-weight:600;font-size:14px">Jeg accepterer vilkårene</span>
           </label>
           <button id="terms-accept-btn" disabled style="width:100%;padding:14px;border:none;border-radius:var(--r-sm);background:var(--flango);color:#fff;font-size:15px;font-weight:700;cursor:pointer;opacity:0.5;transition:opacity 0.2s">Fortsæt</button>
+          <div style="display:flex;gap:var(--s2);margin-top:var(--s2)">
+            <button id="terms-later-btn" type="button" style="flex:1;padding:12px;border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;color:var(--ink);font-size:14px;cursor:pointer">Ikke nu</button>
+            <button id="terms-logout-btn" type="button" style="flex:1;padding:12px;border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;color:var(--ink);font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">${icon('log-out', 16)} Log ud</button>
+          </div>
         `;
         backdrop.appendChild(box);
         document.body.appendChild(backdrop);
+        keepFocusInside(backdrop, box);
 
         const cb = box.querySelector('#terms-accept-cb');
         const btn = box.querySelector('#terms-accept-btn');
+        const done = (value) => { backdrop.remove(); resolve(value); };
         cb.addEventListener('change', () => {
           btn.disabled = !cb.checked;
           btn.style.opacity = cb.checked ? '1' : '0.5';
         });
+        box.querySelector('#terms-later-btn').addEventListener('click', () => done('later'));
+        box.querySelector('#terms-logout-btn').addEventListener('click', () => done('logout'));
         btn.addEventListener('click', async () => {
           btn.disabled = true;
           btn.textContent = 'Gemmer...';
           try {
             await API.acceptTerms(child.child_id, CURRENT_TERMS_VERSION);
-            backdrop.remove();
-            resolve();
+            done('accepted');
           } catch (err) {
             console.error('[Terms] Accept error:', err);
             btn.textContent = 'Fejl — prøv igen';
@@ -1381,8 +1415,36 @@
             btn.style.opacity = '1';
           }
         });
+        // Fokus i dialogen fra start — ellers står tastatur og skærmlæser bag den.
+        box.focus();
       });
+      if (choice === 'logout') return { logout: true };
     }
+    return { logout: false };
+  }
+
+  // Alle børn sprunget over i vilkårsdialogen: intet at vise endnu.
+  function renderTermsPending(waiting) {
+    const names = waiting.map(c => c.child_name).filter(Boolean);
+    const who = names.length === 0 ? 'dit barn'
+      : names.length === 1 ? names[0]
+      : names.slice(0, -1).join(', ') + ' og ' + names[names.length - 1];
+    root.innerHTML = `
+      <div class="app">
+        <main class="main">
+          <div class="empty-state" style="margin-top:var(--s12);max-width:420px;margin-left:auto;margin-right:auto">
+            <div class="empty-state-icon">${icon('shield-check', 40)}</div>
+            <div class="empty-state-text" style="margin-bottom:var(--s5)">Accepter vilkårene, så kan du se saldo og indstillinger for ${esc(who)}.</div>
+            <button class="save-btn full" id="terms-pending-open">Se vilkårene</button>
+            <button id="terms-pending-logout" type="button" style="margin-top:var(--s3);padding:10px 20px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg);color:var(--ink-soft);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+              ${icon('log-out', 16)}
+              Log ud
+            </button>
+          </div>
+        </main>
+      </div>`;
+    document.getElementById('terms-pending-open').addEventListener('click', () => loadChildren());
+    document.getElementById('terms-pending-logout').addEventListener('click', handleLogout);
   }
 
   /**
@@ -1394,12 +1456,16 @@
       const backdrop = document.createElement('div');
       backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
       const box = document.createElement('div');
-      box.style.cssText = 'background:#fff;border-radius:16px;padding:28px;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;';
+      box.setAttribute('role', 'dialog');
+      box.setAttribute('aria-modal', 'true');
+      box.setAttribute('aria-labelledby', 'terms-link-title');
+      box.tabIndex = -1;
+      box.style.cssText = 'background:#fff;border-radius:16px;padding:28px;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;outline:none;';
       box.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:var(--s4)">
           <div style="width:44px;height:44px;border-radius:12px;background:var(--flango-light);display:flex;align-items:center;justify-content:center;color:var(--flango)">${icon('shield-check', 22)}</div>
           <div>
-            <div style="font-weight:700;font-size:17px;color:var(--ink)">Vilkår for brug</div>
+            <div id="terms-link-title" style="font-weight:700;font-size:17px;color:var(--ink)">Vilkår for brug</div>
             <div style="font-size:13px;color:var(--ink-muted)">Tilknyt ${esc(childName || 'barn')}</div>
           </div>
         </div>
@@ -1415,6 +1481,7 @@
       `;
       backdrop.appendChild(box);
       document.body.appendChild(backdrop);
+      keepFocusInside(backdrop, box);
 
       const cb = box.querySelector('#terms-link-cb');
       const acceptBtn = box.querySelector('#terms-link-accept');
@@ -1426,15 +1493,9 @@
       acceptBtn.addEventListener('click', () => { backdrop.remove(); resolve(true); });
       cancelBtn.addEventListener('click', () => { backdrop.remove(); resolve(false); });
       backdrop.addEventListener('click', (e) => { if (e.target === backdrop) { backdrop.remove(); resolve(false); } });
+      box.focus();
     });
   }
-
-  // ─── "Husk mig" — ryd session ved lukning hvis ikke valgt ───
-  window.addEventListener('beforeunload', () => {
-    if (window.__flangoForgetOnClose) {
-      localStorage.removeItem('flango-parent-auth');
-    }
-  });
 
   // Lukkes fanen midt i "Hjælp en forælder", skal adgangen til barnet dø med
   // den. pagehide frem for beforeunload: den fyrer også når mobilen sender
@@ -2112,8 +2173,10 @@
         if (payStatus === 'paid' || payStatus === 'not_required') {
           badgeHTML = '<span class="event-badge paid">✓ Tilmeldt & Betalt</span>';
         } else if (payStatus === 'not_paid') {
-          badgeHTML = '<span class="event-badge pending">Afventer betaling</span>';
-          actionsHTML += `<button class="event-pay-btn" data-event-id="${ev.id}" data-event-price="${ev.price}">Betal nu</button>`;
+          // Ingen «Betal nu»: serveren har ingen forældrevej til at betale en
+          // eksisterende tilmelding (parent_register_for_event svarer «allerede
+          // tilmeldt», pay_event_registration er personalets). Caféen tager betalingen.
+          badgeHTML = '<span class="event-badge pending">Afventer betaling</span><div style="font-size:12px;color:var(--ink-muted);margin-top:4px">Betales i caféen</div>';
         } else {
           badgeHTML = '<span class="event-badge registered">✓ Tilmeldt</span>';
         }
@@ -3017,9 +3080,12 @@
       // vente på loadChildData()'s 5 netværkskald (en overførsel rører kun saldi,
       // ikke produkter/events). Opdatér også saldo-kortet hvis det viste barn indgik.
       syncTransferUI();
-      if (selectedChild && (selectedChild.child_id === fromId || selectedChild.child_id === toId) && selectedChild.balance != null) {
-        const balEl = document.querySelector('.balance-amount');
-        if (balEl) balEl.textContent = formatKr(selectedChild.balance) + ' kr';
+      if (selectedChild && (selectedChild.child_id === fromId || selectedChild.child_id === toId)) {
+        if (selectedChild.balance != null) {
+          const balEl = document.querySelector('.balance-amount');
+          if (balEl) balEl.textContent = formatKr(selectedChild.balance) + ' kr';
+        }
+        refreshHistory(selectedChild.child_id);
       }
     } catch (err) {
       console.error('[Portal] Transfer error:', err);
@@ -3027,6 +3093,21 @@
       try { msg = JSON.parse(err.message)?.message || msg; } catch { /* ikke JSON */ }
       showToast(msg, 'error');
       syncTransferUI();
+    }
+  }
+
+  // Historikken kommer fra get-parent-view. Hent den igen, så en ny bevægelse (fx en
+  // overførsel) står der med det samme — før kom den først efter genindlæsning.
+  async function refreshHistory(childId) {
+    try {
+      const view = await API.getParentView(childId);
+      if (!view || selectedChild?.child_id !== childId) return;
+      childData = view;
+      const container = document.getElementById('history-content');
+      const period = container?.querySelector('.history-filter-btn.active')?.dataset.period || 'week';
+      if (container) container.innerHTML = renderHistoryContent(period);
+    } catch (err) {
+      console.warn('[Portal] refreshHistory:', err);
     }
   }
 
@@ -3971,7 +4052,7 @@
         const disabledAttr = instBlocked ? ' style="opacity:.4;pointer-events:none"' : '';
         return `
           <div class="game-row">
-            <div class="game-icon">${g.icon || '🎮'}</div>
+            <div class="game-icon">${esc(g.icon || '🎮')}</div>
             <div class="game-info">
               <div class="game-name">${esc(g.name)}</div>
               ${instBlocked ? '<div class="game-blocked">Blokeret af institutionen</div>' : `<div class="game-platform">${esc(g.category || '')}</div>`}
@@ -4123,14 +4204,7 @@
     const hasNotifRow = !!childData?.notification_settings;
     const alertOn = (key) => hasNotifRow && notif[key] !== false;
     // Get parent login email from session
-    var parentEmail = '';
-    try { parentEmail = window.portalSupabase?.auth?.session?.()?.data?.session?.user?.email || ''; } catch (_e) { /* ignore */ }
-    if (!parentEmail) {
-      try {
-        var _sd = JSON.parse(localStorage.getItem('flango-parent-auth') || '{}');
-        parentEmail = _sd?.user?.email || _sd?.currentSession?.user?.email || '';
-      } catch (_e2) { /* ignore */ }
-    }
+    var parentEmail = currentSession?.user?.email || '';
     if (!parentEmail && notif.email) parentEmail = notif.email;
     var secondaryEmail = notif.secondary_email || '';
     var notifyPrimary = notif.notify_primary_email !== false;
@@ -4725,7 +4799,7 @@
       // Compact dropdown mode for many children (admin-parent)
       const selectedName = esc(selectedChild ? getChildName() : 'Vælg barn');
       const selectedBal = selectedChild?.balance != null ? `${formatKr(selectedChild.balance)} kr` : '';
-      const selectedEmoji = selectedChild?.avatar_emoji || selectedChild?.emoji || '🧒';
+      const selectedEmoji = esc(selectedChild?.avatar_emoji || selectedChild?.emoji || '🧒');
 
       let filtered = children;
       if (sidebarSearchQuery) {
@@ -4735,7 +4809,7 @@
 
       const optionsHtml = filtered.map(c => {
         const isActive = c.child_id === selectedChild?.child_id;
-        const emoji = c.avatar_emoji || c.emoji || '🧒';
+        const emoji = esc(c.avatar_emoji || c.emoji || '🧒');
         const bal = c.balance != null ? `${formatKr(c.balance)} kr` : '';
         const name = esc(formatChildName(c));
         return `<div class="sidebar-dropdown-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-radius:6px;${isActive ? 'background:var(--flango-light,#fff3e0);font-weight:600;' : ''}">${emoji} <span style="flex:1;">${name}</span> <span style="font-size:11px;opacity:0.6;">${bal}</span></div>`;
@@ -4809,7 +4883,7 @@
     // Normal mode (1-4 children)
     const items = children.map(c => {
       const isActive = c.child_id === selectedChild?.child_id;
-      const emoji = c.avatar_emoji || c.emoji || '🧒';
+      const emoji = esc(c.avatar_emoji || c.emoji || '🧒');
       const bal = c.balance != null ? `${formatKr(c.balance)} kr` : '';
       return `<div class="sidebar-child-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}"><div class="sidebar-child-avatar">${emoji}</div><div><div class="sidebar-child-name">${esc(formatChildName(c))}</div><div class="sidebar-child-saldo">${bal}</div></div></div>`;
     }).join('');
@@ -4962,12 +5036,6 @@
       if (cancelBtn) {
         e.stopPropagation();
         handleEventCancel(cancelBtn.dataset.eventId);
-        return;
-      }
-      const payBtn = e.target.closest('.event-pay-btn[data-event-id]');
-      if (payBtn) {
-        e.stopPropagation();
-        handleEventPay(payBtn.dataset.eventId, Number(payBtn.dataset.eventPrice) || 0);
         return;
       }
     });
@@ -5659,7 +5727,7 @@
       } else if (icon && (icon.startsWith('http') || icon.includes('.webp') || icon.includes('.png'))) {
         iconWrap.innerHTML = '<img src="' + esc(icon) + '" alt="" style="width:24px;height:24px;object-fit:contain">';
       } else if (icon) {
-        iconWrap.innerHTML = '<span style="font-size:18px">' + icon + '</span>';
+        iconWrap.innerHTML = '<span style="font-size:18px">' + esc(icon) + '</span>';
       } else {
         iconWrap.innerHTML = '<span style="font-size:18px">🛒</span>';
       }
@@ -6902,9 +6970,7 @@
     }
     // save-parent-notification kræver en gyldig 'email' (NOT NULL i parent_notifications).
     // Brug forælderens login-e-mail; levering sker til alle linkede forældre-emails.
-    var parentEmail = '';
-    try { parentEmail = window.portalSupabase?.auth?.session?.()?.data?.session?.user?.email || ''; } catch (_e) { /* ignore */ }
-    if (!parentEmail) { try { var _sd = JSON.parse(localStorage.getItem('flango-parent-auth') || '{}'); parentEmail = _sd?.user?.email || _sd?.currentSession?.user?.email || ''; } catch (_e2) { /* ignore */ } }
+    var parentEmail = currentSession?.user?.email || '';
     if (!parentEmail && childData?.notification_settings?.email) parentEmail = childData.notification_settings.email;
     // "Din e-mail"-feltet vinder over login-mailen (gemmes i parent_notifications.email)
     var ownEmailEl = document.getElementById('notif-email');
@@ -6961,7 +7027,7 @@
   async function handleEventRegister(eventId, price) {
     if (!selectedChild) return;
     if (price > 0) {
-      showEventPaymentOverlay(eventId, price, false);
+      showEventPaymentOverlay(eventId, price);
       return;
     }
     // Free event — register directly
@@ -6997,11 +7063,7 @@
     }
   }
 
-  async function handleEventPay(eventId, price) {
-    showEventPaymentOverlay(eventId, price, true);
-  }
-
-  function showEventPaymentOverlay(eventId, price, isPayingExisting) {
+  function showEventPaymentOverlay(eventId, price) {
     const balance = childData?.balance || 0;
     const canPayBalance = balance >= price;
     const childName = getChildName();
@@ -7009,12 +7071,12 @@
     overlay.className = 'event-payment-overlay';
     overlay.innerHTML = `
       <div class="event-payment-modal">
-        <h3>${isPayingExisting ? 'Betal tilmelding' : 'Tilmeld & betal'} — ${formatKr(price)} kr</h3>
+        <h3>Tilmeld & betal — ${formatKr(price)} kr</h3>
         <button class="pay-option" data-method="balance" ${!canPayBalance ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''}>
           <span class="pay-icon">${icon('wallet', 22)}</span>
           <span>Betal med ${esc(childName)}s saldo${canPayBalance ? ' (' + formatKr(balance) + ' kr)' : ' (ikke nok)'}</span>
         </button>
-        <button class="pay-option" data-method="later" ${isPayingExisting ? 'style="display:none"' : ''}>
+        <button class="pay-option" data-method="later">
           <span class="pay-icon">${icon('hourglass', 22)}</span>
           <span>Betal senere</span>
         </button>
@@ -7031,10 +7093,7 @@
         overlay.remove();
         try {
           showToast(method === 'later' ? 'Tilmelder...' : 'Tilmelder og betaler...', '');
-          if (isPayingExisting) {
-            // Pay existing registration with balance
-            await API.registerForEvent(selectedChild.child_id, eventId, true, 'balance');
-          } else if (method === 'balance') {
+          if (method === 'balance') {
             await API.registerForEvent(selectedChild.child_id, eventId, true, 'balance');
           } else {
             // Pay later
@@ -7382,7 +7441,7 @@
     } catch (_) {}
     try {
       const res = await API.confirmTopup(childId, paymentIntentId);
-      if (res && res.new_balance != null) {
+      if (res && res.new_balance != null && selectedChild?.child_id === childId) {
         if (childData) childData.balance = res.new_balance;
         const balEl = document.querySelector('.balance-amount');
         if (balEl) balEl.textContent = formatKr(res.new_balance) + ' kr';
@@ -7425,6 +7484,16 @@
     }
   }
 
+  // Returen åbnede i en anden fane (fx fra MobilePay-appen), så fanens
+  // vipps_pending mangler: spørg pr. barn. vipps-status svarer kun for det barn,
+  // betalingen tilhører (de andre giver 403).
+  async function findVippsChild(reference) {
+    for (const c of (children || [])) {
+      try { await API.getVippsStatus(c.child_id, reference); return c.child_id; } catch (_) { /* ikke dette barn */ }
+    }
+    return null;
+  }
+
   // Retur fra MobilePay: poll status og vis resultat. Kreditering sker server-side
   // (webhook + poll); denne funktion krediterer ALDRIG selv — den slår blot status op.
   async function handleVippsReturn(reference) {
@@ -7432,8 +7501,18 @@
     try { stored = JSON.parse(sessionStorage.getItem('vipps_pending') || 'null'); } catch (_) {}
     const childId = (stored && stored.reference === reference)
       ? stored.child_id
-      : (selectedChild && selectedChild.child_id);
+      : ((await findVippsChild(reference)) || (selectedChild && selectedChild.child_id));
     if (!childId) return;
+
+    // Vis det barn, der blev optanket, før der polles — ellers landede B's nye saldo
+    // i A's saldokort, fordi returen altid åbner på det første barn (18/10, M13).
+    // Samme greb som Stripe-returen.
+    try {
+      if (!selectedChild || selectedChild.child_id !== childId) {
+        const target = (children || []).find(c => c.child_id === childId);
+        if (target) { selectedChild = target; await loadChildData(); renderApp(); }
+      }
+    } catch (_) {}
 
     showToast('Bekræfter MobilePay-betaling...', '');
     for (let i = 0; i < 20; i++) {
@@ -7444,7 +7523,8 @@
         showToast('Betaling gennemført!', 'success');
         try {
           const viewData = await API.getParentView(childId);
-          if (viewData) {
+          // Skiftede forælderen barn undervejs, hører saldoen ikke til kortet.
+          if (viewData && selectedChild?.child_id === childId) {
             childData = viewData;
             const balEl = document.querySelector('.balance-amount');
             if (balEl && childData.balance != null) balEl.textContent = formatKr(childData.balance) + ' kr';
@@ -7516,21 +7596,23 @@
     }
   }
 
+  // Log ud er binært (husets regel): skærmen skifter altid til login, også offline.
+  // API.signOut rydder sessionen lokalt, når serveren ikke svarer, og kaster aldrig.
   async function handleLogout() {
     stopInactivityTimeout();
-    try {
-      // Adgangen til barnet gives fra sig FØR sessionen dør — bagefter er der
-      // ingen token at gøre det med, og linket ville skulle vente på TTL'en.
-      if (isHelpingParent()) await API.revokeMyAdminParentAccess(false);
-      await API.signOut();
-      currentSession = null;
-      children = [];
-      selectedChild = null;
-      renderLogin();
-    } catch (err) {
-      console.error('[Portal] Logout error:', err);
-      showToast('Kunne ikke logge ud', 'error');
+    // Adgangen til barnet gives fra sig FØR sessionen dør — bagefter er der
+    // ingen token at gøre det med, og linket ville skulle vente på TTL'en.
+    // Best-effort med loft: TTL + cron rydder op, hvis kaldet ikke når frem.
+    if (isHelpingParent()) {
+      try {
+        await Promise.race([API.revokeMyAdminParentAccess(false), new Promise(r => setTimeout(r, 4000))]);
+      } catch (err) { console.warn('[Portal] revoke ved log ud:', err); }
     }
+    await API.signOut();
+    currentSession = null;
+    children = [];
+    selectedChild = null;
+    renderLogin();
   }
 
   // ─── Clean product name (strip ::icon:: markup) ───
@@ -7568,7 +7650,7 @@
     }
     // Regular emoji
     if (emoji && emoji.length > 0) {
-      return `<span style="font-size:${size}px">${emoji}</span>`;
+      return `<span style="font-size:${size}px">${esc(emoji)}</span>`;
     }
     // Fallback to icon_url
     if (p.icon_url) {
@@ -7579,11 +7661,14 @@
   }
 
   // ─── HTML escape helper ───
+  // Sikker i både tekst og attributter (value="…", title="…", src="…"). Den gamle
+  // textContent→innerHTML-udgave lod " og ' stå, så et barnenavn som `x" onfocus="…`
+  // brød ud af value-attributten i navneformularen (18/10, M5).
   function esc(str) {
     if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = String(str);
-    return div.innerHTML;
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   // ═══════════════════════════════════════
