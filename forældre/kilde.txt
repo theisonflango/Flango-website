@@ -1,4 +1,4 @@
 # Forældreportalen her er udgivet fra dette commit (scripts/lib/portal-kopi.sh stempel).
-commit 299789702dd913e14a7980873444ac4c4727d263
+commit 7e2c752e8a81cf7db8545d6fff1c914df895f17c
 ucommitteret 0
-tid 2026-10-11T18:32:16+0200
+tid 2026-10-18T16:43:44+0200

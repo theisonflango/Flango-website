@@ -85,11 +85,14 @@
     throw new Error('Supabase URL must not point to localhost in production');
   }
 
-  // Check for recovery token in hash before createClient processes it
-  let __pendingPasswordRecovery = false;
+  // Check for recovery token in hash before createClient processes it.
+  // Flaget SKAL være en window-egenskab: portal-v2.js læser window.__pendingPasswordRecovery,
+  // og et `let` på øverste niveau bliver en global binding uden window-egenskab
+  // (18/10: nulstillingslinket loggede derfor ind uden at bede om en ny kode).
+  window.__pendingPasswordRecovery = false;
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
   if (hashParams.get('type') === 'recovery') {
-    __pendingPasswordRecovery = true;
+    window.__pendingPasswordRecovery = true;
   }
 
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -115,7 +118,7 @@
 
   supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event === "PASSWORD_RECOVERY") {
-      __pendingPasswordRecovery = true;
+      window.__pendingPasswordRecovery = true;
     }
   });
 
@@ -129,12 +132,12 @@
 
 <script src="js/icons.js?v=4"></script>
 <script src="js/portal-image.js?v=1"></script>
-<script src="js/portal-v2-api.js?v=44"></script>
+<script src="js/portal-v2-api.js?v=45"></script>
 <script src="js/consent-texts.js?v=3"></script>
 <script src="js/parent-picture-upload-modal.js?v=3"></script>
 <script src="js/parent-avatar-modal.js?v=3"></script>
 <script src="js/qr.js?v=1"></script>
-<script src="js/portal-v2.js?v=159"></script>
+<script src="js/portal-v2.js?v=160"></script>
 <script>
 // Cookie-banner — portalen bruger lyst tema
 (function() {

@@ -364,9 +364,17 @@
       }).catch(() => { /* best-effort: TTL'en er backstoppet */ });
     },
 
-    /** Update password (for recovery flow) */
-    async updatePassword(newPassword) {
-      const { error } = await window.portalSupabase.auth.updateUser({ password: newPassword });
+    /** Update password (recovery og «Skift adgangskode»). `nonce` = koden fra reauthenticate() */
+    async updatePassword(newPassword, nonce) {
+      const attrs = nonce ? { password: newPassword, nonce: nonce } : { password: newPassword };
+      const { error } = await window.portalSupabase.auth.updateUser(attrs);
+      if (error) throw error;
+    },
+
+    /** Send en engangskode til forælderens e-mail. Prod har «Secure password change»:
+     *  en session over 24 timer gammel skal bekræftes, før koden kan skiftes. */
+    async reauthenticate() {
+      const { error } = await window.portalSupabase.auth.reauthenticate();
       if (error) throw error;
     },
 

@@ -1075,11 +1075,11 @@
             </div>
             <div class="login-field">
               <label for="signup-password">Adgangskode</label>
-              <input type="password" id="signup-password" class="input-field" placeholder="Min. 6 tegn" minlength="6" autocomplete="new-password">
+              <input type="password" id="signup-password" class="input-field" placeholder="Mindst 10 tegn, bogstaver og tal" minlength="10" autocomplete="new-password">
             </div>
             <div class="login-field">
               <label for="signup-password-confirm">Bekræft adgangskode</label>
-              <input type="password" id="signup-password-confirm" class="input-field" placeholder="Gentag adgangskode" minlength="6" autocomplete="new-password">
+              <input type="password" id="signup-password-confirm" class="input-field" placeholder="Gentag adgangskode" minlength="10" autocomplete="new-password">
             </div>
             <div id="turnstile-portal-signup" class="cf-turnstile" data-sitekey="0x4AAAAAACyNOCuIOJjI0pUa" data-theme="light" style="margin-top:var(--s3)"></div>
             <button class="save-btn full" id="signup-email-btn" style="margin-top:var(--s3)">Opret med e-mail</button>`;
@@ -1516,8 +1516,9 @@
       errorEl.classList.add('visible');
       return;
     }
-    if (password.length < 6) {
-      errorEl.textContent = 'Adgangskoden skal være mindst 6 tegn.';
+    const pwProblem = passwordProblem(password);
+    if (pwProblem) {
+      errorEl.textContent = pwProblem;
       errorEl.classList.add('visible');
       return;
     }
@@ -1542,14 +1543,15 @@
         signUpData = await API.signUp(email, password);
       } catch (signUpErr) {
         let msg = signUpErr?.message || '';
-        if (msg.includes('already registered')) {
+        if (msg.includes('already registered') || signUpErr?.code === 'user_already_exists') {
           errorEl.innerHTML = 'Denne e-mail er allerede registreret. <a href="#" id="goto-login-from-error" style="color:var(--info);text-decoration:underline;font-weight:600">Log ind</a> for at tilknytte flere børn.';
           errorEl.classList.add('visible');
           const loginLink = errorEl.querySelector('#goto-login-from-error');
           if (loginLink) loginLink.addEventListener('click', e => { e.preventDefault(); showLoginView('login'); });
           return;
         }
-        errorEl.textContent = msg || 'Kunne ikke oprette konto. Prøv igen.';
+        console.error('[signup] Auth svarede:', signUpErr);
+        errorEl.textContent = authErrorText(signUpErr, 'Kunne ikke oprette kontoen. Prøv igen.');
         errorEl.classList.add('visible');
         return;
       }
@@ -1578,6 +1580,35 @@
     }
   }
 
+  // ─── Adgangskode: samme krav som Supabase Auth i prod ───
+  // Prod (målt 11/10, STATUS): mindst 10 tegn med bogstaver (a–z) og tal, og
+  // kodeord fra kendte datalæk afvises. De to første tjekkes her, så forælderen
+  // får svaret før kaldet; datalæk-tjekket kan kun serveren lave.
+  const PASSWORD_RULE_TEXT = 'Adgangskoden skal være mindst 10 tegn med både bogstaver og tal.';
+
+  function passwordProblem(pw) {
+    if (pw.length < 10 || !/[a-zA-Z]/.test(pw) || !/[0-9]/.test(pw)) return PASSWORD_RULE_TEXT;
+    return null;
+  }
+
+  // Supabase Auth svarer på engelsk. Forælderen skal have grunden på dansk —
+  // ukendte fejl får `fallback`, aldrig den rå engelske tekst.
+  function authErrorText(err, fallback) {
+    const code = err?.code || '';
+    const msg = String(err?.message || '').toLowerCase();
+    const reasons = Array.isArray(err?.reasons) ? err.reasons : [];
+    if (code === 'weak_password' || reasons.length > 0) {
+      if (reasons.includes('length') || reasons.includes('characters')) return PASSWORD_RULE_TEXT;
+      return 'Den adgangskode findes i et kendt datalæk. Vælg en anden.';
+    }
+    if (code === 'same_password') return 'Vælg en anden adgangskode end den, du har nu.';
+    if (code === 'reauthentication_not_valid') return 'Koden passer ikke eller er udløbet. Prøv igen.';
+    if (code.indexOf('over_') === 0 || msg.includes('rate limit')) return 'For mange forsøg. Prøv igen om lidt.';
+    // supabase-js gør session_not_found til AuthSessionMissingError uden kode.
+    if (err?.name === 'AuthSessionMissingError' || code === 'session_expired') return 'Du er blevet logget ud. Log ind igen, eller bed om et nyt link under «Glemt adgangskode?».';
+    return fallback;
+  }
+
   // ═══════════════════════════════════════
   //  RENDER: PASSWORD RECOVERY
   // ═══════════════════════════════════════
@@ -1592,7 +1623,7 @@
           <div class="login-error" id="recovery-error"></div>
           <div class="login-field">
             <label for="recovery-pw">Ny adgangskode</label>
-            <input type="password" id="recovery-pw" class="input-field" placeholder="Mindst 6 tegn" autocomplete="new-password">
+            <input type="password" id="recovery-pw" class="input-field" placeholder="Mindst 10 tegn, bogstaver og tal" autocomplete="new-password">
           </div>
           <div class="login-field">
             <label for="recovery-pw2">Gentag adgangskode</label>
@@ -1606,16 +1637,22 @@
       const pw = document.getElementById('recovery-pw').value;
       const pw2 = document.getElementById('recovery-pw2').value;
       const errorEl = document.getElementById('recovery-error');
-      if (pw.length < 6) { errorEl.textContent = 'Mindst 6 tegn'; errorEl.classList.add('visible'); return; }
-      if (pw !== pw2) { errorEl.textContent = 'Adgangskoderne matcher ikke'; errorEl.classList.add('visible'); return; }
+      const pwProblem = passwordProblem(pw);
+      if (pwProblem) { errorEl.textContent = pwProblem; errorEl.classList.add('visible'); return; }
+      if (pw !== pw2) { errorEl.textContent = 'Adgangskoderne er ikke ens.'; errorEl.classList.add('visible'); return; }
+      errorEl.classList.remove('visible');
+      const btn = document.getElementById('recovery-btn');
+      btn.disabled = true;
       try {
         await API.updatePassword(pw);
         window.__pendingPasswordRecovery = false;
-        showToast('Adgangskode opdateret!', 'success');
+        showToast('Din nye adgangskode er gemt', 'success');
         await loadChildren();
       } catch (err) {
-        errorEl.textContent = 'Kunne ikke opdatere adgangskoden';
+        console.error('[Portal] recovery updatePassword:', err);
+        errorEl.textContent = authErrorText(err, 'Adgangskoden blev ikke gemt. Prøv igen.');
         errorEl.classList.add('visible');
+        btn.disabled = false;
       }
     });
   }
@@ -2645,6 +2682,23 @@
           return `<div class="tx-row"><div class="tx-icon adjust">${icon('sliders-horizontal', 18)}</div><div class="tx-info"><div class="tx-title">${esc(tx.description || 'Indstilling ændret')}</div><div class="tx-date">${esc(date)}${hvem}</div></div></div>`;
         }
 
+        // Overførsel mellem søskende. get-parent-view sender i dag samme linje til
+        // afsender og modtager (description = 'BALANCE_TRANSFER', beløbet positivt)
+        // — retningen ligger i hændelsens details, men sendes ikke med. Uden den
+        // vises beløbet uden fortegn; 18/10 stod det som «−1 kr» hos begge børn.
+        // Sender serveren direction ('in'/'out') og counterpart_name, bruges de.
+        if (type === 'BALANCE_TRANSFER') {
+          const amt = Math.abs(parseFloat(tx.amount || 0));
+          const dir = tx.direction === 'in' || tx.direction === 'out' ? tx.direction : null;
+          const other = tx.counterpart_name ? String(tx.counterpart_name) : '';
+          const title = dir === 'in' ? (other ? `Overført fra ${other}` : 'Overførsel ind')
+            : dir === 'out' ? (other ? `Overført til ${other}` : 'Overførsel ud')
+            : 'Overførsel';
+          const cls = dir === 'in' ? 'positive' : 'negative';
+          const sign = dir === 'in' ? '+' : dir === 'out' ? '-' : '';
+          return `<div class="tx-row"><div class="tx-icon adjust">${icon('arrow-left-right', 18)}</div><div class="tx-info"><div class="tx-title">${esc(title)}</div><div class="tx-date">${esc(date)}</div></div><div class="tx-amount ${cls}">${sign}${formatKr(amt)} kr</div></div>`;
+        }
+
         let txIcon = 'cup-soda', iconCls = 'purchase', amountCls = 'negative', sign = '-';
         if (type === 'DEPOSIT' || type === 'TOPUP') { txIcon = 'credit-card'; iconCls = 'topup'; amountCls = 'positive'; sign = '+'; }
         else if (type === 'BALANCE_EDIT' || type === 'ADJUSTMENT') { txIcon = 'sliders-horizontal'; iconCls = 'adjust'; amountCls = parseFloat(tx.amount) >= 0 ? 'positive' : 'negative'; sign = parseFloat(tx.amount) >= 0 ? '+' : '-'; }
@@ -2690,7 +2744,7 @@
     return `
       <div class="section" id="section-sortiment">
         <div class="section-header">
-          <div class="section-title-row">${sectionIcon('clipboard-list', 'positive')}<div><div class="section-title">Dagens sortiment</div><div class="section-subtitle">Hvad kan købes i cafeen</div></div></div>
+          <div class="section-title-row">${sectionIcon('clipboard-list', 'positive')}<div><div class="section-title">Dagens sortiment</div><div class="section-subtitle">Hvad kan købes i caféen</div></div></div>
           ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
@@ -2810,7 +2864,7 @@
   }
 
   function transferOption(c, selected) {
-    return `<option value="${esc(c.child_id)}"${selected ? ' selected' : ''}>${esc(c.child_name)} · ${Number(c.balance ?? 0).toFixed(2)} kr</option>`;
+    return `<option value="${esc(c.child_id)}"${selected ? ' selected' : ''}>${esc(c.child_name)} · ${formatKr(Number(c.balance ?? 0))} kr</option>`;
   }
 
   function renderTransferSection() {
@@ -2854,7 +2908,7 @@
           </div>
           <div style="margin-top:var(--s3)">
             <div class="setting-label" style="margin-bottom:6px">Beløb</div>
-            <input type="number" id="transfer-amount" class="input-field" style="width:100%" inputmode="decimal" min="1" step="1" max="${fromBal.toFixed(2)}" placeholder="Beløb i kr (maks ${fromBal.toFixed(2)})">
+            <input type="number" id="transfer-amount" class="input-field" style="width:100%" inputmode="decimal" min="1" step="1" max="${fromBal.toFixed(2)}" placeholder="Beløb i kr (maks ${formatKr(fromBal)})">
           </div>
           <div id="transfer-preview" style="display:none;margin-top:var(--s3);padding:10px 12px;border-radius:var(--r-md);background:var(--surface-sunken);font-size:13px;color:var(--ink-soft)"></div>
           <button class="save-btn" id="transfer-btn" style="width:100%;margin-top:var(--s3)">Overfør</button>
@@ -2877,7 +2931,7 @@
       if (preferToId && list.some(c => c.child_id === preferToId)) toEl.value = preferToId;
       const fromBal = Number(childById(fromEl.value)?.balance ?? 0);
       amtEl.max = fromBal.toFixed(2);
-      amtEl.placeholder = `Beløb i kr (maks ${fromBal.toFixed(2)})`;
+      amtEl.placeholder = `Beløb i kr (maks ${formatKr(fromBal)})`;
     };
     const updatePreview = () => {
       const prev = document.getElementById('transfer-preview');
@@ -2888,8 +2942,8 @@
       const fromAfter = Number(from.balance ?? 0) - amt, toAfter = Number(to.balance ?? 0) + amt;
       prev.style.display = 'block';
       prev.innerHTML = fromAfter < 0
-        ? `<span style="color:#dc2626">${esc(from.child_name)} har kun ${Number(from.balance ?? 0).toFixed(2)} kr</span>`
-        : `Efter: <strong>${esc(from.child_name)}</strong> ${fromAfter.toFixed(2)} kr &nbsp;·&nbsp; <strong>${esc(to.child_name)}</strong> ${toAfter.toFixed(2)} kr`;
+        ? `<span style="color:#dc2626">${esc(from.child_name)} har kun ${formatKr(Number(from.balance ?? 0))} kr</span>`
+        : `Efter: <strong>${esc(from.child_name)}</strong> ${formatKr(fromAfter)} kr &nbsp;·&nbsp; <strong>${esc(to.child_name)}</strong> ${formatKr(toAfter)} kr`;
     };
 
     fromEl.addEventListener('change', () => { repopulateTo(); updatePreview(); });
@@ -2939,7 +2993,7 @@
 
     const ok = await showConfirmModal({
       title: 'Bekræft overførsel',
-      body: `Flyt ${amount.toFixed(2)} kr fra ${from?.child_name || ''} til ${to?.child_name || ''}?\n\nPengene bliver på institutionen — du flytter dem kun mellem dine egne børn.`,
+      body: `Flyt ${formatKr(amount)} kr fra ${from?.child_name || ''} til ${to?.child_name || ''}?\n\nPengene bliver på institutionen — du flytter dem kun mellem dine egne børn.`,
       confirm: 'Overfør', cancel: 'Annullér', danger: false,
     });
     if (!ok) return;
@@ -2986,14 +3040,15 @@
     return `
       <div class="section" id="section-spending-limit">
         <div class="section-header">
-          <div class="section-title-row">${sectionIcon('hand-coins', 'flango')}<div><div class="section-title">Daglig beløbsgrænse</div><div class="section-subtitle">Maks forbrug per dag</div></div></div>
+          <div class="section-title-row">${sectionIcon('hand-coins', 'flango')}<div><div class="section-title">Daglig beløbsgrænse</div><div class="section-subtitle">Maks forbrug pr. dag</div></div></div>
           ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${instLimit ? `<div class="hint-box info" style="margin-bottom:var(--s3)">${hintIcon('school')}<span>Institutionens daglige grænse: <strong>${formatKr(instLimit)} kr</strong></span></div>` : ''}
-          ${limit ? `<div class="hint-box green" style="margin-bottom:var(--s3)">${hintIcon('user-round')}<span>Din daglige grænse: <strong>${formatKr(limit)} kr</strong></span></div>` : ''}
+          <div class="hint-box green" id="daily-limit-own" style="margin-bottom:var(--s3);${limit ? '' : 'display:none'}">${hintIcon('user-round')}<span>Din daglige grænse: <strong>${limit ? formatKr(limit) : ''} kr</strong></span></div>
           <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s2)">Vælg hvor meget ${esc(getChildName())} maksimalt må bruge om dagen. Den strengeste grænse (din eller institutionens) gælder altid.</p>
           <div class="chip-group" id="spending-limit-chips">
+            <button class="chip${!limit ? ' active' : ''}" data-limit="none">Ingen grænse</button>
             <button class="chip${limit == 20 ? ' active' : ''}" data-limit="20">20 kr</button>
             <button class="chip${limit == 30 ? ' active' : ''}" data-limit="30">30 kr</button>
             <button class="chip${limit == 40 ? ' active' : ''}" data-limit="40">40 kr</button>
@@ -3004,7 +3059,7 @@
             <input type="number" inputmode="numeric" min="1" max="1000" id="limit-custom-input" class="input-field" placeholder="Indtast beløb i kr (1-1000)" value="${isCustomLimit ? esc(String(limit)) : ''}" style="flex:1;margin:0">
             <button class="save-btn compact" id="limit-custom-save" style="white-space:nowrap;padding:10px 16px">Gem</button>
           </div>
-          <div class="hint-box neutral" style="margin-top:var(--s3)">${hintIcon('lightbulb')}<span>${esc(getChildName())} kan stadig købe, men cafeen giver besked hvis grænsen overskrides.</span></div>
+          <div class="hint-box neutral" style="margin-top:var(--s3)">${hintIcon('lightbulb')}<span>Når grænsen er nået, kan ${esc(getChildName())} ikke købe mere i caféen den dag.</span></div>
         </div></div></div>
       </div>`;
   }
@@ -3344,7 +3399,7 @@
             ${adminSimLockedHint()}
           </div>
           <div id="privacy-delete-account-confirm" style="display:none">
-            <p style="margin:0 0 var(--s2);font-weight:600">Er du sikker? Skriv din e-mailadresse for at bekraefte:</p>
+            <p style="margin:0 0 var(--s2);font-weight:600">Er du sikker? Skriv din e-mailadresse for at bekræfte:</p>
             <div style="display:flex;gap:var(--s2);align-items:center">
               <input type="text" id="privacy-delete-account-email-input" placeholder="${esc(parentEmail || 'din e-mailadresse')}" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:14px" />
               <button class="save-btn" id="privacy-confirm-delete-account-btn" style="background:var(--negative,#dc2626);color:#fff;padding:8px 16px">Bekræft</button>
@@ -4061,6 +4116,12 @@
 
   function renderNotificationsSection() {
     const notif = childData?.notification_settings || {};
+    // Saldo-advarslerne sendes KUN til en gemt række (portal_balance_alert_rows_service
+    // læser portal.parent_notifications; én række pr. barn). Uden række er de altså
+    // slået fra — og skal vises sådan. 18/10 stod de «til», før nogen havde gemt,
+    // så forælderen troede, der kom besked.
+    const hasNotifRow = !!childData?.notification_settings;
+    const alertOn = (key) => hasNotifRow && notif[key] !== false;
     // Get parent login email from session
     var parentEmail = '';
     try { parentEmail = window.portalSupabase?.auth?.session?.()?.data?.session?.user?.email || ''; } catch (_e) { /* ignore */ }
@@ -4085,7 +4146,7 @@
     const pushLock = pushLocked ? ' ' + icon('lock', 11, 'ico-inline') : '';
     const pushHint = pushLocked
       ? `<div class="hint-box warn" style="margin-bottom:var(--s3)">${hintIcon('lock')}<span>Push kan kun slås til fra forælderens egen telefon — beskeden sendes til den enhed, appen er installeret på. Brug e-mail-påmindelserne nedenfor i stedet.</span></div>`
-      : (API.isNativeApp() ? '' : `<div class="hint-box neutral" style="margin-bottom:var(--s3)">${hintIcon('smartphone')}<span>Push-notifikationer vises på alle dine enheder med Flango Portal-appen.</span></div>`);
+      : (API.isNativeApp() ? '' : `<div class="hint-box neutral" style="margin-bottom:var(--s3)">${hintIcon('smartphone')}<span>Push-notifikationer vises på alle dine enheder med Flango Forældre-appen.</span></div>`);
     // Under-kontakter: institutionen kan slå enkelte påmindelsestyper fra uden at
     // slukke hele notifikations-kortet. I admin-preview vises rækkerne altid (grå).
     const notifBalanceOn = subOn(childData?.institution?.parent_portal_notify_balance !== false);
@@ -4104,8 +4165,8 @@
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
           ${pushHint}${API.isNativeApp() ? `<div class="setting-row"><div class="setting-info"><div class="setting-label">Notifikationer på denne telefon</div><div class="setting-desc">Vises på låseskærmen — indholdet ser du i appen</div></div><label class="toggle"><input type="checkbox" id="notif-push-device" ${API.isPushEnabledOnThisDevice() ? 'checked' : ''}><span class="toggle-track"></span></label></div>
           <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)"></div>` : ''}
-          ${notifBalanceOn ? `<div class="setting-row" data-sub="notify_balance"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr${pushLock}</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="push-zero" ${notif.push_at_zero !== false ? 'checked' : ''}${pushDis}><span class="toggle-track"></span></label></div>
-          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under${pushLock}</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="push-low" ${notif.push_at_ten !== false ? 'checked' : ''}${pushDis}><span class="toggle-track"></span></label></div>` : ''}
+          ${notifBalanceOn ? `<div class="setting-row" data-sub="notify_balance"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr${pushLock}</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="push-zero" ${alertOn('push_at_zero') ? 'checked' : ''}${pushDis}><span class="toggle-track"></span></label></div>
+          <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under${pushLock}</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="push-low" ${alertOn('push_at_ten') ? 'checked' : ''}${pushDis}><span class="toggle-track"></span></label></div>` : ''}
           ${notifEventsOn ? `<div class="setting-row" data-sub="notify_events"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer${pushLock}</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="push-event-reminder" ${notif.push_event_reminder === true ? 'checked' : ''}${pushDis}><span class="toggle-track"></span></label></div>
           <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding${pushLock}</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="push-event-invite" ${notif.push_event_invite === true ? 'checked' : ''}${pushDis}><span class="toggle-track"></span></label></div>` : ''}
         </div></div></div>
@@ -4132,8 +4193,8 @@
             </div>
           </div>` : ''}
           <div style="border-top:1px solid var(--border);margin-top:var(--s3);padding-top:var(--s3)">
-            ${notifBalanceOn ? `<div class="setting-row" data-sub="notify_balance"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${notif.notify_at_zero !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>
-            <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${notif.notify_at_ten !== false ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
+            ${notifBalanceOn ? `<div class="setting-row" data-sub="notify_balance"><div class="setting-info"><div class="setting-label">Når saldoen er 0 kr</div><div class="setting-desc">Få besked når saldoen er opbrugt</div></div><label class="toggle"><input type="checkbox" id="notif-zero" ${alertOn('notify_at_zero') ? 'checked' : ''}><span class="toggle-track"></span></label></div>
+            <div class="setting-row"><div class="setting-info"><div class="setting-label">Når saldoen er 10 kr eller under</div><div class="setting-desc">Advarsel før saldoen løber tør</div></div><label class="toggle"><input type="checkbox" id="notif-low" ${alertOn('notify_at_ten') ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
             ${notifEventsOn ? `<div class="setting-row" data-sub="notify_events"><div class="setting-info"><div class="setting-label">Påmindelse før arrangementer</div><div class="setting-desc">7 og 1 dag før et arrangement dit barn er tilmeldt</div></div><label class="toggle"><input type="checkbox" id="notif-event-reminder" ${notif.notify_event_reminder === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>
             <div class="setting-row"><div class="setting-info"><div class="setting-label">Mind mig om tilmelding</div><div class="setting-desc">Besked hvis dit barn stadig kan nå at tilmelde et kommende arrangement</div></div><label class="toggle"><input type="checkbox" id="notif-event-invite" ${notif.notify_event_invite === true ? 'checked' : ''}><span class="toggle-track"></span></label></div>` : ''}
           </div>
@@ -4150,7 +4211,7 @@
             <p style="font-size:13px;color:var(--ink-soft);margin-bottom:var(--s3)">Hjælp os med at gøre Flango bedre — eller rapportér en fejl.</p>
             <textarea class="feedback-textarea" id="fb-flango-text" placeholder="Beskriv problemet eller din ide..." rows="4"></textarea>
             <input type="email" id="fb-flango-email" class="input-field" placeholder="Din e-mail (valgfrit — så vi kan svare)" style="margin-top:var(--s2)">
-            <div class="hint-box neutral" style="margin:var(--s3) 0">${hintIcon('lock')}<span>Din besked sendes til Flangos support. Uden e-mail er den anonym.</span></div>
+            <div class="hint-box neutral" style="margin:var(--s3) 0">${hintIcon('lock')}<span>Din besked sendes til Flangos support med dit barns fornavn og institution. Skriv din e-mail, hvis du vil have svar.</span></div>
             <button class="save-btn full" id="fb-flango-send">Send til Flango</button>`;
     const bodyInner = showInstitutionFeedback ? `
           <div class="feedback-tabs" id="feedback-tabs">
@@ -4376,14 +4437,18 @@
     const body = locked
       ? `<div class="hint-box warn" style="margin-top:var(--s2)">${hintIcon('lock')}<span>Adgangskoden hører til forælderens egen konto og kan ikke ændres herfra — denne visning er logget ind på institutionens konto. Har forælderen glemt sin kode, kan de bede om et nulstillingslink på login-siden.</span></div>`
       : `<div style="display:flex;flex-direction:column;gap:var(--s2);margin-top:var(--s2)">
-            <input type="password" id="pin-new" class="input-field" placeholder="Ny adgangskode (mindst 6 tegn)">
-            <input type="password" id="pin-confirm" class="input-field" placeholder="Gentag ny adgangskode">
+            <input type="password" id="pin-new" class="input-field" placeholder="Ny adgangskode" autocomplete="new-password">
+            <input type="password" id="pin-confirm" class="input-field" placeholder="Gentag ny adgangskode" autocomplete="new-password">
+            <div id="pin-reauth" style="display:none;flex-direction:column;gap:var(--s2)">
+              <div class="hint-box blue">${hintIcon('mail')}<span id="pin-reauth-text">Vi har sendt en kode til din e-mail. Skriv den her, så gemmer vi din nye adgangskode.</span></div>
+              <input type="text" id="pin-reauth-code" class="input-field" placeholder="Kode fra e-mailen" inputmode="numeric" autocomplete="one-time-code">
+            </div>
             <button class="save-btn full" id="pin-save-btn" style="margin-top:var(--s1)">Gem ny adgangskode</button>
           </div>`;
     return `
       <div class="section" id="section-pin">
         <div class="section-header">
-          <div class="section-title-row">${sectionIcon('key-round', 'neutral')}<div><div class="section-title">Skift adgangskode${locked ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="section-subtitle">${locked ? 'Kun forælderen selv' : 'Minimum 6 tegn'}</div></div></div>
+          <div class="section-title-row">${sectionIcon('key-round', 'neutral')}<div><div class="section-title">Skift adgangskode${locked ? ' ' + icon('lock', 11, 'ico-inline') : ''}</div><div class="section-subtitle">${locked ? 'Kun forælderen selv' : 'Mindst 10 tegn med bogstaver og tal'}</div></div></div>
           ${icon('chevron-down', 20, 'section-chevron')}
         </div>
         <div class="section-body"><div class="section-body-inner"><div class="section-content">
@@ -5001,6 +5066,9 @@
               const inp = document.getElementById('limit-custom-input');
               if (inp) setTimeout(() => inp.focus(), 50);
             }
+          } else if (limit === 'none' && selectedChild) {
+            if (wrap) wrap.style.display = 'none';
+            saveDailyLimit(null);
           } else if (limit && selectedChild) {
             if (wrap) wrap.style.display = 'none';
             saveDailyLimit(Number(limit));
@@ -5092,150 +5160,11 @@
     if (dietVeg) dietVeg.addEventListener('change', () => saveSugarPolicy());
     if (dietPork) dietPork.addEventListener('change', () => saveSugarPolicy());
 
-    // Profile picture consent toggles — Sektion 5b/c (runde 2):
-    // Disse toggles er nu det ENESTE styrings-sted. De skriver via
-    // give_consent / withdraw_consent (parent_consents source of truth)
-    // i stedet for legacy save_profile_picture_consent.
-    const ppMaster = document.getElementById('pp-consent-master');
-    const ppAula = document.getElementById('pp-consent-aula');
-    const ppCamera = document.getElementById('pp-consent-camera');
-    const ppAi = document.getElementById('pp-consent-ai');
-    const ppAiReadmore = document.getElementById('pp-ai-readmore-btn');
-
-    if (ppMaster) ppMaster.addEventListener('change', (e) => handleMasterToggle(e));
-    if (ppAula) ppAula.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_aula', 'aula'));
-    const ppUpload = document.getElementById('pp-consent-upload');
-    if (ppUpload) ppUpload.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_upload', 'upload'));
-    if (ppCamera) ppCamera.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_camera', 'camera'));
-    if (ppAi) ppAi.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_ai_openai', 'ai'));
-    const ppAiStaff = document.getElementById('pp-consent-ai-staff');
-    if (ppAiStaff) ppAiStaff.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_ai_staff', 'ai_staff'));
-    if (ppAiReadmore) ppAiReadmore.addEventListener('click', () => openAiLayer2Modal(false));
-
-    // Forælder-upload consent toggle
-    const ppParentUpload = document.getElementById('pp-consent-parent-upload');
-    if (ppParentUpload) ppParentUpload.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_parent_upload', 'parent_upload'));
+    bindProfilePictureSection(document);
 
     // Personligt spilkonto-login (eksplicit opt-in pr. spil)
     document.querySelectorAll('.game-account-consent').forEach((el) => {
       el.addEventListener('change', (e) => handleGameLoginConsentToggle(e));
-    });
-
-    // Forælder-upload knap → åbn modal
-    const ppUploadBtn = document.getElementById('pp-upload-btn');
-    if (ppUploadBtn) {
-      ppUploadBtn.addEventListener('click', () => {
-        if (!selectedChild) return;
-        if (demoBlocked()) return;
-        if (!window.PortalParentPictureUpload) {
-          showToast('Upload-modul ikke indlæst', 'error');
-          return;
-        }
-        window.PortalParentPictureUpload.open({
-          institutionId: selectedChild.institution_id,
-          childId: selectedChild.child_id,
-          childName: getChildName(),
-          onUploaded: async (result) => {
-            if (result?.success) {
-              showToast('Billedet er sendt til godkendelse', 'success');
-              await loadChildData();
-              renderApp();
-            } else {
-              showToast(result?.error || 'Upload fejlede', 'error');
-            }
-          },
-        });
-      });
-    }
-
-    // AI-avatar knap → åbn genererings-modal (3 trin: foto → info → generér)
-    const ppAvatarBtn = document.getElementById('pp-generate-avatar-btn');
-    if (ppAvatarBtn) {
-      ppAvatarBtn.addEventListener('click', () => {
-        if (!selectedChild) return;
-        if (demoBlocked()) return;
-        if (!window.PortalParentAvatar) {
-          showToast('Avatar-modul ikke indlæst', 'error');
-          return;
-        }
-        window.PortalParentAvatar.open({
-          institutionId: selectedChild.institution_id,
-          childId: selectedChild.child_id,
-          childName: getChildName(),
-          promptText: childData?.avatar_prompt_text || '',
-          rate: childData?.avatar_rate || null,
-          exampleUrl: 'assets/avatar-example.webp',
-          onSubmitted: async () => {
-            showToast('Avataren er sendt til godkendelse', 'success');
-            await loadChildData();
-            renderApp();
-          },
-        });
-      });
-    }
-
-    // Profile picture gallery: "Brug" button to set active
-    document.querySelectorAll('.pp-activate-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const picId = btn.dataset.picId;
-        if (!picId || !selectedChild) return;
-        if (!confirm('Brug dette billede som profilbillede?')) return;
-        try {
-          await API.manageProfilePicture(selectedChild.child_id, 'set_active', picId);
-          showToast('Profilbillede opdateret', 'success');
-          await loadChildData();
-          renderApp();
-        } catch (err) {
-          console.error('[Portal] Set active picture error:', err);
-          showToast('Kunne ikke opdatere', 'error');
-        }
-      });
-    });
-
-    // Profile picture gallery: "✕" button to delete
-    document.querySelectorAll('.pp-delete-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const picId = btn.dataset.picId;
-        if (!picId || !selectedChild) return;
-        if (!confirm('Vil du slette dette billede permanent?')) return;
-        try {
-          await API.manageProfilePicture(selectedChild.child_id, 'delete', picId);
-          showToast('Billede slettet', 'success');
-          await loadChildData();
-          renderApp();
-        } catch (err) {
-          console.error('[Portal] Delete picture error:', err);
-          showToast('Kunne ikke slette', 'error');
-        }
-      });
-    });
-
-    // Profile picture download buttons
-    document.querySelectorAll('.pp-download-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation(); // Don't trigger gallery item click
-        const url = btn.dataset.picUrl;
-        if (!url) return;
-        try {
-          const resp = await fetch(url);
-          const blob = await resp.blob();
-          const ext = blob.type === 'image/png' ? '.png' : '.webp';
-          const childName = (getChildName() || 'profilbillede').replace(/[\/\\:*?"<>|]/g, '_');
-          const picType = btn.dataset.picType || '';
-          const fileName = `${childName}${picType ? '_' + picType : ''}${ext}`;
-          const dlUrl = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = dlUrl; a.download = fileName;
-          document.body.appendChild(a); a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(dlUrl);
-        } catch (err) {
-          console.error('[Portal] Download fejl:', err);
-          showToast('Kunne ikke downloade', 'error');
-        }
-      });
     });
 
     // ─── Privacy & Rights event listeners ───
@@ -5318,6 +5247,153 @@
 
     // Add child modal triggers
     bindAddChildModal();
+  }
+
+  // Profilbilleder-sektionens egne handlere. Bindes fra bindEvents og igen, når
+  // sektionen tegnes om på stedet (rerenderProfileAndConsentSections) — derfor kun
+  // inden for `scope`: et nyt bindEvents() ville binde HELE portalen to gange
+  // (18/10: allergen sprang to trin, betaling/feedback/slet konto blev sendt to gange).
+  function bindProfilePictureSection(scope) {
+    // Profile picture consent toggles — Sektion 5b/c (runde 2):
+    // Disse toggles er nu det ENESTE styrings-sted. De skriver via
+    // give_consent / withdraw_consent (parent_consents source of truth)
+    // i stedet for legacy save_profile_picture_consent.
+    const ppMaster = scope.querySelector('#pp-consent-master');
+    const ppAula = scope.querySelector('#pp-consent-aula');
+    const ppCamera = scope.querySelector('#pp-consent-camera');
+    const ppAi = scope.querySelector('#pp-consent-ai');
+    const ppAiReadmore = scope.querySelector('#pp-ai-readmore-btn');
+
+    if (ppMaster) ppMaster.addEventListener('change', (e) => handleMasterToggle(e));
+    if (ppAula) ppAula.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_aula', 'aula'));
+    const ppUpload = scope.querySelector('#pp-consent-upload');
+    if (ppUpload) ppUpload.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_upload', 'upload'));
+    if (ppCamera) ppCamera.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_camera', 'camera'));
+    if (ppAi) ppAi.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_ai_openai', 'ai'));
+    const ppAiStaff = scope.querySelector('#pp-consent-ai-staff');
+    if (ppAiStaff) ppAiStaff.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_ai_staff', 'ai_staff'));
+    if (ppAiReadmore) ppAiReadmore.addEventListener('click', () => openAiLayer2Modal(false));
+
+    // Forælder-upload consent toggle
+    const ppParentUpload = scope.querySelector('#pp-consent-parent-upload');
+    if (ppParentUpload) ppParentUpload.addEventListener('change', (e) => handleProfilePictureConsentToggle(e, 'profile_picture_parent_upload', 'parent_upload'));
+
+    // Forælder-upload knap → åbn modal
+    const ppUploadBtn = scope.querySelector('#pp-upload-btn');
+    if (ppUploadBtn) {
+      ppUploadBtn.addEventListener('click', () => {
+        if (!selectedChild) return;
+        if (demoBlocked()) return;
+        if (!window.PortalParentPictureUpload) {
+          showToast('Upload-modul ikke indlæst', 'error');
+          return;
+        }
+        window.PortalParentPictureUpload.open({
+          institutionId: selectedChild.institution_id,
+          childId: selectedChild.child_id,
+          childName: getChildName(),
+          onUploaded: async (result) => {
+            if (result?.success) {
+              showToast('Billedet er sendt til godkendelse', 'success');
+              await loadChildData();
+              renderApp();
+            } else {
+              showToast(result?.error || 'Upload fejlede', 'error');
+            }
+          },
+        });
+      });
+    }
+
+    // AI-avatar knap → åbn genererings-modal (3 trin: foto → info → generér)
+    const ppAvatarBtn = scope.querySelector('#pp-generate-avatar-btn');
+    if (ppAvatarBtn) {
+      ppAvatarBtn.addEventListener('click', () => {
+        if (!selectedChild) return;
+        if (demoBlocked()) return;
+        if (!window.PortalParentAvatar) {
+          showToast('Avatar-modul ikke indlæst', 'error');
+          return;
+        }
+        window.PortalParentAvatar.open({
+          institutionId: selectedChild.institution_id,
+          childId: selectedChild.child_id,
+          childName: getChildName(),
+          promptText: childData?.avatar_prompt_text || '',
+          rate: childData?.avatar_rate || null,
+          exampleUrl: 'assets/avatar-example.webp',
+          onSubmitted: async () => {
+            showToast('Avataren er sendt til godkendelse', 'success');
+            await loadChildData();
+            renderApp();
+          },
+        });
+      });
+    }
+
+    // Profile picture gallery: "Brug" button to set active
+    scope.querySelectorAll('.pp-activate-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const picId = btn.dataset.picId;
+        if (!picId || !selectedChild) return;
+        if (!confirm('Brug dette billede som profilbillede?')) return;
+        try {
+          await API.manageProfilePicture(selectedChild.child_id, 'set_active', picId);
+          showToast('Profilbillede opdateret', 'success');
+          await loadChildData();
+          renderApp();
+        } catch (err) {
+          console.error('[Portal] Set active picture error:', err);
+          showToast('Kunne ikke opdatere', 'error');
+        }
+      });
+    });
+
+    // Profile picture gallery: "✕" button to delete
+    scope.querySelectorAll('.pp-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const picId = btn.dataset.picId;
+        if (!picId || !selectedChild) return;
+        if (!confirm('Vil du slette dette billede permanent?')) return;
+        try {
+          await API.manageProfilePicture(selectedChild.child_id, 'delete', picId);
+          showToast('Billede slettet', 'success');
+          await loadChildData();
+          renderApp();
+        } catch (err) {
+          console.error('[Portal] Delete picture error:', err);
+          showToast('Kunne ikke slette', 'error');
+        }
+      });
+    });
+
+    // Profile picture download buttons
+    scope.querySelectorAll('.pp-download-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation(); // Don't trigger gallery item click
+        const url = btn.dataset.picUrl;
+        if (!url) return;
+        try {
+          const resp = await fetch(url);
+          const blob = await resp.blob();
+          const ext = blob.type === 'image/png' ? '.png' : '.webp';
+          const childName = (getChildName() || 'profilbillede').replace(/[\/\\:*?"<>|]/g, '_');
+          const picType = btn.dataset.picType || '';
+          const fileName = `${childName}${picType ? '_' + picType : ''}${ext}`;
+          const dlUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = dlUrl; a.download = fileName;
+          document.body.appendChild(a); a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(dlUrl);
+        } catch (err) {
+          console.error('[Portal] Download fejl:', err);
+          showToast('Kunne ikke downloade', 'error');
+        }
+      });
+    });
   }
 
   function bindAddChildModal() {
@@ -5846,14 +5922,30 @@
       if (childData) childData.daily_spend_limit = limit;
       if (selectedChild) selectedChild.daily_spend_limit = limit;
       // Opdatér "Din daglige grænse"-boksen straks — ellers stod den gamle værdi og
-      // fik gemningen til at se ud som om den fejlede.
-      const limitHint = document.querySelector('#section-spending-limit .hint-box.green strong');
-      if (limitHint && limit != null) limitHint.textContent = `${formatKr(limit)} kr`;
-      showToast('Daglig grænse gemt', 'success');
+      // fik gemningen til at se ud som om den fejlede. Boksen tegnes altid (skjult
+      // uden grænse), så den også kommer frem første gang, en grænse sættes.
+      const ownBox = document.getElementById('daily-limit-own');
+      if (ownBox) {
+        if (limit != null) ownBox.querySelector('strong').textContent = `${formatKr(limit)} kr`;
+        ownBox.style.display = limit != null ? '' : 'none';
+      }
+      showToast(limit != null ? 'Daglig grænse gemt' : 'Grænsen er fjernet', 'success');
     } catch (err) {
       console.error('[Portal] Save daily limit error:', err);
-      showToast('Kunne ikke gemme grænse', 'error');
+      // Chippen blev markeret ved klikket — vis igen det, der faktisk er gemt.
+      syncDailyLimitChips(childData?.daily_spend_limit ?? selectedChild?.daily_spend_limit ?? null);
+      showToast('Grænsen blev ikke gemt. Prøv igen.', 'error');
     }
+  }
+
+  function syncDailyLimitChips(limit) {
+    const group = document.getElementById('spending-limit-chips');
+    if (!group) return;
+    const presets = ['20', '30', '40', '50'];
+    const key = !limit ? 'none' : presets.includes(String(Number(limit))) ? String(Number(limit)) : 'custom';
+    group.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.limit === key));
+    const wrap = document.getElementById('limit-custom-wrap');
+    if (wrap) wrap.style.display = key === 'custom' ? 'flex' : 'none';
   }
 
   // ─── Skærmtid: personlige grænser + samtykke ───
@@ -5968,11 +6060,32 @@
 
     try {
       await API.saveSugarPolicy(selectedChild.child_id, policy);
+      // Det gemte er nu det, en senere fejl skal rulles tilbage til.
+      if (childData) {
+        childData.sugar_policy = Object.assign({}, childData.sugar_policy, policy, {
+          max_unhealthy_per_day: policy.max_unhealthy_per_day ?? null,
+          max_unhealthy_per_product_per_day: policy.max_unhealthy_per_product_per_day ?? null,
+        });
+      }
       showToast('Kostindstillinger gemt', 'success');
     } catch (err) {
       console.error('[Portal] Save sugar policy error:', err);
-      showToast('Kunne ikke gemme', 'error');
+      // Rul kontrollerne tilbage til det sidst gemte: 18/10 stod «Ingen svinekød»
+      // som slået til efter en 403, og forælderen troede, det var spærret.
+      applySugarPolicyControls(childData?.sugar_policy || {});
+      showToast('Det blev ikke gemt. Prøv igen.', 'error');
     }
+  }
+
+  function applySugarPolicyControls(sp) {
+    const setChecked = (id, on) => { const el = document.getElementById(id); if (el) el.checked = !!on; };
+    setChecked('sugar-block-toggle', sp.block_unhealthy);
+    setChecked('diet-vegetarian', sp.vegetarian_only);
+    setChecked('diet-no-pork', sp.no_pork);
+    const maxDayEl = document.querySelector('#sugar-max-stepper .stepper-val');
+    if (maxDayEl) maxDayEl.textContent = sp.max_unhealthy_per_day ?? '∞';
+    const maxPerEl = document.querySelector('#sugar-per-product-stepper .stepper-val');
+    if (maxPerEl) maxPerEl.textContent = sp.max_unhealthy_per_product_per_day ?? '∞';
   }
 
   // saveProfilePictureConsent (legacy save_profile_picture_consent RPC) er
@@ -6038,8 +6151,13 @@
 
     // Tilknyttede forældre og sletningsstatus hentes, når sektionen åbnes (LAZY_SECTIONS).
 
-    // Samtykke-historik er read-only — kun expand/collapse-knapper
-    document.querySelectorAll('.consent-history-btn').forEach(btn => {
+    bindConsentHistoryButtons(document);
+  }
+
+  // Samtykke-historik er read-only — kun expand/collapse-knapper. Bindes også
+  // efter rerenderProfileAndConsentSections, men kun inden for den nye sektion.
+  function bindConsentHistoryButtons(scope) {
+    scope.querySelectorAll('.consent-history-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const target = document.getElementById(btn.dataset.target);
         if (!target) return;
@@ -6365,9 +6483,11 @@
       if (!newSection) return;
       if (wasOpen) newSection.classList.add('open');
       oldSection.replaceWith(newSection);
+      // Bind KUN den nye sektion (de gamle node-references er væk). Aldrig
+      // bindEvents() her: den binder alle portalens elementer igen → dobbelte handlere.
+      if (id === 'section-profile-picture') bindProfilePictureSection(newSection);
+      else bindConsentHistoryButtons(newSection);
     });
-    // Re-bind handlers på nye toggles (de gamle node-references er væk)
-    bindEvents();
   }
 
   async function refreshConsentHistory() {
@@ -6799,13 +6919,15 @@
     // gemmer ALLE felter under ét, så en manglende kontakt overskrev tidligere den
     // gemte værdi med en konstant. Fx slukkede institutionens 'notify_balance'-flag
     // saldo-rækkerne, og næste gem satte så push_at_zero tilbage til true.
-    // Rigtig kilde når kontakten mangler: den gemte værdi.
+    // Rigtig kilde når kontakten mangler: den gemte værdi. Uden gemt række er
+    // advarslerne fra (se renderNotificationsSection) — en skjult kontakt må ikke
+    // tænde dem ved første gem.
     const stored = childData?.notification_settings || {};
     const val = (el, key, dflt) => (el ? el.checked : (typeof stored[key] === 'boolean' ? stored[key] : dflt));
     const payload = {
       email: parentEmail,
-      notify_at_zero: val(zeroEl, 'notify_at_zero', true),
-      notify_at_ten: val(lowEl, 'notify_at_ten', true),
+      notify_at_zero: val(zeroEl, 'notify_at_zero', false),
+      notify_at_ten: val(lowEl, 'notify_at_ten', false),
       notify_primary_email: val(primaryEl, 'notify_primary_email', true),
       secondary_email: secondaryVal || null,
       notify_event_reminder: val(eventReminderEl, 'notify_event_reminder', false),
@@ -6815,16 +6937,17 @@
     // save-parent-notification rører kun de felter klienten sender, så
     // forælderens egne push-valg står urørt. Serveren afviser dem også.
     if (!isHelpingParent()) {
-      payload.push_at_zero = val(pushZeroEl, 'push_at_zero', true);
-      payload.push_at_ten = val(pushLowEl, 'push_at_ten', true);
+      payload.push_at_zero = val(pushZeroEl, 'push_at_zero', false);
+      payload.push_at_ten = val(pushLowEl, 'push_at_ten', false);
       payload.push_event_reminder = val(pushEventReminderEl, 'push_event_reminder', false);
       payload.push_event_invite = val(pushEventInviteEl, 'push_event_invite', false);
     }
     try {
       await API.saveNotification(selectedChild.child_id, payload);
-      // Update local cache so re-renders reflect the change
-      if (childData && childData.notification_settings) {
-        Object.assign(childData.notification_settings, payload);
+      // Update local cache so re-renders reflect the change — også når rækken
+      // først blev oprettet nu (notification_settings var null).
+      if (childData) {
+        childData.notification_settings = Object.assign({}, childData.notification_settings, payload);
       }
       showToast(kind === 'push' ? 'Notifikationer gemt' : 'E-mail indstillinger gemt', 'success');
     } catch (err) {
@@ -7005,7 +7128,7 @@
     const approved = await showDemoMobilePayModal(amount, getChildName());
     if (!approved) return;
     demoCreditBalance(amount);
-    showToast(`${formatKr(amount)} kr tilføjet ${getChildName()}s saldo`, 'success');
+    showToast(`${formatKr(amount)} kr sat ind på ${getChildName()}s saldo`, 'success');
   }
 
   function demoCreditBalance(amount) {
@@ -7035,7 +7158,7 @@
           <div class="demo-mp-body" id="demo-mp-body">
             <div class="demo-mp-amount">${formatKr(amount)} kr</div>
             <div class="demo-mp-to">til <strong>Flango Demo</strong></div>
-            <div class="demo-mp-sub">Optankning af ${esc(childName)}s madkonto</div>
+            <div class="demo-mp-sub">Optankning af ${esc(childName)}s saldo</div>
             <button class="demo-mp-approve" id="demo-mp-approve">Godkend betaling</button>
             <button class="demo-mp-cancel" id="demo-mp-cancel">Annullér</button>
           </div>
@@ -7273,11 +7396,14 @@
 
   async function handleMobilePayTopup() {
     if (!selectedChild) return;
-    const selected = document.querySelector('.topup-option.selected');
-    if (!selected) { showToast('Vælg et beløb', 'error'); return; }
-    const amount = selected.dataset.amount;
-    if (!amount || amount === 'custom') { showToast('Vælg et beløb', 'error'); return; }
-    const amountDkk = Number(amount);
+    // Samme beløbsvalg som Checkout — også «Andet». Før læste MobilePay kun
+    // knappens data-amount, så 150 kr i «Andet»-feltet gav «Vælg et beløb».
+    const amountDkk = getSelectedTopupAmount();
+    if (!amountDkk) {
+      const isCustom = document.querySelector('.topup-option.selected')?.dataset.amount === 'custom';
+      showToast(isCustom ? 'Skriv et beløb mellem 1 og 2000 kr' : 'Vælg et beløb', 'error');
+      return;
+    }
 
     try {
       showToast('Åbner MobilePay...', '');
@@ -7348,16 +7474,45 @@
     }
     const pw = document.getElementById('pin-new').value;
     const pw2 = document.getElementById('pin-confirm').value;
-    if (pw.length < 6) { showToast('Mindst 6 tegn', 'error'); return; }
-    if (pw !== pw2) { showToast('Adgangskoderne matcher ikke', 'error'); return; }
+    const pwProblem = passwordProblem(pw);
+    if (pwProblem) { showToast(pwProblem, 'error'); return; }
+    if (pw !== pw2) { showToast('Adgangskoderne er ikke ens.', 'error'); return; }
+    // Prod har «Secure password change»: er sessionen over 24 timer gammel, kræver
+    // Auth en engangskode fra forælderens e-mail (reauthentication_needed). Kodefeltet
+    // vises først, når serveren har bedt om det.
+    const reauthBox = document.getElementById('pin-reauth');
+    const reauthInput = document.getElementById('pin-reauth-code');
+    const awaitingCode = !!reauthBox && reauthBox.style.display !== 'none';
+    const nonce = awaitingCode ? reauthInput.value.trim() : '';
+    if (awaitingCode && !nonce) { showToast('Skriv koden fra e-mailen', 'error'); reauthInput.focus(); return; }
+    const btn = document.getElementById('pin-save-btn');
+    if (btn) btn.disabled = true;
     try {
-      await API.updatePassword(pw);
-      showToast('Adgangskode opdateret', 'success');
+      await API.updatePassword(pw, nonce || undefined);
+      showToast('Din nye adgangskode er gemt', 'success');
       document.getElementById('pin-new').value = '';
       document.getElementById('pin-confirm').value = '';
+      if (reauthBox) { reauthBox.style.display = 'none'; reauthInput.value = ''; }
     } catch (err) {
+      if (err?.code === 'reauthentication_needed' && reauthBox) {
+        try {
+          await API.reauthenticate();
+          const email = currentSession?.user?.email;
+          document.getElementById('pin-reauth-text').textContent = email
+            ? `Vi har sendt en kode til ${email}. Skriv den her, så gemmer vi din nye adgangskode.`
+            : 'Vi har sendt en kode til din e-mail. Skriv den her, så gemmer vi din nye adgangskode.';
+          reauthBox.style.display = 'flex';
+          reauthInput.focus();
+        } catch (sendErr) {
+          console.error('[Portal] reauthenticate:', sendErr);
+          showToast(authErrorText(sendErr, 'Vi kunne ikke sende en kode. Prøv igen om lidt.'), 'error');
+        }
+        return;
+      }
       console.error('[Portal] PIN change error:', err);
-      showToast('Kunne ikke opdatere adgangskode', 'error');
+      showToast(authErrorText(err, 'Adgangskoden blev ikke gemt. Prøv igen.'), 'error');
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 
