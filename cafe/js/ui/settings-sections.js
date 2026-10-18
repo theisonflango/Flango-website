@@ -3865,10 +3865,12 @@
       // Hvem får besked. Institutionens eget valg — ikke leverandørens felt.
       // Serveren kræver en betroet session for at ændre den: den, der kan
       // omdirigere godkendelsesbeskeder, kan omgå hele modellen.
-      async function loadEmails() {
+      let nuvaerendeMails = [];
+      async function loadEmails({ kvittering = '' } = {}) {
         const data = await api.getNotificationEmails();
         if (data === null) { notifyEl.innerHTML = ''; return; }
         const mails = data.emails || [];
+        nuvaerendeMails = mails;
         const navn = data.name || '';
         const vist = mails.length ? mails.join(', ') : 'Ingen valgt';
         notifyEl.innerHTML = `
@@ -3882,6 +3884,7 @@
             </div>
             <button class="fsp-btn fsp-btn-ghost" data-action="rediger-mail" style="padding:8px 16px;font-size:12px">Skift</button>
           </div>
+          ${kvittering ? `<div role="status" style="margin-top:8px;font-size:13px;color:#2a9d8f">${kvittering}</div>` : ''}
           <div data-mail-form style="display:none;margin-top:10px">
             <input type="text" data-navn-input value="${navn}" placeholder="Navn — fx Mette eller Kontoret"
                    style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:14px;margin-bottom:8px">
@@ -3911,24 +3914,23 @@
           const navnFelt = (notifyEl.querySelector('[data-navn-input]')?.value || '').trim();
           if (navnFelt) await api.setContactName(navnFelt);
 
+          // Samme adresser som nu: kun navnet er ændret, og det er allerede gemt.
+          const somNu = [...nuvaerendeMails].map(m => m.toLowerCase()).sort().join(',');
+          if (adresser.length && adresser.map(m => m.toLowerCase()).sort().join(',') === somNu) {
+            await loadEmails({ kvittering: 'Gemt.' });
+            return;
+          }
+
+          // Adressen skiftes først, når koden fra den NUVÆRENDE adresse og en kode fra hver ny
+          // er bekræftet (access_confirm_email_change). Uden nuværende adresse starter serveren
+          // direkte på 'new'. Trinnet står i svaret — vi spørger om én kode ad gangen.
           const res = await api.requestNotificationEmailChange(adresser);
-
-          // Første adresse: der er ingen at bekræfte fra, så den er gemt med det samme.
-          if (res?.success && res.first_time) { await loadEmails(); return; }
-
-          if (res?.success && res.code_sent && res.change_id) {
+          if (res?.success && res.change_id) {
             form.dataset.changeId = res.change_id;
-            form.innerHTML = `
-              <div style="padding:12px 14px;border-radius:10px;background:rgba(244,162,97,0.12);border:1px solid rgba(244,162,97,0.3)">
-                <div style="font-size:14px;line-height:1.5">Adressen er <strong>ikke</strong> ændret endnu.
-                Indtast koden, der er sendt til den nye modtageradresse. Koden gælder i 30 minutter.</div>
-                <label style="display:block;margin-top:12px;font-size:12px;color:var(--fsp-txt3)">Kode fra den nye adresse</label>
-                <input type="text" data-bekraeft-kode placeholder="000000" maxlength="6" inputmode="numeric"
-                       style="width:100%;margin-top:4px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:16px;letter-spacing:4px;text-align:center">
-                <button class="fsp-btn" data-action="bekraeft-mail" style="width:100%;margin-top:10px;padding:10px;font-size:13px">Bekræft skift</button>
-                <button class="fsp-btn fsp-btn-ghost" data-action="annuller-mailskift" style="width:100%;margin-top:8px;padding:10px;font-size:13px">Tilbage</button>
-                <div data-mail-fejl style="margin-top:8px;font-size:13px;color:#e85a6f"></div>
-              </div>`;
+            form.dataset.nyeMails = adresser.join(', ');
+            form.dataset.antalNye = String(adresser.length);
+            form.dataset.gamleMails = nuvaerendeMails.join(', ');
+            visKodeTrin(form, res.stage || (nuvaerendeMails.length ? 'current' : 'new'), res.new_addresses_remaining);
             return;
           }
           fejlEl.textContent = res?.error || 'Kunne ikke gemmes.';
@@ -3939,14 +3941,59 @@
         if (e.target.closest('[data-action="annuller-mailskift"]')) { await loadEmails(); return; }
         const bekraeft = e.target.closest('[data-action="bekraeft-mail"]');
         if (!bekraeft) return;
-        const kode = notifyEl.querySelector('[data-bekraeft-kode]')?.value || '';
+        const kode = (notifyEl.querySelector('[data-bekraeft-kode]')?.value || '').trim();
         const fejl2 = notifyEl.querySelector('[data-mail-fejl]');
+        if (!/^\d{6}$/.test(kode)) { fejl2.textContent = 'Koden er seks cifre.'; return; }
         bekraeft.disabled = true; bekraeft.textContent = 'Bekræfter…';
         const res2 = await api.confirmNotificationEmailChange(form.dataset.changeId, kode);
-        if (res2?.success) { await loadEmails(); return; }
+        if (res2?.success && res2.completed) { await loadEmails({ kvittering: 'Adressen er skiftet.' }); return; }
+        if (res2?.success) { visKodeTrin(form, res2.stage, res2.new_addresses_remaining, true); return; }
         fejl2.textContent = res2?.error || 'Kunne ikke bekræftes.';
-        bekraeft.disabled = false; bekraeft.textContent = 'Bekræft skift';
+        bekraeft.disabled = false; bekraeft.textContent = 'Bekræft';
       });
+
+      // Ét kodefelt ad gangen. stage 'current' = koden til de nuværende adresser (samme kode til
+      // dem alle); 'new' = en kode pr. ny adresse, så længe der mangler nogen. `tak` = en kode
+      // er netop godkendt.
+      function visKodeTrin(form, stage, mangler, tak = false) {
+        const nye = form.dataset.nyeMails || '';
+        const flere = (mangler || 0) > 1;
+        let intro, etiket, hjaelp;
+        if (stage === 'current') {
+          intro = `Vi har sendt en kode til ${form.dataset.gamleMails || 'den nuværende adresse'}.`;
+          etiket = 'Kode fra den nuværende adresse';
+          hjaelp = `Bagefter skal du bruge ${flere ? 'koderne' : 'koden'}, vi har sendt til ${nye}. Koderne gælder i 30 minutter.`;
+        } else if (tak && !flere && Number(form.dataset.antalNye) > 1) {
+          // Serveren siger ikke, hvilken af de nye adresser der mangler.
+          intro = 'Tak. Én kode mangler endnu.';
+          etiket = 'Kode fra den sidste nye adresse';
+          hjaelp = '';
+        } else {
+          intro = tak ? `Tak. Nu ${flere ? 'koderne' : 'koden'}, vi har sendt til ${nye}.`
+            : `Vi har sendt ${flere ? 'en kode til hver af' : 'en kode til'} ${nye}.`;
+          etiket = flere ? `Kode fra en af de nye adresser (${mangler} mangler)` : 'Kode fra den nye adresse';
+          hjaelp = tak ? '' : `${flere ? 'Koderne' : 'Koden'} gælder i 30 minutter.`;
+        }
+        form.innerHTML = `
+          <div style="padding:12px 14px;border-radius:10px;background:rgba(244,162,97,0.12);border:1px solid rgba(244,162,97,0.3)">
+            <div data-kode-intro style="font-size:14px;line-height:1.5"></div>
+            <label for="fsp-mailskift-kode" style="display:block;margin-top:12px;font-size:12px;color:var(--fsp-txt3)">${etiket}</label>
+            <input id="fsp-mailskift-kode" type="text" data-bekraeft-kode placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
+                   style="width:100%;margin-top:4px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:inherit;font-size:16px;letter-spacing:4px;text-align:center">
+            <div data-kode-hjaelp style="margin-top:6px;font-size:12px;opacity:.7"></div>
+            <button class="fsp-btn" data-action="bekraeft-mail" style="width:100%;margin-top:10px;padding:10px;font-size:13px">Bekræft</button>
+            <button class="fsp-btn fsp-btn-ghost" data-action="annuller-mailskift" style="width:100%;margin-top:8px;padding:10px;font-size:13px">Tilbage</button>
+            <div data-mail-fejl role="alert" style="margin-top:8px;font-size:13px;color:#e85a6f"></div>
+          </div>`;
+        // Adresserne er brugerens egne indtastninger — de sættes som tekst, ikke som HTML.
+        form.querySelector('[data-kode-intro]').textContent = intro;
+        const hjaelpEl = form.querySelector('[data-kode-hjaelp]');
+        hjaelpEl.textContent = hjaelp;
+        hjaelpEl.hidden = !hjaelp;
+        const felt = form.querySelector('[data-bekraeft-kode]');
+        felt.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); form.querySelector('[data-action="bekraeft-mail"]')?.click(); } });
+        felt.focus();
+      }
 
       loadEmails();
       loadRequests();
