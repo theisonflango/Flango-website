@@ -4,7 +4,9 @@
  * ÉN side med tre lag (docs/spec-foraeldreindsigt-2-0.md §3b):
  *   1. Adoptions-trin  — hvert trin er klikbart og filtrerer listen
  *   2. Kræver opmærksomhed — kort der ER navigationen ned i listen
- *   3. Handlingsliste  — søg/filtrér/sortér + kode-handlinger pr. række
+ *   3. Handlingsliste  — søg/filtrér/sortér + kode-handlinger pr. række;
+ *      forælder-cellen åbner "Forældre til …", hvor en forkert tilknyttet
+ *      forælder kan fjernes (docs/fjern-foraelder-design.md)
  *
  * Ét princip bærer hele siden: ALLE tal kommer fra get_parent_admin_overview
  * og har SAMME nævner (børn i institutionen), som skrives ud ved hvert tal.
@@ -320,7 +322,8 @@
   function parentCell(c) {
     if (c.parentCount === 0) return '<span class="apx-muted">—</span>';
     var extra = c.parentCount > 1 ? '<span class="apx-sub">+' + (c.parentCount - 1) + ' mere</span>' : '';
-    return '<span class="apx-parent">' + esc(c.parentLabel) + '</span>' + extra;
+    return '<button class="apx-parent-btn" data-parents-for="' + esc(c.childId) + '" title="Se og ret forældre">' +
+      '<span class="apx-parent">' + esc(c.parentLabel) + ' ›</span>' + extra + '</button>';
   }
 
   function notifCell(c) {
@@ -511,6 +514,14 @@
       });
     });
 
+    rootEl.querySelectorAll('[data-parents-for]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var child = allChildren().find(function (c) { return c.childId === btn.dataset.parentsFor; });
+        if (child) openParentsDialog(child);
+      });
+    });
+
     var batch = rootEl.querySelector('#apx-batch');
     if (batch) batch.addEventListener('click', runBatch);
     var queue = rootEl.querySelector('#apx-queue');
@@ -642,6 +653,150 @@
     m.el.querySelector('#apx-edit-tpl').addEventListener('click', function () {
       m.close();
       openTemplateEditor(function () { showCodeResult(child); });
+    });
+  }
+
+  // ─── Forældre til et barn: ret en forkert tilknytning ──────────
+  // docs/fjern-foraelder-design.md. Serveren afgør og rydder op; her vises
+  // status FØR handlingen og serverens kvittering bagefter — samme mønster
+  // som "Ny kode".
+
+  function linkedDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  /** "Emma", "Emma og Ida", "Emma, Ida og Oskar" — af allerede escapede navne. */
+  function listJoin(names) {
+    if (names.length <= 1) return names.join('');
+    return names.slice(0, -1).join(', ') + ' og ' + names[names.length - 1];
+  }
+
+  function openParentsDialog(child) {
+    var m = openModal('<div id="apx-parents-inner"></div>', { onClose: render });
+    var inner = m.el.querySelector('#apx-parents-inner');
+    var parents = [];
+
+    function paint(title, bodyHtml, footHtml) {
+      inner.innerHTML =
+        '<div class="apx-modal-head"><h2>' + title + '</h2>' +
+          '<button class="apx-modal-x" data-close>✕</button></div>' +
+        '<div class="apx-modal-body">' + bodyHtml + '</div>' +
+        '<div class="apx-modal-foot">' + footHtml + '</div>';
+      inner.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', m.close); });
+    }
+
+    function paintList() {
+      var rows = parents.length === 0
+        ? '<p class="apx-muted">' + esc(child.child) + ' har ingen forældre i portalen.</p>'
+        : parents.map(function (p, i) {
+            var meta = [];
+            if (p.display_name) meta.push(esc(p.display_name));
+            if (p.linked_at) meta.push('tilknyttet ' + esc(linkedDate(p.linked_at)));
+            var sibs = (p.siblings || []).map(function (s) { return esc(s.name); });
+            return '<div class="apx-pl-row">' +
+              '<div class="apx-pl-who">' +
+                '<span class="apx-pl-email">' + esc(p.email || 'Ukendt konto') + '</span>' +
+                (meta.length ? '<span class="apx-sub">' + meta.join(' · ') + '</span>' : '') +
+                (sibs.length ? '<span class="apx-sub">Også tilknyttet ' + listJoin(sibs) + '</span>' : '') +
+              '</div>' +
+              (p.is_demo
+                ? '<span class="apx-tag gray">Demokonto</span>'
+                : '<button class="apx-btn small danger" data-remove="' + i + '">Fjern adgang</button>') +
+            '</div>';
+          }).join('');
+      paint('Forældre til ' + esc(child.child), rows, '<button class="apx-btn" data-close>Luk</button>');
+      inner.querySelectorAll('[data-remove]').forEach(function (b) {
+        b.addEventListener('click', function () { paintConfirm(parents[Number(b.dataset.remove)]); });
+      });
+    }
+
+    function paintConfirm(p) {
+      var others = parents.length - 1;
+      var sibs = p.siblings || [];
+      var who = '<strong>' + esc(p.email || 'Kontoen') + '</strong>';
+      paint('Fjern adgang',
+        '<p>' + who + ' mister adgangen til <strong>' + esc(child.child) + '</strong> med det samme.</p>' +
+        (sibs.length
+          ? '<div class="apx-pl-also">Fjern også adgangen til</div>' +
+            sibs.map(function (s) {
+              return '<label class="apx-pl-check"><input type="checkbox" data-sib="' + esc(s.child_id) + '"> ' +
+                esc(s.name) + (s.last_name ? ' ' + esc(s.last_name) : '') + '</label>';
+            }).join('')
+          : '') +
+        '<div class="apx-note">Forælderen får en mail om det' +
+          (others > 0 ? ', og det gør ' + (others === 1 ? 'den anden forælder' : 'de andre forældre') + ' også' : '') + '. ' +
+          'Billedsamtykker fra forælderen trækkes tilbage. Grænser, kost og allergener bliver stående.</div>' +
+        (others === 0
+          ? '<div class="apx-note warn">' + esc(child.child) + ' har derefter ingen forælder i portalen.</div>'
+          : ''),
+        '<button class="apx-btn" id="apx-pl-back">Tilbage</button>' +
+        '<button class="apx-btn danger" id="apx-pl-go">Fjern adgang</button>');
+
+      inner.querySelector('#apx-pl-back').addEventListener('click', paintList);
+      inner.querySelector('#apx-pl-go').addEventListener('click', async function () {
+        var btn = inner.querySelector('#apx-pl-go');
+        btn.disabled = true;
+        btn.textContent = 'Fjerner…';
+        var ids = [child.childId];
+        inner.querySelectorAll('[data-sib]').forEach(function (cb) { if (cb.checked) ids.push(cb.dataset.sib); });
+        var res = await window.PortalData.unlinkParent(p.parent_account_id, ids);
+        if (!res || !res.success) {
+          btn.disabled = false;
+          btn.textContent = 'Prøv igen';
+          toast('Kunne ikke fjerne adgangen: ' + ((res && res.error) || 'ukendt fejl'), true);
+          return;
+        }
+        paintDone(p, res, load());
+      });
+    }
+
+    function paintDone(p, res, reloading) {
+      var done = Array.isArray(res.children) ? res.children : [];
+      var mine = done.find(function (c) { return c.child_id === child.childId; }) || {};
+      var names = done.map(function (c) { return esc(c.name); });
+      var consents = done.some(function (c) { return (c.consents_withdrawn || []).length > 0; });
+      var alertsOff = done.filter(function (c) { return c.notifications === 'deleted'; })
+        .map(function (c) { return esc(c.name); });
+      var orphan = mine.parents_remaining === 0;
+      paint('Adgangen er fjernet',
+        '<div class="apx-note ok">✓ ' + esc(p.email || 'Kontoen') + ' har ikke længere adgang til ' + listJoin(names) + '.</div>' +
+        (consents ? '<p>Forælderens billedsamtykker er trukket tilbage.</p>' : '') +
+        (alertsOff.length
+          ? '<p>Saldo-påmindelserne for ' + listJoin(alertsOff) + ' er slået fra — forælderen havde sat dem op.</p>'
+          : '') +
+        (orphan ? '<p>' + esc(child.child) + ' har ingen forælder i portalen nu.</p>' : ''),
+        '<button class="apx-btn" data-close>Luk</button>' +
+        (orphan ? '<button class="apx-btn primary" id="apx-pl-code">🔑 Lav ny kode</button>' : ''));
+
+      var codeBtn = inner.querySelector('#apx-pl-code');
+      if (codeBtn) {
+        codeBtn.addEventListener('click', async function () {
+          // Kodedialogen viser barnets status og retter rækken bagefter — så den skal
+          // have listen, som den ser ud EFTER fjernelsen.
+          codeBtn.disabled = true;
+          await reloading;
+          m.close();
+          var fresh = allChildren().find(function (c) { return c.childId === child.childId; });
+          if (fresh) openCodeDialog(fresh);
+        });
+      }
+    }
+
+    paint('Forældre til ' + esc(child.child),
+      '<div class="apx-loading"><div class="apx-spinner"></div>Henter forældre…</div>',
+      '<button class="apx-btn" data-close>Luk</button>');
+    window.PortalData.getChildParents(child.childId).then(function (res) {
+      if (!res || !res.success) {
+        paint('Forældre til ' + esc(child.child),
+          '<p>Kunne ikke hente forældrene: ' + esc((res && res.error) || 'ukendt fejl') + '</p>',
+          '<button class="apx-btn" data-close>Luk</button>');
+        return;
+      }
+      parents = res.parents;
+      paintList();
     });
   }
 
