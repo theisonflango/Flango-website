@@ -186,6 +186,33 @@
     'section-contact':             { icon: 'mail',                    label: 'Kontakt' },
   };
 
+  // ─── Hus uden café (fx kun skærmtid) — 19/10-2026, docs/portal-kun-skaermtid-design.md ───
+  // Serveren afgør det: get-parent-view svarer has_cafe:false. Alt andet — også et svar
+  // uden feltet — giver café-portalen præcis som før, og café-husenes render (renderApp)
+  // er ikke rørt: huse uden café har deres egen skal (renderNoCafeApp). Skærmtidsfanen
+  // genbruger fane-id'et tab-limits, så sidepanel, scroll-sporing og forhåndsvisningens
+  // id-opslag (portal-admin-preview.js) virker uden ændring.
+  function isNoCafeHouse() { return childData?.has_cafe === false; }
+  const NO_CAFE_TAB_SECTIONS = {
+    'tab-limits':  ['section-ugeplan', 'section-games', 'section-screentime', 'section-st-chart', 'section-game-policy'],
+    'tab-profile': TAB_SECTIONS['tab-profile'],
+    'tab-privacy': TAB_SECTIONS['tab-privacy'],
+  };
+  const NO_CAFE_SECTION_LABELS = {
+    'section-games':      { icon: 'gamepad-2',    label: 'Spil' },
+    'section-screentime': { icon: 'hourglass',    label: 'Tid' },
+    'section-st-chart':   { icon: 'chart-column', label: 'Historik' },
+  };
+  /** Vises barnets café-saldo i barnevælgeren? Det viste barn følger serverens has_cafe;
+   *  søskende følger husets apps fra børnelisten. Ukendt giver saldoen, præcis som før. */
+  function childShowsBalance(c) {
+    if (!c || c.balance == null) return false;
+    if (c.child_id === selectedChild?.child_id && childData) return childData.has_cafe !== false;
+    return termsProfile(c.apps).cafe;
+  }
+  function tabSectionsFor(tabId) { return (isNoCafeHouse() ? NO_CAFE_TAB_SECTIONS : TAB_SECTIONS)[tabId] || []; }
+  function sectionLabelFor(id) { return (isNoCafeHouse() && NO_CAFE_SECTION_LABELS[id]) || SECTION_LABELS[id]; }
+
   // ─── Turnstile verification helper (callback-baseret) ───
   // Cloudflare's getResponse() var upålidelig på re-rendrede DOM-elementer
   // — den krævede internal widget-handle og fejlede med "Could not find
@@ -704,6 +731,8 @@
     if (isAdminSimulatorSession()) return false;
     // Skip i demo-tilstand — fiktive børn har ingen rigtige billeder at samtykke til
     if (isDemo()) return false;
+    // Samtykkerne gælder caféens profilbilleder; et hus uden café bruger ingen.
+    if (isNoCafeHouse()) return false;
     // Vis hvis forælder har taget en eksplicit handling tidligere (givet eller trukket)
     const hasRealAction = consentHistory.some(c => c.given_method !== 'legacy_default_consent');
     if (hasRealAction) return false;
@@ -1293,8 +1322,21 @@
   // ─── Vilkårsaccept (terms) ───
 
   const CURRENT_TERMS_VERSION = 1;
+  // Hus uden café (19/10-2026): sin egen tekst og sit eget nummer, så revisionssporet
+  // (accept_parent_terms) viser præcis hvilken tekst forælderen accepterede. 1 = café-teksten.
+  const NO_CAFE_TERMS_VERSION = 2;
+  /** Hvilken tekst gælder barnet? Ud fra husets apps fra serveren (get_children_for_parent,
+   *  resolve_parent_code og get-parent-view). Ukendt — fx et ældre svar uden feltet — giver
+   *  café-teksten, præcis som før. */
+  function termsProfile(apps) {
+    if (!Array.isArray(apps)) return { cafe: true, skaermtid: false };
+    return { cafe: apps.includes('cafe'), skaermtid: apps.includes('skaermtid') };
+  }
+  function termsVersionFor(profile) { return profile.cafe ? CURRENT_TERMS_VERSION : NO_CAFE_TERMS_VERSION; }
 
-  function renderPrivacyInfoText() {
+  function renderPrivacyInfoText(profile) {
+    // Uden profil: det viste barns hus (get-parent-view). Ukendt giver café-teksten, som før.
+    const p = profile || (childData?.has_cafe === false ? termsProfile(childData?.apps) : { cafe: true, skaermtid: false });
     const instName = getInstitutionName() || 'din institution';
     // Dynamisk: vis institutionens FAKTISKE valgte sletningspolitik (auto-delete
     // kommer med i childData.institution fra get-parent-view). Default: aktiveret/12 mdr.
@@ -1304,6 +1346,7 @@
     const retentionLine = adEnabled
       ? `Inaktive profiler arkiveres efter <strong>${adMonths} måneders</strong> inaktivitet (${esc(instName)}s valg). Profilen kan derefter gendannes i seks måneder, før den slettes; du varsles pr. e-mail før den endelige sletning og kan altid bede om sletning før tid.`
       : `${esc(instName)} har ikke slået automatisk sletning til — inaktive profiler slettes kun på din eller institutionens anmodning.`;
+    if (!p.cafe) return renderNoCafePrivacyText(p, instName, retentionLine);
     return `
       <p style="margin:0 0 10px"><strong>Hvad er Flango?</strong><br>Flango er det cafésystem som ${esc(instName)} bruger til cafédriften. Dit barn handler i caféen med en forudbetalt cafékonto — du fylder kontoen op, og barnet bruger saldoen til mad og drikke i caféen.</p>
       <p style="margin:0 0 10px"><strong>Hvilke data har vi?</strong><br>Barnets navn og kontonummer i caféen, saldo og købshistorik, eventuelle kostindstillinger du har sat (allergener, sukkerpolitik) og forbrugsgrænser du har valgt.</p>
@@ -1313,7 +1356,29 @@
       <p style="margin:0"><strong>Dine rettigheder</strong><br>Du kan se oplysninger, hente en kopi og anmode om rettelse eller sletning via "Privatliv & Rettigheder". Institutionen eller kommunen behandler din anmodning og vurderer betingelserne for rettighederne, herunder indsigelse og dataportabilitet.</p>`;
   }
 
-  function renderTermsContent(childName) {
+  /** Privatlivsteksten for et hus uden café. Lagring, opbevaring og rettigheder er de samme
+   *  afsnit som café-teksten; kun hvad Flango er, hvilke data og hvem der ser dem, afhænger
+   *  af modulerne. */
+  function renderNoCafePrivacyText(p, instName, retentionLine) {
+    const what = p.skaermtid
+      ? `Flango Skærmtid styrer spilletiden på ${esc(instGenitive(instName))} PC'er og konsoller. Her kan du vælge spil og sætte grænser for dit barn.`
+      : `Flango er det system, ${esc(instName)} bruger.`;
+    const data = p.skaermtid
+      ? 'Barnets navn, nummer og klasse; hvornår, hvor længe og på hvilken station barnet har spillet; de spil, du har tilladt eller slået fra; og de grænser, du har sat.'
+      : 'Barnets navn og nummer.';
+    const staff = p.skaermtid ? 'institutionens personale (via Flango Skærmtid)' : 'institutionens personale';
+    return `
+      <p style="margin:0 0 10px"><strong>Hvad er Flango?</strong><br>${what}</p>
+      <p style="margin:0 0 10px"><strong>Hvilke data har vi?</strong><br>${data}</p>
+      <p style="margin:0 0 10px"><strong>Hvem har adgang?</strong><br>Du som forælder (via denne portal), ${staff} og Flango som databehandler (teknisk drift). Kommunen er dataansvarlig.</p>
+      <p style="margin:0 0 10px"><strong>Hvor opbevares data?</strong><br>Den primære database og fillagring ligger hos Supabase i Irland. Trafikken til Flangos backend er krypteret. Login, push, robotværn og andre leverandørflows kan indebære behandling eller adgang uden for EU; se privatlivsoverblikket. Data sælges ikke.</p>
+      <p style="margin:0 0 10px"><strong>Hvor længe opbevares data?</strong><br>${retentionLine} Direkte identifikatorer fjernes fra hændelsesloggen efter 24 måneder og fra revisionssporet efter fem år; resterende kontrolspor kan fortsat være personoplysninger.</p>
+      <p style="margin:0"><strong>Dine rettigheder</strong><br>Du kan se oplysninger, hente en kopi og anmode om rettelse eller sletning via "Privatliv & Rettigheder". Institutionen eller kommunen behandler din anmodning og vurderer betingelserne for rettighederne, herunder indsigelse og dataportabilitet.</p>`;
+  }
+
+  function renderTermsContent(childName, profile) {
+    const p = profile || { cafe: true, skaermtid: false };
+    if (!p.cafe) return renderNoCafeTermsContent(childName, p);
     return `
       <div style="line-height:1.7;color:var(--ink-soft);margin-bottom:var(--s4)">
         <p style="margin:0 0 var(--s3);font-weight:600;color:var(--ink)">Ved at tilknytte ${esc(childName || 'dit barn')} bekræfter du at du er informeret om at:</p>
@@ -1330,7 +1395,37 @@
           Læs mere om hvordan vi behandler data
         </summary>
         <div style="padding:14px;font-size:13px;line-height:1.6;color:var(--ink-soft);border-top:1px solid var(--border);">
-          ${renderPrivacyInfoText()}
+          ${renderPrivacyInfoText(p)}
+        </div>
+      </details>
+      <a href="https://flango.dk/privatlivspolitik/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;color:var(--info);font-weight:600;text-decoration:none;margin-bottom:var(--s4);font-size:13px;">
+        ${icon('external-link', 16)}
+        Læs Flangos generelle privatlivsoverblik
+      </a>`;
+  }
+
+  /** Vilkårene for et hus uden café (version 2): det, huset faktisk behandler. */
+  function renderNoCafeTermsContent(childName, p) {
+    const moduleItems = p.skaermtid
+      ? `
+          <li>Barnets spilletid registreres: hvornår, hvor længe og på hvilken station</li>
+          <li>De spil, du tillader eller slår fra, og de grænser, du sætter, gemmes</li>`
+      : '';
+    return `
+      <div style="line-height:1.7;color:var(--ink-soft);margin-bottom:var(--s4)">
+        <p style="margin:0 0 var(--s3);font-weight:600;color:var(--ink)">Ved at tilknytte ${esc(childName || 'dit barn')} bekræfter du at du er informeret om at:</p>
+        <ul style="margin:0;padding-left:20px;list-style:disc">${moduleItems}
+          <li>Den primære database ligger hos Supabase i Irland; enkelte leverandørflows kan indebære behandling eller adgang uden for EU</li>
+          <li>Du kan til enhver tid se, eksportere og anmode om sletning af data via "Privatliv & Rettigheder" i portalen</li>
+        </ul>
+      </div>
+      <details style="margin-bottom:var(--s4);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden;">
+        <summary style="padding:10px 14px;cursor:pointer;font-weight:600;font-size:13px;color:var(--info);background:var(--surface-sunken);user-select:none;list-style:none;display:flex;align-items:center;gap:6px;">
+          ${icon('chevron-right', 14, 'ico-spin')}
+          Læs mere om hvordan vi behandler data
+        </summary>
+        <div style="padding:14px;font-size:13px;line-height:1.6;color:var(--ink-soft);border-top:1px solid var(--border);">
+          ${renderPrivacyInfoText(p)}
         </div>
       </details>
       <a href="https://flango.dk/privatlivspolitik/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;color:var(--info);font-weight:600;text-decoration:none;margin-bottom:var(--s4);font-size:13px;">
@@ -1378,7 +1473,7 @@
               <div style="font-size:13px;color:var(--ink-muted)">${esc(child.child_name)}</div>
             </div>
           </div>
-          ${renderTermsContent(child.child_name)}
+          ${renderTermsContent(child.child_name, termsProfile(child.apps))}
           <label style="display:flex;align-items:center;gap:var(--s2);cursor:pointer;margin-bottom:var(--s4);padding:12px;background:var(--surface-sunken);border-radius:var(--r-sm)">
             <input type="checkbox" id="terms-accept-cb" style="width:20px;height:20px;cursor:pointer;accent-color:var(--flango)">
             <span style="font-weight:600;font-size:14px">Jeg accepterer vilkårene</span>
@@ -1406,7 +1501,7 @@
           btn.disabled = true;
           btn.textContent = 'Gemmer...';
           try {
-            await API.acceptTerms(child.child_id, CURRENT_TERMS_VERSION);
+            await API.acceptTerms(child.child_id, termsVersionFor(termsProfile(child.apps)));
             done('accepted');
           } catch (err) {
             console.error('[Terms] Accept error:', err);
@@ -1434,7 +1529,7 @@
         <main class="main">
           <div class="empty-state" style="margin-top:var(--s12);max-width:420px;margin-left:auto;margin-right:auto">
             <div class="empty-state-icon">${icon('shield-check', 40)}</div>
-            <div class="empty-state-text" style="margin-bottom:var(--s5)">Accepter vilkårene, så kan du se saldo og indstillinger for ${esc(who)}.</div>
+            <div class="empty-state-text" style="margin-bottom:var(--s5)">Accepter vilkårene, så kan du se ${waiting.some(c => termsProfile(c.apps).cafe) ? 'saldo og indstillinger' : 'indstillinger'} for ${esc(who)}.</div>
             <button class="save-btn full" id="terms-pending-open">Se vilkårene</button>
             <button id="terms-pending-logout" type="button" style="margin-top:var(--s3);padding:10px 20px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg);color:var(--ink-soft);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
               ${icon('log-out', 16)}
@@ -1451,7 +1546,7 @@
    * Vis vilkårsaccept i tilknytningsflowet.
    * Returnerer true hvis accepteret, false hvis annulleret.
    */
-  function showTermsAcceptForLinking(childName) {
+  function showTermsAcceptForLinking(childName, profile) {
     return new Promise((resolve) => {
       const backdrop = document.createElement('div');
       backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
@@ -1469,7 +1564,7 @@
             <div style="font-size:13px;color:var(--ink-muted)">Tilknyt ${esc(childName || 'barn')}</div>
           </div>
         </div>
-        ${renderTermsContent(childName)}
+        ${renderTermsContent(childName, profile)}
         <label style="display:flex;align-items:center;gap:var(--s2);cursor:pointer;margin-bottom:var(--s4);padding:12px;background:var(--surface-sunken);border-radius:var(--r-sm)">
           <input type="checkbox" id="terms-link-cb" style="width:20px;height:20px;cursor:pointer;accent-color:var(--flango)">
           <span style="font-weight:600;font-size:14px">Jeg accepterer vilkårene</span>
@@ -1832,6 +1927,7 @@
   function subOn(visible) { return isAdminPreview() || visible === true; }
 
   function renderApp() {
+    if (isNoCafeHouse()) { renderNoCafeApp(); return; }
     stopEmptyStatePoll();
     const balance = getChildBalance();
     const status = getBalanceStatus(balance);
@@ -2039,6 +2135,371 @@
     }
   }
 
+  // ═══════════════════════════════════════
+  //  Hus uden café (fx kun skærmtid) — 19/10-2026
+  // ═══════════════════════════════════════
+  // Theis 19/10: spilletids-saldoen er en bonus; forsiden er spil, tid og evt. historik.
+  // Tre faner: Skærmtid · Profil · Privatliv. Kortene beholder deres id'er og
+  // under-kontakter (data-sub), så gem-handlerne og forhåndsvisningens chips virker
+  // uændret. Kortene er en harmonika som resten af portalen: Spil står åben; Tid og
+  // Historik viser et resumé i overskriften.
+
+  /** Første fane: «Skærmtid», når huset viser skærmtid i portalen — ellers «Overblik». */
+  function noCafeFirstTab() {
+    return featureFlags.skaermtid_enabled === true
+      ? { label: 'Skærmtid', icon: 'gamepad-2' }
+      : { label: 'Overblik', icon: 'house' };
+  }
+
+  function renderNoCafeApp() {
+    stopEmptyStatePoll();
+    const name = getChildName();
+    const instName = getInstitutionName();
+    const portalSub = instName ? esc(instGenitive(instName)) + ' forældreportal' : 'Forældreportal';
+    const showScreentime = screentimeData?.enabled === true || isAdminPreview();
+    const showUgeplan = featureFlags.parent_portal_ugeplan === true || isAdminPreview();
+    const showGames = (showScreentime && featureFlags.skaermtid_allow_game_approval === true) || isAdminPreview();
+    const showStChart = (showScreentime && featureFlags.skaermtid_show_usage === true) || isAdminPreview();
+    const showGamePolicy = (showScreentime && featureFlags.skaermtid_game_policy_enabled === true) || isAdminPreview();
+    const first = noCafeFirstTab();
+    const firstCards = [
+      showUgeplan ? renderUgeplanSection() : '',
+      showGames ? renderStGamesCard() : '',
+      showScreentime ? renderStTimeCard() : '',
+      showStChart ? renderStHistoryCard() : '',
+      // Uden Spil-kortet har noterne pr. spil ingen række at stå ved — så står de i politikken.
+      showGamePolicy ? renderGamePolicySection({ withGameNotes: !showGames }) : '',
+    ].join('');
+    const emptyFirst = featureFlags.skaermtid_enabled === true
+      ? `${esc(name)} er ikke med i skærmtid lige nu.`
+      : 'Klubben har ikke slået noget til i portalen endnu.';
+    // Samtykkerne handler alle om caféens profilbilleder, som et hus uden café ikke bruger —
+    // så der spørges ikke. Har barnet en historik (fx fra et tidligere hus), kan den ses.
+    const hasConsentHistory = Array.isArray(consentHistory)
+      && consentHistory.some(c => c.given_method !== 'legacy_default_consent');
+
+    root.innerHTML = `
+      <div class="app${isDemo() ? ' demo-mode' : ''}${isHelpingParent() ? ' helping-parent' : ''}">
+        ${isDemo() ? `
+        <div class="demo-banner" role="status">
+          <span class="demo-banner-badge">DEMO</span>
+          <span class="demo-banner-text">Du prøver Flango med fiktive børn.</span>
+        </div>` : ''}
+        ${(isExampleChild() && !adminPreviewParam) ? `
+        <div class="demo-banner" role="status" style="background:#6366f1">
+          <span class="demo-banner-badge">EKSEMPEL</span>
+          <span class="demo-banner-text">Du ser portalen med et opdigtet barn — ingen families data.</span>
+        </div>` : ''}
+
+        <aside class="desktop-sidebar">
+          <div class="brand">
+            <img src="assets/flango-logo.webp" alt="Flango" class="brand-logo">
+            <div><div class="brand-name">Flango</div><div class="brand-sub">${portalSub}</div></div>
+          </div>
+          <div class="sidebar-child-section" id="sidebar-children"></div>
+          <div class="sidebar-divider"></div>
+          <nav class="sidebar-nav" id="sidebar-nav"></nav>
+          <div class="sidebar-footer">
+            <div class="sidebar-footer-btn" id="sidebar-logout">${icon('log-out', 20)}Log ud af denne enhed</div>
+          </div>
+        </aside>
+
+        <nav class="desktop-topnav">
+          <div class="desktop-topnav-inner">
+            <div class="brand">
+              <img src="assets/flango-logo.webp" alt="Flango" class="brand-logo">
+              <div><div class="brand-name">Flango</div><div class="brand-sub">${portalSub}</div></div>
+            </div>
+            <div class="desktop-tab-bar">
+              <button class="dtab-item active" data-tab="tab-limits">${icon(first.icon, 24)}<span>${first.label}</span></button>
+              <button class="dtab-item" data-tab="tab-profile">${icon('user-round', 24)}<span>Profil</span></button>
+              <button class="dtab-item" data-tab="tab-privacy">${icon('shield-check', 24)}<span>Privatliv</span></button>
+            </div>
+          </div>
+        </nav>
+
+        <header class="topnav">
+          <div class="topnav-inner">
+            <div class="brand">
+              <img src="assets/flango-logo.webp" alt="Flango" class="brand-logo">
+              <div>
+                <div class="brand-name">Flango</div>
+                <div class="brand-sub">${portalSub}</div>
+              </div>
+            </div>
+            <div class="nav-actions">
+              <button class="nav-btn" id="nav-logout-btn" title="Log ud">${icon('log-out', 20)}</button>
+            </div>
+          </div>
+        </header>
+
+        <main class="main" id="main-content">
+
+          <div class="tab-view active" id="tab-limits">
+            ${renderChildSelector()}
+            ${firstCards || `<div class="empty-state"><div class="empty-state-icon">${icon(first.icon, 40)}</div><div class="empty-state-text">${emptyFirst}</div></div>`}
+          </div>
+
+          <div class="tab-view" id="tab-profile">
+            <div class="view-header mobile-only"><div class="view-title">Profil</div><div class="view-subtitle">Barnets profil & indstillinger</div></div>
+            ${renderChildNameSection()}
+            ${secOn('invite_parent') ? renderInviteParentSection() : ''}
+            ${secOn('pin') ? renderPinSection() : ''}
+          </div>
+
+          <div class="tab-view" id="tab-privacy">
+            <div class="view-header mobile-only"><div class="view-title">Privatliv & Rettigheder</div><div class="view-subtitle">GDPR og persondata</div></div>
+            ${renderPrivacyPolicySection()}
+            ${hasConsentHistory ? renderConsentsSection() : ''}
+            ${renderDataInsightSection()}
+            ${secOn('linked_parents') ? renderLinkedParentsSection() : ''}
+            ${renderDeleteChildDataSection()}
+            ${renderDeleteParentAccountSection()}
+            ${renderContactSection()}
+          </div>
+
+        </main>
+
+        <nav class="bottomnav">
+          <button class="bnav-item active" data-tab="tab-limits">${icon(first.icon, 24)}<span class="bnav-label">${first.label}</span></button>
+          <button class="bnav-item" data-tab="tab-profile">${icon('user-round', 24)}<span class="bnav-label">Profil</span></button>
+          <button class="bnav-item" data-tab="tab-privacy">${icon('shield-check', 24)}<span class="bnav-label">Privatliv</span></button>
+        </nav>
+
+      </div>
+      ${renderAddChildModal()}`;
+
+    renderSidebarChildren();
+    renderSidebarNav('tab-limits');
+    bindEvents();
+    makeExampleControlsInert();
+    renderHelpingParentBar();
+    if (isAdminPreview() && window.FlangoAdminPreview) {
+      window.FlangoAdminPreview.onRender(childData?.preview_sections || [], childData?.preview_subcontrols || []);
+    }
+    document.querySelectorAll('.section.open').forEach(loadSectionContent);
+
+    // Resuméerne i overskrifterne følger med, når forælderen ændrer noget. Gem-handlerne
+    // (saveGamePermissions, steppernes) er de fælles; her opdateres kun teksten.
+    const gamesEl = document.getElementById('section-games');
+    if (gamesEl) gamesEl.addEventListener('change', () => {
+      const boxes = [...gamesEl.querySelectorAll('input[data-game-id]')];
+      const sub = gamesEl.querySelector('.section-subtitle');
+      if (sub) sub.textContent = stGamesSummary(boxes.filter(b => b.checked).length, boxes.length);
+    });
+    const timeEl = document.getElementById('section-screentime');
+    if (timeEl) timeEl.addEventListener('click', (e) => {
+      if (!e.target.closest('.stepper-btn')) return;
+      // Steppernes egen handler sidder på dokumentet og kører efter denne — vent på den.
+      setTimeout(() => {
+        const sub = document.getElementById('st-time-summary');
+        if (sub) sub.textContent = stTimeSummary(readStepperMinutes('#st-daily-stepper .stepper-val'), stIsWeekly());
+      }, 0);
+    });
+  }
+
+  const ST_PLATFORM_LABEL = { pc: 'PC', console: 'Konsol', both: 'PC og konsol' };
+
+  function stIsWeekly() { return screentimeData?.rules?.auto_reset?.frequency === 'weekly'; }
+
+  function stGamesSummary(allowed, total) {
+    if (total === 0) return 'Ingen spil endnu';
+    if (allowed === total) return total === 1 ? 'Spillet er tilladt' : `Alle ${total} spil er tilladt`;
+    return `${allowed} af ${total} tilladt`;
+  }
+
+  function stTimeSummary(personalMinutes, weekly) {
+    return personalMinutes != null ? `${personalMinutes} min ${weekly ? 'om ugen' : 'om dagen'}` : 'Klubbens regler gælder';
+  }
+
+  /** Lokal dato som YYYY-MM-DD — en session hører til den dag, den blev spillet her. */
+  function stLocalDayKey(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  /** Klokkeslæt altid med kolon (da-DK giver punktum). */
+  function stClock(d) {
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  function stDayLabel(d) {
+    const days = Math.round((new Date(stLocalDayKey(new Date())) - new Date(stLocalDayKey(d))) / 86400000);
+    if (days === 0) return 'I dag';
+    if (days === 1) return 'I går';
+    if (days > 1 && days < 7) return ['Søndag', 'Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag'][d.getDay()];
+    return formatDate(d.toISOString());
+  }
+
+  /** «Spil» — klubbens spil med forælderens kontakt pr. spil. Klubbens spærring (også pr.
+   *  klasse) står låst, og klubbens note om spillet folder ud dér, hvor forælderen vælger. */
+  function renderStGamesCard() {
+    const games = isAdminPreview()
+      ? (childData?.games || childData?.skaermtid_game_catalog || screentimeData?.games || [])
+      : (screentimeData?.games || []);
+    // Noten er en del af spilpolitikken og følger dens kontakt (opt-in).
+    const notesOn = featureFlags.skaermtid_game_policy_enabled === true || isAdminPreview();
+    const noteById = new Map((childData?.skaermtid_game_catalog || [])
+      .filter(g => g && (g.policy_note || '').trim())
+      .map(g => [g.id, g.policy_note.trim()]));
+    const rows = games.map(g => {
+      const allowed = g.allowed !== false;
+      const instBlocked = g.allowed === false && g.set_by === 'institution';
+      const note = notesOn ? noteById.get(g.id) : null;
+      const platform = ST_PLATFORM_LABEL[g.category] || '';
+      return `
+          <div class="game-row">
+            <div class="game-icon">${icon('gamepad-2', 20)}</div>
+            <div class="game-info">
+              <div class="game-name">${esc(g.name)}</div>
+              ${instBlocked ? '<div class="game-blocked">Spærret af klubben</div>' : (platform ? `<div class="game-platform">${platform}</div>` : '')}
+              ${note ? `<details class="st-note"><summary>Klubbens note</summary><div class="st-note-text">${esc(note).replace(/\n/g, '<br>')}</div></details>` : ''}
+            </div>
+            <label class="toggle"${instBlocked ? ' style="opacity:.4;pointer-events:none"' : ''}><input type="checkbox" data-game-id="${esc(g.id)}" ${allowed ? 'checked' : ''} ${instBlocked ? 'disabled' : ''}><span class="toggle-track"></span></label>
+          </div>`;
+    }).join('');
+    const body = games.length
+      ? rows
+      : `<div class="empty-state"><div class="empty-state-icon">${icon('gamepad-2', 40)}</div><div class="empty-state-text">Klubben har ingen spil i kataloget endnu.</div></div>`;
+    const allowedCount = games.filter(g => g.allowed !== false).length;
+    return `
+      <div class="section open" id="section-games">
+        <div class="section-header">
+          <div class="section-title-row">${sectionIcon('gamepad-2', 'positive')}<div><div class="section-title">Spil</div><div class="section-subtitle">${stGamesSummary(allowedCount, games.length)}</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">${body}
+        </div></div></div>
+      </div>`;
+  }
+
+  /** «Tid» — forælderens grænser oven på klubbens regler. Tid tilbage er en bonus
+   *  (Theis 19/10) og står som én grå linje nederst — aldrig som hovedtal. */
+  function renderStTimeCard() {
+    const st = isAdminPreview() ? (childData?.screentime || screentimeData || {}) : (screentimeData || {});
+    const feat = st.features || {};
+    const rules = st.rules || {};
+    const po = st.parent_override || {};
+    const weekly = rules.auto_reset?.frequency === 'weekly';
+    const clubDaily = typeof rules.default_balance_minutes === 'number' ? rules.default_balance_minutes : null;
+    const clubSession = typeof rules.max_session_minutes === 'number' ? rules.max_session_minutes : null;
+    // Samme klamp som café-husenes kort: serveren regner med det mindste af forælderens og
+    // klubbens grænse, så en gemt grænse over klubbens vises som klubbens.
+    const clamp = (personal, club) => personal == null ? null : (club != null ? Math.min(personal, club) : personal);
+    const personalDaily = clamp(po.max_daily_minutes ?? null, clubDaily);
+    const personalSession = clamp(po.max_session_minutes ?? null, clubSession);
+    const consent = po.extra_time_consent ?? true;
+    const clubParts = [];
+    if (clubDaily != null) clubParts.push(`${clubDaily} min ${weekly ? 'om ugen' : 'om dagen'}`);
+    if (clubSession != null) clubParts.push(`højst ${clubSession} min ad gangen`);
+    const clubLine = clubParts.length ? `Klubben giver ${clubParts.join(', ')}` : '';
+    // Bonuslinjen: brugt i dag (fra historikken) og tid tilbage, hver efter husets kontakt.
+    // Tilbage står stille under en PC-session (trækkes ved logout) — fint for en bonus.
+    const todayKey = stLocalDayKey(new Date());
+    const usedToday = Array.isArray(st.history)
+      ? st.history.reduce((sum, h) => (h.start && stLocalDayKey(new Date(h.start)) === todayKey ? sum + (Number(h.minutes) || 0) : sum), 0)
+      : null;
+    const usedTxt = (feat.show_usage !== false && usedToday != null) ? `${Math.round(usedToday)} min brugt` : '';
+    const remTxt = (feat.show_remaining !== false && typeof st.balance_minutes === 'number') ? `${st.balance_minutes} min tilbage` : '';
+    let bonus = '';
+    if (usedTxt && remTxt) bonus = `I dag: ${usedTxt} · ${remTxt}${weekly ? ' denne uge' : ''}`;
+    else if (usedTxt) bonus = `I dag: ${usedTxt}`;
+    else if (remTxt) bonus = `${remTxt} ${weekly ? 'denne uge' : 'i dag'}`;
+    const maxDailyAttr = clubDaily != null ? ` data-max="${clubDaily}"` : '';
+    const maxSessionAttr = clubSession != null ? ` data-max="${clubSession}"` : '';
+    return `
+      <div class="section" id="section-screentime">
+        <div class="section-header">
+          <div class="section-title-row">${sectionIcon('hourglass', 'info')}<div><div class="section-title">Tid</div><div class="section-subtitle" id="st-time-summary">${stTimeSummary(personalDaily, weekly)}</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">
+          ${feat.show_rules !== false && clubLine ? `<div class="hint-box info" style="margin-bottom:var(--s3)">${hintIcon('clipboard-list')}<span>${clubLine}</span></div>` : ''}
+          ${subOn(feat.allow_personal_limits !== false) ? `
+          <div class="setting-row" data-sub="st_personal_limits">
+            <div class="setting-info"><div class="setting-label">${weekly ? 'Ugentlig grænse' : 'Daglig grænse'}</div><div class="setting-desc">∞ = klubbens regel gælder</div></div>
+            <div class="stepper" id="st-daily-stepper" data-step="5"${maxDailyAttr}><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalDaily || '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
+          </div>` : ''}
+          ${subOn(feat.allow_session_limit !== false) ? `
+          <div class="setting-row" data-sub="st_session_limit">
+            <div class="setting-info"><div class="setting-label">Højst ad gangen</div><div class="setting-desc">∞ = klubbens regel gælder</div></div>
+            <div class="stepper" id="st-session-stepper" data-step="5"${maxSessionAttr}><button class="stepper-btn stepper-minus">−</button><div class="stepper-val">${personalSession || '∞'}</div><button class="stepper-btn stepper-plus">+</button></div>
+          </div>` : ''}
+          ${subOn(feat.allow_extra_time_requests !== false) ? `
+          <div class="setting-row" data-sub="st_extra_time">
+            <div class="setting-info"><div class="setting-label">Ekstra tid</div><div class="setting-desc">Personalet må give mere tid en gang imellem</div></div>
+            <label class="toggle"><input type="checkbox" id="st-consent-toggle" ${consent ? 'checked' : ''}><span class="toggle-track"></span></label>
+          </div>` : ''}
+          ${bonus ? `<div class="st-bonus">${bonus}</div>` : ''}
+        </div></div></div>
+      </div>`;
+  }
+
+  /** «Historik» — ugen og de seneste gange. Sessionerne gemmer ikke spillet, kun hvornår,
+   *  hvor længe og hvor (gaming.session_history) — så det er det, kortet viser. */
+  function renderStHistoryCard() {
+    const sessions = isAdminPreview()
+      ? (childData?.skaermtid_sessions || screentimeData?.history || [])
+      : (screentimeData?.history || []);
+    const rules = screentimeData?.rules || {};
+    const po = screentimeData?.parent_override || {};
+    const weekly = rules.auto_reset?.frequency === 'weekly';
+    const clubDaily = typeof rules.default_balance_minutes === 'number' ? rules.default_balance_minutes : null;
+    const personalDaily = po.max_daily_minutes ?? null;
+    const limit = personalDaily != null ? (clubDaily != null ? Math.min(personalDaily, clubDaily) : personalDaily) : clubDaily;
+    const minutesOf = s => Number(s.minutes ?? s.duration_minutes ?? s.duration ?? 0) || 0;
+    // De sidste 7 dage, nøglet på LOKAL dato.
+    const dayNames = ['Søn', 'Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør'];
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      days.push({ key: stLocalDayKey(d), label: i === 0 ? 'I dag' : dayNames[d.getDay()], minutes: 0 });
+    }
+    sessions.forEach(s => {
+      const raw = s.start || s.date || '';
+      if (!raw) return;
+      const key = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : stLocalDayKey(new Date(raw));
+      const day = days.find(d => d.key === key);
+      if (day) day.minutes += minutesOf(s);
+    });
+    const played = days.filter(d => d.minutes > 0);
+    const avg = played.length ? Math.round(played.reduce((a, d) => a + d.minutes, 0) / played.length) : 0;
+    const summary = played.length ? `${avg} min i snit` : 'Intet spil de sidste 7 dage';
+    // Ugentlig nulstilling har ingen grænse pr. dag at tegne.
+    const dayLimit = weekly ? null : limit;
+    const maxMin = Math.max(...days.map(d => d.minutes), dayLimit || 30, 1);
+    const bars = days.map(d => {
+      const h = Math.max(4, Math.round((d.minutes / maxMin) * 100));
+      const high = dayLimit != null && d.minutes > dayLimit;
+      return '<div class="st-usage-bar-wrap">'
+        + '<div class="st-usage-bar-val">' + Math.round(d.minutes) + '</div>'
+        + '<div class="st-usage-bar' + (high ? ' high' : '') + '" style="height:' + h + 'px"></div>'
+        + '<div class="st-usage-bar-label">' + d.label + '</div>'
+        + '</div>';
+    }).join('');
+    const recent = sessions.filter(s => s.start).slice(0, 5).map(s => {
+      const start = new Date(s.start);
+      const end = s.end ? new Date(s.end) : null;
+      const when = `${stDayLabel(start)} ${stClock(start)}${end ? '–' + stClock(end) : ''}`;
+      // device er stationens slug (pc4, ps1); stationens navn er det samme med store bogstaver.
+      const where = s.device ? `<div class="st-session-where">${esc(String(s.device).toUpperCase())}</div>` : '';
+      return `<div class="st-session"><div><div class="st-session-when">${when}</div>${where}</div><div class="st-session-min">${Math.round(minutesOf(s))} min</div></div>`;
+    }).join('');
+    const body = sessions.length === 0
+      ? `<div class="empty-state"><div class="empty-state-icon">${icon('chart-column', 40)}</div><div class="empty-state-text">${esc(getChildName())} har ikke spillet endnu.</div></div>`
+      : `<div class="st-usage-chart">${bars}</div>`
+        + (dayLimit != null ? `<div class="st-limit-note">Grænse: ${dayLimit} min om dagen</div>` : '')
+        + (recent ? `<div class="st-sessions">${recent}</div>` : '');
+    return `
+      <div class="section" id="section-st-chart">
+        <div class="section-header">
+          <div class="section-title-row">${sectionIcon('chart-column', 'info')}<div><div class="section-title">Historik</div><div class="section-subtitle">${summary}</div></div></div>
+          ${icon('chevron-down', 20, 'section-chevron')}
+        </div>
+        <div class="section-body"><div class="section-body-inner"><div class="section-content">${body}
+        </div></div></div>
+      </div>`;
+  }
+
   /** "Du handler på vegne af …"-linjen i BUNDEN.
    *
    *  Lå tidligere som et banner øverst, hvor den lagde sig oven i café-appens
@@ -2109,11 +2570,11 @@
       ? `<img class="child-dd-avatar" src="${esc(cafeBilledeUrl(c.profile_picture_url))}" alt="">` : '';
     const rows = children.map(c => {
       const isActive = c.child_id === active.child_id;
-      const bal = c.balance != null ? `<span class="child-dd-bal">${formatKr(c.balance)} kr</span>` : '';
+      const bal = childShowsBalance(c) ? `<span class="child-dd-bal">${formatKr(c.balance)} kr</span>` : '';
       const check = isActive ? icon('check', 20, 'child-dd-check') : '';
       return `<button class="child-dd-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}">${avatarOf(c)}<span class="child-dd-name">${esc(formatChildName(c))}</span>${bal}${check}</button>`;
     }).join('');
-    const activeBal = active.balance != null ? `<span class="child-dd-bal">${formatKr(active.balance)} kr</span>` : '';
+    const activeBal = childShowsBalance(active) ? `<span class="child-dd-bal">${formatKr(active.balance)} kr</span>` : '';
     return `<div class="child-selector"><div class="child-dd" id="child-dd">
       <button class="child-dd-trigger" id="child-dd-trigger" aria-haspopup="listbox" aria-expanded="false">${avatarOf(active)}<span class="child-dd-name">${esc(formatChildName(active))}</span>${activeBal}<svg class="child-dd-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
       <div class="child-dd-menu" id="child-dd-menu" hidden>${rows}<button class="child-dd-item child-dd-add" id="add-child-btn-mobile">${icon('plus', 18)}Tilknyt ekstra barn</button></div>
@@ -4156,10 +4617,12 @@
    * ikke tvinges til at forsvare hvert eneste spil i kataloget for at kunne
    * forklare de spil der faktisk kræver en forklaring.
    */
-  function renderGamePolicySection() {
+  function renderGamePolicySection({ withGameNotes = true } = {}) {
     const policyText = (featureFlags.skaermtid_game_policy_text || '').trim();
-    const games = (childData?.skaermtid_game_catalog || [])
-      .filter(g => (g?.policy_note || '').trim());
+    // withGameNotes=false: huse uden café viser noten ved spillet i Spil-kortet i stedet.
+    const games = withGameNotes
+      ? (childData?.skaermtid_game_catalog || []).filter(g => (g?.policy_note || '').trim())
+      : [];
 
     const paragraphs = policyText
       ? policyText.split(/\n\s*\n/).map(p => `<p class="gp-text">${esc(p.trim()).replace(/\n/g, '<br>')}</p>`).join('')
@@ -4729,7 +5192,7 @@
     const btn = document.getElementById('code-redeem-btn');
     const picked = [...document.querySelectorAll('.sibling-check:checked')].map(el => el.value);
 
-    const accepted = await showTermsAcceptForLinking(codeModal.data.child.name || 'dit barn');
+    const accepted = await showTermsAcceptForLinking(codeModal.data.child.name || 'dit barn', termsProfile(codeModal.data.child.apps));
     if (!accepted) return;
 
     codeModal.busy = true;
@@ -4742,7 +5205,7 @@
       try {
         const refreshed = await API.getChildren();
         for (const c of refreshed.filter(ch => !ch.terms_accepted_at)) {
-          await API.acceptTerms(c.child_id, CURRENT_TERMS_VERSION);
+          await API.acceptTerms(c.child_id, termsVersionFor(termsProfile(c.apps)));
         }
       } catch (_e) { /* ikke kritisk */ }
 
@@ -4798,7 +5261,7 @@
     if (useDropdown) {
       // Compact dropdown mode for many children (admin-parent)
       const selectedName = esc(selectedChild ? getChildName() : 'Vælg barn');
-      const selectedBal = selectedChild?.balance != null ? `${formatKr(selectedChild.balance)} kr` : '';
+      const selectedBal = childShowsBalance(selectedChild) ? `${formatKr(selectedChild.balance)} kr` : '';
       const selectedEmoji = esc(selectedChild?.avatar_emoji || selectedChild?.emoji || '🧒');
 
       let filtered = children;
@@ -4810,7 +5273,7 @@
       const optionsHtml = filtered.map(c => {
         const isActive = c.child_id === selectedChild?.child_id;
         const emoji = esc(c.avatar_emoji || c.emoji || '🧒');
-        const bal = c.balance != null ? `${formatKr(c.balance)} kr` : '';
+        const bal = childShowsBalance(c) ? `${formatKr(c.balance)} kr` : '';
         const name = esc(formatChildName(c));
         return `<div class="sidebar-dropdown-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-radius:6px;${isActive ? 'background:var(--flango-light,#fff3e0);font-weight:600;' : ''}">${emoji} <span style="flex:1;">${name}</span> <span style="font-size:11px;opacity:0.6;">${bal}</span></div>`;
       }).join('');
@@ -4884,7 +5347,7 @@
     const items = children.map(c => {
       const isActive = c.child_id === selectedChild?.child_id;
       const emoji = esc(c.avatar_emoji || c.emoji || '🧒');
-      const bal = c.balance != null ? `${formatKr(c.balance)} kr` : '';
+      const bal = childShowsBalance(c) ? `${formatKr(c.balance)} kr` : '';
       return `<div class="sidebar-child-item${isActive ? ' active' : ''}" data-child-id="${c.child_id}"><div class="sidebar-child-avatar">${emoji}</div><div><div class="sidebar-child-name">${esc(formatChildName(c))}</div><div class="sidebar-child-saldo">${bal}</div></div></div>`;
     }).join('');
     container.innerHTML = items + `<div class="sidebar-add-child" id="add-child-btn-sidebar">${icon('plus', 18)}Tilknyt barn</div>`;
@@ -4901,16 +5364,18 @@
     if (!nav) return;
     const tabLabels = { 'tab-home': 'Overblik', 'tab-pay': 'Indbetaling', 'tab-limits': 'Grænser & Kost', 'tab-profile': 'Profil', 'tab-privacy': 'Privatliv' };
     const tabOrder = ['tab-home','tab-pay','tab-limits','tab-profile','tab-privacy'];
+    // Hus uden café: ingen Overblik/Indbetaling; skærmtidsfanen (tab-limits) står først.
+    if (isNoCafeHouse()) { tabLabels['tab-limits'] = noCafeFirstTab().label; tabOrder.splice(0, 2); }
     let html = '';
     let isFirst = true;
     tabOrder.forEach(tabId => {
-      const sectionIds = TAB_SECTIONS[tabId] || [];
+      const sectionIds = tabSectionsFor(tabId);
       let groupHtml = '';
       sectionIds.forEach(id => {
         // Vis kun sektioner der FAKTISK er renderet (flag fra ⇒ ingen sektion ⇒ ingen død nav-knap).
         // Sidebaren læser DOM'en direkte, så alle feature-flag respekteres uden per-flag-specialtilfælde.
         if (!document.getElementById(id)) return;
-        const item = SECTION_LABELS[id];
+        const item = sectionLabelFor(id);
         if (!item) return;
         groupHtml += `<div class="sidebar-nav-item${isFirst ? ' active' : ''}" data-scroll="${id}" data-tab="${tabId}">${icon(item.icon)}${item.label}</div>`;
         isFirst = false;
@@ -4930,7 +5395,7 @@
     const activeTab = document.querySelector('.tab-view.active');
     if (!activeTab) return;
     const activeTabId = activeTab.id;
-    const sectionIds = (TAB_SECTIONS[activeTabId] || []);
+    const sectionIds = tabSectionsFor(activeTabId);
     if (!sectionIds.length) return;
     _sidebarObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
