@@ -7,6 +7,11 @@
       // GitHub Pages SPA redirect for client-side routed apps
       var path = window.location.pathname;
 
+      // Relationskompas — client-side routes under /relationskompas/
+      if (path.indexOf('/relationskompas/') === 0 && path !== '/relationskompas/') {
+        window.location.replace('/relationskompas/?p=' + encodeURIComponent(path));
+      }
+
       // Ugeplan SPA routes
       if (path.indexOf('/ugeplan/') === 0 && path !== '/ugeplan/') {
         window.location.replace('/ugeplan/?p=' + encodeURIComponent(path));
