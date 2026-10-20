@@ -431,8 +431,15 @@
       // Snapshot-først (kun native): vis sidste kendte data øjeblikkeligt og lad
       // det normale load køre som lydløs baggrunds-opdatering. Serveren er
       // fortsat autoritativ — snapshotten er ren visning, aldrig handlingsgrundlag.
-      const hydrated = await tryHydrateFromSnapshot();
-      await loadChildren(hydrated ? { silent: true, preferChildId: selectedChild?.child_id } : undefined);
+      // Et 403 fra snapshottens egne sektioner afgøres af den lydløse opdatering
+      // (childLoads), ikke af et opslag ved siden af.
+      childLoads++;
+      try {
+        const hydrated = await tryHydrateFromSnapshot();
+        await loadChildren(hydrated ? { silent: true, preferChildId: selectedChild?.child_id } : undefined);
+      } finally {
+        childLoads--;
+      }
     } catch (err) {
       console.error('[Portal] Init error:', err);
       if (hasPersistedAuthSession()) { renderOfflineRetry(); } else { renderLogin(); }
@@ -550,13 +557,27 @@
     }
   }
 
+  // opts.silent: lydløs opdatering oven på et øjebliksbillede. opts.preferChildId: bliv på
+  // barnet, hvis det stadig er forælderens. opts.list: en børneliste, der allerede er hentet.
   async function loadChildren(opts) {
     const silent = opts?.silent === true;
     if (!silent) showLoading();
+    childLoads++;
     try {
-      children = await API.getChildren();
-      if (!children || children.length === 0) {
-        if (silent) return; // behold snapshot-visningen — tom liste kan være transient
+      const list = opts?.list ?? await API.getChildren();
+      // Et svar med en liste er autoritativt — også en tom. Alt andet (fx {error} uden
+      // session) lader øjebliksbilledet stå, ligesom et fejlet kald gør (catch nedenfor).
+      if (silent && !Array.isArray(list)) return;
+      // Børn, forælderen kendte (øjebliksbilledet eller den viste side), men ikke har adgang
+      // til længere — fx fordi personalet har fjernet adgangen (portal_admin_unlink_parent).
+      const lost = Array.isArray(list) ? children.filter(c => !list.some(f => f.child_id === c.child_id)) : [];
+      lostChildNames = lost.map(formatChildName);
+      children = list;
+      const none = !children || children.length === 0;
+      // Øjebliksbilledet må aldrig vise et barn igen, forælderen har mistet adgangen til.
+      if (lost.length || none) API.clearSnapshot();
+      if (none) {
+        forgetChildData();
         renderNoChildren();
         return;
       }
@@ -577,12 +598,14 @@
         }
       }
 
-      selectedChild = (silent && opts?.preferChildId && children.find(c => c.child_id === opts.preferChildId)) || children[0];
+      selectedChild = (opts?.preferChildId && children.find(c => c.child_id === opts.preferChildId)) || children[0];
       const before = lastSnapshotSerial;
       await loadChildData();
       // Lydløs opdatering: re-render kun når noget faktisk har ændret sig —
       // ellers ville hver koldstart give et synligt "blink" over snapshotten.
-      if (!silent || lastSnapshotSerial !== before) renderApp();
+      // Et mistet barn er altid en ændring, også hvis det nye barns data ikke kom hjem.
+      if (!silent || lost.length || lastSnapshotSerial !== before) renderApp();
+      if (lost.length && selectedChild) showToast(`Din adgang til ${joinNames(lostChildNames)} er fjernet.`, '');
       maybeShowWelcomeModal();
       consumePartnerDeepLink();
       // MobilePay-retur (best-effort; webhook+poll er sandheden bag krediteringen)
@@ -619,6 +642,8 @@
       // må ALDRIG vælte den hydrerede visning. Snapshotten står, næste åbning prøver igen.
       if (silent) return;
       renderError('Kunne ikke hente dine børn. Prøv at genindlæse siden.');
+    } finally {
+      childLoads--;
     }
   }
 
@@ -629,18 +654,30 @@
     if (isExampleChild()) { await loadExampleForPreview(); return; }
     const childId = selectedChild.child_id;
     const instId = selectedChild.institution_id;
+    let viewError = null;
+    childLoads++;
     try {
       // Skærmtid hentes spekulativt MED i batchet (før flaget kendes) i stedet
-      // for serielt bagefter — serveren håndhæver selv flaget (403 når slået
-      // fra → catch → null), og flag-tjekket nedenfor består som bælte-og-seler.
+      // for serielt bagefter — serveren håndhæver selv flaget ({enabled:false}
+      // når slået fra; 403 kun uden adgang til barnet → catch → null), og
+      // flag-tjekket nedenfor består som bælte-og-seler.
       const [view, prods, events, clubAvg, consents, screentime] = await Promise.all([
-        API.getParentView(childId, adminPreviewParam).catch(e => { console.error('[Portal] getParentView:', e); return null; }),
+        API.getParentView(childId, adminPreviewParam).catch(e => { viewError = e; console.error('[Portal] getParentView:', e); return null; }),
         API.getProducts(instId, childId).catch(e => { console.error('[Portal] getProducts:', e); return []; }),
         API.getParentEvents(childId).catch(e => { console.error('[Portal] getEvents:', e); return null; }),
         API.getCustomerAvgSpend(childId).catch(e => { console.error('[Portal] getCustomerAvg:', e); return null; }),
         API.getConsentHistory(childId).catch(e => { console.error('[Portal] getConsentHistory:', e); return []; }),
         API.getScreentime(childId, instId).catch(() => null),
       ]);
+      // Svaret gælder et barn, der ikke længere er valgt (et hurtigt barneskift, eller
+      // adgangen faldt bort undervejs) — det må ikke overskrive det valgte barns data.
+      if (selectedChild?.child_id !== childId) return;
+      // 403 på barnets visning: adgangen kan være fjernet. Er barnet væk fra børnelisten,
+      // har confirmChildAccess skiftet til et andet barn eller vist tom-tilstanden.
+      if (!view && viewError?.status === 403) {
+        await confirmChildAccess(childId);
+        if (selectedChild?.child_id !== childId) return;
+      }
       childData = view;
       consentHistory = Array.isArray(consents) ? consents : [];
       // Map child_limits and institution_limits onto products
@@ -682,7 +719,58 @@
       }
     } catch (err) {
       console.error('[Portal] loadChildData error:', err);
+    } finally {
+      childLoads--;
     }
+  }
+
+  // ─── Adgangen til et barn er væk ───
+  // Personalet kan fjerne en forælders adgang til et barn (portal_admin_unlink_parent); serveren
+  // lukker straks, og barnets kald svarer 403. Et 403 kan også være en slukket sektion, så
+  // børnelisten afgør sagen: står barnet der ikke længere, hentes listen ind som ny (loadChildren
+  // viser et andet barn eller tom-tilstanden og fortæller, hvilket barn der er væk). Et kald pr.
+  // barn ad gangen; et fejlet opslag (offline) konkluderer intet.
+  // childLoads: indlæsninger i gang (børnelisten, barnets data, koldstartens snapshot). De
+  // afgør selv adgangen ud fra deres egne svar, så et 403 ved siden af starter intet opslag.
+  let childLoads = 0;
+  let lostChildNames = [];
+  const accessChecks = new Map();
+  function confirmChildAccess(childId) {
+    if (!accessChecks.has(childId)) {
+      accessChecks.set(childId, checkChildAccess(childId).finally(() => accessChecks.delete(childId)));
+    }
+    return accessChecks.get(childId);
+  }
+  async function checkChildAccess(childId) {
+    // Personalets flader har deres egen adgang (midlertidigt link, eksempelbarnet).
+    if (adminPreviewParam || isAdminSimulatorSession() || isExampleChild()) return;
+    let fresh;
+    try { fresh = await API.getChildren(); } catch (_) { return; }
+    if (!Array.isArray(fresh) || fresh.some(c => c.child_id === childId)) return;
+    if (selectedChild?.child_id !== childId) return; // allerede skiftet væk fra barnet
+    await loadChildren({ list: fresh });
+  }
+
+  // Ingen børn: intet barns data må blive i hukommelsen eller blive tegnet igen.
+  function forgetChildData() {
+    selectedChild = null;
+    childData = null;
+    products = [];
+    allergySettings = null;
+    screentimeData = null;
+    eventsData = null;
+    ugeplanData = null;
+    featureFlags = {};
+    visibleSections = {};
+    dailySpecialLimit = null;
+    customerAvgSpend = null;
+    consentHistory = [];
+    lastSnapshotSerial = null;
+  }
+
+  // «Emma», «Emma og Oliver», «Emma, Oliver og Ida».
+  function joinNames(names) {
+    return names.length > 1 ? names.slice(0, -1).join(', ') + ' og ' + names[names.length - 1] : (names[0] || '');
   }
 
   async function switchChild(child) {
@@ -1521,9 +1609,7 @@
   // Alle børn sprunget over i vilkårsdialogen: intet at vise endnu.
   function renderTermsPending(waiting) {
     const names = waiting.map(c => c.child_name).filter(Boolean);
-    const who = names.length === 0 ? 'dit barn'
-      : names.length === 1 ? names[0]
-      : names.slice(0, -1).join(', ') + ' og ' + names[names.length - 1];
+    const who = names.length === 0 ? 'dit barn' : joinNames(names);
     root.innerHTML = `
       <div class="app">
         <main class="main">
@@ -1861,7 +1947,12 @@
               stadig kører en ældre version i fanen.
             </div>
             <div class="hint-box neutral" style="text-align:left;margin-bottom:var(--s4)">${hintIcon('info')}<span>Genindlæs café-appen (⌘R / Ctrl-R) og prøv igen. Så kommer barnevælgeren frem, før portalen åbnes.</span></div>
-            ` : `
+            ` : lostChildNames.length ? `
+            <div class="empty-state-icon">${icon('info', 40)}</div>
+            <div class="empty-state-text" style="margin-bottom:var(--s5)">
+              Din adgang til ${esc(joinNames(lostChildNames))} er fjernet.<br>Er det en fejl, så kontakt institutionen.
+            </div>
+            <button class="save-btn full" id="onboard-code-btn">Indtast kode</button>` : `
             <div class="empty-state-icon">${icon('hand', 40)}</div>
             <div class="empty-state-text" style="margin-bottom:var(--s5)">
               Velkommen til Flango.<br>Indtast koden fra institutionen for at komme i gang.
@@ -1927,6 +2018,9 @@
   function subOn(visible) { return isAdminPreview() || visible === true; }
 
   function renderApp() {
+    // Intet valgt barn (adgangen til det sidste er fjernet): tom-tilstanden, aldrig en
+    // børneside uden barn. Uden session står login-skærmen allerede.
+    if (!selectedChild) { if (currentSession) renderNoChildren(); return; }
     if (isNoCafeHouse()) { renderNoCafeApp(); return; }
     stopEmptyStatePoll();
     const balance = getChildBalance();
@@ -8144,8 +8238,18 @@
   window.portalSupabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       currentSession = null;
+      // Som handleLogout: en ny konto i fanen må ikke arve den forriges børn.
+      children = [];
+      selectedChild = null;
       renderLogin();
     }
+  });
+
+  // Et 403 for det valgte barn uden for en indlæsning (en handling, en sektion, der henter
+  // selv): hent børnelisten igen. Indlæsningerne afgør selv deres egne (se childLoads).
+  API.onChildForbidden?.((childId) => {
+    if (childLoads > 0 || childId !== selectedChild?.child_id) return;
+    confirmChildAccess(childId);
   });
 
   // Android-tilbage: luk øverste lag i stedet for at forlade appen —

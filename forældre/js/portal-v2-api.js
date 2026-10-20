@@ -248,6 +248,21 @@
     return data?.session?.access_token || null;
   }
 
+  // ─── 403 for et barn ───
+  // Personalet kan fjerne en forælders adgang til et barn (portal_admin_unlink_parent); derefter
+  // svarer alle barnets kald 403. Et 403 kan også være en slukket sektion, så portalen får kun
+  // barnets id og afgør selv sagen ud fra børnelisten (portal-v2.js, confirmChildAccess).
+  var childForbiddenListener = null;
+  // Barnets nøgle i kaldene: edge (child_id), RPC (p_child_id), samtykkerne (p_child_user_id,
+  // child_user_id) og overførslen, hvor afsenderen er det valgte barn (p_from_child_id).
+  var CHILD_KEYS = ['child_id', 'p_child_id', 'p_child_user_id', 'child_user_id', 'p_from_child_id'];
+  function reportChildForbidden(status, body) {
+    if (status !== 403 || !childForbiddenListener || !body) return;
+    var key = CHILD_KEYS.find(function (k) { return typeof body[k] === 'string'; });
+    if (!key) return;
+    try { childForbiddenListener(body[key]); } catch (e) { /* lytteren må aldrig vælte kaldet */ }
+  }
+
   // ─── Helper: invoke Edge Function ───
   async function invokeFunction(name, body) {
     await ensureFreshSession();
@@ -255,6 +270,9 @@
       body: body || {},
     });
     if (error) {
+      // FunctionsHttpError bærer svaret i context; en netværksfejl har ingen status.
+      const status = error.context?.status;
+      reportChildForbidden(status, body);
       let details = null;
       try {
         if (error.context && typeof error.context.json === 'function') {
@@ -266,7 +284,7 @@
       console.error(`[PortalAPI] ${name} error:`, error, 'details:', details);
       if (details && typeof details === 'object' && details.error) {
         const err = new Error(details.error);
-        err.status = error.context?.status;
+        err.status = status;
         err.details = details;
         throw err;
       }
@@ -288,8 +306,11 @@
       body: JSON.stringify(body || {}),
     });
     if (!response.ok) {
+      reportChildForbidden(response.status, body);
       const errText = await response.text().catch(() => 'Ukendt fejl');
-      throw new Error(errText);
+      const err = new Error(errText);
+      err.status = response.status;
+      throw err;
     }
     return response.json();
   }
@@ -308,8 +329,11 @@
       body: JSON.stringify(params || {}),
     });
     if (!response.ok) {
+      reportChildForbidden(response.status, params);
       const errText = await response.text().catch(() => 'Ukendt fejl');
-      throw new Error(errText);
+      const err = new Error(errText);
+      err.status = response.status;
+      throw err;
     }
     return response.json();
   }
@@ -361,6 +385,9 @@
     saveSnapshot: saveSnapshot,
     loadSnapshot: loadSnapshot,
     clearSnapshot: clearSnapshot,
+
+    /** Kaldes med barnets id, når et kald for barnet svarer 403 (se reportChildForbidden). */
+    onChildForbidden(listener) { childForbiddenListener = listener; },
 
     /** Send password reset email */
     async resetPassword(email) {
@@ -729,6 +756,7 @@
         headers: { 'Authorization': `Bearer ${token}` }, // ingen Content-Type: browseren sætter multipart-boundary
         body: form,
       });
+      reportChildForbidden(response.status, { child_id: childId });
       let data = null;
       try { data = await response.json(); } catch (_) { /* ignore */ }
       if (!data) throw new Error('Uventet svar fra serveren.');
