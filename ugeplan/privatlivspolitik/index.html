@@ -85,7 +85,7 @@
     <section>
       <h1 class="page-title">Privatlivspolitik</h1>
       <p class="page-intro">Sådan behandler Flango personoplysninger, når en institution bruger <strong>Flango Ugeplan</strong> — planlægningsværktøjet på flango.dk/ugeplan, også som app til iPhone og iPad. Café, skærmtid og forældreportal har deres egen politik på <a href="/privatlivspolitik/">flango.dk/privatlivspolitik</a>.</p>
-      <p class="page-meta">Gældende fra 31. august 2026 · Version 1.1</p>
+      <p class="page-meta">Gældende fra 21. oktober 2026 · Version 1.2</p>
     </section>
 
     <div class="callout">
@@ -121,6 +121,7 @@
         <li><strong>Push, hvis det vælges:</strong> teknisk enhedstoken, platform (iOS/Android), den profil enheden står på og profilens valgte beskedkategorier. Apple eller Google modtager kun tokenet og en systemgenereret pushtekst, fx ugenummer — aldrig kollegabeskeden eller anden brugerskrevet fritekst.</li>
         <li><strong>Drift og sikkerhed:</strong> før-/efterindhold i planens ændringshistorik, valgt profilnavn, teknisk klient- og bruger-id, notifikationsresultater samt IP-adresse og tidspunkt ved selvbetjent oprettelse. Adgangskoder opbevares som hash; gendannelseslinks gemmes kun som hash sammen med e-mail, formål og tidsstempler.</li>
       </ul>
+      <p><strong>Papegøjen (frivillig alpha, slået fra som standard):</strong> Når du selv sender et spørgsmål, behandles spørgsmålet, op til otte forudgående beskeder og den generelle svarbog af Microsoft Azure OpenAI i EU. Husets planer og personaleoplysninger hentes ikke af hjælperen. Undlad navne og andre personoplysninger i chatten. AI kan give forkerte svar og kan ikke ændre planen.</p>
       <p>Planen sendes kun videre, når personalet aktivt vælger det, og kun til de kanaler institutionen selv har slået til — forældreportalen, caféens skærm eller en opslagstavle.</p>
       <div class="callout-orange callout">
         <strong>Ikke beregnet til børne- eller følsomme oplysninger:</strong> Ugeplanen har ingen strukturerede felter til børn eller forældre og må ikke bruges til CPR-numre, helbredsoplysninger, individuelle børnesager eller andre særlige kategorier efter GDPR artikel 9. Fritekstfelter kan teknisk behandle det, en bruger skriver. Hvis nogen alligevel skriver sådanne oplysninger, bør de slettes straks; de er omfattet af behandlingen, indtil de er slettet eller den automatiske frist udløber.
@@ -139,6 +140,7 @@
       <table class="rights-table">
         <tr><th>Under-databehandler</th><th>Behandling</th><th>Hvor</th></tr>
         <tr><td>Supabase, Inc.</td><td>Database, login, Edge Functions og drift af Ugeplanen (hostet hos AWS)</td><td>Primær lagring i Irland; mulig supportadgang fra Singapore/USA under SCC</td></tr>
+        <tr><td>Microsoft</td><td>Valgfri Papegøjen-alpha: AI-svar på brugerens spørgsmål med den generelle svarbog</td><td>Azure OpenAI, Data Zone Standard (EU); ressource i Sweden Central. Behandling kan ske i flere EU-lande.</td></tr>
         <tr><td>Mailjet SAS (Sinch)</td><td>Bekræftelses-, gendannelses- og driftsmails</td><td>Primær behandling i EU; støttefunktioner kan indebære USA under SCC og eventuelt DPF</td></tr>
         <tr><td>Cloudflare, Inc.</td><td>Robot-tjek (Turnstile) ved oprettelse — teknisk kontroltoken, IP-adresse og browsersignaler</td><td>Globalt anycast-netværk; DPA og SCC, eventuelt DPF</td></tr>
         <tr><td>Apple Inc.</td><td>Valgfri push til iPhone/iPad via APNs: teknisk enhedstoken og systemgenereret tekst uden brugerskrevet indhold</td><td>Irland/USA; Apples vilkår og SCC</td></tr>
@@ -164,6 +166,7 @@
         <li>Et push-token slettes, når beskeder slås fra i Ugeplan-appen, når Apple/Google melder tokenet ugyldigt, eller når huset slettes. At slå notifikationer fra alene i telefonens systemindstillinger sletter ikke nødvendigvis Flangos tokenrække.</li>
         <li>IP-rækker fra selvbetjent oprettelse bruges kun til grænsen på oprettelsesforsøg. Rækker ældre end ét døgn ryddes, næste gang oprettelseskontrollen kører; der er ikke et særskilt tidsstyret slettejob for dem.</li>
       </ul>
+      <p><strong>Papegøjens samtale</strong> gemmes ikke i Flangos database. Den findes i den åbne browsers hukommelse og ryddes ved profilskift, fravalg eller genindlæsning. Microsoft kan opbevare udvalgte input og svar i op til 30 dage til misbrugskontrol; der er ikke aftalt nulopbevaring. Input og svar bruges ikke til at træne grundmodellerne. Se <a href="https://learn.microsoft.com/en-us/azure/foundry/responsible-ai/openai/data-privacy" target="_blank" rel="noopener">Microsofts datavilkår for Azure OpenAI</a>. Flango gemmer kun tekniske forbrugstal, tidspunkt og et dagligt pseudonym til budget og hastighedsgrænse. Kaldposter ryddes ved næste kald efter 90 dage; månedssummer uden bruger-id bevares.</p>
       <p>Huset kan eksporteres og slettes fra indstillingerne. Ved fælles administration lukkes adgangen straks, og huset slettes permanent efter 30 dage i papirkurven. Ved personlig administration sker permanent sletning med det samme efter bekræftelse. En ny personlig konto uden hus kan slettes fra skærmen Opret dit hus. Nye, ubekræftede konti uden tilknytning ryddes efter 30 dage. Konti, der bruges andre steder i Flango, bevares. Krypterede sikkerhedskopier udfases inden for det tidsbegrænsede backup-vindue; se <a href="/sikkerhed/">flango.dk/sikkerhed</a>.</p>
       <p>Trin for trin, og hvad der sker med jeres data: <a href="/ugeplan/slet-konto/">Slet huset</a>.</p>
     </section>
@@ -201,7 +204,7 @@
         <li><a href="/sikkerhed/"><strong>Sikkerhed</strong></a> — kryptering, adgangskontrol og infrastruktur</li>
         <li><a href="/privatlivspolitik/"><strong>Privatlivspolitik for café, skærmtid og forældreportal</strong></a> — Flangos øvrige moduler</li>
       </ul>
-      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 31. august 2026 · Version 1.1</p>
+      <p style="margin-top: 20px; font-size: 13px; color: #9ca3af;">Senest opdateret: 21. oktober 2026 · Version 1.2</p>
     </section>
 
     <footer>
