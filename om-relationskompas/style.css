@@ -16,7 +16,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 28px; }
 body { margin: 0; color: var(--color-text); background: var(--color-bg); font: 400 17px/1.6 'Source Sans 3', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 h1, h2, h3, p { margin: 0; }
 h1, h2, h3 { font-weight: 700; line-height: 1.14; letter-spacing: -.018em; text-wrap: balance; }
-h1 { font-size: clamp(32px, 4.25vw, 56px); }
+.hero-tagline { font-size: clamp(32px, 4.25vw, 56px); }
 h2 { font-size: clamp(28px, 3vw, 36px); }
 h3 { font-size: 23px; }
 p { color: var(--color-muted); text-wrap: pretty; }
@@ -29,12 +29,11 @@ img { display: block; max-width: 100%; }
 .skip-link:focus { top: 8px; }
 .inner { width: min(1160px, 100%); margin-inline: auto; }
 .section { padding: 80px 40px; }
-.hero { padding-block: 68px 76px; }
+.hero { padding-block: 40px 76px; }
 .hero-photo { margin: 40px 0 0; }
 .hero-photo img { width: 100%; height: auto; border-radius: 8px; }
 .hero-copy { max-width: 960px; margin-inline: auto; text-align: center; }
-.hero-copy .actions, .hero-copy .product-name { justify-content: center; }
-.product-name { display: flex; align-items: center; gap: 12px; color: var(--color-text); font-weight: 700; font-size: 21px; margin-bottom: 32px; }
+.hero-copy .actions { justify-content: center; }
 .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: 14px; }
 .lead { max-width: 640px; font-size: 21px; line-height: 1.5; margin: 24px auto 0; }
 .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
@@ -81,7 +80,6 @@ img { display: block; max-width: 100%; }
 @media (max-width: 800px) {
   .section { padding: 52px 24px; }
   .meeting-grid { grid-template-columns: minmax(0,1fr); gap: 36px; }
-  .product-name { margin-bottom: 24px; }
   .benefits { padding: 26px 24px; }
   .benefits-grid { gap: 24px; }
   .steps { grid-template-columns: 1fr; gap: 16px; }
