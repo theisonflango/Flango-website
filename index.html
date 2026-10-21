@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Flango — digitale værktøjer til SFO'er og klubber</title>
-  <meta name="description" content="Flango samler café, skærmtid, ugeplan og forældreportal i ét system til SFO'er og fritidsklubber. Mindre administration, mere nærvær." />
+  <meta name="description" content="Flango samler café, skærmtid, ugeplan, køsystem, Relationskompas og forældreportal til SFO'er og fritidsklubber. Alle apps er inkluderet i abonnementet." />
   <meta property="og:title" content="Flango — digitale værktøjer til SFO'er og klubber" />
-  <meta property="og:description" content="Mindre administration, mere nærvær. Café, skærmtid, ugeplan og forældreportal i ét." />
+  <meta property="og:description" content="Mindre administration, mere nærvær. Café, skærmtid, ugeplan, køsystem, Relationskompas og forældreportal i ét abonnement." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://flango.dk/" />
   <meta property="og:locale" content="da_DK" />
@@ -57,6 +57,10 @@
     .product-feature--cafe { --product-accent:#B45419; --product-accent-hover:#93420F; }
     .product-feature--skaermtid { --product-accent:#0C7486; --product-accent-hover:#075A68; }
     .product-feature--ugeplan { --product-accent:#386D3A; --product-accent-hover:#29532B; }
+    .product-feature--relationskompas { --product-accent:#5264A6; --product-accent-hover:#40518D; }
+    .relationskompas-process { display:grid; gap:24px; margin:0; padding:32px; list-style:none; background:#EDF0F8; border:1px solid #D8DFEF; border-radius:16px; }
+    .relationskompas-process li { display:flex; align-items:center; gap:16px; color:#354571; font-size:1.1rem; font-weight:600; line-height:1.4; }
+    .relationskompas-process span { display:grid; place-items:center; flex:0 0 36px; height:36px; border-radius:50%; background:#fff; color:#5264A6; font-size:.85rem; }
     .product-feature figure { margin:0; min-width:0; }
     .product-feature img { display:block; width:100%; height:auto; aspect-ratio:16/9; object-fit:cover; border-radius:16px; }
     .product-feature--ugeplan img { object-position:center 34%; }
@@ -74,6 +78,8 @@
     @media (max-width:620px) {
       .product-feature { padding:22px; border-radius:20px; }
       .product-feature img { border-radius:12px; }
+      .relationskompas-process { padding:22px 18px; gap:20px; }
+      .relationskompas-process li { gap:12px; font-size:1rem; }
     }
 
     /* ── Karrusellen ────────────────────────────────────────────────────────
@@ -119,6 +125,7 @@
       <span style="display:inline-flex;align-items:center;gap:9px;font-size:1.08rem;font-weight:600;color:#334155"><span style="width:9px;height:9px;border-radius:50%;background:#D97316;display:block"></span>Cafédrift</span>
       <span style="display:inline-flex;align-items:center;gap:9px;font-size:1.08rem;font-weight:600;color:#334155"><span style="width:9px;height:9px;border-radius:50%;background:#0C7D91;display:block"></span>Gaming</span>
       <span style="display:inline-flex;align-items:center;gap:9px;font-size:1.08rem;font-weight:600;color:#334155"><span style="width:9px;height:9px;border-radius:50%;background:#4A8C4A;display:block"></span>Ugeplaner</span>
+      <span style="display:inline-flex;align-items:center;gap:9px;font-size:1.08rem;font-weight:600;color:#334155"><span style="width:9px;height:9px;border-radius:50%;background:#5264A6;display:block"></span>Relationsarbejde</span>
       <span style="display:inline-flex;align-items:center;gap:9px;font-size:1.08rem;font-weight:600;color:#334155"><span style="width:9px;height:9px;border-radius:50%;background:#2B7CC9;display:block"></span>Forældresamarbejde</span>
     </div>
     <p style="font-size:0.98rem;color:#6B7A8D;max-width:683px;margin:0;text-wrap:balance">Udviklet til SFO'er, daginstitutioner og ungdomsklubber.</p>
@@ -258,7 +265,7 @@
     <div style="text-align:center;margin-bottom:48px">
       <div style="display:inline-flex;align-items:center;gap:8px;font-size:0.8rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#D97316;margin-bottom:16px"><span style="display:block;width:24px;height:2px;background:#FFA347;border-radius:2px"></span>Værktøjerne<span style="display:block;width:24px;height:2px;background:#FFA347;border-radius:2px"></span></div>
       <h2 style="font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:2.4rem;line-height:1.2;margin:0">Hvad vil I gøre lettere?</h2>
-      <p style="color:#6B7A8D;margin:12px auto 0;max-width:560px;font-size:0.98rem">Fire værktøjer under ét brand. Start med ét — eller saml dem i én platform.</p>
+      <p style="color:#6B7A8D;margin:12px auto 0;max-width:560px;font-size:0.98rem">Digitale værktøjer til hverdagen. Start med ét — eller saml dem i én platform.</p>
     </div>
 
     
@@ -325,6 +332,20 @@
           <h3 id="koesystem-feature-heading">Børnene skriver sig selv på</h3>
           <p class="product-feature-copy">En iPad ved værkstedsdøren viser, hvem der er i gang, og hvornår det bliver deres tur. Personalet følger køen fra pc, tablet eller mobil.</p>
           <a class="product-feature-link" href="/om-køsystem/">Se Flango Køsystem <span aria-hidden="true">→</span></a>
+        </div>
+      </article>
+
+      <article id="relationskompas" class="product-feature product-feature--relationskompas" aria-labelledby="relationskompas-feature-heading">
+        <ol class="relationskompas-process" aria-label="Relationsarbejdet i tre trin">
+          <li><span aria-hidden="true">1</span>Kortlæg relationerne</li>
+          <li><span aria-hidden="true">2</span>Del jeres perspektiver</li>
+          <li><span aria-hidden="true">3</span>Følg op sammen</li>
+        </ol>
+        <div class="product-feature-content">
+          <p class="product-feature-label">Flango Relationskompas</p>
+          <h3 id="relationskompas-feature-heading">Skab dialog om relationerne</h3>
+          <p class="product-feature-copy">Kortlæg, drøft og følg op på relationsarbejdet i personalegruppen. Relationskompas giver jer et fælles udgangspunkt for den pædagogiske samtale om kontakten til børnene.</p>
+          <a class="product-feature-link" href="/om-relationskompas/">Se Relationskompas <span aria-hidden="true">→</span></a>
         </div>
       </article>
 
@@ -499,7 +520,7 @@
     <div style="text-align:center">
       <div style="display:inline-flex;align-items:center;gap:8px;font-size:0.8rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#D97316;margin-bottom:16px"><span style="display:block;width:24px;height:2px;background:#FFA347;border-radius:2px"></span>Priser<span style="display:block;width:24px;height:2px;background:#FFA347;border-radius:2px"></span></div>
       <h2 style="font-family:'DM Serif Display',Georgia,serif;font-weight:400;font-size:2.4rem;line-height:1.2;margin:0">Én enkel pris</h2>
-      <p style="color:#6B7A8D;margin:12px auto 0;max-width:560px;font-size:0.95rem">Ét årsabonnement giver adgang til alle Flango-apps — brug én eller dem alle. Oprettelsen er gratis.</p>
+      <p style="color:#6B7A8D;margin:12px auto 0;max-width:560px;font-size:0.95rem">Ét årsabonnement giver adgang til alle Flango-apps — brug én eller dem alle. Relationskompas er inkluderet i både Flango og Flango Kommune. Oprettelsen er gratis.</p>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:36px;max-width:860px;margin-left:auto;margin-right:auto" class="stak">
@@ -513,6 +534,7 @@
           <div style="font-size:0.85rem;color:#4A5568;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4A8C4A" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Flango Skærmtid</div>
           <div style="font-size:0.85rem;color:#4A5568;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4A8C4A" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Flango Køsystem</div>
           <div style="font-size:0.85rem;color:#4A5568;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4A8C4A" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Flango Ugeplan Pro</div>
+          <div style="font-size:0.85rem;color:#4A5568;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4A8C4A" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Flango Relationskompas</div>
           <div style="font-size:0.85rem;color:#4A5568;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4A8C4A" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Forældreportal</div>
           <div style="font-size:0.85rem;color:#4A5568;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4A8C4A" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Ubegrænset brugere</div>
           <div style="font-size:0.85rem;color:#4A5568;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4A8C4A" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Fri support</div>
@@ -643,6 +665,7 @@
           <a href="/om-cafe/" style="font-size:0.88rem;color:#9AA5B4;text-decoration:none" class="hv15">Flango Café</a>
           <a href="/om-skærmtid/" style="font-size:0.88rem;color:#9AA5B4;text-decoration:none" class="hv15">Flango Skærmtid</a>
           <a href="/om-ugeplan/" style="font-size:0.88rem;color:#9AA5B4;text-decoration:none" class="hv15">Flango Ugeplan</a>
+          <a href="/om-relationskompas/" style="font-size:0.88rem;color:#9AA5B4;text-decoration:none" class="hv15">Flango Relationskompas</a>
           <a href="/fællesskabet/" style="font-size:0.88rem;color:#9AA5B4;text-decoration:none" class="hv15">Flango Fællesskabet</a>
           <a href="#kontakt" style="font-size:0.88rem;color:#9AA5B4;text-decoration:none" class="hv15">Flango Turnering</a>
           <a href="/om-forældre/" style="font-size:0.88rem;color:#9AA5B4;text-decoration:none" class="hv15">Forældreportal</a>
