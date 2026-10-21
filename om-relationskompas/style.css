@@ -30,6 +30,8 @@ img { display: block; max-width: 100%; }
 .inner { width: min(1160px, 100%); margin-inline: auto; }
 .section { padding: 80px 40px; }
 .hero { padding-block: 68px 76px; }
+.hero-photo { margin: 40px 0 0; }
+.hero-photo img { width: 100%; height: auto; border-radius: 8px; }
 .hero-copy { max-width: 960px; margin-inline: auto; text-align: center; }
 .hero-copy .actions, .hero-copy .product-name { justify-content: center; }
 .product-name { display: flex; align-items: center; gap: 12px; color: var(--color-text); font-weight: 700; font-size: 21px; margin-bottom: 32px; }

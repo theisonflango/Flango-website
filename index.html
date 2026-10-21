@@ -58,9 +58,6 @@
     .product-feature--skaermtid { --product-accent:#0C7486; --product-accent-hover:#075A68; }
     .product-feature--ugeplan { --product-accent:#386D3A; --product-accent-hover:#29532B; }
     .product-feature--relationskompas { --product-accent:#5264A6; --product-accent-hover:#40518D; }
-    .relationskompas-process { display:grid; gap:24px; margin:0; padding:32px; list-style:none; background:#EDF0F8; border:1px solid #D8DFEF; border-radius:16px; }
-    .relationskompas-process li { display:flex; align-items:center; gap:16px; color:#354571; font-size:1.1rem; font-weight:600; line-height:1.4; }
-    .relationskompas-process span { display:grid; place-items:center; flex:0 0 36px; height:36px; border-radius:50%; background:#fff; color:#5264A6; font-size:.85rem; }
     .product-feature figure { margin:0; min-width:0; }
     .product-feature img { display:block; width:100%; height:auto; aspect-ratio:16/9; object-fit:cover; border-radius:16px; }
     .product-feature--ugeplan img { object-position:center 34%; }
@@ -78,8 +75,6 @@
     @media (max-width:620px) {
       .product-feature { padding:22px; border-radius:20px; }
       .product-feature img { border-radius:12px; }
-      .relationskompas-process { padding:22px 18px; gap:20px; }
-      .relationskompas-process li { gap:12px; font-size:1rem; }
     }
 
     /* ── Karrusellen ────────────────────────────────────────────────────────
@@ -336,11 +331,13 @@
       </article>
 
       <article id="relationskompas" class="product-feature product-feature--relationskompas" aria-labelledby="relationskompas-feature-heading">
-        <ol class="relationskompas-process" aria-label="Relationsarbejdet i tre trin">
-          <li><span aria-hidden="true">1</span>Kortlæg relationerne</li>
-          <li><span aria-hidden="true">2</span>Del jeres perspektiver</li>
-          <li><span aria-hidden="true">3</span>Følg op sammen</li>
-        </ol>
+        <figure>
+          <img src="/shared/images/relationskompas-personalemoede-v2-1672.webp"
+               srcset="/shared/images/relationskompas-personalemoede-v2-836.webp 836w, /shared/images/relationskompas-personalemoede-v2-1672.webp 1672w"
+               sizes="(max-width:620px) calc(100vw - 94px), (max-width:1000px) calc(100vw - 106px), (max-width:1140px) calc((100vw - 150px) * .554), 549px"
+               width="1672" height="941" loading="lazy" decoding="async"
+               alt="Pædagoger bruger Relationskompas på bærbare, iPad og mobil under et personalemøde.">
+        </figure>
         <div class="product-feature-content">
           <p class="product-feature-label">Flango Relationskompas</p>
           <h3 id="relationskompas-feature-heading">Skab dialog om relationerne</h3>
