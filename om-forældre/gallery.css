@@ -1,0 +1,100 @@
+.parents-hero {
+  display: flow-root;
+  background: linear-gradient(180deg, #fff8ef, #fafaf9);
+  border-bottom: 1px solid #f0efed;
+}
+
+.parents-hero-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 44px 24px 52px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+  gap: 64px;
+  align-items: center;
+}
+
+.parents-hero-copy { min-width: 0; }
+.parents-hero-heading {
+  margin: 0;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(38px, 4vw, 50px);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -.015em;
+  text-wrap: balance;
+}
+
+.parents-hero-illustration {
+  display: block;
+  width: min(100%, 380px);
+  height: auto;
+  margin: 14px auto 20px;
+  mix-blend-mode: multiply;
+}
+
+.parents-hero-media { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.portal-gallery { width: 100%; max-width: 340px; }
+.portal-gallery-slide { margin: 0; }
+.portal-gallery [hidden] { display: none; }
+.portal-gallery-photo {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: 22px;
+  background: #e8dfd3;
+  box-shadow: 0 12px 36px rgb(75 49 22 / 12%);
+}
+
+/* Samme præcise beskæring af originalerne i alle tre dias. */
+.portal-gallery-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--photo-position, 51%) center;
+}
+
+.portal-gallery-slide figcaption { margin: 14px 0 0; text-align: center; font-size: 13px; font-weight: 500; color: #57534e; }
+.portal-gallery-slide.is-active { animation: gallery-appear .4s ease-out; }
+
+.portal-features, .parents-start { max-width: 1080px; margin: 0 auto; padding: 56px 24px 8px; }
+.portal-features-intro { margin-bottom: 24px; }
+.portal-features-intro h2 { margin: 0 0 8px; font-family: 'Instrument Serif', Georgia, serif; font-size: 36px; font-weight: 400; line-height: 1.15; letter-spacing: -.01em; }
+.portal-features-intro p { margin: 0; color: #57534e; font-size: 14px; }
+.portal-features-main { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.portal-features-more { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
+.portal-feature { min-width: 0; padding: 25px; border: 1px solid #e7e5e4; border-radius: 20px; background: #fff; }
+.portal-features-main .portal-feature { padding: 30px; display: flex; flex-direction: column; align-items: flex-start; }
+.portal-feature-icon { width: 46px; height: 46px; display: inline-flex; justify-content: center; align-items: center; border-radius: 13px; margin-bottom: 18px; }
+.portal-feature h3 { margin: 0 0 10px; font-size: 18px; line-height: 1.35; font-weight: 700; letter-spacing: -.02em; }
+.portal-features-main h3 { font-size: 26px; }
+.portal-feature p { margin: 0; color: #57534e; font-size: 14px; line-height: 1.7; text-wrap: pretty; }
+.portal-features-main p { max-width: 43ch; font-size: 15px; }
+.portal-feature-cafe { background: #fff4e5; border-color: #f6dcb8; }
+.portal-feature-cafe .portal-feature-icon { color: #9c5700; background: #ffe3bd; }
+.portal-feature-gaming { background: #f1f3fb; border-color: #dce2f3; }
+.portal-feature-gaming .portal-feature-icon { color: #505cad; background: #e0e5f7; }
+.portal-feature-events .portal-feature-icon { color: #ad5344; background: #fff0e9; }
+.portal-feature-preferences .portal-feature-icon { color: #42745c; background: #eaf4eb; }
+.portal-feature-plan .portal-feature-icon { color: #9c6c1a; background: #fff4dc; }
+.portal-feature-tags { display: flex; flex-wrap: wrap; gap: 7px; list-style: none; margin: auto 0 0; padding: 22px 0 0; }
+.portal-feature-tags li { padding: 5px 10px; border: 1px solid rgb(28 25 23 / 9%); border-radius: 999px; background: rgb(255 255 255 / 65%); color: #57534e; font-size: 11px; font-weight: 500; }
+.parents-start { padding-top: 56px; }
+
+@keyframes gallery-appear { from { opacity: .5; } to { opacity: 1; } }
+
+@media (max-width: 720px) {
+  .parents-hero-inner { grid-template-columns: minmax(0, 1fr); gap: 36px; padding: 32px 24px 40px; }
+  .parents-hero-heading { max-width: 16ch; }
+  .parents-hero-illustration { margin-top: 20px; }
+  .portal-gallery { max-width: 320px; }
+  .portal-features-main, .portal-features-more { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .portal-features-more { margin-top: 14px; }
+  .portal-features-main .portal-feature { padding: 25px; }
+  .portal-features, .parents-start { padding-top: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-gallery-slide.is-active { animation: none; }
+}
