@@ -18,6 +18,7 @@
     { href: '/om-skærmtid/',   label: 'Skærmtid' },
     { href: '/om-køsystem/',   label: 'Køsystem' },
     { href: '/om-ugeplan/',    label: 'Ugeplan' },
+    { href: '/om-relationskompas/', label: 'Relationskompas' },
     { href: '/om-forældre/',   label: 'Forældreportal' },
     { href: '/om-fællesskabet/',  label: 'Fællesskabet' }
   ];
@@ -37,6 +38,7 @@
     // Den gamle ASCII-sti viderestiller, så gamle bogmærker holder.
     '/om-køsystem/':   { href: '/køsystem/',       label: 'Log ind på Køsystem' },
     '/om-ugeplan/':    { href: '/ugeplan/login',   label: 'Log ind på Ugeplan' },
+    '/om-relationskompas/': { href: '/relationskompas/', label: 'Åbn Relationskompas' },
     // Fællesskabet er sin egen app: /fællesskabet/ er fladen (gæst eller login), /om-fællesskabet/
     // produktsiden — samme par som de øvrige. De gamle stier under /ugeplan/ viderestiller.
     '/om-fællesskabet/': { href: '/fællesskabet/', label: 'Log ind på Fællesskabet' },
@@ -127,6 +129,7 @@
           '<a href="/skærmtid/">Skærmtid (personale)</a>' +
           '<a href="/køsystem/">Køsystem (personale)</a>' +
           '<a href="/ugeplan/login">Ugeplan (personale)</a>' +
+          '<a href="/relationskompas/">Relationskompas (personale)</a>' +
           '<a href="/fællesskabet/">Fællesskabet</a>' +
           '<a href="/cafe">Café-app (personale)</a>' +
         '</div>';

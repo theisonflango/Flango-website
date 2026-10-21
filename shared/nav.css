@@ -143,26 +143,14 @@
   padding: 22px 0 4px;
 }
 
-/* Login-knappen navngiver appen ("Log ind på Forældreportal" er den bredeste,
-   ~215 px). Med syv sektionslinks kræver rækken derfor ~1015 px ved fuld
-   afstand — og så ville 1024 px-skærme falde til burger. I stedet strammes
-   afstanden mellem linkene, inden det kommer dertil. */
-@media (max-width: 1200px) {
+/* Otte menupunkter og den bredeste login-knap skal kunne være der samtidig.
+   Stram afstanden før tabletvisningen, som beholder alle produktlinks i en
+   vandret scrollbar række under logo og login. */
+@media (max-width: 1240px) {
   .flango-nav-links { gap: 14px; }
 }
 
-/* Under 980 px kan rækken ikke være på én linje: logo + syv sektionslinks + den
-   bredeste login-knap kræver ~955 px med den strammede afstand ovenfor. Grænsen
-   skal ligge over det — ellers skydes login-knappen ud over kanten og hele siden
-   får vandret scroll.
-
-   En tablet i lodret (iPad 744–834 px, Android ~800 px) har plads til det hele,
-   bare ikke på én linje. Den får derfor to rækker — logo og login øverst,
-   sektionslinkene under — i stedet for telefonens burger, som gemte både
-   undersiderne og login væk. Linkene fylder ~540 px og kan være der ned til
-   600 px; bliver de bredere (større skrift, flere produkter), scroller rækken
-   vandret frem for at skubbe siden ud. */
-@media (min-width: 600px) and (max-width: 980px) and (min-height: 600px) {
+@media (min-width: 600px) and (max-width: 1160px) and (min-height: 600px) {
   .flango-nav-mount { min-height: 108px; }
   .flango-nav-inner { flex-wrap: wrap; height: auto; row-gap: 0; }
   .flango-nav-logo, .flango-nav-right { height: 64px; }
@@ -188,7 +176,7 @@
 
 /* Telefonen får burgeren — også liggende, hvor to rækker ville tage en fjerdedel
    af skærmhøjden. ,98 lukker hullet mellem reglerne ved brøkdels-viewports. */
-@media (max-width: 599.98px), (max-width: 980px) and (max-height: 599.98px) {
+@media (max-width: 599.98px), (max-width: 1160px) and (max-height: 599.98px) {
   .flango-nav-links, .flango-nav-right { display: none; }
   .flango-burger { display: block; }
 }
