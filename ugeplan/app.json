@@ -1,0 +1,4 @@
+{
+  "minBuild": { "ios": 13, "android": 6 },
+  "nyesteBuild": { "ios": 13, "android": 6 }
+}

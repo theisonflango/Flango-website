@@ -1,0 +1,21 @@
+{
+  "skabelon": {
+    "fil": "aula-boernetal-skabelon.xlsx?v=2026-09-06-numbers3-1",
+    "navn": "Aula-boernetal-skabelon-v3-1.xlsx"
+  },
+  "trin": [
+    {
+      "titel": "Hent den tomme skabelon",
+      "medSkabelon": true,
+      "tekst": "Åbn arket i Excel eller Numbers i et miljø, kommunen har godkendt til børneoplysninger."
+    },
+    {
+      "titel": "Dobbeltklik på “INDSÆT HER”",
+      "tekst": "Kopiér hele **Aula → Komme/gå → Ugeoverblik** med Status: Alle. I Numbers skal du **dobbeltklikke i det gule felt** i fanen **Uge 1**, så **hele teksten INDSÆT HER er markeret**. Indsæt listen, og tryk Enter. Brug Uge 2–4 til flere uger."
+    },
+    {
+      "titel": "Aflæs det store børnetal",
+      "tekst": "Gå til **Resultat** i arket. Vælg regel, klokkeslæt og de dage, der skal tælle. Gennemsnittet opdateres i arket. Skriv det afrundede tal herunder."
+    }
+  ]
+}
